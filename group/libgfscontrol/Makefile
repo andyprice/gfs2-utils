@@ -2,6 +2,9 @@ TARGET= libgfscontrol
 
 MAKESTATICLIB = 1
 
+LIBDIRT=$(TARGET).a
+INCDIRT=$(TARGET).h
+
 OBJS= main.o
 
 include ../../make/defines.mk
