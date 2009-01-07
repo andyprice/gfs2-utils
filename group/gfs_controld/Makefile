@@ -2,7 +2,7 @@ TARGET= gfs_controld
 
 SBINDIRT=$(TARGET)
 
-all: depends ${TARGET}
+all: ${TARGET}
 
 include ../../make/defines.mk
 include $(OBJDIR)/make/cobj.mk
@@ -22,10 +22,10 @@ OBJS= 	main.o \
 	logging.o
 
 CFLAGS += -I${ccsincdir} -I${cmanincdir} -I${logtincdir} -I${dlmcontrolincdir}
-CFLAGS += -I${corosyncincdir} -I${openaisincdir}
+CFLAGS += -I${corosyncincdir} -I${openaisincdir} -I${fencedincdir}
 CFLAGS += -I${KERNEL_SRC}/include/
-CFLAGS += -I$(S)/../libgfscontrol -I$(S)/../../fence/libfenced/
-CFLAGS += -I$(S)/../lib/ -I$(S)/../include/
+CFLAGS += -I$(S)/../libgfscontrol 
+CFLAGS += -I$(S)/../include/
 CFLAGS += -I${incdir}
 
 LDFLAGS += -L${ccslibdir} -lccs -L${cmanlibdir} -lcman
@@ -33,18 +33,15 @@ LDFLAGS += -L${dlmcontrollibdir} -ldlmcontrol
 LDFLAGS += -L${logtlibdir} -llogthread
 LDFLAGS += -L${corosynclibdir} -lcpg -lpthread
 LDFLAGS += -L${openaislibdir} -lSaCkpt
-LDFLAGS += -L../../fence/libfenced/ -lfenced
-LDFLAGS += -L../lib -lgroup
+LDFLAGS += -L${fencedlibdir} -lfenced
+LDFLAGS += -L${grouplibdir} -lgroup
 LDFLAGS += -L${libdir}
 
-LDDEPS += ../lib/libgroup.a
-LDDEPS += ../../fence/libfenced/libfenced.a
+LDDEPS += ${grouplibdir}/libgroup.a
+LDDEPS += ${fencedlibdir}/libfenced.a
 
 ${TARGET}: ${OBJS} ${LDDEPS}
 	$(CC) -o $@ $^ $(LDFLAGS)
-
-depends:
-	$(MAKE) -C ../lib all
 
 clean: generalclean
 
