@@ -157,19 +157,9 @@ struct mountgroup *create_mg(char *name)
 		return NULL;
 	memset(mg, 0, sizeof(struct mountgroup));
 
-	if (group_mode == GROUP_LIBGROUP)
-		mg->old_group_mode = 1;
-
-	INIT_LIST_HEAD(&mg->members);
-	INIT_LIST_HEAD(&mg->members_gone);
-	INIT_LIST_HEAD(&mg->plock_resources);
-	INIT_LIST_HEAD(&mg->saved_messages);
 	INIT_LIST_HEAD(&mg->changes);
 	INIT_LIST_HEAD(&mg->journals);
 	INIT_LIST_HEAD(&mg->node_history);
-	mg->init = 1;
-	mg->master_nodeid = -1;
-	mg->low_nodeid = -1;
 
 	strncpy(mg->name, name, GFS_MOUNTGROUP_LEN);
 
@@ -340,10 +330,7 @@ static void process_uevent(int ci)
 
 		if (strcmp(uevent_vals[Env_SUBSYSTEM], "lock_dlm") == 0)
 			return;
-		if (group_mode == GROUP_LIBGROUP)
-			do_leave_old(fsname, 0);
-		else
-			do_leave(fsname, 0);
+		do_leave(fsname, 0);
 
 	} else if (!strcmp(uevent_vals[Env_ACTION], "change")) {
 		int jid, status = -1, first = -1;
@@ -363,10 +350,7 @@ static void process_uevent(int ci)
 		    (strcmp(uevent_vals[Env_FIRSTMOUNT], "Done") == 0))
 			first = 1;
 
-		if (group_mode == GROUP_LIBGROUP)
-			process_recovery_uevent_old(fsname, jid, status, first);
-		else
-			process_recovery_uevent(fsname, jid, status, first);
+		process_recovery_uevent(fsname, jid, status, first);
 
 	} else if (!strcmp(uevent_vals[Env_ACTION], "offline")) {
 		do_withdraw(fsname);
@@ -445,29 +429,6 @@ static void query_dump_debug(int fd)
 	do_write(fd, dump_buf, len);
 }
 
-static void query_dump_plocks(int fd, char *name)
-{
-	struct mountgroup *mg;
-	struct gfsc_header h;
-	int rv;
-
-	mg = find_mg(name);
-	if (!mg) {
-		plock_dump_len = 0;
-		rv = -ENOENT;
-	} else {
-		/* writes to plock_dump_buf and sets plock_dump_len */
-		rv = fill_plock_dump_buf(mg);
-	}
-
-	init_header(&h, GFSC_CMD_DUMP_PLOCKS, name, rv, plock_dump_len);
-
-	do_write(fd, &h, sizeof(h));
-
-	if (plock_dump_len)
-		do_write(fd, plock_dump_buf, plock_dump_len);
-}
-
 /* combines a header and the data and sends it back to the client in
    a single do_write() call */
 
@@ -506,12 +467,8 @@ static void query_mountgroup_info(int fd, char *name)
 	}
 
 	memset(&mountgroup, 0, sizeof(mountgroup));
-	mountgroup.group_mode = group_mode;
 
-	if (group_mode == GROUP_LIBGROUP)
-		rv = set_mountgroup_info_group(mg, &mountgroup);
-	else
-		rv = set_mountgroup_info(mg, &mountgroup);
+	rv = set_mountgroup_info(mg, &mountgroup);
  out:
 	do_reply(fd, GFSC_CMD_MOUNTGROUP_INFO, name, rv,
 		 (char *)&mountgroup, sizeof(mountgroup));
@@ -529,10 +486,7 @@ static void query_node_info(int fd, char *name, int nodeid)
 		goto out;
 	}
 
-	if (group_mode == GROUP_LIBGROUP)
-		rv = set_node_info_group(mg, nodeid, &node);
-	else
-		rv = set_node_info(mg, nodeid, &node);
+	rv = set_node_info(mg, nodeid, &node);
  out:
 	do_reply(fd, GFSC_CMD_NODE_INFO, name, rv,
 		 (char *)&node, sizeof(node));
@@ -544,11 +498,7 @@ static void query_mountgroups(int fd, int max)
 	struct gfsc_mountgroup *mgs = NULL;
 	int rv, result;
 
-	if (group_mode == GROUP_LIBGROUP)
-		rv = set_mountgroups_group(&mg_count, &mgs);
-	else
-		rv = set_mountgroups(&mg_count, &mgs);
-
+	rv = set_mountgroups(&mg_count, &mgs);
 	if (rv < 0) {
 		result = rv;
 		mg_count = 0;
@@ -583,11 +533,7 @@ static void query_mountgroup_nodes(int fd, char *name, int option, int max)
 		goto out;
 	}
 
-	if (group_mode == GROUP_LIBGROUP)
-		rv = set_mountgroup_nodes_group(mg, option, &node_count, &nodes);
-	else
-		rv = set_mountgroup_nodes(mg, option, &node_count, &nodes);
-
+	rv = set_mountgroup_nodes(mg, option, &node_count, &nodes);
 	if (rv < 0) {
 		result = rv;
 		node_count = 0;
@@ -757,11 +703,7 @@ static void do_join(int ci, struct gfsc_mount_args *ma)
 
 	list_add(&mg->list, &mountgroups);
 
-	if (group_mode == GROUP_LIBGROUP)
-		rv = gfs_join_mountgroup_old(mg, ma);
-	else
-		rv = gfs_join_mountgroup(mg);
-
+	rv = gfs_join_mountgroup(mg);
 	if (rv) {
 		log_error("join: group join error %d", rv);
 		list_del(&mg->list);
@@ -829,10 +771,7 @@ static void do_mount_done(char *table, int result)
 	mg->kernel_mount_done = 1;
 	mg->kernel_mount_error = result;
 
-	if (group_mode == GROUP_LIBGROUP)
-		send_mount_status_old(mg);
-	else
-		gfs_mount_done(mg);
+	gfs_mount_done(mg);
 }
 
 void client_reply_remount(struct mountgroup *mg, int ci, int result)
@@ -869,13 +808,6 @@ static void do_remount(int ci, struct gfsc_mount_args *ma)
 
 	if ((mg->ro && ro) || (!mg->ro && !ro))
 		goto out;
-
-	if (group_mode == GROUP_LIBGROUP) {
-		/* the receive calls client_reply_remount */
-		mg->remount_client = ci;
-		send_remount_old(mg, ma);
-		return;
-	}
 
 	send_remount(mg, ma);
  out:
@@ -943,10 +875,7 @@ void process_connection(int ci)
 		break;
 
 	case GFSC_CMD_FS_LEAVE:
-		if (group_mode == GROUP_LIBGROUP)
-			do_leave_old(ma->table, h.data);
-		else
-			do_leave(ma->table, h.data);
+		do_leave(ma->table, h.data);
 		break;
 
 	case GFSC_CMD_FS_MOUNT_DONE:
@@ -1068,9 +997,6 @@ static void *process_queries(void *arg)
 		case GFSC_CMD_DUMP_DEBUG:
 			query_dump_debug(f);
 			break;
-		case GFSC_CMD_DUMP_PLOCKS:
-			query_dump_plocks(f, h.name);
-			break;
 		case GFSC_CMD_MOUNTGROUP_INFO:
 			query_mountgroup_info(f, h.name);
 			break;
@@ -1158,75 +1084,19 @@ static void loop(void)
 		goto out;
 	client_add(rv, process_uevent, NULL);
 
-	group_mode = GROUP_LIBCPG;
+	rv = setup_cpg();
+	if (rv < 0)
+		goto out;
+	client_add(rv, process_cpg, cluster_dead);
 
-	if (cfgd_groupd_compat) {
-		rv = setup_groupd();
-		if (rv < 0)
-			goto out;
-		client_add(rv, process_groupd, cluster_dead);
+	rv = set_protocol();
+	if (rv < 0)
+		goto out;
 
-		switch (cfgd_groupd_compat) {
-		case 1:
-			group_mode = GROUP_LIBGROUP;
-			rv = 0;
-			break;
-		case 2:
-			rv = set_group_mode();
-			break;
-		default:
-			log_error("inval groupd_compat %d", cfgd_groupd_compat);
-			rv = -1;
-			break;
-		}
-		if (rv < 0)
-			goto out;
-	}
-	log_debug("group_mode %d compat %d", group_mode, cfgd_groupd_compat);
-
-	if (group_mode == GROUP_LIBCPG) {
-
-		/*
-		 * The new, good, way of doing things using libcpg directly.
-		 * code in: cpg-new.c
-		 */
-
-		rv = setup_cpg();
-		if (rv < 0)
-			goto out;
-		client_add(rv, process_cpg, cluster_dead);
-
-		rv = set_protocol();
-		if (rv < 0)
-			goto out;
-
-		rv = setup_dlmcontrol();
-		if (rv < 0)
-			goto out;
-		client_add(rv, process_dlmcontrol, dlmcontrol_dead);
-
-	} else if (group_mode == GROUP_LIBGROUP) {
-
-		/*
-		 * The old, bad, way of doing things using libgroup.
-		 * code in: cpg-old.c group.c plock.c
-		 */
-
-		rv = setup_cpg_old();
-		if (rv < 0)
-			goto out;
-		client_add(rv, process_cpg_old, cluster_dead);
-
-		rv = setup_misc_devices();
-		if (rv < 0)
-			goto out;
-
-		rv = setup_plocks();
-		if (rv < 0)
-			goto out;
-		plock_fd = rv;
-		plock_ci = client_add(rv, process_plocks, NULL);
-	}
+	rv = setup_dlmcontrol();
+	if (rv < 0)
+		goto out;
+	client_add(rv, process_dlmcontrol, dlmcontrol_dead);
 
 	for (;;) {
 		rv = poll(pollfd, client_maxi + 1, poll_timeout);
@@ -1265,18 +1135,8 @@ static void loop(void)
 		poll_timeout = -1;
 
 		if (poll_dlm) {
-			/* only happens for GROUP_LIBCPG */
 			process_mountgroups();
 			poll_timeout = 500;
-		}
-
-		if (poll_ignore_plock) {
-			/* only happens for GROUP_LIBGROUP */
-			if (!limit_plocks()) {
-				poll_ignore_plock = 0;
-				client_back(plock_ci, plock_fd);
-			}
-			poll_timeout = 1000;
 		}
 
 		if (dmsetup_wait) {
@@ -1292,12 +1152,7 @@ static void loop(void)
 		query_unlock();
 	}
  out:
-	if (group_mode == GROUP_LIBCPG)
-		close_cpg();
-	else if (group_mode == GROUP_LIBGROUP)
-		close_cpg_old();
-	if (cfgd_groupd_compat)
-		close_groupd();
+	close_cpg();
 	close_logging();
 	close_ccs();
 	close_cman();
@@ -1358,33 +1213,13 @@ static void print_usage(void)
 	printf("\n");
 	printf("  -D           Enable debugging to stderr and don't fork\n");
 	printf("  -L           Enable debugging to log file\n");
-	printf("  -g <num>     groupd compatibility mode, 0 off, 1 on, 2 detect\n");
-	printf("               0: use libcpg, no backward compat, best performance\n");
-	printf("               1: use libgroup for compat with cluster2/rhel5\n");
-	printf("               2: use groupd to detect old, or mode 1, nodes that\n"
-	       "               require compat, use libcpg if none found\n");
-	printf("               Default is %d\n", DEFAULT_GROUPD_COMPAT);
 	printf("  -w <num>     Enable (1) or disable (0) withdraw\n");
 	printf("               Default is %d\n", DEFAULT_ENABLE_WITHDRAW);
-	printf("  -p <num>     Enable (1) or disable (0) plock code\n");
-	printf("               Default is %d\n", DEFAULT_ENABLE_PLOCK);
-	printf("  -P           Enable plock debugging\n");
-
-	printf("  -l <limit>   Limit the rate of plock operations\n");
-	printf("               Default is %d, set to 0 for no limit\n", DEFAULT_PLOCK_RATE_LIMIT);
-	printf("  -o <n>       Enable (1) or disable (0) plock ownership\n");
-	printf("               Default is %d\n", DEFAULT_PLOCK_OWNERSHIP);
-	printf("  -t <ms>      plock ownership drop resources time (milliseconds)\n");
-	printf("               Default is %u\n", DEFAULT_DROP_RESOURCES_TIME);
-	printf("  -c <num>     plock ownership drop resources count\n");
-	printf("               Default is %u\n", DEFAULT_DROP_RESOURCES_COUNT);
-	printf("  -a <ms>      plock ownership drop resources age (milliseconds)\n");
-	printf("               Default is %u\n", DEFAULT_DROP_RESOURCES_AGE);
 	printf("  -h           Print this help, then exit\n");
 	printf("  -V           Print program version information, then exit\n");
 }
 
-#define OPTION_STRING "LDKg:w:f:q:d:p:Pl:o:t:c:a:hV"
+#define OPTION_STRING "LDw:hV"
 
 static void read_arguments(int argc, char **argv)
 {
@@ -1405,49 +1240,9 @@ static void read_arguments(int argc, char **argv)
 			cfgd_debug_logfile = 1;
 			break;
 
-		case 'g':
-			optd_groupd_compat = 1;
-			cfgd_groupd_compat = atoi(optarg);
-			break;
-
 		case 'w':
 			optd_enable_withdraw = 1;
 			cfgd_enable_withdraw = atoi(optarg);
-			break;
-
-		case 'p':
-			optd_enable_plock = 1;
-			cfgd_enable_plock = atoi(optarg);
-			break;
-
-		case 'P':
-			optd_plock_debug = 1;
-			cfgd_plock_debug = 1;
-			break;
-
-		case 'l':
-			optd_plock_rate_limit = 1;
-			cfgd_plock_rate_limit = atoi(optarg);
-			break;
-
-		case 'o':
-			optd_plock_ownership = 1;
-			cfgd_plock_ownership = atoi(optarg);
-			break;
-
-		case 't':
-			optd_drop_resources_time = 1;
-			cfgd_drop_resources_time = atoi(optarg);
-			break;
-
-		case 'c':
-			optd_drop_resources_count = 1;
-			cfgd_drop_resources_count = atoi(optarg);
-			break;
-
-		case 'a':
-			optd_drop_resources_age = 1;
-			cfgd_drop_resources_age = atoi(optarg);
 			break;
 
 		case 'h':
@@ -1559,10 +1354,7 @@ void daemon_dump_save(void)
 int daemon_debug_opt;
 int daemon_quit;
 int cluster_down;
-int poll_ignore_plock;
 int poll_dlm;
-int plock_fd;
-int plock_ci;
 struct list_head mountgroups;
 int cman_quorate;
 int our_nodeid;
@@ -1571,13 +1363,8 @@ char daemon_debug_buf[256];
 char dump_buf[GFSC_DUMP_SIZE];
 int dump_point;
 int dump_wrap;
-char plock_dump_buf[GFSC_DUMP_SIZE];
-int plock_dump_len;
 int dmsetup_wait;
 cpg_handle_t cpg_handle_daemon;
 int libcpg_flow_control_on;
-int group_mode;
-uint32_t plock_minor;
-uint32_t old_plock_minor;
 struct list_head withdrawn_mounts;
 

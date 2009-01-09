@@ -64,8 +64,6 @@ int set_sysfs(struct mountgroup *mg, char *field, int val)
 		return -1;
 	}
 
-	mg->got_kernel_mount = 1;
-
 	memset(out, 0, sizeof(out));
 	sprintf(out, "%d", val);
 
@@ -91,8 +89,6 @@ static int get_sysfs(struct mountgroup *mg, char *field, char *buf, int len)
 		log_group(mg, "get open %s error %d %d", fname, fd, errno);
 		return -1;
 	}
-
-	mg->got_kernel_mount = 1;
 
 	rv = read(fd, buf, len);
 	if (rv < 0)
@@ -166,10 +162,7 @@ static void dmsetup_suspend_done(struct mountgroup *mg, int rv)
 
 	if (!rv) {
 		mg->withdraw_suspend = 1;
-		if (mg->old_group_mode)
-			send_withdraw_old(mg);
-		else
-			send_withdraw(mg);
+		send_withdraw(mg);
 	}
 }
 

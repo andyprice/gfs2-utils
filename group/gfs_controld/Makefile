@@ -15,10 +15,7 @@ OBJS= 	main.o \
 	config.o \
 	crc.o \
 	cpg-new.o \
-	cpg-old.o \
-	group.o \
 	util.o \
-	plock.o \
 	logging.o
 
 CFLAGS += -I${ccsincdir} -I${cmanincdir} -I${logtincdir} -I${dlmcontrolincdir}
@@ -34,10 +31,8 @@ LDFLAGS += -L${logtlibdir} -llogthread
 LDFLAGS += -L${corosynclibdir} -lcpg -lpthread
 LDFLAGS += -L${openaislibdir} -lSaCkpt
 LDFLAGS += -L${fencedlibdir} -lfenced
-LDFLAGS += -L${grouplibdir} -lgroup
 LDFLAGS += -L${libdir}
 
-LDDEPS += ${grouplibdir}/libgroup.a
 LDDEPS += ${fencedlibdir}/libfenced.a
 
 ${TARGET}: ${OBJS} ${LDDEPS}
