@@ -15,14 +15,25 @@
 # Description:		mount/unmount gfs2 filesystems configured in /etc/fstab
 ### END INIT INFO
 
+# set secure PATH
+PATH="/bin:/usr/bin:/sbin:/usr/sbin:@SBINDIR@"
+
+success()
+{
+    echo -ne "[  OK  ]\r"
+}
+
+failure()
+{
+    echo -ne "[FAILED]\r"
+}
+
 # rpm based distros
 if [ -d /etc/sysconfig ]; then
 	[ -f @INITDDIR@/functions ] && . @INITDDIR@/functions
 	[ -f /etc/sysconfig/cluster ] && . /etc/sysconfig/cluster
 	[ -f /etc/sysconfig/gfs2 ] && . /etc/sysconfig/gfs2
 	[ -z "$LOCK_FILE" ] && LOCK_FILE="/var/lock/subsys/gfs2"
-	success=success
-	failure=failure
 fi
 
 # deb based distros
@@ -30,19 +41,7 @@ if [ -d /etc/default ]; then
 	[ -f /etc/default/cluster ] && . /etc/default/cluster
 	[ -f /etc/default/gfs2 ] && . /etc/default/gfs2
 	[ -z "$LOCK_FILE" ] && LOCK_FILE="/var/lock/gfs2"
-	success=success
-	failure=failure
 fi
-
-local_success()
-{
-    echo -ne "[  OK  ]\r"
-}
-
-local_failure()
-{
-    echo -ne "[FAILED]\r"
-}
 
 #
 # This script's behavior is modeled closely after the netfs script.  
@@ -60,10 +59,10 @@ case "$1" in
 		rtrn=$?
 		if [ $rtrn = 0 ]; then
 			touch $LOCK_FILE
-			$success
+			success
 			echo
 		else
-			$failure
+			failure
 			echo
 		fi
 	fi
@@ -81,10 +80,10 @@ case "$1" in
 			umount -a -t gfs2
 			rtrn=$?
 			if [ $rtrn = 0 ]; then
-				$success
+				success
 				echo
 			else
-				$failure
+				failure
 				echo
 			fi
 			
@@ -94,10 +93,10 @@ case "$1" in
 				umount -l -a -t gfs2
 				rtrn=$?
 				if [ $rtrn = 0 ]; then
-					$success
+					success
 					echo
 				else
-					$failure
+					failure
 					echo
 				fi
 				break
