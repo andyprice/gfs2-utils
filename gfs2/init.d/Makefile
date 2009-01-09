@@ -11,6 +11,7 @@ include $(OBJDIR)/make/uninstall.mk
 
 $(TARGET): $(S)/$(TARGET).in
 	cat $(S)/$(TARGET).in | sed \
+		-e 's#@SBINDIR@#${sbindir}#g' \
 		-e 's#@INITDDIR@#${initddir}#g' \
 	> $(TARGET)
 
