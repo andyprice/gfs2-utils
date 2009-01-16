@@ -35,8 +35,6 @@ my %options = (
 	ccslibdir => \$ccslibdir,
 	cmanincdir => \$cmanincdir,
 	cmanlibdir => \$cmanlibdir,
-	groupincdir => \$groupincdir,
-	grouplibdir => \$grouplibdir,
 	dlmcontrolincdir => \$dlmcontrolincdir,
 	dlmcontrollibdir => \$dlmcontrollibdir,
 	fencedincdir => \$fencedincdir,
@@ -88,8 +86,6 @@ my $err = &GetOptions (\%options,
 		    'ccslibdir=s',
 		    'cmanincdir=s',
 		    'cmanlibdir=s',
-		    'groupincdir=s',
-		    'grouplibdir=s',
 		    'dlmcontrolincdir=s',
 		    'dlmcontrollibdir=s',
 		    'fencedincdir=s',
@@ -159,8 +155,6 @@ if ($help || !$err) {
   print "--ccslibdir=\tthe base directory for ccs libraries.  (Default: {libdir})\n";
   print "--cmanincdir=\tthe base directory for cman include files.  (Default: {incdir})\n";
   print "--cmanlibdir=\tthe base directory for cman libraries.  (Default: {libdir})\n";
-  print "--groupincdir=\tthe base directory for group include files.  (Default: {incdir})\n";
-  print "--grouplibdir=\tthe base directory for group libraries.  (Default: {libdir})\n";
   print "--dlmcontrolincdir=\tthe base directory for dlmcontrol include files.  (Default: {incdir})\n";
   print "--dlmcontrollibdir=\tthe base directory for dlmcontrol libraries.  (Default: {libdir})\n";
   print "--fencedincdir=\tthe base directory for fenced include files.  (Default: {incdir})\n";
@@ -337,12 +331,6 @@ if (!$cmanincdir) {
 if (!$cmanlibdir) {
   $cmanlibdir="${libdir}";
 }
-if (!$groupincdir) {
-  $groupincdir="${incdir}";
-}
-if (!$grouplibdir) {
-  $grouplibdir="${libdir}";
-}
 if (!$dlmcontrolincdir) {
   $dlmcontrolincdir="${incdir}";
 }
@@ -469,8 +457,6 @@ while (<IFILE>) {
   $_ =~ s/\@CCSLIBDIR\@/$ccslibdir/;
   $_ =~ s/\@CMANINCDIR\@/$cmanincdir/;
   $_ =~ s/\@CMANLIBDIR\@/$cmanlibdir/;
-  $_ =~ s/\@GROUPINCDIR\@/$groupincdir/;
-  $_ =~ s/\@GROUPLIBDIR\@/$grouplibdir/;
   $_ =~ s/\@DLMCONTROLINCDIR\@/$dlmcontrolincdir/;
   $_ =~ s/\@DLMCONTROLLIBDIR\@/$dlmcontrollibdir/;
   $_ =~ s/\@FENCEDINCDIR\@/$fencedincdir/;
