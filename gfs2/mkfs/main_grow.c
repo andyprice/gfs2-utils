@@ -270,7 +270,6 @@ main_grow(int argc, char *argv[])
 			die("can't open device %s: %s\n",
 			    sdp->device_name, strerror(errno));
 		device_geometry(sdp);
-		fix_device_geometry(sdp);
 		log_info("Initializing lists...\n");
 		osi_list_init(&sdp->rglist);
 		init_buf_list(sdp, &sdp->buf_list, 128 << 20);
@@ -282,6 +281,7 @@ main_grow(int argc, char *argv[])
 		if(read_sb(sdp) < 0)
 			die("gfs: Error reading superblock.\n");
 
+		fix_device_geometry(sdp);
 		mount_gfs2_meta(sdp);
 
 		sprintf(rindex_name, "%s/rindex", sdp->metafs_path);
