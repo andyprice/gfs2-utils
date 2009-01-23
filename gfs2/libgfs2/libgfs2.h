@@ -1,6 +1,7 @@
 #ifndef __LIBGFS2_DOT_H__
 #define __LIBGFS2_DOT_H__
 
+#include <features.h>
 #include <inttypes.h>
 #include <sys/types.h>
 #include <linux/types.h>
@@ -11,6 +12,8 @@
 #include "osi_list.h"
 #include "copyright.cf"
 #include "ondisk.h"
+
+__BEGIN_DECLS
 
 #ifndef TRUE
 #define TRUE (1)
@@ -285,11 +288,11 @@ struct gfs2_bmap {
         char *map;
 };
 
-int gfs2_bitmap_create(struct gfs2_bmap *bmap, uint64_t size, uint8_t bitsize);
-int gfs2_bitmap_set(struct gfs2_bmap *bmap, uint64_t offset, uint8_t val);
-int gfs2_bitmap_get(struct gfs2_bmap *bmap, uint64_t bit, uint8_t *val);
-int gfs2_bitmap_clear(struct gfs2_bmap *bmap, uint64_t offset);
-void gfs2_bitmap_destroy(struct gfs2_bmap *bmap);
+extern int gfs2_bitmap_create(struct gfs2_bmap *bmap, uint64_t size, uint8_t bitsize);
+extern int gfs2_bitmap_set(struct gfs2_bmap *bmap, uint64_t offset, uint8_t val);
+extern int gfs2_bitmap_get(struct gfs2_bmap *bmap, uint64_t bit, uint8_t *val);
+extern int gfs2_bitmap_clear(struct gfs2_bmap *bmap, uint64_t offset);
+extern void gfs2_bitmap_destroy(struct gfs2_bmap *bmap);
 
 /* block_list.c */
 #define FREE	        (0x0)  /*   0000 */
@@ -355,62 +358,62 @@ struct gfs2_block_list {
         union gfs2_block_lists list;
 };
 
-struct gfs2_block_list *gfs2_block_list_create(struct gfs2_sbd *sdp,
+extern struct gfs2_block_list *gfs2_block_list_create(struct gfs2_sbd *sdp,
 					       uint64_t size,
 					       uint64_t *addl_mem_needed);
-struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num);
-void gfs2_special_set(struct special_blocks *blocklist, uint64_t block);
-void gfs2_special_free(struct special_blocks *blist);
-int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
-		    uint64_t block, enum gfs2_mark_block mark);
-int gfs2_block_set(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
-		   uint64_t block, enum gfs2_mark_block mark);
-int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
-		     uint64_t block, enum gfs2_mark_block m);
-int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
-		     uint64_t block, struct gfs2_block_query *val);
-void *gfs2_block_list_destroy(struct gfs2_sbd *sdp,
-			      struct gfs2_block_list *il);
+extern struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num);
+extern void gfs2_special_set(struct special_blocks *blocklist, uint64_t block);
+extern void gfs2_special_free(struct special_blocks *blist);
+extern int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+	 		   uint64_t block, enum gfs2_mark_block mark);
+extern int gfs2_block_set(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+			  uint64_t block, enum gfs2_mark_block mark);
+extern int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+			    uint64_t block, enum gfs2_mark_block m);
+extern int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+			    uint64_t block, struct gfs2_block_query *val);
+extern void *gfs2_block_list_destroy(struct gfs2_sbd *sdp,
+				     struct gfs2_block_list *il);
 
 /* buf.c */
-void init_buf_list(struct gfs2_sbd *sdp, struct buf_list *bl, uint32_t limit);
-struct gfs2_buffer_head *bfind(struct buf_list *bl, uint64_t num);
-struct gfs2_buffer_head *bget_generic(struct buf_list *bl, uint64_t num,
-				      int find_existing, int read_disk);
-struct gfs2_buffer_head *bget(struct buf_list *bl, uint64_t num);
-struct gfs2_buffer_head *bread(struct buf_list *bl, uint64_t num);
-struct gfs2_buffer_head *bhold(struct gfs2_buffer_head *bh);
-void brelse(struct gfs2_buffer_head *bh, enum update_flags updated);
-void bsync(struct buf_list *bl);
-void bcommit(struct buf_list *bl);
+extern void init_buf_list(struct gfs2_sbd *sdp, struct buf_list *bl, uint32_t limit);
+extern struct gfs2_buffer_head *bfind(struct buf_list *bl, uint64_t num);
+extern struct gfs2_buffer_head *bget_generic(struct buf_list *bl, uint64_t num,
+					     int find_existing, int read_disk);
+extern struct gfs2_buffer_head *bget(struct buf_list *bl, uint64_t num);
+extern struct gfs2_buffer_head *bread(struct buf_list *bl, uint64_t num);
+extern struct gfs2_buffer_head *bhold(struct gfs2_buffer_head *bh);
+extern void brelse(struct gfs2_buffer_head *bh, enum update_flags updated);
+extern void bsync(struct buf_list *bl);
+extern void bcommit(struct buf_list *bl);
 
 /* device_geometry.c */
-void device_geometry(struct gfs2_sbd *sdp);
-void fix_device_geometry(struct gfs2_sbd *sdp);
+extern void device_geometry(struct gfs2_sbd *sdp);
+extern void fix_device_geometry(struct gfs2_sbd *sdp);
 
 /* fs_bits.c */
 #define BFITNOENT (0xFFFFFFFF)
 
 /* functions with blk #'s that are buffer relative */
-uint32_t gfs2_bitcount(unsigned char *buffer, unsigned int buflen,
-                     unsigned char state);
-uint32_t gfs2_bitfit(unsigned char *buffer, unsigned int buflen,
-		     uint32_t goal, unsigned char old_state);
+extern uint32_t gfs2_bitcount(unsigned char *buffer, unsigned int buflen,
+			      unsigned char state);
+extern uint32_t gfs2_bitfit(unsigned char *buffer, unsigned int buflen,
+			    uint32_t goal, unsigned char old_state);
 
 /* functions with blk #'s that are rgrp relative */
-uint32_t gfs2_blkalloc_internal(struct rgrp_list *rgd, uint32_t goal,
-				unsigned char old_state,
-				unsigned char new_state, int do_it);
-int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno);
+extern uint32_t gfs2_blkalloc_internal(struct rgrp_list *rgd, uint32_t goal,
+				       unsigned char old_state,
+				       unsigned char new_state, int do_it);
+extern int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno);
 
 /* functions with blk #'s that are file system relative */
-int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state);
+extern int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state);
 
 /* fs_geometry.c */
-void rgblocks2bitblocks(unsigned int bsize, uint32_t *rgblocks,
-			uint32_t *bitblocks);
-void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified);
-void build_rgrps(struct gfs2_sbd *sdp, int write);
+extern void rgblocks2bitblocks(unsigned int bsize, uint32_t *rgblocks,
+			       uint32_t *bitblocks);
+extern void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified);
+extern void build_rgrps(struct gfs2_sbd *sdp, int write);
 
 /* fs_ops.c */
 #define IS_LEAF     (1)
@@ -426,52 +429,53 @@ metapointer(struct gfs2_buffer_head *bh, unsigned int height,
 	return ((uint64_t *)(bh->b_data + head_size)) + mp->mp_list[height];
 }
 
-struct metapath *find_metapath(struct gfs2_inode *ip, uint64_t block);
-struct gfs2_inode *inode_get(struct gfs2_sbd *sdp,
-			     struct gfs2_buffer_head *bh);
-void inode_put(struct gfs2_inode *ip, enum update_flags updated);
-uint64_t data_alloc(struct gfs2_inode *ip);
-uint64_t meta_alloc(struct gfs2_inode *ip);
-uint64_t dinode_alloc(struct gfs2_sbd *sdp);
-int gfs2_readi(struct gfs2_inode *ip, void *buf,
-			   uint64_t offset, unsigned int size);
-int gfs2_writei(struct gfs2_inode *ip, void *buf,
-				uint64_t offset, unsigned int size);
-struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip, uint64_t lbn,
-				      int prealloc);
-struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
-				     struct gfs2_inum *inum,
-				     unsigned int mode, uint32_t flags,
-				     struct gfs2_inum *parent);
-struct gfs2_inode *createi(struct gfs2_inode *dip, char *filename,
-			   unsigned int mode, uint32_t flags);
-void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
-		 struct gfs2_dirent *prev, struct gfs2_dirent *cur);
-struct gfs2_inode *gfs2_load_inode(struct gfs2_sbd *sbp, uint64_t block);
-int gfs2_lookupi(struct gfs2_inode *dip, const char *filename, int len,
-		 struct gfs2_inode **ipp);
-void dir_add(struct gfs2_inode *dip, char *filename, int len,
-			 struct gfs2_inum *inum, unsigned int type);
-int gfs2_dirent_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
-		    const char *filename, int filename_len);
-void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
-	       uint64_t *dblock, uint32_t *extlen, int prealloc,
-	       enum update_flags if_changed);
-void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t index,
-					  uint64_t *leaf_out);
-void gfs2_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out);
-void gfs2_free_block(struct gfs2_sbd *sdp, uint64_t block);
-int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t block);
-int gfs2_get_leaf(struct gfs2_inode *dip, uint64_t leaf_no,
-				  struct gfs2_buffer_head **bhp);
-int gfs2_dirent_first(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
-					  struct gfs2_dirent **dent);
-int gfs2_dirent_next(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
-					 struct gfs2_dirent **dent);
-void build_height(struct gfs2_inode *ip, int height);
-unsigned int calc_tree_height(struct gfs2_inode *ip, uint64_t size);
-void write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
-				   unsigned int blocks);
+extern struct metapath *find_metapath(struct gfs2_inode *ip, uint64_t block);
+extern struct gfs2_inode *inode_get(struct gfs2_sbd *sdp,
+				    struct gfs2_buffer_head *bh);
+extern void inode_put(struct gfs2_inode *ip, enum update_flags updated);
+extern uint64_t data_alloc(struct gfs2_inode *ip);
+extern uint64_t meta_alloc(struct gfs2_inode *ip);
+extern uint64_t dinode_alloc(struct gfs2_sbd *sdp);
+extern int gfs2_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
+		      unsigned int size);
+extern int gfs2_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
+		       unsigned int size);
+extern struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip,
+					     uint64_t lbn, int prealloc);
+extern struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
+					    struct gfs2_inum *inum,
+					    unsigned int mode, uint32_t flags,
+					    struct gfs2_inum *parent);
+extern struct gfs2_inode *createi(struct gfs2_inode *dip, char *filename,
+				  unsigned int mode, uint32_t flags);
+extern void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
+			struct gfs2_dirent *prev, struct gfs2_dirent *cur);
+extern struct gfs2_inode *gfs2_load_inode(struct gfs2_sbd *sbp, uint64_t block);
+extern int gfs2_lookupi(struct gfs2_inode *dip, const char *filename, int len,
+			struct gfs2_inode **ipp);
+extern void dir_add(struct gfs2_inode *dip, char *filename, int len,
+		    struct gfs2_inum *inum, unsigned int type);
+extern int gfs2_dirent_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
+			   const char *filename, int filename_len);
+extern void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
+		      uint64_t *dblock, uint32_t *extlen, int prealloc,
+		      enum update_flags if_changed);
+extern void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t index,
+			     uint64_t *leaf_out);
+extern void gfs2_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out);
+extern void gfs2_free_block(struct gfs2_sbd *sdp, uint64_t block);
+extern int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t block);
+extern int gfs2_get_leaf(struct gfs2_inode *dip, uint64_t leaf_no,
+			 struct gfs2_buffer_head **bhp);
+extern int gfs2_dirent_first(struct gfs2_inode *dip,
+			     struct gfs2_buffer_head *bh,
+			     struct gfs2_dirent **dent);
+extern int gfs2_dirent_next(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
+			    struct gfs2_dirent **dent);
+extern void build_height(struct gfs2_inode *ip, int height);
+extern unsigned int calc_tree_height(struct gfs2_inode *ip, uint64_t size);
+extern void write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip,
+			  unsigned int j, unsigned int blocks);
 
 /**
  * device_size - figure out a device's size
@@ -481,7 +485,7 @@ void write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
  * Returns: -1 on error (with errno set), 0 on success (with @bytes set)
  */
 
-int device_size(int fd, uint64_t *bytes);
+extern int device_size(int fd, uint64_t *bytes);
 
 /* gfs1.c - GFS1 backward compatibility functions */
 struct gfs_indirect {
@@ -536,20 +540,21 @@ struct gfs_dinode {
 	char di_reserved[56];
 };
 
-void gfs1_lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
-		  unsigned int height, struct metapath *mp,
-		       int create, int *new, uint64_t *block);
-void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
-		    uint64_t *dblock, uint32_t *extlen, int prealloc);
-int gfs1_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
-	       unsigned int size);
-int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1);
-int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount);
-struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
-				 struct gfs2_buffer_head *bh);
+extern void gfs1_lookup_block(struct gfs2_inode *ip,
+			      struct gfs2_buffer_head *bh,
+			      unsigned int height, struct metapath *mp,
+			      int create, int *new, uint64_t *block);
+extern void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
+			   uint64_t *dblock, uint32_t *extlen, int prealloc);
+extern int gfs1_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
+		      unsigned int size);
+extern int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1);
+extern int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount);
+extern struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
+					struct gfs2_buffer_head *bh);
 
 /* locking.c */
-void test_locking(char *lockproto, char *locktable);
+extern void test_locking(char *lockproto, char *locktable);
 
 /* gfs2_log.c */
 struct gfs2_options {
@@ -607,91 +612,92 @@ do { print_log(1, MSG_ERROR, format); } while(0)
 #define log_at_crit(format...) \
 do { print_log(1, MSG_CRITICAL, format); } while(0)
 
-void increase_verbosity(void);
-void decrease_verbosity(void);
-void print_fsck_log(int iif, int priority, char *file, int line,
-					const char *format, ...);
-char generic_interrupt(const char *caller, const char *where,
-		       const char *progress, const char *question,
-		       const char *answers);
-int gfs2_query(int *setonabort, struct gfs2_options *opts,
-	       const char *format, ...);
+extern void increase_verbosity(void);
+extern void decrease_verbosity(void);
+extern void print_fsck_log(int iif, int priority, char *file, int line,
+			   const char *format, ...);
+extern char generic_interrupt(const char *caller, const char *where,
+			      const char *progress, const char *question,
+			      const char *answers);
+extern int gfs2_query(int *setonabort, struct gfs2_options *opts,
+		      const char *format, ...);
 
 /* misc.c */
 #define SYS_BASE "/sys/fs/gfs2"
 
-uint32_t compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
-			    uint32_t bsize1, int diptrs, int inptrs);
-void compute_constants(struct gfs2_sbd *sdp);
-int find_gfs2_meta(struct gfs2_sbd *sdp);
-int dir_exists(const char *dir);
-void check_for_gfs2(struct gfs2_sbd *sdp);
-void mount_gfs2_meta(struct gfs2_sbd *sdp);
-void cleanup_metafs(struct gfs2_sbd *sdp);
-char *get_list(void);
-char *find_debugfs_mount(void);
-char *mp2fsname(char *mp);
-char *get_sysfs(char *fsname, char *filename);
-unsigned int get_sysfs_uint(char *fsname, char *filename);
-void set_sysfs(char *fsname, char *filename, char *val);
-int is_fsname(char *name);
+extern uint32_t compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
+				   uint32_t bsize1, int diptrs, int inptrs);
+extern void compute_constants(struct gfs2_sbd *sdp);
+extern int find_gfs2_meta(struct gfs2_sbd *sdp);
+extern int dir_exists(const char *dir);
+extern void check_for_gfs2(struct gfs2_sbd *sdp);
+extern void mount_gfs2_meta(struct gfs2_sbd *sdp);
+extern void cleanup_metafs(struct gfs2_sbd *sdp);
+extern char *get_list(void);
+extern char *find_debugfs_mount(void);
+extern char *mp2fsname(char *mp);
+extern char *get_sysfs(char *fsname, char *filename);
+extern unsigned int get_sysfs_uint(char *fsname, char *filename);
+extern void set_sysfs(char *fsname, char *filename, char *val);
+extern int is_fsname(char *name);
 
 /* recovery.c */
-void gfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk);
-int gfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
-			   struct gfs2_buffer_head **bh);
-int gfs2_revoke_add(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where);
-int gfs2_revoke_check(struct gfs2_sbd *sdp, uint64_t blkno,
-		      unsigned int where);
-void gfs2_revoke_clean(struct gfs2_sbd *sdp);
-int get_log_header(struct gfs2_inode *ip, unsigned int blk,
-		   struct gfs2_log_header *head);
-int find_good_lh(struct gfs2_inode *ip, unsigned int *blk,
-		 struct gfs2_log_header *head);
-int jhead_scan(struct gfs2_inode *ip, struct gfs2_log_header *head);
-int gfs2_find_jhead(struct gfs2_inode *ip, struct gfs2_log_header *head);
-int clean_journal(struct gfs2_inode *ip, struct gfs2_log_header *head);
+extern void gfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk);
+extern int gfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
+				  struct gfs2_buffer_head **bh);
+extern int gfs2_revoke_add(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where);
+extern int gfs2_revoke_check(struct gfs2_sbd *sdp, uint64_t blkno,
+			     unsigned int where);
+extern void gfs2_revoke_clean(struct gfs2_sbd *sdp);
+extern int get_log_header(struct gfs2_inode *ip, unsigned int blk,
+			  struct gfs2_log_header *head);
+extern int find_good_lh(struct gfs2_inode *ip, unsigned int *blk,
+			struct gfs2_log_header *head);
+extern int jhead_scan(struct gfs2_inode *ip, struct gfs2_log_header *head);
+extern int gfs2_find_jhead(struct gfs2_inode *ip, struct gfs2_log_header *head);
+extern int clean_journal(struct gfs2_inode *ip, struct gfs2_log_header *head);
 
 /* rgrp.c */
-int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_list *rgd);
-struct rgrp_list *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk);
-uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd);
-void gfs2_rgrp_relse(struct rgrp_list *rgd, enum update_flags updated);
-void gfs2_rgrp_free(osi_list_t *rglist, enum update_flags updated);
+extern int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_list *rgd);
+extern struct rgrp_list *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk);
+extern uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd);
+extern void gfs2_rgrp_relse(struct rgrp_list *rgd, enum update_flags updated);
+extern void gfs2_rgrp_free(osi_list_t *rglist, enum update_flags updated);
 
 /* structures.c */
-void build_master(struct gfs2_sbd *sdp);
-void build_sb(struct gfs2_sbd *sdp);
-void build_jindex(struct gfs2_sbd *sdp);
-void build_per_node(struct gfs2_sbd *sdp);
-void build_inum(struct gfs2_sbd *sdp);
-void build_statfs(struct gfs2_sbd *sdp);
-void build_rindex(struct gfs2_sbd *sdp);
-void build_quota(struct gfs2_sbd *sdp);
-void build_root(struct gfs2_sbd *sdp);
-void do_init(struct gfs2_sbd *sdp);
-int gfs2_check_meta(struct gfs2_buffer_head *bh, int type);
-int gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block, int first);
-int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
-						  uint64_t *block, uint32_t type, int first);
+extern void build_master(struct gfs2_sbd *sdp);
+extern void build_sb(struct gfs2_sbd *sdp);
+extern void build_jindex(struct gfs2_sbd *sdp);
+extern void build_per_node(struct gfs2_sbd *sdp);
+extern void build_inum(struct gfs2_sbd *sdp);
+extern void build_statfs(struct gfs2_sbd *sdp);
+extern void build_rindex(struct gfs2_sbd *sdp);
+extern void build_quota(struct gfs2_sbd *sdp);
+extern void build_root(struct gfs2_sbd *sdp);
+extern void do_init(struct gfs2_sbd *sdp);
+extern int gfs2_check_meta(struct gfs2_buffer_head *bh, int type);
+extern int gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block, int first);
+extern int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
+				 uint64_t *block, uint32_t type, int first);
 /* super.c */
-int check_sb(struct gfs2_sb *sb);
-int read_sb(struct gfs2_sbd *sdp);
-int ji_update(struct gfs2_sbd *sdp);
-int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1);
-int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount);
-int write_sb(struct gfs2_sbd *sdp);
+extern int check_sb(struct gfs2_sb *sb);
+extern int read_sb(struct gfs2_sbd *sdp);
+extern int ji_update(struct gfs2_sbd *sdp);
+extern int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1);
+extern int ri_updane(struct gfs2_sbd *sdp, int fd, int *rgcount);
+extern int write_sb(struct gfs2_sbd *sdp);
 
 /* ondisk.c */
-uint32_t gfs2_disk_hash(const char *data, int len);
+extern uint32_t gfs2_disk_hash(const char *data, int len);
 
-extern void print_it(const char *label, const char *fmt,
-					 const char *fmt2, ...);
+extern void print_it(const char *label, const char *fmt, const char *fmt2, ...);
 #define pv(struct, member, fmt, fmt2) do {				   \
 		print_it("  "#member, fmt, fmt2, struct->member); \
         } while (FALSE);
 #define pv2(struct, member, fmt, fmt2) do {		 \
 		print_it("  ", fmt, fmt2, struct->member);	\
         } while (FALSE);
+
+__END_DECLS
 
 #endif /* __LIBGFS2_DOT_H__ */
