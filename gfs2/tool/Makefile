@@ -11,7 +11,6 @@ include $(OBJDIR)/make/install.mk
 include $(OBJDIR)/make/uninstall.mk
 
 OBJS=	df.o \
-	layout.o \
 	main.o \
 	misc.o \
 	ondisk.o \

@@ -77,30 +77,6 @@ static const char *usage[] = {
 	"\n",
 	"Withdraw this machine from participating in a filesystem:\n",
 	"  gfs2_tool withdraw <mountpoint>\n",
-#if GFS2_TOOL_FEATURE_IMPLEMENTED
-	"\n",
-	"Force files from a machine's cache\n",
-	"  gfs2_tool flush <filenames>\n",
-	"\n",
-	"Print the superblock of a mounted filesystem:\n",
-	"  gfs2_tool getsb <mountpoint>\n",
-	"\n",
-	"Print the journal index of a mounted filesystem:\n",
-	"  gfs2_tool jindex <mountpoint>\n",
-	"\n",
-	"Print out the ondisk layout for a file:\n",
-	"  gfs2_tool layout <filename> [buffersize]\n",
-	"\n",
-	"Print the quota file of a mounted filesystem:\n",
-	"  gfs2_tool quota <mountpoint>\n",
-	"\n",
-	"Print the resource group index of a mounted filesystem:\n",
-	"  gfs2_tool rindex <mountpoint>\n",
-	"\n",
-	"Print file stat data:\n",
-	"  gfs2_tool stat <filename>\n",
-	"\n",
-#endif /* GFS2_TOOL_FEATURE_IMPLEMENTED */
 	"",
 };
 
@@ -245,22 +221,6 @@ main(int argc, char *argv[])
 		print_version();
 	else if (strcmp(action, "withdraw") == 0)
 		do_withdraw(argc, argv);
-#if GFS2_TOOL_FEATURE_IMPLEMENTED
-	else if (strcmp(action, "flush") == 0)
-		do_file_flush(argc, argv);
-	else if (strcmp(action, "getsb") == 0)
-		print_sb(argc, argv);
-	else if (strcmp(action, "jindex") == 0)
-		print_jindex(argc, argv);
-	else if (strcmp(action, "layout") == 0)
-		print_layout(argc, argv);
-	else if (strcmp(action, "quota") == 0)
-		print_quota(argc, argv);
-	else if (strcmp(action, "rindex") == 0)
-		print_rindex(argc, argv);
-	else if (strcmp(action, "stat") == 0)
-		print_stat(argc, argv);
-#endif /* #if GFS2_TOOL_FEATURE_IMPLEMENTED */
 	else
 		die("unknown action: %s\n",
 		    action);
