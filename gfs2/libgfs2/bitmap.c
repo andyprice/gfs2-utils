@@ -43,10 +43,6 @@
 /* #define BITMAP_MASK(chunksize) (0x10 - 1)                                 */
 #define BITMAP_MASK4(chunksize) (0xf)
 
-uint64_t gfs2_bitmap_size(struct gfs2_bmap *bmap) {
-	return bmap->size;
-}
-
 int gfs2_bitmap_create(struct gfs2_bmap *bmap, uint64_t size,
 					   uint8_t chunksize)
 {

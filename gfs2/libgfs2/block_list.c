@@ -79,7 +79,7 @@ void gfs2_special_set(struct special_blocks *blocklist, uint64_t block)
 	return;
 }
 
-void gfs2_special_clear(struct special_blocks *blocklist, uint64_t block)
+static void gfs2_special_clear(struct special_blocks *blocklist, uint64_t block)
 {
 	struct special_blocks *b;
 

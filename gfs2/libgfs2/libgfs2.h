@@ -290,7 +290,6 @@ int gfs2_bitmap_set(struct gfs2_bmap *bmap, uint64_t offset, uint8_t val);
 int gfs2_bitmap_get(struct gfs2_bmap *bmap, uint64_t bit, uint8_t *val);
 int gfs2_bitmap_clear(struct gfs2_bmap *bmap, uint64_t offset);
 void gfs2_bitmap_destroy(struct gfs2_bmap *bmap);
-uint64_t gfs2_bitmap_size(struct gfs2_bmap *bmap);
 
 /* block_list.c */
 #define FREE	        (0x0)  /*   0000 */
@@ -361,7 +360,6 @@ struct gfs2_block_list *gfs2_block_list_create(struct gfs2_sbd *sdp,
 					       uint64_t *addl_mem_needed);
 struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num);
 void gfs2_special_set(struct special_blocks *blocklist, uint64_t block);
-void gfs2_special_clear(struct special_blocks *blocklist, uint64_t block);
 void gfs2_special_free(struct special_blocks *blist);
 int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 		    uint64_t block, enum gfs2_mark_block mark);
