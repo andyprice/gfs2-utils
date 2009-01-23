@@ -10,7 +10,6 @@
 #include <sys/file.h>
 #include <sys/vfs.h>
 #include <sys/mount.h>
-//#include <linux/fs.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <time.h>
@@ -323,37 +322,6 @@ add_qc(struct gfs2_sbd *sdp)
 		    new_name, error, strerror(errno));
 }
 
-#if 0 /* FIXME: When we have a mountpoint in sysfs for gfs2meta, enable this 
-       * to get the lock_table name and block size from the ondisk superblock
-       */
-void 
-read_superblock(struct gfs2_sbd *sdp)
-{
-	int fd;
-	char buf[PATH_MAX];
-	
-	fd = open(sdp->device_name, O_RDONLY);
-	if (fd < 0) {
-		die("Could not open the block device %s: %s\n",
-			sdp->device_name, strerror(errno));
-	}
-	do_lseek(fd, 0x10 * 4096);
-	do_read(fd, buf, PATH_MAX);
-	gfs2_sb_in(&(sdp->sd_sb), buf);
-	sdp->bsize = sdp->sd_sb.sb_bsize;
-	strcpy(lock_table,sdp->sd_sb.sb_locktable);
-	sprintf(sdp->meta_mount, "%s%s%s", "/sys/fs/gfs2/", lock_table,
-		"/meta");
-
-	close(fd);
-}
-
-void 
-gather_info(struct gfs2_sbd *sdp)
-{
-	read_superblock(sdp);
-}
-#else
 void 
 gather_info(struct gfs2_sbd *sdp)
 {
@@ -364,7 +332,6 @@ gather_info(struct gfs2_sbd *sdp)
 	}
 	sdp->bsize = statbuf.f_bsize;
 }
-#endif 
 
 void 
 find_current_journals(struct gfs2_sbd *sdp)
