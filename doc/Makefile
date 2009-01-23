@@ -1,6 +1,5 @@
 DOCS =	gfs2.txt \
 	journaling.txt \
-	min-gfs.txt \
 	usage.txt \
 	COPYING.applications \
 	COPYING.libraries \
