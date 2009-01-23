@@ -1,7 +1,6 @@
 #ifndef __FS_BITS_H__
 #define __FS_BITS_H__
 
-/*#include "global.h" */
 #include "libgfs2.h"
 #include "fsck.h"
 

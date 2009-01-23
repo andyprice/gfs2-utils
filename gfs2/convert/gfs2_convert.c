@@ -27,7 +27,6 @@
 #include "copyright.cf"
 #include "ondisk.h"
 #include "libgfs2.h"
-#include "global.h"
 
 /* The following declares are needed because gfs2 can't have  */
 /* dependencies on gfs1:                                      */
@@ -899,14 +898,14 @@ int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip)
 	prev_leaf_block = 0;
 	/* for all the leafs, get the leaf block and process the dirents inside */
 	for (leaf_num = 0; ; leaf_num++) {
-		uint64 buf;
+		uint64_t buf;
 		struct gfs2_leaf leaf;
 
-		error = gfs2_readi(dip, (char *)&buf, leaf_num * sizeof(uint64),
-						   sizeof(uint64));
+		error = gfs2_readi(dip, (char *)&buf, leaf_num * sizeof(uint64_t),
+						   sizeof(uint64_t));
 		if (!error) /* end of file */
 			return 0; /* success */
-		else if (error != sizeof(uint64)) {
+		else if (error != sizeof(uint64_t)) {
 			log_crit("fix_one_directory_exhash: error reading directory.\n");
 			return -1;
 		}
