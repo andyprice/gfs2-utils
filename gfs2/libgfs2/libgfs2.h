@@ -639,15 +639,11 @@ void check_for_gfs2(struct gfs2_sbd *sdp);
 void mount_gfs2_meta(struct gfs2_sbd *sdp);
 void cleanup_metafs(struct gfs2_sbd *sdp);
 char *get_list(void);
-char **str2lines(char *str);
 char *find_debugfs_mount(void);
 char *mp2fsname(char *mp);
-char *__get_sysfs(char *fsname, char *filename);
 char *get_sysfs(char *fsname, char *filename);
 unsigned int get_sysfs_uint(char *fsname, char *filename);
 void set_sysfs(char *fsname, char *filename, char *val);
-char *do_basename(char *device);
-char *mp2devname(char *mp);
 int is_fsname(char *name);
 
 /* recovery.c */

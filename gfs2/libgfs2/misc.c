@@ -46,8 +46,7 @@ uint32_t compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
 	return x;
 }
 
-void
-compute_constants(struct gfs2_sbd *sdp)
+void compute_constants(struct gfs2_sbd *sdp)
 {
 	uint32_t hash_blocks, ind_blocks, leaf_blocks;
 	uint32_t tmp_blocks;
@@ -93,8 +92,7 @@ compute_constants(struct gfs2_sbd *sdp)
 						 sdp->sd_inptrs);
 }
 
-void
-check_for_gfs2(struct gfs2_sbd *sdp)
+void check_for_gfs2(struct gfs2_sbd *sdp)
 {
 	FILE *fp = fopen("/proc/mounts", "r");
 	char buffer[PATH_MAX];
@@ -145,8 +143,7 @@ check_for_gfs2(struct gfs2_sbd *sdp)
 	die("gfs2 Filesystem %s is not mounted.\n", sdp->path_name);
 }
 
-static void
-lock_for_admin(struct gfs2_sbd *sdp)
+static void lock_for_admin(struct gfs2_sbd *sdp)
 {
 	int error;
 
@@ -166,8 +163,7 @@ lock_for_admin(struct gfs2_sbd *sdp)
 }
 
 
-void 
-mount_gfs2_meta(struct gfs2_sbd *sdp)
+void mount_gfs2_meta(struct gfs2_sbd *sdp)
 {
 	int ret;
 
@@ -187,8 +183,7 @@ mount_gfs2_meta(struct gfs2_sbd *sdp)
 	lock_for_admin(sdp);
 }
 
-void
-cleanup_metafs(struct gfs2_sbd *sdp)
+void cleanup_metafs(struct gfs2_sbd *sdp)
 {
 	int ret;
 
@@ -205,7 +200,7 @@ cleanup_metafs(struct gfs2_sbd *sdp)
 		rmdir(sdp->metafs_path);
 }
 
-char *__get_sysfs(char *fsname, char *filename)
+static char *__get_sysfs(char *fsname, char *filename)
 {
 	char path[PATH_MAX];
 	int fd, rv;
@@ -225,8 +220,7 @@ char *__get_sysfs(char *fsname, char *filename)
 	return sysfs_buf;
 }
 
-char *
-get_sysfs(char *fsname, char *filename)
+char *get_sysfs(char *fsname, char *filename)
 {
 	char *p = strchr(__get_sysfs(fsname, filename), '\n');
 	if (p)
@@ -234,16 +228,14 @@ get_sysfs(char *fsname, char *filename)
 	return sysfs_buf;
 }
 
-unsigned int
-get_sysfs_uint(char *fsname, char *filename)
+unsigned int get_sysfs_uint(char *fsname, char *filename)
 {
 	unsigned int x;
 	sscanf(__get_sysfs(fsname, filename), "%u", &x);
 	return x;
 }
 
-void
-set_sysfs(char *fsname, char *filename, char *val)
+void set_sysfs(char *fsname, char *filename, char *val)
 {
 	char path[PATH_MAX];
 	int fd, rv, len;
@@ -278,8 +270,7 @@ set_sysfs(char *fsname, char *filename, char *val)
 
 #define LIST_SIZE 1048576
 
-char *
-get_list(void)
+char *get_list(void)
 {
 	char path[PATH_MAX];
 	char s_id[PATH_MAX];
@@ -335,123 +326,7 @@ get_list(void)
 	return list;
 }
 
-/**
- * str2lines - parse a string into lines
- * @list: the list
- *
- * Returns: An array of character pointers
- */
-
-char **
-str2lines(char *str)
-{
-	char *p;
-	unsigned int n = 0;
-	char **lines;
-	unsigned int x = 0;
-
-	for (p = str; *p; p++)
-		if (*p == '\n')
-			n++;
-
-	lines = malloc((n + 1) * sizeof(char *));
-	if (!lines)
-		die("out of memory\n");
-
-	for (lines[x] = p = str; *p; p++)
-		if (*p == '\n') {
-			*p = 0;
-			lines[++x] = p + 1;
-		}
-
-	return lines;
-}
-
-/**
- * do_basename - Create dm-N style name for the device
- * @device:
- *
- * Returns: Pointer to dm name or basename
- */
-
-char *
-do_basename(char *device)
-{
-	FILE *file;
-	int found = FALSE;
-	char line[PATH_MAX], major_name[PATH_MAX];
-	unsigned int major_number;
-	struct stat st;
-
-	file = fopen("/proc/devices", "r");
-	if (!file)
-		goto punt;
-
-	while (fgets(line, PATH_MAX, file)) {
-		if (sscanf(line, "%u %s", &major_number, major_name) != 2)
-			continue;
-		if (strcmp(major_name, "device-mapper") != 0)
-			continue;
-		found = TRUE;
-		break;
-	}
-
-	fclose(file);
-
-	if (!found)
-		goto punt;
-
-	if (stat(device, &st))
-		goto punt;
-	if (major(st.st_rdev) == major_number) {
-		static char realname[16];
-		snprintf(realname, 16, "dm-%u", minor(st.st_rdev));
-		return realname;
-	}
-
- punt:
-	return basename(device);
-}
-
-char *
-mp2devname(char *mp)
-{
-	FILE *file;
-	char line[PATH_MAX];
-	static char device[PATH_MAX];
-	char *name = NULL;
-	char *realname;
-
-	realname = realpath(mp, NULL);
-	if (!realname)
-		die("Unable to allocate memory for name resolution.\n");
-	file = fopen("/proc/mounts", "r");
-	if (!file)
-		die("can't open /proc/mounts: %s\n", strerror(errno));
-
-	while (fgets(line, PATH_MAX, file)) {
-		char path[PATH_MAX], type[PATH_MAX];
-
-		if (sscanf(line, "%s %s %s", device, path, type) != 3)
-			continue;
-		if (strcmp(path, realname))
-			continue;
-		if (strcmp(type, "gfs2"))
-			die("%s is not a GFS2 filesystem\n", mp);
-
-		name = do_basename(device);
-
-		break;
-	}
-
-	free(realname);
-	fclose(file);
-
-	return name;
-}
-
-char *
-find_debugfs_mount(void)
+char *find_debugfs_mount(void)
 {
 	FILE *file;
 	char line[PATH_MAX];
@@ -480,35 +355,6 @@ find_debugfs_mount(void)
 	return NULL;
 }
 
-/* The fsname can be substituted for the mountpoint on the command line.
-   This is necessary when we can't resolve a devname from /proc/mounts
-   to a fsname. */
-
-int is_fsname(char *name)
-{
-	int rv = 0;
-	DIR *d;
-	struct dirent *de;
-
-	d = opendir(SYS_BASE);
-	if (!d)
-		die("can't open %s: %s\n", SYS_BASE, strerror(errno));
-
-	while ((de = readdir(d))) {
-		if (de->d_name[0] == '.')
-			continue;
-
-		if (strcmp(de->d_name, name) == 0) {
-			rv = 1;
-			break;
-		}
-	}
-
-	closedir(d);
-
-	return rv;
-}
-
 /**
  * mp2fsname - Find the name for a filesystem given its mountpoint
  *
@@ -529,8 +375,7 @@ int is_fsname(char *name)
  * Returns: the fsname
  */
 
-char *
-mp2fsname(char *mp)
+char *mp2fsname(char *mp)
 {
 	char device_id[PATH_MAX], *fsname = NULL;
 	struct stat statbuf;
