@@ -20,8 +20,7 @@
  * Returns: the number of RGs
  */
 
-uint64_t
-how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgsize_specified)
+static uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgsize_specified)
 {
 	uint64_t nrgrp;
 
@@ -50,8 +49,7 @@ how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgsize_specified)
  * Returns: a list of rgrp_list_t structures
  */
 
-void
-compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified)
+void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified)
 {
 	struct device *dev;
 	struct rgrp_list *rl, *rlast = NULL, *rlast2 = NULL;
@@ -143,8 +141,7 @@ compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified)
  *
  */
 
-void
-rgblocks2bitblocks(unsigned int bsize, uint32_t *rgblocks, uint32_t *bitblocks)
+void rgblocks2bitblocks(unsigned int bsize, uint32_t *rgblocks, uint32_t *bitblocks)
 {
 	unsigned int bitbytes_provided, last = 0;
 	unsigned int bitbytes_needed;

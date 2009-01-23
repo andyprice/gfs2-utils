@@ -379,12 +379,10 @@ struct gfs2_buffer_head *bget_generic(struct buf_list *bl, uint64_t num,
 				      int find_existing, int read_disk);
 struct gfs2_buffer_head *bget(struct buf_list *bl, uint64_t num);
 struct gfs2_buffer_head *bread(struct buf_list *bl, uint64_t num);
-struct gfs2_buffer_head *bget_zero(struct buf_list *bl, uint64_t num);
 struct gfs2_buffer_head *bhold(struct gfs2_buffer_head *bh);
 void brelse(struct gfs2_buffer_head *bh, enum update_flags updated);
 void bsync(struct buf_list *bl);
 void bcommit(struct buf_list *bl);
-void bcheck(struct buf_list *bl);
 
 /* device_geometry.c */
 void device_geometry(struct gfs2_sbd *sdp);
@@ -406,15 +404,11 @@ uint32_t gfs2_blkalloc_internal(struct rgrp_list *rgd, uint32_t goal,
 int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno);
 
 /* functions with blk #'s that are file system relative */
-int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
-                                        struct rgrp_list *rgd);
 int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state);
 
 /* fs_geometry.c */
 void rgblocks2bitblocks(unsigned int bsize, uint32_t *rgblocks,
 			uint32_t *bitblocks);
-uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev,
-			int rgsize_specified);
 void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified);
 void build_rgrps(struct gfs2_sbd *sdp, int write);
 
@@ -617,8 +611,6 @@ void increase_verbosity(void);
 void decrease_verbosity(void);
 void print_fsck_log(int iif, int priority, char *file, int line,
 					const char *format, ...);
-char gfs2_getch(void);
-
 char generic_interrupt(const char *caller, const char *where,
 		       const char *progress, const char *question,
 		       const char *answers);
@@ -679,10 +671,7 @@ void build_quota(struct gfs2_sbd *sdp);
 void build_root(struct gfs2_sbd *sdp);
 void do_init(struct gfs2_sbd *sdp);
 int gfs2_check_meta(struct gfs2_buffer_head *bh, int type);
-int gfs2_set_meta(struct gfs2_buffer_head *bh, int type, int format);
 int gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block, int first);
-int gfs2_next_rg_meta_free(struct rgrp_list *rgd, uint64_t *block, int first,
-						   int *mfree);
 int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 						  uint64_t *block, uint32_t type, int first);
 /* super.c */

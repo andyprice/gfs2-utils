@@ -15,8 +15,7 @@
  *
  */
 
-void
-test_locking(char *lockproto, char *locktable)
+void test_locking(char *lockproto, char *locktable)
 {
 	char *c;
 

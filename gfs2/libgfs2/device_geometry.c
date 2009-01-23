@@ -18,8 +18,7 @@
  *
  */
 
-void
-device_geometry(struct gfs2_sbd *sdp)
+void device_geometry(struct gfs2_sbd *sdp)
 {
 	struct device *device = &sdp->device;
 	uint64_t bytes;
@@ -44,8 +43,7 @@ device_geometry(struct gfs2_sbd *sdp)
  *
  */
 
-void
-fix_device_geometry(struct gfs2_sbd *sdp)
+void fix_device_geometry(struct gfs2_sbd *sdp)
 {
 	struct device *device = &sdp->device;
 	unsigned int bbsize = sdp->bsize >> GFS2_BASIC_BLOCK_SHIFT;

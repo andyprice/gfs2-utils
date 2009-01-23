@@ -23,8 +23,7 @@
  * Returns: -1 on error (with errno set), 0 on success (with @bytes set)
  */
 
-static int
-do_device_size(int fd, uint64_t *bytes)
+static int do_device_size(int fd, uint64_t *bytes)
 {
 	off_t off;
 
@@ -45,8 +44,7 @@ do_device_size(int fd, uint64_t *bytes)
  * Returns: -1 on error (with errno set), 0 on success (with @bytes set)
  */
 
-int
-device_size(int fd, uint64_t *bytes)
+int device_size(int fd, uint64_t *bytes)
 {
 	struct stat st;
 	int error;

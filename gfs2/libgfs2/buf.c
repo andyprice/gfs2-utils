@@ -132,11 +132,6 @@ struct gfs2_buffer_head *bread(struct buf_list *bl, uint64_t num)
 	return bget_generic(bl, num, TRUE, TRUE);
 }
 
-struct gfs2_buffer_head *bget_zero(struct buf_list *bl, uint64_t num)
-{
-	return bget_generic(bl, num, FALSE, FALSE);
-}
-
 struct gfs2_buffer_head *bhold(struct gfs2_buffer_head *bh)
 {
 	if (!bh->b_count)
@@ -192,15 +187,3 @@ void bcommit(struct buf_list *bl)
 	fsync(sdp->device_fd);
 }
 
-/* Check for unreleased buffers */
-void bcheck(struct buf_list *bl)
-{
-	osi_list_t *tmp;
-	struct gfs2_buffer_head *bh;
-
-	osi_list_foreach(tmp, &bl->list) {
-		bh = osi_list_entry(tmp, struct gfs2_buffer_head, b_list);
-		if (bh->b_count)
-			die("buffer still held: %"PRIu64"\n", bh->b_blocknr);
-	}
-}

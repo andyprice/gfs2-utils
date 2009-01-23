@@ -32,8 +32,7 @@ void build_master(struct gfs2_sbd *sdp)
 	}
 }
 
-void
-build_sb(struct gfs2_sbd *sdp)
+void build_sb(struct gfs2_sbd *sdp)
 {
 	unsigned int x;
 	struct gfs2_buffer_head *bh;
@@ -80,7 +79,7 @@ build_sb(struct gfs2_sbd *sdp)
 }
 
 void write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
-				   unsigned int blocks)
+		   unsigned int blocks)
 {
 	struct gfs2_log_header lh;
 	unsigned int x;
@@ -128,8 +127,7 @@ void write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
 	}
 }
 
-void
-build_jindex(struct gfs2_sbd *sdp)
+void build_jindex(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *jindex;
 	unsigned int j;
@@ -156,8 +154,7 @@ build_jindex(struct gfs2_sbd *sdp)
 	inode_put(jindex, updated);
 }
 
-static void
-build_inum_range(struct gfs2_inode *per_node, unsigned int j)
+static void build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 {
 	struct gfs2_sbd *sdp = per_node->i_sbd;
 	char name[256];
@@ -176,8 +173,7 @@ build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 	inode_put(ip, updated);
 }
 
-static void
-build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
+static void build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 {
 	struct gfs2_sbd *sdp = per_node->i_sbd;
 	char name[256];
@@ -196,8 +192,7 @@ build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 	inode_put(ip, updated);
 }
 
-static void
-build_quota_change(struct gfs2_inode *per_node, unsigned int j)
+static void build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 {
 	struct gfs2_sbd *sdp = per_node->i_sbd;
 	struct gfs2_meta_header mh;
@@ -233,8 +228,7 @@ build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 	inode_put(ip, updated);
 }
 
-void
-build_per_node(struct gfs2_sbd *sdp)
+void build_per_node(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *per_node;
 	unsigned int j;
@@ -256,8 +250,7 @@ build_per_node(struct gfs2_sbd *sdp)
 	inode_put(per_node, updated);
 }
 
-void
-build_inum(struct gfs2_sbd *sdp)
+void build_inum(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 
@@ -272,8 +265,7 @@ build_inum(struct gfs2_sbd *sdp)
 	sdp->md.inum = ip;
 }
 
-void
-build_statfs(struct gfs2_sbd *sdp)
+void build_statfs(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 
@@ -288,8 +280,7 @@ build_statfs(struct gfs2_sbd *sdp)
 	sdp->md.statfs = ip;
 }
 
-void
-build_rindex(struct gfs2_sbd *sdp)
+void build_rindex(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 	osi_list_t *tmp, *head;
@@ -322,8 +313,7 @@ build_rindex(struct gfs2_sbd *sdp)
 	inode_put(ip, updated);
 }
 
-void
-build_quota(struct gfs2_sbd *sdp)
+void build_quota(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 	struct gfs2_quota qu;
@@ -353,8 +343,7 @@ build_quota(struct gfs2_sbd *sdp)
 	inode_put(ip, updated);
 }
 
-void
-build_root(struct gfs2_sbd *sdp)
+void build_root(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inum inum;
 	uint64_t bn;
@@ -373,8 +362,7 @@ build_root(struct gfs2_sbd *sdp)
 	}
 }
 
-void
-do_init(struct gfs2_sbd *sdp)
+void do_init(struct gfs2_sbd *sdp)
 {
 	{
 		struct gfs2_inode *ip = sdp->md.inum;
@@ -435,32 +423,6 @@ int gfs2_check_meta(struct gfs2_buffer_head *bh, int type)
 	return 0;
 }
 
-/*
- * set_meta - set the meta header of a buffer
- * @bh
- * @type
- *
- * Returns: 0 if ok, -1 on error
- */
-int gfs2_set_meta(struct gfs2_buffer_head *bh, int type, int format)
-{
-	struct gfs2_meta_header header;
-
-	if(!gfs2_check_meta(bh, 0)){
-		((struct gfs2_meta_header *)bh->b_data)->mh_type = cpu_to_be32(type);
-		((struct gfs2_meta_header *)bh->b_data)->mh_format = 
-			cpu_to_be32(format);
-	} else {
-		memset(&header, 0, sizeof(struct gfs2_meta_header));
-		header.mh_magic = GFS2_MAGIC;
-		header.mh_type = type;
-		header.mh_format = format;
-		
-		gfs2_meta_header_out(&header, bh->b_data);
-	}
-	return 0;
-}
-
 /**
  * gfs2_next_rg_meta
  * @rgd:
@@ -506,71 +468,6 @@ int gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block, int first)
 }
 
 /**
- * gfs2_next_rg_meta_free - finds free or used metadata
- * @rgd:
- * @block:
- * @first: if set, start at zero and ignore block
- *
- * The position to start looking from is *block.  When a block
- * is found, it is returned in block.
- *
- * Returns: 0 on success, -1 when finished
- */
-int gfs2_next_rg_meta_free(struct rgrp_list *rgd, uint64_t *block, int first,
-						   int *mfree)
-{
-	gfs2_bitmap_t *bits = NULL;
-	uint32_t length = rgd->ri.ri_length;
-	uint32_t blk = (first)? 0: (uint32_t)((*block+1)-rgd->ri.ri_data0);
-	uint32_t iblk, ublk, fblk;
-	int i;
-	
-	if(!first && (*block < rgd->ri.ri_data0)) {
-		log_err("next_rg_meta_free:  Start block is outside rgrp bounds.\n");
-		exit(1);
-	}
-	for(i=0; i < length; i++){
-		bits = &rgd->bits[i];
-		if(blk < bits->bi_len*GFS2_NBBY)
-			break;
-		blk -= bits->bi_len*GFS2_NBBY;
-	}
-	for(; i < length; i++){
-		bits = &rgd->bits[i];
-
-		iblk = gfs2_bitfit((unsigned char *)rgd->bh[i]->b_data +
-						   bits->bi_offset, bits->bi_len, blk,
-						   GFS2_BLKST_DINODE);
-		ublk = gfs2_bitfit((unsigned char *)rgd->bh[i]->b_data +
-						   bits->bi_offset, bits->bi_len, blk,
-						   GFS2_BLKST_USED);
-		fblk = gfs2_bitfit((unsigned char *)rgd->bh[i]->b_data +
-						   bits->bi_offset, bits->bi_len, blk,
-						   GFS2_BLKST_FREE);
-		if(ublk < fblk) {
-            blk = ublk;
-            *mfree = 0;
-		}
-		else if(iblk < fblk) {
-            blk = iblk;
-            *mfree = 0;
-		} else {
-            blk = fblk;
-            *mfree = 1;
-		}
-		if(blk != BFITNOENT){
-            *block = blk + (bits->bi_start * GFS2_NBBY) + rgd->ri.ri_data0;
-            break;
-		}
-		blk=0;
-	}
-
-	if(i == length)
-		return -1;
-	return 0;
-}
-
-/**
  * next_rg_metatype
  * @rgd:
  * @block:
@@ -580,7 +477,7 @@ int gfs2_next_rg_meta_free(struct rgrp_list *rgd, uint64_t *block, int first,
  * Returns: 0 on success, -1 on error or finished
  */
 int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
-						  uint64_t *block, uint32_t type, int first)
+			  uint64_t *block, uint32_t type, int first)
 {
 	struct gfs2_buffer_head *bh = NULL;
 
