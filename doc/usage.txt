@@ -1,4 +1,4 @@
-How to install and run GFS.
+How to install and run GFS2.
 
 Refer to the cluster project page for the latest information.
 http://sources.redhat.com/cluster/
@@ -7,15 +7,8 @@ http://sources.redhat.com/cluster/
 Install
 -------
 
-Install a Linux kernel with GFS2, DLM, configfs, IPV6 and SCTP,
-  2.6.23-rc1 or later
-
-  If you want to use gfs1 (from cluster/gfs-kernel), then you need to
-  export three additional symbols from gfs2 by adding the following lines
-  to the end of linux/fs/gfs2/locking.c:
-     EXPORT_SYMBOL_GPL(gfs2_unmount_lockproto);
-     EXPORT_SYMBOL_GPL(gfs2_mount_lockproto);
-     EXPORT_SYMBOL_GPL(gfs2_withdraw_lockproto);
+Install a Linux kernel with GFS2, DLM, HOTPLUG, LBD, CONFIGFS, and
+optionally IPV6.
 
 Install openais
   get the latest "whitetank" (stable) release from
@@ -51,15 +44,10 @@ Install LVM2/CLVM (optional)
   NOTE: On 64-bit systems, you will usually need to add '--libdir=/usr/lib64'
         to the configure line.
 
-Load kernel modules
--------------------
 
-modprobe gfs2
-modprobe gfs
-modprobe lock_dlm
-modprobe lock_nolock
-modprobe dlm
-
+ .... or alternatively, just get the packages from your friendly,
+neighbourhood distro, e.g. the gfs2-utils and cman packages from
+Fedora.
 
 Configuration
 -------------

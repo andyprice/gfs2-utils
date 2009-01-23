@@ -153,3 +153,14 @@ subsystem.
 
 KWP 07/06/05
 
+Further notes (Steven Whitehouse)
+-------------
+
+Number 3 is slow due to having to do two write/wait transactions
+in the log each time we release a glock. So far as I can see there
+is no way around that, but it should be possible, if we so wish to
+change to using #2 at some future date and still remain backward
+compatible. So that option is open to us, but I'm not sure that we
+want to take it yet. There may well be other ways to speed things
+up in this area. More work remains to be done.
+
