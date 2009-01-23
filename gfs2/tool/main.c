@@ -24,6 +24,7 @@ int expert = FALSE;
 int debug = FALSE;
 int continuous = FALSE;
 int interval = 1;
+int output_type = OUTPUT_BLOCKS;
 
 static const char *usage[] = {
 	"Clear a flag on a inode\n",
@@ -122,8 +123,9 @@ decode_arguments(int argc, char *argv[])
 	int cont = TRUE;
 	int optchar;
 
+	output_type = OUTPUT_BLOCKS;
 	while (cont) {
-		optchar = getopt(argc, argv, "cDhi:OVX");
+		optchar = getopt(argc, argv, "cDhHki:OVX");
 
 		switch (optchar) {
 		case 'c':
@@ -138,8 +140,16 @@ decode_arguments(int argc, char *argv[])
 			print_usage();
 			exit(EXIT_SUCCESS);
 
+		case 'H':
+			output_type = OUTPUT_HUMAN;
+			break;
+
 		case 'i':
 			sscanf(optarg, "%u", &interval);
+			break;
+
+		case 'k':
+			output_type = OUTPUT_K;
 			break;
 
 		case 'O':

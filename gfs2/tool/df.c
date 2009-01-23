@@ -19,6 +19,53 @@
 #include "libgfs2.h"
 
 /**
+ * anthropomorphize - make a uint64_t number more human
+ */
+static const char *anthropomorphize(unsigned long long inhuman_value)
+{
+	const char *symbols = " KMGTPE";
+	int i;
+	unsigned long long val = inhuman_value;
+	static char out_val[32];
+
+	memset(out_val, 0, sizeof(out_val));
+	for (i = 0; i < 6 && val > 1024; i++)
+		val /= 1024;
+	sprintf(out_val, "%llu%c", val, symbols[i]);
+	return out_val;
+}
+
+/**
+ * printit - parse out and print values according to the output type
+ */
+static void printit(unsigned long long block_size, const char *label,
+		    unsigned long long total, unsigned long long used,
+		    unsigned long long free, unsigned int percentage)
+{
+	switch (output_type) {
+	case OUTPUT_BLOCKS:
+		printf("  %-15s%-15llu%-15llu%-15llu%u%%\n",
+		       label, total, used, free, percentage);
+		break;
+	case OUTPUT_K:
+		printf("  %-15s%-15llu%-15llu%-15llu%u%%\n",
+		       label, (total * block_size) / 1024,
+		       (used * block_size) / 1024, (free * block_size) / 1024,
+		       percentage);
+		break;
+	case OUTPUT_HUMAN:
+		/* Need to do three separate printfs here because function
+		   anthropomorphize re-uses the same static space. */
+		printf("  %-15s%-15s", label,
+		       anthropomorphize(total * block_size));
+		printf("%-15s", anthropomorphize(used * block_size));
+		printf("%-15s%u%%\n", anthropomorphize(free * block_size),
+		       percentage);
+		break;
+	}
+}
+
+/**
  * do_df_one - print out information about one filesystem
  * @path: the path to the filesystem
  *
@@ -113,23 +160,32 @@ do_df_one(char *path)
 	cleanup_metafs(&sbd);
 
 	printf("\n");
-	printf("  %-15s%-15s%-15s%-15s%-15s\n", "Type", "Total", "Used", "Free", "use%");
+	switch (output_type) {
+	case OUTPUT_BLOCKS:
+		printf("  %-15s%-15s%-15s%-15s%-15s\n", "Type", "Total Blocks",
+		       "Used Blocks", "Free Blocks", "use%");
+		break;
+	case OUTPUT_K:
+		printf("  %-15s%-15s%-15s%-15s%-15s\n", "Type", "Total K",
+		       "Used K", "Free K", "use%");
+		break;
+	case OUTPUT_HUMAN:
+		printf("  %-15s%-15s%-15s%-15s%-15s\n", "Type", "Total",
+		       "Used", "Free", "use%");
+		break;
+	}
 	printf("  ------------------------------------------------------------------------\n");
 
 	percentage = sc.sc_total ?
 		(100.0 * (sc.sc_total - sc.sc_free)) / sc.sc_total + 0.5 : 0;
-	printf("  %-15s%-15llu%-15llu%-15llu%u%%\n", "data",
-	       (unsigned long long)sc.sc_total,
-	       (unsigned long long)sc.sc_total - sc.sc_free,
-	       (unsigned long long)sc.sc_free, percentage);
+	printit(sbd.sd_sb.sb_bsize, "data", sc.sc_total,
+		sc.sc_total - sc.sc_free, sc.sc_free, percentage);
 
 	percentage = (sc.sc_dinodes + sc.sc_free) ?
 		(100.0 * sc.sc_dinodes / (sc.sc_dinodes + sc.sc_free)) + 0.5 :
 		0;
-	printf("  %-15s%-15llu%-15llu%-15llu%u%%\n", "inodes",
-	       (unsigned long long)sc.sc_dinodes + sc.sc_free,
-	       (unsigned long long)sc.sc_dinodes,
-	       (unsigned long long)sc.sc_free, percentage);
+	printit(sbd.sd_sb.sb_bsize, "inodes", sc.sc_dinodes + sc.sc_free,
+		sc.sc_dinodes, sc.sc_free, percentage);
 }
 
 

@@ -2,6 +2,10 @@
 #define __GFS2_TOOL_DOT_H__
 
 
+#define OUTPUT_BLOCKS 0
+#define OUTPUT_K      1
+#define OUTPUT_HUMAN  2
+
 extern char *prog_name;
 extern char *action;
 extern int override;
@@ -9,7 +13,7 @@ extern int expert;
 extern int debug;
 extern int continuous;
 extern int interval;
-
+extern int output_type;
 
 /* From counters.c */
 
