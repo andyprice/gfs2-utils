@@ -1,21 +1,21 @@
-.TH gfs2_fsck 8
+.TH fsck.gfs2 8
 
 .SH NAME
-gfs2_fsck - Offline GFS2 file system checker
+fsck.gfs2 - Offline GFS2 file system checker
 
 .SH SYNOPSIS
-.B gfs2_fsck
+.B fsck.gfs2
 [\fIOPTION\fR]... \fIDEVICE\fR
 
 .SH WARNING
 All GFS2 nodes \fImust\fP have the GFS2 filesystem unmounted before running
-gfs2_fsck.  Failure to unmount all nodes may result in filesystem corruption.
+fsck.gfs2.  Failure to unmount all nodes may result in filesystem corruption.
 
 .SH DESCRIPTION
-gfs2_fsck will check that the GFS2 file system on a device is structurally valid.
+fsck.gfs2 will check that the GFS2 file system on a device is structurally valid.
 It should not be run on a mounted file system.  If file system corruption is
 detected, it will attempt to repair the file system.  There is a limit to what
-gfs2_fsck can do.  If important file system structures are destroyed, such that
+fsck.gfs2 can do.  If important file system structures are destroyed, such that
 the checker cannot determine what the repairs should be, reparations could
 fail.
 
@@ -39,7 +39,7 @@ Quiet.
 \fB-n\fP
 No to all questions.
 
-By specifying this option, gfs2_fsck will only show the changes that
+By specifying this option, fsck.gfs2 will only show the changes that
 would be made, but not make any changes to the filesystem.
 .TP
 \fB-V\fP
@@ -55,5 +55,5 @@ Print more information while running.
 \fB-y\fP
 Yes to all questions.
 
-By specifying this option, gfs2_fsck will not prompt before making
+By specifying this option, fsck.gfs2 will not prompt before making
 changes.

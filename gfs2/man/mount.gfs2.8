@@ -1,7 +1,7 @@
-.TH gfs2_mount 8
+.TH mount.gfs2 8
 
 .SH NAME
-gfs2_mount - GFS2 mount options
+mount.gfs2 - GFS2 mount options
 
 .SH SYNOPSIS
 .B mount
@@ -76,7 +76,7 @@ this matches the .o filename of the lock module, e.g. \fIlock_dlm\fR,
 or \fIlock_nolock\fR.
 
 The default lock protocol name is written to disk initially when creating the
-filesystem with \fBgfs2_mkfs\fP(8), -p option.  It can be changed on-disk by
+filesystem with \fBmkfs.gfs2\fP(8), -p option.  It can be changed on-disk by
 using the \fBgfs2_tool\fP(8) utility's \fBsb proto\fP command.
 
 The \fBlockproto\fP mount option should be used only under special
@@ -96,7 +96,7 @@ lock_dlm, the format is \fIclustername:fsname\fR.  For
 lock_nolock, the field is ignored.
 
 The default cluster/filesystem name is written to disk initially when creating
-the filesystem with \fBgfs2_mkfs\fP(8), -t option.  It can be changed on-disk
+the filesystem with \fBmkfs.gfs2\fP(8), -t option.  It can be changed on-disk
 by using the \fBgfs2_tool\fP(8) utility's \fBsb table\fP command.
 
 The \fBlocktable\fP mount option should be used only under special
