@@ -27,20 +27,7 @@ static int
 do_device_size(int fd, uint64_t *bytes)
 {
 	off_t off;
-#if 0
-	int error;
-	unsigned long size;
 
-	error = ioctl(fd, BLKGETSIZE64, bytes);	/* Size in bytes */
-	if (!error)
-		return 0;
-
-	error = ioctl(fd, BLKGETSIZE, &size);	/* Size in 512-byte blocks */
-	if (!error) {
-		*bytes = ((uint64_t) size) << 9;
-		return 0;
-	}
-#endif
 	off = lseek(fd, 0, SEEK_END);
 	if (off >= 0) {
 		*bytes = off;
