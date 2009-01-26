@@ -104,7 +104,7 @@ static __inline__ __attribute__((deprecated)) void do_write(int fd, const void *
 
 #define DIV_RU(x, y) (((x) + (y) - 1) / (y))
 
-static __inline__ uint64_t do_div_i(uint64_t *num, unsigned int den)
+static __inline__ __attribute__((deprecated)) uint64_t do_div_i(uint64_t *num, unsigned int den)
 {
 	unsigned int m = *num % den;
 	*num /= den;
@@ -124,7 +124,6 @@ struct gfs2_bitmap
 	uint32_t   bi_start;   /* The position of the first byte in this block */
 	uint32_t   bi_len;     /* The number of bytes in this block */
 };
-typedef struct gfs2_bitmap gfs2_bitmap_t;
 
 struct rgrp_list {
 	osi_list_t list;
@@ -134,7 +133,7 @@ struct rgrp_list {
 
 	struct gfs2_rindex ri;
 	struct gfs2_rgrp rg;
-	gfs2_bitmap_t *bits;
+	struct gfs2_bitmap *bits;
 	struct gfs2_buffer_head **bh;
 };
 
