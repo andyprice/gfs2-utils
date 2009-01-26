@@ -573,9 +573,6 @@ extern int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount);
 extern struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
 					struct gfs2_buffer_head *bh);
 
-/* locking.c */
-extern void test_locking(char *lockproto, char *locktable);
-
 /* gfs2_log.c */
 struct gfs2_options {
 	char *device;

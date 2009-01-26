@@ -9,7 +9,6 @@ OBJS=	block_list.o \
 	fs_geometry.o \
 	fs_ops.o \
 	gfs1.o \
-	locking.o \
 	gfs2_log.o \
 	gfs2_disk_hash.o \
 	misc.o \
