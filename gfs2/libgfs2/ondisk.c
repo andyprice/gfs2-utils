@@ -9,6 +9,13 @@
 
 #include "gfs2_disk_hash.h"
 
+#define pv(struct, member, fmt, fmt2) do {				\
+		print_it("  "#member, fmt, fmt2, struct->member);	\
+	} while (FALSE);
+#define pv2(struct, member, fmt, fmt2) do {				\
+		print_it("  ", fmt, fmt2, struct->member);		\
+	} while (FALSE);
+
 
 #define CPIN_08(s1, s2, member, count) {memcpy((s1->member), (s2->member), (count));}
 #define CPOUT_08(s1, s2, member, count) {memcpy((s2->member), (s1->member), (count));}

@@ -21,6 +21,13 @@
 #include "libgfs2.h"
 #include "ondisk.h"
 
+#define pv(struct, member, fmt, fmt2) do {				\
+		print_it("  "#member, fmt, fmt2, struct->member);	\
+	} while (FALSE);
+#define pv2(struct, member, fmt, fmt2) do {				\
+		print_it("  ", fmt, fmt2, struct->member);		\
+	} while (FALSE);
+
 
 extern struct gfs2_sb sb;
 extern char *buf;

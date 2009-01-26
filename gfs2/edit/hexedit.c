@@ -27,6 +27,11 @@
 #include "libgfs2.h"
 #include "gfs2hex.h"
 
+#define pv(struct, member, fmt, fmt2) do {				\
+		print_it("  "#member, fmt, fmt2, struct->member);	\
+	} while (FALSE);
+
+
 #define RGLIST_DUMMY_BLOCK -2
 
 int display(int identify_only);
