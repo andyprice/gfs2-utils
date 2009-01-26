@@ -21,6 +21,8 @@
 #include "gfs2_tool.h"
 #include "iflags.h"
 
+#define SYS_BASE "/sys/fs/gfs2" /* FIXME: Look in /proc/mounts to find this */
+
 /**
  * do_freeze - freeze a GFS2 filesystem
  * @argc:

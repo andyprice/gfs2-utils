@@ -20,6 +20,8 @@
 
 #define SIZE (65536)
 
+#define SYS_BASE "/sys/fs/gfs2" /* FIXME: Look in /proc/mounts for this */
+
 /**
  * get_tune - print out the current tuneable parameters for a filesystem
  * @argc:

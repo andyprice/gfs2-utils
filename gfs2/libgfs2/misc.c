@@ -19,7 +19,7 @@
 #include "libgfs2.h"
 
 #define PAGE_SIZE (4096)
-
+#define SYS_BASE "/sys/fs/gfs2" /* FIXME: Look in /proc/mounts to find this */
 static char sysfs_buf[PAGE_SIZE];
 
 uint32_t compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,

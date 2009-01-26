@@ -622,7 +622,6 @@ extern int gfs2_query(int *setonabort, struct gfs2_options *opts,
 	__attribute__((format(printf,3,4)));
 
 /* misc.c */
-#define SYS_BASE "/sys/fs/gfs2"
 
 extern uint32_t compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
 				   uint32_t bsize1, int diptrs, int inptrs);
