@@ -81,7 +81,7 @@
 #define __GFS_ONDISK_DOT_H__
 
 #include <endian.h>
-#include <byteorder.h>
+#include <byteswap.h>
 
 #if __BYTE_ORDER == __BIG_ENDIAN
 
