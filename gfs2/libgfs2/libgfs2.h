@@ -3,6 +3,12 @@
 
 #include <features.h>
 #include <inttypes.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <errno.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <linux/types.h>
 #include <linux/limits.h>
@@ -23,32 +29,37 @@ __BEGIN_DECLS
 #define FALSE (0)
 #endif
 
-#define die(fmt, args...) \
-do { \
-	fprintf(stderr, "%s: ", prog_name); \
-	fprintf(stderr, fmt, ##args); \
-	exit(EXIT_FAILURE); \
-} while (0)
+extern char *prog_name;
 
-#define do_lseek(fd, off) \
-{ \
-  if (lseek((fd), (off), SEEK_SET) != (off)) \
-    die("bad seek: %s on line %d of file %s\n", \
-	strerror(errno),__LINE__, __FILE__); \
+static __inline__ __attribute__((noreturn)) void die(const char *fmt, ...)
+{
+	va_list ap;
+	fprintf(stderr, "%s: ", prog_name);
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	exit(-1);
 }
 
-#define do_read(fd, buff, len) \
-{ \
-  if (read((fd), (buff), (len)) < 0) \
-    die("bad read: %s on line %d of file %s\n", \
-	strerror(errno), __LINE__, __FILE__); \
+static __inline__ __attribute__((deprecated)) void do_lseek(int fd, off_t off)
+{ 
+  if (lseek(fd, off, SEEK_SET) != off)
+    die("bad seek: %s on line %d of file %s\n",
+	strerror(errno),__LINE__, __FILE__);
 }
 
-#define do_write(fd, buff, len) \
-{ \
-  if (write((fd), (buff), (len)) != (len)) \
-    die("bad write: %s on line %d of file %s\n", \
-	strerror(errno), __LINE__, __FILE__); \
+static __inline__ __attribute__((deprecated)) void do_read(int fd, char *buf, size_t len)
+{
+  if (read(fd, buf, len) < 0)
+    die("bad read: %s on line %d of file %s\n",
+	strerror(errno), __LINE__, __FILE__);
+}
+
+static __inline__ __attribute__((deprecated)) void do_write(int fd, const char *buf, size_t len)
+{
+  if (write(fd, buf, len) != len)
+    die("bad write: %s on line %d of file %s\n",
+	strerror(errno), __LINE__, __FILE__);
 }
 
 #define zalloc(ptr, size) \
@@ -247,7 +258,6 @@ struct metapath {
 	unsigned int mp_list[GFS2_MAX_META_HEIGHT];
 };
 
-extern char *prog_name;
 
 #define GFS2_DEFAULT_BSIZE          (4096)
 #define GFS2_DEFAULT_JSIZE          (128)
