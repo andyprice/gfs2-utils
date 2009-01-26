@@ -21,6 +21,7 @@
 #include "gfs2_mkfs.h"
 
 #define BUF_SIZE 4096
+#define RANDOM(values) ((values) * (random() / (RAND_MAX + 1.0)))
 
 void
 make_jdata(int fd, char *value)

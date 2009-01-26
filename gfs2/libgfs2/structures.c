@@ -83,7 +83,7 @@ void write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
 {
 	struct gfs2_log_header lh;
 	unsigned int x;
-	uint64_t seq = RANDOM(blocks);
+	uint64_t seq = ((blocks) * (random() / (RAND_MAX + 1.0)));
 	uint32_t hash;
 	unsigned int height;
 

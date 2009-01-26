@@ -31,7 +31,7 @@ main(int argc, char *argv[])
 	char *p, *whoami;
 
 	prog_name = argv[0];
-	SRANDOM;
+	srandom(time(NULL) ^ getpid());
 
 	p = strdup(prog_name);
 	whoami = basename(p);
