@@ -97,7 +97,11 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified)
 
 	log_info("\nNew resource groups:\n");
 	for (; rgrp < nrgrp; rgrp++) {
-		zalloc(rl, sizeof(struct rgrp_list));
+		rl = calloc(1, sizeof(struct rgrp_list));
+		if (rl == NULL) {
+			fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
+			exit(-1);
+		}
 
 		if (rgrp) {
 			rl->start = rlast->start + rlast->length;

@@ -193,9 +193,11 @@ void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 		rg++;
 	log_info("%d new rindex entries.\n", rg);
 	writelen = rg * sizeof(struct gfs2_rindex);
-	zalloc(buf, writelen);
-	if (!buf)
-		die("Unable to allocate memory for buffers.\n");
+	buf = calloc(1, writelen);
+	if (buf == NULL) {
+		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
+		exit(-1);
+	}
 	/* Now add the new rg entries to the rg index.  Here we     */
 	/* need to use the gfs2 kernel code rather than the libgfs2 */
 	/* code so we have a live update while mounted.             */

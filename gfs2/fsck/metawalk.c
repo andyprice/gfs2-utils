@@ -62,7 +62,11 @@ struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp,
 {
 	struct gfs2_inode *ip, *sysip;
 
-	zalloc(ip, sizeof(struct gfs2_inode));
+	ip = calloc(1, sizeof(struct gfs2_inode));
+	if (ip == NULL) {
+		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
+		exit(-1);
+	}
 	gfs2_dinode_in(&ip->i_di, bh->b_data);
 	ip->i_bh = bh;
 	ip->i_sbd = sdp;

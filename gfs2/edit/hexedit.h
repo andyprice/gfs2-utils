@@ -237,16 +237,6 @@ EXTERN enum dsp_mode dmode INIT(HEX_MODE);
 
 /*  Memory macros  */
 
-#define type_zalloc(ptr, type, count) \
-{ \
-  (ptr) = (type *)malloc(sizeof(type) * (count)); \
-  if ((ptr)) \
-    memset((char *)(ptr), 0, sizeof(type) * (count)); \
-  else \
-    die("unable to allocate memory on line %d of file %s\n", \
-	__LINE__, __FILE__); \
-}
-
 #define type_alloc(ptr, type, count) \
 { \
   (ptr) = (type *)malloc(sizeof(type) * (count)); \

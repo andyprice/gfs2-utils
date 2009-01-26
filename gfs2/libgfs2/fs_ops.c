@@ -22,7 +22,11 @@ struct gfs2_inode *inode_get(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 {
 	struct gfs2_inode *ip;
 
-	zalloc(ip, sizeof(struct gfs2_inode));
+	ip = calloc(1, sizeof(struct gfs2_inode));
+	if (ip == NULL) {
+		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
+		exit(-1);
+	}
 	gfs2_dinode_in(&ip->i_di, bh->b_data);
 	ip->i_bh = bh;
 	ip->i_sbd = sdp;
@@ -273,8 +277,11 @@ struct metapath *find_metapath(struct gfs2_inode *ip, uint64_t block)
 	uint64_t b = block;
 	unsigned int i;
 
-	zalloc(mp, sizeof(struct metapath));
-
+	mp = calloc(1, sizeof(struct metapath));
+	if (mp == NULL) {
+		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
+		exit(-1);
+	}
 	for (i = ip->i_di.di_height; i--;)
 		mp->mp_list[i] = do_div(b, sdp->sd_inptrs);
 
@@ -752,8 +759,11 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t index, uint64_t leaf
 
 	start = (index & ~(len - 1));
 
-	zalloc(lp, half_len * sizeof(uint64_t));
-
+	lp = calloc(1, half_len * sizeof(uint64_t));
+	if (lp == NULL) {
+		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
+		exit(-1);
+	}
 	count = gfs2_readi(dip, (char *)lp, start * sizeof(uint64_t),
 		      half_len * sizeof(uint64_t));
 	if (count != half_len * sizeof(uint64_t))
@@ -831,7 +841,11 @@ static void dir_double_exhash(struct gfs2_inode *dip)
 	int x;
 	int count;
 
-	zalloc(buf, 3 * sdp->sd_hash_bsize);
+	buf = calloc(1, 3 * sdp->sd_hash_bsize);
+	if (buf == NULL) {
+		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
+		exit(-1);
+	}
 
 	for (block = dip->i_di.di_size >> sdp->sd_hash_bsize_shift; block--;) {
 		count = gfs2_readi(dip, (char *)buf,

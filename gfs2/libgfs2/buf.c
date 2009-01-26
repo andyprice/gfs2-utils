@@ -107,7 +107,11 @@ struct gfs2_buffer_head *bget_generic(struct buf_list *bl, uint64_t num,
 		if (bh)
 			return bh;
 	}
-	zalloc(bh, sizeof(struct gfs2_buffer_head) + sdp->bsize);
+	bh = calloc(1, sizeof(struct gfs2_buffer_head) + sdp->bsize);
+	if (bh == NULL) {
+		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
+		exit(-1);
+	}
 
 	bh->b_count = 1;
 	bh->b_blocknr = num;

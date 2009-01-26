@@ -48,29 +48,19 @@ static __inline__ __attribute__((deprecated)) void do_lseek(int fd, off_t off)
 	strerror(errno),__LINE__, __FILE__);
 }
 
-static __inline__ __attribute__((deprecated)) void do_read(int fd, char *buf, size_t len)
+static __inline__ __attribute__((deprecated)) void do_read(int fd, void *buf, size_t len)
 {
   if (read(fd, buf, len) < 0)
     die("bad read: %s on line %d of file %s\n",
 	strerror(errno), __LINE__, __FILE__);
 }
 
-static __inline__ __attribute__((deprecated)) void do_write(int fd, const char *buf, size_t len)
+static __inline__ __attribute__((deprecated)) void do_write(int fd, const void *buf, size_t len)
 {
   if (write(fd, buf, len) != len)
     die("bad write: %s on line %d of file %s\n",
 	strerror(errno), __LINE__, __FILE__);
 }
-
-#define zalloc(ptr, size) \
-do { \
-	(ptr) = malloc((size)); \
-	if ((ptr)) \
-		memset((ptr), 0, (size)); \
-	else \
-		die("unable to allocate memory on line %d of file %s\n", \
-		    __LINE__, __FILE__); \
-} while (0)
 
 #define DIV_RU(x, y) (((x) + (y) - 1) / (y))
 

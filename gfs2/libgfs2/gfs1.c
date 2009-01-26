@@ -363,7 +363,12 @@ struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
 	struct gfs_dinode gfs1_dinode;
 	struct gfs2_inode *ip;
 
-	zalloc(ip, sizeof(struct gfs2_inode));
+	ip = calloc(1, sizeof(struct gfs2_inode));
+	if (ip == NULL) {
+		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
+		exit(-1);
+	}
+
 	gfs_dinode_in(&gfs1_dinode, bh->b_data);
 	memcpy(&ip->i_di.di_header, &gfs1_dinode.di_header,
 	       sizeof(struct gfs2_meta_header));
