@@ -30,23 +30,6 @@ __BEGIN_DECLS
 #define FALSE (0)
 #endif
 
-/*  I'm not sure which versions of alpha glibc/gcc are broken,
-    so fix all of them.  */
-#ifdef __alpha__
-#undef bswap_64
-static __inline__ unsigned long bswap_64(unsigned long x)
-{
-  unsigned int h = x >> 32;
-  unsigned int l = x;
-
-  h = bswap_32(h);
-  l = bswap_32(l);
-
-  return ((unsigned long)l << 32) | h;
-}
-#endif  /*  __alpha__  */
-
-
 #if __BYTE_ORDER == __BIG_ENDIAN
 
 #define be16_to_cpu(x) (x)
