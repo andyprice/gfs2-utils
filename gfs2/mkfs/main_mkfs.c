@@ -419,7 +419,10 @@ main_mkfs(int argc, char *argv[])
 	/* Get the device geometry */
 
 	device_size(sdp->device_fd, &real_device_size);
-	device_geometry(sdp);
+	if (device_geometry(sdp)) {
+		fprintf(stderr, "Geometry error\n");
+		exit(-1);
+	}
 	/* Convert optional block-count to basic blocks */
 	if (sdp->orig_fssize) {
 		sdp->orig_fssize *= sdp->bsize;

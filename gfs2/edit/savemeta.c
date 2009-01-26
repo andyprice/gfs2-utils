@@ -439,7 +439,10 @@ void savemeta(char *out_fn, int saveoption)
 	if (!gfs1)
 		sbd.bsize = BUFSIZE;
 	if (!slow) {
-		device_geometry(&sbd);
+		if (device_geometry(&sbd)) {
+			fprintf(stderr, "Geometery error\n");
+			exit(-1);
+		}
 		fix_device_geometry(&sbd);
 		osi_list_init(&sbd.rglist);
 		init_buf_list(&sbd, &sbd.buf_list, 128 << 20);

@@ -339,7 +339,10 @@ int gfs2_rindex_calculate(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 {
 	osi_list_init(ret_list);
 	sdp->rgsize = GFS2_DEFAULT_RGSIZE; /* compute_rgrp_layout adjusts */
-	device_geometry(sdp);
+	if (device_geometry(sdp)) {
+		fprintf(stderr, "Geometry error\n");
+		exit(-1);
+	}
 	fix_device_geometry(sdp);
 	/* Compute the default resource group layout as mkfs would have done */
 	compute_rgrp_layout(sdp, FALSE);

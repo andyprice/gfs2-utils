@@ -47,8 +47,7 @@ void init_buf_list(struct gfs2_sbd *sdp, struct buf_list *bl, uint32_t limit)
 		osi_list_init(&bl->buf_hash[i]);
 }
 
-static void
-add_buffer(struct buf_list *bl, struct gfs2_buffer_head *bh)
+static void add_buffer(struct buf_list *bl, struct gfs2_buffer_head *bh)
 {
 	osi_list_t *head = blkno2head(bl, bh->b_blocknr);
 
@@ -108,10 +107,8 @@ struct gfs2_buffer_head *bget_generic(struct buf_list *bl, uint64_t num,
 			return bh;
 	}
 	bh = calloc(1, sizeof(struct gfs2_buffer_head) + sdp->bsize);
-	if (bh == NULL) {
-		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
-		exit(-1);
-	}
+	if (bh == NULL)
+		return NULL;
 
 	bh->b_count = 1;
 	bh->b_blocknr = num;
@@ -139,8 +136,7 @@ struct gfs2_buffer_head *bread(struct buf_list *bl, uint64_t num)
 struct gfs2_buffer_head *bhold(struct gfs2_buffer_head *bh)
 {
 	if (!bh->b_count)
-		die("buffer hold error for block %" PRIu64 " (0x%" PRIx64")\n",
-			bh->b_blocknr, bh->b_blocknr);
+		return NULL;
 	bh->b_count++;
 	return bh;
 }
@@ -151,9 +147,11 @@ void brelse(struct gfs2_buffer_head *bh, enum update_flags updated)
 	/* set it FALSE if it's TRUE until we write the changed data to disk. */
 	if (updated)
 		bh->b_changed = TRUE;
-	if (!bh->b_count)
-		die("buffer count underflow for block %" PRIu64 " (0x%" PRIx64")\n",
-			bh->b_blocknr, bh->b_blocknr);
+	if (!bh->b_count) {
+		fprintf(stderr, "buffer count underflow for block %" PRIu64
+			" (0x%" PRIx64")\n", bh->b_blocknr, bh->b_blocknr);
+		exit(-1);
+	}
 	bh->b_count--;
 }
 
@@ -164,9 +162,11 @@ void bsync(struct buf_list *bl)
 	while (!osi_list_empty(&bl->list)) {
 		bh = osi_list_entry(bl->list.prev, struct gfs2_buffer_head,
 							b_list);
-		if (bh->b_count)
-			die("buffer still held for block: %" PRIu64 " (0x%" PRIx64")\n",
-				bh->b_blocknr, bh->b_blocknr);
+		if (bh->b_count) {
+			fprintf(stderr, "buffer still held for block: %" PRIu64
+				" (0x%" PRIx64")\n", bh->b_blocknr, bh->b_blocknr);
+			exit(-1);
+		}
 		write_buffer(bl, bh);
 	}
 }

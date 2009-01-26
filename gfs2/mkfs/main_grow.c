@@ -271,7 +271,10 @@ main_grow(int argc, char *argv[])
 		if (sdp->device_fd < 0)
 			die("can't open device %s: %s\n",
 			    sdp->device_name, strerror(errno));
-		device_geometry(sdp);
+		if (device_geometry(sdp)) {
+			fprintf(stderr, "Geometry error\n");
+			exit(-1);
+		}
 		log_info("Initializing lists...\n");
 		osi_list_init(&sdp->rglist);
 		init_buf_list(sdp, &sdp->buf_list, 128 << 20);

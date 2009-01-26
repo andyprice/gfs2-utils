@@ -78,8 +78,8 @@ void build_sb(struct gfs2_sbd *sdp)
 	}
 }
 
-void write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
-		   unsigned int blocks)
+int write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
+		  unsigned int blocks)
 {
 	struct gfs2_log_header lh;
 	unsigned int x;
@@ -101,13 +101,13 @@ void write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
 	for (x = 0; x < blocks; x++) {
 		struct gfs2_buffer_head *bh = get_file_buf(ip, x, TRUE);
 		if (!bh)
-			die("write_journal\n");
+			return -1;
 		brelse(bh, updated);
 	}
 	for (x = 0; x < blocks; x++) {
 		struct gfs2_buffer_head *bh = get_file_buf(ip, x, FALSE);
 		if (!bh)
-			die("write_journal\n");
+			return -1;
 
 		lh.lh_sequence = seq;
 		lh.lh_blkno = x;
@@ -125,12 +125,14 @@ void write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
 		printf("\nJournal %u:\n", j);
 		gfs2_dinode_print(&ip->i_di);
 	}
+	return 0;
 }
 
-void build_jindex(struct gfs2_sbd *sdp)
+int build_jindex(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *jindex;
 	unsigned int j;
+	int ret;
 
 	jindex = createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
 			 GFS2_DIF_SYSTEM);
@@ -141,8 +143,10 @@ void build_jindex(struct gfs2_sbd *sdp)
 
 		sprintf(name, "journal%u", j);
 		ip = createi(jindex, name, S_IFREG | 0600, GFS2_DIF_SYSTEM);
-		write_journal(sdp, ip, j,
+		ret = write_journal(sdp, ip, j,
 			      sdp->jsize << 20 >> sdp->sd_sb.sb_bsize_shift);
+		if (ret)
+			return ret;
 		inode_put(ip, updated);
 	}
 
@@ -152,6 +156,7 @@ void build_jindex(struct gfs2_sbd *sdp)
 	}
 
 	inode_put(jindex, updated);
+	return 0;
 }
 
 static void build_inum_range(struct gfs2_inode *per_node, unsigned int j)
@@ -192,7 +197,7 @@ static void build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 	inode_put(ip, updated);
 }
 
-static void build_quota_change(struct gfs2_inode *per_node, unsigned int j)
+static int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 {
 	struct gfs2_sbd *sdp = per_node->i_sbd;
 	struct gfs2_meta_header mh;
@@ -213,7 +218,7 @@ static void build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 	for (x = 0; x < blocks; x++) {
 		struct gfs2_buffer_head *bh = get_file_buf(ip, ip->i_di.di_size >> sdp->sd_sb.sb_bsize_shift, FALSE);
 		if (!bh)
-			die("build_quota_change\n");
+			return -1;
 
 		gfs2_meta_header_out(&mh, bh->b_data);
 
@@ -226,6 +231,7 @@ static void build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 	}
 
 	inode_put(ip, updated);
+	return 0;
 }
 
 void build_per_node(struct gfs2_sbd *sdp)
@@ -280,7 +286,7 @@ void build_statfs(struct gfs2_sbd *sdp)
 	sdp->md.statfs = ip;
 }
 
-void build_rindex(struct gfs2_sbd *sdp)
+int build_rindex(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 	osi_list_t *tmp, *head;
@@ -302,7 +308,7 @@ void build_rindex(struct gfs2_sbd *sdp)
 		count = gfs2_writei(ip, buf, ip->i_di.di_size,
 							sizeof(struct gfs2_rindex));
 		if (count != sizeof(struct gfs2_rindex))
-			die("build_rindex\n");
+			return -1;
 	}
 
 	if (sdp->debug) {
@@ -311,9 +317,10 @@ void build_rindex(struct gfs2_sbd *sdp)
 	}
 
 	inode_put(ip, updated);
+	return 0;
 }
 
-void build_quota(struct gfs2_sbd *sdp)
+int build_quota(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 	struct gfs2_quota qu;
@@ -330,10 +337,10 @@ void build_quota(struct gfs2_sbd *sdp)
 
 	count = gfs2_writei(ip, buf, ip->i_di.di_size, sizeof(struct gfs2_quota));
 	if (count != sizeof(struct gfs2_quota))
-		die("do_init (2)\n");
+		return -1;
 	count = gfs2_writei(ip, buf, ip->i_di.di_size, sizeof(struct gfs2_quota));
 	if (count != sizeof(struct gfs2_quota))
-		die("do_init (3)\n");
+		return -1;
 
 	if (sdp->debug) {
 		printf("\nRoot quota:\n");
@@ -341,6 +348,7 @@ void build_quota(struct gfs2_sbd *sdp)
 	}
 
 	inode_put(ip, updated);
+	return 0;
 }
 
 void build_root(struct gfs2_sbd *sdp)
@@ -362,7 +370,7 @@ void build_root(struct gfs2_sbd *sdp)
 	}
 }
 
-void do_init(struct gfs2_sbd *sdp)
+int do_init(struct gfs2_sbd *sdp)
 {
 	{
 		struct gfs2_inode *ip = sdp->md.inum;
@@ -372,7 +380,7 @@ void do_init(struct gfs2_sbd *sdp)
 		buf = cpu_to_be64(sdp->md.next_inum);
 		count = gfs2_writei(ip, &buf, 0, sizeof(uint64_t));
 		if (count != sizeof(uint64_t))
-			die("do_init (1)\n");
+			return -1;
 
 		if (sdp->debug)
 			printf("\nNext Inum: %"PRIu64"\n",
@@ -392,13 +400,14 @@ void do_init(struct gfs2_sbd *sdp)
 		gfs2_statfs_change_out(&sc, buf);
 		count = gfs2_writei(ip, buf, 0, sizeof(struct gfs2_statfs_change));
 		if (count != sizeof(struct gfs2_statfs_change))
-			die("do_init (2)\n");
+			return -1;
 
 		if (sdp->debug) {
 			printf("\nStatfs:\n");
 			gfs2_statfs_change_print(&sc);
 		}
 	}
+	return 0;
 }
 
 struct gfs2_inode *gfs2_load_inode(struct gfs2_sbd *sbp, uint64_t block)

@@ -418,7 +418,7 @@ extern void bsync(struct buf_list *bl);
 extern void bcommit(struct buf_list *bl);
 
 /* device_geometry.c */
-extern void device_geometry(struct gfs2_sbd *sdp);
+extern int device_geometry(struct gfs2_sbd *sdp);
 extern void fix_device_geometry(struct gfs2_sbd *sdp);
 
 /* fs_bits.c */
@@ -494,8 +494,8 @@ extern int gfs2_dirent_next(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 			    struct gfs2_dirent **dent);
 extern void build_height(struct gfs2_inode *ip, int height);
 extern unsigned int calc_tree_height(struct gfs2_inode *ip, uint64_t size);
-extern void write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip,
-			  unsigned int j, unsigned int blocks);
+extern int write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip,
+			 unsigned int j, unsigned int blocks);
 
 /**
  * device_size - figure out a device's size
@@ -688,14 +688,14 @@ extern void gfs2_rgrp_free(osi_list_t *rglist, enum update_flags updated);
 /* structures.c */
 extern void build_master(struct gfs2_sbd *sdp);
 extern void build_sb(struct gfs2_sbd *sdp);
-extern void build_jindex(struct gfs2_sbd *sdp);
+extern int build_jindex(struct gfs2_sbd *sdp);
 extern void build_per_node(struct gfs2_sbd *sdp);
 extern void build_inum(struct gfs2_sbd *sdp);
 extern void build_statfs(struct gfs2_sbd *sdp);
-extern void build_rindex(struct gfs2_sbd *sdp);
-extern void build_quota(struct gfs2_sbd *sdp);
+extern int build_rindex(struct gfs2_sbd *sdp);
+extern int build_quota(struct gfs2_sbd *sdp);
 extern void build_root(struct gfs2_sbd *sdp);
-extern void do_init(struct gfs2_sbd *sdp);
+extern int  do_init(struct gfs2_sbd *sdp);
 extern int gfs2_check_meta(struct gfs2_buffer_head *bh, int type);
 extern int gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block, int first);
 extern int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_list *rgd,

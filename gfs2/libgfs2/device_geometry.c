@@ -18,7 +18,7 @@
  *
  */
 
-void device_geometry(struct gfs2_sbd *sdp)
+int device_geometry(struct gfs2_sbd *sdp)
 {
 	struct device *device = &sdp->device;
 	uint64_t bytes;
@@ -26,8 +26,7 @@ void device_geometry(struct gfs2_sbd *sdp)
 
 	error = device_size(sdp->device_fd, &bytes);
 	if (error)
-		die("can't determine size of %s: %s\n",
-		    sdp->device_name, strerror(errno));
+		return error;
 
 	if (sdp->debug)
 		printf("\nPartition size = %"PRIu64"\n",
@@ -35,6 +34,7 @@ void device_geometry(struct gfs2_sbd *sdp)
 
 	device->start = 0;
 	device->length = bytes >> GFS2_BASIC_BLOCK_SHIFT;
+	return 0;
 }
 
 /**
