@@ -684,7 +684,7 @@ extern int check_sb(struct gfs2_sb *sb);
 extern int read_sb(struct gfs2_sbd *sdp);
 extern int ji_update(struct gfs2_sbd *sdp);
 extern int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1);
-extern int ri_updane(struct gfs2_sbd *sdp, int fd, int *rgcount);
+extern int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount);
 extern int write_sb(struct gfs2_sbd *sdp);
 
 /* ondisk.c */
