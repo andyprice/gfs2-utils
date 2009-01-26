@@ -7,8 +7,6 @@
 #include <linux/types.h>
 #include "libgfs2.h"
 
-#include "gfs2_disk_hash.h"
-
 #define pv(struct, member, fmt, fmt2) do {				\
 		print_it("  "#member, fmt, fmt2, struct->member);	\
 	} while (FALSE);

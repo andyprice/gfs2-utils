@@ -12,6 +12,7 @@ OBJS=	bitmap.o \
 	gfs1.o \
 	locking.o \
 	gfs2_log.o \
+	gfs2_disk_hash.o \
 	misc.o \
 	ondisk.o \
 	recovery.o \

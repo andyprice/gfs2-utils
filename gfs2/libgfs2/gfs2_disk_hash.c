@@ -1,5 +1,5 @@
-#ifndef __GFS2_DISK_HASH_DOT_H__
-#define __GFS2_DISK_HASH_DOT_H__
+#include <stdio.h>
+#include "libgfs2.h"
 
 static const uint32_t crc_32_tab[] =
 {
@@ -69,5 +69,4 @@ uint32_t gfs2_disk_hash(const char *data, int len)
 	return hash;
 }
 
-#endif
 
