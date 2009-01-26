@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <inttypes.h>
 
-#include "linux_endian.h"
-
 #define printk printf
 #define pv(struct, member, fmt) printf("  "#member" = "fmt"\n", struct->member);
 

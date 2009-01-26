@@ -11,7 +11,6 @@
 #include <curses.h>
 
 #include "hexedit.h"
-#include "linux_endian.h"
 
 #define WANT_GFS_CONVERSION_FUNCTIONS
 #include <linux/gfs2_ondisk.h>
@@ -19,7 +18,6 @@
 #include "gfs2hex.h"
 /* from libgfs2: */
 #include "libgfs2.h"
-#include "ondisk.h"
 
 #define pv(struct, member, fmt, fmt2) do {				\
 		print_it("  "#member, fmt, fmt2, struct->member);	\

@@ -1,4 +1,3 @@
-#include <linux_endian.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -13,7 +12,6 @@
 #include "fsck.h"
 #include "util.h"
 #include "fs_recovery.h"
-#include "linux_endian.h"
 
 #define CLEAR_POINTER(x) \
 	if(x) { \

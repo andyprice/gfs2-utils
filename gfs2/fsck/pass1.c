@@ -21,7 +21,6 @@
 #include "fsck.h"
 #include "util.h"
 #include "link.h"
-#include "linux_endian.h"
 #include "metawalk.h"
 
 struct block_count {

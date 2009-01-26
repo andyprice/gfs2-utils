@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <string.h>
-#include <linux_endian.h>
 
 #include "libgfs2.h"
 #include "fsck.h"

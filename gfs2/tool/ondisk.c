@@ -5,8 +5,6 @@
 #include <inttypes.h>
 #include <linux/types.h>
 
-#include "linux_endian.h"
-
 #define printk printf
 
 #define WANT_GFS2_CONVERSION_FUNCTIONS

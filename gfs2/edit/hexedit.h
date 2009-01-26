@@ -1,7 +1,6 @@
 #ifndef __HEXVIEW_DOT_H__
 #define __HEXVIEW_DOT_H__
 
-#include "linux_endian.h"
 #include <sys/types.h>
 #include <inttypes.h>
 #include <limits.h>

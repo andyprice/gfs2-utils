@@ -40,7 +40,6 @@
 #include "libgfscontrol.h"
 #include "gfs_controld.h"
 #include "list.h"
-#include "linux_endian.h"
 
 /* TODO: warn if
    DLM_LOCKSPACE_LEN (from dlmconstants.h) !=

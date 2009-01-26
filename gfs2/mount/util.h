@@ -20,7 +20,6 @@
 #include <linux/types.h>
 #include <linux/gfs2_ondisk.h>
 #include "gfs_ondisk.h"
-#include "linux_endian.h"
 
 #define die(fmt, args...) \
 do { \

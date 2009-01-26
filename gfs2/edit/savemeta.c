@@ -14,7 +14,6 @@
 #include <term.h>
 #include <sys/ioctl.h>
 #include <limits.h>
-#include <linux_endian.h>
 #include <sys/time.h>
 #include <linux/gfs2_ondisk.h>
 

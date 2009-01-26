@@ -20,12 +20,10 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include "linux_endian.h"
 #include <linux/types.h>
 #include <linux/gfs2_ondisk.h>
 #include "osi_list.h"
 #include "copyright.cf"
-#include "ondisk.h"
 #include "libgfs2.h"
 
 /* The following declares are needed because gfs2 can't have  */

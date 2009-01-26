@@ -2,7 +2,6 @@
 #define __GFS2_QUOTA_DOT_H__
 
 #include "libgfs2.h"
-#include "linux_endian.h"
 #include <linux/gfs2_ondisk.h>
 
 #define type_zalloc(ptr, type, count) \

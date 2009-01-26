@@ -1,5 +1,4 @@
 #include <inttypes.h>
-#include <linux_endian.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -17,13 +17,11 @@
 #include <sys/mount.h>
 #include <dirent.h>
 
-#include "linux_endian.h"
 #include <linux/gfs2_ondisk.h>
 #include "copyright.cf"
 
 #define EXTERN
 #include "hexedit.h"
-#include "linux_endian.h"
 #include "libgfs2.h"
 #include "gfs2hex.h"
 

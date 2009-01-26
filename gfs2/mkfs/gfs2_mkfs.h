@@ -1,11 +1,9 @@
 #ifndef __GFS2_MKFS_DOT_H__
 #define __GFS2_MKFS_DOT_H__
 
-#include "linux_endian.h"
 #include <linux/gfs2_ondisk.h>
 #include "osi_list.h"
 #include "copyright.cf"
-#include "ondisk.h"
 
 /* main_grow */
 void main_grow(int argc, char *argv[]);
