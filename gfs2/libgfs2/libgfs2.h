@@ -449,16 +449,6 @@ extern void build_rgrps(struct gfs2_sbd *sdp, int write);
 #define IS_LEAF     (1)
 #define IS_DINODE   (2)
 
-static __inline__ uint64_t *
-metapointer(struct gfs2_buffer_head *bh, unsigned int height,
-	    struct metapath *mp)
-{
-	unsigned int head_size = (height > 0) ?
-		sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_dinode);
-
-	return ((uint64_t *)(bh->b_data + head_size)) + mp->mp_list[height];
-}
-
 extern struct metapath *find_metapath(struct gfs2_inode *ip, uint64_t block);
 extern struct gfs2_inode *inode_get(struct gfs2_sbd *sdp,
 				    struct gfs2_buffer_head *bh);

@@ -12,6 +12,16 @@
 #include <linux/types.h>
 #include "libgfs2.h"
 
+static __inline__ uint64_t *metapointer(struct gfs2_buffer_head *bh,
+					unsigned int height,
+					struct metapath *mp)
+{
+	unsigned int head_size = (height > 0) ?
+		sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_dinode);
+
+	return ((uint64_t *)(bh->b_data + head_size)) + mp->mp_list[height];
+}
+
 /* Detect directory is a stuffed inode */
 static int inode_is_stuffed(struct gfs2_inode *ip)
 {
