@@ -17,7 +17,6 @@
 
 #include <linux/gfs2_ondisk.h>
 #include "osi_list.h"
-#include "copyright.cf"
 
 __BEGIN_DECLS
 
