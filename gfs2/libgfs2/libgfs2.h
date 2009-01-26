@@ -612,12 +612,14 @@ do { print_log(1, MSG_CRITICAL, format); } while(0)
 extern void increase_verbosity(void);
 extern void decrease_verbosity(void);
 extern void print_fsck_log(int iif, int priority, char *file, int line,
-			   const char *format, ...);
+			   const char *format, ...)
+	__attribute__((format(printf,5,6)));
 extern char generic_interrupt(const char *caller, const char *where,
 			      const char *progress, const char *question,
 			      const char *answers);
 extern int gfs2_query(int *setonabort, struct gfs2_options *opts,
-		      const char *format, ...);
+		      const char *format, ...)
+	__attribute__((format(printf,3,4)));
 
 /* misc.c */
 #define SYS_BASE "/sys/fs/gfs2"
@@ -686,7 +688,8 @@ extern int write_sb(struct gfs2_sbd *sdp);
 
 /* ondisk.c */
 extern uint32_t gfs2_disk_hash(const char *data, int len);
-extern void print_it(const char *label, const char *fmt, const char *fmt2, ...);
+extern void print_it(const char *label, const char *fmt, const char *fmt2, ...)
+	__attribute__((format(printf,3,4)));
 
 __END_DECLS
 
