@@ -2,8 +2,7 @@ TARGET= libgfs2
 
 MAKESTATICLIB = 1
 
-OBJS=	bitmap.o \
-	block_list.o \
+OBJS=	block_list.o \
 	buf.o \
 	device_geometry.o \
 	fs_bits.o \

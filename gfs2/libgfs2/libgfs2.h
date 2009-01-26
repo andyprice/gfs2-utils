@@ -285,12 +285,6 @@ struct gfs2_bmap {
         char *map;
 };
 
-extern int gfs2_bitmap_create(struct gfs2_bmap *bmap, uint64_t size, uint8_t bitsize);
-extern int gfs2_bitmap_set(struct gfs2_bmap *bmap, uint64_t offset, uint8_t val);
-extern int gfs2_bitmap_get(struct gfs2_bmap *bmap, uint64_t bit, uint8_t *val);
-extern int gfs2_bitmap_clear(struct gfs2_bmap *bmap, uint64_t offset);
-extern void gfs2_bitmap_destroy(struct gfs2_bmap *bmap);
-
 /* block_list.c */
 #define FREE	        (0x0)  /*   0000 */
 #define BLOCK_IN_USE    (0x1)  /*   0001 */
