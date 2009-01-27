@@ -242,7 +242,7 @@ struct gfs2_buffer_head *find_lbh(struct gfs2_sbd *sbp,
 {
 	struct gfs2_buffer_head *bh;
 	osi_list_t *head, *tmp;
-	struct blocklist *blk;
+	struct blocklist *blk = NULL;
 
 	head = &blist->list;
 
@@ -253,6 +253,10 @@ struct gfs2_buffer_head *find_lbh(struct gfs2_sbd *sbp,
 			return bh;
 		}
 	}
+	/* If there's no first entry, just return NULL.  Otherwise blk
+	   should be left as the last entry on the list. */
+	if (!blk)
+		return NULL;
 	/* We didn't find one that has the same offset, so let's just reuse
 	   a bh from the same height */
 	blk->lbparent = lblock;
