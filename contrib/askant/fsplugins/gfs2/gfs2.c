@@ -44,8 +44,7 @@ off_t max_seek;
 int fd;
 int flag_stop;
 
-/* prog_name and print_it() are needed to satisfy externs in libgfs2 */
-char *prog_name = "askant";
+/* print_it() is needed to satisfy an extern in libgfs2 */
 
 void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 {
