@@ -12,6 +12,8 @@
 #include <linux/types.h>
 #include "libgfs2.h"
 
+#define DIV_RU(x, y) (((x) + (y) - 1) / (y))
+
 /**
  * how_many_rgrps - figure out how many RG to put in a subdevice
  * @w: the command line

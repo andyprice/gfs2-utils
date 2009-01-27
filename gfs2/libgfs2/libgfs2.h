@@ -79,8 +79,6 @@ static __inline__ __attribute__((noreturn)) void die(const char *fmt, ...)
 	exit(-1);
 }
 
-#define DIV_RU(x, y) (((x) + (y) - 1) / (y))
-
 struct device {
 	uint64_t start;
 	uint64_t length;
