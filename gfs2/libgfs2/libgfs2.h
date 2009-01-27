@@ -69,37 +69,41 @@ __BEGIN_DECLS
 
 #endif  /*  __BYTE_ORDER == __LITTLE_ENDIAN  */
 
-extern char *prog_name;
-
 static __inline__ __attribute__((noreturn)) void die(const char *fmt, ...)
 {
 	va_list ap;
-	fprintf(stderr, "%s: ", prog_name);
+	fprintf(stderr, "%s: ", __FILE__);
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
 	va_end(ap);
 	exit(-1);
 }
 
-static __inline__ __attribute__((deprecated)) void do_lseek(int fd, off_t off)
+extern __inline__ __attribute__((deprecated)) void do_lseek(int fd, off_t off)
 { 
-  if (lseek(fd, off, SEEK_SET) != off)
-    die("bad seek: %s on line %d of file %s\n",
-	strerror(errno),__LINE__, __FILE__);
+	if (lseek(fd, off, SEEK_SET) != off) {
+    		fprintf(stderr, "bad seek: %s on line %d of file %s\n",
+			strerror(errno),__LINE__, __FILE__);
+		exit(-1);
+	}
 }
 
-static __inline__ __attribute__((deprecated)) void do_read(int fd, void *buf, size_t len)
+extern __inline__ __attribute__((deprecated)) void do_read(int fd, void *buf, size_t len)
 {
-  if (read(fd, buf, len) < 0)
-    die("bad read: %s on line %d of file %s\n",
-	strerror(errno), __LINE__, __FILE__);
+	if (read(fd, buf, len) < 0) {
+		fprintf(stderr, "bad read: %s on line %d of file %s\n",
+			strerror(errno), __LINE__, __FILE__);
+		exit(-1);
+	}
 }
 
-static __inline__ __attribute__((deprecated)) void do_write(int fd, const void *buf, size_t len)
+extern __inline__ __attribute__((deprecated)) void do_write(int fd, const void *buf, size_t len)
 {
-  if (write(fd, buf, len) != len)
-    die("bad write: %s on line %d of file %s\n",
-	strerror(errno), __LINE__, __FILE__);
+	if (write(fd, buf, len) != len) {
+		fprintf(stderr, "bad write: %s on line %d of file %s\n",
+			strerror(errno), __LINE__, __FILE__);
+		exit(-1);
+	}
 }
 
 #define DIV_RU(x, y) (((x) + (y) - 1) / (y))
