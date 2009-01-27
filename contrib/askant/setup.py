@@ -11,5 +11,6 @@ setup(name="askant",
 	  url="http://andrewprice.me.uk/projects/askant",
 	  packages = ['askant','askant.fs'],
 	  ext_modules = [Extension("askant.fs.gfs2",
-		  sources = ["fsplugins/gfs2/gfs2module.c","fsplugins/gfs2/gfs2.c"])],
+		  sources = ["fsplugins/gfs2/gfs2module.c","fsplugins/gfs2/gfs2.c"],
+		  libraries = ["gfs2"])],
 	  scripts = ['scripts/askant']) 

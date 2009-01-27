@@ -7,7 +7,7 @@ include $(OBJDIR)/make/clean.mk
 CFLAGS += -I$(SRCDIR)/gfs2/libgfs2
 CFLAGS += -I$(SRCDIR)/gfs2/include
 
-LDFLAGS += -L$(OBJDIR)/gfs2/libgfs2 -lgfs2
+LDFLAGS += -L$(OBJDIR)/gfs2/libgfs2
 
 build:
 	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" python $(S)/setup.py build
