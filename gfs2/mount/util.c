@@ -144,6 +144,10 @@ void parse_opts(struct mount_options *mo)
 	/* Hack to get the noatime/nodiratime option through to gfs */
 	if ((mo->flags & (MS_NOATIME | MS_NODIRATIME)) &&
 	    (strcmp(mo->type, "gfs") == 0)) {
+		if (mo->extra[0]) {
+			strcat(mo->extra, ",");
+			extra_len += 1;
+		}
 		strcat(mo->extra, "gfs_noatime");
 		extra_len += strlen("gfs_noatime");
 	}
