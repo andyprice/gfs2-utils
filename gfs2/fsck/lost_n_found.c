@@ -59,8 +59,8 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	}
 	switch(ip->i_di.di_mode & S_IFMT){
 	case S_IFDIR:
-		log_info("Adding .. entry pointing to lost+found for %"PRIu64"\n",
-				 ip->i_di.di_num.no_addr);
+		log_info("Adding .. entry pointing to lost+found for %llu\n",
+				 (unsigned long long)ip->i_di.di_num.no_addr);
 		sprintf(tmp_name, "..");
 		filename_len = strlen(tmp_name);  /* no trailing NULL */
 		if(!(filename = malloc((sizeof(char) * filename_len) + 1))) {
@@ -140,7 +140,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 		increment_link(ip->i_sbd, lf_dip->i_di.di_num.no_addr);
 
 	free(filename);
-	log_notice("Added inode #%"PRIu64" to lost+found dir\n",
-			   ip->i_di.di_num.no_addr);
+	log_notice("Added inode #%llu to lost+found dir\n",
+		   (unsigned long long)ip->i_di.di_num.no_addr);
 	return 0;
 }

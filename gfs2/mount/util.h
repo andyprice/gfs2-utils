@@ -39,13 +39,6 @@ do { \
 		printf("%s: " fmt "\n", prog_name, ##args); \
 } while (0)
 
-#define do_lseek(fd, off) \
-do { \
-	if (lseek((fd), (off), SEEK_SET) != (off)) \
-		die("bad seek: %s on line %d of file %s\n", \
-		    strerror(errno),__LINE__, __FILE__); \
-} while (0)
-
 #define do_read(fd, buff, len) \
 do { \
 	if (read((fd), (buff), (len)) != (len)) \

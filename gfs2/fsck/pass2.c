@@ -268,11 +268,13 @@ int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	   q.block_type != gfs2_inode_lnk && q.block_type != gfs2_inode_blk &&
 	   q.block_type != gfs2_inode_chr && q.block_type != gfs2_inode_fifo &&
 	   q.block_type != gfs2_inode_sock) {
-		log_err("Directory entry '%s' at block %" PRIu64 " (0x%" PRIx64
-			") in dir inode %" PRIu64 " (0x%" PRIx64
+		log_err("Directory entry '%s' at block %llu (0x%llx"
+			") in dir inode %llu (0x%llx"
 			") has an invalid block type: %d.\n", tmp_name,
-			de->de_inum.no_addr, de->de_inum.no_addr,
-			ip->i_di.di_num.no_addr, ip->i_di.di_num.no_addr,
+			(unsigned long long)de->de_inum.no_addr,
+			(unsigned long long)de->de_inum.no_addr,
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)ip->i_di.di_num.no_addr,
 			q.block_type);
 
 		if(query(&opts, "Clear directory entry to non-inode block? (y/n) ")) {
@@ -297,11 +299,12 @@ int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		return -1;
 	}
 	if(error > 0) {
-		log_warn("Type '%s' in dir entry (%s, %" PRIu64 "/0x%" PRIx64 ") "
-				 "conflicts with type '%s' in dinode. (Dir entry is stale.)\n",
-				 de_type_string(de->de_type), tmp_name, 
-				 de->de_inum.no_addr, de->de_inum.no_addr,
-				 block_type_string(&q));
+		log_warn("Type '%s' in dir entry (%s, %llu/0x%llx) conflicts"
+			 " with type '%s' in dinode. (Dir entry is stale.)\n",
+			 de_type_string(de->de_type), tmp_name,
+			 (unsigned long long)de->de_inum.no_addr,
+			 (unsigned long long)de->de_inum.no_addr,
+			 block_type_string(&q));
 		if(query(&opts, "Clear stale directory entry? (y/n) ")) {
 			entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 			check_inode_eattr(entry_ip, update, &clear_eattrs);
@@ -322,9 +325,10 @@ int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		log_debug("Found . dentry\n");
 
 		if(ds->dotdir) {
-			log_err("Already found '.' entry in directory %" PRIu64 " (0x%"
-					PRIx64 ")\n",
-					ip->i_di.di_num.no_addr, ip->i_di.di_num.no_addr);
+			log_err("Already found '.' entry in directory %llu"
+				" (0x%llx)\n",
+				(unsigned long long)ip->i_di.di_num.no_addr,
+				(unsigned long long)ip->i_di.di_num.no_addr);
 			if(query(&opts, "Clear duplicate '.' entry? (y/n) ")) {
 
 				entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
@@ -352,12 +356,16 @@ int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 
 		/* check that '.' refers to this inode */
 		if(de->de_inum.no_addr != ip->i_di.di_num.no_addr) {
-			log_err("'.' entry's value incorrect in directory %" PRIu64
-					" (0x%" PRIx64 ").  Points to %"PRIu64
-					" (0x%" PRIx64 ") when it should point to %" PRIu64
-					" (0x%" PRIx64 ").\n",
-					de->de_inum.no_addr, de->de_inum.no_addr,
-					ip->i_di.di_num.no_addr, ip->i_di.di_num.no_addr);
+			log_err("'.' entry's value incorrect in directory %llu"
+				" (0x%llx).  Points to %llu"
+				" (0x%llx) when it should point to %llu"
+				" (0x%llx).\n",
+				(unsigned long long)de->de_inum.no_addr,
+				(unsigned long long)de->de_inum.no_addr,
+				(unsigned long long)de->de_inum.no_addr,
+				(unsigned long long)de->de_inum.no_addr,
+				(unsigned long long)ip->i_di.di_num.no_addr,
+				(unsigned long long)ip->i_di.di_num.no_addr);
 			if(query(&opts, "Remove '.' reference? (y/n) ")) {
 				entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 				check_inode_eattr(entry_ip, update,
@@ -389,9 +397,10 @@ int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	if(!strcmp("..", tmp_name)) {
 		log_debug("Found .. dentry\n");
 		if(ds->dotdotdir) {
-			log_err("Already found '..' entry in directory %" PRIu64 " (0x%"
-					PRIx64 ")\n",
-					ip->i_di.di_num.no_addr, ip->i_di.di_num.no_addr);
+			log_err("Already found '..' entry in directory %llu"
+				"(0x%llx)\n",
+				(unsigned long long)ip->i_di.di_num.no_addr,
+				(unsigned long long)ip->i_di.di_num.no_addr);
 			if(query(&opts, "Clear duplicate '..' entry? (y/n) ")) {
 
 				entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
@@ -415,10 +424,10 @@ int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		}
 
 		if(q.block_type != gfs2_inode_dir) {
-			log_err("Found '..' entry  in directory %" PRIu64 " (0x%"
-					PRIx64 ") pointing to"
-					" something that's not a directory",
-					ip->i_di.di_num.no_addr, ip->i_di.di_num.no_addr);
+			log_err("Found '..' entry in directory %llu (0x%llx) "
+				"pointing to something that's not a directory",
+				(unsigned long long)ip->i_di.di_num.no_addr,
+				(unsigned long long)ip->i_di.di_num.no_addr);
 			if(query(&opts, "Clear bad '..' directory entry? (y/n) ")) {
 				entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 				check_inode_eattr(entry_ip, update,
@@ -513,7 +522,7 @@ struct metawalk_fxns pass2_fxns = {
 /* Check system directory inode                                           */
 /* Should work for all system directories: root, master, jindex, per_node */
 int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
-		     void builder(struct gfs2_sbd *sbp))
+		     int builder(struct gfs2_sbd *sbp))
 {
 	uint64_t iblock = 0;
 	struct dir_status ds = {0};
@@ -578,23 +587,25 @@ int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		update = 1;
 	}
 	if(sysinode->i_di.di_entries != ds.entry_count) {
-		log_err("%s inode %" PRIu64 " (0x%" PRIx64
+		log_err("%s inode %llu (0x%llx"
 			"): Entries is %d - should be %d\n", dirname,
-			sysinode->i_di.di_num.no_addr,
-			sysinode->i_di.di_num.no_addr,
+			(unsigned long long)sysinode->i_di.di_num.no_addr,
+			(unsigned long long)sysinode->i_di.di_num.no_addr,
 			sysinode->i_di.di_entries, ds.entry_count);
-		if(query(&opts, "Fix entries for %s inode %" PRIu64 " (0x%"
-			 PRIx64 ")? (y/n) ", dirname,
-			 sysinode->i_di.di_num.no_addr,
-			 sysinode->i_di.di_num.no_addr)) {
+		if(query(&opts, "Fix entries for %s inode %llu (0x%llx"
+			 ")? (y/n) ", dirname,
+			 (unsigned long long)sysinode->i_di.di_num.no_addr,
+			 (unsigned long long)sysinode->i_di.di_num.no_addr)) {
 			sysinode->i_di.di_entries = ds.entry_count;
 			log_warn("Entries updated\n");
 			update = 1;
 		} else {
-			log_err("Entries for inode %" PRIu64 " (0x%" PRIx64
-					") left out of sync\n",
-					sysinode->i_di.di_num.no_addr,
-					sysinode->i_di.di_num.no_addr);
+			log_err("Entries for inode %llu (0x%llx"
+				") left out of sync\n",
+				(unsigned long long)
+				sysinode->i_di.di_num.no_addr,
+				(unsigned long long)
+				sysinode->i_di.di_num.no_addr);
 		}
 	}
 
@@ -756,10 +767,11 @@ int pass2(struct gfs2_sbd *sbp)
 		bh = bread(&sbp->buf_list, i);
 		ip = fsck_inode_get(sbp, bh);
 		if(ip->i_di.di_entries != ds.entry_count) {
-			log_err("Entries is %d - should be %d for inode block %" PRIu64
-					" (0x%" PRIx64 ")\n",
-					ip->i_di.di_entries, ds.entry_count,
-					ip->i_di.di_num.no_addr, ip->i_di.di_num.no_addr);
+			log_err("Entries is %d - should be %d for inode "
+				"block %llu (0x%llx)\n",
+				ip->i_di.di_entries, ds.entry_count,
+				(unsigned long long)ip->i_di.di_num.no_addr,
+				(unsigned long long)ip->i_di.di_num.no_addr);
 			ip->i_di.di_entries = ds.entry_count;
 			fsck_inode_put(ip, updated); /* does a gfs2_dinode_out, brelse */
 		}

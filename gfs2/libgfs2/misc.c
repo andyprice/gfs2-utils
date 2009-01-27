@@ -34,8 +34,8 @@ uint32_t compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
 		uint32_t m;
 
 		space = heightsize[x - 1] * inptrs;
-		d = space;
-		m = do_div(d, inptrs);
+		m = space % inptrs;
+		d = space / inptrs;
 
 		if (d != heightsize[x - 1] || m)
 			break;

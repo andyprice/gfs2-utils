@@ -129,7 +129,8 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified)
 		for (tmp = head->next; tmp != head; tmp = tmp->next) {
 			rl = osi_list_entry(tmp, struct rgrp_list, list);
 			log_info("rg_o = %llu, rg_l = %llu\n",
-				 rl->start, rl->length);
+				 (unsigned long long)rl->start,
+				 (unsigned long long)rl->length);
 		}
 	}
 }

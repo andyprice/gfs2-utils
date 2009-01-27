@@ -887,7 +887,7 @@ void gfs_jindex_in(struct gfs_jindex *jindex, char *buf)
 /* ------------------------------------------------------------------------ */
 void gfs_jindex_print(struct gfs_jindex *ji)
 {
-        pv(ji, ji_addr, "%llu", "0x%llx");
+        pv((unsigned long long)ji, ji_addr, "%llu", "0x%llx");
         pv(ji, ji_nsegment, "%u", "0x%x");
         pv(ji, ji_pad, "%u", "0x%x");
 }
@@ -1265,10 +1265,20 @@ int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_t start
 			// FIXME: handle failed malloc
 			tmpbuf = malloc(sbd.bsize);
 			if (tmpbuf) {
-				do_lseek(sbd.device_fd,
-					 ind->ii[pndx].block * sbd.bsize);
-				do_read(sbd.device_fd, tmpbuf,
-					sbd.bsize); /* read in the desired block */
+				lseek(sbd.device_fd,
+				      ind->ii[pndx].block * sbd.bsize,
+				      SEEK_SET);
+				/* read in the desired block */
+				if (read(sbd.device_fd, tmpbuf, sbd.bsize) !=
+				    sbd.bsize) {
+					fprintf(stderr, "bad read: %s from %s:"
+						"%d: block %lld (0x%llx)\n",
+						strerror(errno),
+						__FUNCTION__, __LINE__,
+						(unsigned long long)ind->ii[pndx].block,
+						(unsigned long long)ind->ii[pndx].block);
+					exit(-1);
+				}
 				memset(more_indir, 0, sizeof(struct iinfo));
 				if (S_ISDIR(di.di_mode)) {
 					do_leaf_extended(tmpbuf, more_indir);
@@ -1444,8 +1454,12 @@ void read_superblock(int fd)
 {
 	sbd1 = (struct gfs_sb *)&sbd.sd_sb;
 	ioctl(fd, BLKFLSBUF, 0);
-	do_lseek(fd, 0x10 * 4096);
-	do_read(fd, buf, sbd.bsize); /* read in the desired block */
+	lseek(fd, 0x10 * 4096, SEEK_SET);
+	if (read(fd, buf, sbd.bsize) != sbd.bsize) {
+		fprintf(stderr, "bad read: %s from %s:%d: superblock\n",
+			strerror(errno), __FUNCTION__, __LINE__);
+		exit(-1);
+	}
 	memset(&sbd, 0, sizeof(struct gfs2_sbd));
 	sbd.device_fd = fd;
 	sbd.bsize = GFS2_DEFAULT_BSIZE;
@@ -1486,8 +1500,17 @@ void read_superblock(int fd)
 void read_master_dir(void)
 {
 	ioctl(sbd.device_fd, BLKFLSBUF, 0);
-	do_lseek(sbd.device_fd, sbd.sd_sb.sb_master_dir.no_addr * sbd.bsize);
-	do_read(sbd.device_fd, buf, sbd.bsize); /* read in the desired block */
+	lseek(sbd.device_fd, sbd.sd_sb.sb_master_dir.no_addr * sbd.bsize,
+	      SEEK_SET);
+	if (read(sbd.device_fd, buf, sbd.bsize) != sbd.bsize) {
+		fprintf(stderr, "read error: %s from %s:%d: "
+			"master dir block %lld (0x%llx)\n",
+			strerror(errno), __FUNCTION__,
+			__LINE__,
+			(unsigned long long)sbd.sd_sb.sb_master_dir.no_addr,
+			(unsigned long long)sbd.sd_sb.sb_master_dir.no_addr);
+		exit(-1);
+	}
 	gfs2_dinode_in(&di, buf); /* parse disk inode into structure */
 	do_dinode_extended(&di, buf); /* get extended data, if any */
 	memcpy(&masterdir, &indirect[0], sizeof(struct indirect_info));
@@ -1514,8 +1537,16 @@ int display(int identify_only)
 	if (block_in_mem != blk) { /* If we changed blocks from the last read */
 		dev_offset = blk * sbd.bsize;
 		ioctl(sbd.device_fd, BLKFLSBUF, 0);
-		do_lseek(sbd.device_fd, dev_offset);
-		do_read(sbd.device_fd, buf, sbd.bsize); /* read desired block */
+		lseek(sbd.device_fd, dev_offset, SEEK_SET);
+		if (read(sbd.device_fd, buf, sbd.bsize) != sbd.bsize) {
+			fprintf(stderr, "read error: %s from %s:%d: "
+				"offset %lld (0x%llx)\n",
+				strerror(errno), __FUNCTION__,
+				__LINE__,
+				(unsigned long long)dev_offset,
+				(unsigned long long)dev_offset);
+			exit(-1);
+		}
 		block_in_mem = blk; /* remember which block is in memory */
 	}
 	line = 1;
@@ -1850,8 +1881,17 @@ void hex_edit(int *exitch)
 					ch += (estring[i+1] - 'A' + 0x0a);
 				buf[offset + hexoffset] = ch;
 			}
-			do_lseek(sbd.device_fd, dev_offset);
-			do_write(sbd.device_fd, buf, sbd.bsize);
+			lseek(sbd.device_fd, dev_offset, SEEK_SET);
+			if (write(sbd.device_fd, buf, sbd.bsize) !=
+			    sbd.bsize) {
+				fprintf(stderr, "write error: %s from %s:%d: "
+					"offset %lld (0x%llx)\n",
+					strerror(errno),
+					__FUNCTION__, __LINE__,
+					(unsigned long long)dev_offset,
+					(unsigned long long)dev_offset);
+				exit(-1);
+			}
 			fsync(sbd.device_fd);
 		}
 	}
@@ -2232,10 +2272,10 @@ void gfs_log_header_print(struct gfs_log_header *lh)
 	gfs2_meta_header_print(&lh->lh_header);
 	pv(lh, lh_flags, "%u", "0x%.8X");
 	pv(lh, lh_pad, "%u", "%x");
-	pv(lh, lh_first, "%llu", "%llx");
-	pv(lh, lh_sequence, "%llu", "%llx");
-	pv(lh, lh_tail, "%llu", "%llx");
-	pv(lh, lh_last_dump, "%llu", "%llx");
+	pv((unsigned long long)lh, lh_first, "%llu", "%llx");
+	pv((unsigned long long)lh, lh_sequence, "%llu", "%llx");
+	pv((unsigned long long)lh, lh_tail, "%llu", "%llx");
+	pv((unsigned long long)lh, lh_last_dump, "%llu", "%llx");
 }
 
 /* ------------------------------------------------------------------------ */
@@ -2295,8 +2335,8 @@ int fsck_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
 	if (!size)
 		return 0;
 	if (isdir) {
-		lblock = offset;
-		o = do_div(lblock, sdp->sd_jbsize);
+		o = offset % sdp->sd_jbsize;
+		lblock = offset / sdp->sd_jbsize;
 	} else {
 		lblock = offset >> sdp->sd_sb.sb_bsize_shift;
 		o = offset & (sdp->bsize - 1);

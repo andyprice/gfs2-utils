@@ -81,7 +81,7 @@ void gfs2_meta_header_out(struct gfs2_meta_header *mh, char *buf)
 
 void gfs2_meta_header_print(struct gfs2_meta_header *mh)
 {
-	pv(mh, mh_magic, "0x%.8X", NULL);
+	pv(mh, mh_magic, "0x%08X", NULL);
 	pv(mh, mh_type, "%u", "0x%x");
 	pv(mh, mh_format, "%u", "0x%x");
 }

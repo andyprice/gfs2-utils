@@ -136,9 +136,10 @@ int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 				uint64_t rgdist;
 				
 				rgdist = blk - block_of_last_rg;
-				log_debug("dist 0x%" PRIx64 " = 0x% " PRIx64
-					  " - 0x%" PRIx64, rgdist,
-					  blk, block_of_last_rg);
+				log_debug("dist 0x%llx = 0x%llx - 0x%llx",
+					  (unsigned long long)rgdist,
+					  (unsigned long long)blk,
+					  (unsigned long long)block_of_last_rg);
 				/* ----------------------------------------- */
 				/* We found an RG.  Check to see if we need  */
 				/* to set the first_rg_dist based on whether */
@@ -249,8 +250,9 @@ int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 		} /* for subsequent bitmaps */
 		
 		gfs2_compute_bitstructs(sdp, calc_rgd);
-		log_debug("Memory allocated for rg at 0x%p, bh:\n",
-			  calc_rgd->ri.ri_addr, calc_rgd->bh);
+		log_debug("Memory allocated for rg at 0x%llx, bh: %p\n",
+			  (unsigned long long)calc_rgd->ri.ri_addr,
+			  calc_rgd->bh);
 		if (!calc_rgd->bh) {
 			log_crit("Can't allocate memory for bitmap repair.\n");
 			return -1;
@@ -311,9 +313,10 @@ int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
         for (tmp = ret_list, rgi = 0; tmp != ret_list;
 	     tmp = tmp->next, rgi++) {
                 calc_rgd = osi_list_entry(tmp, struct rgrp_list, list);
-                log_debug("%d: 0x%" PRIx64 " / %x / 0x%"
-			  PRIx64 " / 0x%x / 0x%x\n", rgi + 1, 
-			  calc_rgd->ri.ri_addr, calc_rgd->ri.ri_length,
+                log_debug("%d: 0x%llx / %x / 0x%llx"
+			  " / 0x%x / 0x%x\n", rgi + 1,
+			  (unsigned long long)calc_rgd->ri.ri_addr,
+			  calc_rgd->ri.ri_length,
 			  calc_rgd->ri.ri_data0, calc_rgd->ri.ri_data, 
 			  calc_rgd->ri.ri_bitbytes);
         }
@@ -446,8 +449,8 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 		gfs2_rgrp_free(&sdp->rglist, not_updated);
 		return -1;
 	}
-	log_warn("L%d: number of rgs expected     = %d.\n", trust_lvl + 1,
-		 sdp->rgrps);
+	log_warn("L%d: number of rgs expected     = %lld.\n", trust_lvl + 1,
+		 (unsigned long long)sdp->rgrps);
 	if (calc_rg_count != sdp->rgrps) {
 		log_warn("L%d: They don't match; either (1) the fs was extended, (2) an odd\n", trust_lvl + 1);
 		log_warn("L%d: rg size was used, or (3) we have a corrupt rg index.\n", trust_lvl + 1);
@@ -499,12 +502,11 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 
 		expected = osi_list_entry(exp, struct rgrp_list, list);
 		actual = osi_list_entry(act, struct rgrp_list, list);
-		ri_compare(rg, actual->ri, expected->ri, ri_addr, PRIx64);
+		ri_compare(rg, actual->ri, expected->ri, ri_addr, "llx");
 		ri_compare(rg, actual->ri, expected->ri, ri_length, PRIx32);
-		ri_compare(rg, actual->ri, expected->ri, ri_data0, PRIx64);
+		ri_compare(rg, actual->ri, expected->ri, ri_data0, "llx");
 		ri_compare(rg, actual->ri, expected->ri, ri_data, PRIx32);
-		ri_compare(rg, actual->ri, expected->ri, ri_bitbytes,
-			   PRIx32);
+		ri_compare(rg, actual->ri, expected->ri, ri_bitbytes, PRIx32);
 		/* If we modified the index, write it back to disk. */
 		if (rindex_modified) {
 			if (query(&opts, "Fix the index? (y/n)")) {

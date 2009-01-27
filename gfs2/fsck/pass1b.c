@@ -138,11 +138,16 @@ static int find_dentry(struct gfs2_inode *ip, struct gfs2_dirent *de,
 			if(id->block_no == de->de_inum.no_addr) {
 				id->name = strdup(filename);
 				id->parent = ip->i_di.di_num.no_addr;
-				log_debug("Duplicate block %" PRIu64 " (0x%" PRIx64
-						  ") is in file or directory %" PRIu64
-						  " (0x%" PRIx64 ") named %s\n", id->block_no,
-						  id->block_no, ip->i_di.di_num.no_addr,
-						  ip->i_di.di_num.no_addr, filename);
+				log_debug("Duplicate block %llu (0x%llx"
+					  ") is in file or directory %llu"
+					  " (0x%llx) named %s\n",
+					  (unsigned long long)id->block_no,
+					  (unsigned long long)id->block_no,
+					  (unsigned long long)
+					  ip->i_di.di_num.no_addr,
+					  (unsigned long long)
+					  ip->i_di.di_num.no_addr,
+					  filename);
 				/* If there are duplicates of
 				 * duplicates, I guess we'll miss them
 				 * here */
@@ -165,10 +170,11 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 	if(dh->ref_count == 1)
 		return 1;
 	if(block == dh->b->block_no) {
-		log_err("Found dup in inode \"%s\" (block #%"PRIu64
-				") with block #%"PRIu64"\n",
-				dh->id->name ? dh->id->name : "unknown name",
-				ip->i_di.di_num.no_addr, block);
+		log_err("Found dup in inode \"%s\" (block #%llu"
+			") with block #%llu\n",
+			dh->id->name ? dh->id->name : "unknown name",
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)block);
 		log_err("Inode %s is in directory %"PRIu64" (0x%" PRIx64 ")\n",
 				dh->id->name ? dh->id->name : "",
 				dh->id->parent, dh->id->parent);
@@ -189,11 +195,13 @@ static int clear_dup_data(struct gfs2_inode *ip, uint64_t block, void *private)
 		return 1;
 	}
 	if(block == dh->b->block_no) {
-		log_err("Found dup in inode \"%s\" for block #%" PRIu64
-				" (0x%" PRIx64 ") at block #%" PRIu64 " (0x%" PRIx64 ")\n",
-				dh->id->name ? dh->id->name : "unknown name",
-				ip->i_di.di_num.no_addr, ip->i_di.di_num.no_addr, block,
-				block);
+		log_err("Found dup in inode \"%s\" for block #%llu"
+			" (0x%llx) at block #%llu (0x%llx)\n",
+			dh->id->name ? dh->id->name : "unknown name",
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)block,
+			(unsigned long long)block);
 		log_err("Inode %s is in directory %"PRIu64" (0x%" PRIx64 ")\n",
 				dh->id->name ? dh->id->name : "", dh->id->parent,
 				dh->id->parent);
@@ -219,11 +227,13 @@ static int clear_dup_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 	if(dh->ref_count == 1)
 		return 1;
 	if(block == dh->b->block_no) {
-		log_err("Found dup in inode \"%s\" with address #%" PRIu64
-				" (0x%" PRIx64 ") with block #%" PRIu64 " (0x%" PRIx64 ")\n",
-				dh->id->name ? dh->id->name : "unknown name",
-				ip->i_di.di_num.no_addr, ip->i_di.di_num.no_addr, block,
-				block);
+		log_err("Found dup in inode \"%s\" with address #%llu"
+			" (0x%llx) with block #%llu (0x%llx)\n",
+			dh->id->name ? dh->id->name : "unknown name",
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)block,
+			(unsigned long long)block);
 		log_err("Inode %s is in directory %" PRIu64 " (0x%" PRIx64 ")\n",
 				dh->id->name ? dh->id->name : "",
 				dh->id->parent, dh->id->parent);
@@ -244,11 +254,13 @@ static int clear_dup_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 	if(dh->ref_count == 1)
 		return 1;
 	if(block == dh->b->block_no) {
-		log_err("Found dup in inode \"%s\" with address #%" PRIu64
-				" (0x%" PRIx64 ") with block #%" PRIu64 " (0x%" PRIx64 ")\n",
-				dh->id->name ? dh->id->name : "unknown name",
-				ip->i_di.di_num.no_addr, ip->i_di.di_num.no_addr, block,
-				block);
+		log_err("Found dup in inode \"%s\" with address #%llu"
+			" (0x%llx) with block #%llu (0x%llx)\n",
+			dh->id->name ? dh->id->name : "unknown name",
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)block,
+			(unsigned long long)block);
 		log_err("Inode %s is in directory %" PRIu64 " (0x%" PRIx64 ")\n",
 				dh->id->name ? dh->id->name : "",
 				dh->id->parent, dh->id->parent);
@@ -316,11 +328,12 @@ static int clear_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 	if(dh->ref_count == 1)
 		return 1;
 	if(block == dh->b->block_no) {
-		log_err("Found dup in inode \"%s\" with address #%" PRIu64
-				" (0x%" PRIx64 ") with block #%" PRIu64 " (0x%" PRIx64 ")\n",
-				dh->id->name ? dh->id->name : "unknown name",
-				ip->i_di.di_num.no_addr, ip->i_di.di_num.no_addr, block,
-				block);
+		log_err("Found dup in inode \"%s\" with address #%llu"
+			" (0x%llx) with block #%llu (0x%llx)\n",
+			dh->id->name ? dh->id->name : "unknown name",
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)block, (unsigned long long)block);
 		log_err("Inode %s is in directory %" PRIu64 " (0x%" PRIx64 ")\n",
 				dh->id->name ? dh->id->name : "",
 				dh->id->parent, dh->id->parent);
@@ -413,10 +426,11 @@ int handle_dup_blk(struct gfs2_sbd *sbp, struct blocks *b)
 		dh.ref_inode_count++;
 		dh.ref_count += id->dup_count;
 	}
-	log_notice("Block %" PRIu64 " (0x%" PRIx64 ") has %d inodes referencing it"
-			   " for a total of %d duplicate references\n",
-			   b->block_no, b->block_no, dh.ref_inode_count,
-			   dh.ref_inode_count, dh.ref_count);
+	log_notice("Block %llu (0x%llx) has %d inodes referencing it"
+		   " for a total of %d duplicate references\n",
+		   (unsigned long long)b->block_no,
+		   (unsigned long long)b->block_no,
+		   dh.ref_inode_count, dh.ref_count);
 
 	osi_list_foreach(tmp, &b->ref_inode_list) {
 		id = osi_list_entry(tmp, struct inode_with_dups, list);

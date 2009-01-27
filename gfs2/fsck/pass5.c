@@ -137,9 +137,11 @@ enum update_flags update_rgrp(struct gfs2_sbd *sbp, struct rgrp_list *rgp,
 
 	/* actually adjust counters and write out to disk */
 	if(rgp->rg.rg_free != count[0]) {
-		log_err("RG #%" PRIu64 " (0x%" PRIx64
-				") free count inconsistent: is %u should be %u\n",
-				rgp->ri.ri_addr, rgp->ri.ri_addr, rgp->rg.rg_free, count[0]);
+		log_err("RG #%llu (0x%llx) free count inconsistent: "
+			"is %u should be %u\n",
+			(unsigned long long)rgp->ri.ri_addr,
+			(unsigned long long)rgp->ri.ri_addr,
+			rgp->rg.rg_free, count[0]);
 		rgp->rg.rg_free = count[0];
 		update = 1;
 	}

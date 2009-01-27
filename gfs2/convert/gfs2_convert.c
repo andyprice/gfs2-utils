@@ -532,8 +532,10 @@ int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_buffer_head *dibh,
 		b = blk->lblock;
 		/* Calculate the metapath in GFS2 terms */
 		memset(&mp2, 0, sizeof(mp2));
-		for (h = gfs2_height; h--;)
-			mp2.mp_list[h] = do_div(b, gfs2_inptrs);
+		for (h = gfs2_height; h--;) {
+			mp2.mp_list[h] = b % gfs2_inptrs;
+			b /= gfs2_inptrs;
+		}
 		for (h = gfs2_height - 1; h >= 0; h--) {
 			if (h) {
 				/* find/reuse a bh from the old metadata. */
@@ -830,7 +832,8 @@ int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 		if (inum.no_formal_ino) { /* if not a sentinel (placeholder) */
 			error = fetch_inum(sbp, inum.no_addr, &inum);
 			if (error) {
-				log_crit("Error retrieving inode %" PRIx64 "\n", inum.no_addr);
+				log_crit("Error retrieving inode 0x%llx\n",
+					 (unsigned long long)inum.no_addr);
 				break;
 			}
 			/* fix the dirent's inode number from the fetched inum. */
@@ -1330,8 +1333,9 @@ int journ_space_to_rg(struct gfs2_sbd *sdp)
 				 (rgd->ri.ri_addr > rgdhigh->ri.ri_addr)))
 				rgdhigh = rgd;
 		} /* for each rg */
-		log_info("Addr %" PRIx64 " comes after rg at addr %" PRIx64 "\n",
-				 jndx->ji_addr, rgdhigh->ri.ri_addr);
+		log_info("Addr 0x%llx comes after rg at addr 0x%llx\n",
+			 (unsigned long long)jndx->ji_addr,
+			 (unsigned long long)rgdhigh->ri.ri_addr);
 		if (!rgdhigh) { /* if we somehow didn't find one. */
 			log_crit("Error: No suitable rg found for journal.\n");
 			return -1;

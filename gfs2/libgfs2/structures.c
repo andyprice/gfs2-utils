@@ -12,7 +12,7 @@
 
 #include "libgfs2.h"
 
-void build_master(struct gfs2_sbd *sdp)
+int build_master(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inum inum;
 	uint64_t bn;
@@ -30,6 +30,7 @@ void build_master(struct gfs2_sbd *sdp)
 		printf("\nMaster dir:\n");
 		gfs2_dinode_print(&sdp->master_dir->i_di);
 	}
+	return 0;
 }
 
 void build_sb(struct gfs2_sbd *sdp)
@@ -159,7 +160,7 @@ int build_jindex(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-static void build_inum_range(struct gfs2_inode *per_node, unsigned int j)
+static int build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 {
 	struct gfs2_sbd *sdp = per_node->i_sbd;
 	char name[256];
@@ -176,6 +177,7 @@ static void build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 	}
 
 	inode_put(ip, updated);
+	return 0;
 }
 
 static void build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
@@ -234,7 +236,7 @@ static int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 	return 0;
 }
 
-void build_per_node(struct gfs2_sbd *sdp)
+int build_per_node(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *per_node;
 	unsigned int j;
@@ -254,9 +256,10 @@ void build_per_node(struct gfs2_sbd *sdp)
 	}
 
 	inode_put(per_node, updated);
+	return 0;
 }
 
-void build_inum(struct gfs2_sbd *sdp)
+int build_inum(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 
@@ -269,9 +272,10 @@ void build_inum(struct gfs2_sbd *sdp)
 	}
 
 	sdp->md.inum = ip;
+	return 0;
 }
 
-void build_statfs(struct gfs2_sbd *sdp)
+int build_statfs(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 
@@ -284,6 +288,7 @@ void build_statfs(struct gfs2_sbd *sdp)
 	}
 
 	sdp->md.statfs = ip;
+	return 0;
 }
 
 int build_rindex(struct gfs2_sbd *sdp)
@@ -351,7 +356,7 @@ int build_quota(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-void build_root(struct gfs2_sbd *sdp)
+int build_root(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inum inum;
 	uint64_t bn;
@@ -368,6 +373,7 @@ void build_root(struct gfs2_sbd *sdp)
 		printf("\nRoot directory:\n");
 		gfs2_dinode_print(&sdp->md.rooti->i_di);
 	}
+	return 0;
 }
 
 int do_init(struct gfs2_sbd *sdp)

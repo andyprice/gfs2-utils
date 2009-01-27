@@ -292,8 +292,10 @@ struct metapath *find_metapath(struct gfs2_inode *ip, uint64_t block)
 		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
 		exit(-1);
 	}
-	for (i = ip->i_di.di_height; i--;)
-		mp->mp_list[i] = do_div(b, sdp->sd_inptrs);
+	for (i = ip->i_di.di_height; i--;) {
+		mp->mp_list[i] = b % sdp->sd_inptrs;
+		b /= sdp->sd_inptrs;
+	}
 
 	return mp;
 }
@@ -454,7 +456,8 @@ int gfs2_readi(struct gfs2_inode *ip, void *buf,
 
 	if (isdir) {
 		lblock = offset;
-		o = do_div(lblock, sdp->sd_jbsize);
+		o = lblock % sdp->sd_jbsize;
+		lblock /= sdp->sd_jbsize;
 	} else {
 		lblock = offset >> sdp->sd_sb.sb_bsize_shift;
 		o = offset & (sdp->bsize - 1);
@@ -526,7 +529,8 @@ int gfs2_writei(struct gfs2_inode *ip, void *buf,
 
 	if (isdir) {
 		lblock = offset;
-		o = do_div(lblock, sdp->sd_jbsize);
+		o = lblock % sdp->sd_jbsize;
+		lblock /= sdp->sd_jbsize;
 	} else {
 		lblock = offset >> sdp->sd_sb.sb_bsize_shift;
 		o = offset & (sdp->bsize - 1);

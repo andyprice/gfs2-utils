@@ -79,42 +79,7 @@ static __inline__ __attribute__((noreturn)) void die(const char *fmt, ...)
 	exit(-1);
 }
 
-extern __inline__ __attribute__((deprecated)) void do_lseek(int fd, off_t off)
-{ 
-	if (lseek(fd, off, SEEK_SET) != off) {
-    		fprintf(stderr, "bad seek: %s on line %d of file %s\n",
-			strerror(errno),__LINE__, __FILE__);
-		exit(-1);
-	}
-}
-
-extern __inline__ __attribute__((deprecated)) void do_read(int fd, void *buf, size_t len)
-{
-	if (read(fd, buf, len) < 0) {
-		fprintf(stderr, "bad read: %s on line %d of file %s\n",
-			strerror(errno), __LINE__, __FILE__);
-		exit(-1);
-	}
-}
-
-extern __inline__ __attribute__((deprecated)) void do_write(int fd, const void *buf, size_t len)
-{
-	if (write(fd, buf, len) != len) {
-		fprintf(stderr, "bad write: %s on line %d of file %s\n",
-			strerror(errno), __LINE__, __FILE__);
-		exit(-1);
-	}
-}
-
 #define DIV_RU(x, y) (((x) + (y) - 1) / (y))
-
-static __inline__ __attribute__((deprecated)) uint64_t do_div_i(uint64_t *num, unsigned int den)
-{
-	unsigned int m = *num % den;
-	*num /= den;
-	return m;
-}
-#define do_div(n, d) do_div_i(&(n), (d))
 
 struct device {
 	uint64_t start;
@@ -412,14 +377,26 @@ extern void *gfs2_block_list_destroy(struct gfs2_sbd *sdp,
 /* buf.c */
 extern void init_buf_list(struct gfs2_sbd *sdp, struct buf_list *bl, uint32_t limit);
 extern struct gfs2_buffer_head *bfind(struct buf_list *bl, uint64_t num);
-extern struct gfs2_buffer_head *bget_generic(struct buf_list *bl, uint64_t num,
-					     int find_existing, int read_disk);
-extern struct gfs2_buffer_head *bget(struct buf_list *bl, uint64_t num);
-extern struct gfs2_buffer_head *bread(struct buf_list *bl, uint64_t num);
+extern struct gfs2_buffer_head *__bget_generic(struct buf_list *bl,
+					       uint64_t num, int find_existing,
+					       int read_disk, int line,
+					       const char *caller);
+extern struct gfs2_buffer_head *__bget(struct buf_list *bl, uint64_t num,
+				       int line, const char *caller);
+extern struct gfs2_buffer_head *__bread(struct buf_list *bl, uint64_t num,
+					int line, const char *caller);
 extern struct gfs2_buffer_head *bhold(struct gfs2_buffer_head *bh);
 extern void brelse(struct gfs2_buffer_head *bh, enum update_flags updated);
-extern void bsync(struct buf_list *bl);
-extern void bcommit(struct buf_list *bl);
+extern void __bsync(struct buf_list *bl, int line, const char *caller);
+extern void __bcommit(struct buf_list *bl, int line, const char *caller);
+
+#define bget_generic(bl, num, find, read) __bget_generic(bl, num, find, read, \
+							 __LINE__, \
+							 __FUNCTION__)
+#define bget(bl, num) __bget(bl, num, __LINE__, __FUNCTION__)
+#define bread(bl, num) __bread(bl, num, __LINE__, __FUNCTION__)
+#define bsync(bl) do { __bsync(bl, __LINE__, __FUNCTION__); } while(0)
+#define bcommit(bl) do { __bcommit(bl, __LINE__, __FUNCTION__); } while(0)
 
 /* device_geometry.c */
 extern int device_geometry(struct gfs2_sbd *sdp);
@@ -687,16 +664,16 @@ extern void gfs2_rgrp_relse(struct rgrp_list *rgd, enum update_flags updated);
 extern void gfs2_rgrp_free(osi_list_t *rglist, enum update_flags updated);
 
 /* structures.c */
-extern void build_master(struct gfs2_sbd *sdp);
+extern int build_master(struct gfs2_sbd *sdp);
 extern void build_sb(struct gfs2_sbd *sdp);
 extern int build_jindex(struct gfs2_sbd *sdp);
-extern void build_per_node(struct gfs2_sbd *sdp);
-extern void build_inum(struct gfs2_sbd *sdp);
-extern void build_statfs(struct gfs2_sbd *sdp);
+extern int build_per_node(struct gfs2_sbd *sdp);
+extern int build_inum(struct gfs2_sbd *sdp);
+extern int build_statfs(struct gfs2_sbd *sdp);
 extern int build_rindex(struct gfs2_sbd *sdp);
 extern int build_quota(struct gfs2_sbd *sdp);
-extern void build_root(struct gfs2_sbd *sdp);
-extern int  do_init(struct gfs2_sbd *sdp);
+extern int build_root(struct gfs2_sbd *sdp);
+extern int do_init(struct gfs2_sbd *sdp);
 extern int gfs2_check_meta(struct gfs2_buffer_head *bh, int type);
 extern int gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block, int first);
 extern int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
@@ -712,7 +689,7 @@ extern int write_sb(struct gfs2_sbd *sdp);
 /* ondisk.c */
 extern uint32_t gfs2_disk_hash(const char *data, int len);
 extern void print_it(const char *label, const char *fmt, const char *fmt2, ...)
-	__attribute__((format(printf,3,4)));
+	__attribute__((format(printf,2,4)));
 
 /* Translation functions */
 

@@ -235,7 +235,13 @@ add_ir(struct gfs2_sbd *sdp)
 		struct gfs2_inum_range ir;
 		make_jdata(fd, "set");
 		memset(&ir, 0, sizeof(struct gfs2_inum_range));
-		do_write(fd, (void*)&ir, sizeof(struct gfs2_inum_range));
+		if (write(fd, (void*)&ir, sizeof(struct gfs2_inum_range)) !=
+		    sizeof(struct gfs2_inum_range)) {
+			fprintf(stderr, "write error: %s from %s:%d: "
+				"offset 0\n", strerror(errno),
+				__FUNCTION__, __LINE__);
+			exit(-1);
+		}
 	}
 	
 	close(fd);
@@ -261,7 +267,13 @@ add_sc(struct gfs2_sbd *sdp)
 		make_jdata(fd, "set");
 
 		memset(&sc, 0, sizeof(struct gfs2_statfs_change));
-		do_write(fd, (void*)&sc, sizeof(struct gfs2_statfs_change));
+		if (write(fd, (void*)&sc, sizeof(struct gfs2_statfs_change)) !=
+		    sizeof(struct gfs2_statfs_change)) {
+			fprintf(stderr, "write error: %s from %s:%d: "
+				"offset 0\n", strerror(errno),
+				__FUNCTION__, __LINE__);
+			exit(-1);
+		}
 	}
 
 	close(fd);
@@ -293,10 +305,18 @@ add_qc(struct gfs2_sbd *sdp)
 		memset(buf, 0, sdp->bsize);
 
 		for (x=0; x<blocks; x++) {
-			do_write(fd, buf, sdp->bsize);
+			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
+				fprintf(stderr, "write error: %s from %s:%d: "
+					"block %lld (0x%llx)\n",
+					strerror(errno),
+					__FUNCTION__, __LINE__,
+					(unsigned long long)x,
+					(unsigned long long)x);
+				exit(-1);
+			}
 		}
 
-		do_lseek(fd, 0);
+		lseek(fd, 0, SEEK_SET);
 		
 		memset(&mh, 0, sizeof(struct gfs2_meta_header));
 		mh.mh_magic = GFS2_MAGIC;
@@ -305,7 +325,15 @@ add_qc(struct gfs2_sbd *sdp)
 		gfs2_meta_header_out(&mh, buf);
 
 		for (x=0; x<blocks; x++) {
-			do_write(fd, buf, sdp->bsize);
+			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
+				fprintf(stderr, "write error: %s from %s:%d: "
+					"block %lld (0x%llx)\n",
+					strerror(errno),
+					__FUNCTION__, __LINE__,
+					(unsigned long long)x,
+					(unsigned long long)x);
+				exit(-1);
+			}
 		}
 
 		error = fsync(fd);
@@ -385,10 +413,18 @@ add_j(struct gfs2_sbd *sdp)
 		make_jdata(fd, "clear");
 		memset(buf, 0, sdp->bsize);
 		for (x=0; x<blocks; x++) {
-			do_write(fd, buf, sdp->bsize);
+			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
+				fprintf(stderr, "write error: %s from %s:%d: "
+					"block %lld (0x%llx)\n",
+					strerror(errno),
+					__FUNCTION__, __LINE__,
+					(unsigned long long)x,
+					(unsigned long long)x);
+				exit(-1);
+			}
 		}
 
-		do_lseek(fd, 0);
+		lseek(fd, 0, SEEK_SET);
 
 		memset(&lh, 0, sizeof(struct gfs2_log_header));
 		lh.lh_header.mh_magic = GFS2_MAGIC;
@@ -405,7 +441,15 @@ add_j(struct gfs2_sbd *sdp)
 			hash = gfs2_disk_hash(buf, sizeof(struct gfs2_log_header));
 			((struct gfs2_log_header *)buf)->lh_hash = cpu_to_be32(hash);
 
-			do_write(fd, buf, sdp->bsize);
+			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
+				fprintf(stderr, "write error: %s from %s:%d: "
+					"block %lld (0x%llx)\n",
+					strerror(errno),
+					__FUNCTION__, __LINE__,
+					(unsigned long long)x,
+					(unsigned long long)x);
+				exit(-1);
+			}
 
 			if (++seq == blocks)
 				seq = 0;

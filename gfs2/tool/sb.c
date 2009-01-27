@@ -77,8 +77,17 @@ do_sb(int argc, char **argv)
 		printf("\n");
 	}
 
-	do_lseek(fd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK);
-	do_read(fd, buf, GFS2_BASIC_BLOCK);
+	if (lseek(fd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK, SEEK_SET) !=
+	    GFS2_SB_ADDR * GFS2_BASIC_BLOCK) {
+		fprintf(stderr, "bad seek: %s from %s:%d: superblock\n",
+			strerror(errno), __FUNCTION__, __LINE__);
+		exit(-1);
+	}
+	if (read(fd, buf, GFS2_BASIC_BLOCK) != GFS2_BASIC_BLOCK) {
+		fprintf(stderr, "bad read: %s from %s:%d: superblock\n",
+			strerror(errno), __FUNCTION__, __LINE__);
+		exit(-1);
+	}
 
 	gfs2_sb_in(&sb, (char*) buf);
 
@@ -135,8 +144,18 @@ do_sb(int argc, char **argv)
 	if (newval) {
 		gfs2_sb_out(&sb,(char*) buf);
 
-		do_lseek(fd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK);
-		do_write(fd, buf, GFS2_BASIC_BLOCK);
+		if (lseek(fd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK, SEEK_SET) !=
+		    GFS2_SB_ADDR * GFS2_BASIC_BLOCK) {
+			fprintf(stderr, "bad seek: %s from %s:%d: superblock\n",
+				strerror(errno), __FUNCTION__, __LINE__);
+			exit(-1);
+		}
+		if (write(fd, buf, GFS2_BASIC_BLOCK) != GFS2_BASIC_BLOCK) {
+			fprintf(stderr, "write error: %s from %s:%d: "
+				"superblock\n", strerror(errno),
+				__FUNCTION__, __LINE__);
+			exit(-1);
+		}
 
 		fsync(fd);
 

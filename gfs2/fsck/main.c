@@ -129,7 +129,7 @@ void interrupt(int sig)
 /* Check system inode and verify it's marked "in use" in the bitmap:       */
 /* Should work for all system inodes: root, master, jindex, per_node, etc. */
 int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
-		       void builder(struct gfs2_sbd *sbp),
+		       int builder(struct gfs2_sbd *sbp),
 		       enum gfs2_mark_block mark)
 {
 	uint64_t iblock = 0;

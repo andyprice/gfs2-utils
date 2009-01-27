@@ -102,8 +102,17 @@ do_df_one(char *path)
 	init_buf_list(&sbd, &sbd.buf_list, 128 << 20);
 	init_buf_list(&sbd, &sbd.nvbuf_list, 0xffffffff);
 
-	do_lseek(sbd.device_fd, 0x10 * sbd.bsize);
-	do_read(sbd.device_fd, buf, sbd.bsize); /* read in the superblock */
+	if (lseek(sbd.device_fd, 0x10 * sbd.bsize, SEEK_SET) !=
+	    0x10 * sbd.bsize) {
+		fprintf(stderr, "bad seek: %s from %s:%d: superblock\n",
+			strerror(errno), __FUNCTION__, __LINE__);
+		exit(-1);
+	}
+	if (read(sbd.device_fd, buf, sbd.bsize) != sbd.bsize) {
+		fprintf(stderr, "bad read: %s from %s:%d: superblock\n",
+			strerror(errno), __FUNCTION__, __LINE__);
+		exit(-1);
+	}
 
 	compute_constants(&sbd);
 	gfs2_sb_in(&sbd.sd_sb, buf); /* parse it out into the sb structure */
@@ -152,7 +161,12 @@ do_df_one(char *path)
 
 	sprintf(statfs_fn, "%s/statfs", sbd.metafs_path);
 	statfs_fd = open(statfs_fn, O_RDONLY);
-	do_read(statfs_fd, buf, sizeof(struct gfs2_statfs_change));
+	if (read(statfs_fd, buf, sizeof(struct gfs2_statfs_change)) !=
+	    sizeof(struct gfs2_statfs_change)) {
+		fprintf(stderr, "bad read: %s from %s:%d: superblock\n",
+			strerror(errno), __FUNCTION__, __LINE__);
+		exit(-1);
+	}
 	gfs2_statfs_change_in(&sc, (char *)&buf);
 
 	close(statfs_fd);

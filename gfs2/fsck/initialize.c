@@ -84,8 +84,8 @@ static void empty_super_block(struct gfs2_sbd *sdp)
 		struct rgrp_list *rgd;
 
 		rgd = osi_list_entry(sdp->rglist.next, struct rgrp_list, list);
-		log_debug("Deleting rgd for 0x%p:  rgd=0x%p bits=0x%p\n",
-			  rgd->ri.ri_addr, rgd, rgd->bits);
+		log_debug("Deleting rgd for 0x%llx:  rgd=0x%p bits=0x%p\n",
+			  (unsigned long long)rgd->ri.ri_addr, rgd, rgd->bits);
 		osi_list_del(&rgd->list);
 		if(rgd->bits)
 			free(rgd->bits);
@@ -146,8 +146,9 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	last_fs_block = rmax;
 	if (last_fs_block > 0xffffffff && sizeof(unsigned long) <= 4) {
 		log_crit("This file system is too big for this computer to handle.\n");
-		log_crit("Last fs block = 0x%llx, but sizeof(unsigned long) is %d bytes.\n",
-				 last_fs_block, sizeof(unsigned long));
+		log_crit("Last fs block = 0x%llx, but sizeof(unsigned long) is %lu bytes.\n",
+			 (unsigned long long)last_fs_block,
+			 sizeof(unsigned long));
 		goto fail;
 	}
 

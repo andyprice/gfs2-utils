@@ -12,15 +12,17 @@
 int fix_inode_count(struct gfs2_sbd *sbp, struct inode_info *ii,
 					struct gfs2_inode *ip)
 {
-	log_info("Fixing inode count for %" PRIu64 " (0x%" PRIx64 ") \n",
-			 ip->i_di.di_num.no_addr, ip->i_di.di_num.no_addr);
+	log_info("Fixing inode count for %llu (0x%llx) \n",
+		 (unsigned long long)ip->i_di.di_num.no_addr,
+		 (unsigned long long)ip->i_di.di_num.no_addr);
 	if(ip->i_di.di_nlink == ii->counted_links)
 		return 0;
 	ip->i_di.di_nlink = ii->counted_links;
 
-	log_debug("Changing inode %" PRIu64 " (0x%" PRIx64 ") to have %u links\n",
-			  ip->i_di.di_num.no_addr, ip->i_di.di_num.no_addr,
-			  ii->counted_links);
+	log_debug("Changing inode %llu (0x%llx) to have %u links\n",
+		  (unsigned long long)ip->i_di.di_num.no_addr,
+		  (unsigned long long)ip->i_di.di_num.no_addr,
+		  ii->counted_links);
 	return 0;
 }
 
@@ -52,7 +54,10 @@ int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 				return -1;
 			}
 			if(q.bad_block) {
-				log_err("Unlinked inode contains bad blocks\n", ii->inode);
+				log_err("Unlinked inode %llu (0x%llx) contains"
+					"bad blocks\n",
+					(unsigned long long)ii->inode,
+					(unsigned long long)ii->inode);
 				if(query(&opts,
 						 "Clear unlinked inode with bad blocks? (y/n) ")) {
 					gfs2_block_set(sbp, bl, ii->inode,

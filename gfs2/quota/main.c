@@ -291,8 +291,18 @@ read_superblock(struct gfs2_sb *sb, struct gfs2_sbd *sdp)
 		die("Could not open the block device %s: %s\n",
 			sdp->device_name, strerror(errno));
 	}
-	do_lseek(fd, 0x10 * 4096);
-	do_read(fd, buf, PATH_MAX);
+	if (lseek(fd, 0x10 * 4096, SEEK_SET) != 0x10 * 4096) {
+		fprintf(stderr, "bad seek: %s from %s:%d: "
+			"superblock\n",
+			strerror(errno), __FUNCTION__, __LINE__);
+
+		exit(-1);
+	}
+	if (read(fd, buf, PATH_MAX) != PATH_MAX) {
+		fprintf(stderr, "bad read: %s from %s:%d: superblock\n",
+			strerror(errno), __FUNCTION__, __LINE__);
+		exit(-1);
+	}
 	gfs2_sb_in(sb, buf);
 
 	close(fd);

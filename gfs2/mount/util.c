@@ -259,7 +259,13 @@ int get_sb(char *device, struct gen_sb *sb_out)
 		char buf[GFS2_BASIC_BLOCK];
 		struct gfs2_sb sb;
 
-		do_lseek(fd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK);
+		if (lseek(fd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK, SEEK_SET) !=
+		    GFS2_SB_ADDR * GFS2_BASIC_BLOCK) {
+			fprintf(stderr, "bad seek: %s from %s:%d: "
+				"superblock\n",
+				strerror(errno), __FUNCTION__, __LINE__);
+			exit(-1);
+		}
 		do_read(fd, buf, GFS2_BASIC_BLOCK);
 		gfs2_sb_in(&sb, buf);
 
@@ -283,7 +289,13 @@ int get_sb(char *device, struct gen_sb *sb_out)
 		char buf[GFS_BASIC_BLOCK];
 		struct gfs_sb sb;
 
-		do_lseek(fd, GFS_SB_ADDR * GFS_BASIC_BLOCK);
+		if (lseek(fd, GFS_SB_ADDR * GFS_BASIC_BLOCK, SEEK_SET) !=
+		    GFS_SB_ADDR * GFS_BASIC_BLOCK) {
+			fprintf(stderr, "bad seek: %s from %s:%d: "
+				"superblock\n",
+				strerror(errno), __FUNCTION__, __LINE__);
+			exit(-1);
+		}
 		do_read(fd, buf, GFS2_BASIC_BLOCK);
 		gfs_sb_in(&sb, buf);
 

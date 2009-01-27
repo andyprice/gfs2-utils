@@ -172,12 +172,14 @@ int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 
 		if (de.de_rec_len < sizeof(struct gfs2_dirent) +
 		    de.de_name_len || !de.de_name_len) {
-			log_err("Directory block %" PRIu64 "(0x%"
-				PRIx64 "), entry %d of directory %"
-				PRIu64 "(0x%" PRIx64 ") is corrupt.\n",
-				bh->b_blocknr, bh->b_blocknr, (*count) + 1,
-				ip->i_di.di_num.no_addr,
-				ip->i_di.di_num.no_addr);
+			log_err("Directory block %llu (0x%llx"
+				"), entry %d of directory %llu"
+				"(0x%llx) is corrupt.\n",
+				(unsigned long long)bh->b_blocknr,
+				(unsigned long long)bh->b_blocknr,
+				(*count) + 1,
+				(unsigned long long)ip->i_di.di_num.no_addr,
+				(unsigned long long)ip->i_di.di_num.no_addr);
 			if (query(&opts, "Attempt to repair it? (y/n) ")) {
 				if (dirent_repair(ip, bh, &de, dent, type,
 						  first))
@@ -198,10 +200,13 @@ int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 				first = 0;
 			} else {
 				/* FIXME: Do something about this */
-				log_err("Directory entry with inode number of zero in leaf %"
-						PRIu64 "(0x%" PRIx64 ") of directory %" PRIu64
-						" (0x%" PRIx64 ")!\n", bh->b_blocknr, bh->b_blocknr,
-						ip->i_di.di_num.no_addr, ip->i_di.di_num.no_addr);
+				log_err("Directory entry with inode number of "
+					"zero in leaf %llu (0x%llx) of "
+					"directory %llu (0x%llx)!\n",
+					(unsigned long long)bh->b_blocknr,
+					(unsigned long long)bh->b_blocknr,
+					(unsigned long long)ip->i_di.di_num.no_addr,
+					(unsigned long long)ip->i_di.di_num.no_addr);
 				return 1;
 			}
 		} else {
@@ -255,10 +260,12 @@ void warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no,
 		    const char *msg)
 {
 	if (*bad_leaf != *leaf_no) {
-		log_err("Directory Inode %" PRIu64 "(0x%"
-			PRIx64 ") points to leaf %" PRIu64 "(0x%"
-			PRIx64 ") %s.\n", ip->i_di.di_num.no_addr,
-			ip->i_di.di_num.no_addr, *leaf_no, *leaf_no, msg);
+		log_err("Directory Inode %llu (0x%llx) points to leaf %llu"
+			" (0x%llx) %s.\n",
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)*leaf_no,
+			(unsigned long long)*leaf_no, msg);
 	}
 	if (*leaf_no == *bad_leaf ||
 	    query(&opts, "Attempt to patch around it? (y/n) ")) {
@@ -302,15 +309,16 @@ int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 			continue;
 		} else {
 			if(ref_count != exp_count){
-				log_err("Dir #%" PRIu64 " (0x%"
-					PRIx64 ") has an incorrect "
-					"number of pointers to leaf #%"
-					PRIu64 " (0x%" PRIx64
-					")\n\tFound: %u,  Expected: %u\n",
+				log_err("Dir #%llu (0x%llx) has an incorrect "
+					"number of pointers to leaf #%llu "
+					" (0x%llx)\n\tFound: %u,  Expected: "
+					"%u\n", (unsigned long long)
 					ip->i_di.di_num.no_addr,
+					(unsigned long long)
 					ip->i_di.di_num.no_addr,
-					old_leaf, old_leaf, ref_count,
-					exp_count);
+					(unsigned long long)old_leaf,
+					(unsigned long long)old_leaf,
+					ref_count, exp_count);
 				if (query(&opts, "Attempt to fix it? (y/n) "))
 				{
 					int factor = 0, divisor = ref_count;
@@ -335,11 +343,13 @@ int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 		do {
 			/* Make sure the block number is in range. */
 			if(gfs2_check_range(ip->i_sbd, leaf_no)){
-				log_err("Leaf block #%" PRIu64 " (0x%"
-					PRIx64 ") is out of range for "
-					"directory #%" PRIu64 " (0x%"
-					PRIx64 ").\n", leaf_no, leaf_no,
+				log_err("Leaf block #%llu (0x%llx) is out "
+					"of range for directory #%llu (0x%llx"
+					").\n", (unsigned long long)leaf_no,
+					(unsigned long long)leaf_no,
+					(unsigned long long)
 					ip->i_di.di_num.no_addr,
+					(unsigned long long)
 					ip->i_di.di_num.no_addr);
 				warn_and_patch(ip, &leaf_no, &bad_leaf,
 					       old_leaf, index,
@@ -383,10 +393,15 @@ int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 
 			/* Make sure it's really a leaf. */
 			if (leaf.lf_header.mh_type != GFS2_METATYPE_LF) {
-				log_err("Inode %" PRIu64 " (0x%"
-					PRIx64 ") points to bad leaf "
-					PRIu64 " (0x%" PRIx64 ").\n",
-					ip->i_di.di_num.no_addr, leaf_no);
+				log_err("Inode %llu (0x%llx"
+					") points to bad leaf %llu"
+					" (0x%llx).\n",
+					(unsigned long long)
+					ip->i_di.di_num.no_addr,
+					(unsigned long long)
+					ip->i_di.di_num.no_addr,
+					(unsigned long long)leaf_no,
+					(unsigned long long)leaf_no);
 				brelse(lbh, *update);
 				break;
 			}
@@ -420,11 +435,18 @@ int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 					lbh = bread(&sbp->buf_list, leaf_no);
 					gfs2_leaf_in(&leaf, lbh->b_data);
 
-					log_err("Leaf %"PRIu64" (0x%" PRIx64
-							") entry count in directory %" PRIu64
-							" doesn't match number of entries found - is %u, found %u\n",
-							leaf_no, leaf_no, ip->i_di.di_num.no_addr,
-							leaf.lf_entries, count);
+					log_err("Leaf %llu (0x%llx) entry "
+						"count in directory %llu"
+						" (0x%llx) doesn't match "
+						"number of entries found "
+						"- is %u, found %u\n",
+						(unsigned long long)leaf_no,
+						(unsigned long long)leaf_no,
+						(unsigned long long)
+						ip->i_di.di_num.no_addr,
+						(unsigned long long)
+						ip->i_di.di_num.no_addr,
+						leaf.lf_entries, count);
 					if(query(&opts, "Update leaf entry count? (y/n) ")) {
 						leaf.lf_entries = count;
 						gfs2_leaf_out(&leaf, lbh->b_data);
@@ -650,8 +672,9 @@ int check_inode_eattr(struct gfs2_inode *ip, enum update_flags *want_updated,
 		return 0;
 	}
 
-	log_debug("Extended attributes exist for inode #%" PRIu64 " (0x%" PRIx64
-		  ").\n", ip->i_di.di_num.no_addr, ip->i_di.di_num.no_addr);
+	log_debug("Extended attributes exist for inode #%llu (0x%llx).\n",
+		  (unsigned long long)ip->i_di.di_num.no_addr,
+		  (unsigned long long)ip->i_di.di_num.no_addr);
 
 	if(ip->i_di.di_flags & GFS2_DIF_EA_INDIRECT){
 		if((error = check_indirect_eattr(ip, ip->i_di.di_eattr,
@@ -782,8 +805,9 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	/* We don't need to record directory blocks - they will be
 	 * recorded later...i think... */
         if (S_ISDIR(ip->i_di.di_mode))
-		log_debug("Directory with height > 0 at %"PRIu64"\n",
-			  ip->i_di.di_num.no_addr);
+		log_debug("Directory with height > 0 at %llu (0x%llx)\n",
+			  (unsigned long long)ip->i_di.di_num.no_addr,
+			  (unsigned long long)ip->i_di.di_num.no_addr);
 
 	/* check data blocks */
 	list = &metalist[height - 1];

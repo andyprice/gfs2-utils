@@ -188,8 +188,21 @@ int save_block(int fd, int out_fd, uint64_t blk)
 		return 0;
 	}
 	memset(savedata, 0, sizeof(struct saved_metablock));
-	do_lseek(fd, blk * sbd.bsize);
-	do_read(fd, savedata->buf, sbd.bsize); /* read in the block */
+	if (lseek(fd, blk * sbd.bsize, SEEK_SET) != blk * sbd.bsize) {
+		fprintf(stderr, "bad seek: %s from %s:%d: "
+			"block %lld (0x%llx)\n", strerror(errno),
+			__FUNCTION__, __LINE__,
+			(unsigned long long)blk, (unsigned long long)blk);
+		exit(-1);
+	}
+	/* read in the block */
+	if (read(fd, savedata->buf, sbd.bsize) != sbd.bsize) {
+		fprintf(stderr, "bad read: %s from %s:%d: "
+			"block %lld (0x%llx)\n", strerror(errno),
+			__FUNCTION__, __LINE__,
+			(unsigned long long)blk, (unsigned long long)blk);
+		exit(-1);
+	}
 
 	/* If this isn't metadata and isn't a system file, we don't want it.
 	   Note that we're checking "block" here rather than blk.  That's
@@ -206,11 +219,34 @@ int save_block(int fd, int out_fd, uint64_t blk)
 		p--;
 	}
 	savedata->blk = cpu_to_be64(blk);
-	do_write(out_fd, &savedata->blk, sizeof(savedata->blk));
+	if (write(out_fd, &savedata->blk, sizeof(savedata->blk)) !=
+	    sizeof(savedata->blk)) {
+		fprintf(stderr, "write error: %s from %s:%d: "
+			"block %lld (0x%llx)\n", strerror(errno),
+			__FUNCTION__, __LINE__,
+			(unsigned long long)savedata->blk,
+			(unsigned long long)savedata->blk);
+		exit(-1);
+	}
 	outsz = blklen - trailing0;
 	savedata->siglen = cpu_to_be16(outsz);
-	do_write(out_fd, &savedata->siglen, sizeof(savedata->siglen));
-	do_write(out_fd, savedata->buf, outsz);
+	if (write(out_fd, &savedata->siglen, sizeof(savedata->siglen)) !=
+	    sizeof(savedata->siglen)) {
+		fprintf(stderr, "write error: %s from %s:%d: "
+			"block %lld (0x%llx)\n", strerror(errno),
+			__FUNCTION__, __LINE__,
+			(unsigned long long)savedata->blk,
+			(unsigned long long)savedata->blk);
+		exit(-1);
+	}
+	if (write(out_fd, savedata->buf, outsz) != outsz) {
+		fprintf(stderr, "write error: %s from %s:%d: "
+			"block %lld (0x%llx)\n", strerror(errno),
+			__FUNCTION__, __LINE__,
+			(unsigned long long)savedata->blk,
+			(unsigned long long)savedata->blk);
+		exit(-1);
+	}
 	total_out += sizeof(savedata->blk) + sizeof(savedata->siglen) + outsz;
 	blks_saved++;
 	return blktype;
@@ -434,7 +470,7 @@ void savemeta(char *out_fn, int saveoption)
 	if (!savedata)
 		die("Can't allocate memory for the operation.\n");
 
-	do_lseek(sbd.device_fd, 0);
+	lseek(sbd.device_fd, 0, SEEK_SET);
 	blks_saved = total_out = last_reported_block = 0;
 	if (!gfs1)
 		sbd.bsize = BUFSIZE;
@@ -543,8 +579,10 @@ void savemeta(char *out_fn, int saveoption)
 			slow = gfs2_rgrp_read(&sbd, rgd);
 			if (slow)
 				continue;
-			log_debug("RG at %"PRIu64" is %u long\n",
-				  rgd->ri.ri_addr, rgd->ri.ri_length);
+			log_debug("RG at %lld (0x%llx) is %u long\n",
+				  (unsigned long long)rgd->ri.ri_addr,
+				  (unsigned long long)rgd->ri.ri_addr,
+				  rgd->ri.ri_length);
 			for (i = 0; i < rgd->ri.ri_length; i++) {
 				if(gfs2_block_set(&sbd, blocklist,
 						  rgd->ri.ri_addr + i,
@@ -604,8 +642,8 @@ int restore_data(int fd, int in_fd, int printblocksonly)
 				     0x00, 0x00, 0x00, 0x01};
 
 	if (!printblocksonly)
-		do_lseek(fd, 0);
-	do_lseek(in_fd, 0);
+		lseek(fd, 0, SEEK_SET);
+	lseek(in_fd, 0, SEEK_SET);
 	rs = read(in_fd, buf, sizeof(buf));
 	if (rs != sizeof(buf)) {
 		fprintf(stderr, "Error: File is too small.\n");
@@ -620,7 +658,13 @@ int restore_data(int fd, int in_fd, int printblocksonly)
 	}
 	if (pos == sizeof(buf) - sizeof(uint64_t) - sizeof(uint16_t))
 		pos = 0;
-	do_lseek(in_fd, pos);
+	if (lseek(in_fd, pos, SEEK_SET) != pos) {
+		fprintf(stderr, "bad seek: %s from %s:%d: "
+			"offset %lld (0x%llx)\n", strerror(errno),
+			__FUNCTION__, __LINE__, (unsigned long long)pos,
+			(unsigned long long)pos);
+		exit(-1);
+	}
 	blks_saved = total_out = 0;
 	last_fs_block = 0;
 	while (TRUE) {
@@ -648,7 +692,16 @@ int restore_data(int fd, int in_fd, int printblocksonly)
 		savedata->siglen = be16_to_cpu(buf16);
 		if (savedata->siglen > 0 &&
 		    savedata->siglen <= sizeof(savedata->buf)) {
-			do_read(in_fd, savedata->buf, savedata->siglen);
+			if (read(in_fd, savedata->buf, savedata->siglen) !=
+			    savedata->siglen) {
+				fprintf(stderr, "read error: %s from %s:%d: "
+					"block %lld (0x%llx)\n",
+					strerror(errno), __FUNCTION__,
+					__LINE__,
+					(unsigned long long)savedata->blk,
+					(unsigned long long)savedata->blk);
+				exit(-1);
+			}
 			if (first) {
 				gfs2_sb_in(&sbd.sd_sb, savedata->buf);
 				sbd1 = (struct gfs_sb *)&sbd.sd_sb;
@@ -688,8 +741,28 @@ int restore_data(int fd, int in_fd, int printblocksonly)
 					       "device; quitting.\n");
 					break;
 				}
-				do_lseek(fd, savedata->blk * sbd.bsize);
-				do_write(fd, savedata->buf, sbd.bsize);
+				if (lseek(fd, savedata->blk * sbd.bsize,
+					  SEEK_SET) !=
+				    savedata->blk * sbd.bsize) {
+					fprintf(stderr, "bad seek: %s from %s:"
+						"%d: block %lld (0x%llx)\n",
+						strerror(errno), __FUNCTION__,
+						__LINE__, (unsigned long long)
+						savedata->blk,
+						(unsigned long long)
+						savedata->blk);
+					exit(-1);
+				}
+				if (write(fd, savedata->buf, sbd.bsize) !=
+				    sbd.bsize) {
+					fprintf(stderr, "write error: %s from "
+						"%s:%d: block %lld (0x%llx)\n",
+						strerror(errno),
+						__FUNCTION__, __LINE__,
+						(unsigned long long)savedata->blk,
+						(unsigned long long)savedata->blk);
+					exit(-1);
+				}
 				writes++;
 			}
 			blks_saved++;

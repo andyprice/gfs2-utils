@@ -19,7 +19,7 @@ blkno2head(struct buf_list *bl, uint64_t blkno)
 		(gfs2_disk_hash((char *)&blkno, sizeof(uint64_t)) & BUF_HASH_MASK);
 }
 
-static void write_buffer(struct buf_list *bl, struct gfs2_buffer_head *bh)
+static int write_buffer(struct buf_list *bl, struct gfs2_buffer_head *bh)
 {
 	struct gfs2_sbd *sdp = bl->sbp;
 
@@ -27,11 +27,18 @@ static void write_buffer(struct buf_list *bl, struct gfs2_buffer_head *bh)
 	osi_list_del(&bh->b_hash);
 	bl->num_bufs--;
 	if (bh->b_changed) {
-		do_lseek(sdp->device_fd, bh->b_blocknr * sdp->bsize);
-		do_write(sdp->device_fd, bh->b_data, sdp->bsize);
+		if (lseek(sdp->device_fd, bh->b_blocknr * sdp->bsize,
+			  SEEK_SET) != bh->b_blocknr * sdp->bsize) {
+			return -1;
+		}
+		if (write(sdp->device_fd, bh->b_data, sdp->bsize) !=
+		    sdp->bsize) {
+			return -1;
+		}
 		sdp->writes++;
 	}
 	free(bh);
+	return 0;
 }
 
 void init_buf_list(struct gfs2_sbd *sdp, struct buf_list *bl, uint32_t limit)
@@ -47,7 +54,7 @@ void init_buf_list(struct gfs2_sbd *sdp, struct buf_list *bl, uint32_t limit)
 		osi_list_init(&bl->buf_hash[i]);
 }
 
-static void add_buffer(struct buf_list *bl, struct gfs2_buffer_head *bh)
+static int add_buffer(struct buf_list *bl, struct gfs2_buffer_head *bh)
 {
 	osi_list_t *head = blkno2head(bl, bh->b_blocknr);
 
@@ -64,7 +71,8 @@ static void add_buffer(struct buf_list *bl, struct gfs2_buffer_head *bh)
 			bh = osi_list_entry(tmp, struct gfs2_buffer_head,
 					    b_list);
 			if (!bh->b_count) {
-				write_buffer(bl, bh);
+				if (write_buffer(bl, bh))
+					return -1;
 				found++;
 				if (found >= 10)
 					break;
@@ -72,6 +80,7 @@ static void add_buffer(struct buf_list *bl, struct gfs2_buffer_head *bh)
 		}
 		bl->spills++;
 	}
+	return 0;
 }
 
 struct gfs2_buffer_head *bfind(struct buf_list *bl, uint64_t num)
@@ -95,8 +104,9 @@ struct gfs2_buffer_head *bfind(struct buf_list *bl, uint64_t num)
 	return NULL;
 }
 
-struct gfs2_buffer_head *bget_generic(struct buf_list *bl, uint64_t num,
-				      int find_existing, int read_disk)
+struct gfs2_buffer_head *__bget_generic(struct buf_list *bl, uint64_t num,
+					int find_existing, int read_disk,
+					int line, const char *caller)
 {
 	struct gfs2_buffer_head *bh;
 	struct gfs2_sbd *sdp = bl->sbp;
@@ -114,23 +124,44 @@ struct gfs2_buffer_head *bget_generic(struct buf_list *bl, uint64_t num,
 	bh->b_blocknr = num;
 	bh->b_data = (char *)bh + sizeof(struct gfs2_buffer_head);
 	if (read_disk) {
-		do_lseek(sdp->device_fd, num * sdp->bsize);
-		do_read(sdp->device_fd, bh->b_data, sdp->bsize);
+		if (lseek(sdp->device_fd, num * sdp->bsize, SEEK_SET) !=
+		    num * sdp->bsize) {
+			fprintf(stderr, "bad seek: %s from %s:%d: block "
+				"%llu (0x%llx)\n", strerror(errno),
+				caller, line, (unsigned long long)num,
+				(unsigned long long)num);
+			exit(-1);
+		}
+		if (read(sdp->device_fd, bh->b_data, sdp->bsize) < 0) {
+			fprintf(stderr, "bad read: %s from %s:%d: block "
+				"%llu (0x%llx)\n", strerror(errno),
+				caller, line, (unsigned long long)num,
+				(unsigned long long)num);
+			exit(-1);
+		}
 	}
-	add_buffer(bl, bh);
+	if (add_buffer(bl, bh)) {
+		fprintf(stderr, "bad write: %s from %s:%d: block "
+			"%llu (0x%llx)\n", strerror(errno),
+			caller, line, (unsigned long long)num,
+			(unsigned long long)num);
+		exit(-1);
+	}
 	bh->b_changed = FALSE;
 
 	return bh;
 }
 
-struct gfs2_buffer_head *bget(struct buf_list *bl, uint64_t num)
+struct gfs2_buffer_head *__bget(struct buf_list *bl, uint64_t num, int line,
+				const char *caller)
 {
-	return bget_generic(bl, num, TRUE, FALSE);
+	return __bget_generic(bl, num, TRUE, FALSE, line, caller);
 }
 
-struct gfs2_buffer_head *bread(struct buf_list *bl, uint64_t num)
+struct gfs2_buffer_head *__bread(struct buf_list *bl, uint64_t num, int line,
+				 const char *caller)
 {
-	return bget_generic(bl, num, TRUE, TRUE);
+	return __bget_generic(bl, num, TRUE, TRUE, line, caller);
 }
 
 struct gfs2_buffer_head *bhold(struct gfs2_buffer_head *bh)
@@ -155,7 +186,7 @@ void brelse(struct gfs2_buffer_head *bh, enum update_flags updated)
 	bh->b_count--;
 }
 
-void bsync(struct buf_list *bl)
+void __bsync(struct buf_list *bl, int line, const char *caller)
 {
 	struct gfs2_buffer_head *bh;
 
@@ -167,12 +198,19 @@ void bsync(struct buf_list *bl)
 				" (0x%" PRIx64")\n", bh->b_blocknr, bh->b_blocknr);
 			exit(-1);
 		}
-		write_buffer(bl, bh);
+		if (write_buffer(bl, bh)) {
+			fprintf(stderr, "bad write: %s from %s:%d: block "
+				"%lld (0x%llx)\n", strerror(errno),
+				caller, line,
+				(unsigned long long)bh->b_blocknr,
+				(unsigned long long)bh->b_blocknr);
+			exit(-1);
+		}
 	}
 }
 
 /* commit buffers to disk but do not discard */
-void bcommit(struct buf_list *bl)
+void __bcommit(struct buf_list *bl, int line, const char *caller)
 {
 	osi_list_t *tmp, *x;
 	struct gfs2_buffer_head *bh;
@@ -180,11 +218,35 @@ void bcommit(struct buf_list *bl)
 
 	osi_list_foreach_safe(tmp, &bl->list, x) {
 		bh = osi_list_entry(tmp, struct gfs2_buffer_head, b_list);
-		if (!bh->b_count)             /* if not reserved for later */
-			write_buffer(bl, bh);/* write the data & free memory */
-		else if (bh->b_changed) {     /* if buffer has changed */
-			do_lseek(sdp->device_fd, bh->b_blocknr * sdp->bsize);
-			do_write(sdp->device_fd, bh->b_data, sdp->bsize);
+		if (!bh->b_count) {            /* if not reserved for later */
+			if (write_buffer(bl, bh)) { /* write & free */
+				fprintf(stderr, "bad write: %s from %s:%d: "
+					"block %lld (0x%llx)\n",
+					strerror(errno), caller, line,
+					(unsigned long long)bh->b_blocknr,
+					(unsigned long long)bh->b_blocknr);
+				exit(-1);
+			}
+		} else if (bh->b_changed) {     /* if buffer has changed */
+			if (lseek(sdp->device_fd,
+				  bh->b_blocknr * sdp->bsize, SEEK_SET) !=
+			    bh->b_blocknr * sdp->bsize) {
+				fprintf(stderr, "bad seek: %s from %s:%d: "
+					"block %lld (0x%llx)\n",
+					strerror(errno), caller, line,
+					(unsigned long long)bh->b_blocknr,
+					(unsigned long long)bh->b_blocknr);
+				exit(-1);
+			}
+			if (write(sdp->device_fd, bh->b_data, sdp->bsize) !=
+			    sdp->bsize) {
+				fprintf(stderr, "bad write: %s from %s:%d: "
+					"block %lld (0x%llx)\n",
+					strerror(errno), caller, line,
+					(unsigned long long)bh->b_blocknr,
+					(unsigned long long)bh->b_blocknr);
+				exit(-1);
+			}
 			bh->b_changed = FALSE;    /* no longer changed */
 		}
 	}
