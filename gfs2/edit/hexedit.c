@@ -20,7 +20,6 @@
 #include <linux/gfs2_ondisk.h>
 #include "copyright.cf"
 
-#define EXTERN
 #include "hexedit.h"
 #include "libgfs2.h"
 #include "gfs2hex.h"
@@ -39,6 +38,7 @@ extern int do_indirect_extended(char *buf, struct iinfo *ii);
 extern void savemeta(char *out_fn, int slow);
 extern void restoremeta(const char *in_fn, const char *out_device,
 			int printblocksonly);
+char *prog_name;
 
 /* ------------------------------------------------------------------------ */
 /* UpdateSize - screen size changed, so update it                           */

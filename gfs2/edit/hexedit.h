@@ -17,17 +17,6 @@
 #define FALSE 0
 #endif
 
-/*  Extern Macro  */
-
-#ifndef EXTERN
-#define EXTERN extern
-#define INIT(X)
-#else
-#undef EXTERN
-#define EXTERN
-#define INIT(X) =X 
-#endif
-
 #define DMODES 3
 enum dsp_mode { HEX_MODE = 0, GFS2_MODE = 1, EXTENDED_MODE = 2 };
 #define BLOCK_STACK_SIZE 256
@@ -53,43 +42,43 @@ enum dsp_mode { HEX_MODE = 0, GFS2_MODE = 1, EXTENDED_MODE = 2 };
 #define GFS_LOG_DESC_Q          (402)    /* quota */
 #define GFS_LOG_DESC_LAST       (500)    /* final in a logged transaction */
 
-EXTERN char *prog_name;
-EXTERN uint64_t block INIT(0);
-EXTERN int blockhist INIT(0);
-EXTERN int edit_mode INIT(0);
-EXTERN int line;
-EXTERN char edit_fmt[80];
-EXTERN char estring[1024]; /* edit string */
-EXTERN uint64_t dev_offset INIT(0);
-EXTERN uint64_t max_block INIT(0);
-EXTERN char *buf INIT(NULL);
-EXTERN int termlines INIT(30);
-EXTERN int termcols INIT(80);
-EXTERN int insert INIT(0);
-EXTERN const char *termtype;
-EXTERN int line INIT(1);
-EXTERN int struct_len INIT(0);
-EXTERN unsigned int offset;
-EXTERN int edit_row[DMODES], edit_col[DMODES], print_entry_ndx;
-EXTERN int start_row[DMODES], end_row[DMODES], lines_per_row[DMODES];
-EXTERN int edit_size[DMODES], last_entry_onscreen[DMODES];
-EXTERN char edit_fmt[80];
-EXTERN struct gfs2_sbd sbd;
-EXTERN struct gfs_sb *sbd1;
-EXTERN struct gfs2_inum gfs1_quota_di;   /* kludge because gfs2 sb too small */
-EXTERN struct gfs2_inum gfs1_license_di; /* kludge because gfs2 sb too small */
-EXTERN struct gfs2_dinode di;
-EXTERN int screen_chunk_size INIT(512); /* how much of the 4K can fit on screen */
-EXTERN int gfs2_struct_type;
-EXTERN uint64_t block_in_mem INIT(-1);
-EXTERN char device[NAME_MAX];
-EXTERN int identify INIT(FALSE);
-EXTERN int color_scheme INIT(0);
-EXTERN WINDOW *wind;
-EXTERN int gfs1 INIT(0);
-EXTERN int editing INIT(0);
-EXTERN uint64_t temp_blk;
-EXTERN uint64_t starting_blk;
+extern char *prog_name;
+extern uint64_t block;
+extern int blockhist;
+extern int edit_mode;
+extern int line;
+extern char edit_fmt[80];
+extern char estring[1024]; /* edit string */
+extern uint64_t dev_offset;
+extern uint64_t max_block;
+extern char *buf;
+extern int termlines;
+extern int termcols;
+extern int insert;
+extern const char *termtype;
+extern int line;
+extern int struct_len;
+extern unsigned int offset;
+extern int edit_row[DMODES], edit_col[DMODES], print_entry_ndx;
+extern int start_row[DMODES], end_row[DMODES], lines_per_row[DMODES];
+extern int edit_size[DMODES], last_entry_onscreen[DMODES];
+extern char edit_fmt[80];
+extern struct gfs2_sbd sbd;
+extern struct gfs_sb *sbd1;
+extern struct gfs2_inum gfs1_quota_di;   /* kludge because gfs2 sb too small */
+extern struct gfs2_inum gfs1_license_di; /* kludge because gfs2 sb too small */
+extern struct gfs2_dinode di;
+extern int screen_chunk_size; /* how much of the 4K can fit on screen */
+extern int gfs2_struct_type;
+extern uint64_t block_in_mem;
+extern char device[NAME_MAX];
+extern int identify;
+extern int color_scheme;
+extern WINDOW *wind;
+extern int gfs1;
+extern int editing;
+extern uint64_t temp_blk;
+extern uint64_t starting_blk;
 
 struct gfs_jindex {
         uint64_t ji_addr;       /* starting block of the journal */
@@ -156,16 +145,16 @@ struct gfs_rgrp {
 	char rg_reserved[64];
 };
 
-EXTERN int block_is_jindex(void);
-EXTERN int block_is_rindex(void);
-EXTERN int block_is_inum_file(void);
-EXTERN int block_is_statfs_file(void);
-EXTERN int block_is_quota_file(void);
-EXTERN int display_block_type(const char *lpBuffer, int from_restore);
-EXTERN void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
-EXTERN void gfs_log_header_in(struct gfs_log_header *head, char *buf);
-EXTERN void gfs_log_header_print(struct gfs_log_header *lh);
-EXTERN void gfs_dinode_in(struct gfs_dinode *di, char *buf);
+extern int block_is_jindex(void);
+extern int block_is_rindex(void);
+extern int block_is_inum_file(void);
+extern int block_is_statfs_file(void);
+extern int block_is_quota_file(void);
+extern int display_block_type(const char *lpBuffer, int from_restore);
+extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
+extern void gfs_log_header_in(struct gfs_log_header *head, char *buf);
+extern void gfs_log_header_print(struct gfs_log_header *lh);
+extern void gfs_dinode_in(struct gfs_dinode *di, char *buf);
 
 struct gfs2_dirents {
 	uint64_t block;
@@ -224,12 +213,12 @@ struct gfs_sb {
 	char sb_reserved[96];
 };
 
-EXTERN struct blkstack_info blockstack[BLOCK_STACK_SIZE];
-EXTERN struct iinfo *indirect; /* more than the most indirect
+extern struct blkstack_info blockstack[BLOCK_STACK_SIZE];
+extern struct iinfo *indirect; /* more than the most indirect
 			       pointers possible for any given 4K block */
-EXTERN struct indirect_info masterdir; /* Master directory info */
-EXTERN int indirect_blocks INIT(0);  /* count of indirect blocks */
-EXTERN enum dsp_mode dmode INIT(HEX_MODE);
+extern struct indirect_info masterdir; /* Master directory info */
+extern int indirect_blocks;  /* count of indirect blocks */
+extern enum dsp_mode dmode;
 
 #define SCREEN_HEIGHT   (16)
 #define SCREEN_WIDTH    (16)

@@ -27,17 +27,47 @@
 	} while (FALSE);
 
 
-extern struct gfs2_sb sb;
-extern char *buf;
-extern struct gfs2_dinode di;
-extern int line, termlines;
-extern char edit_fmt[80];
-extern char estring[1024];
-extern int edit_mode INIT(0);
-extern int edit_row[DMODES], edit_col[DMODES];
-extern int edit_size[DMODES], last_entry_onscreen[DMODES];
-extern char edit_fmt[80];
-extern enum dsp_mode dmode INIT(HEX_MODE); /* display mode */
+struct gfs2_sb sb;
+char *buf;
+struct gfs2_dinode di;
+int line, termlines;
+char edit_fmt[80];
+char estring[1024];
+int edit_mode = 0;
+int edit_row[DMODES], edit_col[DMODES];
+int edit_size[DMODES], last_entry_onscreen[DMODES];
+char edit_fmt[80];
+enum dsp_mode dmode = HEX_MODE; /* display mode */
+uint64_t block = 0;
+int blockhist = 0;
+struct iinfo *indirect;
+int indirect_blocks;
+int gfs1  = 0;
+uint64_t block_in_mem = -1;
+struct gfs2_sbd sbd;
+uint64_t starting_blk;
+struct blkstack_info blockstack[BLOCK_STACK_SIZE];
+int identify = FALSE;
+char device[NAME_MAX];
+uint64_t max_block = 0;
+int start_row[DMODES], end_row[DMODES], lines_per_row[DMODES];
+struct gfs_sb *sbd1;
+int gfs2_struct_type;
+unsigned int offset;
+int termcols = 80;
+struct indirect_info masterdir;
+struct gfs2_inum gfs1_quota_di;
+int print_entry_ndx;
+struct gfs2_inum gfs1_license_di;
+int screen_chunk_size = 512;
+uint64_t temp_blk;
+int color_scheme = 0;
+int struct_len;
+uint64_t dev_offset = 0;
+int editing = 0;
+int insert = 0;
+const char *termtype;
+WINDOW *wind;
 
 void eol(int col) /* end of line */
 {
