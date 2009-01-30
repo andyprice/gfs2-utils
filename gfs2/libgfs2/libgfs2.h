@@ -663,7 +663,7 @@ extern void gfs2_rgrp_free(osi_list_t *rglist, enum update_flags updated);
 
 /* structures.c */
 extern int build_master(struct gfs2_sbd *sdp);
-extern void build_sb(struct gfs2_sbd *sdp);
+extern void build_sb(struct gfs2_sbd *sdp, const unsigned char *uuid);
 extern int build_jindex(struct gfs2_sbd *sdp);
 extern int build_per_node(struct gfs2_sbd *sdp);
 extern int build_inum(struct gfs2_sbd *sdp);
@@ -686,6 +686,8 @@ extern int write_sb(struct gfs2_sbd *sdp);
 
 /* ondisk.c */
 extern uint32_t gfs2_disk_hash(const char *data, int len);
+extern const char *str_uuid(const unsigned char *uuid);
+extern void gfs2_print_uuid(const unsigned char *uuid);
 extern void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 	__attribute__((format(printf,2,4)));
 

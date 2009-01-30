@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <mntent.h>
 #include <ctype.h>
+#include <sys/time.h>
 
 #include <linux/types.h>
 #include "libgfs2.h"
@@ -373,6 +374,50 @@ void check_mount(char *device)
 	return;
 }
 
+/*
+ * get_random_bytes - Generate a series of random bytes using /dev/urandom.
+ *
+ * Modified from original code in gen_uuid.c in e2fsprogs/lib
+ */
+static void get_random_bytes(void *buf, int nbytes)
+{
+	int i, n = nbytes, fd;
+	int lose_counter = 0;
+	unsigned char *cp = (unsigned char *) buf;
+	struct timeval	tv;
+
+	gettimeofday(&tv, 0);
+	fd = open("/dev/urandom", O_RDONLY);
+	srand((getpid() << 16) ^ getuid() ^ tv.tv_sec ^ tv.tv_usec);
+	/* Crank the random number generator a few times */
+	gettimeofday(&tv, 0);
+	for (i = (tv.tv_sec ^ tv.tv_usec) & 0x1F; i > 0; i--)
+		rand();
+	if (fd >= 0) {
+		while (n > 0) {
+			i = read(fd, cp, n);
+			if (i <= 0) {
+				if (lose_counter++ > 16)
+					break;
+				continue;
+			}
+			n -= i;
+			cp += i;
+			lose_counter = 0;
+		}
+		close(fd);
+	}
+
+	/*
+	 * We do this all the time, but this is the only source of
+	 * randomness if /dev/random/urandom is out to lunch.
+	 */
+	for (cp = buf, i = 0; i < nbytes; i++)
+		*cp++ ^= (rand() >> 7) & 0xFF;
+
+	return;
+}
+
 /**
  * print_results - print out summary information
  * @sdp: the command line
@@ -380,7 +425,8 @@ void check_mount(char *device)
  */
 
 static void
-print_results(struct gfs2_sbd *sdp, uint64_t real_device_size)
+print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
+	      unsigned char uuid[16])
 {
 	if (sdp->debug)
 		printf("\n");
@@ -412,6 +458,7 @@ print_results(struct gfs2_sbd *sdp, uint64_t real_device_size)
 		printf("Writes:                    %u\n", sdp->writes);
 	}
 
+	printf("UUID:                      %s\n", str_uuid(uuid));
 	printf("\n");
 }
 
@@ -429,6 +476,7 @@ main_mkfs(int argc, char *argv[])
 	int error;
 	int rgsize_specified = 0;
 	uint64_t real_device_size;
+	unsigned char uuid[16];
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	sdp->bsize = GFS2_DEFAULT_BSIZE;
@@ -488,12 +536,15 @@ main_mkfs(int argc, char *argv[])
 
 	compute_rgrp_layout(sdp, rgsize_specified);
 
+	/* Generate a random uuid */
+	get_random_bytes(uuid, sizeof(uuid));
+
 	/* Build ondisk structures */
 
 	build_rgrps(sdp, TRUE);
 	build_root(sdp);
 	build_master(sdp);
-	build_sb(sdp);
+	build_sb(sdp, uuid);
 	build_jindex(sdp);
 	build_per_node(sdp);
 	build_inum(sdp);
@@ -521,5 +572,5 @@ main_mkfs(int argc, char *argv[])
 		die("error closing device (%d): %s\n",
 		    error, strerror(errno));
 
-	print_results(sdp, real_device_size);
+	print_results(sdp, real_device_size, uuid);
 }

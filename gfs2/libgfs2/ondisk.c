@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <ctype.h>
 
 #include <linux/types.h>
 #include "libgfs2.h"
@@ -103,6 +104,9 @@ void gfs2_sb_in(struct gfs2_sb *sb, char *buf)
 
 	CPIN_08(sb, str, sb_lockproto, GFS2_LOCKNAME_LEN);
 	CPIN_08(sb, str, sb_locktable, GFS2_LOCKNAME_LEN);
+#ifdef GFS2_HAS_UUID
+	CPIN_08(sb, str, sb_uuid, sizeof(sb->sb_uuid));
+#endif
 }
 
 void gfs2_sb_out(struct gfs2_sb *sb, char *buf)
@@ -127,6 +131,32 @@ void gfs2_sb_out(struct gfs2_sb *sb, char *buf)
 #endif
 }
 
+const char *str_uuid(const unsigned char *uuid)
+{
+	static char str[64];
+	char *ch;
+	int i;
+
+	memset(str, 0, sizeof(str));
+	ch = str;
+	for (i = 0; i < 16; i++) {
+		sprintf(ch, "%02X", uuid[i]);
+		ch += 2;
+		if ((i == 3) || (i == 5) || (i == 7) || (i == 9)) {
+			*ch = '-';
+			ch++;
+		}
+	}
+	return str;
+}
+
+#ifdef GFS2_HAS_UUID
+void gfs2_print_uuid(const unsigned char *uuid)
+{
+	print_it("  uuid", "%s", NULL, str_uuid(uuid));
+}
+#endif
+
 void gfs2_sb_print(struct gfs2_sb *sb)
 {
 	gfs2_meta_header_print(&sb->sb_header);
@@ -142,6 +172,10 @@ void gfs2_sb_print(struct gfs2_sb *sb)
 
 	pv(sb, sb_lockproto, "%s", NULL);
 	pv(sb, sb_locktable, "%s", NULL);
+
+#ifdef GFS2_HAS_UUID
+	gfs2_print_uuid(sb->sb_uuid);
+#endif
 }
 
 void gfs2_rindex_in(struct gfs2_rindex *ri, char *buf)

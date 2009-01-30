@@ -33,7 +33,7 @@ int build_master(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-void build_sb(struct gfs2_sbd *sdp)
+void build_sb(struct gfs2_sbd *sdp, const unsigned char *uuid)
 {
 	unsigned int x;
 	struct gfs2_buffer_head *bh;
@@ -59,15 +59,7 @@ void build_sb(struct gfs2_sbd *sdp)
 	strcpy(sb.sb_lockproto, sdp->lockproto);
 	strcpy(sb.sb_locktable, sdp->locktable);
 #ifdef GFS2_HAS_UUID
-	{
-		int fd = open("/dev/urandom", O_RDONLY);
-		int n;
-		if (fd >= 0)
-			n = read(fd, &sb.sb_uuid, 16);
-		if (fd < 0 || n != 16)
-			memset(&sb.sb_uuid, 0, 16);
-		close(fd);
-	}
+	memcpy(sb.sb_uuid, uuid, sizeof(sb.sb_uuid));
 #endif
 	bh = bget(&sdp->buf_list, sdp->sb_addr);
 	gfs2_sb_out(&sb, bh->b_data);

@@ -12,6 +12,7 @@
 #include <sys/ioctl.h>
 #include <limits.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include <linux/gfs2_ondisk.h>
 
@@ -27,6 +28,31 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 	vprintf(fmt, args);
 	printf("\n");
 	va_end(args);
+}
+
+/**
+ * str_to_hexchar - convert a string consisting of two isxdigits back to hex.
+ * Returns: the hex character
+ */
+int str_to_hexchar(const char *estring)
+{
+	int ch = 0;
+
+	if (isdigit(*estring))
+		ch = (*estring - '0') * 0x10;
+	else if (*estring >= 'a' && *estring <= 'f')
+		ch = (*estring - 'a' + 0x0a) * 0x10;
+	else if (*estring >= 'A' && *estring <= 'F')
+		ch = (*estring - 'A' + 0x0a) * 0x10;
+
+	estring++;
+	if (isdigit(*estring))
+		ch += (*estring - '0');
+	else if (*estring >= 'a' && *estring <= 'f')
+		ch += (*estring - 'a' + 0x0a);
+	else if (*estring >= 'A' && *estring <= 'F')
+		ch += (*estring - 'A' + 0x0a);
+	return ch;
 }
 
 /**
@@ -135,6 +161,37 @@ do_sb(int argc, char **argv)
 			printf("new multihost format = %u\n",
 			       sb.sb_multihost_format);
 		}
+#ifdef GFS2_HAS_UUID
+	} else if (strcmp(field, "uuid") == 0) {
+		printf("current uuid = %s\n", str_uuid(sb.sb_uuid));
+
+		if (newval) {
+			int i;
+			unsigned char uuid[16], *cp;
+
+			if (strlen(newval) != 36)
+				die("uuid %s is the wrong length; must be 36 "
+				    "hex characters long.\n", newval);
+			cp = uuid;
+			for (i = 0; i < 36; i++) {
+				if ((i == 8) || (i == 13) ||
+				    (i == 18) || (i == 23)) {
+					if (newval[i] == '-')
+						continue;
+					die("uuid %s has an invalid format.",
+					    newval);
+				}
+				if (!isxdigit(newval[i]))
+					die("uuid %s has an invalid hex "
+					    "digit '%c' at offset %d.\n",
+					    newval, newval[i], i + 1);
+				*cp = str_to_hexchar(&newval[i++]);
+				cp++;
+			}
+			memcpy(sb.sb_uuid, uuid, 16);
+			printf("new uuid = %s\n", str_uuid(sb.sb_uuid));
+		}
+#endif
 	} else if (strcmp(field, "all") == 0) {
 		gfs2_sb_print(&sb);
 		newval = FALSE;

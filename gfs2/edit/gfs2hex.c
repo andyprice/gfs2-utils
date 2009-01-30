@@ -471,6 +471,9 @@ void gfs2_sb_print2(struct gfs2_sb *sb)
 		gfs2_inum_print2("quota ino ", &gfs1_quota_di);
 		gfs2_inum_print2("license   ", &gfs1_license_di);
 	}
+#ifdef GFS2_HAS_UUID
+	print_it("  sb_uuid", "%s", NULL, str_uuid(sb->sb_uuid));
+#endif
 }
 
 /******************************************************************************

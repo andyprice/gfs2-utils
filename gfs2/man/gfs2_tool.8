@@ -90,6 +90,12 @@ View (and possibly replace) the multihost format number in the
 file system superblock.  The file system shouldn't be mounted by any
 client when you do this.  No one should have to use this.
 .TP
+\fBsb\fP \fIdevice\fR \fBuuid\fP \fI[newvalue]\fR
+View (and possibly replace) the uuid in the file system superblock.
+The file system shouldn't be mounted by any client when you do this.
+The new uuid value should be in the standard uuid format.  For
+example: 1AEA8269-15C5-72BD-6D83-8720B17AA4EE
+.TP
 \fBsb\fP \fIdevice\fR \fBall\fP
 Print out the superblock.
 .TP
