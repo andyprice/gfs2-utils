@@ -86,7 +86,14 @@ do_df_one(char *path)
 
 	memset(&sbd, 0, sizeof(struct gfs2_sbd));
 	sbd.path_name = path;
-	check_for_gfs2(&sbd);
+	if (check_for_gfs2(&sbd)) {
+		if (errno == EINVAL)
+			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+					sbd.path_name);
+		else
+			fprintf(stderr, "%s\n", strerror(errno));
+		exit(-1);
+	}
 	fs = mp2fsname(sbd.path_name);
 
 	sbd.device_fd = open(sbd.device_name, O_RDONLY);

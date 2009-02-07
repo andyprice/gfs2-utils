@@ -44,7 +44,14 @@ get_tune(int argc, char **argv)
 		die("Usage: gfs2_tool gettune <mountpoint>\n");
 
 	sbd.path_name = argv[optind];
-	check_for_gfs2(&sbd);
+	if (check_for_gfs2(&sbd)) {
+		if (errno == EINVAL)
+			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+					sbd.path_name);
+		else
+			fprintf(stderr, "%s\n", strerror(errno));
+		exit(-1);
+	}
 	fs = mp2fsname(argv[optind]);
 	memset(path, 0, PATH_MAX);
 	snprintf(path, PATH_MAX - 1, "%s/%s/tune", SYS_BASE, fs);
@@ -95,7 +102,14 @@ set_tune(int argc, char **argv)
 		die("Usage: gfs2_tool settune <mountpoint> <parameter> <value>\n");
 	value = argv[optind++];
 
-	check_for_gfs2(&sbd);
+	if (check_for_gfs2(&sbd)) {
+		if (errno == EINVAL)
+			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+					sbd.path_name);
+		else
+			fprintf(stderr, "%s\n", strerror(errno));
+		exit(-1);
+	}
 	fs = mp2fsname(sbd.path_name);
 
 	if (strcmp(param, "quota_scale") == 0) {

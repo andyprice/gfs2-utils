@@ -249,7 +249,14 @@ print_args(int argc, char **argv)
 		die("Usage: gfs2_tool getargs <mountpoint>\n");
 
 	sbd.path_name = argv[optind];
-	check_for_gfs2(&sbd);
+	if (check_for_gfs2(&sbd)) {
+		if (errno == EINVAL)
+			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+					sbd.path_name);
+		else
+			fprintf(stderr, "%s\n", strerror(errno));
+		exit(-1);
+	}
 	fs = mp2fsname(argv[optind]);
 
 	memset(path, 0, PATH_MAX);
@@ -300,7 +307,14 @@ print_journals(int argc, char **argv)
 	if (sbd.path_fd < 0)
 		die("can't open root directory %s: %s\n",
 		    sbd.path_name, strerror(errno));
-	check_for_gfs2(&sbd);
+	if (check_for_gfs2(&sbd)) {
+		if (errno == EINVAL)
+			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+					sbd.path_name);
+		else
+			fprintf(stderr, "%s\n", strerror(errno));
+		exit(-1);
+	}
 	sbd.device_fd = open(sbd.device_name, O_RDONLY);
 	if (sbd.device_fd < 0)
 		die("can't open device %s: %s\n",
@@ -363,7 +377,14 @@ do_shrink(int argc, char **argv)
 		die("Usage: gfs2_tool shrink <mountpoint>\n");
 
 	sbd.path_name = argv[optind];
-	check_for_gfs2(&sbd);
+	if (check_for_gfs2(&sbd)) {
+		if (errno == EINVAL)
+			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+					sbd.path_name);
+		else
+			fprintf(stderr, "%s\n", strerror(errno));
+		exit(-1);
+	}
 	fs = mp2fsname(argv[optind]);
 	
 	set_sysfs(fs, "shrink", "1");
@@ -386,7 +407,14 @@ do_withdraw(int argc, char **argv)
 		die("Usage: gfs2_tool withdraw <mountpoint>\n");
 
 	sbd.path_name = argv[optind];
-	check_for_gfs2(&sbd);
+	if (check_for_gfs2(&sbd)) {
+		if (errno == EINVAL)
+			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+					sbd.path_name);
+		else
+			fprintf(stderr, "%s\n", strerror(errno));
+		exit(-1);
+	}
 	name = mp2fsname(argv[optind]);
 
 	set_sysfs(name, "withdraw", "1");

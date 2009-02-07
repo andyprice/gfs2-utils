@@ -627,7 +627,7 @@ extern uint32_t compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
 extern void compute_constants(struct gfs2_sbd *sdp);
 extern int find_gfs2_meta(struct gfs2_sbd *sdp);
 extern int dir_exists(const char *dir);
-extern void check_for_gfs2(struct gfs2_sbd *sdp);
+extern int check_for_gfs2(struct gfs2_sbd *sdp);
 extern void mount_gfs2_meta(struct gfs2_sbd *sdp);
 extern void cleanup_metafs(struct gfs2_sbd *sdp);
 extern char *get_list(void);

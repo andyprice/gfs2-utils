@@ -506,7 +506,14 @@ do_reset(struct gfs2_sbd *sdp, commandline_t *comline)
 		return;
 
 	strcpy(sdp->path_name, comline->filesystem);
-	check_for_gfs2(sdp);
+	if (check_for_gfs2(sdp)) {
+		if (errno == EINVAL)
+			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+					sdp->path_name);
+		else
+			fprintf(stderr, "%s\n", strerror(errno));
+		exit(-1);
+	}
 	read_superblock(&sdp->sd_sb, sdp);
 	mount_gfs2_meta(sdp);
 
@@ -563,7 +570,14 @@ do_list(struct gfs2_sbd *sdp, commandline_t *comline)
 		die("need a filesystem to work on\n");
 
 	strcpy(sdp->path_name, comline->filesystem);
-	check_for_gfs2(sdp);
+	if (check_for_gfs2(sdp)) {
+		if (errno == EINVAL)
+			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+					sdp->path_name);
+		else
+			fprintf(stderr, "%s\n", strerror(errno));
+		exit(-1);
+	}
 	read_superblock(&sdp->sd_sb, sdp);
 	mount_gfs2_meta(sdp);
 
@@ -650,7 +664,14 @@ do_get_one(struct gfs2_sbd *sdp, commandline_t *comline, char *filesystem)
 	char quota_file[BUF_SIZE];
 
 	strcpy(sdp->path_name, filesystem);
-	check_for_gfs2(sdp);
+	if (check_for_gfs2(sdp)) {
+		if (errno == EINVAL)
+			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+					sdp->path_name);
+		else
+			fprintf(stderr, "%s\n", strerror(errno));
+		exit(-1);
+	}
 	read_superblock(&sdp->sd_sb, sdp);
 	mount_gfs2_meta(sdp);
 
@@ -811,7 +832,14 @@ do_set(struct gfs2_sbd *sdp, commandline_t *comline)
 		die("need a new value\n");
 
 	strcpy(sdp->path_name, comline->filesystem);
-	check_for_gfs2(sdp);
+	if (check_for_gfs2(sdp)) {
+		if (errno == EINVAL)
+			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+					sdp->path_name);
+		else
+			fprintf(stderr, "%s\n", strerror(errno));
+		exit(-1);
+	}
 	read_superblock(&sdp->sd_sb, sdp);
 	mount_gfs2_meta(sdp);
 

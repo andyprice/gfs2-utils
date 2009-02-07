@@ -179,7 +179,14 @@ read_quota_file(struct gfs2_sbd *sdp, commandline_t *comline,
 	char quota_file[BUF_SIZE];
 	
 	strcpy(sdp->path_name, comline->filesystem);
-	check_for_gfs2(sdp);
+	if (check_for_gfs2(sdp)) {
+		if (errno == EINVAL)
+			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+					sdp->path_name);
+		else
+			fprintf(stderr, "%s\n", strerror(errno));
+		exit(-1);
+	}
 	read_superblock(&sdp->sd_sb, sdp);
 	mount_gfs2_meta(sdp);
 
@@ -451,7 +458,14 @@ set_list(struct gfs2_sbd *sdp, commandline_t *comline, int user,
 	char *fs;
 
 	strcpy(sdp->path_name, comline->filesystem);
-	check_for_gfs2(sdp);
+	if (check_for_gfs2(sdp)) {
+		if (errno == EINVAL)
+			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+					sdp->path_name);
+		else
+			fprintf(stderr, "%s\n", strerror(errno));
+		exit(-1);
+	}
 	read_superblock(&sdp->sd_sb, sdp);
 	mount_gfs2_meta(sdp);
 

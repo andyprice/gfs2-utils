@@ -94,9 +94,9 @@ void compute_constants(struct gfs2_sbd *sdp)
 						 sdp->sd_inptrs);
 }
 
-void check_for_gfs2(struct gfs2_sbd *sdp)
+int check_for_gfs2(struct gfs2_sbd *sdp)
 {
-	FILE *fp = fopen("/proc/mounts", "r");
+	FILE *fp;
 	char buffer[PATH_MAX];
 	char fstype[80];
 	int fsdump, fspass, ret;
@@ -106,12 +106,12 @@ void check_for_gfs2(struct gfs2_sbd *sdp)
 
 	realname = realpath(sdp->path_name, NULL);
 	if (!realname) {
-		perror(sdp->path_name);
-		return;
+		return -1;
 	}
+	fp = fopen("/proc/mounts", "r");
 	if (fp == NULL) {
-		perror("open: /proc/mounts");
-		exit(EXIT_FAILURE);
+		free(realname);
+		return -1;
 	}
 	while ((fgets(buffer, PATH_MAX - 1, fp)) != NULL) {
 		buffer[PATH_MAX - 1] = 0;
@@ -134,15 +134,18 @@ void check_for_gfs2(struct gfs2_sbd *sdp)
 			continue;
 
 		fclose(fp);
-		if (strncmp(sdp->device_name, "/dev/loop", 9) == 0)
-			die("Cannot perform this operation on a loopback GFS2 mount.\n");
-
 		free(realname);
-		return;
+		if (strncmp(sdp->device_name, "/dev/loop", 9) == 0) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		return 0;
 	}
 	free(realname);
 	fclose(fp);
-	die("gfs2 Filesystem %s is not mounted.\n", sdp->path_name);
+	errno = EINVAL;
+	return -1;
 }
 
 static void lock_for_admin(struct gfs2_sbd *sdp)

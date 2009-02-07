@@ -496,7 +496,14 @@ main_jadd(int argc, char *argv[])
 		die("can't open root directory %s: %s\n",
 		    sdp->path_name, strerror(errno));
 
-	check_for_gfs2(sdp);
+	if (check_for_gfs2(sdp)) {
+		if (errno == EINVAL)
+			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+					sdp->path_name);
+		else
+			fprintf(stderr, "%s\n", strerror(errno));
+		exit(-1);
+	}
 
 	gather_info(sdp);
 
