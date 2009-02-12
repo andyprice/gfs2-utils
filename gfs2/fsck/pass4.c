@@ -42,7 +42,7 @@ int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 		f = not_updated;
 		if(!(ii = osi_list_entry(tmp, struct inode_info, list))) {
 			log_crit("osi_list_foreach broken in scan_info_list!!\n");
-			exit(1);
+			exit(FSCK_ERROR);
 		}
 		log_debug("Checking reference count on inode at block %" PRIu64
 				  " (0x%" PRIx64 ")\n", ii->inode, ii->inode);
@@ -58,8 +58,10 @@ int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 					"bad blocks\n",
 					(unsigned long long)ii->inode,
 					(unsigned long long)ii->inode);
+				errors_found++;
 				if(query(&opts,
 						 "Clear unlinked inode with bad blocks? (y/n) ")) {
+					errors_corrected++;
 					gfs2_block_set(sbp, bl, ii->inode,
 						       gfs2_block_free);
 					continue;
@@ -86,7 +88,9 @@ int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 			 * them. */
 			if(!ip->i_di.di_size && !ip->i_di.di_eattr){
 				log_err("Unlinked inode has zero size\n");
+				errors_found++;
 				if(query(&opts, "Clear zero-size unlinked inode? (y/n) ")) {
+					errors_corrected++;
 					gfs2_block_set(sbp, bl, ii->inode,
 						       gfs2_block_free);
 					fsck_inode_put(ip, not_updated);
@@ -94,7 +98,9 @@ int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 				}
 
 			}
+			errors_found++;
 			if(query(&opts, "Add unlinked inode to lost+found? (y/n)")) {
+				errors_corrected++;
 				f = updated;
 				if(add_inode_to_lf(ip)) {
 					stack;
@@ -115,8 +121,10 @@ int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 					ii->inode, ii->link_count, ii->counted_links);
 			/* Read in the inode, adjust the link count,
 			 * and write it back out */
+			errors_found++;
 			if(query(&opts, "Update link count for inode %"
 				 PRIu64 " (0x%" PRIx64 ") ? (y/n) ", ii->inode, ii->inode)) {
+				errors_corrected++;
 				ip = fsck_load_inode(sbp, ii->inode); /* bread, inode_get */
 				fix_inode_count(sbp, ii, ip);
 				fsck_inode_put(ip, updated); /* out, brelse, free */
@@ -163,16 +171,16 @@ int pass4(struct gfs2_sbd *sbp)
 	log_info("Checking inode reference counts.\n");
 	for (i = 0; i < FSCK_HASH_SIZE; i++) {
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
-			return 0;
+			return FSCK_OK;
 		list = &inode_hash[i];
 		if(scan_inode_list(sbp, list)) {
 			stack;
-			return -1;
+			return FSCK_ERROR;
 		}
 	}
 
 	if(lf_dip)
 		log_debug("At end of pass4, lost+found entries is %u\n",
 				  lf_dip->i_di.di_entries);
-	return 0;
+	return FSCK_OK;
 }

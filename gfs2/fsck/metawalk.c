@@ -180,12 +180,15 @@ int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 				(*count) + 1,
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
+			errors_found++;
 			if (query(&opts, "Attempt to repair it? (y/n) ")) {
 				if (dirent_repair(ip, bh, &de, dent, type,
 						  first))
 					break;
-				else
+				else {
+					errors_corrected++;
 					*update = updated;
+				}
 			}
 			else {
 				log_err("Corrupt directory entry ignored, "
@@ -267,8 +270,10 @@ void warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no,
 			(unsigned long long)*leaf_no,
 			(unsigned long long)*leaf_no, msg);
 	}
+	errors_found++;
 	if (*leaf_no == *bad_leaf ||
 	    query(&opts, "Attempt to patch around it? (y/n) ")) {
+		errors_corrected++;
 		gfs2_put_leaf_nr(ip, index, old_leaf);
 	}
 	else
@@ -319,10 +324,12 @@ int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 					(unsigned long long)old_leaf,
 					(unsigned long long)old_leaf,
 					ref_count, exp_count);
+				errors_found++;
 				if (query(&opts, "Attempt to fix it? (y/n) "))
 				{
 					int factor = 0, divisor = ref_count;
 
+					errors_corrected++;
 					lbh = bread(&sbp->buf_list, old_leaf);
 					while (divisor > 1) {
 						factor++;
@@ -447,7 +454,9 @@ int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 						(unsigned long long)
 						ip->i_di.di_num.no_addr,
 						leaf.lf_entries, count);
+					errors_found++;
 					if(query(&opts, "Update leaf entry count? (y/n) ")) {
+						errors_corrected++;
 						leaf.lf_entries = count;
 						gfs2_leaf_out(&leaf, lbh->b_data);
 						log_warn("Leaf entry count updated\n");
@@ -522,8 +531,10 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 							      ea_hdr_prev,
 							      update_it,
 							      pass->private)) {
+					errors_found++;
 					if (query(&opts, "Repair the bad EA? "
 						  "(y/n) ")) {
+						errors_corrected++;
 						ea_hdr->ea_num_ptrs = i;
 						ea_hdr->ea_data_len =
 							cpu_to_be32(tot_ealen);

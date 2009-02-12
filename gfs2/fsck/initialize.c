@@ -146,7 +146,7 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	last_fs_block = rmax;
 	if (last_fs_block > 0xffffffff && sizeof(unsigned long) <= 4) {
 		log_crit("This file system is too big for this computer to handle.\n");
-		log_crit("Last fs block = 0x%llx, but sizeof(unsigned long) is %lu bytes.\n",
+		log_crit("Last fs block = 0x%llx, but sizeof(unsigned long) is %u bytes.\n",
 			 (unsigned long long)last_fs_block,
 			 sizeof(unsigned long));
 		goto fail;
@@ -267,7 +267,8 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	bl = gfs2_block_list_create(sdp, last_fs_block+1, &addl_mem_needed);
 	if (!bl) {
 		log_crit("This system doesn't have enough memory + swap space to fsck this file system.\n");
-		log_crit("Additional memory needed is approximately: %ldMB\n", addl_mem_needed / 1048576);
+		log_crit("Additional memory needed is approximately: %lluMB\n",
+			 (unsigned long long)(addl_mem_needed / 1048576ULL));
 		log_crit("Please increase your swap space by that amount and run gfs2_fsck again.\n");
 		goto fail;
 	}
@@ -323,33 +324,33 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 }
 
 /**
- * init_sbp - initialize superblock pointer
+ * initialize - initialize superblock pointer
  *
  */
-static int init_sbp(struct gfs2_sbd *sbp)
+int initialize(struct gfs2_sbd *sbp)
 {
 	if(opts.no) {
 		if ((sbp->device_fd = open(opts.device, O_RDONLY)) < 0) {
 			log_crit("Unable to open device: %s\n", opts.device);
-			return -1;
+			return FSCK_USAGE;
 		}
 	} else {
 		/* read in sb from disk */
 		if ((sbp->device_fd = open(opts.device, O_RDWR)) < 0){
 			log_crit("Unable to open device: %s\n", opts.device);
-			return -1;
+			return FSCK_USAGE;
 		}
 	}
 	if (fill_super_block(sbp)) {
 		stack;
-		return -1;
+		return FSCK_ERROR;
 	}
 
 	/* Change lock protocol to be fsck_* instead of lock_* */
 	if(!opts.no) {
 		if(block_mounters(sbp, 1)) {
 			log_err("Unable to block other mounters\n");
-			return -1;
+			return FSCK_USAGE;
 		}
 	}
 
@@ -359,13 +360,13 @@ static int init_sbp(struct gfs2_sbd *sbp)
 		if(!opts.no)
 			block_mounters(sbp, 0);
 		stack;
-		return -1;
+		return FSCK_ERROR;
 	}
 
 	if (init_system_inodes(sbp))
-		return -1;
+		return FSCK_ERROR;
 
-	return 0;
+	return FSCK_OK;
 }
 
 static void destroy_sbp(struct gfs2_sbd *sbp)
@@ -380,13 +381,6 @@ static void destroy_sbp(struct gfs2_sbd *sbp)
 	}
 	empty_super_block(sbp);
 	close(sbp->device_fd);
-}
-
-int initialize(struct gfs2_sbd *sbp)
-{
-
-	return init_sbp(sbp);
-
 }
 
 void destroy(struct gfs2_sbd *sbp)

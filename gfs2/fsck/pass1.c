@@ -181,7 +181,8 @@ static int clear_eas(struct gfs2_inode *ip, struct block_count *bc,
 		log_err(" at block #%" PRIu64 " (0x%" PRIx64 ")",
 			block, block);
 	log_err(".\n");
-	if (query(&opts, "Clear the bad EA? (y/n) ")) {
+	errors_found++;
+	if ((errors_corrected += query(&opts, "Clear the bad EA? (y/n) "))) {
 		if (block == 0)
 			block = ip->i_di.di_eattr;
 		gfs2_block_clear(sdp, bl, block, gfs2_eattr_block);
@@ -579,8 +580,10 @@ int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			(unsigned long long)block,
 			(unsigned long long)ip->i_di.di_num.no_addr,
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		if(query(&opts, "Fix address in inode at block #%"
-				 PRIu64 " (0x%" PRIx64 ")? (y/n) ", block, block)) {
+		errors_found++;
+		if((errors_corrected +=
+		    query(&opts, "Fix address in inode at block #%"
+			  PRIu64 " (0x%" PRIx64 ")? (y/n) ", block, block))) {
 			ip->i_di.di_num.no_addr = ip->i_di.di_num.no_formal_ino = block;
 			gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
 			f = updated;
@@ -768,7 +771,9 @@ int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			(unsigned long long)ip->i_di.di_blocks,
 			(unsigned long long)1 + bc.indir_count +
 			bc.data_count + bc.ea_count);
-		if(query(&opts, "Fix ondisk block count? (y/n) ")) {
+		errors_found++;
+		if ((errors_corrected +=
+		     query(&opts, "Fix ondisk block count? (y/n) "))) {
 			ip->i_di.di_blocks = 1 + bc.indir_count + bc.data_count +
 				bc.ea_count;
 			gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
@@ -867,7 +872,7 @@ int pass1(struct gfs2_sbd *sbp)
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
 		if(gfs2_rgrp_read(sbp, rgd)){
 			stack;
-			return -1;
+			return FSCK_ERROR;
 		}
 		log_debug("RG at %llu (0x%llx) is %u long\n",
 			  (unsigned long long)rgd->ri.ri_addr,
@@ -877,7 +882,7 @@ int pass1(struct gfs2_sbd *sbp)
 			if(gfs2_block_set(sbp, bl, rgd->ri.ri_addr + i,
 					  gfs2_meta_other)){
 				stack;
-				return -1;
+				return FSCK_ERROR;
 			}
 		}
 
@@ -892,7 +897,7 @@ int pass1(struct gfs2_sbd *sbp)
 			warm_fuzzy_stuff(block);
 			if (fsck_abort) { /* if asked to abort */
 				gfs2_rgrp_relse(rgd, not_updated);
-				return 0;
+				return FSCK_OK;
 			}
 			if (skip_this_pass) {
 				printf("Skipping pass 1 is not a good idea.\n");
@@ -905,12 +910,12 @@ int pass1(struct gfs2_sbd *sbp)
 				stack;
 				brelse(bh, not_updated);
 				gfs2_rgrp_relse(rgd, not_updated);
-				return -1;
+				return FSCK_ERROR;
 			}
 			brelse(bh, not_updated);
 			first = 0;
 		}
 		gfs2_rgrp_relse(rgd, not_updated);
 	}
-	return 0;
+	return FSCK_OK;
 }

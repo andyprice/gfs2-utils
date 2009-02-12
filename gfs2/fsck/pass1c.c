@@ -247,7 +247,7 @@ int pass1c(struct gfs2_sbd *sbp)
 		block_no = ea_block->block;
 
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
-			return 0;
+			return FSCK_OK;
 		bh = bread(&sbp->buf_list, block_no);
 		if (gfs2_check_meta(bh, GFS2_METATYPE_IN)) { /* if a dinode */
 			log_info("EA in inode %"PRIu64" (0x%" PRIx64 ")\n",
@@ -264,7 +264,7 @@ int pass1c(struct gfs2_sbd *sbp)
 			if(error < 0) {
 				stack;
 				brelse(bh, not_updated);
-				return -1;
+				return FSCK_ERROR;
 			}
 
 			fsck_inode_put(ip, want_updated); /* dinode_out,
@@ -273,5 +273,5 @@ int pass1c(struct gfs2_sbd *sbp)
 			brelse(bh, want_updated);
 		}
 	}
-	return 0;
+	return FSCK_OK;
 }

@@ -96,8 +96,10 @@ int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int buflen,
 			log_err("Metadata type is %u (%s)\n", q.block_type,
 					block_type_string(&q));
 
+			errors_found++;
 			if(query(&opts, "Fix bitmap for block %"
 					 PRIu64" (0x%" PRIx64 ") ? (y/n) ", block, block)) {
+				errors_corrected++;
 				if(gfs2_set_bitmap(sbp, block, block_status))
 					log_err("Failed.\n");
 				else
@@ -156,10 +158,12 @@ enum update_flags update_rgrp(struct gfs2_sbd *sbp, struct rgrp_list *rgp,
 		 * means that the total number of blocks we've counted
 		 * exceeds the blocks in the rg */
 		log_err("Internal fsck error - AAHHH!\n");
-		exit(1);
+		exit(FSCK_ERROR);
 	}
 	if(update) {
+		errors_found++;
 		if(query(&opts, "Update resource group counts? (y/n) ")) {
+			errors_corrected++;
 			log_warn("Resource group counts updated\n");
 			/* write out the rgrp */
 			gfs2_rgrp_out(&rgp->rg, rgp->bh[0]->b_data);
@@ -188,14 +192,14 @@ int pass5(struct gfs2_sbd *sbp)
 		enum update_flags f;
 
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
-			return 0;
+			return FSCK_OK;
 		log_info("Verifying Resource Group #%" PRIu64 "\n", rg_count);
 		memset(count, 0, sizeof(count));
 		rgp = osi_list_entry(tmp, struct rgrp_list, list);
 
 		if(gfs2_rgrp_read(sbp, rgp)){
 			stack;
-			return -1;
+			return FSCK_ERROR;
 		}
 		rg_count++;
 		/* Compare the bitmaps and report the differences */
@@ -205,5 +209,5 @@ int pass5(struct gfs2_sbd *sbp)
 	/* Fix up superblock info based on this - don't think there's
 	 * anything to do here... */
 
-	return 0;
+	return FSCK_OK;
 }

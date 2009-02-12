@@ -473,14 +473,14 @@ int pass1b(struct gfs2_sbd *sbp)
 	osi_list_t *tmp = NULL, *x;
 	struct metawalk_fxns find_dirents = {0};
 	find_dirents.check_dentry = &find_dentry;
-	int rc = 0;
+	int rc = FSCK_OK;
 
 	log_info("Looking for duplicate blocks...\n");
 
 	/* If there were no dups in the bitmap, we don't need to do anymore */
 	if(osi_list_empty(&sbp->dup_blocks.list)) {
 		log_info("No duplicate blocks found\n");
-		return 0;
+		return FSCK_OK;
 	}
 
 	/* Rescan the fs looking for pointers to blocks that are in
@@ -496,7 +496,7 @@ int pass1b(struct gfs2_sbd *sbp)
 				  i, i);
 		if(gfs2_block_check(sbp, bl, i, &q)) {
 			stack;
-			rc = -1;
+			rc = FSCK_ERROR;
 			goto out;
 		}
 		if((q.block_type == gfs2_inode_dir) ||
@@ -510,7 +510,7 @@ int pass1b(struct gfs2_sbd *sbp)
 				b = osi_list_entry(tmp, struct blocks, list);
 				if(find_block_ref(sbp, i, b)) {
 					stack;
-					rc = -1;
+					rc = FSCK_ERROR;
 					goto out;
 				}
 			}

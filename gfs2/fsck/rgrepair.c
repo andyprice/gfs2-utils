@@ -378,8 +378,10 @@ int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rg,
 		" GFS2_METATYPE_RB nor GFS2_METATYPE_RG.\n",
 		rg->bh[x]->b_blocknr, rg->bh[x]->b_blocknr,
 		(int)x+1, (int)rg->ri.ri_length);
+	errors_found++;
 	if (query(&opts, "Fix the RG? (y/n)")) {
 
+		errors_corrected++;
 		log_err("Attempting to repair the RG.\n");
 		rg->bh[x] = bread(&sdp->nvbuf_list, rg->ri.ri_addr + x);
 		if (x) {
@@ -509,7 +511,9 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 		ri_compare(rg, actual->ri, expected->ri, ri_bitbytes, PRIx32);
 		/* If we modified the index, write it back to disk. */
 		if (rindex_modified) {
+			errors_found++;
 			if (query(&opts, "Fix the index? (y/n)")) {
+				errors_corrected++;
 				gfs2_rindex_out(&expected->ri, (char *)&buf);
 				gfs2_writei(sdp->md.riinode, (char *)&buf,
 					    rg * sizeof(struct gfs2_rindex),

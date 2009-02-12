@@ -113,10 +113,13 @@ struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 						 "is bad - reattaching to lost+found");
 
 				/* FIXME: add a dinode for this entry instead? */
+
+				errors_found++;
 				if(query(&opts, "Remove directory entry for bad"
 						 " inode %"PRIu64" (0x%" PRIx64 ") in %"PRIu64
 						 " (0x%" PRIx64 ")? (y/n)", di->dinode, di->dinode,
 						 di->treewalk_parent, di->treewalk_parent)) {
+					errors_corrected++;
 					error = remove_dentry_from_dir(sbp, di->treewalk_parent,
 												   di->dinode);
 					if(error < 0) {
@@ -203,19 +206,21 @@ int pass3(struct gfs2_sbd *sbp)
 			 * failure and put the parent inode in a
 			 * param */
 			if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
-				return 0;
+				return FSCK_OK;
 			tdi = mark_and_return_parent(sbp, di);
 
 			/* FIXME: Factor this ? */
 			if(!tdi) {
 				if(gfs2_block_check(sbp, bl, di->dinode, &q)) {
 					stack;
-					return -1;
+					return FSCK_ERROR;
 				}
 				if(q.bad_block) {
 					log_err("Found unlinked directory containing bad block\n");
+					errors_found++;
 					if(query(&opts,
 					   "Clear unlinked directory with bad blocks? (y/n) ")) {
+						errors_corrected++;
 						gfs2_block_set(sbp, bl,
 							       di->dinode,
 							       gfs2_block_free);
@@ -244,7 +249,9 @@ int pass3(struct gfs2_sbd *sbp)
 				 * with eattrs */
 				if(!ip->i_di.di_size && !ip->i_di.di_eattr){
 					log_err("Unlinked directory has zero size.\n");
+					errors_found++;
 					if(query(&opts, "Remove zero-size unlinked directory? (y/n) ")) {
+						errors_corrected++;
 						gfs2_block_set(sbp, bl,
 							       di->dinode,
 							       gfs2_block_free);
@@ -254,11 +261,13 @@ int pass3(struct gfs2_sbd *sbp)
 						log_err("Zero-size unlinked directory remains\n");
 					}
 				}
+				errors_found++;
 				if(query(&opts, "Add unlinked directory to lost+found? (y/n) ")) {
+					errors_corrected++;
 					if(add_inode_to_lf(ip)) {
 						fsck_inode_put(ip, not_updated);
 						stack;
-						return -1;
+						return FSCK_ERROR;
 					}
 					log_warn("Directory relinked to lost+found\n");
 				} else {
@@ -278,5 +287,5 @@ int pass3(struct gfs2_sbd *sbp)
 	if(lf_dip)
 		log_debug("At end of pass3, lost+found entries is %u\n",
 				  lf_dip->i_di.di_entries);
-	return 0;
+	return FSCK_OK;
 }

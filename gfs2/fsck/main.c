@@ -20,6 +20,7 @@ osi_list_t inode_hash[FSCK_HASH_SIZE];
 struct gfs2_block_list *bl;
 uint64_t last_fs_block, last_reported_block = -1;
 int skip_this_pass = FALSE, fsck_abort = FALSE;
+int errors_found = 0, errors_corrected = 0;
 const char *pass = "";
 uint64_t last_data_block;
 uint64_t first_data_block;
@@ -57,7 +58,7 @@ int read_cmdline(int argc, char **argv, struct gfs2_options *opts)
 
 		case 'h':
 			usage(argv[0]);
-			exit(0);
+			exit(FSCK_OK);
 			break;
 		case 'n':
 			opts->no = 1;
@@ -70,7 +71,7 @@ int read_cmdline(int argc, char **argv, struct gfs2_options *opts)
 			break;
 		case 'V':
 			version();
-			exit(0);
+			exit(FSCK_OK);
 			break;
 		case 'y':
 			opts->yes = 1;
@@ -78,13 +79,11 @@ int read_cmdline(int argc, char **argv, struct gfs2_options *opts)
 		case ':':
 		case '?':
 			fprintf(stderr, "Please use '-h' for usage.\n");
-			exit(1);
-			break;
+			return FSCK_USAGE;
 		default:
 			fprintf(stderr, "Bad programmer! You forgot to catch"
 				" the %c flag\n", c);
-			exit(1);
-			break;
+			return FSCK_USAGE;
 
 		}
 	}
@@ -92,11 +91,11 @@ int read_cmdline(int argc, char **argv, struct gfs2_options *opts)
 		opts->device = (argv[optind]);
 		if(!opts->device) {
 			fprintf(stderr, "Please use '-h' for usage.\n");
-			exit(1);
+			return FSCK_USAGE;
 		}
 	} else {
 		fprintf(stderr, "No device specified.  Use '-h' for usage.\n");
-		exit(1);
+		return FSCK_USAGE;
 	}
 	return 0;
 }
@@ -175,8 +174,10 @@ int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 	 * system inodes before we can do any of that. */
 	if(!sysinode || ds.q.block_type != mark) {
 		log_err("Invalid or missing %s system inode.\n", filename);
-		if (query(&opts, "Create new %s system inode? (y/n) ",
-			  filename)) {
+		errors_found++;
+		if ((errors_corrected +=
+		    query(&opts, "Create new %s system inode? (y/n) ",
+			  filename))) {
 			builder(sysinode->i_sbd);
 			gfs2_block_set(sysinode->i_sbd, bl,
 				       sysinode->i_di.di_num.no_addr,
@@ -250,22 +251,23 @@ int main(int argc, char **argv)
 	struct gfs2_sbd *sbp = &sb;
 	int j;
 	enum update_flags update_sys_files;
+	int error = 0;
 
 	memset(sbp, 0, sizeof(*sbp));
 
-	if(read_cmdline(argc, argv, &opts))
-		return 1;
+	if((error = read_cmdline(argc, argv, &opts)))
+		exit(error);
 	setbuf(stdout, NULL);
 	log_notice("Initializing fsck\n");
-	if (initialize(sbp))
-		return 1;
+	if ((error = initialize(sbp)))
+		exit(error);
 
 	signal(SIGINT, interrupt);
 	log_notice("Starting pass1\n");
 	pass = "pass 1";
 	last_reported_block = 0;
-	if (pass1(sbp))
-		return 1;
+	if ((error = pass1(sbp)))
+		exit(error);
 	if (skip_this_pass || fsck_abort) {
 		skip_this_pass = FALSE;
 		log_notice("Pass1 interrupted   \n");
@@ -280,8 +282,8 @@ int main(int argc, char **argv)
 		last_reported_block = 0;
 		pass = "pass 1b";
 		log_notice("Starting pass1b\n");
-		if(pass1b(sbp))
-			return 1;
+		if((error = pass1b(sbp)))
+			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
 			log_notice("Pass1b interrupted   \n");
@@ -293,8 +295,8 @@ int main(int argc, char **argv)
 		last_reported_block = 0;
 		pass = "pass 1c";
 		log_notice("Starting pass1c\n");
-		if(pass1c(sbp))
-			return 1;
+		if((error = pass1c(sbp)))
+			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
 			log_notice("Pass1c interrupted   \n");
@@ -306,8 +308,8 @@ int main(int argc, char **argv)
 		last_reported_block = 0;
 		pass = "pass 2";
 		log_notice("Starting pass2\n");
-		if (pass2(sbp))
-			return 1;
+		if ((error = pass2(sbp)))
+			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
 			log_notice("Pass2 interrupted   \n");
@@ -319,8 +321,8 @@ int main(int argc, char **argv)
 		last_reported_block = 0;
 		pass = "pass 3";
 		log_notice("Starting pass3\n");
-		if (pass3(sbp))
-			return 1;
+		if ((error = pass3(sbp)))
+			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
 			log_notice("Pass3 interrupted   \n");
@@ -332,8 +334,8 @@ int main(int argc, char **argv)
 		last_reported_block = 0;
 		pass = "pass 4";
 		log_notice("Starting pass4\n");
-		if (pass4(sbp))
-			return 1;
+		if ((error = pass4(sbp)))
+			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
 			log_notice("Pass4 interrupted   \n");
@@ -345,14 +347,17 @@ int main(int argc, char **argv)
 		last_reported_block = 0;
 		pass = "pass 5";
 		log_notice("Starting pass5\n");
-		if (pass5(sbp))
-			return 1;
+		if ((error = pass5(sbp)))
+			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
 			log_notice("Pass5 interrupted   \n");
+			error = FSCK_CANCELED;
 		}
 		else
 			log_notice("Pass5 complete      \n");
+	} else {
+		error = FSCK_CANCELED;
 	}
 	update_sys_files = (opts.no ? not_updated : updated);
 	/* Free up our system inodes */
@@ -376,5 +381,13 @@ int main(int argc, char **argv)
 	destroy(sbp);
 	log_notice("gfs2_fsck complete    \n");
 
-	return 0;
+	if (!error) {
+		if (!errors_found)
+			error = FSCK_OK;
+		else if (errors_found == errors_corrected)
+			error = FSCK_NONDESTRUCT;
+		else
+			error = FSCK_UNCORRECTED;
+	}
+	exit(error);
 }
