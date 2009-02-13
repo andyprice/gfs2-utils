@@ -635,7 +635,7 @@ extern char *find_debugfs_mount(void);
 extern char *mp2fsname(char *mp);
 extern char *get_sysfs(char *fsname, char *filename);
 extern unsigned int get_sysfs_uint(char *fsname, char *filename);
-extern void set_sysfs(char *fsname, char *filename, char *val);
+extern int set_sysfs(char *fsname, char *filename, char *val);
 extern int is_fsname(char *name);
 
 /* recovery.c */

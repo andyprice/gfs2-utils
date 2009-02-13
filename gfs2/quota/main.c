@@ -771,7 +771,11 @@ do_sync_one(struct gfs2_sbd *sdp, char *filesystem)
 	char *fsname;
 
 	fsname = mp2fsname(filesystem);
-	set_sysfs(fsname, "quota_sync", "1");
+	if (set_sysfs(fsname, "quota_sync", "1")) {
+		fprintf(stderr, "Error writing to sysfs quota sync file: %s\n",
+				strerror(errno));
+		exit(-1);
+	}
 }
 
 /**
@@ -973,8 +977,12 @@ do_set(struct gfs2_sbd *sdp, commandline_t *comline)
 
 	fs = mp2fsname(comline->filesystem);
 	sprintf(id_str, "%d", comline->id);
-	set_sysfs(fs, comline->id_type == GQ_ID_USER ?
-		  "quota_refresh_user" : "quota_refresh_group", id_str);
+	if (set_sysfs(fs, comline->id_type == GQ_ID_USER ?
+		  "quota_refresh_user" : "quota_refresh_group", id_str)) {
+		fprintf(stderr, "Error writing to sysfs quota refresh file: %s\n",
+				strerror(errno));
+		exit(-1);
+	}
 	
 	if (adj_flag)
 		adjust_quota_list(fd, comline);

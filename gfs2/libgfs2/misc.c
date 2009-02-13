@@ -240,31 +240,31 @@ unsigned int get_sysfs_uint(char *fsname, char *filename)
 	return x;
 }
 
-void set_sysfs(char *fsname, char *filename, char *val)
+int set_sysfs(char *fsname, char *filename, char *val)
 {
 	char path[PATH_MAX];
 	int fd, rv, len;
 
 	len = strlen(val) + 1;
-	if (len > PAGE_SIZE)
-		die("value for %s is too larger for sysfs\n", path);
+	if (len > PAGE_SIZE) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	memset(path, 0, PATH_MAX);
 	snprintf(path, PATH_MAX - 1, "%s/%s/%s", SYS_BASE, fsname, filename);
 
 	fd = open(path, O_WRONLY);
 	if (fd < 0)
-		die("can't open %s: %s\n", path, strerror(errno));
+		return -1;
 
 	rv = write(fd, val, len);
-	if (rv != len){
-		if (rv < 0)
-			die("can't write to %s: %s", path, strerror(errno));
-		else
-			die("tried to write %d bytes to path, wrote %d\n",
-			    len, rv);
+	if (rv != len) {
+		close(fd);
+		return -1;
 	}
 	close(fd);
+	return 0;
 }
 
 /**

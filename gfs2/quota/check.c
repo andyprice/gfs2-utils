@@ -502,8 +502,12 @@ set_list(struct gfs2_sbd *sdp, commandline_t *comline, int user,
 		/* Write the id to sysfs quota refresh file to refresh gfs quotas */
 		fs = mp2fsname(comline->filesystem);
 		sprintf(id_str, "%d", comline->id);
-		set_sysfs(fs, (user) ? "quota_refresh_user" :
-			  "quota_refresh_group", id_str);
+		if (set_sysfs(fs, (user) ? "quota_refresh_user" : "quota_refresh_group",
+					id_str)) {
+			fprintf(stderr, "Error writing id to sysfs quota refresh file: %s\n",
+					strerror(errno));
+			exit(-1);
+		}
 	}
 
 out:

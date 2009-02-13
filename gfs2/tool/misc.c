@@ -41,10 +41,19 @@ do_freeze(int argc, char **argv)
 
 	name = mp2fsname(argv[optind]);
 
-	if (strcmp(command, "freeze") == 0)
-		set_sysfs(name, "freeze", "1");
-	else if (strcmp(command, "unfreeze") == 0)
-		set_sysfs(name, "freeze", "0");
+	if (strcmp(command, "freeze") == 0) {
+		if (set_sysfs(name, "freeze", "1")) {
+			fprintf(stderr, "Error writing to sysfs freeze file: %s\n",
+					strerror(errno));
+			exit(-1);
+		}
+	} else if (strcmp(command, "unfreeze") == 0) {
+		if (set_sysfs(name, "freeze", "0")) {
+			fprintf(stderr, "Error writing to sysfs freeze file: %s\n",
+					strerror(errno));
+			exit(-1);
+		}
+	}
 
 	sync();
 }
@@ -387,7 +396,11 @@ do_shrink(int argc, char **argv)
 	}
 	fs = mp2fsname(argv[optind]);
 	
-	set_sysfs(fs, "shrink", "1");
+	if (set_sysfs(fs, "shrink", "1")) {
+		fprintf(stderr, "Error writing to sysfs shrink file: %s\n",
+				strerror(errno));
+		exit(-1);
+	}
 }
 
 /**
@@ -417,6 +430,10 @@ do_withdraw(int argc, char **argv)
 	}
 	name = mp2fsname(argv[optind]);
 
-	set_sysfs(name, "withdraw", "1");
+	if (set_sysfs(name, "withdraw", "1")) {
+		fprintf(stderr, "Error writing to sysfs withdraw file: %s\n",
+				strerror(errno));
+		exit(-1);
+	}
 }
 

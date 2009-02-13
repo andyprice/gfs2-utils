@@ -118,5 +118,9 @@ set_tune(int argc, char **argv)
 		sprintf(buf, "%u %u", (unsigned int)(s * 10000.0 + 0.5), 10000);
 		value = buf;
 	}
-	set_sysfs(fs, strcat(tune_base, param), value);
+	if (set_sysfs(fs, strcat(tune_base, param), value)) {
+		fprintf(stderr, "Error writing to sysfs %s tune file: %s\n",
+				param, strerror(errno));
+		exit(-1);
+	}
 }
