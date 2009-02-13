@@ -362,11 +362,63 @@ print_journals(int argc, char **argv)
  *
  */
 
+#define LIST_SIZE 1048576
+
 void
 print_list(void)
 {
-	char *list = get_list();
+	char path[PATH_MAX];
+	char s_id[PATH_MAX];
+	char *list, *p;
+	int rv, fd, x = 0, total = 0;
+	DIR *d;
+	struct dirent *de;
+
+	list = malloc(LIST_SIZE);
+	if (!list)
+		die("out of memory\n");
+
+	memset(path, 0, PATH_MAX);
+	snprintf(path, PATH_MAX, "%s", SYS_BASE);
+
+	d = opendir(path);
+	if (!d)
+		die("can't open %s: %s\n", SYS_BASE, strerror(errno));
+
+	while ((de = readdir(d))) {
+		if (de->d_name[0] == '.')
+			continue;
+
+		memset(path, 0, PATH_MAX);
+		snprintf(path, PATH_MAX, "%s/%s/id", SYS_BASE, de->d_name);
+
+		fd = open(path, O_RDONLY);
+		if (fd < 0)
+			die("can't open %s: %s\n", path, strerror(errno));
+
+		memset(s_id, 0, PATH_MAX);
+
+		rv = read(fd, s_id, sizeof(s_id));
+		if (rv < 0)
+			die("can't read %s: %s\n", path, strerror(errno));
+
+		close(fd);
+
+		p = strstr(s_id, "\n");
+		if (p)
+			*p = '\0';
+
+		total += strlen(s_id) + strlen(de->d_name) + 2;
+		if (total > LIST_SIZE)
+			break;
+
+		x += sprintf(list + x, "%s %s\n", s_id, de->d_name);
+
+	}
+
+	closedir(d);
 	printf("%s", list);
+	free(list);
 }
 
 /**
