@@ -143,6 +143,9 @@ int setup_ccs(void)
 	if (!optd_enable_withdraw)
 		read_ccs_int(ENABLE_WITHDRAW_PATH, &cfgd_enable_withdraw);
 
+	read_ccs_name("/cluster/@name", clustername);
+	log_debug("cluster name \"%s\"", clustername);
+
 	return 0;
 }
 

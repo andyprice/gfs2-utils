@@ -62,9 +62,8 @@ extern int daemon_quit;
 extern int cluster_down;
 extern int poll_dlm;
 extern struct list_head mountgroups;
-extern int cman_quorate;
 extern int our_nodeid;
-extern char *clustername;
+extern char clustername[1024]; /* actual limit is sure to be smaller */
 extern char daemon_debug_buf[256];
 extern char dump_buf[GFSC_DUMP_SIZE];
 extern int dump_point;
@@ -207,9 +206,9 @@ void process_connection(int ci);
 void cluster_dead(int ci);
 
 /* member_cman.c */
-int setup_cman(void);
-void close_cman(void);
-void process_cman(int ci);
+int setup_cluster_cfg(void);
+void close_cluster_cfg(void);
+void process_cluster_cfg(int ci);
 void kick_node_from_cluster(int nodeid);
 
 /* util.c */

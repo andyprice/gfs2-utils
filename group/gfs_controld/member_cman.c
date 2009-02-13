@@ -1,121 +1,95 @@
 #include "gfs_daemon.h"
 #include "config.h"
-#include <libcman.h>
+#include <corosync/corotypes.h>
+#include <corosync/cfg.h>
 
-static cman_handle_t ch;
-static cman_handle_t ch_admin;
-static cman_cluster_t cluster;
+static corosync_cfg_handle_t ch;
 
 void kick_node_from_cluster(int nodeid)
 {
 	if (!nodeid) {
-		log_error("telling cman to shut down cluster locally");
-		cman_shutdown(ch_admin, CMAN_SHUTDOWN_ANYWAY);
+		log_error("telling corosync to shut down cluster locally");
+		corosync_cfg_try_shutdown(ch,
+				COROSYNC_CFG_SHUTDOWN_FLAG_IMMEDIATE);
 	} else {
-		log_error("telling cman to remove nodeid %d from cluster",
+		log_error("telling corosync to remove nodeid %d from cluster",
 			  nodeid);
-		cman_kill_node(ch_admin, nodeid);
+		corosync_cfg_kill_node(ch, nodeid, "gfs_controld");
 	}
 }
 
-static void cman_callback(cman_handle_t h, void *private, int reason, int arg)
+static void shutdown_callback(corosync_cfg_handle_t h,
+			      corosync_cfg_shutdown_flags_t flags)
 {
-	switch (reason) {
-	case CMAN_REASON_TRY_SHUTDOWN:
+	if (flags & COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST) {
 		if (list_empty(&mountgroups))
-			cman_replyto_shutdown(ch, 1);
+			corosync_cfg_replyto_shutdown(ch,
+					COROSYNC_CFG_SHUTDOWN_FLAG_YES);
 		else {
-			log_debug("no to cman shutdown");
-			cman_replyto_shutdown(ch, 0);
+			log_debug("no to corosync shutdown");
+			corosync_cfg_replyto_shutdown(ch,
+					COROSYNC_CFG_SHUTDOWN_FLAG_NO);
 		}
-		break;
+	}
+}
+
+static corosync_cfg_callbacks_t cfg_callbacks =
+{
+	.corosync_cfg_shutdown_callback = shutdown_callback,
+	.corosync_cfg_state_track_callback = NULL,
+};
+
+void process_cluster_cfg(int ci)
+{
+	cs_error_t err;
+
+	err = corosync_cfg_dispatch(ch, CS_DISPATCH_ALL);
+	if (err != CS_OK)
+		cluster_dead(0);
+}
+
+int setup_cluster_cfg(void)
+{
+	cs_error_t err;
+	unsigned int nodeid;
+	int fd;
+
+	err = corosync_cfg_initialize(&ch, &cfg_callbacks);
+	if (err != CS_OK) {
+		log_error("corosync cfg init error %d", err);
+		return -1;
+	}
+
+	err = corosync_cfg_fd_get(ch, &fd);
+	if (err != CS_OK) {
+		log_error("corosync cfg fd_get error %d", err);
+		corosync_cfg_finalize(ch);
+		return -1;
+	}
+
+	err = corosync_cfg_local_get(ch, &nodeid);
+	if (err != CS_OK) {
+		log_error("corosync cfg local_get error %d", err);
+		corosync_cfg_finalize(ch);
+		return -1;
+	}
+	our_nodeid = nodeid;
+	log_debug("our_nodeid %d", our_nodeid);
+
+	return fd;
+}
+
+void close_cluster_cfg(void)
+{
+	corosync_cfg_finalize(ch);
+}
+
+/* what's the replacement for this? */
+#if 0
 	case CMAN_REASON_CONFIG_UPDATE:
 		setup_logging();
 		setup_ccs();
 		break;
 	}
-}
-
-void process_cman(int ci)
-{
-	int rv;
-
-	rv = cman_dispatch(ch, CMAN_DISPATCH_ALL);
-	if (rv == -1 && errno == EHOSTDOWN)
-		cluster_dead(0);
-}
-
-int setup_cman(void)
-{
-	cman_node_t node;
-	int rv, fd;
-	int init = 0, active = 0;
-
- retry_init:
-	ch_admin = cman_admin_init(NULL);
-	if (!ch_admin) {
-		if (init++ < 2) {
-			sleep(1);
-			goto retry_init;
-		}
-		log_error("cman_admin_init error %d", errno);
-		return -ENOTCONN;
-	}
-
-	ch = cman_init(NULL);
-	if (!ch) {
-		log_error("cman_init error %d", errno);
-		return -ENOTCONN;
-	}
-
- retry_active:
-	rv = cman_is_active(ch);
-	if (!rv) {
-		if (active++ < 2) {
-			sleep(1);
-			goto retry_active;
-		}
-		log_error("cman_is_active error %d", errno);
-		cman_finish(ch);
-		return -ENOTCONN;
-	}
-
-	rv = cman_start_notification(ch, cman_callback);
-	if (rv < 0) {
-		log_error("cman_start_notification error %d %d", rv, errno);
-		cman_finish(ch);
-		return rv;
-	}
-
-	fd = cman_get_fd(ch);
-
-	/* FIXME: wait here for us to be a member of the cluster */
-	memset(&cluster, 0, sizeof(cluster));
-	rv = cman_get_cluster(ch, &cluster);
-	if (rv < 0) {
-		log_error("cman_get_cluster error %d %d", rv, errno);
-		cman_stop_notification(ch);
-		cman_finish(ch);
-		return rv;
-	}
-	clustername = cluster.ci_name;
-
-	memset(&node, 0, sizeof(node));
-	rv = cman_get_node(ch, CMAN_NODEID_US, &node);
-	if (rv < 0) {
-		log_error("cman_get_node error %d %d", rv, errno);
-		cman_stop_notification(ch);
-		cman_finish(ch);
-		fd = rv;
-		goto out;
-	}
-	our_nodeid = node.cn_nodeid;
- out:
-	return fd;
-}
-
-void close_cman(void)
-{
-	cman_finish(ch);
-}
+#endif
 

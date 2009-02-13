@@ -1064,10 +1064,10 @@ static void loop(void)
 		goto out;
 	client_add(rv, process_listener, NULL);
 
-	rv = setup_cman();
+	rv = setup_cluster_cfg();
 	if (rv < 0)
 		goto out;
-	client_add(rv, process_cman, cluster_dead);
+	client_add(rv, process_cluster_cfg, cluster_dead);
 
 	rv = setup_ccs();
 	if (rv < 0)
@@ -1155,7 +1155,7 @@ static void loop(void)
 	close_cpg();
 	close_logging();
 	close_ccs();
-	close_cman();
+	close_cluster_cfg();
 
 	if (!list_empty(&mountgroups))
 		log_error("mountgroups abandoned");
@@ -1356,9 +1356,8 @@ int daemon_quit;
 int cluster_down;
 int poll_dlm;
 struct list_head mountgroups;
-int cman_quorate;
 int our_nodeid;
-char *clustername;
+char clustername[1024];
 char daemon_debug_buf[256];
 char dump_buf[GFSC_DUMP_SIZE];
 int dump_point;
