@@ -121,8 +121,9 @@ do_df_one(char *path)
 		exit(-1);
 	}
 
-	compute_constants(&sbd);
 	gfs2_sb_in(&sbd.sd_sb, buf); /* parse it out into the sb structure */
+	sbd.bsize = sbd.sd_sb.sb_bsize;
+	compute_constants(&sbd);
 
 	sbd.master_dir = gfs2_load_inode(&sbd,
 					 sbd.sd_sb.sb_master_dir.no_addr);
