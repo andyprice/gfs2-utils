@@ -33,6 +33,7 @@ struct gfs2_dinode di;
 int line, termlines;
 char edit_fmt[80];
 char estring[1024];
+char efield[64];
 int edit_mode = 0;
 int edit_row[DMODES], edit_col[DMODES];
 int edit_size[DMODES], last_entry_onscreen[DMODES];
@@ -68,6 +69,23 @@ int editing = 0;
 int insert = 0;
 const char *termtype;
 WINDOW *wind;
+const char *block_type_str[15] = {
+	"Clump",
+	"Superblock",
+	"Resource Group Header",
+	"Resource Group Bitmap",
+	"Dinode",
+	"Indirect Block",
+	"Leaf",
+	"Journaled Data",
+	"Log Header",
+	"Log descriptor",
+	"Ext. attrib",
+	"Eattr Data",
+	"Log Buffer",
+	"Metatype 13",
+	"Quota Change",
+};
 
 void eol(int col) /* end of line */
 {
@@ -188,6 +206,7 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 		if (termlines) {
 			refresh();
 			if (line == (edit_row[dmode] * lines_per_row[dmode]) + 4) {
+				strcpy(efield, label + 2); /* it's indented */
 				strcpy(estring, tmp_string);
 				strcpy(edit_fmt, fmt);
 				edit_size[dmode] = strlen(estring);
@@ -511,57 +530,46 @@ int display_gfs2(void)
 	{
 	case GFS2_MAGIC:
 		gfs2_meta_header_in(&mh, buf);
+		if (mh.mh_type > GFS2_METATYPE_QC)
+			print_gfs2("Unknown metadata type");
+		else
+			print_gfs2("%s:", block_type_str[mh.mh_type]);
+		eol(0);
 		
 		switch (mh.mh_type)
 		{
 		case GFS2_METATYPE_SB:
-			print_gfs2("Superblock:");
-			eol(0);
 			gfs2_sb_in(&sbd.sd_sb, buf);
 			gfs2_sb_print2(&sbd.sd_sb);
 			break;
-			
+
 		case GFS2_METATYPE_RG:
-			print_gfs2("Resource Group Header:");
-			eol(0);
 			gfs2_rgrp_in(&rg, buf);
 			gfs2_rgrp_print(&rg);
 			break;
-			
+
 		case GFS2_METATYPE_RB:
-			print_gfs2("Resource Group Bitmap:");
-			eol(0);
 			gfs2_meta_header_print(&mh);
 			break;
-			
+
 		case GFS2_METATYPE_DI:
-			print_gfs2("Dinode:");
-			eol(0);
 			gfs2_dinode_print(&di);
 			break;
-			
+
+		case GFS2_METATYPE_IN:
+			gfs2_meta_header_print(&mh);
+			break;
+
 		case GFS2_METATYPE_LF:
-			print_gfs2("Leaf:");
-			eol(0);
 			gfs2_leaf_in(&lf, buf);
 			gfs2_leaf_print(&lf);
 			break;
-			
-		case GFS2_METATYPE_IN:
-			print_gfs2("Indirect Block:");
-			eol(0);
-			gfs2_meta_header_print(&mh);
-			break;
-			
+
 		case GFS2_METATYPE_JD:
-			print_gfs2("Journaled File Block:");
-			eol(0);
 			gfs2_meta_header_print(&mh);
 			break;
-			
+
 		case GFS2_METATYPE_LH:
-			print_gfs2("Log Header:");
-			eol(0);
 			if (gfs1) {
 				gfs_log_header_in(&lh1, buf);
 				gfs_log_header_print(&lh1);
@@ -570,42 +578,30 @@ int display_gfs2(void)
 				gfs2_log_header_print(&lh);
 			}
 			break;
-			
+
 		case GFS2_METATYPE_LD:
-			print_gfs2("Log descriptor");
-			eol(0);
 			gfs2_log_descriptor_in(&ld, buf);
 			gfs2_log_descriptor_print(&ld);
 			break;
 
 		case GFS2_METATYPE_EA:
-			print_gfs2("Eattr Block:");
-			eol(0);
 			do_eattr_extended(buf);
 			break;
 			
 		case GFS2_METATYPE_ED:
-			print_gfs2("Eattr Data Block:");
-			eol(0);
 			gfs2_meta_header_print(&mh);
 			break;
 			
 		case GFS2_METATYPE_LB:
-			print_gfs2("Log Buffer");
-			eol(0);
 			gfs2_meta_header_print(&mh);
 			break;
 
 		case GFS2_METATYPE_QC:
-			print_gfs2("Quota Change");
-			eol(0);
 			gfs2_quota_change_in(&qc, buf);
 			gfs2_quota_change_print(&qc);
 			break;
 
 		default:
-			print_gfs2("Unknown metadata type");
-			eol(0);
 			break;
 		}
 		break;

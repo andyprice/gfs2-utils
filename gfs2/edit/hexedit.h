@@ -49,6 +49,7 @@ extern int edit_mode;
 extern int line;
 extern char edit_fmt[80];
 extern char estring[1024]; /* edit string */
+extern char efield[64];
 extern uint64_t dev_offset;
 extern uint64_t max_block;
 extern char *buf;
@@ -79,6 +80,7 @@ extern int gfs1;
 extern int editing;
 extern uint64_t temp_blk;
 extern uint64_t starting_blk;
+extern const char *block_type_str[15];
 
 struct gfs_jindex {
         uint64_t ji_addr;       /* starting block of the journal */

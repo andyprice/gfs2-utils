@@ -19,12 +19,12 @@ These options should be used with great care.
 
 .SH OPTIONS
 .TP
-\fB-p\fP [\fIstructure\fR | \fIblock\fR]
+\fB-p\fP [\fIstruct\fR | \fIblock\fR] [\fIblocktype\fR] [\fIblockalloc [val]\fR] [\fIblockbits\fR] [\fIblockrg\fR] [\fIfind sb|rg|rb|di|in|lf|jd|lh|ld|ea|ed|lb|13|qc\fR] [\fIfield <field> [val]\fR]
 Print a gfs2 data structure in human-readable format to stdout.
 You can enter either a block number or a data structure name.  Block numbers
 may be specified in hex (e.g., 0x10) or decimal (e.g., 16).
 
-You can specify the following data structure names with the -p option.
+You can specify the following well-known locations with the -p option.
 
 \fIsb\fR, \fIsuperblock\fR - Print the superblock.
 
@@ -67,14 +67,64 @@ If you specify -p without a block or structure name, gfs2_edit prints the
 superblock.
 
 You can specify more than one data structure with a single -p option.
-For example, "gfs2_edit -p inum statfs /dev/sda1" prints the system inum
+For example, \fBgfs2_edit -p inum statfs /dev/sda1\fP prints the system inum
 file and the system statfs file on /dev/sda1.
 
+Optionally, you may specify the keyword \fIblocktype\fR to print out the
+gfs2 block type for the specified block.  Valid gfs2 block types are:
+0 (Clump), 1 (Superblock), 2 (Resource Group Header), 3 (Resource Group
+Bitmap), 4 (Dinode), 5 (Indirect Block), 6 (Leaf), 7 (Journaled data),
+8 (Log Header), 9 (Log descriptor), 10 (Extended attribute),
+11 (Eattr Data), 12 (Log Buffer), 13 (Invalid), and 14 (Quota Change).
+
+Optionally, you may specify the keyword \fIblockalloc\fR with an
+optional value to assign.  If no value is specified, the blockalloc
+keyword will print the block allocation type for the specified block.
+Valid block allocation types are: 0 (Free block), 1 (Data block),
+2 (Unlinked block), and 3 (Metadata block).  If a value from 0 to 3 is
+specified, the resource group bitmap will be changed to the new value.
+This may be used, for example, to artificially free or allocate a block
+in order to test gfs2_fsck's ability to detect and fix the problem.
+
+Optionally, you may specify the keyword \fIblockbits\fR.  This option
+will locate and print the block containing the bitmap corresponding to
+the specified block.
+
+Optionally, you may specify the keyword \fIblockrg\fR.  This option
+will locate and print the block number of the resource group that holds
+information about the specified block.
+
+You may also use gfs2_edit to find the next occurrence of a metadata
+block of a certain type.  Valid metadata types are: \fInone\fR (unused
+metadata clump block), \fIsb\fR (superblock), \fIrg\fR (resource group),
+\fIrb\fR (rg bitmap), \fIdi\fR (disk inode aka dinode), \fIin\fR (indirect
+block list), \fIlf\fR (directory leaf), \fIjd\fR (journaled data),
+\fIlh\fR (journal log header), \fIld\fR (journal log descriptor),
+\fIea\fR (extended attribute), \fIed\fR (ea data block), \fIlb\fR (log buffer),
+\fI13\fR (unused block type 13), \fIqc\fR (quota change).
+The block AFTER the one specified with -p is the starting point for
+the search.  For example, if you specify \fBgfs2_edit -p rg 12 find rg
+/dev/your/device\fP, it will find the rg that follows rg 12 (normally,
+this would be rg 13).  Note, however, that since metadata often appears
+in the journals, it could be a copy of a different RG, inside a journal.
+Also note that gfs2_edit will only find \fBallocated\fR metadata blocks
+unless the type specified is none, sb, rg or rb.  In other words, if you
+try to find a disk inode, it will only find an allocated dinode, not a
+deallocated one.
+
+Optionally, you may specify the keyword \fIfield\fR followed by a
+valid metadata field name.  Right now, only the fields in disk inodes
+and resource groups are allowed.  If no value is specified after the
+field, the value of the field will be printed to stdout.  If a value
+is specified, the field's value will be changed.  This may be used,
+for example, to artificially change the di_size field for an inode
+in order to test gfs2_fsck's ability to detect and fix the problem.
+
 .TP
-\fB-s\fP [\fIstructure\fR | \fIblock\fR]
-Specify a starting block for interactive mode.  Any of the keywords found
-in the -p option may be specified.  If you want to start on a particular
-resource group, specify it in quotes.  For example, gfs2_edit -s "rg 3"
+\fB-s\fs [\fIstructure\fR | \fIblock\fR]
+Specify a starting block for interactive mode.  Any of the well-known
+locations found in the -p option may be specified.  If you want to start
+on a particular resource group, specify it in quotes, e.g. -s "rg 3"
 .TP
 \fB-h, -help, -usage\fP
 Print help information.
@@ -243,9 +293,20 @@ not roll you back up.
 \fB<enter>\fP - Edit value
 The \fB<enter>\fP key causes you to go from display mode to edit mode.
 If you are in hex mode and you hit enter, you can type new hex values
-at the cursor's current location.  Note: Currently hitting \fB<enter>\fP
-in structure mode allows you to enter a new value, but it will not actually
-change the value on disk.  That is a future feature.
+at the cursor's current location.  Note: pressing \fB<enter>\fP
+in structure mode allows you to enter a new value, with the following
+restrictions:  For gfs2 disk inodes and resource groups, it will
+actually change the value on disk. However, inode numbers may not be
+changed.  For all other structures, the values entered are ignored.
+
+If you use the up arrow key to highlight the block number, then press
+\fB<enter>\fP, you may then enter a new block number, or any of the
+well-known block locations listed above (e.g. sb, rindex, inum, rg 17,
+etc.) and gfs2_edit will jump to the block specified.  If you specify
+a slash character followed by a metadata type, gfs2_edit will search for
+the next occurrence of that metadata block type, and jump there.  It
+will take you to block 0 if it does not find any more blocks of the
+specified metadata type.
 
 .TP
 \fB<home>\fP
@@ -313,6 +374,41 @@ Print the rg_flags value for the fourth Resource Group on /dev/sdb1.
 gfs2_edit rgflags 3 8 /dev/sdb1
 Set the GFS2_RGF_NOALLOC flag on for the fourth Resource Group on /dev/sdb1.
 
+.TP
+gfs2_edit -p 25 blockalloc /dev/roth_vg/roth_lv
+Print the block allocation type of block 25.
+May produce this output:
+3 (Metadata)
+
+.TP
+gfs2_edit -p 25 blockalloc 1 /dev/roth_vg/roth_lv
+Change the block allocation type of block 25 to data.
+May produce this output:
+1
+
+.TP
+gfs2_edit -p 25 blocktype /dev/roth_vg/roth_lv
+Print the metadata block type of block 25.
+May produce this output:
+4 (Block 25 is type 4: Dinode)
+
+.TP
+gfs2_edit -p 25 field di_size /dev/roth_vg/roth_lv
+Print the di_size field of block 25.
+May produce this output:
+134217728
+
+.TP
+gfs2_edit -x -p 25 field di_size /dev/roth_vg/roth_lv
+Print the di_size field of block 25, in hexidecimal.
+May produce this output:
+0x8000000
+
+.TP
+gfs2_edit -p 25 field di_size 0x4000 /dev/roth_vg/roth_lv
+Change the di_size field of block 25 to the hexidecimal value 0x4000.
+May produce this output:
+16384
 .SH KNOWN BUGS
 .TP
 The directory code does not work well.  It might be confused

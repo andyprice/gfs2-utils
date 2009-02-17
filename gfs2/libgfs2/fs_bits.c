@@ -5,32 +5,6 @@
 #include "libgfs2.h"
 
 /**
- * fs_setbit - Set a bit in the bitmaps
- * @buffer: the buffer that holds the bitmaps
- * @buflen: the length (in bytes) of the buffer
- * @block: the block to set
- * @new_state: the new state of the block
- *
- */
-static void gfs2_setbit(unsigned char *buffer, unsigned int buflen,
-						uint32_t block, unsigned char new_state)
-{
-	unsigned char *byte, *end, cur_state;
-	unsigned int bit;
-
-	byte = buffer + (block / GFS2_NBBY);
-	bit = (block % GFS2_NBBY) * GFS2_BIT_SIZE;
-	end = buffer + buflen;
-
-	if(byte < end) {
-		cur_state = (*byte >> bit) & GFS2_BIT_MASK;
-
-		*byte ^= cur_state << bit;
-		*byte |= new_state << bit;
-	}
-}
-
-/**
  * gfs2_bitfit - Find a free block in the bitmaps
  * @buffer: the buffer that holds the bitmaps
  * @buflen: the length (in bytes) of the buffer
@@ -136,12 +110,12 @@ int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state)
 	uint32_t        rgrp_block;
 	struct gfs2_bitmap *bits = NULL;
 	struct rgrp_list *rgd;
+	unsigned char *byte, cur_state;
+	unsigned int bit;
 
 	/* FIXME: should GFS2_BLKST_INVALID be allowed */
-	if((state != GFS2_BLKST_FREE) && (state != GFS2_BLKST_USED) &&
-	   (state != GFS2_BLKST_DINODE)){
+	if ((state < GFS2_BLKST_FREE) || (state > GFS2_BLKST_DINODE))
 		return -1;
-	}
 
 	rgd = gfs2_blk2rgrpd(sdp, blkno);
 
@@ -157,9 +131,14 @@ int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state)
 			break;
 	}
 
-	gfs2_setbit((unsigned char *)rgd->bh[buf]->b_data + bits->bi_offset,
-				bits->bi_len, (rgrp_block - (bits->bi_start * GFS2_NBBY)),
-				state);
+	byte = (unsigned char *)(rgd->bh[buf]->b_data + bits->bi_offset) +
+		(rgrp_block/GFS2_NBBY - bits->bi_start);
+	bit = (rgrp_block % GFS2_NBBY) * GFS2_BIT_SIZE;
+
+	cur_state = (*byte >> bit) & GFS2_BIT_MASK;
+	*byte ^= cur_state << bit;
+	*byte |= state << bit;
+
 	gfs2_rgrp_relse(rgd, updated);
 	return 0;
 }

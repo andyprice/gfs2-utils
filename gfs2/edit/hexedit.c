@@ -28,6 +28,10 @@
 		print_it("  "#member, fmt, fmt2, struct->member);	\
 	} while (FALSE);
 
+const char *mtypes[] = {"none", "sb", "rg", "rb", "di", "in", "lf", "jd",
+			"lh", "ld", "ea", "ed", "lb", "13", "qc"};
+const char *allocdesc[] = {"Free ", "Data ", "Unlnk",
+			   "Meta ", "Resrv"};
 
 #define RGLIST_DUMMY_BLOCK -2
 
@@ -38,7 +42,113 @@ extern int do_indirect_extended(char *buf, struct iinfo *ii);
 extern void savemeta(char *out_fn, int slow);
 extern void restoremeta(const char *in_fn, const char *out_device,
 			int printblocksonly);
-char *prog_name;
+
+/* for assigning numeric fields: */
+#define checkassign(strfield, struct, member, value) do {		\
+		if (strcmp(#member, strfield) == 0) {			\
+			struct->member = (typeof(struct->member)) value; \
+			return 0;					\
+		}							\
+	} while(0)
+
+/* for assigning string fields: */
+#define checkassigns(strfield, struct, member, val) do {		\
+		if (strcmp(#member, strfield) == 0) {			\
+			memcpy(struct->member, val, sizeof(struct->member)); \
+			return 0;					\
+		}							\
+	} while(0)
+
+/* for printing numeric fields: */
+#define checkprint(strfield, struct, member) do {		\
+		if (strcmp(#member, strfield) == 0) {		\
+			if (dmode == HEX_MODE)			\
+				printf("0x%llx\n",		\
+				       (unsigned long long)struct->member); \
+			else					\
+				printf("%llu\n",		\
+				       (unsigned long long)struct->member); \
+			return 0;				\
+		}						\
+	} while(0)
+
+/* for printing string fields: */
+#define checkprints(strfield, struct, member) do {		\
+		if (strcmp(#member, strfield) == 0) {		\
+			printf("%s\n", struct->member);		\
+			return 0;				\
+		}						\
+	} while(0)
+
+int gfs2_dinode_printval(struct gfs2_dinode *di, const char *strfield)
+{
+	checkprint(strfield, di, di_mode);
+	checkprint(strfield, di, di_uid);
+	checkprint(strfield, di, di_gid);
+	checkprint(strfield, di, di_nlink);
+	checkprint(strfield, di, di_size);
+	checkprint(strfield, di, di_blocks);
+	checkprint(strfield, di, di_atime);
+	checkprint(strfield, di, di_mtime);
+	checkprint(strfield, di, di_ctime);
+	checkprint(strfield, di, di_major);
+	checkprint(strfield, di, di_minor);
+	checkprint(strfield, di, di_goal_meta);
+	checkprint(strfield, di, di_goal_data);
+	checkprint(strfield, di, di_flags);
+	checkprint(strfield, di, di_payload_format);
+	checkprint(strfield, di, di_height);
+	checkprint(strfield, di, di_depth);
+	checkprint(strfield, di, di_entries);
+	checkprint(strfield, di, di_eattr);
+
+	return -1;
+}
+
+int gfs2_dinode_assignval(struct gfs2_dinode *di, const char *strfield,
+			  uint64_t value)
+{
+	checkassign(strfield, di, di_mode, value);
+	checkassign(strfield, di, di_uid, value);
+	checkassign(strfield, di, di_gid, value);
+	checkassign(strfield, di, di_nlink, value);
+	checkassign(strfield, di, di_size, value);
+	checkassign(strfield, di, di_blocks, value);
+	checkassign(strfield, di, di_atime, value);
+	checkassign(strfield, di, di_mtime, value);
+	checkassign(strfield, di, di_ctime, value);
+	checkassign(strfield, di, di_major, value);
+	checkassign(strfield, di, di_minor, value);
+	checkassign(strfield, di, di_goal_meta, value);
+	checkassign(strfield, di, di_goal_data, value);
+	checkassign(strfield, di, di_flags, value);
+	checkassign(strfield, di, di_payload_format, value);
+	checkassign(strfield, di, di_height, value);
+	checkassign(strfield, di, di_depth, value);
+	checkassign(strfield, di, di_entries, value);
+	checkassign(strfield, di, di_eattr, value);
+
+	return -1;
+}
+
+int gfs2_rgrp_printval(struct gfs2_rgrp *rg, const char *strfield)
+{
+	checkprint(strfield, rg, rg_flags);
+	checkprint(strfield, rg, rg_free);
+	checkprint(strfield, rg, rg_dinodes);
+
+	return -1;
+}
+
+int gfs2_rgrp_assignval(struct gfs2_rgrp *rg, const char *strfield,
+			uint64_t value)
+{
+	checkassign(strfield, rg, rg_flags, value);
+	checkassign(strfield, rg, rg_free, value);
+	checkassign(strfield, rg, rg_dinodes, value);
+
+	return -1;
+}
 
 /* ------------------------------------------------------------------------ */
 /* UpdateSize - screen size changed, so update it                           */
@@ -336,6 +446,67 @@ int get_block_type(const char *lpBuffer)
 	return ret_type;
 }
 
+/*
+ * fs_get_bitmap - get value of FS bitmap
+ * @sdp: super block
+ * @blkno: block number relative to file system
+ *
+ * This function gets the value of a bit of the
+ * file system bitmap.
+ * Possible state values for a block in the bitmap are:
+ *  GFS_BLKST_FREE     (0)
+ *  GFS_BLKST_USED     (1)
+ *  GFS_BLKST_INVALID  (2)
+ *  GFS_BLKST_DINODE   (3)
+ *
+ * Returns: state on success, -1 on error
+ */
+int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
+					struct rgrp_list *rgd)
+{
+	int           buf, val;
+	uint32_t        rgrp_block;
+	struct gfs2_bitmap	*bits = NULL;
+	unsigned int  bit;
+	unsigned char *byte;
+	int local_rgd = 0;
+
+	if(gfs2_check_range(sdp, blkno))
+		return -1;
+	if(rgd == NULL) {
+		local_rgd = 1;
+		rgd = gfs2_blk2rgrpd(sdp, blkno);
+	}
+	if(rgd == NULL)
+		return -1;
+	if(gfs2_rgrp_read(sdp, rgd))
+		return -1;
+
+	rgrp_block = (uint32_t)(blkno - rgd->ri.ri_data0);
+
+	for(buf= 0; buf < rgd->ri.ri_length; buf++){
+		bits = &(rgd->bits[buf]);
+		if(rgrp_block < ((bits->bi_start + bits->bi_len)*GFS2_NBBY)){
+			break;
+		}
+	}
+
+	if(buf >= rgd->ri.ri_length){
+		gfs2_rgrp_relse(rgd, not_updated);
+		return -1;
+	}
+
+	byte = (unsigned char *)(rgd->bh[buf]->b_data + bits->bi_offset) +
+		(rgrp_block/GFS2_NBBY - bits->bi_start);
+	bit = (rgrp_block % GFS2_NBBY) * GFS2_BIT_SIZE;
+
+	val = ((*byte >> bit) & GFS2_BIT_MASK);
+	if(local_rgd)
+		gfs2_rgrp_relse(rgd, not_updated);
+
+	return val;
+}
+
 /* ------------------------------------------------------------------------ */
 /* display_block_type                                                       */
 /* returns: metatype if block is a GFS2 structure block type                */
@@ -453,32 +624,41 @@ int display_block_type(const char *lpBuffer, int from_restore)
 	if (from_restore)
 		return ret_type;
 	if (termlines && dmode == HEX_MODE) {
-		/* calculate how much of the buffer we can fit on screen */
+		int type;
+		struct rgrp_list *rgd;
+
+		rgd = gfs2_blk2rgrpd(&sbd, block);
+		if (rgd) {
+			type = gfs2_get_bitmap(&sbd, block, rgd);
+			gfs2_rgrp_relse(rgd, not_updated);
+		} else
+			type = 4;
 		screen_chunk_size = ((termlines - 4) * 16) >> 8 << 8;
 		if (!screen_chunk_size)
 			screen_chunk_size = 256;
-		print_gfs2("(p.%d of %d)", (offset / screen_chunk_size) + 1,
-				   (sbd.bsize % screen_chunk_size) > 0 ?
-				   sbd.bsize / screen_chunk_size + 1 : sbd.bsize /
-				   screen_chunk_size);
+		print_gfs2("(p.%d of %d--%s)",
+			   (offset / screen_chunk_size) + 1,
+			   (sbd.bsize % screen_chunk_size) > 0 ?
+			   sbd.bsize / screen_chunk_size + 1 : sbd.bsize /
+			   screen_chunk_size, allocdesc[type]);
 		/*eol(9);*/
 	}
 	if (block == sbd.sd_sb.sb_root_dir.no_addr)
-		print_gfs2("-------------------- Root directory ------------------");
+		print_gfs2("--------------- Root directory ------------------");
 	else if (!gfs1 && block == sbd.sd_sb.sb_master_dir.no_addr)
-		print_gfs2("------------------- Master directory -----------------");
+		print_gfs2("-------------- Master directory -----------------");
 	else if (!gfs1 && block == RGLIST_DUMMY_BLOCK)
-		print_gfs2("----------------------- RG List ----------------------");
+		print_gfs2("------------------ RG List ----------------------");
 	else {
 		if (gfs1) {
 			if (block == sbd1->sb_rindex_di.no_addr)
-				print_gfs2("--------------------- rindex file -------------------");
+				print_gfs2("---------------- rindex file -------------------");
 			else if (block == gfs1_quota_di.no_addr)
-				print_gfs2("--------------------- Quota file --------------------");
+				print_gfs2("---------------- Quota file --------------------");
 			else if (block == sbd1->sb_jindex_di.no_addr)
-				print_gfs2("-------------------- Journal Index ------------------");
+				print_gfs2("--------------- Journal Index ------------------");
 			else if (block == gfs1_license_di.no_addr)
-				print_gfs2("-------------------- License file -------------------");
+				print_gfs2("--------------- License file -------------------");
 		}
 		else {
 			int d;
@@ -486,17 +666,17 @@ int display_block_type(const char *lpBuffer, int from_restore)
 			for (d = 2; d < 8; d++) {
 				if (block == masterdir.dirent[d].block) {
 					if (!strncmp(masterdir.dirent[d].filename, "jindex", 6))
-						print_gfs2("-------------------- Journal Index ------------------");
+						print_gfs2("--------------- Journal Index ------------------");
 					else if (!strncmp(masterdir.dirent[d].filename, "per_node", 8))
-						print_gfs2("-------------------- Per-node Dir -------------------");
+						print_gfs2("--------------- Per-node Dir -------------------");
 					else if (!strncmp(masterdir.dirent[d].filename, "inum", 4))
-						print_gfs2("--------------------- Inum file ---------------------");
+						print_gfs2("---------------- Inum file ---------------------");
 					else if (!strncmp(masterdir.dirent[d].filename, "statfs", 6))
-						print_gfs2("--------------------- statfs file -------------------");
+						print_gfs2("---------------- statfs file -------------------");
 					else if (!strncmp(masterdir.dirent[d].filename, "rindex", 6))
-						print_gfs2("--------------------- rindex file -------------------");
+						print_gfs2("---------------- rindex file -------------------");
 					else if (!strncmp(masterdir.dirent[d].filename, "quota", 5))
-						print_gfs2("--------------------- Quota file --------------------");
+						print_gfs2("---------------- Quota file --------------------");
 				}
 			}
 		}
@@ -622,19 +802,10 @@ static int risize(void)
 /* ------------------------------------------------------------------------ */
 void rgcount(void)
 {
-	uint64_t block;
-	struct gfs2_buffer_head *ribh;
-	struct gfs2_inode *riinode;
-
-	if (gfs1)
-		block = sbd1->sb_rindex_di.no_addr;
-	else
-		block = masterblock("rindex");
-	ribh = bread(&sbd.buf_list, block);
-	riinode = inode_get(&sbd, ribh);
 	printf("%lld RGs in this file system.\n",
-	       (unsigned long long)riinode->i_di.di_size / risize());
-	inode_put(riinode, not_updated);
+	       (unsigned long long)sbd.md.riinode->i_di.di_size / risize());
+	inode_put(sbd.md.riinode, not_updated);
+	gfs2_rgrp_free(&sbd.rglist, not_updated);
 	exit(EXIT_SUCCESS);
 }
 
@@ -920,6 +1091,7 @@ int print_jindex(struct gfs2_inode *di)
 		     lines_per_row[dmode] <= termlines - start_line - 2)) {
 			if (edit_row[dmode] == print_entry_ndx) {
 				COLORS_HIGHLIGHT;
+				strcpy(efield, "ji_addr");
 				sprintf(estring, "%" PRIx64, ji.ji_addr);
 			}
 			print_gfs2("Journal #%d", print_entry_ndx);
@@ -1088,9 +1260,8 @@ int display_leaf(struct iinfo *ind)
 			eol(5);
 			if (termlines) {
 				if (edit_row[dmode] >=0 &&
-				    line - start_line - 1 == 
-				    edit_row[dmode] -
-				    start_row[dmode]) {
+				    line - start_line - 1 ==
+				    edit_row[dmode] - start_row[dmode]) {
 					COLORS_HIGHLIGHT;
 					sprintf(estring, "%"PRIx64,
 						ind->ii[0].dirent[d].block);
@@ -1262,7 +1433,6 @@ int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_t start
 			char *tmpbuf;
 			
 			more_indir = malloc(sizeof(struct iinfo));
-			// FIXME: handle failed malloc
 			tmpbuf = malloc(sbd.bsize);
 			if (tmpbuf) {
 				lseek(sbd.device_fd,
@@ -1452,6 +1622,8 @@ int display_extended(void)
 /* ------------------------------------------------------------------------ */
 void read_superblock(int fd)
 {
+	int count;
+
 	sbd1 = (struct gfs_sb *)&sbd.sd_sb;
 	ioctl(fd, BLKFLSBUF, 0);
 	lseek(fd, 0x10 * 4096, SEEK_SET);
@@ -1492,6 +1664,27 @@ void read_superblock(int fd)
 		sbd.bsize = GFS2_DEFAULT_BSIZE;
 	compute_constants(&sbd);
 	block = 0x10 * (GFS2_DEFAULT_BSIZE / sbd.bsize);
+	device_geometry(&sbd);
+	fix_device_geometry(&sbd);
+	if(gfs1) {
+		sbd.sd_inptrs = (sbd.bsize - sizeof(struct gfs_indirect)) /
+			sizeof(uint64_t);
+		sbd.sd_diptrs = (sbd.bsize - sizeof(struct gfs_dinode)) /
+			sizeof(uint64_t);
+		sbd.md.riinode = gfs2_load_inode(&sbd,
+						 sbd1->sb_rindex_di.no_addr);
+	} else {
+		sbd.sd_inptrs = (sbd.bsize - sizeof(struct gfs2_meta_header)) /
+			sizeof(uint64_t);
+		sbd.sd_diptrs = (sbd.bsize - sizeof(struct gfs2_dinode)) /
+			sizeof(uint64_t);
+		sbd.master_dir = gfs2_load_inode(&sbd,
+					    sbd.sd_sb.sb_master_dir.no_addr);
+		gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
+	}
+
+	sbd.fssize = sbd.device.length;
+	ri_update(&sbd, 0, &count);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -1716,6 +1909,145 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 }
 
 /* ------------------------------------------------------------------------ */
+/* Find next metadata block of a given type AFTER a given point in the fs   */
+/*                                                                          */
+/* This is used to find blocks that aren't represented in the bitmaps, such */
+/* as the RGs and bitmaps or the superblock.                                */
+/* ------------------------------------------------------------------------ */
+uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int print)
+{
+	uint64_t blk, last_fs_block;
+	int found = 0;
+	struct gfs2_buffer_head *bh;
+
+	last_fs_block = lseek(sbd.device_fd, 0, SEEK_END) / sbd.bsize;
+	for (blk = startblk + 1; blk < last_fs_block; blk++) {
+		bh = bread(&sbd.buf_list, blk);
+		/* Can't use get_block_type here (returns false "none") */
+		if (bh->b_data[0] == 0x01 && bh->b_data[1] == 0x16 &&
+		    bh->b_data[2] == 0x19 && bh->b_data[3] == 0x70 &&
+		    bh->b_data[4] == 0x00 && bh->b_data[5] == 0x00 &&
+		    bh->b_data[6] == 0x00 && bh->b_data[7] == metatype) {
+			found = 1;
+			brelse(bh, not_updated);
+			break;
+		}
+		brelse(bh, not_updated);
+	}
+	if (!found)
+		blk = 0;
+	if (print) {
+		if (dmode == HEX_MODE)
+			printf("0x%llx\n", (unsigned long long)blk);
+		else
+			printf("%llu\n", (unsigned long long)blk);
+	}
+	gfs2_rgrp_free(&sbd.rglist, not_updated);
+	if (print)
+		exit(0);
+	return blk;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Find next "metadata in use" block AFTER a given point in the fs          */
+/*                                                                          */
+/* This version does its magic by searching the bitmaps of the RG.  After   */
+/* all, if we're searching for a dinode, we want a real allocated inode,    */
+/* not just some block that used to be an inode in a previous incarnation.  */
+/* ------------------------------------------------------------------------ */
+uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int print)
+{
+	uint64_t blk;
+	int first = 1, found = 0;
+	struct rgrp_list *rgd;
+	struct gfs2_rindex *ri;
+	osi_list_t *tmp;
+
+	blk = 0;
+	/* Skip the rgs prior to the block we've been given */
+	for(tmp = sbd.rglist.next; tmp != &sbd.rglist; tmp = tmp->next){
+		rgd = osi_list_entry(tmp, struct rgrp_list, list);
+		ri = &rgd->ri;
+		if (first && startblk <= ri->ri_data0) {
+			startblk = ri->ri_data0;
+			break;
+		} else if (ri->ri_addr <= startblk &&
+			 startblk < ri->ri_data0 + ri->ri_data)
+			break;
+		else
+			rgd = NULL;
+		first = 0;
+	}
+	if (!rgd) {
+		if (print)
+			printf("0\n");
+		gfs2_rgrp_free(&sbd.rglist, not_updated);
+		if (print)
+			exit(-1);
+	}
+	for(; !found && tmp != &sbd.rglist; tmp = tmp->next){
+		rgd = osi_list_entry(tmp, struct rgrp_list, list);	
+		first = 1;
+		do {
+			if (gfs2_next_rg_metatype(&sbd, rgd, &blk, metatype,
+						  first))
+				break;
+			if (blk > startblk) {
+				found = 1;
+				break;
+			}
+			first = 0;
+		} while (blk <= startblk);
+	}
+	if (!found)
+		blk = 0;
+	if (print) {
+		if (dmode == HEX_MODE)
+			printf("0x%llx\n", (unsigned long long)blk);
+		else
+			printf("%llu\n", (unsigned long long)blk);
+	}
+	gfs2_rgrp_free(&sbd.rglist, not_updated);
+	if (print)
+		exit(0);
+	return blk;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Find next metadata block AFTER a given point in the fs                   */
+/* ------------------------------------------------------------------------ */
+uint64_t find_metablockoftype(const char *strtype, int print)
+{
+	int mtype = 0;
+	uint64_t startblk, blk = 0;
+
+	if (print)
+		startblk = blockstack[blockhist % BLOCK_STACK_SIZE].block;
+	else
+		startblk = block;
+
+	for (mtype = GFS2_METATYPE_NONE;
+	     mtype <= GFS2_METATYPE_QC; mtype++)
+		if (!strcasecmp(strtype, mtypes[mtype]))
+			break;
+	if (!strcmp(strtype, "dinode"))
+		mtype = GFS2_METATYPE_DI;
+	if (mtype >= GFS2_METATYPE_NONE && mtype <= GFS2_METATYPE_RB)
+		blk = find_metablockoftype_slow(startblk, mtype, print);
+	else if (mtype >= GFS2_METATYPE_DI && mtype <= GFS2_METATYPE_QC)
+		blk = find_metablockoftype_rg(startblk, mtype, print);
+	else if (print) {
+		fprintf(stderr, "Error: metadata type not "
+			"specified: must be one of:\n");
+		fprintf(stderr, "sb rg rb di in lf jd lh ld"
+			" ea ed lb 13 qc\n");
+		gfs2_rgrp_free(&sbd.rglist, not_updated);
+		exit(-1);
+	}
+	return blk;
+}
+
+/* ------------------------------------------------------------------------ */
 /* Check if the word is a keyword such as "sb" or "rindex"                  */
 /* Returns: block number if it is, else 0                                   */
 /* ------------------------------------------------------------------------ */
@@ -1770,7 +2102,9 @@ uint64_t check_keywords(const char *kword)
 		uint64_t j_size;
 
 		blk = find_journal_block(kword, &j_size);
-	} else if (kword[0]=='0' && kword[1]=='x') /* hex addr */
+	} else if (kword[0]=='/') /* search */
+		blk = find_metablockoftype(&kword[1], 0);
+	else if (kword[0]=='0' && kword[1]=='x') /* hex addr */
 		sscanf(kword, "%"SCNx64, &blk);/* retrieve in hex */
 	else
 		sscanf(kword, "%" PRIu64, &blk); /* retrieve decimal */
@@ -1789,7 +2123,7 @@ uint64_t goto_block(void)
 	memset(string, 0, sizeof(string));
 	sprintf(string,"%"PRId64, block);
 	if (bobgets(string, 1, 7, 16, &ch)) {
-		if (isalnum(string[0]))
+		if (isalnum(string[0]) || string[0] == '/')
 			temp_blk = check_keywords(string);
 		else if (string[0] == '+') {
 			if (string[1] == '0' && string[2] == 'x')
@@ -1990,6 +2324,196 @@ void jump(void)
 }
 
 /* ------------------------------------------------------------------------ */
+/* print block type                                                         */
+/* ------------------------------------------------------------------------ */
+void print_block_type(uint64_t block, int type, const char *additional)
+{
+	if (type <= GFS2_METATYPE_QC)
+		printf("%d (Block %lld is type %d: %s%s)\n", type,
+		       (unsigned long long)block, type, block_type_str[type],
+		       additional);
+	else
+		printf("%d (Block %lld is type %d: unknown%s)\n", type,
+		       (unsigned long long)block, type, additional);
+}
+
+/* ------------------------------------------------------------------------ */
+/* find_print block type                                                    */
+/* ------------------------------------------------------------------------ */
+void find_print_block_type(void)
+{
+	uint64_t block;
+	struct gfs2_buffer_head *bh;
+	int type;
+
+	block = blockstack[blockhist % BLOCK_STACK_SIZE].block;
+	bh = bread(&sbd.buf_list, block);
+	type = get_block_type(bh->b_data);
+	print_block_type(block, type, "");
+	brelse(bh, NOT_UPDATED);
+	gfs2_rgrp_free(&sbd.rglist, not_updated);
+	exit(0);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Find and print the resource group associated with a given block          */
+/* ------------------------------------------------------------------------ */
+void find_print_block_rg(int bitmap)
+{
+	uint64_t block, rgblock;
+	int i;
+	struct rgrp_list *rgd;
+
+	block = blockstack[blockhist % BLOCK_STACK_SIZE].block;
+	if (block == sbd.sb_addr)
+		printf("0 (the superblock is not in the bitmap)\n");
+	else {
+		rgd = gfs2_blk2rgrpd(&sbd, block);
+		if (rgd) {
+			rgblock = rgd->ri.ri_addr;
+			if (bitmap) {
+				struct gfs2_bitmap *bits = NULL;
+
+				for (i = 0; i < rgd->ri.ri_length; i++) {
+					bits = &(rgd->bits[i]);
+					if (block - rgd->ri.ri_data0 <
+					    ((bits->bi_start + bits->bi_len) *
+					     GFS2_NBBY)) {
+						break;
+					}
+				}
+				if (i < rgd->ri.ri_length)
+					rgblock += i;
+
+			}
+			if (dmode == HEX_MODE)
+				printf("0x%llx\n",(unsigned long long)rgblock);
+			else
+				printf("%llu\n", (unsigned long long)rgblock);
+		} else {
+			printf("-1 (block invalid or part of an rgrp).\n");
+		}
+	}
+	gfs2_rgrp_free(&sbd.rglist, not_updated);
+	exit(0);
+}
+
+/* ------------------------------------------------------------------------ */
+/* find/change/print block allocation (what the bitmap says about block)    */
+/* ------------------------------------------------------------------------ */
+void find_change_block_alloc(int *newval)
+{
+	uint64_t block;
+	int type;
+	struct rgrp_list *rgd;
+
+	if (newval &&
+	    (*newval < GFS2_BLKST_FREE || *newval > GFS2_BLKST_DINODE)) {
+		int i;
+
+		printf("Error: value %d is not valid.\nValid values are:\n",
+		       *newval);
+		for (i = GFS2_BLKST_FREE; i <= GFS2_BLKST_DINODE; i++)
+			printf("%d - %s\n", i, allocdesc[i]);
+		gfs2_rgrp_free(&sbd.rglist, not_updated);
+		exit(-1);
+	}
+	block = blockstack[blockhist % BLOCK_STACK_SIZE].block;
+	if (block == sbd.sb_addr)
+		printf("3 (the superblock is not in the bitmap)\n");
+	else {
+		if (newval) {
+			if (gfs2_set_bitmap(&sbd, block, *newval))
+				printf("-1 (block invalid or part of an rgrp).\n");
+			else
+				printf("%d\n", *newval);
+		} else {
+			rgd = gfs2_blk2rgrpd(&sbd, block);
+			if (rgd) {
+				type = gfs2_get_bitmap(&sbd, block, rgd);
+				printf("%d (%s)\n", type, allocdesc[type]);
+				gfs2_rgrp_relse(rgd, not_updated);
+			} else {
+				gfs2_rgrp_free(&sbd.rglist, not_updated);
+				printf("-1 (block invalid or part of an rgrp).\n");
+				exit(-1);
+			}
+		}
+	}
+	gfs2_rgrp_free(&sbd.rglist, (newval) ? updated : not_updated);
+	if (newval)
+		bcommit(&sbd.nvbuf_list);
+	exit(0);
+}
+
+/* ------------------------------------------------------------------------ */
+/* process request to print a certain field from a previously pushed block  */
+/* ------------------------------------------------------------------------ */
+void process_field(const char *field, uint64_t *newval, int print_field)
+{
+	uint64_t block;
+	struct gfs2_buffer_head *bh;
+	int type;
+	struct gfs2_rgrp rg;
+
+	block = blockstack[blockhist % BLOCK_STACK_SIZE].block;
+	bh = bread(&sbd.buf_list, block);
+	type = get_block_type(bh->b_data);
+	switch (type) {
+	case GFS2_METATYPE_SB:
+		if (print_field)
+			print_block_type(block, type,
+					 " which is not implemented");
+		break;
+	case GFS2_METATYPE_RG:
+		gfs2_rgrp_in(&rg, bh->b_data);
+		if (newval) {
+			gfs2_rgrp_assignval(&rg, field, *newval);
+			gfs2_rgrp_out(&rg, bh->b_data);
+			if (print_field)
+				gfs2_rgrp_printval(&rg, field);
+		} else {
+			if (print_field && gfs2_rgrp_printval(&rg, field))
+				printf("Field '%s' not found.\n", field);
+		}
+		break;
+	case GFS2_METATYPE_RB:
+		if (print_field)
+			print_block_type(block, type,
+					 " which is not implemented");
+		break;
+	case GFS2_METATYPE_DI:
+		gfs2_dinode_in(&di, bh->b_data);
+		if (newval) {
+			gfs2_dinode_assignval(&di, field, *newval);
+			gfs2_dinode_out(&di, bh->b_data);
+			if (print_field)
+				gfs2_dinode_printval(&di, field);
+		} else {
+			if (print_field && gfs2_dinode_printval(&di, field))
+				printf("Field '%s' not found.\n", field);
+		}
+		break;
+	case GFS2_METATYPE_IN:
+	case GFS2_METATYPE_LF:
+	case GFS2_METATYPE_JD:
+	case GFS2_METATYPE_LH:
+	case GFS2_METATYPE_LD:
+	case GFS2_METATYPE_EA:
+	case GFS2_METATYPE_ED:
+	case GFS2_METATYPE_LB:
+	case GFS2_METATYPE_QC:
+	default:
+		if (print_field)
+			print_block_type(block, type,
+					 " which is not implemented");
+		break;
+	}
+	brelse(bh, newval ? UPDATED : NOT_UPDATED);
+	bcommit(&sbd.buf_list);
+}
+
+/* ------------------------------------------------------------------------ */
 /* interactive_mode - accept keystrokes from user and display structures    */
 /* ------------------------------------------------------------------------ */
 void interactive_mode(void)
@@ -2023,10 +2547,20 @@ void interactive_mode(void)
 			else {
 				if (dmode == HEX_MODE)
 					hex_edit(&ch);
-				else if (dmode == GFS2_MODE)
+				else if (dmode == GFS2_MODE) {
+					uint64_t val;
+
 					bobgets(estring, edit_row[dmode]+4, 24,
-						edit_size[dmode], &ch);
-				else
+						10, &ch);
+					if (estring[0] == '0' &&
+					    estring[1] == 'x')
+						sscanf(estring, "%"SCNx64,
+						       &val);
+					else
+						val = (uint64_t)atoll(estring);
+					process_field(efield, &val, 0);
+					block_in_mem = -1;
+				} else
 					bobgets(estring, edit_row[dmode]+6, 14,
 						edit_size[dmode], &ch);
 			}
@@ -2520,7 +3054,7 @@ void dump_journal(const char *journal)
 /* ------------------------------------------------------------------------ */
 void usage(void)
 {
-	fprintf(stderr,"\nFormat is: gfs2_edit [-c 1] [-V] [-x] [-h] [identify] [-p structures|blocks] /dev/device\n\n");
+	fprintf(stderr,"\nFormat is: gfs2_edit [-c 1] [-V] [-x] [-h] [identify] [-p structures|blocks][blocktype][blockalloc [val]][blockbits][blockrg][find sb|rg|rb|di|in|lf|jd|lh|ld|ea|ed|lb|13|qc][field <f>[val]] /dev/device\n\n");
 	fprintf(stderr,"If only the device is specified, it enters into hexedit mode.\n");
 	fprintf(stderr,"identify - prints out only the block type, not the details.\n");
 	fprintf(stderr,"printsavedmeta - prints out the saved metadata blocks from a savemeta file.\n");
@@ -2546,6 +3080,20 @@ void usage(void)
 	fprintf(stderr,"     rg X - print resource group X.\n");
 	fprintf(stderr,"     rgs - prints all the resource groups (rgs).\n");
 	fprintf(stderr,"     quota - prints the quota file.\n");
+	fprintf(stderr,"     0x1234 - prints the specified block\n");
+	fprintf(stderr,"-p   <block> blocktype - prints the type "
+		"of the specified block\n");
+	fprintf(stderr,"-p   <block> blockrg - prints the resource group "
+		"block corresponding to the specified block\n");
+	fprintf(stderr,"-p   <block> blockbits - prints the block with "
+		"the bitmap corresponding to the specified block\n");
+	fprintf(stderr,"-p   <block> blockalloc [0|1|2|3] - print or change "
+		"the allocation type of the specified block\n");
+	fprintf(stderr,"-p   <block> field [new_value] - prints or change the "
+		"structure field\n");
+	fprintf(stderr,"-p   <b> find sb|rg|rb|di|in|lf|jd|lh|ld|ea|ed|lb|"
+		"13|qc - find block of given type after block <b>\n");
+	fprintf(stderr,"     <b> specifies the starting block for search\n");
 	fprintf(stderr,"-s   specifies a starting block such as root, rindex, quota, inum.\n");
 	fprintf(stderr,"-x   print in hexmode.\n");
 	fprintf(stderr,"-h   prints this help.\n\n");
@@ -2560,11 +3108,69 @@ void usage(void)
 	fprintf(stderr,"     gfs2_edit identify -p 0x27381 /dev/bobs_vg/lvol0\n");
 	fprintf(stderr,"   To print out the fourth Resource Group. (the first R is #0)\n");
 	fprintf(stderr,"     gfs2_edit -p rg 3 /dev/sdb1\n");
+	fprintf(stderr,"   To print out the metadata type of block 1234\n");
+	fprintf(stderr,"     gfs2_edit -p 1234 blocktype /dev/roth_vg/roth_lb\n");
+	fprintf(stderr,"   To print out the allocation type of block 2345\n");
+	fprintf(stderr,"     gfs2_edit -p 2345 blockalloc /dev/vg/lv\n");
+	fprintf(stderr,"   To change the allocation type of block 2345 to a 'free block'\n");
+	fprintf(stderr,"     gfs2_edit -p 2345 blockalloc 0 /dev/vg/lv\n");
+	fprintf(stderr,"   To print out the file size of the dinode at block 0x118\n");
+	fprintf(stderr,"     gfs2_edit -p 0x118 field di_size /dev/roth_vg/roth_lb\n");
+	fprintf(stderr,"   To find any dinode higher than the quota file dinode:\n");
+	fprintf(stderr,"     gfs2_edit -p quota find di /dev/x/y\n");
 	fprintf(stderr,"   To set the Resource Group flags for rg #7 to 3.\n");
 	fprintf(stderr,"     gfs2_edit rgflags 7 3 /dev/sdc2\n");
 	fprintf(stderr,"   To save off all metadata for /dev/vg/lv:\n");
 	fprintf(stderr,"     gfs2_edit savemeta /dev/vg/lv /tmp/metasave\n");
 }/* usage */
+
+/* ------------------------------------------------------------------------ */
+/* parameterpass1 - pre-processing for command-line parameters              */
+/* ------------------------------------------------------------------------ */
+void parameterpass1(int argc, char *argv[], int i)
+{
+	if (!strcasecmp(argv[i], "-V")) {
+		printf("%s version %s (built %s %s)\n",
+		       argv[0], RELEASE_VERSION, __DATE__, __TIME__);
+		printf("%s\n", REDHAT_COPYRIGHT);
+		exit(0);
+	}
+	else if (!strcasecmp(argv[i], "-h") ||
+		 !strcasecmp(argv[i], "-help") ||
+		 !strcasecmp(argv[i], "-usage")) {
+		usage();
+		exit(0);
+	}
+	else if (!strcasecmp(argv[i], "-c")) {
+		i++;
+		color_scheme = atoi(argv[i]);
+	}
+	else if (!strcasecmp(argv[i], "-p") ||
+		 !strcasecmp(argv[i], "-print")) {
+		termlines = 0; /* initial value--we'll figure
+				  it out later */
+		dmode = GFS2_MODE;
+	}
+	else if (!strcasecmp(argv[i], "savemeta"))
+		termlines = 0;
+	else if (!strcasecmp(argv[i], "savemetaslow"))
+		termlines = 0;
+	else if (!strcasecmp(argv[i], "savergs"))
+		termlines = 0;
+	else if (!strcasecmp(argv[i], "printsavedmeta"))
+		restoremeta(argv[i+1], argv[i+2],
+			    TRUE);
+	else if (!strcasecmp(argv[i], "restoremeta"))
+		restoremeta(argv[i+1], argv[i+2], FALSE);
+	else if (!strcmp(argv[i], "rgcount"))
+		termlines = 0;
+	else if (!strcmp(argv[i], "rgflags"))
+		termlines = 0;
+	else if (!strcmp(argv[i], "rg"))
+		termlines = 0;
+	else if (!device[0] && strchr(argv[i],'/'))
+		strcpy(device, argv[i]);
+}
 
 /* ------------------------------------------------------------------------ */
 /* process_parameters - process commandline parameters                      */
@@ -2575,155 +3181,163 @@ void usage(void)
 void process_parameters(int argc, char *argv[], int pass)
 {
 	int i;
+	uint64_t keyword_blk;
 
 	if (argc < 2) {
 		usage();
 		die("no device specified\n");
 	}
 	for (i = 1; i < argc; i++) {
-		if (!pass) {
-			if (!strcasecmp(argv[i], "-V")) {
-				printf("%s version %s (built %s %s)\n", prog_name,
-					   RELEASE_VERSION, __DATE__, __TIME__);
-				printf("%s\n", REDHAT_COPYRIGHT);
-				exit(0);
-			}
-			else if (!strcasecmp(argv[i], "-h") ||
-					 !strcasecmp(argv[i], "-help") ||
-					 !strcasecmp(argv[i], "-usage")) {
-				usage();
-				exit(0);
-			}
-			else if (!strcasecmp(argv[i], "-c")) {
-				i++;
-				color_scheme = atoi(argv[i]);
-			}
-			else if (!strcasecmp(argv[i], "-p") ||
-					 !strcasecmp(argv[i], "-print")) {
-				termlines = 0; /* initial value--we'll figure it out later */
-				dmode = GFS2_MODE;
-			}
-			else if (!strcasecmp(argv[i], "savemeta"))
-				termlines = 0;
-			else if (!strcasecmp(argv[i], "savemetaslow"))
-				termlines = 0;
-			else if (!strcasecmp(argv[i], "savergs"))
-				termlines = 0;
-			else if (!strcasecmp(argv[i], "printsavedmeta"))
-				restoremeta(argv[i+1], argv[i+2],
-					    TRUE);
-			else if (!strcasecmp(argv[i], "restoremeta"))
-				restoremeta(argv[i+1], argv[i+2], FALSE);
-			else if (!strcmp(argv[i], "rgcount"))
-				termlines = 0;
-			else if (!strcmp(argv[i], "rgflags"))
-				termlines = 0;
-			else if (!strcmp(argv[i], "rg"))
-				termlines = 0;
-			else if (!device[0] && strchr(argv[i],'/'))
-				strcpy(device, argv[i]);
+		if (!pass) { /* first pass */
+			parameterpass1(argc, argv, i);
+			continue;
 		}
-		else { /* second pass */
-			if (!strcasecmp(argv[i], "-s")) {
-				i++;
-				if (i >= argc - 1) {
-					printf("Error: starting block not specified with -s.\n");
-					printf("%s -s [starting block | keyword] <device>\n",
-					       argv[0]);
-					printf("For example: %s -s \"rg 3\" /dev/exxon_vg/exxon_lv\n",
-					       argv[0]);
-					exit(EXIT_FAILURE);
-				}
-				starting_blk = check_keywords(argv[i]);
+		/* second pass */
+		if (!strcasecmp(argv[i], "-s")) {
+			i++;
+			if (i >= argc - 1) {
+				printf("Error: starting block not specified "
+				       "with -s.\n");
+				printf("%s -s [starting block | keyword] "
+				       "<device>\n", argv[0]);
+				printf("For example: %s -s \"rg 3\" "
+				       "/dev/exxon_vg/exxon_lv\n", argv[0]);
+				exit(EXIT_FAILURE);
 			}
-			else if (!termlines && !strchr(argv[i],'/')) { /* if print, no slash */
-				uint64_t keyword_blk;
+			starting_blk = check_keywords(argv[i]);
+			continue;
+		}
+		if (termlines || strchr(argv[i],'/')) /* if print or slash */
+			continue;
+			
+		if (!strncmp(argv[i], "journal", 7) &&
+		    isdigit(argv[i][7])) {
+			dump_journal(argv[i]);
+			continue;
+		}
+		keyword_blk = check_keywords(argv[i]);
+		if (keyword_blk)
+			push_block(keyword_blk);
+		else if (!strcasecmp(argv[i], "-x"))
+			dmode = HEX_MODE;
+		else if (argv[i][0] == '-') /* if it starts with a dash */
+			; /* ignore it--meant for pass == 0 */
+		else if (!strcmp(argv[i], "identify"))
+			identify = TRUE;
+		else if (!strcmp(argv[i], "size")) {
+			printf("Device size: %" PRIu64 " (0x%" PRIx64 ")\n",
+			       max_block, max_block);
+			exit(EXIT_SUCCESS);
+		}
+		else if (!strcmp(argv[i], "rgcount"))
+			rgcount();
+		else if (!strcmp(argv[i], "field")) {
+			uint64_t newval;
 
-				if (!strncmp(argv[i], "journal", 7) &&
-				    isdigit(argv[i][7])) {
-					dump_journal(argv[i]);
-					continue;
-				}
-				keyword_blk = check_keywords(argv[i]);
-				if (keyword_blk) {
-					push_block(keyword_blk);
-				}
-				else if (!strcasecmp(argv[i], "-x"))
-					dmode = HEX_MODE;
-				else if (argv[i][0] == '-') /* if it starts with a dash */
-					; /* ignore it--meant for pass == 0 */
-				else if (!strcmp(argv[i], "identify"))
-					identify = TRUE;
-				else if (!strcmp(argv[i], "size"))
-					printf("Device size: %" PRIu64 " (0x%" PRIx64 ")\n",
-						   max_block, max_block);
-				else if (!strcmp(argv[i], "rgcount"))
-					rgcount();
-				else if (!strcmp(argv[i], "rgflags")) {
-					int rg, set = FALSE;
-					uint32_t new_flags = 0;
-					
-					i++;
-					if (i >= argc - 1) {
-						printf("Error: rg # not specified.\n");
-						printf("Format is: %s rgflags rgnum"
-						       "[newvalue]\n",
-						       argv[0]);
-						exit(EXIT_FAILURE);
-					}
-					if (argv[i][0]=='0' && argv[i][1]=='x')
-						sscanf(argv[i], "%"SCNx32,
-						       &rg);
-					else
-						rg = atoi(argv[i]);
-					i++;
-					if (i < argc - 1 &&
-					    isdigit(argv[i][0])) {
-						set = TRUE;
-						if (argv[i][0]=='0' &&
-						    argv[i][1]=='x')
-							sscanf(argv[i],
-							       "%"SCNx32,
-							       &new_flags);
-						else
-							new_flags =
-								atoi(argv[i]);
-					}
-					set_rgrp_flags(rg, new_flags, set,
-						       FALSE);
-					exit(EXIT_SUCCESS);
-				}
-				else if (!strcmp(argv[i], "rg")) {
-					int rg;
-					
-					i++;
-					if (i >= argc - 1) {
-						printf("Error: rg # not specified.\n");
-						printf("Format is: %s rg rgnum"
-						       "\n", argv[0]);
-						exit(EXIT_FAILURE);
-					}
-					rg = atoi(argv[i]);
-					i++;
-					set_rgrp_flags(rg, 0, FALSE, TRUE);
-					exit(EXIT_SUCCESS);
-				}
-				else if (!strcasecmp(argv[i], "savemeta"))
-					savemeta(argv[i+2], 0);
-				else if (!strcasecmp(argv[i], "savemetaslow"))
-					savemeta(argv[i+2], 1);
-				else if (!strcasecmp(argv[i], "savergs"))
-					savemeta(argv[i+2], 2);
-				else if (isdigit(argv[i][0])) { /* decimal addr */
-					sscanf(argv[i], "%"SCNd64, &temp_blk);
-					push_block(temp_blk);
-				}
-				else {
-					fprintf(stderr,"I don't know what '%s' means.\n", argv[i]);
-					usage();
-					exit(-1);
-				}
+			i++;
+			if (i >= argc - 1) {
+				printf("Error: field not specified.\n");
+				printf("Format is: %s -p <block> field "
+				       "<field> [newvalue]\n", argv[0]);
+				gfs2_rgrp_free(&sbd.rglist, not_updated);
+				exit(EXIT_FAILURE);
 			}
+			if (isdigit(argv[i + 1][0])) {
+				if (argv[i + 1][0]=='0' && argv[i + 1][1]=='x')
+					sscanf(argv[i + 1], "%"SCNx64,
+					       &newval);
+				else
+					newval = (uint64_t)atoll(argv[i + 1]);
+				process_field(argv[i], &newval, 1);
+				gfs2_rgrp_free(&sbd.rglist, not_updated);
+				exit(0);
+			} else {
+				process_field(argv[i], NULL, 1);
+				gfs2_rgrp_free(&sbd.rglist, not_updated);
+				exit(0);
+			}
+		} else if (!strcmp(argv[i], "blocktype")) {
+			find_print_block_type();
+		} else if (!strcmp(argv[i], "blockrg")) {
+			find_print_block_rg(0);
+		} else if (!strcmp(argv[i], "blockbits")) {
+			find_print_block_rg(1);
+		} else if (!strcmp(argv[i], "blockalloc")) {
+			if (isdigit(argv[i + 1][0])) {
+				int newval;
+
+				if (argv[i + 1][0]=='0' && argv[i + 1][1]=='x')
+					sscanf(argv[i + 1], "%x", &newval);
+				else
+					newval = (uint64_t)atoi(argv[i + 1]);
+				find_change_block_alloc(&newval);
+			} else {
+				find_change_block_alloc(NULL);
+			}
+		} else if (!strcmp(argv[i], "find")) {
+			find_metablockoftype(argv[i + 1], 1);
+		} else if (!strcmp(argv[i], "rgflags")) {
+			int rg, set = FALSE;
+			uint32_t new_flags = 0;
+
+			i++;
+			if (i >= argc - 1) {
+				printf("Error: rg # not specified.\n");
+				printf("Format is: %s rgflags rgnum"
+				       "[newvalue]\n", argv[0]);
+				gfs2_rgrp_free(&sbd.rglist, not_updated);
+				exit(EXIT_FAILURE);
+			}
+			if (argv[i][0]=='0' && argv[i][1]=='x')
+				sscanf(argv[i], "%"SCNx32, &rg);
+			else
+				rg = atoi(argv[i]);
+			i++;
+			if (i < argc - 1 &&
+			    isdigit(argv[i][0])) {
+				set = TRUE;
+				if (argv[i][0]=='0' && argv[i][1]=='x')
+					sscanf(argv[i], "%"SCNx32, &new_flags);
+				else
+					new_flags = atoi(argv[i]);
+			}
+			set_rgrp_flags(rg, new_flags, set, FALSE);
+			gfs2_rgrp_free(&sbd.rglist, not_updated);
+			exit(EXIT_SUCCESS);
+		} else if (!strcmp(argv[i], "rg")) {
+			int rg;
+				
+			i++;
+			if (i >= argc - 1) {
+				printf("Error: rg # not specified.\n");
+				printf("Format is: %s rg rgnum\n", argv[0]);
+				gfs2_rgrp_free(&sbd.rglist, not_updated);
+				exit(EXIT_FAILURE);
+			}
+			rg = atoi(argv[i]);
+			if (!strcasecmp(argv[i + 1], "find")) {
+				temp_blk = get_rg_addr(rg);
+				push_block(temp_blk);
+			} else {
+				set_rgrp_flags(rg, 0, FALSE, TRUE);
+				gfs2_rgrp_free(&sbd.rglist, not_updated);
+				exit(EXIT_SUCCESS);
+			}
+		}
+		else if (!strcasecmp(argv[i], "savemeta"))
+			savemeta(argv[i+2], 0);
+		else if (!strcasecmp(argv[i], "savemetaslow"))
+			savemeta(argv[i+2], 1);
+		else if (!strcasecmp(argv[i], "savergs"))
+			savemeta(argv[i+2], 2);
+		else if (isdigit(argv[i][0])) { /* decimal addr */
+			sscanf(argv[i], "%"SCNd64, &temp_blk);
+			push_block(temp_blk);
+		} else {
+			fprintf(stderr,"I don't know what '%s' means.\n",
+				argv[i]);
+			usage();
+			exit(EXIT_FAILURE);
 		}
 	} /* for */
 }/* process_parameters */
@@ -2741,8 +3355,6 @@ void process_parameters(int argc, char *argv[], int pass)
 int main(int argc, char *argv[])
 {
 	int i, j, fd;
-
-	prog_name = argv[0];
 
 	indirect = malloc(sizeof(struct iinfo));
 	if (!indirect)
@@ -2814,5 +3426,6 @@ int main(int argc, char *argv[])
 		free(buf);
 	if (indirect)
 		free(indirect);
+	gfs2_rgrp_free(&sbd.rglist, not_updated);
  	exit(EXIT_SUCCESS);
 }
