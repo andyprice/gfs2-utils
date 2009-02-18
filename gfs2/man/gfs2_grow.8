@@ -14,8 +14,8 @@ running gfs2_grow on a GFS2 filesystem, you are requesting that
 any spare space between the current end of the filesystem and
 the end of the device is filled with a newly initialized GFS2
 filesystem extension.  When this operation is complete, the resource
-index for the filesystem is updated so that all nodes in the
-cluster can use the extra storage space which has been added.
+group index for the filesystem is updated so that all nodes in the
+cluster can use the extra storage space that has been added.
 
 You may only run gfs2_grow on a mounted filesystem; expansion of 
 unmounted filesystems is not supported.  You only need to
@@ -33,6 +33,11 @@ should leave your filesystem in its original unexpanded state.
 You can run gfs2_grow with the \fB-T\fP flag to get a display
 of the current state of a mounted GFS2 filesystem.
 
+The gfs2_grow tool uses the resource group (RG) size that was originally
+calculated when mkfs.gfs2 was done.  This allows tools like gfs2_fsck
+to better ensure the integrity of the file system.  Since the new free
+space often does not lie on even boundaries based on that RG size,
+there may be some unused space on the device after gfs2_grow is run.
 .SH OPTIONS
 .TP
 \fB-D\fP
@@ -43,10 +48,6 @@ Prints out a short usage message and exits.
 .TP
 \fB-q\fP
 Be quiet.  Don't print anything.
-.TP
-\fB-r MegaBytes\fP
-gfs2_grow will try to make the new Resource Groups about this big.
-The default is 256 MB.
 .TP
 \fB-T\fP
 Test. Do all calculations, but do not write any data to the disk and do
