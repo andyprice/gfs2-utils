@@ -3236,12 +3236,15 @@ int setup_cpg(void)
 
 void close_cpg(void)
 {
+	struct mountgroup *mg;
 	cpg_error_t error;
 	struct cpg_name name;
 	int i = 0;
 
-	if (!cpg_handle_daemon || cluster_down)
+	if (!cpg_handle_daemon)
 		return;
+	if (cluster_down)
+		goto fin;
 
 	memset(&name, 0, sizeof(name));
 	sprintf(name.value, "gfs:controld");
@@ -3257,6 +3260,12 @@ void close_cpg(void)
 	}
 	if (error != CPG_OK)
 		log_error("daemon cpg_leave error %d", error);
+ fin:
+	list_for_each_entry(mg, &mountgroups, list) {
+		if (mg->cpg_handle)
+			cpg_finalize(mg->cpg_handle);
+	}
+	cpg_finalize(cpg_handle_daemon);
 }
 
 int setup_dlmcontrol(void)
