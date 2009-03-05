@@ -969,14 +969,14 @@ static void *process_queries(void *arg)
 
 	rv = setup_listener(GFSC_QUERY_SOCK_PATH);
 	if (rv < 0)
-		exit (-1);
+		return NULL;
 
 	s = rv;
 
 	for (;;) {
 		f = accept(s, NULL, NULL);
 		if (f < 0)
-			exit (-1);
+			return NULL;
 
 		rv = do_read(f, &h, sizeof(h));
 		if (rv < 0) {
