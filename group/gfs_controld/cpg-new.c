@@ -680,8 +680,14 @@ void process_dlmcontrol(int ci)
 		node->dlm_notify_result = result;
 
 	} else if (type == DLMC_RESULT_REGISTER) {
-		log_group(mg, "process_dlmcontrol register nodeid %d result %d",
-			  nodeid, result);
+		if (result) {
+			/* shouldn't happen */
+			log_error("process_dlmcontrol register %d", result);
+		} else
+			log_group(mg, "process_dlmcontrol register %d", result);
+
+		mg->dlm_registered = 1;
+
 	} else {
 		log_group(mg, "process_dlmcontrol unknown type %d", type);
 	}
@@ -752,6 +758,11 @@ static int check_dlm_notify_done(struct mountgroup *mg)
 
 static int wait_conditions_done(struct mountgroup *mg)
 {
+	if (!mg->dlm_registered) {
+		log_group(mg, "wait_conditions need dlm register");
+		return 0;
+	}
+
 	if (mg->first_recovery_needed) {
 		log_group(mg, "wait_conditions skip for first_recovery_needed");
 		return 1;
