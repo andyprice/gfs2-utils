@@ -1041,13 +1041,6 @@ void cluster_dead(int ci)
 	cluster_down = 1;
 }
 
-static void dlmcontrol_dead(int ci)
-{
-	if (!list_empty(&mountgroups))
-		log_error("dlm_controld is gone");
-	client_dead(ci);
-}
-
 static void loop(void)
 {
 	int poll_timeout = -1;
@@ -1096,7 +1089,7 @@ static void loop(void)
 	rv = setup_dlmcontrol();
 	if (rv < 0)
 		goto out;
-	client_add(rv, process_dlmcontrol, dlmcontrol_dead);
+	client_add(rv, process_dlmcontrol, cluster_dead);
 
 	for (;;) {
 		rv = poll(pollfd, client_maxi + 1, poll_timeout);
