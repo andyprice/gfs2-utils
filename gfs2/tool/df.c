@@ -165,7 +165,11 @@ do_df_one(char *path)
 		(get_sysfs_uint(fs, "args/localcaching")) ? "TRUE" : "FALSE");
 
 	/* Read the master statfs file */
-	mount_gfs2_meta(&sbd);
+	if (mount_gfs2_meta(&sbd)) {
+		fprintf(stderr, "Error mounting GFS2 metafs: %s\n",
+			strerror(errno));
+		exit(-1);
+	}
 
 	sprintf(statfs_fn, "%s/statfs", sbd.metafs_path);
 	statfs_fd = open(statfs_fn, O_RDONLY);

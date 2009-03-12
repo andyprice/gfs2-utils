@@ -515,7 +515,11 @@ do_reset(struct gfs2_sbd *sdp, commandline_t *comline)
 		exit(-1);
 	}
 	read_superblock(&sdp->sd_sb, sdp);
-	mount_gfs2_meta(sdp);
+	if (mount_gfs2_meta(sdp)) {
+		fprintf(stderr, "Error mounting GFS2 metafs: %s\n",
+			strerror(errno));
+		exit(-1);
+	}
 
 	strcpy(quota_file, sdp->metafs_path);
 	strcat(quota_file, "/quota");
@@ -579,7 +583,11 @@ do_list(struct gfs2_sbd *sdp, commandline_t *comline)
 		exit(-1);
 	}
 	read_superblock(&sdp->sd_sb, sdp);
-	mount_gfs2_meta(sdp);
+	if (mount_gfs2_meta(sdp)) {
+		fprintf(stderr, "Error mounting GFS2 metafs: %s\n",
+			strerror(errno));
+		exit(-1);
+	}
 
 	strcpy(quota_file, sdp->metafs_path);
 	strcat(quota_file, "/quota");
@@ -673,7 +681,11 @@ do_get_one(struct gfs2_sbd *sdp, commandline_t *comline, char *filesystem)
 		exit(-1);
 	}
 	read_superblock(&sdp->sd_sb, sdp);
-	mount_gfs2_meta(sdp);
+	if (mount_gfs2_meta(sdp)) {
+		fprintf(stderr, "Error mounting GFS2 metafs: %s\n",
+			strerror(errno));
+		exit(-1);
+	}
 
 	strcpy(quota_file, sdp->metafs_path);
 	strcat(quota_file, "/quota");
@@ -845,7 +857,11 @@ do_set(struct gfs2_sbd *sdp, commandline_t *comline)
 		exit(-1);
 	}
 	read_superblock(&sdp->sd_sb, sdp);
-	mount_gfs2_meta(sdp);
+	if (mount_gfs2_meta(sdp)) {
+		fprintf(stderr, "Error mounting GFS2 metafs: %s\n",
+			strerror(errno));
+		exit(-1);
+	}
 
 	strcpy(quota_file, sdp->metafs_path);
 	strcat(quota_file, "/quota");

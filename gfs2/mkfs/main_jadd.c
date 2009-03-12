@@ -507,7 +507,11 @@ main_jadd(int argc, char *argv[])
 
 	gather_info(sdp);
 
-	mount_gfs2_meta(sdp);
+	if (mount_gfs2_meta(sdp)) {
+		fprintf(stderr, "Error mounting GFS2 metafs: %s\n",
+				strerror(errno));
+		exit(-1);
+	}
 
 	compute_constants(sdp);
 	find_current_journals(sdp);

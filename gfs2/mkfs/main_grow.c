@@ -295,7 +295,11 @@ main_grow(int argc, char *argv[])
 			die("gfs: Error reading superblock.\n");
 
 		fix_device_geometry(sdp);
-		mount_gfs2_meta(sdp);
+		if (mount_gfs2_meta(sdp)) {
+			fprintf(stderr, "Error mounting GFS2 metafs: %s\n",
+					strerror(errno));
+			exit(-1);
+		}
 
 		sprintf(rindex_name, "%s/rindex", sdp->metafs_path);
 		rindex_fd = open(rindex_name, (test ? O_RDONLY : O_RDWR));

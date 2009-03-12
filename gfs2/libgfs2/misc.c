@@ -148,7 +148,7 @@ int check_for_gfs2(struct gfs2_sbd *sdp)
 	return -1;
 }
 
-static void lock_for_admin(struct gfs2_sbd *sdp)
+static int lock_for_admin(struct gfs2_sbd *sdp)
 {
 	int error;
 
@@ -157,18 +157,18 @@ static void lock_for_admin(struct gfs2_sbd *sdp)
 
 	sdp->metafs_fd = open(sdp->metafs_path, O_RDONLY | O_NOFOLLOW);
 	if (sdp->metafs_fd < 0)
-		die("can't open %s: %s\n",
-		    sdp->metafs_path, strerror(errno));
+		return -1;
 	
 	error = flock(sdp->metafs_fd, LOCK_EX);
 	if (error)
-		die("can't flock %s: %s\n", sdp->metafs_path, strerror(errno));
+		return -1;
 	if (sdp->debug)
 		printf("Got it.\n");
+	return 0;
 }
 
 
-void mount_gfs2_meta(struct gfs2_sbd *sdp)
+int mount_gfs2_meta(struct gfs2_sbd *sdp)
 {
 	int ret;
 
@@ -176,16 +176,16 @@ void mount_gfs2_meta(struct gfs2_sbd *sdp)
 	snprintf(sdp->metafs_path, PATH_MAX - 1, "/tmp/.gfs2meta.XXXXXX");
 
 	if(!mkdtemp(sdp->metafs_path))
-		die("Couldn't create %s : %s\n", sdp->metafs_path,
-		    strerror(errno));
+		return -1;
 
 	ret = mount(sdp->path_name, sdp->metafs_path, "gfs2meta", 0, NULL);
 	if (ret) {
 		rmdir(sdp->metafs_path);
-		die("Couldn't mount %s : %s\n", sdp->metafs_path,
-		    strerror(errno));
+		return -1;
 	}
-	lock_for_admin(sdp);
+	if (lock_for_admin(sdp))
+		return -1;
+	return 0;
 }
 
 void cleanup_metafs(struct gfs2_sbd *sdp)

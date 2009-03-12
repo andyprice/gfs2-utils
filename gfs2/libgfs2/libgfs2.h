@@ -628,7 +628,7 @@ extern void compute_constants(struct gfs2_sbd *sdp);
 extern int find_gfs2_meta(struct gfs2_sbd *sdp);
 extern int dir_exists(const char *dir);
 extern int check_for_gfs2(struct gfs2_sbd *sdp);
-extern void mount_gfs2_meta(struct gfs2_sbd *sdp);
+extern int mount_gfs2_meta(struct gfs2_sbd *sdp);
 extern void cleanup_metafs(struct gfs2_sbd *sdp);
 extern char *find_debugfs_mount(void);
 extern char *mp2fsname(char *mp);
