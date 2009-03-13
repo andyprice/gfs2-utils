@@ -39,7 +39,7 @@ do_freeze(int argc, char **argv)
 	if (optind == argc)
 		die("Usage: gfs2_tool %s <mountpoint>\n", command);
 
-	name = mp2fsname(argv[optind]);
+	name = mp2fsname2(argv[optind]);
 
 	if (strcmp(command, "freeze") == 0) {
 		if (set_sysfs(name, "freeze", "1")) {
