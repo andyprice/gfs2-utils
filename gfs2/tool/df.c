@@ -147,22 +147,40 @@ do_df_one(char *path)
 	printf("  Block size = %u\n", sbd.sd_sb.sb_bsize);
 	printf("  Journals = %u\n", journals);
 	printf("  Resource Groups = %"PRIu64"\n", rgrps);
-	printf("  Mounted lock proto = \"%s\"\n",
-	       ((value = get_sysfs(fs, "args/lockproto"))[0])
-	       ? value : sbd.sd_sb.sb_lockproto);
-	printf("  Mounted lock table = \"%s\"\n",
-	       ((value = get_sysfs(fs, "args/locktable"))[0])
-	       ? value : sbd.sd_sb.sb_locktable);
+	value = get_sysfs(fs, "args/lockproto");
+	if (value)
+		printf("  Mounted lock proto = \"%s\"\n",
+			value[0] ? value : sbd.sd_sb.sb_lockproto);
+	else
+		printf("  Mounted lock proto = (Not found: %s)\n",
+				strerror(errno));
+
+	value = get_sysfs(fs, "args/locktable");
+	if (value)
+		printf("  Mounted lock table = \"%s\"\n",
+			value[0] ? value : sbd.sd_sb.sb_locktable);
+	else
+		printf("  Mounted lock table = (Not found: %s)\n",
+				strerror(errno));
+
 	printf("  Mounted host data = \"%s\"\n",
 	       get_sysfs(fs, "args/hostdata"));
 	printf("  Journal number = %s\n", get_sysfs(fs, "lockstruct/jid"));
-	flags = get_sysfs_uint(fs, "lockstruct/flags");
-	printf("  Lock module flags = %x", flags);
-	printf("\n");
-	printf("  Local flocks = %s\n",
-	       (get_sysfs_uint(fs, "args/localflocks")) ? "TRUE" : "FALSE");
-	printf("  Local caching = %s\n",
-		(get_sysfs_uint(fs, "args/localcaching")) ? "TRUE" : "FALSE");
+
+	if (get_sysfs_uint(fs, "lockstruct/flags", &flags))
+		printf("  Lock module flags = (Not found: %s)\n", strerror(errno));
+	else
+		printf("  Lock module flags = %x\n", flags);
+
+	if (get_sysfs_uint(fs, "args/localflocks", &flags))
+		printf("  Lock flocks = (Not found: %s)\n", strerror(errno));
+	else
+		printf("  Local flocks = %s\n", flags ? "TRUE" : "FALSE");
+
+	if (get_sysfs_uint(fs, "args/localcaching", &flags))
+		printf("  Lock caching = (Not found: %s)\n", strerror(errno));
+	else
+		printf("  Local caching = %s\n", flags ? "TRUE" : "FALSE");
 
 	/* Read the master statfs file */
 	if (mount_gfs2_meta(&sbd)) {

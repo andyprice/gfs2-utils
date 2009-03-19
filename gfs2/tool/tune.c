@@ -39,6 +39,7 @@ get_tune(int argc, char **argv)
 	double ratio;
 	unsigned int num, den;
 	struct gfs2_sbd sbd;
+	char *value;
 
 	if (optind == argc)
 		die("Usage: gfs2_tool gettune <mountpoint>\n");
@@ -65,8 +66,13 @@ get_tune(int argc, char **argv)
 			continue;
 		snprintf(path, PATH_MAX - 1, "tune/%s", de->d_name);
 		if (strcmp(de->d_name, "quota_scale") == 0) {
-			sscanf(get_sysfs(fs, "tune/quota_scale"), "%u %u",
-			       &num, &den);
+			value = get_sysfs(fs, "tune/quota_scale");
+			if (!value) {
+				printf("quota_scale = (Not found: %s)\n",
+						strerror(errno));
+				continue;
+			}
+			sscanf(value, "%u %u", &num, &den);
 			ratio = (double)num / den;
 			printf("quota_scale = %.4f   (%u, %u)\n", ratio, num,
 			       den);

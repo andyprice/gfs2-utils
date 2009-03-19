@@ -216,10 +216,12 @@ static char *__get_sysfs(char *fsname, char *filename)
 
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
-		die("can't open %s: %s\n", path, strerror(errno));
+		return NULL;
 	rv = read(fd, sysfs_buf, PAGE_SIZE);
-	if (rv < 0)
-		die("can't read from %s: %s\n", path, strerror(errno));
+	if (rv < 0) {
+		close(fd);
+		return NULL;
+	}
 
 	close(fd);
 	return sysfs_buf;
@@ -227,17 +229,30 @@ static char *__get_sysfs(char *fsname, char *filename)
 
 char *get_sysfs(char *fsname, char *filename)
 {
-	char *p = strchr(__get_sysfs(fsname, filename), '\n');
+	char *s;
+	char *p;
+
+	s = __get_sysfs(fsname, filename);
+	if (!s)
+		return NULL;
+	p = strchr(s, '\n');
 	if (p)
 		*p = '\0';
 	return sysfs_buf;
 }
 
-unsigned int get_sysfs_uint(char *fsname, char *filename)
+int get_sysfs_uint(char *fsname, char *filename, unsigned int *val)
 {
-	unsigned int x;
-	sscanf(__get_sysfs(fsname, filename), "%u", &x);
-	return x;
+	char *s = __get_sysfs(fsname, filename);
+	int ret;
+	if (!s)
+		return -1;
+	ret = sscanf(s, "%u", val);
+	if (1 != ret) {
+		errno = ENOMSG;
+		return -1;
+	}
+	return 0;
 }
 
 int set_sysfs(char *fsname, char *filename, char *val)
@@ -313,6 +328,7 @@ mp2fsname2(char *mp)
 	char buffer[PATH_MAX], device_name[PATH_MAX];
 	int fsdump, fspass, ret, found = 0;
 	char fspath[PATH_MAX], fsoptions[PATH_MAX], fstype[80];
+	char *id;
 
 	/* Take care of trailing '/' */
 	if (mp[strlen(mp) - 1] == '/')
@@ -361,7 +377,10 @@ mp2fsname2(char *mp)
 		if (de->d_name[0] == '.')
 			continue;
 
-		if (strcmp(get_sysfs(de->d_name, "id"), device_id) == 0) {
+		id = get_sysfs(de->d_name, "id");
+		if (!id)
+			continue;
+		if (strcmp(id, device_id) == 0) {
 			fsname = strdup(de->d_name);
 			break;
 		}
@@ -399,6 +418,7 @@ char *mp2fsname(char *mp)
 	struct stat statbuf;
 	DIR *d;
 	struct dirent *de;
+	char *id;
 
 	if (stat(mp, &statbuf))
 		return NULL;
@@ -415,7 +435,10 @@ char *mp2fsname(char *mp)
 		if (de->d_name[0] == '.')
 			continue;
 
-		if (strcmp(get_sysfs(de->d_name, "id"), device_id) == 0) {
+		id = get_sysfs(de->d_name, "id");
+		if (!id)
+			continue;
+		if (strcmp(id, device_id) == 0) {
 			fsname = strdup(de->d_name);
 			break;
 		}
