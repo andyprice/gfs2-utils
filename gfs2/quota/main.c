@@ -783,6 +783,11 @@ do_sync_one(struct gfs2_sbd *sdp, char *filesystem)
 	char *fsname;
 
 	fsname = mp2fsname(filesystem);
+	if (!fsname) {
+		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+				filesystem);
+		exit(-1);
+	}
 	if (set_sysfs(fsname, "quota_sync", "1")) {
 		fprintf(stderr, "Error writing to sysfs quota sync file: %s\n",
 				strerror(errno));
@@ -992,6 +997,11 @@ do_set(struct gfs2_sbd *sdp, commandline_t *comline)
 	}
 
 	fs = mp2fsname(comline->filesystem);
+	if (!fs) {
+		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+				comline->filesystem);
+		exit(-1);
+	}
 	sprintf(id_str, "%d", comline->id);
 	if (set_sysfs(fs, comline->id_type == GQ_ID_USER ?
 		  "quota_refresh_user" : "quota_refresh_group", id_str)) {

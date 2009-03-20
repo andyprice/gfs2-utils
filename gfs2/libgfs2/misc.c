@@ -291,11 +291,13 @@ char *find_debugfs_mount(void)
 
 	file = fopen("/proc/mounts", "rt");
 	if (!file)
-		die("can't open /proc/mounts: %s\n", strerror(errno));
+		return NULL;
 
 	path = malloc(PATH_MAX);
-	if (!path)
-		die("Can't allocate memory for debugfs.\n");
+	if (!path) {
+		fclose(file);
+		return NULL;
+	}
 	while (fgets(line, PATH_MAX, file)) {
 
 		if (sscanf(line, "%s %s %s", device, path, type) != 3)
@@ -432,7 +434,7 @@ char *mp2fsname(char *mp)
 
 	d = opendir(SYS_BASE);
 	if (!d)
-		die("can't open %s: %s\n", SYS_BASE, strerror(errno));
+		return NULL;
 
 	while ((de = readdir(d))) {
 		if (de->d_name[0] == '.')

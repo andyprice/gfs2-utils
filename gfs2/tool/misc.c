@@ -272,6 +272,11 @@ print_args(int argc, char **argv)
 		exit(-1);
 	}
 	fs = mp2fsname(argv[optind]);
+	if (!fs) {
+		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+				argv[optind]);
+		exit(-1);
+	}
 
 	memset(path, 0, PATH_MAX);
 	snprintf(path, PATH_MAX - 1, "%s/%s/args/", SYS_BASE, fs);
@@ -457,6 +462,11 @@ do_shrink(int argc, char **argv)
 		exit(-1);
 	}
 	fs = mp2fsname(argv[optind]);
+	if (!fs) {
+		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+				argv[optind]);
+		exit(-1);
+	}
 	
 	if (set_sysfs(fs, "shrink", "1")) {
 		fprintf(stderr, "Error writing to sysfs shrink file: %s\n",
@@ -491,6 +501,11 @@ do_withdraw(int argc, char **argv)
 		exit(-1);
 	}
 	name = mp2fsname(argv[optind]);
+	if (!name) {
+		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+				argv[optind]);
+		exit(-1);
+	}
 
 	if (set_sysfs(name, "withdraw", "1")) {
 		fprintf(stderr, "Error writing to sysfs withdraw file: %s\n",

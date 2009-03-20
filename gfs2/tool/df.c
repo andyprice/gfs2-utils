@@ -95,6 +95,11 @@ do_df_one(char *path)
 		exit(-1);
 	}
 	fs = mp2fsname(sbd.path_name);
+	if (!fs) {
+		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+				sbd.path_name);
+		exit(-1);
+	}
 
 	sbd.device_fd = open(sbd.device_name, O_RDONLY);
 	if (sbd.device_fd < 0)

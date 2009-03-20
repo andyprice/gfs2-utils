@@ -54,6 +54,11 @@ get_tune(int argc, char **argv)
 		exit(-1);
 	}
 	fs = mp2fsname(argv[optind]);
+	if (!fs) {
+		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+				argv[optind]);
+		exit(-1);
+	}
 	memset(path, 0, PATH_MAX);
 	snprintf(path, PATH_MAX - 1, "%s/%s/tune", SYS_BASE, fs);
 
@@ -117,6 +122,11 @@ set_tune(int argc, char **argv)
 		exit(-1);
 	}
 	fs = mp2fsname(sbd.path_name);
+	if (!fs) {
+		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+				sbd.path_name);
+		exit(-1);
+	}
 
 	if (strcmp(param, "quota_scale") == 0) {
 		float s;

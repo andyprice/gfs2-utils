@@ -507,8 +507,14 @@ set_list(struct gfs2_sbd *sdp, commandline_t *comline, int user,
 			goto out;
 		}
 
-		/* Write the id to sysfs quota refresh file to refresh gfs quotas */
 		fs = mp2fsname(comline->filesystem);
+		if (!fs) {
+			fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+					comline->filesystem);
+			exit(-1);
+		}
+
+		/* Write the id to sysfs quota refresh file to refresh gfs quotas */
 		sprintf(id_str, "%d", comline->id);
 		if (set_sysfs(fs, (user) ? "quota_refresh_user" : "quota_refresh_group",
 					id_str)) {
