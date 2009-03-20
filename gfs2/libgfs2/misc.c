@@ -314,7 +314,7 @@ char *find_debugfs_mount(void)
 /*
  * Same as mp2fsname, except that this function doesn't stat() the mountpoint
  * to get the device no. Used by gfs2_tool freeze/unfreeze where we don't want
- * to touch the potetially frozen filesytem and hang gfs2_tool itself.
+ * to touch the potentially frozen filesytem and hang gfs2_tool itself.
  */
 char *
 mp2fsname2(char *mp)
@@ -323,8 +323,7 @@ mp2fsname2(char *mp)
 	struct stat statbuf;
 	DIR *d;
 	struct dirent *de;
-	struct gfs2_sbd sb;
-	FILE *fp = fopen("/proc/mounts", "r");
+	FILE *fp;
 	char buffer[PATH_MAX], device_name[PATH_MAX];
 	int fsdump, fspass, ret, found = 0;
 	char fspath[PATH_MAX], fsoptions[PATH_MAX], fstype[80];
@@ -334,9 +333,9 @@ mp2fsname2(char *mp)
 	if (mp[strlen(mp) - 1] == '/')
 		mp[strlen(mp) - 1] = 0;
 
+	fp = fopen("/proc/mounts", "r");
 	if (fp == NULL) {
-		perror("open: /proc/mounts");
-		exit(EXIT_FAILURE);
+		return NULL;
 	}
 
 	while ((fgets(buffer, PATH_MAX - 1, fp)) != NULL) {
@@ -358,9 +357,12 @@ mp2fsname2(char *mp)
 		found = 1;
 		break;
 	}
+	fclose(fp);
 
-	if (!found)
-		die("can't find gfs2 filesystem mounted at %s\n", mp);
+	if (!found) {
+		errno = ENOENT;
+		return NULL;
+	}
 
 	if (stat(device_name, &statbuf))
 		return NULL;
@@ -371,7 +373,7 @@ mp2fsname2(char *mp)
 
 	d = opendir(SYS_BASE);
 	if (!d)
-		die("can't open %s: %s\n", SYS_BASE, strerror(errno));
+		return NULL;
 
 	while ((de = readdir(d))) {
 		if (de->d_name[0] == '.')
@@ -386,9 +388,10 @@ mp2fsname2(char *mp)
 		}
 	}
 
-	fclose(fp);
 	closedir(d);
 
+	if (!fsname)
+		errno = ENOENT;
 	return fsname;
 }
 

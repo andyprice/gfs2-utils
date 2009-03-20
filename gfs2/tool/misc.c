@@ -40,6 +40,11 @@ do_freeze(int argc, char **argv)
 		die("Usage: gfs2_tool %s <mountpoint>\n", command);
 
 	name = mp2fsname2(argv[optind]);
+	if (!name) {
+		fprintf(stderr, "Couldn't find a GFS2 filesystem mounted at %s\n",
+				argv[optind]);
+		exit(-1);
+	}
 
 	if (strcmp(command, "freeze") == 0) {
 		if (set_sysfs(name, "freeze", "1")) {

@@ -632,7 +632,7 @@ extern int mount_gfs2_meta(struct gfs2_sbd *sdp);
 extern void cleanup_metafs(struct gfs2_sbd *sdp);
 extern char *find_debugfs_mount(void);
 extern char *mp2fsname(char *mp);
-extern char *mp2fsname2(char *devname);
+extern char *mp2fsname2(char *mp);
 extern char *get_sysfs(char *fsname, char *filename);
 extern int get_sysfs_uint(char *fsname, char *filename, unsigned int *val);
 extern int set_sysfs(char *fsname, char *filename, char *val);
