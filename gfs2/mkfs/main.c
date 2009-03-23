@@ -42,10 +42,6 @@ main(int argc, char *argv[])
 		main_mkfs(argc, argv);
 	else if (!strcmp(whoami, "gfs2_grow"))
 		main_grow(argc, argv);
-#if 0
-	else if (!strcmp(whoami, "gfs2_shrink"))
-		main_shrink(argc, argv);
-#endif
 	else
 		die("I don't know who I am!\n");
 

@@ -267,27 +267,6 @@ out:
 }
 
 /**
- * print_list - print the contents of an ID list
- * @str: a string describing the list
- * @list: the list
- *
- */
-
-static void
-print_list(char *str, osi_list_t *list)
-{
-#if 0
-	osi_list_t *tmp;
-	values_t *v;
-
-	for (tmp = list->next; tmp != list; tmp = tmp->next) {
-		v = osi_list_entry(tmp, values_t, v_list);
-		printf("%s %10u: %"PRId64"\n", str, v->v_id, v->v_blocks);
-	}
-#endif
-}
-
-/**
  * do_compare - compare to ID lists and see if they match
  * @type: the type of list (UID or GID)
  * @fs_list: the list derived from scaning the FS
@@ -426,11 +405,6 @@ do_check(struct gfs2_sbd *sdp, commandline_t *comline)
 	scan_fs(device, comline->filesystem, &fs_uid, &fs_gid, &hl);
 	read_quota_file(sdp, comline, &qf_uid, &qf_gid);
 
-	print_list("fs user ", &fs_uid);
-	print_list("fs group", &fs_gid);
-	print_list("qf user ", &qf_uid);
-	print_list("qf group", &qf_gid);
-
 	mismatch = do_compare("user", &fs_uid, &qf_uid);
 	mismatch |= do_compare("group", &fs_gid, &qf_gid);
 
@@ -564,11 +538,6 @@ do_quota_init(struct gfs2_sbd *sdp, commandline_t *comline)
 	v->v_id = 0;
 	v->v_blocks = 0;
 	osi_list_add(&v->v_list, &qf_gid);
-
-	print_list("fs user ", &fs_uid);
-	print_list("fs group", &fs_gid);
-	print_list("qf user ", &qf_uid);
-	print_list("qf group", &qf_gid);
 
 	set_list(sdp, comline, TRUE, &qf_uid, 0);
 	set_list(sdp, comline, FALSE, &qf_gid, 0);
