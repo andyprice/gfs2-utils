@@ -16,6 +16,8 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <linux/types.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
@@ -44,7 +46,7 @@ extern int rename2system(struct gfs2_sbd *sdp, char *new_dir, char *new_name);
 static void usage(void)
 {
 	fprintf(stdout,
-		"Usage:\n"
+		_("Usage:\n"
 		"\n"
 		"gfs2_grow [options] /path/to/filesystem\n"
 		"\n"
@@ -53,7 +55,7 @@ static void usage(void)
 		"  -q               Quiet, reduce verbosity\n"
 		"  -T               Test, do everything except update FS\n"
 		"  -V               Version information\n"
-		"  -v               Verbose, increase verbosity\n");
+		"  -v               Verbose, increase verbosity\n"));
 }
 
 void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
@@ -69,7 +71,7 @@ void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 		case 'V':
 			printf("%s %s (built %s %s)\n", argv[0],
 			       RELEASE_VERSION, __DATE__, __TIME__);
-			printf("%s\n", REDHAT_COPYRIGHT);
+			printf( _(REDHAT_COPYRIGHT "\n"));
 			exit(0);
 		case 'h':
 			usage();
@@ -78,8 +80,8 @@ void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			decrease_verbosity();
 			break;
 		case 'T':
-			printf("(Test mode--File system will not "
-			       "be changed)\n");
+			printf( _("(Test mode--File system will not "
+			       "be changed)\n"));
 			test = 1;
 			break;
 		case 'v':
@@ -88,11 +90,11 @@ void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 		case ':':
 		case '?':
 			/* Unknown flag */
-			fprintf(stderr, "Please use '-h' for usage.\n");
+			fprintf(stderr, _("Please use '-h' for usage.\n"));
 			exit(EXIT_FAILURE);
 		default:
-			fprintf(stderr, "Bad programmer! You forgot"
-				" to catch the %c flag\n", opt);
+			fprintf(stderr, _("Bad programmer! You forgot"
+				" to catch the %c flag\n"), opt);
 			exit(EXIT_FAILURE);
 			break;
 		}
@@ -191,11 +193,11 @@ void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 	rg = 0;
 	osi_list_foreach(tmp, &sdp->rglist)
 		rg++;
-	log_info("%d new rindex entries.\n", rg);
+	log_info( _("%d new rindex entries.\n"), rg);
 	writelen = rg * sizeof(struct gfs2_rindex);
 	buf = calloc(1, writelen);
 	if (buf == NULL) {
-		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
+		fprintf(stderr, _("Out of memory in %s\n"), __FUNCTION__);
 		exit(-1);
 	}
 	/* Now add the new rg entries to the rg index.  Here we     */
@@ -268,7 +270,7 @@ main_grow(int argc, char *argv[])
 		if (check_for_gfs2(sdp)) {
 			if (errno == EINVAL)
 				fprintf(stderr,
-					"Not a valid GFS2 mount point: %s\n",
+					_("Not a valid GFS2 mount point: %s\n"),
 					sdp->path_name);
 			else
 				fprintf(stderr, "%s\n", strerror(errno));
@@ -277,13 +279,13 @@ main_grow(int argc, char *argv[])
 		sdp->device_fd = open(sdp->device_name,
 				      (test ? O_RDONLY : O_RDWR));
 		if (sdp->device_fd < 0)
-			die("can't open device %s: %s\n",
+			die( _("can't open device %s: %s\n"),
 			    sdp->device_name, strerror(errno));
 		if (device_geometry(sdp)) {
-			fprintf(stderr, "Geometry error\n");
+			fprintf(stderr, _("Geometry error\n"));
 			exit(-1);
 		}
-		log_info("Initializing lists...\n");
+		log_info( _("Initializing lists...\n"));
 		osi_list_init(&sdp->rglist);
 		init_buf_list(sdp, &sdp->buf_list, 128 << 20);
 		init_buf_list(sdp, &sdp->nvbuf_list, 0xffffffff);
@@ -292,11 +294,11 @@ main_grow(int argc, char *argv[])
 		sdp->bsize = sdp->sd_sb.sb_bsize;
 		compute_constants(sdp);
 		if(read_sb(sdp) < 0)
-			die("gfs: Error reading superblock.\n");
+			die( _("gfs: Error reading superblock.\n"));
 
 		fix_device_geometry(sdp);
 		if (mount_gfs2_meta(sdp)) {
-			fprintf(stderr, "Error mounting GFS2 metafs: %s\n",
+			fprintf(stderr, _("Error mounting GFS2 metafs: %s\n"),
 					strerror(errno));
 			exit(-1);
 		}
@@ -305,7 +307,7 @@ main_grow(int argc, char *argv[])
 		rindex_fd = open(rindex_name, (test ? O_RDONLY : O_RDWR));
 		if (rindex_fd < 0) {
 			cleanup_metafs(sdp);
-			die("GFS2 rindex not found.  Please run gfs2_fsck.\n");
+			die( _("GFS2 rindex not found.  Please run gfs2_fsck.\n"));
 		}
 		/* Get master dinode */
 		sdp->master_dir =
@@ -321,11 +323,11 @@ main_grow(int argc, char *argv[])
 		figure_out_rgsize(sdp, &rgsize);
 		fsgrowth = ((sdp->device.length - fssize) * sdp->bsize);
 		if (fsgrowth < rgsize * sdp->bsize) {
-			log_err("Error: The device has grown by less than "
-				"one Resource Group (RG).\n");
-			log_err("The device grew by %" PRIu64 "MB.  ",
+			log_err( _("Error: The device has grown by less than "
+				"one Resource Group (RG).\n"));
+			log_err( _("The device grew by %" PRIu64 "MB.  "),
 				fsgrowth / MB);
-			log_err("One RG is %uMB for this file system.\n",
+			log_err( _("One RG is %uMB for this file system.\n"),
 				(rgsize * sdp->bsize) / MB);
 		}
 		else {
@@ -345,5 +347,5 @@ main_grow(int argc, char *argv[])
 	}
 	close(sdp->path_fd);
 	sync();
-	log_notice("gfs2_grow complete.\n");
+	log_notice( _("gfs2_grow complete.\n"));
 }

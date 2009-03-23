@@ -10,6 +10,8 @@
 #include <time.h>
 #include <errno.h>
 #include <libgen.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #include <linux/types.h>
 #include "libgfs2.h"
@@ -30,6 +32,9 @@ main(int argc, char *argv[])
 {
 	char *p, *whoami;
 
+	setlocale(LC_ALL, "");
+	textdomain("mkfs.gfs2");
+
 	prog_name = argv[0];
 	srandom(time(NULL) ^ getpid());
 
@@ -43,9 +48,9 @@ main(int argc, char *argv[])
 	else if (!strcmp(whoami, "gfs2_grow"))
 		main_grow(argc, argv);
 	else
-		die("I don't know who I am!\n");
+		die( _("I don't know who I am!\n"));
 
 	free(p);
 
-	return EXIT_SUCCESS;
+	return 0;
 }
