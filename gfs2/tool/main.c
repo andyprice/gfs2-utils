@@ -11,6 +11,8 @@
 #include <limits.h>
 #include <errno.h>
 #include <linux/types.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #include "copyright.cf"
 
@@ -26,59 +28,43 @@ int continuous = FALSE;
 int interval = 1;
 int output_type = OUTPUT_BLOCKS;
 
-static const char *usage[] = {
-	"Clear a flag on a inode\n",
-	"  gfs2_tool clearflag flag <filenames>\n",
-	"\n",
-	"Do a GFS2 specific \"df\":\n",
-	"  gfs2_tool df <mountpoint>\n",
-	"\n",
-	"Freeze a GFS2 cluster:\n",
-	"  gfs2_tool freeze <mountpoint>\n",
-	"\n",
-	"Print the current mount arguments of a mounted filesystem:\n",
-	"  gfs2_tool getargs <mountpoint>\n",
-	"\n",
-	"Get tuneable parameters for a filesystem\n",
-	"  gfs2_tool gettune <mountpoint>\n",
-	"\n",
-	"List the file system's journals:\n",
-	"  gfs2_tool journals <mountpoint>\n",
-	"\n",
-	"List filesystems:\n",
-	"  gfs2_tool list\n",
-	"\n",
-	"Have GFS2 dump its lock state:\n",
-	"  gfs2_tool lockdump <mountpoint> [buffersize]\n",
-	"\n",
-	"Provide arguments for next mount:\n",
-	"  gfs2_tool margs <mountarguments>\n",
-	"\n",
-	"Tune a GFS2 superblock\n",
-	"  gfs2_tool sb <device> proto [newval]\n",
-	"  gfs2_tool sb <device> table [newval]\n",
-	"  gfs2_tool sb <device> ondisk [newval]\n",
-	"  gfs2_tool sb <device> multihost [newval]\n",
-	"  gfs2_tool sb <device> all\n",
-	"\n",
-	"Set a flag on a inode\n",
-	"  gfs2_tool setflag flag <filenames>\n",
-	"\n",
-	"Tune a running filesystem\n",
-	"  gfs2_tool settune <mountpoint> <parameter> <value>\n",
-	"\n",
-	"Shrink a filesystem's inode cache:\n",
-	"  gfs2_tool shrink <mountpoint>\n",
-	"\n",
-	"Unfreeze a GFS2 cluster:\n",
-	"  gfs2_tool unfreeze <mountpoint>\n",
-	"\n",
-	"Print tool version information\n",
-	"  gfs2_tool version\n",
-	"\n",
-	"Withdraw this machine from participating in a filesystem:\n",
-	"  gfs2_tool withdraw <mountpoint>\n",
-	"",
+static const char *usage = {
+	"Clear a flag on a inode\n"
+	"  gfs2_tool clearflag flag <filenames>\n"
+	"Do a GFS2 specific \"df\":\n"
+	"  gfs2_tool df <mountpoint>\n"
+	"Freeze a GFS2 cluster:\n"
+	"  gfs2_tool freeze <mountpoint>\n"
+	"Print the current mount arguments of a mounted filesystem:\n"
+	"  gfs2_tool getargs <mountpoint>\n"
+	"Get tuneable parameters for a filesystem\n"
+	"  gfs2_tool gettune <mountpoint>\n"
+	"List the file system's journals:\n"
+	"  gfs2_tool journals <mountpoint>\n"
+	"List filesystems:\n"
+	"  gfs2_tool list\n"
+	"Have GFS2 dump its lock state:\n"
+	"  gfs2_tool lockdump <mountpoint> [buffersize]\n"
+	"Provide arguments for next mount:\n"
+	"  gfs2_tool margs <mountarguments>\n"
+	"Tune a GFS2 superblock\n"
+	"  gfs2_tool sb <device> proto [newval]\n"
+	"  gfs2_tool sb <device> table [newval]\n"
+	"  gfs2_tool sb <device> ondisk [newval]\n"
+	"  gfs2_tool sb <device> multihost [newval]\n"
+	"  gfs2_tool sb <device> all\n"
+	"Set a flag on a inode\n"
+	"  gfs2_tool setflag flag <filenames>\n"
+	"Tune a running filesystem\n"
+	"  gfs2_tool settune <mountpoint> <parameter> <value>\n"
+	"Shrink a filesystem's inode cache:\n"
+	"  gfs2_tool shrink <mountpoint>\n"
+	"Unfreeze a GFS2 cluster:\n"
+	"  gfs2_tool unfreeze <mountpoint>\n"
+	"Print tool version information\n"
+	"  gfs2_tool version\n"
+	"Withdraw this machine from participating in a filesystem:\n"
+	"  gfs2_tool withdraw <mountpoint>\n"
 };
 
 /**
@@ -86,13 +72,9 @@ static const char *usage[] = {
  *
  */
 
-void
-print_usage(void)
+void print_usage(void)
 {
-	int x;
-
-	for (x = 0; usage[x][0]; x++)
-		printf("%s", usage[x]);
+	puts( _(usage) );
 }
 
 /**
@@ -100,14 +82,10 @@ print_usage(void)
  *
  */
 
-static void
-print_version(void)
+static void print_version(void)
 {
-	printf("gfs2_tool %s (built %s %s)\n",
-	       RELEASE_VERSION,
-	       __DATE__, __TIME__);
-	printf("%s\n",
-	       REDHAT_COPYRIGHT);
+	printf( _("gfs2_tool " RELEASE_VERSION " (built " __DATE__ " " __TIME__ ")\n"));
+	puts( _(REDHAT_COPYRIGHT "\n") );
 }
 
 /**
@@ -117,8 +95,7 @@ print_version(void)
  *
  */
 
-static void
-decode_arguments(int argc, char *argv[])
+static void decode_arguments(int argc, char *argv[])
 {
 	int cont = TRUE;
 	int optchar;
@@ -138,7 +115,7 @@ decode_arguments(int argc, char *argv[])
 
 		case 'h':
 			print_usage();
-			exit(EXIT_SUCCESS);
+			exit(0);
 
 		case 'H':
 			output_type = OUTPUT_HUMAN;
@@ -158,7 +135,7 @@ decode_arguments(int argc, char *argv[])
 
 		case 'V':
 			print_version();
-			exit(EXIT_SUCCESS);
+			exit(0);
 
 		case 'X':
 			expert = TRUE;
@@ -169,15 +146,16 @@ decode_arguments(int argc, char *argv[])
 			break;
 
 		default:
-			die("unknown option: %c\n", optchar);
+			die( _("unknown option: %c\n"), optchar);
 		};
 	}
 
 	if (optind < argc) {
 		action = argv[optind];
 		optind++;
-	} else
-		die("no action specified\n");
+	} else {
+		die( _("no action specified\n"));
+	}
 }
 
 /**
@@ -187,14 +165,16 @@ decode_arguments(int argc, char *argv[])
  *
  */
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	prog_name = argv[0];
 
+	setlocale(LC_ALL, "");
+	textdomain("gfs2_tool");
+
 	if (argc < 2) {
 		print_usage();
-		exit(EXIT_SUCCESS);
+		return 0;
 	}
 
 	decode_arguments(argc, argv);
@@ -232,8 +212,7 @@ main(int argc, char *argv[])
 	else if (strcmp(action, "withdraw") == 0)
 		do_withdraw(argc, argv);
 	else
-		die("unknown action: %s\n",
-		    action);
+		die( _("unknown action: %s\n"), action);
 
-	exit(EXIT_SUCCESS);
+	return 0;
 }

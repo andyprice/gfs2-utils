@@ -13,6 +13,8 @@
 #include <limits.h>
 #include <errno.h>
 #include <ctype.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #include <linux/gfs2_ondisk.h>
 
@@ -92,25 +94,25 @@ do_sb(int argc, char **argv)
 		die("can't open %s: %s\n", device, strerror(errno));
 
 	if (newval && !override) {
-		printf("You shouldn't change any of these values if the filesystem is mounted.\n");
-		printf("\nAre you sure? [y/n] ");
+		printf( _("You shouldn't change any of these values if the filesystem is mounted.\n"));
+		printf( _("\nAre you sure? [y/n] "));
 		if(!fgets((char*)input, 255, stdin))
-			die("unable to read from stdin\n");
+			die( _("unable to read from stdin\n"));
 
 		if (input[0] != 'y')
-			die("aborted\n");
+			die( _("aborted\n"));
 
 		printf("\n");
 	}
 
 	if (lseek(fd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK, SEEK_SET) !=
 	    GFS2_SB_ADDR * GFS2_BASIC_BLOCK) {
-		fprintf(stderr, "bad seek: %s from %s:%d: superblock\n",
+		fprintf(stderr, _("bad seek: %s from %s:%d: superblock\n"),
 			strerror(errno), __FUNCTION__, __LINE__);
 		exit(-1);
 	}
 	if (read(fd, buf, GFS2_BASIC_BLOCK) != GFS2_BASIC_BLOCK) {
-		fprintf(stderr, "bad read: %s from %s:%d: superblock\n",
+		fprintf(stderr, _("bad read: %s from %s:%d: superblock\n"),
 			strerror(errno), __FUNCTION__, __LINE__);
 		exit(-1);
 	}
@@ -119,104 +121,104 @@ do_sb(int argc, char **argv)
 
 	if (sb.sb_header.mh_magic != GFS2_MAGIC ||
 	    sb.sb_header.mh_type != GFS2_METATYPE_SB)
-		die("there isn't a GFS2 filesystem on %s\n", device);
+		die( _("there isn't a GFS2 filesystem on %s\n"), device);
 
 	if (strcmp(field, "proto") == 0) {
-		printf("current lock protocol name = \"%s\"\n",
+		printf( _("current lock protocol name = \"%s\"\n"),
 		       sb.sb_lockproto);
 
 		if (newval) {
 			if (strlen(newval) >= GFS2_LOCKNAME_LEN)
-				die("new lockproto name is too long\n");
+				die( _("new lockproto name is too long\n"));
 			strcpy(sb.sb_lockproto, newval);
-			printf("new lock protocol name = \"%s\"\n",
+			printf( _("new lock protocol name = \"%s\"\n"),
 			       sb.sb_lockproto);
 		}
 	} else if (strcmp(field, "table") == 0) {
-		printf("current lock table name = \"%s\"\n",
+		printf( _("current lock table name = \"%s\"\n"),
 		       sb.sb_locktable);
 
 		if (newval) {
 			if (strlen(newval) >= GFS2_LOCKNAME_LEN)
-				die("new locktable name is too long\n");
+				die( _("new locktable name is too long\n"));
 			strcpy(sb.sb_locktable, newval);
-			printf("new lock table name = \"%s\"\n",
+			printf( _("new lock table name = \"%s\"\n"),
 			       sb.sb_locktable);
 		}
 	} else if (strcmp(field, "ondisk") == 0) {
-		printf("current ondisk format = %u\n",
+		printf( _("current ondisk format = %u\n"),
 		       sb.sb_fs_format);
 
 		if (newval) {
 			sb.sb_fs_format = atoi(newval);
-			printf("new ondisk format = %u\n",
+			printf( _("new ondisk format = %u\n"),
 			       sb.sb_fs_format);
 		}
 	} else if (strcmp(field, "multihost") == 0) {
-		printf("current multihost format = %u\n",
+		printf( _("current multihost format = %u\n"),
 		       sb.sb_multihost_format);
 
 		if (newval) {
 			sb.sb_multihost_format = atoi(newval);
-			printf("new multihost format = %u\n",
+			printf( _("new multihost format = %u\n"),
 			       sb.sb_multihost_format);
 		}
 #ifdef GFS2_HAS_UUID
 	} else if (strcmp(field, "uuid") == 0) {
-		printf("current uuid = %s\n", str_uuid(sb.sb_uuid));
+		printf( _("current uuid = %s\n"), str_uuid(sb.sb_uuid));
 
 		if (newval) {
 			int i;
 			unsigned char uuid[16], *cp;
 
 			if (strlen(newval) != 36)
-				die("uuid %s is the wrong length; must be 36 "
-				    "hex characters long.\n", newval);
+				die( _("uuid %s is the wrong length; must be 36 "
+				    "hex characters long.\n"), newval);
 			cp = uuid;
 			for (i = 0; i < 36; i++) {
 				if ((i == 8) || (i == 13) ||
 				    (i == 18) || (i == 23)) {
 					if (newval[i] == '-')
 						continue;
-					die("uuid %s has an invalid format.",
+					die( _("uuid %s has an invalid format."),
 					    newval);
 				}
 				if (!isxdigit(newval[i]))
-					die("uuid %s has an invalid hex "
-					    "digit '%c' at offset %d.\n",
+					die( _("uuid %s has an invalid hex "
+					    "digit '%c' at offset %d.\n"),
 					    newval, newval[i], i + 1);
 				*cp = str_to_hexchar(&newval[i++]);
 				cp++;
 			}
 			memcpy(sb.sb_uuid, uuid, 16);
-			printf("new uuid = %s\n", str_uuid(sb.sb_uuid));
+			printf( _("new uuid = %s\n", str_uuid(sb.sb_uuid)));
 		}
 #endif
 	} else if (strcmp(field, "all") == 0) {
 		gfs2_sb_print(&sb);
 		newval = FALSE;
 	} else
-		die("unknown field %s\n", field);
+		die( _("unknown field %s\n"), field);
 
 	if (newval) {
 		gfs2_sb_out(&sb,(char*) buf);
 
 		if (lseek(fd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK, SEEK_SET) !=
 		    GFS2_SB_ADDR * GFS2_BASIC_BLOCK) {
-			fprintf(stderr, "bad seek: %s from %s:%d: superblock\n",
+			fprintf(stderr, _("bad seek: %s from %s:%d: superblock\n"),
 				strerror(errno), __FUNCTION__, __LINE__);
 			exit(-1);
 		}
 		if (write(fd, buf, GFS2_BASIC_BLOCK) != GFS2_BASIC_BLOCK) {
-			fprintf(stderr, "write error: %s from %s:%d: "
-				"superblock\n", strerror(errno),
+			fprintf(stderr, _("write error: %s from %s:%d: "
+				"superblock\n"), strerror(errno),
 				__FUNCTION__, __LINE__);
 			exit(-1);
 		}
 
 		fsync(fd);
 
-		printf("Done\n");
+		printf( _("Done\n"));
 	}
 
 	close(fd);

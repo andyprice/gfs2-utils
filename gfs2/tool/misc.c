@@ -12,6 +12,8 @@
 #include <limits.h>
 #include <errno.h>
 #include <dirent.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #define __user
 #include <linux/gfs2_ondisk.h>
@@ -41,20 +43,20 @@ do_freeze(int argc, char **argv)
 
 	name = mp2fsname2(argv[optind]);
 	if (!name) {
-		fprintf(stderr, "Couldn't find a GFS2 filesystem mounted at %s\n",
+		fprintf(stderr, _("Couldn't find a GFS2 filesystem mounted at %s\n"),
 				argv[optind]);
 		exit(-1);
 	}
 
 	if (strcmp(command, "freeze") == 0) {
 		if (set_sysfs(name, "freeze", "1")) {
-			fprintf(stderr, "Error writing to sysfs freeze file: %s\n",
+			fprintf(stderr, _("Error writing to sysfs freeze file: %s\n"),
 					strerror(errno));
 			exit(-1);
 		}
 	} else if (strcmp(command, "unfreeze") == 0) {
 		if (set_sysfs(name, "freeze", "0")) {
-			fprintf(stderr, "Error writing to sysfs freeze file: %s\n",
+			fprintf(stderr, _("Error writing to sysfs freeze file: %s\n"),
 					strerror(errno));
 			exit(-1);
 		}
@@ -90,8 +92,7 @@ print_lockdump(int argc, char **argv)
 		sprintf(debugfs, "/tmp/debugfs.XXXXXX");
 
 		if (!mkdtemp(debugfs)) {
-			fprintf(stderr,
-				"Can't create %s mount point.\n",
+			fprintf(stderr,_("Can't create %s mount point.\n"),
 				debugfs);
 			free(debugfs);
 			exit(-1);
@@ -100,8 +101,8 @@ print_lockdump(int argc, char **argv)
 		rc = mount("none", debugfs, "debugfs", 0, NULL);
 		if (rc) {
 			fprintf(stderr,
-				"Can't mount debugfs.  "
-				"Maybe your kernel doesn't support it.\n");
+				_("Can't mount debugfs. "
+				"Maybe your kernel doesn't support it.\n"));
 				free(debugfs);
 				exit(-1);
 		}
@@ -117,11 +118,11 @@ print_lockdump(int argc, char **argv)
 			}
 			fclose(file);
 		} else {
-			fprintf(stderr, "Can't open %s: %s\n", path,
+			fprintf(stderr, _("Can't open %s: %s\n"), path,
 				strerror(errno));
 		}
 	} else {
-		fprintf(stderr, "Unable to locate sysfs for mount point %s.\n",
+		fprintf(stderr, _("Unable to locate sysfs for mount point %s.\n"),
 			argv[optind]);
 	}
 	/* Check if we mounted the debugfs and if so, unmount it. */
@@ -142,7 +143,7 @@ print_lockdump(int argc, char **argv)
 void
 margs(int argc, char **argv)
 {
-	die("margs not implemented\n");
+	die( _("margs not implemented\n"));
 }
 
 /**
@@ -155,7 +156,7 @@ static void
 print_flags(struct gfs2_dinode *di)
 {
 	if (di->di_flags) {
-		printf("Flags:\n");
+		printf( _("Flags:\n"));
 		if (di->di_flags & GFS2_DIF_JDATA)
 			printf("  jdata\n");
 		if (di->di_flags & GFS2_DIF_EXHASH)
@@ -167,7 +168,7 @@ print_flags(struct gfs2_dinode *di)
 		if (di->di_flags & GFS2_DIF_APPENDONLY)
 			printf("  appendonly\n");
 		if (di->di_flags & GFS2_DIF_NOATIME)
-			printf("  noatime\n");
+			printf( _("  noatime\n"));
 		if (di->di_flags & GFS2_DIF_SYNC)
 			printf("  sync\n");
 		if (di->di_flags & GFS2_DIF_TRUNC_IN_PROG)
@@ -221,22 +222,22 @@ set_flag(int argc, char **argv)
 	set = (strcmp(argv[optind -1], "setflag") == 0) ? 1 : 0;
 	flstr = argv[optind++];
 	if (!(flag = get_flag_from_name(flstr)))
-		die("unrecognized flag %s\n", argv[optind -1]);
+		die( _("unrecognized flag %s\n"), argv[optind -1]);
 	
 	for (; optind < argc; optind++) {
 		fd = open(argv[optind], O_RDONLY);
 		if (fd < 0)
-			die("can't open %s: %s\n", argv[optind], strerror(errno));
+			die( _("can't open %s: %s\n"), argv[optind], strerror(errno));
 		/* first get the existing flags on the file */
 		error = ioctl(fd, FS_IOC_GETFLAGS, &newflags);
 		if (error)
-			die("can't get flags on %s: %s\n", 
+			die( _("can't get flags on %s: %s\n"), 
 			    argv[optind], strerror(errno));
 		newflags = set ? newflags | flag : newflags & ~flag;
 		/* new flags */
 		error = ioctl(fd, FS_IOC_SETFLAGS, &newflags);
 		if (error)
-			die("can't set flags on %s: %s\n", 
+			die( _("can't set flags on %s: %s\n"), 
 			    argv[optind], strerror(errno));
 		close(fd);
 	}
@@ -260,12 +261,12 @@ print_args(int argc, char **argv)
 	struct gfs2_sbd sbd;
 
 	if (optind == argc)
-		die("Usage: gfs2_tool getargs <mountpoint>\n");
+		die( _("Usage: gfs2_tool getargs <mountpoint>\n"));
 
 	sbd.path_name = argv[optind];
 	if (check_for_gfs2(&sbd)) {
 		if (errno == EINVAL)
-			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+			fprintf(stderr, _("Not a valid GFS2 mount point: %s\n"),
 					sbd.path_name);
 		else
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -273,7 +274,7 @@ print_args(int argc, char **argv)
 	}
 	fs = mp2fsname(argv[optind]);
 	if (!fs) {
-		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+		fprintf(stderr, _("Couldn't find GFS2 filesystem mounted at %s\n"),
 				argv[optind]);
 		exit(-1);
 	}
@@ -283,7 +284,7 @@ print_args(int argc, char **argv)
 
 	d = opendir(path);
 	if (!d)
-		die("can't open %s: %s\n", path, strerror(errno));
+		die( _("can't open %s: %s\n"), path, strerror(errno));
 
 	while((de = readdir(d))) {
 		if (de->d_name[0] == '.')
@@ -328,7 +329,7 @@ print_journals(int argc, char **argv)
 		    sbd.path_name, strerror(errno));
 	if (check_for_gfs2(&sbd)) {
 		if (errno == EINVAL)
-			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+			fprintf(stderr, _("Not a valid GFS2 mount point: %s\n"),
 					sbd.path_name);
 		else
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -336,11 +337,11 @@ print_journals(int argc, char **argv)
 	}
 	sbd.device_fd = open(sbd.device_name, O_RDONLY);
 	if (sbd.device_fd < 0)
-		die("can't open device %s: %s\n",
+		die( _("can't open device %s: %s\n"),
 		    sbd.device_name, strerror(errno));
 
 	if (mount_gfs2_meta(&sbd)) {
-		fprintf(stderr, "Error mounting GFS2 metafs: %s\n",
+		fprintf(stderr, _("Error mounting GFS2 metafs: %s\n"),
 			strerror(errno));
 		exit(-1);
 	}
@@ -348,7 +349,7 @@ print_journals(int argc, char **argv)
 	sprintf(jindex_name, "%s/jindex", sbd.metafs_path);
 	jindex = opendir(jindex_name);
 	if (!jindex) {
-		die("Can't open %s\n", jindex_name);
+		die( _("Can't open %s\n"), jindex_name);
 	} else {
 		jcount = 0;
 		while ((journal = readdir(jindex))) {
@@ -364,7 +365,7 @@ print_journals(int argc, char **argv)
 			       (unsigned long long)statbuf.st_size / 1048576);
 		}
 
-		printf("%d journal(s) found.\n", jcount);
+		printf( _("%d journal(s) found.\n"), jcount);
 		closedir(jindex);
 	}
 	cleanup_metafs(&sbd);
@@ -398,7 +399,7 @@ print_list(void)
 
 	d = opendir(path);
 	if (!d)
-		die("can't open %s: %s\n", SYS_BASE, strerror(errno));
+		die( _("can't open %s: %s\n"), SYS_BASE, strerror(errno));
 
 	while ((de = readdir(d))) {
 		if (de->d_name[0] == '.')
@@ -455,7 +456,7 @@ do_shrink(int argc, char **argv)
 	sbd.path_name = argv[optind];
 	if (check_for_gfs2(&sbd)) {
 		if (errno == EINVAL)
-			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+			fprintf(stderr, _("Not a valid GFS2 mount point: %s\n"),
 					sbd.path_name);
 		else
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -463,13 +464,13 @@ do_shrink(int argc, char **argv)
 	}
 	fs = mp2fsname(argv[optind]);
 	if (!fs) {
-		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+		fprintf(stderr, _("Couldn't find GFS2 filesystem mounted at %s\n"),
 				argv[optind]);
 		exit(-1);
 	}
 	
 	if (set_sysfs(fs, "shrink", "1")) {
-		fprintf(stderr, "Error writing to sysfs shrink file: %s\n",
+		fprintf(stderr, _("Error writing to sysfs shrink file: %s\n"),
 				strerror(errno));
 		exit(-1);
 	}
@@ -494,7 +495,7 @@ do_withdraw(int argc, char **argv)
 	sbd.path_name = argv[optind];
 	if (check_for_gfs2(&sbd)) {
 		if (errno == EINVAL)
-			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+			fprintf(stderr, _("Not a valid GFS2 mount point: %s\n"),
 					sbd.path_name);
 		else
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -502,13 +503,13 @@ do_withdraw(int argc, char **argv)
 	}
 	name = mp2fsname(argv[optind]);
 	if (!name) {
-		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+		fprintf(stderr, _("Couldn't find GFS2 filesystem mounted at %s\n"),
 				argv[optind]);
 		exit(-1);
 	}
 
 	if (set_sysfs(name, "withdraw", "1")) {
-		fprintf(stderr, "Error writing to sysfs withdraw file: %s\n",
+		fprintf(stderr, _("Error writing to sysfs withdraw file: %s\n"),
 				strerror(errno));
 		exit(-1);
 	}

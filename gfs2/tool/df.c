@@ -11,6 +11,8 @@
 #include <sys/ioctl.h>
 #include <limits.h>
 #include <errno.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #define __user
 #include <linux/gfs2_ondisk.h>
@@ -88,7 +90,7 @@ do_df_one(char *path)
 	sbd.path_name = path;
 	if (check_for_gfs2(&sbd)) {
 		if (errno == EINVAL)
-			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+			fprintf(stderr, _("Not a valid GFS2 mount point: %s\n"),
 					sbd.path_name);
 		else
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -96,14 +98,14 @@ do_df_one(char *path)
 	}
 	fs = mp2fsname(sbd.path_name);
 	if (!fs) {
-		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+		fprintf(stderr, _("Couldn't find GFS2 filesystem mounted at %s\n"),
 				sbd.path_name);
 		exit(-1);
 	}
 
 	sbd.device_fd = open(sbd.device_name, O_RDONLY);
 	if (sbd.device_fd < 0)
-		die("can't open %s: %s\n", path, strerror(errno));
+		die( _("can't open %s: %s\n"), path, strerror(errno));
 
 	sbd.bsize = GFS2_DEFAULT_BSIZE;
 	sbd.jsize = GFS2_DEFAULT_JSIZE;
@@ -116,12 +118,12 @@ do_df_one(char *path)
 
 	if (lseek(sbd.device_fd, 0x10 * sbd.bsize, SEEK_SET) !=
 	    0x10 * sbd.bsize) {
-		fprintf(stderr, "bad seek: %s from %s:%d: superblock\n",
+		fprintf(stderr, _("bad seek: %s from %s:%d: superblock\n"),
 			strerror(errno), __FUNCTION__, __LINE__);
 		exit(-1);
 	}
 	if (read(sbd.device_fd, buf, sbd.bsize) != sbd.bsize) {
-		fprintf(stderr, "bad read: %s from %s:%d: superblock\n",
+		fprintf(stderr, _("bad read: %s from %s:%d: superblock\n"),
 			strerror(errno), __FUNCTION__, __LINE__);
 		exit(-1);
 	}
@@ -145,51 +147,51 @@ do_df_one(char *path)
 	rgrps /= sizeof(struct gfs2_rindex);
 
 	printf("%s:\n", path);
-	printf("  SB lock proto = \"%s\"\n", sbd.sd_sb.sb_lockproto);
-	printf("  SB lock table = \"%s\"\n", sbd.sd_sb.sb_locktable);
-	printf("  SB ondisk format = %u\n", sbd.sd_sb.sb_fs_format);
-	printf("  SB multihost format = %u\n", sbd.sd_sb.sb_multihost_format);
-	printf("  Block size = %u\n", sbd.sd_sb.sb_bsize);
-	printf("  Journals = %u\n", journals);
-	printf("  Resource Groups = %"PRIu64"\n", rgrps);
+	printf( _("  SB lock proto = \"%s\"\n"), sbd.sd_sb.sb_lockproto);
+	printf( _("  SB lock table = \"%s\"\n"), sbd.sd_sb.sb_locktable);
+	printf( _("  SB ondisk format = %u\n"), sbd.sd_sb.sb_fs_format);
+	printf( _("  SB multihost format = %u\n"), sbd.sd_sb.sb_multihost_format);
+	printf( _("  Block size = %u\n"), sbd.sd_sb.sb_bsize);
+	printf( _("  Journals = %u\n"), journals);
+	printf( _("  Resource Groups = %"PRIu64"\n"), rgrps);
 	value = get_sysfs(fs, "args/lockproto");
 	if (value)
-		printf("  Mounted lock proto = \"%s\"\n",
+		printf( _("  Mounted lock proto = \"%s\"\n"),
 			value[0] ? value : sbd.sd_sb.sb_lockproto);
 	else
-		printf("  Mounted lock proto = (Not found: %s)\n",
+		printf( _("  Mounted lock proto = (Not found: %s)\n"),
 				strerror(errno));
 
 	value = get_sysfs(fs, "args/locktable");
 	if (value)
-		printf("  Mounted lock table = \"%s\"\n",
+		printf( _("  Mounted lock table = \"%s\"\n"),
 			value[0] ? value : sbd.sd_sb.sb_locktable);
 	else
-		printf("  Mounted lock table = (Not found: %s)\n",
+		printf( _("  Mounted lock table = (Not found: %s)\n"),
 				strerror(errno));
 
-	printf("  Mounted host data = \"%s\"\n",
+	printf( _("  Mounted host data = \"%s\"\n"),
 	       get_sysfs(fs, "args/hostdata"));
-	printf("  Journal number = %s\n", get_sysfs(fs, "lockstruct/jid"));
+	printf( _("  Journal number = %s\n"), get_sysfs(fs, "lockstruct/jid"));
 
 	if (get_sysfs_uint(fs, "lockstruct/flags", &flags))
-		printf("  Lock module flags = (Not found: %s)\n", strerror(errno));
+		printf( _("  Lock module flags = (Not found: %s)\n"), strerror(errno));
 	else
-		printf("  Lock module flags = %x\n", flags);
+		printf( _("  Lock module flags = %x\n"), flags);
 
 	if (get_sysfs_uint(fs, "args/localflocks", &flags))
-		printf("  Lock flocks = (Not found: %s)\n", strerror(errno));
+		printf( _("  Lock flocks = (Not found: %s)\n"), strerror(errno));
 	else
-		printf("  Local flocks = %s\n", flags ? "TRUE" : "FALSE");
+		printf( _("  Local flocks = %s\n"), flags ? "TRUE" : "FALSE");
 
 	if (get_sysfs_uint(fs, "args/localcaching", &flags))
-		printf("  Lock caching = (Not found: %s)\n", strerror(errno));
+		printf( _("  Lock caching = (Not found: %s)\n"), strerror(errno));
 	else
-		printf("  Local caching = %s\n", flags ? "TRUE" : "FALSE");
+		printf( _("  Local caching = %s\n"), flags ? "TRUE" : "FALSE");
 
 	/* Read the master statfs file */
 	if (mount_gfs2_meta(&sbd)) {
-		fprintf(stderr, "Error mounting GFS2 metafs: %s\n",
+		fprintf(stderr, _("Error mounting GFS2 metafs: %s\n"),
 			strerror(errno));
 		exit(-1);
 	}
@@ -198,7 +200,7 @@ do_df_one(char *path)
 	statfs_fd = open(statfs_fn, O_RDONLY);
 	if (read(statfs_fd, buf, sizeof(struct gfs2_statfs_change)) !=
 	    sizeof(struct gfs2_statfs_change)) {
-		fprintf(stderr, "bad read: %s from %s:%d: superblock\n",
+		fprintf(stderr, _("bad read: %s from %s:%d: superblock\n"),
 			strerror(errno), __FUNCTION__, __LINE__);
 		exit(-1);
 	}
@@ -252,7 +254,7 @@ print_df(int argc, char **argv)
 		char buf[PATH_MAX];
 
 		if (!realpath(argv[optind], buf))
-			die("can't determine real path: %s\n", strerror(errno));
+			die( _("can't determine real path: %s\n"), strerror(errno));
 
 		do_df_one(buf);
 
@@ -266,7 +268,7 @@ print_df(int argc, char **argv)
 
 		file = fopen("/proc/mounts", "r");
 		if (!file)
-			die("can't open /proc/mounts: %s\n", strerror(errno));
+			die( _("can't open /proc/mounts: %s\n"), strerror(errno));
 
 		while (fgets(buf, 256, file)) {
 			if (sscanf(buf, "%s %s %s", device, path, type) != 3)

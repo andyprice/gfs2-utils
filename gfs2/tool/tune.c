@@ -12,6 +12,8 @@
 #include <limits.h>
 #include <errno.h>
 #include <dirent.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #define __user
 
@@ -42,12 +44,12 @@ get_tune(int argc, char **argv)
 	char *value;
 
 	if (optind == argc)
-		die("Usage: gfs2_tool gettune <mountpoint>\n");
+		die( _("Usage: gfs2_tool gettune <mountpoint>\n"));
 
 	sbd.path_name = argv[optind];
 	if (check_for_gfs2(&sbd)) {
 		if (errno == EINVAL)
-			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+			fprintf(stderr, _("Not a valid GFS2 mount point: %s\n"),
 					sbd.path_name);
 		else
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -55,7 +57,7 @@ get_tune(int argc, char **argv)
 	}
 	fs = mp2fsname(argv[optind]);
 	if (!fs) {
-		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+		fprintf(stderr, _("Couldn't find GFS2 filesystem mounted at %s\n"),
 				argv[optind]);
 		exit(-1);
 	}
@@ -64,7 +66,7 @@ get_tune(int argc, char **argv)
 
 	d = opendir(path);
 	if (!d)
-		die("can't open %s: %s\n", path, strerror(errno));
+		die( _("can't open %s: %s\n"), path, strerror(errno));
 
 	while((de = readdir(d))) {
 		if (de->d_name[0] == '.')
@@ -73,13 +75,13 @@ get_tune(int argc, char **argv)
 		if (strcmp(de->d_name, "quota_scale") == 0) {
 			value = get_sysfs(fs, "tune/quota_scale");
 			if (!value) {
-				printf("quota_scale = (Not found: %s)\n",
+				printf( _("quota_scale = (Not found: %s)\n"),
 						strerror(errno));
 				continue;
 			}
 			sscanf(value, "%u %u", &num, &den);
 			ratio = (double)num / den;
-			printf("quota_scale = %.4f   (%u, %u)\n", ratio, num,
+			printf( _("quota_scale = %.4f   (%u, %u)\n"), ratio, num,
 			       den);
 		} else
 			printf("%s = %s\n", de->d_name, get_sysfs(fs, path));
@@ -104,18 +106,18 @@ set_tune(int argc, char **argv)
 	struct gfs2_sbd sbd;
 
 	if (optind == argc)
-		die("Usage: gfs2_tool settune <mountpoint> <parameter> <value>\n");
+		die( _("Usage: gfs2_tool settune <mountpoint> <parameter> <value>\n"));
 	sbd.path_name = argv[optind++];
 	if (optind == argc)
-		die("Usage: gfs2_tool settune <mountpoint> <parameter> <value>\n");
+		die( _("Usage: gfs2_tool settune <mountpoint> <parameter> <value>\n"));
 	param = argv[optind++];
 	if (optind == argc)
-		die("Usage: gfs2_tool settune <mountpoint> <parameter> <value>\n");
+		die( _("Usage: gfs2_tool settune <mountpoint> <parameter> <value>\n"));
 	value = argv[optind++];
 
 	if (check_for_gfs2(&sbd)) {
 		if (errno == EINVAL)
-			fprintf(stderr, "Not a valid GFS2 mount point: %s\n",
+			fprintf(stderr, _("Not a valid GFS2 mount point: %s\n"),
 					sbd.path_name);
 		else
 			fprintf(stderr, "%s\n", strerror(errno));
@@ -123,7 +125,7 @@ set_tune(int argc, char **argv)
 	}
 	fs = mp2fsname(sbd.path_name);
 	if (!fs) {
-		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
+		fprintf(stderr, _("Couldn't find GFS2 filesystem mounted at %s\n"),
 				sbd.path_name);
 		exit(-1);
 	}
@@ -135,7 +137,7 @@ set_tune(int argc, char **argv)
 		value = buf;
 	}
 	if (set_sysfs(fs, strcat(tune_base, param), value)) {
-		fprintf(stderr, "Error writing to sysfs %s tune file: %s\n",
+		fprintf(stderr, _("Error writing to sysfs %s tune file: %s\n"),
 				param, strerror(errno));
 		exit(-1);
 	}
