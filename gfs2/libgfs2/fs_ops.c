@@ -166,7 +166,7 @@ buffer_copy_tail(struct gfs2_sbd *sdp,
 	       from_head - to_head);
 }
 
-static void unstuff_dinode(struct gfs2_inode *ip)
+void unstuff_dinode(struct gfs2_inode *ip)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct gfs2_buffer_head *bh;
@@ -300,9 +300,9 @@ struct metapath *find_metapath(struct gfs2_inode *ip, uint64_t block)
 	return mp;
 }
 
-static void lookup_block(struct gfs2_inode *ip,
-	     struct gfs2_buffer_head *bh, unsigned int height, struct metapath *mp,
-	     int create, int *new, uint64_t *block)
+void lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
+		  unsigned int height, struct metapath *mp,
+		  int create, int *new, uint64_t *block)
 {
 	uint64_t *ptr = metapointer(bh, height, mp);
 
@@ -516,7 +516,7 @@ int gfs2_writei(struct gfs2_inode *ip, void *buf,
 	uint32_t extlen = 0;
 	unsigned int amount;
 	int new;
-	int isdir = !!(S_ISDIR(ip->i_di.di_flags));
+	int isdir = !!(S_ISDIR(ip->i_di.di_mode));
 	const uint64_t start = offset;
 	int copied = 0;
 
