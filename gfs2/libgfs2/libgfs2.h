@@ -429,6 +429,9 @@ extern void build_rgrps(struct gfs2_sbd *sdp, int write);
 #define IS_DINODE   (2)
 
 extern struct metapath *find_metapath(struct gfs2_inode *ip, uint64_t block);
+extern void lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
+			 unsigned int height, struct metapath *mp,
+			 int create, int *new, uint64_t *block);
 extern struct gfs2_inode *inode_get(struct gfs2_sbd *sdp,
 				    struct gfs2_buffer_head *bh);
 extern void inode_put(struct gfs2_inode *ip, enum update_flags updated);
@@ -472,6 +475,7 @@ extern int gfs2_dirent_first(struct gfs2_inode *dip,
 extern int gfs2_dirent_next(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 			    struct gfs2_dirent **dent);
 extern void build_height(struct gfs2_inode *ip, int height);
+extern void unstuff_dinode(struct gfs2_inode *ip);
 extern unsigned int calc_tree_height(struct gfs2_inode *ip, uint64_t size);
 extern int write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip,
 			 unsigned int j, unsigned int blocks);
