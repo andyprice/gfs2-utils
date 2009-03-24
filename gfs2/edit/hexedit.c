@@ -30,8 +30,7 @@
 
 const char *mtypes[] = {"none", "sb", "rg", "rb", "di", "in", "lf", "jd",
 			"lh", "ld", "ea", "ed", "lb", "13", "qc"};
-const char *allocdesc[] = {"Free ", "Data ", "Unlnk",
-			   "Meta ", "Resrv"};
+const char *allocdesc[] = {"Free ", "Data ", "Unlnk", "Meta ", "Resrv"};
 
 #define RGLIST_DUMMY_BLOCK -2
 
@@ -571,8 +570,11 @@ int display_block_type(const char *lpBuffer, int from_restore)
 			struct_len = sizeof(struct gfs2_dinode);
 			break;
 		case GFS2_METATYPE_IN:   /* 5 */
-			print_gfs2("(indir inode blklst)");
-			struct_len = sizeof(struct gfs2_meta_header);
+			print_gfs2("(indir blklist)");
+			if (gfs1)
+				struct_len = sizeof(struct gfs_indirect);
+			else
+				struct_len = sizeof(struct gfs2_meta_header);
 			break;
 		case GFS2_METATYPE_LF:   /* 6 */
 			print_gfs2("(directory leaf)");
@@ -614,17 +616,17 @@ int display_block_type(const char *lpBuffer, int from_restore)
 			break;
 		default:
 			print_gfs2("(wtf?)");
-			struct_len = 512;
+			struct_len = sbd.bsize;
 			break;
 		}
 	}
 	else
-		struct_len = 512;
+		struct_len = sbd.bsize;
 	eol(0);
 	if (from_restore)
 		return ret_type;
 	if (termlines && dmode == HEX_MODE) {
-		int type;
+		int type, pgnum;
 		struct rgrp_list *rgd;
 
 		rgd = gfs2_blk2rgrpd(&sbd, block);
@@ -636,12 +638,27 @@ int display_block_type(const char *lpBuffer, int from_restore)
 		screen_chunk_size = ((termlines - 4) * 16) >> 8 << 8;
 		if (!screen_chunk_size)
 			screen_chunk_size = 256;
-		print_gfs2("(p.%d of %d--%s)",
-			   (offset / screen_chunk_size) + 1,
+		pgnum = (offset / screen_chunk_size);
+		print_gfs2("(p.%d of %d--%s)", pgnum + 1,
 			   (sbd.bsize % screen_chunk_size) > 0 ?
 			   sbd.bsize / screen_chunk_size + 1 : sbd.bsize /
 			   screen_chunk_size, allocdesc[type]);
 		/*eol(9);*/
+		if ((*(lpBuffer+7) == GFS2_METATYPE_IN) ||
+		    (*(lpBuffer+7) == GFS2_METATYPE_DI &&
+		     (*(lpBuffer + 0x8b) || *(lpBuffer + 0x8a)))) {
+			int ptroffset = edit_row[dmode] * 16 + edit_col[dmode];
+
+			if (ptroffset >= struct_len || pgnum) {
+				int pnum;
+
+				pnum = pgnum * screen_chunk_size;
+				pnum += (ptroffset - struct_len);
+				pnum /= sizeof(uint64_t);
+
+				print_gfs2(" pointer 0x%x", pnum);
+			}
+		}
 	}
 	if (block == sbd.sd_sb.sb_root_dir.no_addr)
 		print_gfs2("--------------- Root directory ------------------");
@@ -704,6 +721,8 @@ int hexdump(uint64_t startaddr, const char *lpBuffer, int len)
 			line <= ((screen_chunk_size / 16) + 2)) ||
 			(!termlines && l < len)) &&
 		   l < sbd.bsize) {
+		int ptr_not_null = 0;
+
 		if (termlines) {
 			move(line, 0);
 			COLORS_OFFSETS; /* cyan for offsets */
@@ -714,28 +733,55 @@ int hexdump(uint64_t startaddr, const char *lpBuffer, int len)
 			print_gfs2("%.16"PRIX64, startaddr + l);
 		if (termlines) {
 			if (l < struct_len)
-				COLORS_NORMAL; /* normal part of the structure */
-			else if (gfs2_struct_type == GFS2_METATYPE_DI && 
+				COLORS_NORMAL; /* normal part of structure */
+			else if (gfs2_struct_type == GFS2_METATYPE_DI &&
 					 l < struct_len + di.di_size)
 				COLORS_CONTENTS; /* after struct but not eof */
 			else
-				COLORS_SPECIAL; /* beyond the end of the structure */
+				COLORS_SPECIAL; /* beyond end of the struct */
 		}
 		for (i = 0; i < 16; i++) { /* first print it in hex */
+			/* Figure out if we have a null pointer--for colors */
+			if (((gfs2_struct_type == GFS2_METATYPE_IN) ||
+			     (gfs2_struct_type == GFS2_METATYPE_DI &&
+			      l < struct_len + di.di_size &&
+			      (di.di_height > 0 || !S_ISREG(di.di_mode)))) &&
+			    (i==0 || i==8)) {
+				int j;
+
+				ptr_not_null = 0;
+				for (j = 0; j < 8; j++) {
+					if (*(pointer + j)) {
+						ptr_not_null = 1;
+						break;
+					}
+				}
+			}
 			if (termlines) {
 				if (l + i < struct_len)
-					COLORS_NORMAL; /* normal part of the structure */
-				else if (gfs2_struct_type == GFS2_METATYPE_DI && 
-						 l + i < struct_len + di.di_size)
-					COLORS_CONTENTS; /* beyond structure but not eof */
-				else
-					COLORS_SPECIAL; /* past end of the structure */
+					COLORS_NORMAL; /* in the structure */
+				else if (gfs2_struct_type == GFS2_METATYPE_DI
+					 && l + i < struct_len + di.di_size) {
+					if ((!di.di_height &&
+					     S_ISREG(di.di_mode)) ||
+					    !ptr_not_null)
+						COLORS_CONTENTS;/*stuff data */
+					else
+						COLORS_SPECIAL;/* non-null */
+				}
+				else if (gfs2_struct_type == GFS2_METATYPE_IN){
+					if (ptr_not_null)
+						COLORS_SPECIAL;/* non-null */
+					else
+						COLORS_CONTENTS;/* null */
+				} else
+					COLORS_SPECIAL; /* past the struct */
 			}
 			if (i%4 == 0)
 				print_gfs2(" ");
 			if (termlines && line == edit_row[dmode] + 3 &&
 				i == edit_col[dmode]) {
-				COLORS_HIGHLIGHT; /* normal part of the structure */
+				COLORS_HIGHLIGHT; /* in the structure */
 				memset(estring,0,3);
 				sprintf(estring,"%02X",*pointer);
 			}
@@ -743,9 +789,9 @@ int hexdump(uint64_t startaddr, const char *lpBuffer, int len)
 			if (termlines && line == edit_row[dmode] + 3 &&
 				i == edit_col[dmode]) {
 				if (l < struct_len + offset)
-					COLORS_NORMAL; /* normal part of the structure */
+					COLORS_NORMAL; /* in the structure */
 				else
-					COLORS_SPECIAL; /* beyond end of the structure */
+					COLORS_SPECIAL; /* beyond structure */
 			}
 			pointer++;
 		}
@@ -2168,8 +2214,8 @@ void init_colors()
 		init_pair(COLOR_TITLE, COLOR_BLACK,  COLOR_CYAN);
 		init_pair(COLOR_NORMAL, COLOR_BLACK,  COLOR_WHITE);
 		init_pair(COLOR_INVERSE, COLOR_WHITE,  COLOR_BLACK);
-		init_pair(COLOR_SPECIAL, COLOR_RED,    COLOR_WHITE);
-		init_pair(COLOR_HIGHLIGHT, COLOR_MAGENTA, COLOR_WHITE);
+		init_pair(COLOR_SPECIAL, COLOR_MAGENTA, COLOR_WHITE);
+		init_pair(COLOR_HIGHLIGHT, COLOR_RED, COLOR_WHITE); /*cursor*/
 		init_pair(COLOR_OFFSETS, COLOR_CYAN,   COLOR_WHITE);
 		init_pair(COLOR_CONTENTS, COLOR_BLUE, COLOR_WHITE);
 	}
@@ -3228,8 +3274,7 @@ void process_parameters(int argc, char *argv[], int pass)
 			printf("Device size: %" PRIu64 " (0x%" PRIx64 ")\n",
 			       max_block, max_block);
 			exit(EXIT_SUCCESS);
-		}
-		else if (!strcmp(argv[i], "rgcount"))
+		} else if (!strcmp(argv[i], "rgcount"))
 			rgcount();
 		else if (!strcmp(argv[i], "field")) {
 			uint64_t newval;
@@ -3397,7 +3442,9 @@ int main(int argc, char *argv[])
 	read_superblock(fd);
 	max_block = lseek(fd, 0, SEEK_END) / sbd.bsize;
 	strcpy(sbd.device_name, device);
-	if (!gfs1)
+	if (gfs1)
+		edit_row[GFS2_MODE]++;
+	else
 		read_master_dir();
 	block_in_mem = -1;
 	process_parameters(argc, argv, 1); /* get what to print from cmdline */
