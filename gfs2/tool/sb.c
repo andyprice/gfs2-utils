@@ -191,7 +191,7 @@ do_sb(int argc, char **argv)
 				cp++;
 			}
 			memcpy(sb.sb_uuid, uuid, 16);
-			printf( _("new uuid = %s\n", str_uuid(sb.sb_uuid)));
+			printf( _("new uuid = %s\n"), str_uuid(sb.sb_uuid));
 		}
 #endif
 	} else if (strcmp(field, "all") == 0) {
