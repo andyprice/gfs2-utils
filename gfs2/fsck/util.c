@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <stdio.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #include "libgfs2.h"
 #include "fs_bits.h"
@@ -61,7 +63,7 @@ void warm_fuzzy_stuff(uint64_t block)
 			seconds = tv.tv_sec;
 			if (last_fs_block) {
 				percent = (block * 100) / last_fs_block;
-				log_notice("\r%" PRIu64 " percent complete.\r", percent);
+				log_notice( _("\r%" PRIu64 " percent complete.\r"), percent);
 			}
 		}
 	}

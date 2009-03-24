@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #include "libgfs2.h"
 #include "fsck.h"
@@ -13,7 +15,7 @@ static int remove_eattr_entry(struct gfs2_sbd *sdp,
 			      struct gfs2_ea_header *curr,
 			      struct gfs2_ea_header *prev)
 {
-	log_warn("Removing EA located in block #%"PRIu64" (0x%" PRIx64 ").\n",
+	log_warn( _("Removing EA located in block #%"PRIu64" (0x%" PRIx64 ").\n"),
 		 leaf_bh->b_blocknr, leaf_bh->b_blocknr);
 	if(!prev)
 		curr->ea_type = GFS2_EATYPE_UNUSED;
@@ -37,9 +39,9 @@ int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 
 	*update = not_updated;
 	if(gfs2_check_range(sbp, block)) {
-		log_err("Extended attributes indirect block #%llu"
+		log_err( _("Extended attributes indirect block #%llu"
 			" (0x%llx) for inode #%llu"
-			" (0x%llx) out of range...removing\n",
+			" (0x%llx) out of range...removing\n"),
 			(unsigned long long)block,
 			(unsigned long long)block,
 			(unsigned long long)ip->i_di.di_num.no_addr,
@@ -53,9 +55,9 @@ int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 		return -1;
 	}
 	else if(q.block_type != gfs2_indir_blk) {
-		log_err("Extended attributes indirect block #%llu"
+		log_err( _("Extended attributes indirect block #%llu"
 			" (0x%llx) for inode #%llu"
-			" (0x%llx) invalid...removing\n",
+			" (0x%llx) invalid...removing\n"),
 			(unsigned long long)block,
 			(unsigned long long)block,
 			(unsigned long long)ip->i_di.di_num.no_addr,
@@ -80,8 +82,8 @@ int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 
 	*update = not_updated;
 	if(gfs2_check_range(sbp, block)) {
-		log_err("Extended attributes block for inode #%llu"
-			" (0x%llx) out of range...removing\n",
+		log_err( _("Extended attributes block for inode #%llu"
+			" (0x%llx) out of range...removing\n"),
 			(unsigned long long)ip->i_di.di_num.no_addr,
 			(unsigned long long)ip->i_di.di_num.no_addr);
 		ip->i_di.di_eattr = 0;
@@ -93,8 +95,8 @@ int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 		return -1;
 	}
 	else if(q.block_type != gfs2_meta_eattr) {
-		log_err("Extended attributes block for inode #%llu"
-			" (0x%llx) invalid...removing\n",
+		log_err( _("Extended attributes block for inode #%llu"
+			" (0x%llx) invalid...removing\n"),
 			(unsigned long long)ip->i_di.di_num.no_addr,
 			(unsigned long long)ip->i_di.di_num.no_addr);
 		ip->i_di.di_eattr = 0;
@@ -120,7 +122,7 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 	uint32_t max_size = sdp->sd_sb.sb_bsize;
 
 	if(!ea_hdr->ea_name_len){
-		log_err("EA has name length == 0\n");
+		log_err( _("EA has name length == 0\n"));
 		ea_hdr->ea_flags |= GFS2_EAFLAG_LAST;
 		ea_hdr->ea_rec_len = cpu_to_be32(max_size - offset);
 		if(remove_eattr_entry(sdp, leaf_bh, ea_hdr, ea_hdr_prev)){
@@ -130,7 +132,7 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 		return 1;
 	}
 	if(offset + be32_to_cpu(ea_hdr->ea_rec_len) > max_size){
-		log_err("EA rec length too long\n");
+		log_err( _("EA rec length too long\n"));
 		ea_hdr->ea_flags |= GFS2_EAFLAG_LAST;
 		ea_hdr->ea_rec_len = cpu_to_be32(max_size - offset);
 		if(remove_eattr_entry(sdp, leaf_bh, ea_hdr, ea_hdr_prev)){
@@ -141,7 +143,7 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 	}
 	if(offset + be32_to_cpu(ea_hdr->ea_rec_len) == max_size &&
 	   (ea_hdr->ea_flags & GFS2_EAFLAG_LAST) == 0){
-		log_err("last EA has no last entry flag\n");
+		log_err( _("last EA has no last entry flag\n"));
 		ea_hdr->ea_flags |= GFS2_EAFLAG_LAST;
 		if(remove_eattr_entry(sdp, leaf_bh, ea_hdr, ea_hdr_prev)){
 			stack;
@@ -150,7 +152,7 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 		return 1;
 	}
 	if(!ea_hdr->ea_name_len){
-		log_err("EA has name length == 0\n");
+		log_err( _("EA has name length == 0\n"));
 		if(remove_eattr_entry(sdp, leaf_bh, ea_hdr, ea_hdr_prev)){
 			stack;
 			return -1;
@@ -164,7 +166,7 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 
 	if(!GFS2_EATYPE_VALID(ea_hdr->ea_type) &&
 	   ((ea_hdr_prev) || (!ea_hdr_prev && ea_hdr->ea_type))){
-		log_err("EA (%s) type is invalid (%d > %d).\n",
+		log_err( _("EA (%s) type is invalid (%d > %d).\n"),
 			ea_name, ea_hdr->ea_type, GFS2_EATYPE_LAST);
 		if(remove_eattr_entry(sdp, leaf_bh, ea_hdr, ea_hdr_prev)){
 			stack;
@@ -181,9 +183,9 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 		max_ptrs = (be32_to_cpu(ea_hdr->ea_data_len)+avail_size-1)/avail_size;
 
 		if(max_ptrs > ea_hdr->ea_num_ptrs){
-			log_err("EA (%s) has incorrect number of pointers.\n", ea_name);
-			log_err("  Required:  %d\n"
-				"  Reported:  %d\n",
+			log_err( _("EA (%s) has incorrect number of pointers.\n"), ea_name);
+			log_err( _("  Required:  %d\n"
+				"  Reported:  %d\n"),
 				max_ptrs, ea_hdr->ea_num_ptrs);
 			if(remove_eattr_entry(sdp, leaf_bh, ea_hdr, ea_hdr_prev)){
 				stack;
@@ -191,7 +193,7 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 			}
 			return 1;
 		} else {
-			log_debug("  Pointers Required: %d\n  Pointers Reported: %d\n",
+			log_debug( _("  Pointers Required: %d\n  Pointers Reported: %d\n"),
 					  max_ptrs, ea_hdr->ea_num_ptrs);
 		}
 	}
@@ -241,7 +243,7 @@ int pass1c(struct gfs2_sbd *sbp)
 	pass1c_fxns.check_eattr_extentry = &check_eattr_extentry;
 	pass1c_fxns.private = NULL;
 
-	log_info("Looking for inodes containing ea blocks...\n");
+	log_info( _("Looking for inodes containing ea blocks...\n"));
 	osi_list_foreach_safe(tmp, &sbp->eattr_blocks.list, x) {
 		ea_block = osi_list_entry(tmp, struct special_blocks, list);
 		block_no = ea_block->block;
@@ -250,12 +252,12 @@ int pass1c(struct gfs2_sbd *sbp)
 			return FSCK_OK;
 		bh = bread(&sbp->buf_list, block_no);
 		if (gfs2_check_meta(bh, GFS2_METATYPE_IN)) { /* if a dinode */
-			log_info("EA in inode %"PRIu64" (0x%" PRIx64 ")\n",
+			log_info( _("EA in inode %"PRIu64" (0x%" PRIx64 ")\n"),
 				 block_no, block_no);
 			gfs2_block_clear(sbp, bl, block_no, gfs2_eattr_block);
 			ip = fsck_inode_get(sbp, bh);
 
-			log_debug("Found eattr at %llu (0x%llx)\n",
+			log_debug( _("Found eattr at %llu (0x%llx)\n"),
 				  (unsigned long long)ip->i_di.di_eattr,
 				  (unsigned long long)ip->i_di.di_eattr);
 			/* FIXME: Handle walking the eattr here */

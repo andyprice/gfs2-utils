@@ -1,5 +1,7 @@
 #include <stdint.h>
 #include <string.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #include "libgfs2.h"
 #include "fsck.h"
@@ -14,7 +16,7 @@ static int clear_blk_nodup(struct gfs2_sbd *sbp, uint64_t block)
 	}
 
 	if(q.dup_block) {
-		log_debug("Not clearing block with marked as a duplicate\n");
+		log_debug( _("Not clearing block with marked as a duplicate\n"));
 		return 1;
 	}
 
@@ -74,8 +76,8 @@ int clear_eattr_entry (struct gfs2_inode *ip,
 		if(max_ptrs > ea_hdr->ea_num_ptrs) {
 			return 1;
 		} else {
-			log_debug("  Pointers Required: %d\n"
-				  "  Pointers Reported: %d\n",
+			log_debug( _("  Pointers Required: %d\n"
+				  "  Pointers Reported: %d\n"),
 				  max_ptrs,
 				  ea_hdr->ea_num_ptrs);
 		}

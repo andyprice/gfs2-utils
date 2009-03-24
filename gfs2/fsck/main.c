@@ -7,6 +7,8 @@
 #include <stdarg.h>
 #include <ctype.h>
 #include <signal.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #include "copyright.cf"
 #include "libgfs2.h"
@@ -39,14 +41,14 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 
 void usage(char *name)
 {
-	printf("Usage: %s [-hnqvVy] <device> \n", basename(name));
+	printf( _("Usage: %s [-hnqvVy] <device> \n"), basename(name));
 }
 
 void version(void)
 {
-	printf("GFS2 fsck %s (built %s %s)\n",
+	printf( _("GFS2 fsck %s (built %s %s)\n"),
 	       RELEASE_VERSION, __DATE__, __TIME__);
-	printf("%s\n", REDHAT_COPYRIGHT);
+	printf( _(REDHAT_COPYRIGHT "\n"));
 }
 
 int read_cmdline(int argc, char **argv, struct gfs2_options *opts)
@@ -78,11 +80,11 @@ int read_cmdline(int argc, char **argv, struct gfs2_options *opts)
 			break;
 		case ':':
 		case '?':
-			fprintf(stderr, "Please use '-h' for usage.\n");
+			fprintf(stderr, _("Please use '-h' for usage.\n"));
 			return FSCK_USAGE;
 		default:
-			fprintf(stderr, "Bad programmer! You forgot to catch"
-				" the %c flag\n", c);
+			fprintf(stderr, _("Bad programmer! You forgot to catch"
+				" the %c flag\n"), c);
 			return FSCK_USAGE;
 
 		}
@@ -90,11 +92,11 @@ int read_cmdline(int argc, char **argv, struct gfs2_options *opts)
 	if(argc > optind) {
 		opts->device = (argv[optind]);
 		if(!opts->device) {
-			fprintf(stderr, "Please use '-h' for usage.\n");
+			fprintf(stderr, _("Please use '-h' for usage.\n"));
 			return FSCK_USAGE;
 		}
 	} else {
-		fprintf(stderr, "No device specified.  Use '-h' for usage.\n");
+		fprintf(stderr, _("No device specified.  Use '-h' for usage.\n"));
 		return FSCK_USAGE;
 	}
 	return 0;
@@ -106,15 +108,15 @@ void interrupt(int sig)
 	char progress[PATH_MAX];
 
 	if (!last_reported_block || last_reported_block == last_fs_block)
-		sprintf(progress, "progress unknown.\n");
+		sprintf(progress, _("progress unknown.\n"));
 	else
-		sprintf(progress, "processing block %" PRIu64 " out of %"
-			PRIu64 "\n", last_reported_block, last_fs_block);
+		sprintf(progress, _("processing block %" PRIu64 " out of %"
+			PRIu64 "\n"), last_reported_block, last_fs_block);
 	
 	response = generic_interrupt("gfs2_fsck", pass, progress,
-				     "Do you want to abort gfs2_fsck, skip " \
+				     _("Do you want to abort gfs2_fsck, skip " \
 				     "the rest of this pass or continue " \
-				     "(a/s/c)?", "asc");
+				     "(a/s/c)?"), "asc");
 	if(tolower(response) == 's') {
 		skip_this_pass = TRUE;
 		return;
@@ -134,20 +136,20 @@ int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 	uint64_t iblock = 0;
 	struct dir_status ds = {0};
 
-	log_info("Checking system inode '%s'\n", filename);
+	log_info( _("Checking system inode '%s'\n"), filename);
 	if (sysinode) {
 		/* Read in the system inode, look at its dentries, and start
 		 * reading through them */
 		iblock = sysinode->i_di.di_num.no_addr;
-		log_info("System inode for '%s' is located at block %"
-			 PRIu64 " (0x%" PRIx64 ")\n", filename,
+		log_info( _("System inode for '%s' is located at block %"
+			 PRIu64 " (0x%" PRIx64 ")\n"), filename,
 			 iblock, iblock);
 		
 		/* FIXME: check this block's validity */
 
 		if(gfs2_block_check(sysinode->i_sbd, bl, iblock, &ds.q)) {
-			log_crit("Can't get %s inode block %" PRIu64 " (0x%"
-				 PRIx64 ") from block list\n", filename,
+			log_crit( _("Can't get %s inode block %" PRIu64 " (0x%"
+				 PRIx64 ") from block list\n"), filename,
 				 iblock, iblock);
 			return -1;
 		}
@@ -156,7 +158,7 @@ int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 		/* bitmap.  In that case, don't rebuild the inode.  */
 		/* Just reuse the inode and fix the bitmap.         */
 		if (ds.q.block_type == gfs2_block_free) {
-			log_info("The inode exists but the block is not marked 'in use'; fixing it.\n");
+			log_info( _("The inode exists but the block is not marked 'in use'; fixing it.\n"));
 			gfs2_block_set(sysinode->i_sbd, bl,
 				       sysinode->i_di.di_num.no_addr,
 				       mark);
@@ -167,16 +169,16 @@ int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 		}
 	}
 	else
-		log_info("System inode for '%s' is missing.\n", filename);
+		log_info( _("System inode for '%s' is missing.\n"), filename);
 	/* If there are errors with the inode here, we need to
 	 * create a new inode and get it all setup - of course,
 	 * everything will be in lost+found then, but we *need* our
 	 * system inodes before we can do any of that. */
 	if(!sysinode || ds.q.block_type != mark) {
-		log_err("Invalid or missing %s system inode.\n", filename);
+		log_err( _("Invalid or missing %s system inode.\n"), filename);
 		errors_found++;
 		if ((errors_corrected +=
-		    query(&opts, "Create new %s system inode? (y/n) ",
+		    query(&opts, _("Create new %s system inode? (y/n) "),
 			  filename))) {
 			builder(sysinode->i_sbd);
 			gfs2_block_set(sysinode->i_sbd, bl,
@@ -188,7 +190,7 @@ int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 						sysinode->i_di.di_num.no_addr);
 		}
 		else {
-			log_err("Cannot continue without valid %s inode\n",
+			log_err( _("Cannot continue without valid %s inode\n"),
 				filename);
 			return -1;
 		}
@@ -253,27 +255,30 @@ int main(int argc, char **argv)
 	enum update_flags update_sys_files;
 	int error = 0;
 
+	setlocale(LC_ALL, "");
+	textdomain("fsck.gfs2");
+
 	memset(sbp, 0, sizeof(*sbp));
 
 	if((error = read_cmdline(argc, argv, &opts)))
 		exit(error);
 	setbuf(stdout, NULL);
-	log_notice("Initializing fsck\n");
+	log_notice( _("Initializing fsck\n"));
 	if ((error = initialize(sbp)))
 		exit(error);
 
 	signal(SIGINT, interrupt);
-	log_notice("Starting pass1\n");
+	log_notice( _("Starting pass1\n"));
 	pass = "pass 1";
 	last_reported_block = 0;
 	if ((error = pass1(sbp)))
 		exit(error);
 	if (skip_this_pass || fsck_abort) {
 		skip_this_pass = FALSE;
-		log_notice("Pass1 interrupted   \n");
+		log_notice( _("Pass1 interrupted   \n"));
 	}
 	else
-		log_notice("Pass1 complete      \n");
+		log_notice( _("Pass1 complete      \n"));
 
 	/* Make sure the system inodes are okay & represented in the bitmap. */
 	check_system_inodes(sbp);
@@ -281,81 +286,81 @@ int main(int argc, char **argv)
 	if (!fsck_abort) {
 		last_reported_block = 0;
 		pass = "pass 1b";
-		log_notice("Starting pass1b\n");
+		log_notice( _("Starting pass1b\n"));
 		if((error = pass1b(sbp)))
 			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
-			log_notice("Pass1b interrupted   \n");
+			log_notice( _("Pass1b interrupted   \n"));
 		}
 		else
-			log_notice("Pass1b complete\n");
+			log_notice( _("Pass1b complete\n"));
 	}
 	if (!fsck_abort) {
 		last_reported_block = 0;
 		pass = "pass 1c";
-		log_notice("Starting pass1c\n");
+		log_notice( _("Starting pass1c\n"));
 		if((error = pass1c(sbp)))
 			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
-			log_notice("Pass1c interrupted   \n");
+			log_notice( _("Pass1c interrupted   \n"));
 		}
 		else
-			log_notice("Pass1c complete\n");
+			log_notice( _("Pass1c complete\n"));
 	}
 	if (!fsck_abort) {
 		last_reported_block = 0;
 		pass = "pass 2";
-		log_notice("Starting pass2\n");
+		log_notice( _("Starting pass2\n"));
 		if ((error = pass2(sbp)))
 			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
-			log_notice("Pass2 interrupted   \n");
+			log_notice( _("Pass2 interrupted   \n"));
 		}
 		else
-			log_notice("Pass2 complete      \n");
+			log_notice( _("Pass2 complete      \n"));
 	}
 	if (!fsck_abort) {
 		last_reported_block = 0;
 		pass = "pass 3";
-		log_notice("Starting pass3\n");
+		log_notice( _("Starting pass3\n"));
 		if ((error = pass3(sbp)))
 			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
-			log_notice("Pass3 interrupted   \n");
+			log_notice( _("Pass3 interrupted   \n"));
 		}
 		else
-			log_notice("Pass3 complete      \n");
+			log_notice( _("Pass3 complete      \n"));
 	}
 	if (!fsck_abort) {
 		last_reported_block = 0;
 		pass = "pass 4";
-		log_notice("Starting pass4\n");
+		log_notice( _("Starting pass4\n"));
 		if ((error = pass4(sbp)))
 			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
-			log_notice("Pass4 interrupted   \n");
+			log_notice( _("Pass4 interrupted   \n"));
 		}
 		else
-			log_notice("Pass4 complete      \n");
+			log_notice( _("Pass4 complete      \n"));
 	}
 	if (!fsck_abort) {
 		last_reported_block = 0;
 		pass = "pass 5";
-		log_notice("Starting pass5\n");
+		log_notice( _("Starting pass5\n"));
 		if ((error = pass5(sbp)))
 			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
-			log_notice("Pass5 interrupted   \n");
+			log_notice( _("Pass5 interrupted   \n"));
 			error = FSCK_CANCELED;
 		}
 		else
-			log_notice("Pass5 complete      \n");
+			log_notice( _("Pass5 complete      \n"));
 	} else {
 		error = FSCK_CANCELED;
 	}
@@ -375,11 +380,11 @@ int main(int argc, char **argv)
 		inode_put(lf_dip, update_sys_files);
 
 	if (!opts.no)
-		log_notice("Writing changes to disk\n");
+		log_notice( _("Writing changes to disk\n"));
 	bsync(&sbp->buf_list);
 	bsync(&sbp->nvbuf_list);
 	destroy(sbp);
-	log_notice("gfs2_fsck complete    \n");
+	log_notice( _("gfs2_fsck complete    \n"));
 
 	if (!error) {
 		if (!errors_found)

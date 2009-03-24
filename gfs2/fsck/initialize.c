@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #include "libgfs2.h"
 #include "fsck.h"
@@ -79,12 +81,12 @@ static void empty_super_block(struct gfs2_sbd *sdp)
 {
 	uint32_t i;
 
-	log_info("Freeing buffers.\n");
+	log_info( _("Freeing buffers.\n"));
 	while(!osi_list_empty(&sdp->rglist)){
 		struct rgrp_list *rgd;
 
 		rgd = osi_list_entry(sdp->rglist.next, struct rgrp_list, list);
-		log_debug("Deleting rgd for 0x%llx:  rgd=0x%p bits=0x%p\n",
+		log_debug( _("Deleting rgd for 0x%llx:  rgd=0x%p bits=0x%p\n"),
 			  (unsigned long long)rgd->ri.ri_addr, rgd, rgd->bits);
 		osi_list_del(&rgd->list);
 		if(rgd->bits)
@@ -131,7 +133,7 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	uint64_t rmin = 0;
 	int error;
 
-	log_info("Setting block ranges...\n");
+	log_info( _("Setting block ranges...\n"));
 
 	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next)
 	{
@@ -145,8 +147,8 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 
 	last_fs_block = rmax;
 	if (last_fs_block > 0xffffffff && sizeof(unsigned long) <= 4) {
-		log_crit("This file system is too big for this computer to handle.\n");
-		log_crit("Last fs block = 0x%llx, but sizeof(unsigned long) is %lu bytes.\n",
+		log_crit( _("This file system is too big for this computer to handle.\n"));
+		log_crit( _("Last fs block = 0x%llx, but sizeof(unsigned long) is %lu bytes.\n"),
 			 (unsigned long long)last_fs_block,
 			 sizeof(unsigned long));
 		goto fail;
@@ -156,16 +158,16 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	first_data_block = rmin;
 
 	if(fsck_lseek(sdp->device_fd, (last_fs_block * sdp->sd_sb.sb_bsize))){
-		log_crit("Can't seek to last block in file system: %"
-				 PRIu64" (0x%" PRIx64 ")\n", last_fs_block, last_fs_block);
+		log_crit( _("Can't seek to last block in file system: %"
+				 PRIu64" (0x%" PRIx64 ")\n"), last_fs_block, last_fs_block);
 		goto fail;
 	}
 
 	memset(buf, 0, sdp->sd_sb.sb_bsize);
 	error = read(sdp->device_fd, buf, sdp->sd_sb.sb_bsize);
 	if (error != sdp->sd_sb.sb_bsize){
-		log_crit("Can't read last block in file system (error %u), "
-				 "last_fs_block: %"PRIu64" (0x%" PRIx64 ")\n", error,
+		log_crit( _("Can't read last block in file system (error %u), "
+				 "last_fs_block: %"PRIu64" (0x%" PRIx64 ")\n"), error,
 				 last_fs_block, last_fs_block);
 		goto fail;
 	}
@@ -194,7 +196,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	 ******************  Initialize important inodes  ******************
 	 *******************************************************************/
 
-	log_info("Initializing special inodes...\n");
+	log_info( _("Initializing special inodes...\n"));
 
 	/* Get master dinode */
 	sdp->master_dir = gfs2_load_inode(sdp,
@@ -234,42 +236,42 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 
 	/* read in the ji data */
 	if (ji_update(sdp)){
-		log_err("Unable to read in ji inode.\n");
+		log_err( _("Unable to read in ji inode.\n"));
 		return -1;
 	}
 
-	log_warn("Validating Resource Group index.\n");
+	log_warn( _("Validating Resource Group index.\n"));
 	for (trust_lvl = blind_faith; trust_lvl <= distrust; trust_lvl++) {
-		log_warn("Level %d RG check.\n", trust_lvl + 1);
+		log_warn( _("Level %d RG check.\n"), trust_lvl + 1);
 		if ((rg_repair(sdp, trust_lvl, &rgcount) == 0) &&
 		    (ri_update(sdp, 0, &rgcount) == 0)) {
-			log_err("(level %d passed)\n", trust_lvl + 1);
+			log_err( _("(level %d passed)\n"), trust_lvl + 1);
 			break;
 		}
 		else
-			log_err("(level %d failed)\n", trust_lvl + 1);
+			log_err( _("(level %d failed)\n"), trust_lvl + 1);
 	}
 	if (trust_lvl > distrust) {
-		log_err("RG recovery impossible; I can't fix this file system.\n");
+		log_err( _("RG recovery impossible; I can't fix this file system.\n"));
 		return -1;
 	}
-	log_info("%u resource groups found.\n", rgcount);
+	log_info( _("%u resource groups found.\n"), rgcount);
 
 	/*******************************************************************
 	 *******  Now, set boundary fields in the super block  *************
 	 *******************************************************************/
 	if(set_block_ranges(sdp)){
-		log_err("Unable to determine the boundaries of the"
-			" file system.\n");
+		log_err( _("Unable to determine the boundaries of the"
+			" file system.\n"));
 		goto fail;
 	}
 
 	bl = gfs2_block_list_create(sdp, last_fs_block+1, &addl_mem_needed);
 	if (!bl) {
-		log_crit("This system doesn't have enough memory + swap space to fsck this file system.\n");
-		log_crit("Additional memory needed is approximately: %lluMB\n",
+		log_crit( _("This system doesn't have enough memory + swap space to fsck this file system.\n"));
+		log_crit( _("Additional memory needed is approximately: %lluMB\n"),
 			 (unsigned long long)(addl_mem_needed / 1048576ULL));
-		log_crit("Please increase your swap space by that amount and run gfs2_fsck again.\n");
+		log_crit( _("Please increase your swap space by that amount and run gfs2_fsck again.\n"));
 		goto fail;
 	}
 	return 0;
@@ -294,7 +296,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 	/********************************************************************
 	 ***************** First, initialize all lists **********************
 	 ********************************************************************/
-	log_info("Initializing lists...\n");
+	log_info( _("Initializing lists...\n"));
 	osi_list_init(&sdp->rglist);
 	init_buf_list(sdp, &sdp->buf_list, 128 << 20);
 	init_buf_list(sdp, &sdp->nvbuf_list, 0xffffffff);
@@ -310,8 +312,8 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 	sdp->bsize = sdp->sd_sb.sb_bsize;
 
 	if(sizeof(struct gfs2_sb) > sdp->sd_sb.sb_bsize){
-		log_crit("GFS superblock is larger than the blocksize!\n");
-		log_debug("sizeof(struct gfs2_sb) > sdp->sd_sb.sb_bsize\n");
+		log_crit( _("GFS superblock is larger than the blocksize!\n"));
+		log_debug( _("sizeof(struct gfs2_sb) > sdp->sd_sb.sb_bsize\n"));
 		return -1;
 	}
 
@@ -331,13 +333,13 @@ int initialize(struct gfs2_sbd *sbp)
 {
 	if(opts.no) {
 		if ((sbp->device_fd = open(opts.device, O_RDONLY)) < 0) {
-			log_crit("Unable to open device: %s\n", opts.device);
+			log_crit( _("Unable to open device: %s\n"), opts.device);
 			return FSCK_USAGE;
 		}
 	} else {
 		/* read in sb from disk */
 		if ((sbp->device_fd = open(opts.device, O_RDWR)) < 0){
-			log_crit("Unable to open device: %s\n", opts.device);
+			log_crit( _("Unable to open device: %s\n"), opts.device);
 			return FSCK_USAGE;
 		}
 	}
@@ -349,7 +351,7 @@ int initialize(struct gfs2_sbd *sbp)
 	/* Change lock protocol to be fsck_* instead of lock_* */
 	if(!opts.no) {
 		if(block_mounters(sbp, 1)) {
-			log_err("Unable to block other mounters\n");
+			log_err( _("Unable to block other mounters\n"));
 			return FSCK_USAGE;
 		}
 	}
@@ -373,10 +375,10 @@ static void destroy_sbp(struct gfs2_sbd *sbp)
 {
 	if(!opts.no) {
 		if(block_mounters(sbp, 0)) {
-			log_warn("Unable to unblock other mounters - manual intervention required\n");
-			log_warn("Use 'gfs2_tool sb <device> proto' to fix\n");
+			log_warn( _("Unable to unblock other mounters - manual intervention required\n"));
+			log_warn( _("Use 'gfs2_tool sb <device> proto' to fix\n"));
 		}
-		log_info("Syncing the device.\n");
+		log_info( _("Syncing the device.\n"));
 		fsync(sbp->device_fd);
 	}
 	empty_super_block(sbp);

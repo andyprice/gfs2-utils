@@ -4,6 +4,8 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #include "fsck.h"
 #include "fs_recovery.h"
@@ -334,7 +336,7 @@ int gfs2_recover_journal(struct gfs2_inode *ip, int j)
 	unsigned int pass;
 	int error;
 
-	log_info("jid=%u: Looking at journal...\n", j);
+	log_info( _("jid=%u: Looking at journal...\n"), j);
 
 	osi_list_init(&sd_revoke_list);
 	error = gfs2_find_jhead(ip, &head);
@@ -342,12 +344,12 @@ int gfs2_recover_journal(struct gfs2_inode *ip, int j)
 		goto out;
 
 	if (head.lh_flags & GFS2_LOG_HEAD_UNMOUNT) {
-		log_info("jid=%u: Journal is clean.\n", j);
+		log_info( _("jid=%u: Journal is clean.\n"), j);
 		return 0;
 	}
-	if (query(&opts, "\nJournal #%d (\"journal%d\") is dirty.  Okay to replay it? (y/n)",
+	if (query(&opts, _("\nJournal #%d (\"journal%d\") is dirty.  Okay to replay it? (y/n)"),
 		    j+1, j)) {
-		log_info("jid=%u: Replaying journal...\n", j);
+		log_info( _("jid=%u: Replaying journal...\n"), j);
 
 		sd_found_jblocks = sd_replayed_jblocks = 0;
 		sd_found_metablocks = sd_replayed_metablocks = 0;
@@ -359,28 +361,28 @@ int gfs2_recover_journal(struct gfs2_inode *ip, int j)
 			if (error)
 				goto out;
 		}
-		log_info("jid=%u: Found %u revoke tags\n", j,
+		log_info( _("jid=%u: Found %u revoke tags\n"), j,
 			 sd_found_revokes);
 		gfs2_revoke_clean(sdp);
 		error = clean_journal(ip, &head);
 		if (error)
 			goto out;
-		log_err("jid=%u: Replayed %u of %u journaled data blocks\n",
+		log_err( _("jid=%u: Replayed %u of %u journaled data blocks\n"),
 			j, sd_replayed_jblocks, sd_found_jblocks);
-		log_err("jid=%u: Replayed %u of %u metadata blocks\n",
+		log_err( _("jid=%u: Replayed %u of %u metadata blocks\n"),
 			j, sd_replayed_metablocks, sd_found_metablocks);
 	} else {
-		if (query(&opts, "Do you want to clear the dirty journal instead? (y/n)")) {
+		if (query(&opts, _("Do you want to clear the dirty journal instead? (y/n)"))) {
 			write_journal(sdp, sdp->md.journal[j], j,
 				      sdp->md.journal[j]->i_di.di_size /
 				      sdp->sd_sb.sb_bsize);
 			
 		} else
-			log_err("jid=%u: Dirty journal not replayed or cleared.\n", j);
+			log_err( _("jid=%u: Dirty journal not replayed or cleared.\n"), j);
 	}
 
 out:
-	log_info("jid=%u: %s\n", j, (error) ? "Failed" : "Done");
+	log_info( _("jid=%u: %s\n"), j, (error) ? "Failed" : "Done");
 	return error;
 }
 
@@ -397,7 +399,7 @@ out:
 int replay_journals(struct gfs2_sbd *sdp){
 	int i;
 
-	log_notice("Recovering journals (this may take a while)");
+	log_notice( _("Recovering journals (this may take a while)"));
 
 	/* Get master dinode */
 	sdp->master_dir = gfs2_load_inode(sdp,
@@ -406,7 +408,7 @@ int replay_journals(struct gfs2_sbd *sdp){
 
 	/* read in the journal index data */
 	if (ji_update(sdp)){
-		log_err("Unable to read in jindex inode.\n");
+		log_err( _("Unable to read in jindex inode.\n"));
 		return -1;
 	}
 
@@ -417,7 +419,7 @@ int replay_journals(struct gfs2_sbd *sdp){
 		inode_put(sdp->md.journal[i],
 			  (opts.no ? not_updated : updated));
 	}
-	log_notice("\nJournal recovery complete.\n");
+	log_notice( _("\nJournal recovery complete.\n"));
 	inode_put(sdp->master_dir, not_updated);
 	inode_put(sdp->md.jiinode, not_updated);
 	/* Sync the buffers to disk so we get a fresh start. */

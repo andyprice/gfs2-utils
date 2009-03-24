@@ -2,6 +2,8 @@
 #include <string.h>
 #include <inttypes.h>
 #include <stdlib.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #include "libgfs2.h"
 #include "fsck.h"
@@ -45,7 +47,7 @@ int convert_mark(struct gfs2_block_query *q, uint32_t *count)
 		return GFS2_BLKST_USED;
 
 	default:
-		log_err("Invalid state %d found\n", q->block_type);
+		log_err( _("Invalid state %d found\n"), q->block_type);
 		return -1;
 	}
 	return -1;
@@ -82,31 +84,31 @@ int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int buflen,
 		   So we ignore it. */
 		if (rg_status == GFS2_BLKST_UNLINKED &&
 		    block_status == GFS2_BLKST_FREE) {
-			log_warn("Unlinked block found at block %"
-				 PRIu64" (0x%" PRIx64 "), left unchanged.\n",
+			log_warn( _("Unlinked block found at block %"
+				 PRIu64" (0x%" PRIx64 "), left unchanged.\n"),
 				 block, block);
 		} else if (rg_status != block_status) {
 			const char *blockstatus[] = {"Free", "Data", "Unlinked", "inode"};
 
-			log_err("Ondisk and fsck bitmaps differ at"
-					" block %"PRIu64" (0x%" PRIx64 ") \n", block, block);
-			log_err("Ondisk status is %u (%s) but FSCK thinks it should be ",
+			log_err( _("Ondisk and fsck bitmaps differ at"
+					" block %"PRIu64" (0x%" PRIx64 ") \n"), block, block);
+			log_err( _("Ondisk status is %u (%s) but FSCK thinks it should be "),
 					rg_status, blockstatus[rg_status]);
 			log_err("%u (%s)\n", block_status, blockstatus[block_status]);
-			log_err("Metadata type is %u (%s)\n", q.block_type,
+			log_err( _("Metadata type is %u (%s)\n"), q.block_type,
 					block_type_string(&q));
 
 			errors_found++;
-			if(query(&opts, "Fix bitmap for block %"
-					 PRIu64" (0x%" PRIx64 ") ? (y/n) ", block, block)) {
+			if(query(&opts, _("Fix bitmap for block %"
+					 PRIu64" (0x%" PRIx64 ") ? (y/n) "), block, block)) {
 				errors_corrected++;
 				if(gfs2_set_bitmap(sbp, block, block_status))
-					log_err("Failed.\n");
+					log_err( _("Failed.\n"));
 				else
-					log_err("Succeeded.\n");
+					log_err( _("Succeeded.\n"));
 			} else
-				log_err("Bitmap at block %"PRIu64" (0x%" PRIx64
-						") left inconsistent\n", block, block);
+				log_err( _("Bitmap at block %"PRIu64" (0x%" PRIx64
+						") left inconsistent\n"), block, block);
 		}
 		(*rg_block)++;
 		bit += GFS2_BIT_SIZE;
@@ -139,8 +141,8 @@ enum update_flags update_rgrp(struct gfs2_sbd *sbp, struct rgrp_list *rgp,
 
 	/* actually adjust counters and write out to disk */
 	if(rgp->rg.rg_free != count[0]) {
-		log_err("RG #%llu (0x%llx) free count inconsistent: "
-			"is %u should be %u\n",
+		log_err( _("RG #%llu (0x%llx) free count inconsistent: "
+			"is %u should be %u\n"),
 			(unsigned long long)rgp->ri.ri_addr,
 			(unsigned long long)rgp->ri.ri_addr,
 			rgp->rg.rg_free, count[0]);
@@ -148,7 +150,7 @@ enum update_flags update_rgrp(struct gfs2_sbd *sbp, struct rgrp_list *rgp,
 		update = 1;
 	}
 	if(rgp->rg.rg_dinodes != count[1]) {
-		log_err("Inode count inconsistent: is %u should be %u\n",
+		log_err( _("Inode count inconsistent: is %u should be %u\n"),
 				rgp->rg.rg_dinodes, count[1]);
 		rgp->rg.rg_dinodes = count[1];
 		update = 1;
@@ -157,19 +159,19 @@ enum update_flags update_rgrp(struct gfs2_sbd *sbp, struct rgrp_list *rgp,
 		/* FIXME not sure how to handle this case ATM - it
 		 * means that the total number of blocks we've counted
 		 * exceeds the blocks in the rg */
-		log_err("Internal fsck error - AAHHH!\n");
+		log_err( _("Internal fsck error - AAHHH!\n"));
 		exit(FSCK_ERROR);
 	}
 	if(update) {
 		errors_found++;
-		if(query(&opts, "Update resource group counts? (y/n) ")) {
+		if(query(&opts, _("Update resource group counts? (y/n) "))) {
 			errors_corrected++;
-			log_warn("Resource group counts updated\n");
+			log_warn( _("Resource group counts updated\n"));
 			/* write out the rgrp */
 			gfs2_rgrp_out(&rgp->rg, rgp->bh[0]->b_data);
 			return updated;
 		} else
-			log_err("Resource group counts left inconsistent\n");
+			log_err( _("Resource group counts left inconsistent\n"));
 	}
 	return not_updated;
 }
@@ -193,7 +195,7 @@ int pass5(struct gfs2_sbd *sbp)
 
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
-		log_info("Verifying Resource Group #%" PRIu64 "\n", rg_count);
+		log_info( _("Verifying Resource Group #%" PRIu64 "\n"), rg_count);
 		memset(count, 0, sizeof(count));
 		rgp = osi_list_entry(tmp, struct rgrp_list, list);
 

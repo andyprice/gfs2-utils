@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <libintl.h>
+#define _(String) gettext(String)
 
 #include "libgfs2.h"
 #include "osi_list.h"
@@ -45,7 +47,7 @@ void find_journaled_rgs(struct gfs2_sbd *sdp)
 
 	osi_list_init(&false_rgrps.list);
 	for (j = 0; j < sdp->md.journals; j++) {
-		log_debug("Checking for RGs in journal%d.\n", j);
+		log_debug( _("Checking for RGs in journal%d.\n"), j);
 		ip = sdp->md.journal[j];
 		jblocks = ip->i_di.di_size / sdp->sd_sb.sb_bsize;
 		for (b = 0; b < jblocks; b++) {
@@ -55,8 +57,8 @@ void find_journaled_rgs(struct gfs2_sbd *sdp)
 				break;
 			bh = bread(&sdp->buf_list, dblock);
 			if (!gfs2_check_meta(bh, GFS2_METATYPE_RG)) {
-				log_debug("False RG found at block "
-					  "0x%" PRIx64 "\n", dblock);
+				log_debug( _("False RG found at block "
+					  "0x%" PRIx64 "\n"), dblock);
 				gfs2_special_set(&false_rgrps, dblock);
 			}
 			brelse(bh, not_updated);
@@ -131,7 +133,7 @@ int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 		if (((blk == sdp->sb_addr + 1) ||
 		    (!gfs2_check_meta(bh, GFS2_METATYPE_RG))) &&
 		    !is_false_rg(blk)) {
-			log_debug("RG found at block 0x%" PRIx64 "\n", blk);
+			log_debug( _("RG found at block 0x%" PRIx64 "\n"), blk);
 			if (blk > sdp->sb_addr + 1) {
 				uint64_t rgdist;
 				
@@ -152,7 +154,7 @@ int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 					first_rg_dist = rgdist;
 				if (rgdist < shortest_dist_btwn_rgs) {
 					shortest_dist_btwn_rgs = rgdist;
-					log_debug("(shortest so far)\n");
+					log_debug( _("(shortest so far)\n"));
 				}
 				else
 					log_debug("\n");
@@ -171,8 +173,8 @@ int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 	/* first_rg_dist would measure from #1 to #3, which would be bad. */
 	/* We need to take remedial measures to fix it (from the index).  */
 	/* -------------------------------------------------------------- */
-	log_debug("First RG distance: 0x%" PRIx64 "\n", first_rg_dist);
-	log_debug("Distance between RGs: 0x%" PRIx64 "\n",
+	log_debug( _("First RG distance: 0x%" PRIx64 "\n"), first_rg_dist);
+	log_debug( _("Distance between RGs: 0x%" PRIx64 "\n"),
 		  shortest_dist_btwn_rgs);
 	if (first_rg_dist >= shortest_dist_btwn_rgs +
 	    (shortest_dist_btwn_rgs / 4)) {
@@ -182,18 +184,18 @@ int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 			   sizeof(struct gfs2_rindex));
 		gfs2_rindex_in(&tmpndx, (char *)&buf);
 		if (tmpndx.ri_addr > sdp->sb_addr + 1) { /* sanity check */
-			log_warn("RG 2 is damaged: getting dist from index: ");
+			log_warn( _("RG 2 is damaged: getting dist from index: "));
 			first_rg_dist = tmpndx.ri_addr - (sdp->sb_addr + 1);
 			log_warn("0x%" PRIx64 "\n", first_rg_dist);
 		}
 		else {
-			log_warn("RG index 2 is damaged: extrapolating dist: ");
+			log_warn( _("RG index 2 is damaged: extrapolating dist: "));
 			first_rg_dist = sdp->device.length -
 				(sdp->rgrps - 1) *
 				(sdp->device.length / sdp->rgrps);
 			log_warn("0x%" PRIx64 "\n", first_rg_dist);
 		}
-		log_debug("Adjusted first RG distance: 0x%" PRIx64 "\n",
+		log_debug( _("Adjusted first RG distance: 0x%" PRIx64 "\n"),
 			  first_rg_dist);
 	} /* if first RG distance is within tolerance */
 	/* -------------------------------------------------------------- */
@@ -204,14 +206,14 @@ int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 	block_bump = first_rg_dist;
 	for (blk = sdp->sb_addr + 1; blk <= sdp->device.length;
 	     blk += block_bump) {
-		log_debug("Block 0x%" PRIx64 "\n", blk);
+		log_debug( _("Block 0x%" PRIx64 "\n"), blk);
 		bh = bread(&sdp->nvbuf_list, blk);
 		rg_was_fnd = (!gfs2_check_meta(bh, GFS2_METATYPE_RG));
 		brelse(bh, not_updated);
 		/* Allocate a new RG and index. */
 		calc_rgd = malloc(sizeof(struct rgrp_list));
 		if (!calc_rgd) {
-			log_crit("Can't allocate memory for rg repair.\n");
+			log_crit( _("Can't allocate memory for rg repair.\n"));
 			return -1;
 		}
 		memset(calc_rgd, 0, sizeof(struct rgrp_list));
@@ -224,11 +226,11 @@ int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 			/* ------------------------------------------------- */
 			corrupt_rgs++;
 			if (corrupt_rgs < 5)
-				log_debug("Missing or damaged RG at block %" 
-					  PRIu64 " (0x%" PRIx64 ")\n",
+				log_debug( _("Missing or damaged RG at block %" 
+					  PRIu64 " (0x%" PRIx64 ")\n"),
 					  blk, blk);
 			else {
-				log_crit("Error: too many bad RGs.\n");
+				log_crit( _("Error: too many bad RGs.\n"));
 				return -1;
 			}
 		}
@@ -250,11 +252,11 @@ int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 		} /* for subsequent bitmaps */
 		
 		gfs2_compute_bitstructs(sdp, calc_rgd);
-		log_debug("Memory allocated for rg at 0x%llx, bh: %p\n",
+		log_debug( _("Memory allocated for rg at 0x%llx, bh: %p\n"),
 			  (unsigned long long)calc_rgd->ri.ri_addr,
 			  calc_rgd->bh);
 		if (!calc_rgd->bh) {
-			log_crit("Can't allocate memory for bitmap repair.\n");
+			log_crit( _("Can't allocate memory for bitmap repair.\n"));
 			return -1;
 		}
 		calc_rgd->ri.ri_data0 = calc_rgd->ri.ri_addr +
@@ -271,11 +273,11 @@ int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 				GFS2_NBBY;
 			prev_rgd->ri.ri_bitbytes = prev_rgd->ri.ri_data /
 				GFS2_NBBY;
-			log_debug("Prev ri_data set to: %" PRIx32 ".\n",
+			log_debug( _("Prev ri_data set to: %" PRIx32 ".\n"),
 				  prev_rgd->ri.ri_data);
 		}
 		number_of_rgs++;
-		log_warn("%c RG %d at block 0x%" PRIX64 " %s",
+		log_warn( _("%c RG %d at block 0x%" PRIX64 " %s"),
 			 (rg_was_fnd ? ' ' : '*'), number_of_rgs, blk,
 			 (rg_was_fnd ? "intact" : "*** DAMAGED ***"));
 		prev_rgd = calc_rgd;
@@ -286,7 +288,7 @@ int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 		else
 			block_bump = shortest_dist_btwn_rgs;
 		if (block_bump != 1)
-			log_warn(" [length 0x%" PRIx64 "]\n", block_bump);
+			log_warn( _(" [length 0x%" PRIx64 "]\n"), block_bump);
 	} /* for each rg block */
 	/* ----------------------------------------------------------------- */
 	/* If we got to the end of the fs, we still need to fix the          */
@@ -302,14 +304,14 @@ int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 		prev_rgd->ri.ri_data = rgblocks;
 		prev_rgd->ri.ri_data -= prev_rgd->ri.ri_data % GFS2_NBBY;
 		prev_rgd->ri.ri_bitbytes = prev_rgd->ri.ri_data / GFS2_NBBY;
-		log_debug("Prev ri_data set to: %" PRIx32 ".\n",
+		log_debug( _("Prev ri_data set to: %" PRIx32 ".\n"),
 			  prev_rgd->ri.ri_data);
 		prev_rgd = NULL; /* make sure we don't use it later */
 	}
         /* ---------------------------------------------- */
         /* Now dump out the information (if verbose mode) */      
         /* ---------------------------------------------- */
-        log_debug("RG index rebuilt as follows:\n");
+        log_debug( _("RG index rebuilt as follows:\n"));
         for (tmp = ret_list, rgi = 0; tmp != ret_list;
 	     tmp = tmp->next, rgi++) {
                 calc_rgd = osi_list_entry(tmp, struct rgrp_list, list);
@@ -343,7 +345,7 @@ int gfs2_rindex_calculate(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 	osi_list_init(ret_list);
 	sdp->rgsize = GFS2_DEFAULT_RGSIZE; /* compute_rgrp_layout adjusts */
 	if (device_geometry(sdp)) {
-		fprintf(stderr, "Geometry error\n");
+		fprintf(stderr, _("Geometry error\n"));
 		exit(-1);
 	}
 	fix_device_geometry(sdp);
@@ -351,7 +353,7 @@ int gfs2_rindex_calculate(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 	compute_rgrp_layout(sdp, FALSE);
 	build_rgrps(sdp, FALSE); /* FALSE = calc but don't write to disk. */
 	*num_rgs = 0;
-	log_debug("fs_total_size = 0x%" PRIX64 " blocks.\n",
+	log_debug( _("fs_total_size = 0x%" PRIX64 " blocks.\n"),
 		  sdp->device.length);
 	/* ----------------------------------------------------------------- */
 	/* Calculate how many RGs there are supposed to be based on the      */
@@ -361,7 +363,7 @@ int gfs2_rindex_calculate(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 	/* the index.                                                        */
 	/* ----------------------------------------------------------------- */
 	*num_rgs = sdp->md.riinode->i_di.di_size / sizeof(struct gfs2_rindex);
-	log_warn("L2: number of rgs in the index = %d.\n", *num_rgs);
+	log_warn( _("L2: number of rgs in the index = %d.\n"), *num_rgs);
 	return 0;
 }
 
@@ -374,15 +376,15 @@ int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rg,
 {
 	int x = errblock - rg->ri.ri_addr;
 
-	log_err("Block #%"PRIu64" (0x%" PRIx64") (%d of %d) is neither"
-		" GFS2_METATYPE_RB nor GFS2_METATYPE_RG.\n",
+	log_err( _("Block #%"PRIu64" (0x%" PRIx64") (%d of %d) is neither"
+		" GFS2_METATYPE_RB nor GFS2_METATYPE_RG.\n"),
 		rg->bh[x]->b_blocknr, rg->bh[x]->b_blocknr,
 		(int)x+1, (int)rg->ri.ri_length);
 	errors_found++;
 	if (query(&opts, "Fix the RG? (y/n)")) {
 
 		errors_corrected++;
-		log_err("Attempting to repair the RG.\n");
+		log_err( _("Attempting to repair the RG.\n"));
 		rg->bh[x] = bread(&sdp->nvbuf_list, rg->ri.ri_addr + x);
 		if (x) {
 			struct gfs2_meta_header mh;
@@ -436,7 +438,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 		error = gfs2_rindex_rebuild(sdp, &expected_rglist,
 					     &calc_rg_count);
 		if (error) {
-			log_crit("Error rebuilding rg list.\n");
+			log_crit( _("Error rebuilding rg list.\n"));
 			gfs2_rgrp_free(&expected_rglist, not_updated);
 			return -1;
 		}
@@ -446,16 +448,16 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 	osi_list_init(&sdp->rglist); /* Just to be safe */
 	rindex_read(sdp, 0, &rgcount_from_index);
 	if (sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex)) {
-		log_warn("WARNING: rindex file is corrupt.\n");
+		log_warn( _("WARNING: rindex file is corrupt.\n"));
 		gfs2_rgrp_free(&expected_rglist, not_updated);
 		gfs2_rgrp_free(&sdp->rglist, not_updated);
 		return -1;
 	}
-	log_warn("L%d: number of rgs expected     = %lld.\n", trust_lvl + 1,
+	log_warn( _("L%d: number of rgs expected     = %lld.\n"), trust_lvl + 1,
 		 (unsigned long long)sdp->rgrps);
 	if (calc_rg_count != sdp->rgrps) {
-		log_warn("L%d: They don't match; either (1) the fs was extended, (2) an odd\n", trust_lvl + 1);
-		log_warn("L%d: rg size was used, or (3) we have a corrupt rg index.\n", trust_lvl + 1);
+		log_warn( _("L%d: They don't match; either (1) the fs was extended, (2) an odd\n"), trust_lvl + 1);
+		log_warn( _("L%d: rg size was used, or (3) we have a corrupt rg index.\n"), trust_lvl + 1);
 		gfs2_rgrp_free(&expected_rglist, not_updated);
 		gfs2_rgrp_free(&sdp->rglist, not_updated);
 		return -1;
@@ -484,9 +486,9 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 		}
 	}
 	if (trust_lvl < distrust && descrepencies > (trust_lvl * 8)) {
-		log_warn("Level %d didn't work.  Too many descepencies.\n",
+		log_warn( _("Level %d didn't work.  Too many descepencies.\n"),
 			 trust_lvl + 1);
-		log_warn("%d out of %d RGs did not match what was expected.\n",
+		log_warn( _("%d out of %d RGs did not match what was expected.\n"),
 			 descrepencies, rg);
 		gfs2_rgrp_free(&expected_rglist, not_updated);
 		gfs2_rgrp_free(&sdp->rglist, not_updated);
@@ -512,7 +514,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 		/* If we modified the index, write it back to disk. */
 		if (rindex_modified) {
 			errors_found++;
-			if (query(&opts, "Fix the index? (y/n)")) {
+			if (query(&opts, _("Fix the index? (y/n)"))) {
 				errors_corrected++;
 				gfs2_rindex_out(&expected->ri, (char *)&buf);
 				gfs2_writei(sdp->md.riinode, (char *)&buf,
@@ -535,7 +537,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 				gfs2_compute_bitstructs(sdp, actual);
 			}
 			else
-				log_err("RG index not fixed.\n");
+				log_err( _("RG index not fixed.\n"));
 			rindex_modified = FALSE;
 			
 		}
