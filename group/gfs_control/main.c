@@ -376,15 +376,14 @@ static void do_list(char *name)
 	memset(mgs, 0, sizeof(mgs));
 
 	if (name) {
-		rv = gfsc_mountgroup_info(name, mgs);
-		if (rv < 0)
-			return;
 		mg_count = 1;
+		rv = gfsc_mountgroup_info(name, mgs);
 	} else {
 		rv = gfsc_mountgroups(MAX_MG, &mg_count, mgs);
-		if (rv < 0)
-			return;
 	}
+
+	if (rv < 0)
+		exit(EXIT_FAILURE); /* gfs_controld probably not running */
 
 	if (mg_count)
 		printf("gfs mountgroups\n");
