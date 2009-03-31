@@ -167,12 +167,10 @@ int block_is_a_journal(void)
 
 int block_is_systemfile(void)
 {
-	return block_is_jindex() ||
-		block_is_inum_file() ||
-		block_is_statfs_file() ||
-		block_is_quota_file() ||
-		block_is_rindex() ||
-		block_is_a_journal();
+	return block_is_jindex() || block_is_inum_file() ||
+		block_is_statfs_file() || block_is_quota_file() ||
+		block_is_rindex() || block_is_a_journal() ||
+		block_is_per_node() || block_is_in_per_node();
 }
 
 int save_block(int fd, int out_fd, uint64_t blk)
@@ -690,9 +688,9 @@ int restore_data(int fd, int in_fd, int printblocksonly)
 		}
 		rs = read(in_fd, &buf16, sizeof(uint16_t));
 		savedata->siglen = be16_to_cpu(buf16);
-		if (savedata->siglen > 0 &&
-		    savedata->siglen <= sizeof(savedata->buf)) {
-			if (read(in_fd, savedata->buf, savedata->siglen) !=
+		if (savedata->siglen <= sizeof(savedata->buf)) {
+			if (savedata->siglen &&
+			    read(in_fd, savedata->buf, savedata->siglen) !=
 			    savedata->siglen) {
 				fprintf(stderr, "read error: %s from %s:%d: "
 					"block %lld (0x%llx)\n",
@@ -737,7 +735,7 @@ int restore_data(int fd, int in_fd, int printblocksonly)
 			} else {
 				warm_fuzzy_stuff(savedata->blk, FALSE, FALSE);
 				if (savedata->blk >= last_fs_block) {
-					printf("Out of space on the destination "
+					printf("\nOut of space on the destination "
 					       "device; quitting.\n");
 					break;
 				}
@@ -767,7 +765,7 @@ int restore_data(int fd, int in_fd, int printblocksonly)
 			}
 			blks_saved++;
 		} else {
-			fprintf(stderr, "Bad record length: %d for block #%"
+			fprintf(stderr, "\nBad record length: %d for block #%"
 				PRIu64".\n", savedata->siglen, savedata->blk);
 			return -1;
 		}

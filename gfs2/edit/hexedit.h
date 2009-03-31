@@ -152,6 +152,8 @@ extern int block_is_rindex(void);
 extern int block_is_inum_file(void);
 extern int block_is_statfs_file(void);
 extern int block_is_quota_file(void);
+extern int block_is_per_node(void);
+extern int block_is_in_per_node(void);
 extern int display_block_type(const char *lpBuffer, int from_restore);
 extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
 extern void gfs_log_header_in(struct gfs_log_header *head, char *buf);

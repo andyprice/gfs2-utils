@@ -1591,6 +1591,41 @@ int block_is_quota_file(void)
 }
 
 /* ------------------------------------------------------------------------ */
+/* block_is_per_node                                                        */
+/* ------------------------------------------------------------------------ */
+int block_is_per_node(void)
+{
+	if (!gfs1 && block == masterblock("per_node"))
+		return TRUE;
+	return FALSE;
+}
+
+/* ------------------------------------------------------------------------ */
+/* block_is_in_per_node                                                     */
+/* ------------------------------------------------------------------------ */
+int block_is_in_per_node(void)
+{
+	int d;
+	struct gfs2_dinode per_node_di;
+	struct gfs2_buffer_head *per_node_bh;
+
+	if (gfs1)
+		return FALSE;
+
+	per_node_bh = bread(&sbd.buf_list, masterblock("per_node"));
+	gfs2_dinode_in(&per_node_di, per_node_bh->b_data);
+
+	do_dinode_extended(&per_node_di, per_node_bh->b_data);
+	brelse(per_node_bh, not_updated);
+
+	for (d = 0; d < indirect->ii[0].dirents; d++) {
+		if (block == indirect->ii[0].dirent[d].block)
+			return TRUE;
+	}
+	return FALSE;
+}
+
+/* ------------------------------------------------------------------------ */
 /* block_has_extended_info                                                  */
 /* ------------------------------------------------------------------------ */
 int block_has_extended_info(void)
@@ -2661,6 +2696,7 @@ void interactive_mode(void)
 		/* arrow up */
 		/* --------------------------------------------------------- */
 		case KEY_UP:
+		case '-':
 			if (dmode == EXTENDED_MODE) {
 				if (edit_row[dmode] > 0)
 					edit_row[dmode]--;
@@ -2676,6 +2712,7 @@ void interactive_mode(void)
 		/* arrow down */
 		/* --------------------------------------------------------- */
 		case KEY_DOWN:
+		case '+':
 			if (dmode == EXTENDED_MODE) {
 				if (edit_row[dmode] + 1 < end_row[dmode]) {
 					if (edit_row[dmode] >= last_entry_onscreen[dmode])
@@ -2812,7 +2849,7 @@ void interactive_mode(void)
 			move(termlines - 1, 0);
 			printw("Keystroke not understood: 0x%03X",ch);
 			refresh();
-			sleep(1);
+			usleep(50000);
 			break;
 		} /* switch */
 	} /* while !Quit */
