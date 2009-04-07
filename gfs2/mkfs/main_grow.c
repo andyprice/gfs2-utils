@@ -292,7 +292,10 @@ main_grow(int argc, char *argv[])
 
 		sdp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 		sdp->bsize = sdp->sd_sb.sb_bsize;
-		compute_constants(sdp);
+		if (compute_constants(sdp)) {
+			log_crit(_("Bad constants (1)\n"));
+			exit(-1);
+		}
 		if(read_sb(sdp) < 0)
 			die( _("gfs: Error reading superblock.\n"));
 

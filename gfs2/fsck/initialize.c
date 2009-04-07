@@ -317,7 +317,10 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 		return -1;
 	}
 
-	compute_constants(sdp);
+	if (compute_constants(sdp)) {
+		log_crit(_("Bad constants (1)\n"));
+		exit(-1);
+	}
 	if(read_sb(sdp) < 0){
 		return -1;
 	}

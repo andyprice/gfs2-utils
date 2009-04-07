@@ -136,8 +136,8 @@ struct gfs1_jindex *sd_jindex = NULL;    /* gfs1 journal index in memory */
 int gfs2_inptrs;
 uint64_t gfs2_heightsize[GFS2_MAX_META_HEIGHT];
 uint64_t gfs2_jheightsize[GFS2_MAX_META_HEIGHT];
-int gfs2_max_height;
-int gfs2_max_jheight;
+uint32_t gfs2_max_height;
+uint32_t gfs2_max_jheight;
 
 /* ------------------------------------------------------------------------- */
 /* This function is for libgfs's sake.                                       */
@@ -1090,7 +1090,10 @@ static int init(struct gfs2_sbd *sbp)
 	osi_list_init(&sbp->rglist);
 	init_buf_list(sbp, &sbp->buf_list, 128 << 20);
 	init_buf_list(sbp, &sbp->nvbuf_list, 0xffffffff);
-	compute_constants(sbp);
+	if (compute_constants(sbp)) {
+		log_crit("Error: Bad constants (1)\n");
+		exit(-1);
+	}
 
 	bh = bread(&sbp->buf_list, GFS2_SB_ADDR >> sbp->sd_fsb2bb_shift);
 	memcpy(&raw_gfs1_ondisk_sb, (struct gfs1_sb *)bh->b_data,
@@ -1103,26 +1106,34 @@ static int init(struct gfs2_sbd *sbp)
 		sizeof(uint64_t);
 	sbp->sd_jbsize = sbp->bsize - sizeof(struct gfs2_meta_header);
 	brelse(bh, not_updated);
-	sbp->sd_max_height = compute_heightsize(sbp, sbp->sd_heightsize,
-						sbp->bsize, sbp->sd_diptrs,
-						sbp->sd_inptrs);
-	sbp->sd_max_jheight = compute_heightsize(sbp, sbp->sd_jheightsize,
-						 sbp->sd_jbsize,
-						 sbp->sd_diptrs,
-						 sbp->sd_inptrs);
+	if (compute_heightsize(sbp, sbp->sd_heightsize, &sbp->sd_max_height,
+				sbp->bsize, sbp->sd_diptrs, sbp->sd_inptrs)) {
+		log_crit("Error: Bad constants (1)\n");
+		exit(-1);
+	}
+
+	if (compute_heightsize(sbp, sbp->sd_jheightsize, &sbp->sd_max_jheight,
+				sbp->sd_jbsize, sbp->sd_diptrs, sbp->sd_inptrs)) {
+		log_crit("Error: Bad constants (1)\n");
+		exit(-1);
+	}
 	/* -------------------------------------------------------- */
 	/* Our constants are for gfs1.  Need some for gfs2 as well. */
 	/* -------------------------------------------------------- */
 	gfs2_inptrs = (sbp->bsize - sizeof(struct gfs2_meta_header)) /
                 sizeof(uint64_t); /* How many ptrs can we fit on a block? */
 	memset(gfs2_heightsize, 0, sizeof(gfs2_heightsize));
-	gfs2_max_height = compute_heightsize(sbp, gfs2_heightsize,
-					     sbp->bsize,
-					     sbp->sd_diptrs, gfs2_inptrs);
+	if (compute_heightsize(sbp, gfs2_heightsize, &gfs2_max_height,
+				sbp->bsize, sbp->sd_diptrs, gfs2_inptrs)) {
+		log_crit("Error: Bad constants (1)\n");
+		exit(-1);
+	}
 	memset(gfs2_jheightsize, 0, sizeof(gfs2_jheightsize));
-	gfs2_max_jheight = compute_heightsize(sbp, gfs2_jheightsize,
-					      sbp->sd_jbsize,
-					      sbp->sd_diptrs, gfs2_inptrs);
+	if (compute_heightsize(sbp, gfs2_jheightsize, &gfs2_max_jheight,
+				sbp->sd_jbsize, sbp->sd_diptrs, gfs2_inptrs)) {
+		log_crit("Error: Bad constants (1)\n");
+		exit(-1);
+	}
 
 	/* ---------------------------------------------- */
 	/* Make sure we're really gfs1                    */
@@ -1550,7 +1561,11 @@ int main(int argc, char **argv)
 	/* ---------------------------------------------- */
 	if (!error) {
 		/* Now we've got to treat it as a gfs2 file system */
-		compute_constants(&sb2);
+		if (compute_constants(&sb2)) {
+			log_crit("Error: Bad constants (1)\n");
+			exit(-1);
+		}
+
 		/* Build the master subdirectory. */
 		build_master(&sb2); /* Does not do inode_put */
 		sb2.sd_sb.sb_master_dir = sb2.master_dir->i_di.di_num;

@@ -506,7 +506,10 @@ void main_jadd(int argc, char *argv[])
 		exit(-1);
 	}
 
-	compute_constants(sdp);
+	if (compute_constants(sdp)) {
+		fprintf(stderr, _("Bad constants (1)\n"));
+		exit(-1);
+	}
 	find_current_journals(sdp);
 
 	total = sdp->orig_journals + sdp->md.journals;

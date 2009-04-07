@@ -24,31 +24,31 @@
 
 static char sysfs_buf[PAGE_SIZE];
 
-uint32_t compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
-			    uint32_t bsize1, int diptrs, int inptrs)
+int compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
+	uint32_t *maxheight, uint32_t bsize1, int diptrs, int inptrs)
 {
-	int x;
-
 	heightsize[0] = sdp->bsize - sizeof(struct gfs2_dinode);
 	heightsize[1] = bsize1 * diptrs;
-	for (x = 2;; x++) {
+	for (*maxheight = 2;; (*maxheight)++) {
 		uint64_t space, d;
 		uint32_t m;
 
-		space = heightsize[x - 1] * inptrs;
+		space = heightsize[*maxheight - 1] * inptrs;
 		m = space % inptrs;
 		d = space / inptrs;
 
-		if (d != heightsize[x - 1] || m)
+		if (d != heightsize[*maxheight - 1] || m)
 			break;
-		heightsize[x] = space;
+		heightsize[*maxheight] = space;
 	}
-	if (x > GFS2_MAX_META_HEIGHT)
-		die("bad constants (1)\n");
-	return x;
+	if (*maxheight > GFS2_MAX_META_HEIGHT) {
+		errno = EINVAL;
+		return -1;
+	}
+	return 0;
 }
 
-void compute_constants(struct gfs2_sbd *sdp)
+int compute_constants(struct gfs2_sbd *sdp)
 {
 	uint32_t hash_blocks, ind_blocks, leaf_blocks;
 	uint32_t tmp_blocks;
@@ -85,13 +85,15 @@ void compute_constants(struct gfs2_sbd *sdp)
 
 	sdp->sd_max_dirres = hash_blocks + ind_blocks + leaf_blocks;
 
-	sdp->sd_max_height = compute_heightsize(sdp, sdp->sd_heightsize,
-						sdp->bsize, sdp->sd_diptrs,
-						sdp->sd_inptrs);
-	sdp->sd_max_jheight = compute_heightsize(sdp, sdp->sd_jheightsize,
-						 sdp->sd_jbsize,
-						 sdp->sd_diptrs,
-						 sdp->sd_inptrs);
+	if (compute_heightsize(sdp, sdp->sd_heightsize, &sdp->sd_max_height,
+				sdp->bsize, sdp->sd_diptrs, sdp->sd_inptrs)) {
+		return -1;
+	}
+	if (compute_heightsize(sdp, sdp->sd_jheightsize, &sdp->sd_max_jheight,
+				sdp->sd_jbsize, sdp->sd_diptrs, sdp->sd_inptrs)) {
+		return -1;
+	}
+	return 0;
 }
 
 int check_for_gfs2(struct gfs2_sbd *sdp)

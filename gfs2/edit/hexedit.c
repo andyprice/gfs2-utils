@@ -1724,7 +1724,10 @@ void read_superblock(int fd)
 	osi_list_init(&sbd.rglist);
 	init_buf_list(&sbd, &sbd.buf_list, 128 << 20);
 	init_buf_list(&sbd, &sbd.nvbuf_list, 0xffffffff);
-	compute_constants(&sbd);
+	if (compute_constants(&sbd)) {
+		fprintf(stderr, "Bad constants (1)\n");
+		exit(-1);
+	}
 	gfs2_sb_in(&sbd.sd_sb, buf); /* parse it out into the sb structure */
 	/* Check to see if this is really gfs1 */
 	if (sbd1->sb_fs_format == GFS_FORMAT_FS &&
@@ -1743,7 +1746,10 @@ void read_superblock(int fd)
 	sbd.bsize = sbd.sd_sb.sb_bsize;
 	if (!sbd.bsize)
 		sbd.bsize = GFS2_DEFAULT_BSIZE;
-	compute_constants(&sbd);
+	if (compute_constants(&sbd)) {
+		fprintf(stderr, "Bad constants (1)\n");
+		exit(-1);
+	}
 	block = 0x10 * (GFS2_DEFAULT_BSIZE / sbd.bsize);
 	device_geometry(&sbd);
 	fix_device_geometry(&sbd);

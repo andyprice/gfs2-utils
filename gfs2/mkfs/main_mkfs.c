@@ -505,7 +505,10 @@ void main_mkfs(int argc, char *argv[])
 	if (!sdp->override)
 		are_you_sure(sdp);
 
-	compute_constants(sdp);
+	if (compute_constants(sdp)) {
+		fprintf(stderr, _("Bad constants (1)\n"));
+		exit(-1);
+	}
 
 	/* Get the device geometry */
 

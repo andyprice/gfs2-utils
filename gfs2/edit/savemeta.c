@@ -483,7 +483,10 @@ void savemeta(char *out_fn, int saveoption)
 		init_buf_list(&sbd, &sbd.nvbuf_list, 0xffffffff);
 		if (!gfs1)
 			sbd.sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
-		compute_constants(&sbd);
+		if (compute_constants(&sbd)) {
+			fprintf(stderr, "Bad constants (1)\n");
+			exit(-1);
+		}
 		if(gfs1) {
 			sbd.bsize = sbd.sd_sb.sb_bsize;
 			sbd.sd_inptrs = (sbd.bsize -
