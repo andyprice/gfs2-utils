@@ -398,7 +398,7 @@ extern void __bcommit(struct buf_list *bl, int line, const char *caller);
 
 /* device_geometry.c */
 extern int device_geometry(struct gfs2_sbd *sdp);
-extern void fix_device_geometry(struct gfs2_sbd *sdp);
+extern int fix_device_geometry(struct gfs2_sbd *sdp);
 
 /* fs_bits.c */
 #define BFITNOENT (0xFFFFFFFF)

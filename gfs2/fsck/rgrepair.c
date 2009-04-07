@@ -348,7 +348,12 @@ int gfs2_rindex_calculate(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 		fprintf(stderr, _("Geometry error\n"));
 		exit(-1);
 	}
-	fix_device_geometry(sdp);
+	if (fix_device_geometry(sdp)) {
+		fprintf(stderr, _("Device is too small (%"PRIu64" bytes)\n"),
+				sdp->device.length << GFS2_BASIC_BLOCK_SHIFT);
+		exit(-1);
+	}
+
 	/* Compute the default resource group layout as mkfs would have done */
 	compute_rgrp_layout(sdp, FALSE);
 	build_rgrps(sdp, FALSE); /* FALSE = calc but don't write to disk. */

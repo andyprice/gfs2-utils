@@ -477,7 +477,11 @@ void savemeta(char *out_fn, int saveoption)
 			fprintf(stderr, "Geometery error\n");
 			exit(-1);
 		}
-		fix_device_geometry(&sbd);
+		if (fix_device_geometry(&sbd)) {
+			fprintf(stderr, "Device is too small (%"PRIu64" bytes)\n",
+				sbd.device.length << GFS2_BASIC_BLOCK_SHIFT);
+			exit(-1);
+		}
 		osi_list_init(&sbd.rglist);
 		init_buf_list(&sbd, &sbd.buf_list, 128 << 20);
 		init_buf_list(&sbd, &sbd.nvbuf_list, 0xffffffff);

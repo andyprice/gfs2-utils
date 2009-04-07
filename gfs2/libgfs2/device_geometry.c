@@ -43,7 +43,7 @@ int device_geometry(struct gfs2_sbd *sdp)
  *
  */
 
-void fix_device_geometry(struct gfs2_sbd *sdp)
+int fix_device_geometry(struct gfs2_sbd *sdp)
 {
 	struct device *device = &sdp->device;
 	unsigned int bbsize = sdp->bsize >> GFS2_BASIC_BLOCK_SHIFT;
@@ -61,9 +61,10 @@ void fix_device_geometry(struct gfs2_sbd *sdp)
 	start = device->start;
 	length = device->length;
 
-	if (length < 1 << (20 - GFS2_BASIC_BLOCK_SHIFT))
-		die("device is way too small (%"PRIu64" bytes)\n",
-		    length << GFS2_BASIC_BLOCK_SHIFT);
+	if (length < 1 << (20 - GFS2_BASIC_BLOCK_SHIFT)) {
+		errno = ENOSPC;
+		return -1;
+	}
 
 	remainder = start % bbsize;
 	if (remainder) {
@@ -85,4 +86,5 @@ void fix_device_geometry(struct gfs2_sbd *sdp)
 		       device->start, device->length, device->rgf_flags);
 		printf("\nDevice Size: %"PRIu64"\n", sdp->device_size);
 	}
+	return 0;
 }

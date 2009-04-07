@@ -1752,7 +1752,11 @@ void read_superblock(int fd)
 	}
 	block = 0x10 * (GFS2_DEFAULT_BSIZE / sbd.bsize);
 	device_geometry(&sbd);
-	fix_device_geometry(&sbd);
+	if (fix_device_geometry(&sbd)) {
+		fprintf(stderr, "Device is too small (%"PRIu64" bytes)\n",
+				sbd.device.length << GFS2_BASIC_BLOCK_SHIFT);
+		exit(-1);
+	}
 	if(gfs1) {
 		sbd.sd_inptrs = (sbd.bsize - sizeof(struct gfs_indirect)) /
 			sizeof(uint64_t);
