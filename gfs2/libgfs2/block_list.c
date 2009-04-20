@@ -182,6 +182,19 @@ void gfs2_special_free(struct special_blocks *blist)
 	}
 }
 
+void gfs2_dup_free(struct dup_blocks *blist)
+{
+	struct dup_blocks *f;
+
+	while(!osi_list_empty(&blist->list)) {
+		f = osi_list_entry(blist->list.next, struct dup_blocks, list);
+		while (!osi_list_empty(&f->ref_inode_list))
+			osi_list_del(&f->ref_inode_list);
+		osi_list_del(&f->list);
+		free(f);
+	}
+}
+
 struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num)
 {
 	osi_list_t *head = &blist->list;
@@ -196,6 +209,20 @@ struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num)
 	return NULL;
 }
 
+struct dup_blocks *dupfind(struct dup_blocks *blist, uint64_t num)
+{
+	osi_list_t *head = &blist->list;
+	osi_list_t *tmp;
+	struct dup_blocks *b;
+
+	for (tmp = head->next; tmp != head; tmp = tmp->next) {
+		b = osi_list_entry(tmp, struct dup_blocks, list);
+		if (b->block_no == num)
+			return b;
+	}
+	return NULL;
+}
+
 void gfs2_special_set(struct special_blocks *blocklist, uint64_t block)
 {
 	struct special_blocks *b;
@@ -204,7 +231,24 @@ void gfs2_special_set(struct special_blocks *blocklist, uint64_t block)
 		return;
 	b = malloc(sizeof(struct special_blocks));
 	if (b) {
+		memset(b, 0, sizeof(*b));
 		b->block = block;
+		osi_list_add(&b->list, &blocklist->list);
+	}
+	return;
+}
+
+void gfs2_dup_set(struct dup_blocks *blocklist, uint64_t block)
+{
+	struct dup_blocks *b;
+
+	if (dupfind(blocklist, block))
+		return;
+	b = malloc(sizeof(struct dup_blocks));
+	if (b) {
+		memset(b, 0, sizeof(*b));
+		b->block_no = block;
+		osi_list_init(&b->ref_inode_list);
 		osi_list_add(&b->list, &blocklist->list);
 	}
 	return;
@@ -221,6 +265,17 @@ static void gfs2_special_clear(struct special_blocks *blocklist, uint64_t block)
 	}
 }
 
+static void gfs2_dup_clear(struct dup_blocks *blocklist, uint64_t block)
+{
+	struct dup_blocks *b;
+
+	b = dupfind(blocklist, block);
+	if (b) {
+		osi_list_del(&b->list);
+		free(b);
+	}
+}
+
 int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 		    uint64_t block, enum gfs2_mark_block mark)
 {
@@ -229,7 +284,7 @@ int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 	if(mark == gfs2_bad_block)
 		gfs2_special_set(&sdp->bad_blocks, block);
 	else if(mark == gfs2_dup_block)
-		gfs2_special_set(&sdp->dup_blocks, block);
+		gfs2_dup_set(&sdp->dup_blocks, block);
 	else if(mark == gfs2_eattr_block)
 		gfs2_special_set(&sdp->eattr_blocks, block);
 	else
@@ -245,7 +300,7 @@ int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 
 	switch (m) {
 	case gfs2_dup_block:
-		gfs2_special_clear(&sdp->dup_blocks, block);
+		gfs2_dup_clear(&sdp->dup_blocks, block);
 		break;
 	case gfs2_bad_block:
 		gfs2_special_clear(&sdp->bad_blocks, block);
@@ -285,7 +340,7 @@ int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 		return err;
 	if (blockfind(&sdp->bad_blocks, block))
 		val->bad_block = 1;
-	if (blockfind(&sdp->dup_blocks, block))
+	if (dupfind(&sdp->dup_blocks, block))
 		val->dup_block = 1;
 	if (blockfind(&sdp->eattr_blocks, block))
 		val->eattr_block = 1;
@@ -300,7 +355,7 @@ void *gfs2_block_list_destroy(struct gfs2_sbd *sdp, struct gfs2_block_list *il)
 		il = NULL;
 	}
 	gfs2_special_free(&sdp->bad_blocks);
-	gfs2_special_free(&sdp->dup_blocks);
+	gfs2_dup_free(&sdp->dup_blocks);
 	gfs2_special_free(&sdp->eattr_blocks);
 	return il;
 }

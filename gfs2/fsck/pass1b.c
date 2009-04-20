@@ -21,12 +21,6 @@ struct inode_with_dups {
 	char *name;
 };
 
-struct blocks {
-	osi_list_t list;
-	uint64_t block_no;
-	osi_list_t ref_inode_list;
-};
-
 struct fxn_info {
 	uint64_t block;
 	int found;
@@ -34,7 +28,7 @@ struct fxn_info {
 };
 
 struct dup_handler {
-	struct blocks *b;
+	struct dup_blocks *b;
 	struct inode_with_dups *id;
 	int ref_inode_count;
 	int ref_count;
@@ -122,12 +116,12 @@ static int find_dentry(struct gfs2_inode *ip, struct gfs2_dirent *de,
 		       enum update_flags *update, uint16_t *count, void *priv)
 {
 	osi_list_t *tmp1, *tmp2;
-	struct blocks *b;
+	struct dup_blocks *b;
 	struct inode_with_dups *id;
 	struct gfs2_leaf leaf;
 
 	osi_list_foreach(tmp1, &ip->i_sbd->dup_blocks.list) {
-		b = osi_list_entry(tmp1, struct blocks, list);
+		b = osi_list_entry(tmp1, struct dup_blocks, list);
 		osi_list_foreach(tmp2, &b->ref_inode_list) {
 			id = osi_list_entry(tmp2, struct inode_with_dups,
 					    list);
@@ -348,7 +342,7 @@ static int clear_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 }
 
 /* Finds all references to duplicate blocks in the metadata */
-int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct blocks *b)
+int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_blocks *b)
 {
 	struct gfs2_inode *ip;
 	struct fxn_info myfi = {b->block_no, 0, 1};
@@ -403,7 +397,7 @@ int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct blocks *b)
 	return 0;
 }
 
-int handle_dup_blk(struct gfs2_sbd *sbp, struct blocks *b)
+int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 {
 	osi_list_t *tmp;
 	struct inode_with_dups *id;
@@ -468,7 +462,7 @@ int handle_dup_blk(struct gfs2_sbd *sbp, struct blocks *b)
  * use in pass2 */
 int pass1b(struct gfs2_sbd *sbp)
 {
-	struct blocks *b;
+	struct dup_blocks *b;
 	uint64_t i;
 	struct gfs2_block_query q;
 	osi_list_t *tmp = NULL, *x;
@@ -508,7 +502,8 @@ int pass1b(struct gfs2_sbd *sbp)
 		   (q.block_type == gfs2_inode_fifo) ||
 		   (q.block_type == gfs2_inode_sock)) {
 			osi_list_foreach_safe(tmp, &sbp->dup_blocks.list, x) {
-				b = osi_list_entry(tmp, struct blocks, list);
+				b = osi_list_entry(tmp, struct dup_blocks,
+						   list);
 				if(find_block_ref(sbp, i, b)) {
 					stack;
 					rc = FSCK_ERROR;
@@ -526,8 +521,8 @@ int pass1b(struct gfs2_sbd *sbp)
 	log_info( _("Handling duplicate blocks\n"));
 out:
 	while (!osi_list_empty(&sbp->dup_blocks.list)) {
-		b = osi_list_entry(&sbp->dup_blocks.list.next, struct blocks,
-				   list);
+		b = osi_list_entry(sbp->dup_blocks.list.next,
+				   struct dup_blocks, list);
 		if (!skip_this_pass && !rc) /* no error & not asked to skip the rest */
 			handle_dup_blk(sbp, b);
 		osi_list_del(&b->list);

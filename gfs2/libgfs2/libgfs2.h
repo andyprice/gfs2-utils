@@ -116,6 +116,12 @@ struct gfs2_buffer_head {
 	int b_changed;
 };
 
+struct dup_blocks {
+	osi_list_t list;
+	uint64_t block_no;
+	osi_list_t ref_inode_list;
+};
+
 struct special_blocks {
 	osi_list_t list;
 	uint64_t block;
@@ -246,7 +252,7 @@ struct gfs2_sbd {
 	int metafs_fd;
 	char metafs_path[PATH_MAX]; /* where metafs is mounted */
 	struct special_blocks bad_blocks;
-	struct special_blocks dup_blocks;
+	struct dup_blocks dup_blocks;
 	struct special_blocks eattr_blocks;
 };
 
