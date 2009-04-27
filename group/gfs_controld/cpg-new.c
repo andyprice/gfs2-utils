@@ -2329,9 +2329,12 @@ void process_mountgroups(void)
 }
 
 static int add_change(struct mountgroup *mg,
-		      struct cpg_address *member_list, int member_list_entries,
-		      struct cpg_address *left_list, int left_list_entries,
-		      struct cpg_address *joined_list, int joined_list_entries,
+		      const struct cpg_address *member_list,
+		      size_t member_list_entries,
+		      const struct cpg_address *left_list,
+		      size_t left_list_entries,
+		      const struct cpg_address *joined_list,
+		      size_t joined_list_entries,
 		      struct change **cg_out)
 {
 	struct change *cg;
@@ -2429,7 +2432,7 @@ static int add_change(struct mountgroup *mg,
 	return error;
 }
 
-static int we_left(struct cpg_address *left_list, int left_list_entries)
+static int we_left(const struct cpg_address *left_list, size_t left_list_entries)
 {
 	int i;
 
@@ -2440,10 +2443,14 @@ static int we_left(struct cpg_address *left_list, int left_list_entries)
 	return 0;
 }
 
-static void confchg_cb(cpg_handle_t handle, struct cpg_name *group_name,
-		       struct cpg_address *member_list, int member_list_entries,
-		       struct cpg_address *left_list, int left_list_entries,
-		       struct cpg_address *joined_list, int joined_list_entries)
+static void confchg_cb(cpg_handle_t handle,
+		       const struct cpg_name *group_name,
+		       const struct cpg_address *member_list,
+		       size_t member_list_entries,
+		       const struct cpg_address *left_list,
+		       size_t left_list_entries,
+		       const struct cpg_address *joined_list,
+		       size_t joined_list_entries)
 {
 	struct mountgroup *mg;
 	struct change *cg;
@@ -2522,8 +2529,10 @@ static int gfs_header_check(struct gfs_header *hd, int nodeid)
 	return 0;
 }
 
-static void deliver_cb(cpg_handle_t handle, struct cpg_name *group_name,
-		       uint32_t nodeid, uint32_t pid, void *data, int len)
+static void deliver_cb(cpg_handle_t handle,
+		       const struct cpg_name *group_name,
+		       uint32_t nodeid, uint32_t pid,
+		       void *data, size_t len)
 {
 	struct mountgroup *mg;
 	struct gfs_header *hd;
@@ -3133,8 +3142,10 @@ int set_protocol(void)
 	return 0;
 }
 
-static void deliver_cb_daemon(cpg_handle_t handle, struct cpg_name *group_name,
-		uint32_t nodeid, uint32_t pid, void *data, int len)
+static void deliver_cb_daemon(cpg_handle_t handle,
+			      const struct cpg_name *group_name,
+			      uint32_t nodeid, uint32_t pid,
+			      void *data, size_t len)
 {
 	struct gfs_header *hd;
 
@@ -3160,10 +3171,14 @@ static void deliver_cb_daemon(cpg_handle_t handle, struct cpg_name *group_name,
 	}
 }
 
-static void confchg_cb_daemon(cpg_handle_t handle, struct cpg_name *group_name,
-		struct cpg_address *member_list, int member_list_entries,
-		struct cpg_address *left_list, int left_list_entries,
-		struct cpg_address *joined_list, int joined_list_entries)
+static void confchg_cb_daemon(cpg_handle_t handle,
+			      const struct cpg_name *group_name,
+			      const struct cpg_address *member_list,
+			      size_t member_list_entries,
+			      const struct cpg_address *left_list,
+			      size_t left_list_entries,
+			      const struct cpg_address *joined_list,
+			      size_t joined_list_entries)
 {
 	int i;
 
