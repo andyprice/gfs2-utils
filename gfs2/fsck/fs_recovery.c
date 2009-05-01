@@ -320,6 +320,59 @@ int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 }
 
 /**
+ * fix_journal_seq_no - Fix log header sequencing problems
+ * @ip: the journal incore inode
+ */
+int fix_journal_seq_no(struct gfs2_inode *ip)
+{
+	int error = 0, wrapped = 0;
+	uint32_t jd_blocks = ip->i_di.di_size / ip->i_sbd->sd_sb.sb_bsize;
+	uint32_t blk;
+	struct gfs2_log_header lh;
+	uint64_t highest_seq = 0, lowest_seq = 0, prev_seq = 0;
+	int new = 0;
+	uint64_t dblock;
+	uint32_t extlen;
+	struct gfs2_buffer_head *bh;
+
+	for (blk = 0; blk < jd_blocks; blk++) {
+		error = get_log_header(ip, blk, &lh);
+		if (error == 1) /* if not a log header */
+			continue; /* just journal data--ignore it */
+		if (!lowest_seq || lh.lh_sequence < lowest_seq)
+			lowest_seq = lh.lh_sequence;
+		if (!highest_seq || lh.lh_sequence > highest_seq)
+			highest_seq = lh.lh_sequence;
+		if (lh.lh_sequence > prev_seq) {
+			prev_seq = lh.lh_sequence;
+			continue;
+		}
+		/* The sequence number is not higher than the previous one,
+		   so it's either wrap-around or a sequencing problem. */
+		if (!wrapped && lh.lh_sequence == lowest_seq) {
+			wrapped = 1;
+			prev_seq = lh.lh_sequence;
+			continue;
+		}
+		log_err( _("Journal block %u (0x%x): sequence no. 0x%llx "
+			   "out of order.\n"), blk, blk, lh.lh_sequence);
+		log_info( _("Low: 0x%llx, High: 0x%llx, Prev: 0x%llx\n"),
+			  (unsigned long long)lowest_seq,
+			  (unsigned long long)highest_seq,
+			  (unsigned long long)prev_seq);
+		highest_seq++;
+		lh.lh_sequence = highest_seq;
+		prev_seq = lh.lh_sequence;
+		log_warn( _("Renumbering it as 0x%llx\n"), lh.lh_sequence);
+		block_map(ip, blk, &new, &dblock, &extlen, FALSE, not_updated);
+		bh = bread(&ip->i_sbd->buf_list, dblock);
+		gfs2_log_header_out(&lh, bh->b_data);
+		brelse(bh, updated);
+	}
+	return 0;
+}
+
+/**
  * gfs2_recover_journal - recovery a given journal
  * @ip: the journal incore inode
  *
@@ -340,9 +393,30 @@ int gfs2_recover_journal(struct gfs2_inode *ip, int j)
 
 	osi_list_init(&sd_revoke_list);
 	error = gfs2_find_jhead(ip, &head);
-	if (error)
-		goto out;
-
+	if (error) {
+		if (!query(&opts, _("\nJournal #%d (\"journal%d\") is "
+				    "corrupt.  Okay to repair it? (y/n)"),
+			   j+1, j)) {
+			log_err( _("jid=%u: The journal was not repaired.\n"),
+				 j);
+			goto out;
+		}
+		log_info( _("jid=%u: Repairing journal...\n"), j);
+		error = fix_journal_seq_no(ip);
+		if (error) {
+			log_err( _("jid=%u: Unable to repair the bad "
+				   "journal.\n"), j);
+			goto out;
+		}
+		error = gfs2_find_jhead(ip, &head);
+		if (error) {
+			log_err( _("jid=%u: Unable to fix the bad journal.\n"),
+				 j);
+			goto out;
+		}
+		log_err( _("jid=%u: The journal was successfully fixed.\n"),
+			 j);
+	}
 	if (head.lh_flags & GFS2_LOG_HEAD_UNMOUNT) {
 		log_info( _("jid=%u: Journal is clean.\n"), j);
 		return 0;
