@@ -1,5 +1,6 @@
 # Install Locations
 sbindir ?= ${DESTDIR}@SBINDIR@
+relativesbin ?= @RELATIVESBIN@
 initddir ?= ${DESTDIR}@INITDDIR@
 libdir ?= ${DESTDIR}@LIBDIR@
 docdir ?= ${DESTDIR}@DOCDIR@
