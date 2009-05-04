@@ -35,10 +35,10 @@ ${TARGET1}: ${OBJS} ${LDDEPS}
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 ${TARGET2}: ${TARGET1}
-	ln -sf /sbin/${TARGET1} ${TARGET2}
+	ln -sf ${relativesbin}/${TARGET1} ${TARGET2}
 
 ${TARGET3}: ${TARGET1}
-	ln -sf /sbin/${TARGET1} ${TARGET3}
+	ln -sf ${relativesbin}/${TARGET1} ${TARGET3}
 
 depends:
 	$(MAKE) -C ../libgfs2 all
