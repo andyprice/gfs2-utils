@@ -1,10 +1,8 @@
-TARGET1= fsck.gfs2
-TARGET2= gfs2_fsck
+TARGET= fsck.gfs2
 
-SBINDIRT=$(TARGET1)
-SBINSYMT=$(TARGET2)
+FORCESBINT=$(TARGET)
 
-all: depends ${TARGET1} ${TARGET2}
+all: depends ${TARGET}
 
 include ../../make/defines.mk
 include $(OBJDIR)/make/cobj.mk
@@ -41,11 +39,8 @@ LDFLAGS += -L${libdir}
 
 LDDEPS += ../libgfs2/libgfs2.a
 
-${TARGET1}: $(OBJS) ../libgfs2/libgfs2.a
+${TARGET}: $(OBJS) ${LDDEPS}
 	$(CC) -o $@ $^ $(LDFLAGS)
-
-${TARGET2}: ${TARGET1} ${LDDEPS}
-	ln -fs ${TARGET1} ${TARGET2}	
 
 depends:
 	$(MAKE) -C ../libgfs2 all
@@ -59,9 +54,9 @@ test_bitmap: test_bitmap.o log.o
 clean: generalclean
 	rm -f test_block_list test_bitmap
 
-${TARGET1}.pot: $(OBJS:.o=.c)
+${TARGET}.pot: $(OBJS:.o=.c)
 	xgettext -C -F --keyword=print_log --keyword=log_debug --keyword=log_info --keyword=_ \
 	 --keyword=log_notice --keyword=log_warn --keyword=log_err --keyword=log_crit \
-	 --keyword=log_debug --keyword=log_err --keyword=log_print -d - $(OBJS:.o=.c) > ${TARGET1}.pot	
+	 --keyword=log_debug --keyword=log_err --keyword=log_print -d - $(OBJS:.o=.c) > ${TARGET}.pot	
 
 -include $(OBJS:.o=.d)

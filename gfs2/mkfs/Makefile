@@ -1,12 +1,12 @@
 TARGET1= mkfs.gfs2
-TARGET2= gfs2_mkfs
-TARGET3= gfs2_jadd
-TARGET4= gfs2_grow
+TARGET2= gfs2_jadd
+TARGET3= gfs2_grow
 
-SBINDIRT=$(TARGET1)
-SBINSYMT=$(TARGET2) $(TARGET3) $(TARGET4)
+FORCESBINT= $(TARGET1)
 
-all: depends ${TARGET1} ${TARGET2} ${TARGET3} ${TARGET4}
+SBINSYMT=$(TARGET2) $(TARGET3)
+
+all: depends ${TARGET1} ${TARGET2} ${TARGET3}
 
 include ../../make/defines.mk
 include $(OBJDIR)/make/cobj.mk
@@ -35,13 +35,10 @@ ${TARGET1}: ${OBJS} ${LDDEPS}
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 ${TARGET2}: ${TARGET1}
-	ln -sf ${TARGET1} ${TARGET2}
+	ln -sf /sbin/${TARGET1} ${TARGET2}
 
 ${TARGET3}: ${TARGET1}
-	ln -sf ${TARGET1} ${TARGET3}
-
-${TARGET4}: ${TARGET1}
-	ln -sf ${TARGET1} ${TARGET4}
+	ln -sf /sbin/${TARGET1} ${TARGET3}
 
 depends:
 	$(MAKE) -C ../libgfs2 all

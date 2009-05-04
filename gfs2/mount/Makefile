@@ -1,12 +1,16 @@
-TARGET1= mount.gfs2
+TARGET= mount.gfs2
 
-all: ${TARGET1}
+FORCESBINT= $(TARGET)
+
+all: ${TARGET}
 
 include ../../make/defines.mk
 include $(OBJDIR)/make/cobj.mk
 include $(OBJDIR)/make/clean.mk
+include $(OBJDIR)/make/install.mk
+include $(OBJDIR)/make/uninstall.mk
 
-OBJS1=	mount.gfs2.o \
+OBJS=	mount.gfs2.o \
 	ondisk1.o \
 	util.o \
 	mtab.o
@@ -22,16 +26,9 @@ LDFLAGS += -L${libdir}
 
 LDDEPS += ../../group/libgfscontrol/libgfscontrol.a
 
-${TARGET1}: ${OBJS1} ${LDDEPS}
+${TARGET}: ${OBJS} ${LDDEPS}
 	$(CC) -o $@ $^ $(LDFLAGS)
-
-install:
-	mkdir -p ${DESTDIR}/sbin
-	install ${TARGET1} ${DESTDIR}/sbin
-
-uninstall:
-	${UNINSTALL} ${TARGET1} ${DESTDIR}/sbin
 
 clean: generalclean
 
--include $(OBJS1:.o=.d)
+-include $(OBJS:.o=.d)
