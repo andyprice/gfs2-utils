@@ -13,6 +13,10 @@ ifdef INCDIRT
 		install -m644 $(S)/$$i ${incdir}; \
 	done
 endif
+ifdef FORCESBINT
+	mkdir -p ${DESTDIR}/sbin
+	install ${FORCESBINT} ${DESTDIR}/sbin
+endif
 ifdef SBINDIRT
 	install -d ${sbindir}
 	install -m755 ${SBINDIRT} ${sbindir}

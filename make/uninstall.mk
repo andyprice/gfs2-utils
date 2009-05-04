@@ -8,6 +8,9 @@ endif
 ifdef INCDIRT
 	${UNINSTALL} ${INCDIRT} ${incdir}
 endif
+ifdef FORCESBINT
+	${UNINSTALL} ${FORCESBINT} ${DESTDIR}/sbin
+endif
 ifdef SBINDIRT
 	${UNINSTALL} ${SBINDIRT} ${sbindir}
 endif
