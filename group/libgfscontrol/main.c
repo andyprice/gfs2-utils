@@ -50,7 +50,7 @@ static int do_write(int fd, void *buf, size_t count)
 	return 0;
 }
 
-static int do_connect(char *sock_path)
+static int do_connect(const char *sock_path)
 {
 	struct sockaddr_un sun;
 	socklen_t addrlen;
