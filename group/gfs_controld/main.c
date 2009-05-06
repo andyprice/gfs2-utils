@@ -913,7 +913,7 @@ static void process_listener(int ci)
 	log_debug("client connection %d fd %d", i, fd);
 }
 
-static int setup_listener(char *sock_path)
+static int setup_listener(const char *sock_path)
 {
 	struct sockaddr_un addr;
 	socklen_t addrlen;

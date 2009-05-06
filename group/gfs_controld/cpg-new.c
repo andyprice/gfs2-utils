@@ -261,7 +261,7 @@ static void apply_changes_recovery(struct mountgroup *mg);
 static void send_withdraw_acks(struct mountgroup *mg);
 static void leave_mountgroup(struct mountgroup *mg, int mnterr);
 
-static char *msg_name(int type)
+static const char *msg_name(int type)
 {
 	switch (type) {
 	case GFS_MSG_PROTOCOL:

@@ -163,9 +163,9 @@ struct mountgroup {
 /* config.c */
 int setup_ccs(void);
 void close_ccs(void);
-void read_ccs_name(char *path, char *name);
-void read_ccs_yesno(char *path, int *yes, int *no);
-int read_ccs_int(char *path, int *config_val);
+void read_ccs_name(const char *path, char *name);
+void read_ccs_yesno(const char *path, int *yes, int *no);
+int read_ccs_int(const char *path, int *config_val);
 void read_ccs_nodir(struct mountgroup *mg, char *buf);
 
 /* cpg-new.c */
@@ -216,8 +216,8 @@ void kick_node_from_cluster(int nodeid);
 
 /* util.c */
 int we_are_in_fence_domain(void);
-int set_sysfs(struct mountgroup *mg, char *field, int val);
-int read_sysfs_int(struct mountgroup *mg, char *field, int *val_out);
+int set_sysfs(struct mountgroup *mg, const char *field, int val);
+int read_sysfs_int(struct mountgroup *mg, const char *field, int *val_out);
 int run_dmsetup_suspend(struct mountgroup *mg, char *dev);
 void update_dmsetup_wait(void);
 void update_flow_control_status(void);

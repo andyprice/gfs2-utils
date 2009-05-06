@@ -47,7 +47,7 @@ int we_are_in_fence_domain(void)
 #define SYSFS_DIR       "/sys/fs"
 #define SYSFS_BUFLEN    64
 
-int set_sysfs(struct mountgroup *mg, char *field, int val)
+int set_sysfs(struct mountgroup *mg, const char *field, int val)
 {
 	char fname[PATH_MAX];
 	char out[SYSFS_BUFLEN];
@@ -76,7 +76,7 @@ int set_sysfs(struct mountgroup *mg, char *field, int val)
 	return rv;
 }
 
-static int get_sysfs(struct mountgroup *mg, char *field, char *buf, int len)
+static int get_sysfs(struct mountgroup *mg, const char *field, char *buf, int len)
 {
 	char fname[PATH_MAX], *p;
 	int fd, rv;
@@ -104,7 +104,7 @@ static int get_sysfs(struct mountgroup *mg, char *field, char *buf, int len)
 	return rv;
 }
 
-int read_sysfs_int(struct mountgroup *mg, char *field, int *val_out)
+int read_sysfs_int(struct mountgroup *mg, const char *field, int *val_out)
 {
 	char buf[SYSFS_BUFLEN];
 	int rv;
@@ -206,7 +206,7 @@ void update_dmsetup_wait(void)
 	}
 }
 
-static int ignore_nolock(char *sysfs_dir, char *table)
+static int ignore_nolock(const char *sysfs_dir, char *table)
 {
 	char path[PATH_MAX];
 	int fd;
