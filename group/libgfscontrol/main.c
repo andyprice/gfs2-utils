@@ -88,7 +88,7 @@ static void init_header(struct gfsc_header *h, int cmd, char *name,
 		strncpy(h->name, name, GFS_MOUNTGROUP_LEN);
 }
 
-int do_dump(int cmd, char *name, char *buf)
+static int do_dump(int cmd, char *name, char *buf)
 {
 	struct gfsc_header h, *rh;
 	char *reply;
