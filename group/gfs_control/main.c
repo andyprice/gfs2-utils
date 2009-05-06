@@ -256,7 +256,7 @@ int member_int(struct gfsc_node *n)
 	return 0;
 }
 
-char *condition_str(int cond)
+const char *condition_str(int cond)
 {
 	switch (cond) {
 	case 0:
