@@ -695,7 +695,7 @@ void gfs_rgrp_print(struct gfs_rgrp *rgrp);
 void gfs_quota_print(struct gfs_quota *quota);
 void gfs_dinode_print(struct gfs_dinode *dinode);
 void gfs_indirect_print(struct gfs_indirect *indirect);
-void gfs_dirent_print(struct gfs_dirent *dirent, char *name);
+void gfs_dirent_print(struct gfs_dirent *dirent, const char *name);
 void gfs_leaf_print(struct gfs_leaf *leaf);
 void gfs_log_header_print(struct gfs_log_header *head);
 void gfs_desc_print(struct gfs_log_descriptor *desc);
@@ -733,7 +733,7 @@ uint32_t gfs_dir_hash(const char *data, int len);
  */
 
 static void
-print_array(char *title, char *buf, int count)
+print_array(const char *title, char *buf, int count)
 {
 	int x;
 
@@ -1016,20 +1016,20 @@ gfs_jindex_print(struct gfs_jindex *ji)
  */
 
 void
-gfs_rindex_in(struct gfs_rindex *rindex, char *buf)
+gfs_rindex_in(struct gfs_rindex *grindex, char *buf)
 {
 	struct gfs_rindex *str = (struct gfs_rindex *)buf;
 
-	CPIN_64(rindex, str, ri_addr);
-	CPIN_32(rindex, str, ri_length);
-	CPIN_32(rindex, str, ri_pad);
+	CPIN_64(grindex, str, ri_addr);
+	CPIN_32(grindex, str, ri_length);
+	CPIN_32(grindex, str, ri_pad);
 
-	CPIN_64(rindex, str, ri_data1);
-	CPIN_32(rindex, str, ri_data);
+	CPIN_64(grindex, str, ri_data1);
+	CPIN_32(grindex, str, ri_data);
 
-	CPIN_32(rindex, str, ri_bitbytes);
+	CPIN_32(grindex, str, ri_bitbytes);
 
-	CPIN_08(rindex, str, ri_reserved, 64);
+	CPIN_08(grindex, str, ri_reserved, 64);
 }
 
 /**
@@ -1040,20 +1040,20 @@ gfs_rindex_in(struct gfs_rindex *rindex, char *buf)
  */
 
 void
-gfs_rindex_out(struct gfs_rindex *rindex, char *buf)
+gfs_rindex_out(struct gfs_rindex *grindex, char *buf)
 {
 	struct gfs_rindex *str = (struct gfs_rindex *)buf;
 
-	CPOUT_64(rindex, str, ri_addr);
-	CPOUT_32(rindex, str, ri_length);
-	CPOUT_32(rindex, str, ri_pad);
+	CPOUT_64(grindex, str, ri_addr);
+	CPOUT_32(grindex, str, ri_length);
+	CPOUT_32(grindex, str, ri_pad);
 
-	CPOUT_64(rindex, str, ri_data1);
-	CPOUT_32(rindex, str, ri_data);
+	CPOUT_64(grindex, str, ri_data1);
+	CPOUT_32(grindex, str, ri_data);
 
-	CPOUT_32(rindex, str, ri_bitbytes);
+	CPOUT_32(grindex, str, ri_bitbytes);
 
-	CPOUT_08(rindex, str, ri_reserved, 64);
+	CPOUT_08(grindex, str, ri_reserved, 64);
 }
 
 /**
@@ -1454,7 +1454,7 @@ gfs_dirent_out(struct gfs_dirent *dirent, char *buf)
  */
 
 void
-gfs_dirent_print(struct gfs_dirent *de, char *name)
+gfs_dirent_print(struct gfs_dirent *de, const char *name)
 {
 	char buf[GFS_FNAMESIZE + 1];
 
