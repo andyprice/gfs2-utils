@@ -1318,7 +1318,7 @@ int main(int argc, char **argv)
 	}
 	lockfile();
 	init_logging();
-	log_level(LOG_INFO, "gfs_controld %s", RELEASE_VERSION);
+	log_level(LOG_INFO, "gfs_controld %s started", RELEASE_VERSION);
 	signal(SIGTERM, sigterm_handler);
 	set_scheduler();
 	set_oom_adj(-16);
