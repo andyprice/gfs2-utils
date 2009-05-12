@@ -142,7 +142,7 @@ static int do_write(int fd, void *buf, size_t count)
 	int rv, off = 0;
 
  retry:
-	rv = write(fd, buf + off, count);
+	rv = write(fd, (char *)buf + off, count);
 	if (rv == -1 && errno == EINTR)
 		goto retry;
 	if (rv < 0)
