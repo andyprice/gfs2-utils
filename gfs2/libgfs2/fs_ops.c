@@ -666,6 +666,7 @@ static int dirent_alloc(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 	do {
 		uint16_t cur_rec_len;
 		uint16_t cur_name_len;
+		uint16_t new_rec_len;
 
 		cur_rec_len = be16_to_cpu(dent->de_rec_len);
 		cur_name_len = be16_to_cpu(dent->de_name_len);
@@ -682,8 +683,8 @@ static int dirent_alloc(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 											  GFS2_DIRENT_SIZE(cur_name_len));
 				new->de_name_len = cpu_to_be16(name_len);
 
-				new->de_rec_len = be16_to_cpu(new->de_rec_len);
-				dent->de_rec_len = cpu_to_be16(cur_rec_len - new->de_rec_len);
+				new_rec_len = be16_to_cpu(new->de_rec_len);
+				dent->de_rec_len = cpu_to_be16(cur_rec_len - new_rec_len);
 
 				*dent_out = new;
 				return 0;
