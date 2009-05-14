@@ -74,7 +74,7 @@ static __inline__ __attribute__((noreturn)) void die(const char *fmt, ...)
 	va_list ap;
 	fprintf(stderr, "%s: ", __FILE__);
 	va_start(ap, fmt);
-	//vfprintf(stderr, fmt, ap);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
 	exit(-1);
 }
