@@ -5,6 +5,7 @@
 
 #include "libgfs2.h"
 #include "fsck.h"
+#include "eattr.h"
 
 static int clear_blk_nodup(struct gfs2_sbd *sbp, uint64_t block)
 {

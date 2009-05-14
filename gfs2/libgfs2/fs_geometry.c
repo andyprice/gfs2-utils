@@ -178,7 +178,7 @@ void rgblocks2bitblocks(unsigned int bsize, uint32_t *rgblocks, uint32_t *bitblo
  * If fd > 0, write the data to the given file handle.
  * Otherwise, use gfs2 buffering in buf.c.
  */
-void build_rgrps(struct gfs2_sbd *sdp, int write)
+void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 {
 	osi_list_t *tmp, *head;
 	struct rgrp_list *rl;
@@ -215,7 +215,7 @@ void build_rgrps(struct gfs2_sbd *sdp, int write)
 		rg->rg_flags = rl->rgf_flags;
 		rg->rg_free = rgblocks;
 
-		if (write) {
+		if (do_write) {
 			for (x = 0; x < bitblocks; x++) {
 				bh = bget(&sdp->nvbuf_list, rl->start + x);
 				if (x)

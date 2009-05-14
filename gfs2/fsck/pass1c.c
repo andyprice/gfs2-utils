@@ -21,15 +21,17 @@ static int remove_eattr_entry(struct gfs2_sbd *sdp,
 		curr->ea_type = GFS2_EATYPE_UNUSED;
 	else {
 		prev->ea_rec_len =
-			cpu_to_be32(be32_to_cpu(curr->ea_rec_len) +
-						be32_to_cpu(prev->ea_rec_len));
+			be32_to_cpu(curr->ea_rec_len);
+			be32_to_cpu(prev->ea_rec_len);
+			cpu_to_be32(curr->ea_rec_len + prev->ea_rec_len);
+
 		if (curr->ea_flags & GFS2_EAFLAG_LAST)
 			prev->ea_flags |= GFS2_EAFLAG_LAST;	
 	}
 	return 0;
 }
 
-int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
+static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 		      uint64_t parent, struct gfs2_buffer_head **bh,
 		      enum update_flags *update, void *private)
 {
@@ -73,7 +75,7 @@ int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 	return 0;
 }
 
-int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
+static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 		     uint64_t parent, struct gfs2_buffer_head **bh,
 		     enum update_flags *update, void *private)
 {
@@ -200,7 +202,7 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 	return 0;
 }
 
-int check_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_ptr,
+static int check_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_ptr,
 			 struct gfs2_buffer_head *leaf_bh,
 			 struct gfs2_ea_header *ea_hdr,
 			 struct gfs2_ea_header *ea_hdr_prev,

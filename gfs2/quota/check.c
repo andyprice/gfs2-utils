@@ -276,7 +276,7 @@ out:
  */
 
 static int
-do_compare(char *type, osi_list_t *fs_list, osi_list_t *qf_list)
+do_compare(const char *type, osi_list_t *fs_list, osi_list_t *qf_list)
 {
 	osi_list_t *tmp1, *tmp2;
 	values_t *v1, *v2;

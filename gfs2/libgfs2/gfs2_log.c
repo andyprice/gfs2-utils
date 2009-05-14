@@ -27,7 +27,7 @@ void decrease_verbosity(void)
 	_state.print_level--;
 }
 
-static void print_msg(int priority, char *file, int line, const char *format,
+static void print_msg(int priority, const char *file, int line, const char *format,
 		      va_list args) {
 
 	switch (priority) {
@@ -53,7 +53,7 @@ static void print_msg(int priority, char *file, int line, const char *format,
 }
 
 
-void print_fsck_log(int iif, int priority, char *file, int line,
+void print_fsck_log(int iif, int priority, const char *file, int line,
 		    const char *format, ...)
 {
 

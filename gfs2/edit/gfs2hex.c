@@ -115,7 +115,7 @@ void print_gfs2(const char *fmt, ...)
 	va_end(args);
 }
 
-void check_highlight(int highlight)
+static void check_highlight(int highlight)
 {
 	if (!termlines || line >= termlines) /* If printing or out of bounds */
 		return;
@@ -219,7 +219,7 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 	}
 }
 
-int indirect_dirent(struct indirect_info *indir, char *ptr, int d)
+static int indirect_dirent(struct indirect_info *indir, char *ptr, int d)
 {
 	struct gfs2_dirent de;
 
@@ -255,20 +255,20 @@ int indirect_dirent(struct indirect_info *indir, char *ptr, int d)
 **
 *******************************************************************************
 ******************************************************************************/
-void do_dinode_extended(struct gfs2_dinode *di, char *buf)
+void do_dinode_extended(struct gfs2_dinode *dine, char *dinebuf)
 {
 	unsigned int x, y;
 	uint64_t p, last;
-	int isdir = !!(S_ISDIR(di->di_mode)) || 
-		(gfs1 && di->__pad1 == GFS_FILE_DIR);
+	int isdir = !!(S_ISDIR(dine->di_mode)) || 
+		(gfs1 && dine->__pad1 == GFS_FILE_DIR);
 
 	indirect_blocks = 0;
 	memset(indirect, 0, sizeof(indirect));
-	if (di->di_height > 0) {
+	if (dine->di_height > 0) {
 		/* Indirect pointers */
 		for (x = sizeof(struct gfs2_dinode); x < sbd.bsize;
 			 x += sizeof(uint64_t)) {
-			p = be64_to_cpu(*(uint64_t *)(buf + x));
+			p = be64_to_cpu(*(uint64_t *)(dinebuf + x));
 			if (p) {
 				indirect->ii[indirect_blocks].block = p;
 				indirect->ii[indirect_blocks].is_dir = FALSE;
@@ -276,7 +276,7 @@ void do_dinode_extended(struct gfs2_dinode *di, char *buf)
 			}
 		}
 	}
-	else if (isdir && !(di->di_flags & GFS2_DIF_EXHASH)) {
+	else if (isdir && !(dine->di_flags & GFS2_DIF_EXHASH)) {
 		int skip = 0;
 
 		/* Directory Entries: */
@@ -285,25 +285,25 @@ void do_dinode_extended(struct gfs2_dinode *di, char *buf)
 		indirect->ii[0].is_dir = TRUE;
 		for (x = sizeof(struct gfs2_dinode); x < sbd.bsize; x += skip) {
 			skip = indirect_dirent(indirect->ii,
-					       buf + x,
+					       dinebuf + x,
 					       indirect->ii[0].dirents);
 			if (skip <= 0)
 				break;
 		}
 	}
 	else if (isdir &&
-			 (di->di_flags & GFS2_DIF_EXHASH) &&
-			 di->di_height == 0) {
+			 (dine->di_flags & GFS2_DIF_EXHASH) &&
+			 dine->di_height == 0) {
 		/* Leaf Pointers: */
 		
-		last = be64_to_cpu(*(uint64_t *)(buf + sizeof(struct gfs2_dinode)));
+		last = be64_to_cpu(*(uint64_t *)(dinebuf + sizeof(struct gfs2_dinode)));
     
 		for (x = sizeof(struct gfs2_dinode), y = 0;
-			 y < (1 << di->di_depth);
+			 y < (1 << dine->di_depth);
 			 x += sizeof(uint64_t), y++) {
-			p = be64_to_cpu(*(uint64_t *)(buf + x));
+			p = be64_to_cpu(*(uint64_t *)(dinebuf + x));
 
-			if (p != last || ((y + 1) * sizeof(uint64_t) == di->di_size)) {
+			if (p != last || ((y + 1) * sizeof(uint64_t) == dine->di_size)) {
 				struct gfs2_buffer_head *tmp_bh;
 				int skip = 0, direntcount = 0;
 				struct gfs2_leaf leaf;
@@ -347,7 +347,7 @@ void do_dinode_extended(struct gfs2_dinode *di, char *buf)
 **
 *******************************************************************************
 ******************************************************************************/
-int do_indirect_extended(char *buf, struct iinfo *iinf)
+int do_indirect_extended(char *diebuf, struct iinfo *iinf)
 {
 	unsigned int x, y;
 	uint64_t p;
@@ -359,7 +359,7 @@ int do_indirect_extended(char *buf, struct iinfo *iinf)
 			  sizeof(struct gfs2_meta_header)), y = 0;
 		 x < sbd.bsize;
 		 x += sizeof(uint64_t), y++) {
-		p = be64_to_cpu(*(uint64_t *)(buf + x));
+		p = be64_to_cpu(*(uint64_t *)(diebuf + x));
 		if (p) {
 			iinf->ii[i_blocks].block = p;
 			iinf->ii[i_blocks].is_dir = FALSE;
@@ -384,7 +384,7 @@ int do_indirect_extended(char *buf, struct iinfo *iinf)
 **
 *******************************************************************************
 ******************************************************************************/
-void do_leaf_extended(char *buf, struct iinfo *indir)
+void do_leaf_extended(char *dlebuf, struct iinfo *indir)
 {
 	int x, i;
 	struct gfs2_dirent de;
@@ -394,14 +394,14 @@ void do_leaf_extended(char *buf, struct iinfo *indir)
 	/* Directory Entries: */
 	for (i = sizeof(struct gfs2_leaf); i < sbd.bsize;
 	     i += de.de_rec_len) {
-		gfs2_dirent_in(&de, buf + i);
+		gfs2_dirent_in(&de, dlebuf + i);
 		if (de.de_inum.no_addr) {
 			indir->ii[0].block = de.de_inum.no_addr;
 			indir->ii[0].dirent[x].block = de.de_inum.no_addr;
 			memcpy(&indir->ii[0].dirent[x].dirent,
 			       &de, sizeof(struct gfs2_dirent));
 			memcpy(&indir->ii[0].dirent[x].filename,
-			       buf + i + sizeof(struct gfs2_dirent),
+			       dlebuf + i + sizeof(struct gfs2_dirent),
 			       de.de_name_len);
 			indir->ii[0].dirent[x].filename[de.de_name_len] = '\0';
 			indir->ii[0].is_dir = TRUE;
@@ -430,7 +430,7 @@ void do_leaf_extended(char *buf, struct iinfo *indir)
 *******************************************************************************
 ******************************************************************************/
 
-void do_eattr_extended(char *buf)
+static void do_eattr_extended(char *deebuf)
 {
 	struct gfs2_ea_header ea;
 	unsigned int x;
@@ -442,12 +442,12 @@ void do_eattr_extended(char *buf)
 	for (x = sizeof(struct gfs2_meta_header); x < sbd.bsize; x += ea.ea_rec_len)
 	{
 		eol(0);
-		gfs2_ea_header_in(&ea, buf + x);
-		gfs2_ea_header_print(&ea, buf + x + sizeof(struct gfs2_ea_header));
+		gfs2_ea_header_in(&ea, deebuf + x);
+		gfs2_ea_header_print(&ea, deebuf + x + sizeof(struct gfs2_ea_header));
 	}
 }
 
-void gfs2_inum_print2(const char *title,struct gfs2_inum *no)
+static void gfs2_inum_print2(const char *title,struct gfs2_inum *no)
 {
 	if (termlines) {
 		check_highlight(TRUE);
@@ -467,31 +467,31 @@ void gfs2_inum_print2(const char *title,struct gfs2_inum *no)
  * gfs2_sb_print2 - Print out a superblock
  * @sb: the cpu-order buffer
  */
-void gfs2_sb_print2(struct gfs2_sb *sb)
+static void gfs2_sb_print2(struct gfs2_sb *sbp2)
 {
-	gfs2_meta_header_print(&sb->sb_header);
+	gfs2_meta_header_print(&sbp2->sb_header);
 
-	pv(sb, sb_fs_format, "%u", "0x%x");
-	pv(sb, sb_multihost_format, "%u", "0x%x");
+	pv(sbp2, sb_fs_format, "%u", "0x%x");
+	pv(sbp2, sb_multihost_format, "%u", "0x%x");
 
-	pv(sb, sb_bsize, "%u", "0x%x");
-	pv(sb, sb_bsize_shift, "%u", "0x%x");
+	pv(sbp2, sb_bsize, "%u", "0x%x");
+	pv(sbp2, sb_bsize_shift, "%u", "0x%x");
 	if (gfs1) {
 		gfs2_inum_print2("jindex ino", &sbd1->sb_jindex_di);
 		gfs2_inum_print2("rindex ino", &sbd1->sb_rindex_di);
 	}
 	else
-		gfs2_inum_print2("master dir", &sb->sb_master_dir);
-	gfs2_inum_print2("root dir  ", &sb->sb_root_dir);
+		gfs2_inum_print2("master dir", &sbp2->sb_master_dir);
+	gfs2_inum_print2("root dir  ", &sbp2->sb_root_dir);
 
-	pv(sb, sb_lockproto, "%s", NULL);
-	pv(sb, sb_locktable, "%s", NULL);
+	pv(sbp2, sb_lockproto, "%s", NULL);
+	pv(sbp2, sb_locktable, "%s", NULL);
 	if (gfs1) {
 		gfs2_inum_print2("quota ino ", &gfs1_quota_di);
 		gfs2_inum_print2("license   ", &gfs1_license_di);
 	}
 #ifdef GFS2_HAS_UUID
-	print_it("  sb_uuid", "%s", NULL, str_uuid(sb->sb_uuid));
+	print_it("  sb_uuid", "%s", NULL, str_uuid(sbp2->sb_uuid));
 #endif
 }
 

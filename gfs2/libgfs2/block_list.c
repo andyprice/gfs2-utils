@@ -182,7 +182,7 @@ void gfs2_special_free(struct special_blocks *blist)
 	}
 }
 
-void gfs2_dup_free(struct dup_blocks *blist)
+static void gfs2_dup_free(struct dup_blocks *blist)
 {
 	struct dup_blocks *f;
 
@@ -209,7 +209,7 @@ struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num)
 	return NULL;
 }
 
-struct dup_blocks *dupfind(struct dup_blocks *blist, uint64_t num)
+static struct dup_blocks *dupfind(struct dup_blocks *blist, uint64_t num)
 {
 	osi_list_t *head = &blist->list;
 	osi_list_t *tmp;
@@ -238,7 +238,7 @@ void gfs2_special_set(struct special_blocks *blocklist, uint64_t block)
 	return;
 }
 
-void gfs2_dup_set(struct dup_blocks *blocklist, uint64_t block)
+static void gfs2_dup_set(struct dup_blocks *blocklist, uint64_t block)
 {
 	struct dup_blocks *b;
 

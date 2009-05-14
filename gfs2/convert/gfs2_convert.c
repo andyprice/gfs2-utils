@@ -131,7 +131,7 @@ int seconds;
 struct timeval tv;
 uint64_t dirs_fixed;
 uint64_t dirents_fixed;
-char *prog_name = "gfs2_convert"; /* needed by libgfs2 */
+const char *prog_name = "gfs2_convert"; /* needed by libgfs2 */
 struct gfs1_jindex *sd_jindex = NULL;    /* gfs1 journal index in memory */
 int gfs2_inptrs;
 uint64_t gfs2_heightsize[GFS2_MAX_META_HEIGHT];
@@ -157,7 +157,7 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 /*                   Fixes all unallocated metadata bitmap states (which are */
 /*                   valid in gfs1 but invalid in gfs2).                     */
 /* ------------------------------------------------------------------------- */
-void convert_bitmaps(struct gfs2_sbd *sdp, struct rgrp_list *rgd2,
+static void convert_bitmaps(struct gfs2_sbd *sdp, struct rgrp_list *rgd2,
 					 int read_disk)
 {
 	uint32_t blk;
@@ -235,7 +235,7 @@ static int convert_rgs(struct gfs2_sbd *sbp)
 /* This is similar to calc_tree_height in libgfs2 but at the point this      */
 /* function is called, I have the wrong (gfs1 not gfs2) constants in place.  */
 /* ------------------------------------------------------------------------- */
-unsigned int calc_gfs2_tree_height(struct gfs2_inode *ip, uint64_t size)
+static unsigned int calc_gfs2_tree_height(struct gfs2_inode *ip, uint64_t size)
 {
 	uint64_t *arr;
 	unsigned int max, height;
@@ -261,7 +261,7 @@ unsigned int calc_gfs2_tree_height(struct gfs2_inode *ip, uint64_t size)
 /* ------------------------------------------------------------------------- */
 /* mp_gfs1_to_gfs2 - convert a gfs1 metapath to a gfs2 metapath.             */
 /* ------------------------------------------------------------------------- */
-void mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,
+static void mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,
 		     struct metapath *gfs1mp, struct metapath *gfs2mp)
 {
 	uint64_t lblock;
@@ -301,7 +301,7 @@ void mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,
 /*                interested in rearranging the metadata while leaving the   */
 /*                actual data blocks intact.                                 */
 /* ------------------------------------------------------------------------- */
-void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
+static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 		  struct blocklist *blk, uint64_t *first_nonzero_ptr,
 		  unsigned int size)
 {
@@ -415,7 +415,7 @@ void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 /*                                                                           */
 /* Adapted from gfs2_fsck metawalk.c's build_and_check_metalist              */
 /* ------------------------------------------------------------------------- */
-int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_buffer_head *dibh,
+static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_buffer_head *dibh,
 			   struct gfs2_inode *ip)
 {
 	uint32_t gfs2_hgt;
@@ -593,7 +593,7 @@ out:
 /*                                                                           */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
+static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 {
 	struct gfs2_inode *inode;
 	struct inode_block *fixdir;
@@ -682,7 +682,7 @@ int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 /*                                                                           */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
+static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
 {
 	struct rgrp_list *rgd;
 	osi_list_t *tmp;
@@ -773,7 +773,7 @@ int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
 /* ------------------------------------------------------------------------- */
 /* fetch_inum - fetch an inum entry from disk, given its block               */
 /* ------------------------------------------------------------------------- */
-int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
+static int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
 					   struct gfs2_inum *inum)
 {
 	struct gfs2_buffer_head *bh_fix;
@@ -795,7 +795,7 @@ int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
 /*                                                                           */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
+static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 						struct gfs2_buffer_head *bh, int dir_entries)
 {
 	int error;
@@ -885,7 +885,7 @@ int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 /*                                                                           */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip)
+static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip)
 {
 	struct gfs2_buffer_head *bh_leaf;
 	int error;
@@ -931,7 +931,7 @@ int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip)
 /* fix_directory_info - sync new inode numbers with directory info           */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dirs_to_fix)
+static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 {
 	osi_list_t *tmp, *fix;
 	struct inode_block *dir_iblk;
@@ -948,7 +948,7 @@ int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dirs_to_fix)
 	offset = 0;
 	tmp = NULL;
 	/* for every directory in the list */
-	for (fix = dirs_to_fix->next; fix != dirs_to_fix; fix = fix->next) {
+	for (fix = dir_to_fix->next; fix != dir_to_fix; fix = fix->next) {
 		if (tmp) {
 			osi_list_del(tmp);
 			free(tmp);
@@ -989,7 +989,7 @@ int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dirs_to_fix)
 /* ------------------------------------------------------------------------- */
 /* Fetch gfs1 jindex structure from buffer                                   */
 /* ------------------------------------------------------------------------- */
-void gfs1_jindex_in(struct gfs1_jindex *jindex, char *buf)
+static void gfs1_jindex_in(struct gfs1_jindex *jindex, char *buf)
 {
 	struct gfs1_jindex *str = (struct gfs1_jindex *)buf;
 
@@ -1002,7 +1002,7 @@ void gfs1_jindex_in(struct gfs1_jindex *jindex, char *buf)
 /* read_gfs1_jiindex - read the gfs1 jindex file.                            */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-int read_gfs1_jiindex(struct gfs2_sbd *sdp)
+static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip = sdp->md.jiinode;
 	char buf[sizeof(struct gfs1_jindex)];
@@ -1181,7 +1181,7 @@ static int init(struct gfs2_sbd *sbp)
 /* ------------------------------------------------------------------------- */
 /* give_warning - give the all-important warning message.                    */
 /* ------------------------------------------------------------------------- */
-void give_warning(void)
+static void give_warning(void)
 {
 	printf("This program will convert a gfs1 filesystem to a "	\
 		   "gfs2 filesystem.\n");
@@ -1196,7 +1196,7 @@ void give_warning(void)
 /* ------------------------------------------------------------------------- */
 /* version  - print version information                                      */
 /* ------------------------------------------------------------------------- */
-void version(void)
+static void version(void)
 {
 	log_notice("gfs2_convert version %s (built %s %s)\n", RELEASE_VERSION,
 			   __DATE__, __TIME__);
@@ -1206,7 +1206,7 @@ void version(void)
 /* ------------------------------------------------------------------------- */
 /* usage - print usage information                                           */
 /* ------------------------------------------------------------------------- */
-void usage(const char *name)
+static void usage(const char *name)
 {
 	give_warning();
 	printf("\nUsage:\n");
@@ -1223,7 +1223,7 @@ void usage(const char *name)
 /* ------------------------------------------------------------------------- */
 /* process_parameters                                                        */
 /* ------------------------------------------------------------------------- */
-void process_parameters(int argc, char **argv, struct gfs2_options *opts)
+static void process_parameters(int argc, char **argv, struct gfs2_options *opts)
 
 {
 	char c;
@@ -1279,7 +1279,7 @@ void process_parameters(int argc, char **argv, struct gfs2_options *opts)
 /* rgrp_length - Calculate the length of a resource group                    */
 /* @size: The total size of the resource group                               */
 /* ------------------------------------------------------------------------- */
-uint64_t rgrp_length(uint64_t size, struct gfs2_sbd *sdp)
+static uint64_t rgrp_length(uint64_t size, struct gfs2_sbd *sdp)
 {
 	uint64_t bitbytes = RGRP_BITMAP_BLKS(&sdp->sd_sb) + 1;
 	uint64_t stuff = RGRP_STUFFED_BLKS(&sdp->sd_sb) + 1;
@@ -1308,7 +1308,7 @@ uint64_t rgrp_length(uint64_t size, struct gfs2_sbd *sdp)
 /*                                                                           */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-int journ_space_to_rg(struct gfs2_sbd *sdp)
+static int journ_space_to_rg(struct gfs2_sbd *sdp)
 {
 	int error = 0;
 	int j, x;
@@ -1391,7 +1391,7 @@ int journ_space_to_rg(struct gfs2_sbd *sdp)
 /* ------------------------------------------------------------------------- */
 /* update_inode_file - update the inode file with the new next_inum          */
 /* ------------------------------------------------------------------------- */
-void update_inode_file(struct gfs2_sbd *sdp)
+static void update_inode_file(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip = sdp->md.inum;
 	uint64_t buf;
@@ -1408,7 +1408,7 @@ void update_inode_file(struct gfs2_sbd *sdp)
 /* ------------------------------------------------------------------------- */
 /* write_statfs_file - write the statfs file                                 */
 /* ------------------------------------------------------------------------- */
-void write_statfs_file(struct gfs2_sbd *sdp)
+static void write_statfs_file(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip = sdp->md.statfs;
 	struct gfs2_statfs_change sc;
@@ -1428,7 +1428,7 @@ void write_statfs_file(struct gfs2_sbd *sdp)
 /* ------------------------------------------------------------------------- */
 /* remove_obsolete_gfs1 - remove obsolete gfs1 inodes.                       */
 /* ------------------------------------------------------------------------- */
-void remove_obsolete_gfs1(struct gfs2_sbd *sbp)
+static void remove_obsolete_gfs1(struct gfs2_sbd *sbp)
 {
 	struct gfs2_inum inum;
 
@@ -1454,7 +1454,7 @@ void remove_obsolete_gfs1(struct gfs2_sbd *sbp)
 /* ------------------------------------------------------------------------- */
 /* lifted from libgfs2/structures.c                                          */
 /* ------------------------------------------------------------------------- */
-void conv_build_jindex(struct gfs2_sbd *sdp)
+static void conv_build_jindex(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *jindex;
 	unsigned int j;
@@ -1502,10 +1502,10 @@ int main(int argc, char **argv)
 	/* Make them seal their fate.                     */
 	/* ---------------------------------------------- */
 	if (!error) {
-		int abort;
+		int do_abort;
 
 		give_warning();
-		if (!gfs2_query(&abort, &opts,
+		if (!gfs2_query(&do_abort, &opts,
 				"Convert %s from GFS1 to GFS2? (y/n)",
 				device)) {
 			log_crit("%s not converted.\n", device);

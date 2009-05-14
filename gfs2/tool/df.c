@@ -42,17 +42,17 @@ static const char *anthropomorphize(unsigned long long inhuman_value)
  */
 static void printit(unsigned long long block_size, const char *label,
 		    unsigned long long total, unsigned long long used,
-		    unsigned long long free, unsigned int percentage)
+		    unsigned long long freespace, unsigned int percentage)
 {
 	switch (output_type) {
 	case OUTPUT_BLOCKS:
 		printf("  %-15s%-15llu%-15llu%-15llu%u%%\n",
-		       label, total, used, free, percentage);
+		       label, total, used, freespace, percentage);
 		break;
 	case OUTPUT_K:
 		printf("  %-15s%-15llu%-15llu%-15llu%u%%\n",
 		       label, (total * block_size) / 1024,
-		       (used * block_size) / 1024, (free * block_size) / 1024,
+		       (used * block_size) / 1024, (freespace * block_size) / 1024,
 		       percentage);
 		break;
 	case OUTPUT_HUMAN:
@@ -61,7 +61,7 @@ static void printit(unsigned long long block_size, const char *label,
 		printf("  %-15s%-15s", label,
 		       anthropomorphize(total * block_size));
 		printf("%-15s", anthropomorphize(used * block_size));
-		printf("%-15s%u%%\n", anthropomorphize(free * block_size),
+		printf("%-15s%u%%\n", anthropomorphize(freespace * block_size),
 		       percentage);
 		break;
 	}

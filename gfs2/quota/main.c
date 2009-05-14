@@ -50,7 +50,7 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
  */
 
 static void
-print_usage()
+print_usage(void)
 {
 	printf("Usage:\n");
 	printf("\n");
@@ -841,7 +841,7 @@ do_set(struct gfs2_sbd *sdp, commandline_t *comline)
 	int fd;
 	uint64_t offset;
 	uint64_t new_value;
-	int error, adj_flag = 0;;
+	int error, adj_flag = 0;
 	char quota_file[BUF_SIZE];
 	char id_str[16];
 	struct stat stat_buf;

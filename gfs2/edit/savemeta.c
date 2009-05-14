@@ -40,7 +40,6 @@ uint64_t gfs1_journal_size = 0; /* in blocks */
 int journals_found = 0;
 
 extern void read_superblock(void);
-uint64_t masterblock(const char *fn);
 
 /*
  * get_gfs_struct_info - get block type and structure length
@@ -51,14 +50,14 @@ uint64_t masterblock(const char *fn);
  * returns: 0 if successful
  *          -1 if this isn't gfs metadata.
  */
-int get_gfs_struct_info(char *buf, int *block_type, int *struct_len)
+static int get_gfs_struct_info(char *gbuf, int *block_type, int *gstruct_len)
 {
 	struct gfs2_meta_header mh;
 
 	*block_type = 0;
-	*struct_len = sbd.bsize;
+	*gstruct_len = sbd.bsize;
 
-	gfs2_meta_header_in(&mh, buf);
+	gfs2_meta_header_in(&mh, gbuf);
 	if (mh.mh_magic != GFS2_MAGIC)
 		return -1;
 
@@ -66,46 +65,46 @@ int get_gfs_struct_info(char *buf, int *block_type, int *struct_len)
 
 	switch (mh.mh_type) {
 	case GFS2_METATYPE_SB:   /* 1 (superblock) */
-		*struct_len = sizeof(struct gfs_sb);
+		*gstruct_len = sizeof(struct gfs_sb);
 		break;
 	case GFS2_METATYPE_RG:   /* 2 (rsrc grp hdr) */
-		*struct_len = sbd.bsize; /*sizeof(struct gfs_rgrp);*/
+		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_rgrp);*/
 		break;
 	case GFS2_METATYPE_RB:   /* 3 (rsrc grp bitblk) */
-		*struct_len = sbd.bsize;
+		*gstruct_len = sbd.bsize;
 		break;
 	case GFS2_METATYPE_DI:   /* 4 (disk inode) */
-		*struct_len = sbd.bsize; /*sizeof(struct gfs_dinode);*/
+		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_dinode);*/
 		break;
 	case GFS2_METATYPE_IN:   /* 5 (indir inode blklst) */
-		*struct_len = sbd.bsize; /*sizeof(struct gfs_indirect);*/
+		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_indirect);*/
 		break;
 	case GFS2_METATYPE_LF:   /* 6 (leaf dinode blklst) */
-		*struct_len = sbd.bsize; /*sizeof(struct gfs_leaf);*/
+		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_leaf);*/
 		break;
 	case GFS2_METATYPE_JD:   /* 7 (journal data) */
 		/* GFS1 keeps indirect pointers in GFS2_METATYPE_JD blocks
 		   so we need to save the whole block.  For GFS2, we don't
 		   want to, or we might capture user data, which is bad.  */
 		if (gfs1)
-			*struct_len = sbd.bsize;
+			*gstruct_len = sbd.bsize;
 		else
-			*struct_len = sizeof(struct gfs2_meta_header);
+			*gstruct_len = sizeof(struct gfs2_meta_header);
 		break;
 	case GFS2_METATYPE_LH:   /* 8 (log header) */
-		*struct_len = sizeof(struct gfs2_log_header);
+		*gstruct_len = sizeof(struct gfs2_log_header);
 		break;
 	case GFS2_METATYPE_LD:   /* 9 (log descriptor) */
-		*struct_len = sbd.bsize;
+		*gstruct_len = sbd.bsize;
 		break;
 	case GFS2_METATYPE_EA:   /* 10 (extended attr hdr) */
-		*struct_len = sbd.bsize;
+		*gstruct_len = sbd.bsize;
 		break;
 	case GFS2_METATYPE_ED:   /* 11 (extended attr data) */
-		*struct_len = sbd.bsize;
+		*gstruct_len = sbd.bsize;
 		break;
 	default:
-		*struct_len = sbd.bsize;
+		*gstruct_len = sbd.bsize;
 		break;
 	}
 	return 0;
@@ -117,12 +116,12 @@ int get_gfs_struct_info(char *buf, int *block_type, int *struct_len)
 /* checking every block kills performance.  We only report    */
 /* every second because we don't need 100 extra messages in   */
 /* logs made from verbose mode.                               */
-void warm_fuzzy_stuff(uint64_t block, int force, int save)
+static void warm_fuzzy_stuff(uint64_t wfsblock, int force, int save)
 {
         static struct timeval tv;
         static uint32_t seconds = 0;
         
-	last_reported_block = block;
+	last_reported_block = wfsblock;
 	gettimeofday(&tv, NULL);
 	if (!seconds)
 		seconds = tv.tv_sec;
@@ -135,7 +134,7 @@ void warm_fuzzy_stuff(uint64_t block, int force, int save)
 			if (save) {
 				percent = (block * 100) / last_fs_block;
 				printf("%" PRIu64 " metadata blocks (%"
-				       PRIu64 "%%) processed, ", block,
+				       PRIu64 "%%) processed, ", wfsblock,
 				       percent);
 			}
 			if (total_out < 1024 * 1024)
@@ -155,7 +154,7 @@ void warm_fuzzy_stuff(uint64_t block, int force, int save)
 	}
 }
 
-int block_is_a_journal(void)
+static int block_is_a_journal(void)
 {
 	int j;
 
@@ -165,7 +164,7 @@ int block_is_a_journal(void)
 	return FALSE;
 }
 
-int block_is_systemfile(void)
+static int block_is_systemfile(void)
 {
 	return block_is_jindex() || block_is_inum_file() ||
 		block_is_statfs_file() || block_is_quota_file() ||
@@ -173,7 +172,7 @@ int block_is_systemfile(void)
 		block_is_per_node() || block_is_in_per_node();
 }
 
-int save_block(int fd, int out_fd, uint64_t blk)
+static int save_block(int fd, int out_fd, uint64_t blk)
 {
 	int blktype, blklen, outsz;
 	uint16_t trailing0;
@@ -253,7 +252,7 @@ int save_block(int fd, int out_fd, uint64_t blk)
 /*
  * save_indirect_blocks - save all indirect blocks for the given buffer
  */
-void save_indirect_blocks(int out_fd, osi_list_t *cur_list,
+static void save_indirect_blocks(int out_fd, osi_list_t *cur_list,
 			  struct gfs2_buffer_head *mybh, int height, int hgt)
 {
 	uint64_t old_block = 0, indir_block;
@@ -298,7 +297,7 @@ void save_indirect_blocks(int out_fd, osi_list_t *cur_list,
  * For file system journals, the "data" is a mixture of metadata and
  * journaled data.  We want all the metadata and none of the user data.
  */
-void save_inode_data(int out_fd)
+static void save_inode_data(int out_fd)
 {
 	uint32_t height;
 	struct gfs2_inode *inode;
@@ -388,7 +387,7 @@ void save_inode_data(int out_fd)
 	inode_put(inode, not_updated);
 }
 
-void get_journal_inode_blocks(void)
+static void get_journal_inode_blocks(void)
 {
 	int journal;
 	struct gfs2_buffer_head *bh;
@@ -636,32 +635,32 @@ void savemeta(char *out_fn, int saveoption)
 	exit(0);
 }
 
-int restore_data(int fd, int in_fd, int printblocksonly)
+static int restore_data(int fd, int in_fd, int printblocksonly)
 {
 	size_t rs;
 	uint64_t buf64, writes = 0;
 	uint16_t buf16;
 	int first = 1, pos;
-	char buf[256];
+	char rdbuf[256];
 	char gfs_superblock_id[8] = {0x01, 0x16, 0x19, 0x70,
 				     0x00, 0x00, 0x00, 0x01};
 
 	if (!printblocksonly)
 		lseek(fd, 0, SEEK_SET);
 	lseek(in_fd, 0, SEEK_SET);
-	rs = read(in_fd, buf, sizeof(buf));
-	if (rs != sizeof(buf)) {
+	rs = read(in_fd, rdbuf, sizeof(rdbuf));
+	if (rs != sizeof(rdbuf)) {
 		fprintf(stderr, "Error: File is too small.\n");
 		return -1;
 	}
-	for (pos = 0; pos < sizeof(buf) - sizeof(uint64_t) - sizeof(uint16_t);
+	for (pos = 0; pos < sizeof(rdbuf) - sizeof(uint64_t) - sizeof(uint16_t);
 	     pos++) {
-		if (!memcmp(&buf[pos + sizeof(uint64_t) + sizeof(uint16_t)],
+		if (!memcmp(&rdbuf[pos + sizeof(uint64_t) + sizeof(uint16_t)],
 			    gfs_superblock_id, sizeof(gfs_superblock_id))) {
 			break;
 		}
 	}
-	if (pos == sizeof(buf) - sizeof(uint64_t) - sizeof(uint16_t))
+	if (pos == sizeof(rdbuf) - sizeof(uint64_t) - sizeof(uint16_t))
 		pos = 0;
 	if (lseek(in_fd, pos, SEEK_SET) != pos) {
 		fprintf(stderr, "bad seek: %s from %s:%d: "
@@ -782,7 +781,7 @@ int restore_data(int fd, int in_fd, int printblocksonly)
 	return 0;
 }
 
-void complain(const char *complaint)
+static void complain(const char *complaint)
 {
 	fprintf(stderr, "%s\n", complaint);
 	die("Format is: \ngfs2_edit restoremeta <file to restore> "

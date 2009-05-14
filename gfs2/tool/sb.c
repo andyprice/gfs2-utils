@@ -36,7 +36,7 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
  * str_to_hexchar - convert a string consisting of two isxdigits back to hex.
  * Returns: the hex character
  */
-int str_to_hexchar(const char *estring)
+static int str_to_hexchar(const char *estring)
 {
 	int ch = 0;
 

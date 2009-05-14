@@ -1,7 +1,7 @@
 #include "util.h"
 
-char *prog_name;
-char *fsname;
+const char *prog_name;
+const char *fsname;
 int verbose, fake_mount = 0, no_mtab = 0;
 static sigset_t old_sigset;
 

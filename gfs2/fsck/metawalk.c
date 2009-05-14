@@ -96,7 +96,7 @@ void fsck_inode_put(struct gfs2_inode *ip, enum update_flags update)
 	}
 }
 
-int dirent_repair(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
+static int dirent_repair(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		  struct gfs2_dirent *de, struct gfs2_dirent *dent,
 		  int type, int first)
 {
@@ -135,8 +135,8 @@ int dirent_repair(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	return 0;
 }
 
-int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
-		  int index, int type, enum update_flags *update,
+static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
+		  int eindex, int type, enum update_flags *update,
 		  uint16_t *count, struct metawalk_fxns *pass)
 {
 	struct gfs2_leaf *leaf = NULL;
@@ -260,8 +260,8 @@ int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 /* so that they replace the bad ones.  We have to hack up the old    */
 /* leaf a bit, but it's better than deleting the whole directory,    */
 /* which is what used to happen before.                              */
-void warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no, 
-		    uint64_t *bad_leaf, uint64_t old_leaf, int index,
+static void warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no, 
+		    uint64_t *bad_leaf, uint64_t old_leaf, int pindex,
 		    const char *msg)
 {
 	if (*bad_leaf != *leaf_no) {
@@ -276,7 +276,7 @@ void warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no,
 	if (*leaf_no == *bad_leaf ||
 	    query(&opts, _("Attempt to patch around it? (y/n) "))) {
 		errors_corrected++;
-		gfs2_put_leaf_nr(ip, index, old_leaf);
+		gfs2_put_leaf_nr(ip, pindex, old_leaf);
 	}
 	else
 		log_err( _("Bad leaf left in place.\n"));
@@ -285,28 +285,28 @@ void warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no,
 }
 
 /* Checks exhash directory entries */
-int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
+static int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 	       struct metawalk_fxns *pass)
 {
 	int error;
 	struct gfs2_leaf leaf, oldleaf;
 	uint64_t leaf_no, old_leaf, bad_leaf = -1;
 	struct gfs2_buffer_head *lbh;
-	int index;
+	int lindex;
 	struct gfs2_sbd *sbp = ip->i_sbd;
 	uint16_t count;
 	int ref_count = 0, exp_count = 0;
 
 	old_leaf = 0;
 	memset(&oldleaf, 0, sizeof(oldleaf));
-	for(index = 0; index < (1 << ip->i_di.di_depth); index++) {
-		gfs2_get_leaf_nr(ip, index, &leaf_no);
+	for(lindex = 0; lindex < (1 << ip->i_di.di_depth); lindex++) {
+		gfs2_get_leaf_nr(ip, lindex, &leaf_no);
 
 		/* GFS has multiple indirect pointers to the same leaf
 		 * until those extra pointers are needed, so skip the
 		 * dups */
 		if (leaf_no == bad_leaf) {
-			gfs2_put_leaf_nr(ip, index, old_leaf); /* fill w/old
+			gfs2_put_leaf_nr(ip, lindex, old_leaf); /* fill w/old
 								  leaf info */
 			ref_count++;
 			continue;
@@ -361,7 +361,7 @@ int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 					(unsigned long long)
 					ip->i_di.di_num.no_addr);
 				warn_and_patch(ip, &leaf_no, &bad_leaf,
-					       old_leaf, index,
+					       old_leaf, lindex,
 					       _("that is out of range"));
 				memcpy(&leaf, &oldleaf, sizeof(oldleaf));
 				break;
@@ -373,7 +373,7 @@ int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 			/* Make sure it's really a valid leaf block. */
 			if (gfs2_check_meta(lbh, GFS2_METATYPE_LF)) {
 				warn_and_patch(ip, &leaf_no, &bad_leaf,
-					       old_leaf, index,
+					       old_leaf, lindex,
 					       _("that is not really a leaf"));
 				memcpy(&leaf, &oldleaf, sizeof(oldleaf));
 				brelse(lbh, (opts.no ? not_updated : updated));
@@ -420,7 +420,7 @@ int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 
 			if(pass->check_dentry &&
 			   S_ISDIR(ip->i_di.di_mode)) {
-				error = check_entries(ip, lbh, index,
+				error = check_entries(ip, lbh, lindex,
 						      DIR_EXHASH, update,
 						      &count, pass);
 
@@ -875,7 +875,7 @@ end:
 }
 
 /* Checks stuffed inode directories */
-int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
+static int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		     enum update_flags *update, struct metawalk_fxns *pass)
 {
 	int error = 0;

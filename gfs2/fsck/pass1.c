@@ -473,7 +473,7 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 	return 0;
 }
 
-int clear_metalist(struct gfs2_inode *ip, uint64_t block,
+static int clear_metalist(struct gfs2_inode *ip, uint64_t block,
 		   struct gfs2_buffer_head **bh, void *private)
 {
 	struct gfs2_block_query q = {0};
@@ -491,7 +491,7 @@ int clear_metalist(struct gfs2_inode *ip, uint64_t block,
 	return 0;
 }
 
-int clear_data(struct gfs2_inode *ip, uint64_t block, void *private)
+static int clear_data(struct gfs2_inode *ip, uint64_t block, void *private)
 {
 	struct gfs2_block_query q = {0};
 
@@ -507,7 +507,7 @@ int clear_data(struct gfs2_inode *ip, uint64_t block, void *private)
 
 }
 
-int clear_leaf(struct gfs2_inode *ip, uint64_t block,
+static int clear_leaf(struct gfs2_inode *ip, uint64_t block,
 	       struct gfs2_buffer_head *bh, void *private)
 {
 	struct gfs2_block_query q = {0};
@@ -560,7 +560,7 @@ int add_to_dir_list(struct gfs2_sbd *sbp, uint64_t block)
 	return 0;
 }
 
-int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
+static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			  uint64_t block)
 {
 	struct gfs2_block_query q = {0};
@@ -791,7 +791,7 @@ int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	return 0;
 }
 
-int scan_meta(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
+static int scan_meta(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			  uint64_t block)
 {
 	if (gfs2_check_meta(bh, 0)) {

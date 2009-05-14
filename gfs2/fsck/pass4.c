@@ -11,7 +11,7 @@
 
 /* Updates the link count of an inode to what the fsck has seen for
  * link count */
-int fix_inode_count(struct gfs2_sbd *sbp, struct inode_info *ii,
+static int fix_inode_count(struct gfs2_sbd *sbp, struct inode_info *ii,
 					struct gfs2_inode *ip)
 {
 	log_info( _("Fixing inode count for %llu (0x%llx) \n"),
@@ -28,7 +28,7 @@ int fix_inode_count(struct gfs2_sbd *sbp, struct inode_info *ii,
 	return 0;
 }
 
-int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
+static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 	osi_list_t *tmp;
 	struct inode_info *ii;
 	struct gfs2_inode *ip;

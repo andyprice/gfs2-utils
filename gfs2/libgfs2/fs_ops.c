@@ -43,9 +43,9 @@ struct gfs2_inode *inode_get(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 	return ip;
 }
 
-void inode_put(struct gfs2_inode *ip, enum update_flags updated)
+void inode_put(struct gfs2_inode *ip, enum update_flags is_updated)
 {
-	if (updated)
+	if (is_updated)
 		gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
 	brelse(ip->i_bh, updated);
 	free(ip);
@@ -681,8 +681,10 @@ static int dirent_alloc(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 				new->de_rec_len = cpu_to_be16(cur_rec_len -
 											  GFS2_DIRENT_SIZE(cur_name_len));
 				new->de_name_len = cpu_to_be16(name_len);
-				dent->de_rec_len = cpu_to_be16(cur_rec_len -
-											   be16_to_cpu(new->de_rec_len));
+
+				be16_to_cpu(new->de_rec_len);
+				dent->de_rec_len = cpu_to_be16(cur_rec_len - new->de_rec_len);
+
 				*dent_out = new;
 				return 0;
 			}
@@ -714,14 +716,14 @@ void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 	prev->de_rec_len = cpu_to_be16(prev_rec_len);
 }
 
-void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t index,
+void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t lindex,
 					  uint64_t *leaf_out)
 {
 	uint64_t leaf_no;
 	int count;
 
 	count = gfs2_readi(dip, (char *)&leaf_no,
-		      index * sizeof(uint64_t),
+		      lindex * sizeof(uint64_t),
 		      sizeof(uint64_t));
 	if (count != sizeof(uint64_t))
 		die("gfs2_get_leaf_nr:  Bad internal read.\n");
@@ -741,7 +743,7 @@ void gfs2_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out)
 		die("gfs2_put_leaf_nr:  Bad internal write.\n");
 }
 
-static void dir_split_leaf(struct gfs2_inode *dip, uint32_t index, uint64_t leaf_no)
+static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex, uint64_t leaf_no)
 {
 	struct gfs2_buffer_head *nbh, *obh;
 	struct gfs2_leaf *nleaf, *oleaf;
@@ -771,7 +773,7 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t index, uint64_t leaf
 	len = 1 << (dip->i_di.di_depth - be16_to_cpu(oleaf->lf_depth));
 	half_len = len >> 1;
 
-	start = (index & ~(len - 1));
+	start = (lindex & ~(len - 1));
 
 	lp = calloc(1, half_len * sizeof(uint64_t));
 	if (lp == NULL) {
@@ -920,12 +922,12 @@ int gfs2_get_leaf(struct gfs2_inode *dip, uint64_t leaf_no,
  * Returns: 0 on success, error code otherwise
  */
 
-static int get_first_leaf(struct gfs2_inode *dip, uint32_t index,
+static int get_first_leaf(struct gfs2_inode *dip, uint32_t lindex,
 			  struct gfs2_buffer_head **bh_out)
 {
 	uint64_t leaf_no;
 
-	gfs2_get_leaf_nr(dip, index, &leaf_no);
+	gfs2_get_leaf_nr(dip, lindex, &leaf_no);
 	*bh_out = bread(&dip->i_sbd->buf_list, leaf_no);
 	return 0;
 }
@@ -952,13 +954,13 @@ static int get_next_leaf(struct gfs2_inode *dip,struct gfs2_buffer_head *bh_in,
 	return 0;
 }
 
-static void dir_e_add(struct gfs2_inode *dip, char *filename, int len,
+static void dir_e_add(struct gfs2_inode *dip, const char *filename, int len,
 		      struct gfs2_inum *inum, unsigned int type)
 {
 	struct gfs2_buffer_head *bh, *nbh;
 	struct gfs2_leaf *leaf, *nleaf;
 	struct gfs2_dirent *dent;
-	uint32_t index;
+	uint32_t lindex;
 	uint32_t hash;
 	uint64_t leaf_no, bn;
 
@@ -966,11 +968,11 @@ static void dir_e_add(struct gfs2_inode *dip, char *filename, int len,
 	hash = gfs2_disk_hash(filename, len);
 	/* Have to kludge because (hash >> 32) gives hash for some reason. */
 	if (dip->i_di.di_depth)
-		index = hash >> (32 - dip->i_di.di_depth);
+		lindex = hash >> (32 - dip->i_di.di_depth);
 	else
-		index = 0;
+		lindex = 0;
 
-	gfs2_get_leaf_nr(dip, index, &leaf_no);
+	gfs2_get_leaf_nr(dip, lindex, &leaf_no);
 
 	for (;;) {
 		bh = bread(&dip->i_sbd->buf_list, leaf_no);
@@ -980,7 +982,7 @@ static void dir_e_add(struct gfs2_inode *dip, char *filename, int len,
 
 			if (be16_to_cpu(leaf->lf_depth) < dip->i_di.di_depth) {
 				brelse(bh, not_updated);
-				dir_split_leaf(dip, index, leaf_no);
+				dir_split_leaf(dip, lindex, leaf_no);
 				goto restart;
 
 			} else if (dip->i_di.di_depth < GFS2_DIR_MAX_DEPTH) {
@@ -1071,7 +1073,8 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 			break;
 	} while (gfs2_dirent_next(dip, bh, &dent) == 0);
 
-	dent->de_rec_len = cpu_to_be16(be16_to_cpu(dent->de_rec_len) +
+	be16_to_cpu(dent->de_rec_len);
+	dent->de_rec_len = cpu_to_be16(dent->de_rec_len +
 		sizeof(struct gfs2_dinode) - sizeof(struct gfs2_leaf));
 
 	brelse(bh, updated);
@@ -1092,7 +1095,7 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 	dip->i_di.di_depth = y;
 }
 
-static void dir_l_add(struct gfs2_inode *dip, char *filename, int len,
+static void dir_l_add(struct gfs2_inode *dip, const char *filename, int len,
 		      struct gfs2_inum *inum, unsigned int type)
 {
 	struct gfs2_dirent *dent;
@@ -1112,7 +1115,7 @@ static void dir_l_add(struct gfs2_inode *dip, char *filename, int len,
 	dip->i_di.di_entries++;
 }
 
-void dir_add(struct gfs2_inode *dip, char *filename, int len,
+void dir_add(struct gfs2_inode *dip, const char *filename, int len,
 	     struct gfs2_inum *inum, unsigned int type)
 {
 	if (dip->i_di.di_flags & GFS2_DIF_EXHASH)
@@ -1183,7 +1186,7 @@ struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
 	return bh;
 }
 
-struct gfs2_inode *createi(struct gfs2_inode *dip, char *filename,
+struct gfs2_inode *createi(struct gfs2_inode *dip, const char *filename,
 			   unsigned int mode, uint32_t flags)
 {
 	struct gfs2_sbd *sdp = dip->i_sbd;
@@ -1303,7 +1306,7 @@ static int linked_leaf_search(struct gfs2_inode *dip, const char *filename,
 			      struct gfs2_buffer_head **bh_out)
 {
 	struct gfs2_buffer_head *bh = NULL, *bh_next;
-	uint32_t hsize, index;
+	uint32_t hsize, lindex;
 	uint32_t hash;
 	int error = 0;
 
@@ -1314,9 +1317,9 @@ static int linked_leaf_search(struct gfs2_inode *dip, const char *filename,
 	/*  Figure out the address of the leaf node.  */
 
 	hash = gfs2_disk_hash(filename, len);
-	index = hash >> (32 - dip->i_di.di_depth);
+	lindex = hash >> (32 - dip->i_di.di_depth);
 
-	error = get_first_leaf(dip, index, &bh_next);
+	error = get_first_leaf(dip, lindex, &bh_next);
 	if (error)
 		return error;
 
@@ -1438,17 +1441,17 @@ static int dir_search(struct gfs2_inode *dip, const char *filename, int len,
 
 static int dir_e_del(struct gfs2_inode *dip, const char *filename, int len)
 {
-	int index;
+	int lindex;
 	int error;
 	int found = 0;
 	uint64_t leaf_no;
 	struct gfs2_buffer_head *bh = NULL;
 	struct gfs2_dirent *cur, *prev;
 
-	index = (1 << (dip->i_di.di_depth))-1;
+	lindex = (1 << (dip->i_di.di_depth))-1;
 
-	for(; (index >= 0) && !found; index--){
-		gfs2_get_leaf_nr(dip, index, &leaf_no);
+	for(; (lindex >= 0) && !found; lindex--){
+		gfs2_get_leaf_nr(dip, lindex, &leaf_no);
 
 		while(leaf_no && !found){
 			bh = bread(&dip->i_sbd->buf_list, leaf_no);

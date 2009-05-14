@@ -74,7 +74,7 @@ static __inline__ __attribute__((noreturn)) void die(const char *fmt, ...)
 	va_list ap;
 	fprintf(stderr, "%s: ", __FILE__);
 	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
+	//vfprintf(stderr, fmt, ap);
 	va_end(ap);
 	exit(-1);
 }
@@ -390,7 +390,7 @@ extern struct gfs2_buffer_head *__bget(struct buf_list *bl, uint64_t num,
 extern struct gfs2_buffer_head *__bread(struct buf_list *bl, uint64_t num,
 					int line, const char *caller);
 extern struct gfs2_buffer_head *bhold(struct gfs2_buffer_head *bh);
-extern void brelse(struct gfs2_buffer_head *bh, enum update_flags updated);
+extern void brelse(struct gfs2_buffer_head *bh, enum update_flags is_updated);
 extern void __bsync(struct buf_list *bl, int line, const char *caller);
 extern void __bcommit(struct buf_list *bl, int line, const char *caller);
 
@@ -454,14 +454,14 @@ extern struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
 					    struct gfs2_inum *inum,
 					    unsigned int mode, uint32_t flags,
 					    struct gfs2_inum *parent);
-extern struct gfs2_inode *createi(struct gfs2_inode *dip, char *filename,
+extern struct gfs2_inode *createi(struct gfs2_inode *dip, const char *filename,
 				  unsigned int mode, uint32_t flags);
 extern void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 			struct gfs2_dirent *prev, struct gfs2_dirent *cur);
 extern struct gfs2_inode *gfs2_load_inode(struct gfs2_sbd *sbp, uint64_t block);
 extern int gfs2_lookupi(struct gfs2_inode *dip, const char *filename, int len,
 			struct gfs2_inode **ipp);
-extern void dir_add(struct gfs2_inode *dip, char *filename, int len,
+extern void dir_add(struct gfs2_inode *dip, const char *filename, int len,
 		    struct gfs2_inum *inum, unsigned int type);
 extern int gfs2_dirent_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 			   const char *filename, int filename_len);
@@ -620,7 +620,7 @@ do { print_log(1, MSG_CRITICAL, format); } while(0)
 
 extern void increase_verbosity(void);
 extern void decrease_verbosity(void);
-extern void print_fsck_log(int iif, int priority, char *file, int line,
+extern void print_fsck_log(int iif, int priority, const char *file, int line,
 			   const char *format, ...)
 	__attribute__((format(printf,5,6)));
 extern char generic_interrupt(const char *caller, const char *where,
@@ -643,9 +643,9 @@ extern void cleanup_metafs(struct gfs2_sbd *sdp);
 extern char *find_debugfs_mount(void);
 extern char *mp2fsname(char *mp);
 extern char *mp2fsname2(char *mp);
-extern char *get_sysfs(char *fsname, char *filename);
-extern int get_sysfs_uint(char *fsname, char *filename, unsigned int *val);
-extern int set_sysfs(char *fsname, char *filename, char *val);
+extern char *get_sysfs(const char *fsname, const char *filename);
+extern int get_sysfs_uint(const char *fsname, const char *filename, unsigned int *val);
+extern int set_sysfs(const char *fsname, const char *filename, const char *val);
 extern int is_fsname(char *name);
 
 /* recovery.c */

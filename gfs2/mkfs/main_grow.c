@@ -58,7 +58,7 @@ static void usage(void)
 		"  -v               Verbose, increase verbosity\n"));
 }
 
-void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
+static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 {
 	int opt;
 
@@ -109,7 +109,7 @@ void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 /**
  * figure_out_rgsize
  */
-void figure_out_rgsize(struct gfs2_sbd *sdp, unsigned int *rgsize)
+static void figure_out_rgsize(struct gfs2_sbd *sdp, unsigned int *orgsize)
 {
 	osi_list_t *head = &sdp->rglist;
 	struct rgrp_list *r1, *r2;
@@ -118,7 +118,7 @@ void figure_out_rgsize(struct gfs2_sbd *sdp, unsigned int *rgsize)
 	r1 = osi_list_entry(head->next->next, struct rgrp_list, list);
 	r2 = osi_list_entry(head->next->next->next, struct rgrp_list, list);
 
-	*rgsize = r2->ri.ri_addr - r1->ri.ri_addr;
+	*orgsize = r2->ri.ri_addr - r1->ri.ri_addr;
 }
 
 /**
@@ -130,7 +130,7 @@ void figure_out_rgsize(struct gfs2_sbd *sdp, unsigned int *rgsize)
  * Returns: The calculated size
  */
 
-uint64_t filesystem_size(struct gfs2_sbd *sdp)
+static uint64_t filesystem_size(struct gfs2_sbd *sdp)
 {
 	osi_list_t *tmp;
 	struct rgrp_list *rgl;
@@ -152,7 +152,7 @@ uint64_t filesystem_size(struct gfs2_sbd *sdp)
 /**
  * initialize_new_portion - Write the new rg information to disk buffers.
  */
-void initialize_new_portion(struct gfs2_sbd *sdp, int *old_rg_count)
+static void initialize_new_portion(struct gfs2_sbd *sdp, int *old_rg_count)
 {
 	uint64_t rgrp = 0;
 	osi_list_t *head = &sdp->rglist;
@@ -181,7 +181,7 @@ void initialize_new_portion(struct gfs2_sbd *sdp, int *old_rg_count)
 /**
  * fix_rindex - Add the new entries to the end of the rindex file.
  */
-void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
+static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 {
 	int count, rg;
 	struct rgrp_list *rl;

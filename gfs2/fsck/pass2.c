@@ -18,7 +18,7 @@
 
 /* Set children's parent inode in dir_info structure - ext2 does not set
  * dotdot inode here, but instead in pass3 - should we? */
-int set_parent_dir(struct gfs2_sbd *sbp, uint64_t childblock,
+static int set_parent_dir(struct gfs2_sbd *sbp, uint64_t childblock,
 				   uint64_t parentblock)
 {
 	struct dir_info *di;
@@ -45,7 +45,7 @@ int set_parent_dir(struct gfs2_sbd *sbp, uint64_t childblock,
 }
 
 /* Set's the child's '..' directory inode number in dir_info structure */
-int set_dotdot_dir(struct gfs2_sbd *sbp, uint64_t childblock,
+static int set_dotdot_dir(struct gfs2_sbd *sbp, uint64_t childblock,
 				   uint64_t parentblock)
 {
 	struct dir_info *di;
@@ -92,7 +92,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 	return 0;
 }
 
-const char *de_type_string(uint8_t de_type)
+static const char *de_type_string(uint8_t de_type)
 {
 	const char *de_types[15] = {"unknown", "fifo", "chrdev", "invalid",
 								"directory", "invalid", "blkdev", "invalid",
@@ -144,7 +144,7 @@ static int check_file_type(uint8_t de_type, uint8_t block_type)
 
 /* FIXME: should maybe refactor this a bit - but need to deal with
  * FIXMEs internally first */
-int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
+static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		 struct gfs2_dirent *prev_de,
 		 struct gfs2_buffer_head *bh, char *filename,
 		 enum update_flags *update, uint16_t *count, void *priv)
@@ -542,7 +542,7 @@ struct metawalk_fxns pass2_fxns = {
 
 /* Check system directory inode                                           */
 /* Should work for all system directories: root, master, jindex, per_node */
-int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
+static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		     int builder(struct gfs2_sbd *sbp))
 {
 	uint64_t iblock = 0;

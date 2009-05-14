@@ -136,15 +136,15 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
 	return 0;
 }
 
-void gfs2_rgrp_relse(struct rgrp_list *rgd, enum update_flags updated)
+void gfs2_rgrp_relse(struct rgrp_list *rgd, enum update_flags is_updated)
 {
 	int x, length = rgd->ri.ri_length;
 
 	for (x = 0; x < length; x++)
-		brelse(rgd->bh[x], updated);
+		brelse(rgd->bh[x], is_updated);
 }
 
-void gfs2_rgrp_free(osi_list_t *rglist, enum update_flags updated)
+void gfs2_rgrp_free(osi_list_t *rglist, enum update_flags is_updated)
 {
 	struct rgrp_list *rgd;
 
@@ -152,7 +152,7 @@ void gfs2_rgrp_free(osi_list_t *rglist, enum update_flags updated)
 		rgd = osi_list_entry(rglist->next, struct rgrp_list, list);
 		if (rgd->bh && rgd->bh[0] && /* if a buffer exists and       */
 			rgd->bh[0]->b_count) /* the 1st buffer is allocated */
-			gfs2_rgrp_relse(rgd, updated); /* free them all. */
+			gfs2_rgrp_relse(rgd, is_updated); /* free them all. */
 		if(rgd->bits)
 			free(rgd->bits);
 		if(rgd->bh) {

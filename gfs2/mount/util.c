@@ -52,7 +52,7 @@ static int gfs_controld_fd;
 /* opt_map stuff from util-linux */
 
 struct opt_map {
-	char *opt;      /* option name */
+	const char *opt;      /* option name */
 	int skip;       /* skip in mtab option string (gfs: not used) */
 	int inv;	/* true if flag value should be inverted */
 	int mask;       /* flag mask value */
@@ -258,7 +258,7 @@ void read_proc_mounts(struct mount_options *mo)
 	log_debug("read_proc_mounts: opts = \"%s\"", mo->opts);
 }
 
-void gfs2_inum_in(struct gfs2_inum *no, char *buf)
+static void gfs2_inum_in(struct gfs2_inum *no, char *buf)
 {
 	struct gfs2_inum *str = (struct gfs2_inum *)buf;
 
@@ -266,7 +266,7 @@ void gfs2_inum_in(struct gfs2_inum *no, char *buf)
 	no->no_addr = be64_to_cpu(str->no_addr);
 }
 
-void gfs2_meta_header_in(struct gfs2_meta_header *mh, char *buf)
+static void gfs2_meta_header_in(struct gfs2_meta_header *mh, char *buf)
 {
 	struct gfs2_meta_header *str = (struct gfs2_meta_header *)buf;
 
@@ -275,7 +275,7 @@ void gfs2_meta_header_in(struct gfs2_meta_header *mh, char *buf)
 	mh->mh_format = be32_to_cpu(str->mh_format);
 }
 
-void gfs2_sb_in(struct gfs2_sb *sb, char *buf)
+static void gfs2_sb_in(struct gfs2_sb *sb, char *buf)
 {
 	struct gfs2_sb *str = (struct gfs2_sb *)buf;
 
@@ -574,7 +574,7 @@ int lock_dlm_leave(struct mount_options *mo, struct gen_sb *sb, int mnterr)
 int lock_dlm_remount(struct mount_options *mo, struct gen_sb *sb)
 {
 	struct gfsc_mount_args ma;
-	char *mode;
+	const char *mode;
 	int fd, rv, result;
 
 	memset(&ma, 0, sizeof(ma));

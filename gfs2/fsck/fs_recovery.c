@@ -57,7 +57,7 @@ int gfs2_revoke_check(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where)
 {
 	osi_list_t *tmp;
 	struct gfs2_revoke_replay *rr;
-	int wrap, a, b, revoke;
+	int wrap, a, b;
 	int found = 0;
 
 	osi_list_foreach(tmp, &sd_revoke_list) {
@@ -74,8 +74,7 @@ int gfs2_revoke_check(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where)
 	wrap = (rr->rr_where < sd_replay_tail);
 	a = (sd_replay_tail < where);
 	b = (where < rr->rr_where);
-	revoke = (wrap) ? (a || b) : (a && b);
-	return revoke;
+	return (wrap) ? (a || b) : (a && b);
 }
 
 void gfs2_revoke_clean(struct gfs2_sbd *sdp)
@@ -248,7 +247,7 @@ static int databuf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
  * Returns: errno
  */
 
-int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
+static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 		       unsigned int end, int pass)
 {
 	struct gfs2_buffer_head *bh;
@@ -323,7 +322,7 @@ int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
  * fix_journal_seq_no - Fix log header sequencing problems
  * @ip: the journal incore inode
  */
-int fix_journal_seq_no(struct gfs2_inode *ip)
+static int fix_journal_seq_no(struct gfs2_inode *ip)
 {
 	int error = 0, wrapped = 0;
 	uint32_t jd_blocks = ip->i_di.di_size / ip->i_sbd->sd_sb.sb_bsize;
@@ -382,7 +381,7 @@ int fix_journal_seq_no(struct gfs2_inode *ip)
  * Returns: errno
  */
 
-int gfs2_recover_journal(struct gfs2_inode *ip, int j)
+static int gfs2_recover_journal(struct gfs2_inode *ip, int j)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct gfs2_log_header head;

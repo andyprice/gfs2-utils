@@ -159,6 +159,9 @@ extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
 extern void gfs_log_header_in(struct gfs_log_header *head, char *buf);
 extern void gfs_log_header_print(struct gfs_log_header *lh);
 extern void gfs_dinode_in(struct gfs_dinode *di, char *buf);
+extern void savemeta(char *out_fn, int saveoption);
+extern void restoremeta(const char *in_fn, const char *out_device, int printblocksonly);
+extern uint64_t masterblock(const char *fn);
 
 struct gfs2_dirents {
 	uint64_t block;

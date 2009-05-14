@@ -172,7 +172,7 @@ struct gfs2_buffer_head *bhold(struct gfs2_buffer_head *bh)
 	return bh;
 }
 
-void brelse(struct gfs2_buffer_head *bh, enum update_flags updated)
+void brelse(struct gfs2_buffer_head *bh, enum update_flags is_updated)
 {
     /* We can't just say b_changed = updated because we don't want to     */
 	/* set it FALSE if it's TRUE until we write the changed data to disk. */

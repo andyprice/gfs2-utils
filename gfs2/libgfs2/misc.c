@@ -207,7 +207,7 @@ void cleanup_metafs(struct gfs2_sbd *sdp)
 		rmdir(sdp->metafs_path);
 }
 
-static char *__get_sysfs(char *fsname, char *filename)
+static char *__get_sysfs(const char *fsname, const char *filename)
 {
 	char path[PATH_MAX];
 	int fd, rv;
@@ -229,7 +229,7 @@ static char *__get_sysfs(char *fsname, char *filename)
 	return sysfs_buf;
 }
 
-char *get_sysfs(char *fsname, char *filename)
+char *get_sysfs(const char *fsname, const char *filename)
 {
 	char *s;
 	char *p;
@@ -243,7 +243,7 @@ char *get_sysfs(char *fsname, char *filename)
 	return sysfs_buf;
 }
 
-int get_sysfs_uint(char *fsname, char *filename, unsigned int *val)
+int get_sysfs_uint(const char *fsname, const char *filename, unsigned int *val)
 {
 	char *s = __get_sysfs(fsname, filename);
 	int ret;
@@ -257,7 +257,7 @@ int get_sysfs_uint(char *fsname, char *filename, unsigned int *val)
 	return 0;
 }
 
-int set_sysfs(char *fsname, char *filename, char *val)
+int set_sysfs(const char *fsname, const char *filename, const char *val)
 {
 	char path[PATH_MAX];
 	int fd, rv, len;

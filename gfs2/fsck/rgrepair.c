@@ -36,7 +36,7 @@ struct special_blocks false_rgrps;
  * for a real RG block.  These are "fake" RGs that need to be ignored for
  * the purposes of finding where things are.
  */
-void find_journaled_rgs(struct gfs2_sbd *sdp)
+static void find_journaled_rgs(struct gfs2_sbd *sdp)
 {
 	int j, new = 0;
 	unsigned int jblocks;
@@ -66,7 +66,7 @@ void find_journaled_rgs(struct gfs2_sbd *sdp)
 	}
 }
 
-int is_false_rg(uint64_t block)
+static int is_false_rg(uint64_t block)
 {
 	if (blockfind(&false_rgrps, block))
 		return 1;
@@ -98,7 +98,7 @@ int is_false_rg(uint64_t block)
  * same RG size determined by the original mkfs, so recovery is easier.
  *
  */
-int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
+static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 			 int *num_rgs)
 {
 	struct gfs2_buffer_head *bh;
@@ -339,7 +339,7 @@ int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
  * Sets:    sdp->rglist to a linked list of fsck_rgrp structs representing
  *          what we think the rindex should really look like.
  */
-int gfs2_rindex_calculate(struct gfs2_sbd *sdp, osi_list_t *ret_list,
+static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 			   int *num_rgs)
 {
 	osi_list_init(ret_list);
@@ -376,7 +376,7 @@ int gfs2_rindex_calculate(struct gfs2_sbd *sdp, osi_list_t *ret_list,
  * rewrite_rg_block - rewrite ("fix") a buffer with rg or bitmap data
  * returns: 0 if the rg was repaired, otherwise 1
  */
-int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rg,
+static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rg,
 		     uint64_t errblock)
 {
 	int x = errblock - rg->ri.ri_addr;
@@ -424,7 +424,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 {
 	int error, descrepencies;
 	osi_list_t expected_rglist;
-	int calc_rg_count, rgcount_from_index, rg;
+	int calc_rg_count = 0, rgcount_from_index, rg;
 	osi_list_t *exp, *act; /* expected, actual */
 	struct gfs2_rindex buf;
 

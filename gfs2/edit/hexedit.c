@@ -35,7 +35,6 @@ const char *allocdesc[] = {"Free ", "Data ", "Unlnk", "Meta ", "Resrv"};
 #define RGLIST_DUMMY_BLOCK -2
 
 int display(int identify_only);
-extern void eol(int col);
 extern void do_leaf_extended(char *buf, struct iinfo *indir);
 extern int do_indirect_extended(char *buf, struct iinfo *ii);
 extern void savemeta(char *out_fn, int slow);
@@ -79,58 +78,58 @@ extern void restoremeta(const char *in_fn, const char *out_device,
 		}						\
 	} while(0)
 
-int gfs2_dinode_printval(struct gfs2_dinode *di, const char *strfield)
+static int gfs2_dinode_printval(struct gfs2_dinode *dip, const char *strfield)
 {
-	checkprint(strfield, di, di_mode);
-	checkprint(strfield, di, di_uid);
-	checkprint(strfield, di, di_gid);
-	checkprint(strfield, di, di_nlink);
-	checkprint(strfield, di, di_size);
-	checkprint(strfield, di, di_blocks);
-	checkprint(strfield, di, di_atime);
-	checkprint(strfield, di, di_mtime);
-	checkprint(strfield, di, di_ctime);
-	checkprint(strfield, di, di_major);
-	checkprint(strfield, di, di_minor);
-	checkprint(strfield, di, di_goal_meta);
-	checkprint(strfield, di, di_goal_data);
-	checkprint(strfield, di, di_flags);
-	checkprint(strfield, di, di_payload_format);
-	checkprint(strfield, di, di_height);
-	checkprint(strfield, di, di_depth);
-	checkprint(strfield, di, di_entries);
-	checkprint(strfield, di, di_eattr);
+	checkprint(strfield, dip, di_mode);
+	checkprint(strfield, dip, di_uid);
+	checkprint(strfield, dip, di_gid);
+	checkprint(strfield, dip, di_nlink);
+	checkprint(strfield, dip, di_size);
+	checkprint(strfield, dip, di_blocks);
+	checkprint(strfield, dip, di_atime);
+	checkprint(strfield, dip, di_mtime);
+	checkprint(strfield, dip, di_ctime);
+	checkprint(strfield, dip, di_major);
+	checkprint(strfield, dip, di_minor);
+	checkprint(strfield, dip, di_goal_meta);
+	checkprint(strfield, dip, di_goal_data);
+	checkprint(strfield, dip, di_flags);
+	checkprint(strfield, dip, di_payload_format);
+	checkprint(strfield, dip, di_height);
+	checkprint(strfield, dip, di_depth);
+	checkprint(strfield, dip, di_entries);
+	checkprint(strfield, dip, di_eattr);
 
 	return -1;
 }
 
-int gfs2_dinode_assignval(struct gfs2_dinode *di, const char *strfield,
+static int gfs2_dinode_assignval(struct gfs2_dinode *dia, const char *strfield,
 			  uint64_t value)
 {
-	checkassign(strfield, di, di_mode, value);
-	checkassign(strfield, di, di_uid, value);
-	checkassign(strfield, di, di_gid, value);
-	checkassign(strfield, di, di_nlink, value);
-	checkassign(strfield, di, di_size, value);
-	checkassign(strfield, di, di_blocks, value);
-	checkassign(strfield, di, di_atime, value);
-	checkassign(strfield, di, di_mtime, value);
-	checkassign(strfield, di, di_ctime, value);
-	checkassign(strfield, di, di_major, value);
-	checkassign(strfield, di, di_minor, value);
-	checkassign(strfield, di, di_goal_meta, value);
-	checkassign(strfield, di, di_goal_data, value);
-	checkassign(strfield, di, di_flags, value);
-	checkassign(strfield, di, di_payload_format, value);
-	checkassign(strfield, di, di_height, value);
-	checkassign(strfield, di, di_depth, value);
-	checkassign(strfield, di, di_entries, value);
-	checkassign(strfield, di, di_eattr, value);
+	checkassign(strfield, dia, di_mode, value);
+	checkassign(strfield, dia, di_uid, value);
+	checkassign(strfield, dia, di_gid, value);
+	checkassign(strfield, dia, di_nlink, value);
+	checkassign(strfield, dia, di_size, value);
+	checkassign(strfield, dia, di_blocks, value);
+	checkassign(strfield, dia, di_atime, value);
+	checkassign(strfield, dia, di_mtime, value);
+	checkassign(strfield, dia, di_ctime, value);
+	checkassign(strfield, dia, di_major, value);
+	checkassign(strfield, dia, di_minor, value);
+	checkassign(strfield, dia, di_goal_meta, value);
+	checkassign(strfield, dia, di_goal_data, value);
+	checkassign(strfield, dia, di_flags, value);
+	checkassign(strfield, dia, di_payload_format, value);
+	checkassign(strfield, dia, di_height, value);
+	checkassign(strfield, dia, di_depth, value);
+	checkassign(strfield, dia, di_entries, value);
+	checkassign(strfield, dia, di_eattr, value);
 
 	return -1;
 }
 
-int gfs2_rgrp_printval(struct gfs2_rgrp *rg, const char *strfield)
+static int gfs2_rgrp_printval(struct gfs2_rgrp *rg, const char *strfield)
 {
 	checkprint(strfield, rg, rg_flags);
 	checkprint(strfield, rg, rg_free);
@@ -139,7 +138,7 @@ int gfs2_rgrp_printval(struct gfs2_rgrp *rg, const char *strfield)
 	return -1;
 }
 
-int gfs2_rgrp_assignval(struct gfs2_rgrp *rg, const char *strfield,
+static int gfs2_rgrp_assignval(struct gfs2_rgrp *rg, const char *strfield,
 			uint64_t value)
 {
 	checkassign(strfield, rg, rg_flags, value);
@@ -152,7 +151,7 @@ int gfs2_rgrp_assignval(struct gfs2_rgrp *rg, const char *strfield,
 /* ------------------------------------------------------------------------ */
 /* UpdateSize - screen size changed, so update it                           */
 /* ------------------------------------------------------------------------ */
-void UpdateSize(int sig)
+static void UpdateSize(int sig)
 {
 	static char term_buffer[2048];
 	int rc;
@@ -163,10 +162,10 @@ void UpdateSize(int sig)
 		return;
 	rc=tgetent(term_buffer,termtype);
 	if (rc>=0) {
-		termlines = tgetnum("li");
+		termlines = tgetnum((char *)"li");
 		if (termlines < 10)
 			termlines = 30;
-		termcols = tgetnum("co");
+		termcols = tgetnum((char *)"co");
 		if (termcols < 80)
 			termcols = 80;
 	}
@@ -180,7 +179,7 @@ void UpdateSize(int sig)
 /* ------------------------------------------------------------------------- */
 /* erase - clear the screen */
 /* ------------------------------------------------------------------------- */
-void Erase(void)
+static void Erase(void)
 {
 	int i;
 	char spaces[256];
@@ -199,7 +198,7 @@ void Erase(void)
 /* ------------------------------------------------------------------------- */
 /* display_title_lines */
 /* ------------------------------------------------------------------------- */
-void display_title_lines(void)
+static void display_title_lines(void)
 {
 	Erase();
 	COLORS_TITLE;
@@ -215,7 +214,7 @@ void display_title_lines(void)
 /* returns: 1 if user exited by hitting enter                                */
 /*          0 if user exited by hitting escape                               */
 /* ------------------------------------------------------------------------- */
-int bobgets(char string[],int x,int y,int sz,int *ch)
+static int bobgets(char string[],int x,int y,int sz,int *ch)
 {
 	int done,runningy,rc;
 
@@ -356,7 +355,7 @@ int bobgets(char string[],int x,int y,int sz,int *ch)
 /******************************************************************************
 ** instr - instructions
 ******************************************************************************/
-void gfs2instr(const char *s1, const char *s2)
+static void gfs2instr(const char *s1, const char *s2)
 {
 	COLORS_HIGHLIGHT;
 	move(line,0);
@@ -378,7 +377,7 @@ void gfs2instr(const char *s1, const char *s2)
 *******************************************************************************
 ******************************************************************************/
 
-void print_usage(void)
+static void print_usage(void)
 {
 	int ch;
 
@@ -433,7 +432,7 @@ void print_usage(void)
 /* returns: metatype if block is a GFS2 structure block type                */
 /*          0 if block is not a GFS2 structure                              */
 /* ------------------------------------------------------------------------ */
-int get_block_type(const char *lpBuffer)
+static int get_block_type(const char *lpBuffer)
 {
 	int ret_type = 0;
 
@@ -460,10 +459,10 @@ int get_block_type(const char *lpBuffer)
  *
  * Returns: state on success, -1 on error
  */
-int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
+static int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
 					struct rgrp_list *rgd)
 {
-	int           buf, val;
+	int           i, val;
 	uint32_t        rgrp_block;
 	struct gfs2_bitmap	*bits = NULL;
 	unsigned int  bit;
@@ -483,19 +482,19 @@ int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
 
 	rgrp_block = (uint32_t)(blkno - rgd->ri.ri_data0);
 
-	for(buf= 0; buf < rgd->ri.ri_length; buf++){
-		bits = &(rgd->bits[buf]);
+	for(i= 0; i < rgd->ri.ri_length; i++){
+		bits = &(rgd->bits[i]);
 		if(rgrp_block < ((bits->bi_start + bits->bi_len)*GFS2_NBBY)){
 			break;
 		}
 	}
 
-	if(buf >= rgd->ri.ri_length){
+	if(i >= rgd->ri.ri_length){
 		gfs2_rgrp_relse(rgd, not_updated);
 		return -1;
 	}
 
-	byte = (unsigned char *)(rgd->bh[buf]->b_data + bits->bi_offset) +
+	byte = (unsigned char *)(rgd->bh[i]->b_data + bits->bi_offset) +
 		(rgrp_block/GFS2_NBBY - bits->bi_start);
 	bit = (rgrp_block % GFS2_NBBY) * GFS2_BIT_SIZE;
 
@@ -705,7 +704,7 @@ int display_block_type(const char *lpBuffer, int from_restore)
 /* ------------------------------------------------------------------------ */
 /* hexdump - hex dump the filesystem block to the screen                    */
 /* ------------------------------------------------------------------------ */
-int hexdump(uint64_t startaddr, const char *lpBuffer, int len)
+static int hexdump(uint64_t startaddr, const char *lpBuffer, int len)
 {
 	const unsigned char *pointer,*ptr2;
 	int i;
@@ -846,7 +845,7 @@ static int risize(void)
 /* ------------------------------------------------------------------------ */
 /* rgcount - return how many rgrps there are.                               */
 /* ------------------------------------------------------------------------ */
-void rgcount(void)
+static void rgcount(void)
 {
 	printf("%lld RGs in this file system.\n",
 	       (unsigned long long)sbd.md.riinode->i_di.di_size / risize());
@@ -858,37 +857,37 @@ void rgcount(void)
 /* ------------------------------------------------------------------------ */
 /* find_rgrp_block - locate the block for a given rgrp number               */
 /* ------------------------------------------------------------------------ */
-uint64_t find_rgrp_block(struct gfs2_inode *di, int rg)
+static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
 {
-	char buf[sizeof(struct gfs2_rindex)];
+	char fbuf[sizeof(struct gfs2_rindex)];
 	int amt;
 	struct gfs2_rindex ri;
-	uint64_t offset, gfs1_adj = 0;
+	uint64_t foffset, gfs1_adj = 0;
 
-	offset = rg * risize();
+	foffset = rg * risize();
 	if (gfs1) {
 		uint64_t sd_jbsize =
 			(sbd.bsize - sizeof(struct gfs2_meta_header));
 
-		gfs1_adj = (offset / sd_jbsize) *
+		gfs1_adj = (foffset / sd_jbsize) *
 			sizeof(struct gfs2_meta_header);
 		gfs1_adj += sizeof(struct gfs2_meta_header);
 	}
-	amt = gfs2_readi(di, (void *)&buf, offset + gfs1_adj, risize());
+	amt = gfs2_readi(dif, (void *)&fbuf, foffset + gfs1_adj, risize());
 	if (!amt) /* end of file */
 		return 0;
-	gfs2_rindex_in(&ri, buf);
+	gfs2_rindex_in(&ri, fbuf);
 	return ri.ri_addr;
 }
 
 /* ------------------------------------------------------------------------ */
 /* gfs_rgrp_in - Read in a resource group header                            */
 /* ------------------------------------------------------------------------ */
-void gfs_rgrp_in(struct gfs_rgrp *rgrp, char *buf)
+static void gfs_rgrp_in(struct gfs_rgrp *rgrp, char *gbuf)
 {
-	struct gfs_rgrp *str = (struct gfs_rgrp *)buf;
+	struct gfs_rgrp *str = (struct gfs_rgrp *)gbuf;
 
-	gfs2_meta_header_in(&rgrp->rg_header, buf);
+	gfs2_meta_header_in(&rgrp->rg_header, gbuf);
 	rgrp->rg_flags = be32_to_cpu(str->rg_flags);
 	rgrp->rg_free = be32_to_cpu(str->rg_free);
 	rgrp->rg_useddi = be32_to_cpu(str->rg_useddi);
@@ -901,11 +900,11 @@ void gfs_rgrp_in(struct gfs_rgrp *rgrp, char *buf)
 /* ------------------------------------------------------------------------ */
 /* gfs_rgrp_out */
 /* ------------------------------------------------------------------------ */
-void gfs_rgrp_out(struct gfs_rgrp *rgrp, char *buf)
+static void gfs_rgrp_out(struct gfs_rgrp *rgrp, char *gbuf)
 {
-	struct gfs_rgrp *str = (struct gfs_rgrp *)buf;
+	struct gfs_rgrp *str = (struct gfs_rgrp *)gbuf;
 
-	gfs2_meta_header_out(&rgrp->rg_header, buf);
+	gfs2_meta_header_out(&rgrp->rg_header, gbuf);
 	str->rg_flags = cpu_to_be32(rgrp->rg_flags);
 	str->rg_free = cpu_to_be32(rgrp->rg_free);
 	str->rg_useddi = cpu_to_be32(rgrp->rg_useddi);
@@ -918,7 +917,7 @@ void gfs_rgrp_out(struct gfs_rgrp *rgrp, char *buf)
 /* ------------------------------------------------------------------------ */
 /* gfs_rgrp_print - print a gfs1 resource group                             */
 /* ------------------------------------------------------------------------ */
-void gfs_rgrp_print(struct gfs_rgrp *rg)
+static void gfs_rgrp_print(struct gfs_rgrp *rg)
 {
 	gfs2_meta_header_print(&rg->rg_header);
 	pv(rg, rg_flags, "%u", "0x%x");
@@ -933,17 +932,17 @@ void gfs_rgrp_print(struct gfs_rgrp *rg)
 /* ------------------------------------------------------------------------ */
 /* get_rg_addr                                                              */
 /* ------------------------------------------------------------------------ */
-uint64_t get_rg_addr(int rgnum)
+static uint64_t get_rg_addr(int rgnum)
 {
 	struct gfs2_buffer_head *bh;
-	uint64_t rgblk = 0, block;
+	uint64_t rgblk = 0, gblock;
 	struct gfs2_inode *riinode;
 
 	if (gfs1)
-		block = sbd1->sb_rindex_di.no_addr;
+		gblock = sbd1->sb_rindex_di.no_addr;
 	else
-		block = masterblock("rindex");
-	bh = bread(&sbd.buf_list, block);
+		gblock = masterblock("rindex");
+	bh = bread(&sbd.buf_list, gblock);
 	riinode = inode_get(&sbd, bh);
 	if (rgnum < riinode->i_di.di_size / risize())
 		rgblk = find_rgrp_block(riinode, rgnum);
@@ -961,7 +960,7 @@ uint64_t get_rg_addr(int rgnum)
 /* modify: TRUE if the value is to be modified, FALSE if it's to be printed */
 /* full: TRUE if the full RG should be printed.                             */
 /* ------------------------------------------------------------------------ */
-void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
+static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 {
 	union {
 		struct gfs2_rgrp rg2;
@@ -1009,43 +1008,43 @@ void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 /* ------------------------------------------------------------------------ */
 /* parse_rindex - print the rgindex file.                                   */
 /* ------------------------------------------------------------------------ */
-int parse_rindex(struct gfs2_inode *di, int print_rindex)
+static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 {
 	int error, start_line;
 	struct gfs2_rindex ri;
-	char buf[sizeof(struct gfs_rindex)];
+	char rbuf[sizeof(struct gfs_rindex)];
 	char highlighted_addr[32];
 
 	start_line = line;
 	error = 0;
-	print_gfs2("RG index entries found: %d.", di->i_di.di_size / risize());
+	print_gfs2("RG index entries found: %d.", dip->i_di.di_size / risize());
 	eol(0);
 	lines_per_row[dmode] = 6;
 	memset(highlighted_addr, 0, sizeof(highlighted_addr));
 	if (gfs1) {
 		/* gfs1 rindex files have the meta_header which is not
 		   accounted for in gfs2's dinode size.  Therefore, adjust. */
-		di->i_di.di_size += ((di->i_di.di_size / sbd.bsize) + 1) *
+		dip->i_di.di_size += ((dip->i_di.di_size / sbd.bsize) + 1) *
 			sizeof(struct gfs2_meta_header);
 	}
 	for (print_entry_ndx=0; ; print_entry_ndx++) {
 		uint64_t gfs1_adj = 0;
-		uint64_t offset = print_entry_ndx * risize();
+		uint64_t roffset = print_entry_ndx * risize();
 
 		if (gfs1) {
 			uint64_t sd_jbsize =
 				(sbd.bsize - sizeof(struct gfs2_meta_header));
 
-			gfs1_adj = (offset / sd_jbsize) *
+			gfs1_adj = (roffset / sd_jbsize) *
 				sizeof(struct gfs2_meta_header);
 			gfs1_adj += sizeof(struct gfs2_meta_header);
 		}
 
-		error = gfs2_readi(di, (void *)&buf, offset + gfs1_adj,
+		error = gfs2_readi(dip, (void *)&rbuf, roffset + gfs1_adj,
 				   risize());
 		if (!error) /* end of file */
 			break;
-		gfs2_rindex_in(&ri, buf);
+		gfs2_rindex_in(&ri, rbuf);
 		if (!termlines ||
 			(print_entry_ndx >= start_row[dmode] &&
 			 ((print_entry_ndx - start_row[dmode])+1) * lines_per_row[dmode] <=
@@ -1089,9 +1088,9 @@ int parse_rindex(struct gfs2_inode *di, int print_rindex)
 /* ------------------------------------------------------------------------ */
 /* gfs_jindex_in - read in a gfs1 jindex structure.                         */
 /* ------------------------------------------------------------------------ */
-void gfs_jindex_in(struct gfs_jindex *jindex, char *buf)
+void gfs_jindex_in(struct gfs_jindex *jindex, char *jbuf)
 {
-        struct gfs_jindex *str = (struct gfs_jindex *) buf;
+        struct gfs_jindex *str = (struct gfs_jindex *) jbuf;
 
         jindex->ji_addr = be64_to_cpu(str->ji_addr);
         jindex->ji_nsegment = be32_to_cpu(str->ji_nsegment);
@@ -1102,7 +1101,7 @@ void gfs_jindex_in(struct gfs_jindex *jindex, char *buf)
 /* ------------------------------------------------------------------------ */
 /* gfs_jindex_print - print an jindex entry.                                */
 /* ------------------------------------------------------------------------ */
-void gfs_jindex_print(struct gfs_jindex *ji)
+static void gfs_jindex_print(struct gfs_jindex *ji)
 {
         pv((unsigned long long)ji, ji_addr, "%llu", "0x%llx");
         pv(ji, ji_nsegment, "%u", "0x%x");
@@ -1112,23 +1111,23 @@ void gfs_jindex_print(struct gfs_jindex *ji)
 /* ------------------------------------------------------------------------ */
 /* print_jindex - print the jindex file.                                    */
 /* ------------------------------------------------------------------------ */
-int print_jindex(struct gfs2_inode *di)
+static int print_jindex(struct gfs2_inode *dij)
 {
 	int error, start_line;
 	struct gfs_jindex ji;
-	char buf[sizeof(struct gfs_jindex)];
+	char jbuf[sizeof(struct gfs_jindex)];
 
 	start_line = line;
 	error = 0;
 	print_gfs2("Journal index entries found: %d.",
-		   di->i_di.di_size / sizeof(struct gfs_jindex));
+		   dij->i_di.di_size / sizeof(struct gfs_jindex));
 	eol(0);
 	lines_per_row[dmode] = 4;
 	for (print_entry_ndx=0; ; print_entry_ndx++) {
-		error = gfs2_readi(di, (void *)&buf,
+		error = gfs2_readi(dij, (void *)&jbuf,
 				   print_entry_ndx*sizeof(struct gfs_jindex),
 				   sizeof(struct gfs_jindex));
-		gfs_jindex_in(&ji, buf);
+		gfs_jindex_in(&ji, jbuf);
 		if (!error) /* end of file */
 			break;
 		if (!termlines ||
@@ -1155,23 +1154,23 @@ int print_jindex(struct gfs2_inode *di)
 /* ------------------------------------------------------------------------ */
 /* print_inum - print the inum file.                                        */
 /* ------------------------------------------------------------------------ */
-int print_inum(struct gfs2_inode *di)
+static int print_inum(struct gfs2_inode *dii)
 {
-	uint64_t buf, inodenum;
+	uint64_t inum, inodenum;
 	int rc;
 	
-	rc = gfs2_readi(di, (void *)&buf, 0, sizeof(buf));
+	rc = gfs2_readi(dii, (void *)&inum, 0, sizeof(inum));
 	if (!rc) {
 		print_gfs2("The inum file is empty.");
 		eol(0);
 		return 0;
 	}
-	if (rc != sizeof(buf)) {
+	if (rc != sizeof(inum)) {
 		print_gfs2("Error reading inum file.");
 		eol(0);
 		return -1;
 	}
-	inodenum = be64_to_cpu(buf);
+	inodenum = be64_to_cpu(inum);
 	print_gfs2("Next inode num = %lld (0x%llx)", inodenum, inodenum);
 	eol(0);
 	return 0;
@@ -1180,23 +1179,23 @@ int print_inum(struct gfs2_inode *di)
 /* ------------------------------------------------------------------------ */
 /* print_statfs - print the statfs file.                                    */
 /* ------------------------------------------------------------------------ */
-int print_statfs(struct gfs2_inode *di)
+static int print_statfs(struct gfs2_inode *dis)
 {
-	struct gfs2_statfs_change buf, sfc;
+	struct gfs2_statfs_change sfb, sfc;
 	int rc;
 	
-	rc = gfs2_readi(di, (void *)&buf, 0, sizeof(buf));
+	rc = gfs2_readi(dis, (void *)&sfb, 0, sizeof(sfb));
 	if (!rc) {
 		print_gfs2("The statfs file is empty.");
 		eol(0);
 		return 0;
 	}
-	if (rc != sizeof(buf)) {
+	if (rc != sizeof(sfb)) {
 		print_gfs2("Error reading statfs file.");
 		eol(0);
 		return -1;
 	}
-	gfs2_statfs_change_in(&sfc, (char *)&buf);
+	gfs2_statfs_change_in(&sfc, (char *)&sfb);
 	print_gfs2("statfs file contents:");
 	eol(0);
 	gfs2_statfs_change_print(&sfc);
@@ -1206,25 +1205,25 @@ int print_statfs(struct gfs2_inode *di)
 /* ------------------------------------------------------------------------ */
 /* print_quota - print the quota file.                                      */
 /* ------------------------------------------------------------------------ */
-int print_quota(struct gfs2_inode *di)
+static int print_quota(struct gfs2_inode *diq)
 {
-	struct gfs2_quota buf, q;
+	struct gfs2_quota qbuf, q;
 	int i, error;
 	
 	print_gfs2("quota file contents:");
 	eol(0);
-	print_gfs2("quota entries found: %d.", di->i_di.di_size / sizeof(q));
+	print_gfs2("quota entries found: %d.", diq->i_di.di_size / sizeof(q));
 	eol(0);
 	for (i=0; ; i++) {
-		error = gfs2_readi(di, (void *)&buf, i * sizeof(q), sizeof(buf));
+		error = gfs2_readi(diq, (void *)&qbuf, i * sizeof(q), sizeof(qbuf));
 		if (!error)
 			break;
-		if (error != sizeof(buf)) {
+		if (error != sizeof(qbuf)) {
 			print_gfs2("Error reading quota file.");
 			eol(0);
 			return -1;
 		}
-		gfs2_quota_in(&q, (char *)&buf);
+		gfs2_quota_in(&q, (char *)&qbuf);
 		print_gfs2("Entry #%d", i + 1);
 		eol(0);
 		gfs2_quota_print(&q);
@@ -1235,7 +1234,7 @@ int print_quota(struct gfs2_inode *di)
 /* ------------------------------------------------------------------------ */
 /* has_indirect_blocks                                                      */
 /* ------------------------------------------------------------------------ */
-int has_indirect_blocks(void)
+static int has_indirect_blocks(void)
 {
 	if (indirect_blocks || gfs2_struct_type == GFS2_METATYPE_SB ||
 	    gfs2_struct_type == GFS2_METATYPE_LF ||
@@ -1248,7 +1247,7 @@ int has_indirect_blocks(void)
 /* ------------------------------------------------------------------------ */
 /* print_inode_type                                                         */
 /* ------------------------------------------------------------------------ */
-void print_inode_type(__be16 de_type)
+static void print_inode_type(__be16 de_type)
 {
 	switch(de_type) {
 	case DT_UNKNOWN:
@@ -1284,7 +1283,7 @@ void print_inode_type(__be16 de_type)
 /* ------------------------------------------------------------------------ */
 /* display_leaf - display directory leaf                                    */
 /* ------------------------------------------------------------------------ */
-int display_leaf(struct iinfo *ind)
+static int display_leaf(struct iinfo *ind)
 {
 	int start_line, total_dirents = 0;
 	int d;
@@ -1342,7 +1341,7 @@ int display_leaf(struct iinfo *ind)
 /* ------------------------------------------------------------------------ */
 /* display_indirect                                                         */
 /* ------------------------------------------------------------------------ */
-int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_t startoff)
+static int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_t startoff)
 {
 	int start_line, total_dirents;
 	int i, cur_height = -1, pndx;
@@ -1447,9 +1446,10 @@ int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_t start
 		}
 		if (!S_ISDIR(di.di_mode)) {
 			int hgt;
-			file_offset = startoff;
 			float human_off;
 			char h;
+
+			file_offset = startoff;
 
 			/* Now divide by how deep we are at the moment.      */
 			/* This is how much data is represented by each      */
@@ -1539,7 +1539,7 @@ int block_is_rindex(void)
 /*                   special case meant to parse the rindex and follow the  */
 /*                   blocks to the real rgs.                                */
 /* ------------------------------------------------------------------------ */
-int block_is_rglist(void)
+static int block_is_rglist(void)
 {
 	if (block == RGLIST_DUMMY_BLOCK)
 		return TRUE;
@@ -1628,7 +1628,7 @@ int block_is_in_per_node(void)
 /* ------------------------------------------------------------------------ */
 /* block_has_extended_info                                                  */
 /* ------------------------------------------------------------------------ */
-int block_has_extended_info(void)
+static int block_has_extended_info(void)
 {
 	if (has_indirect_blocks() ||
 	    block_is_rindex() ||
@@ -1644,7 +1644,7 @@ int block_has_extended_info(void)
 /* ------------------------------------------------------------------------ */
 /* display_extended                                                         */
 /* ------------------------------------------------------------------------ */
-int display_extended(void)
+static int display_extended(void)
 {
 	struct gfs2_inode *tmp_inode;
 	struct gfs2_buffer_head *tmp_bh;
@@ -1701,7 +1701,7 @@ int display_extended(void)
 /* ------------------------------------------------------------------------ */
 /* read_superblock - read the superblock                                    */
 /* ------------------------------------------------------------------------ */
-void read_superblock(int fd)
+static void read_superblock(int fd)
 {
 	int count;
 
@@ -1781,7 +1781,7 @@ void read_superblock(int fd)
 /* ------------------------------------------------------------------------ */
 /* read_master_dir - read the master directory                              */
 /* ------------------------------------------------------------------------ */
-void read_master_dir(void)
+static void read_master_dir(void)
 {
 	ioctl(sbd.device_fd, BLKFLSBUF, 0);
 	lseek(sbd.device_fd, sbd.sd_sb.sb_master_dir.no_addr * sbd.bsize,
@@ -1902,7 +1902,7 @@ int display(int identify_only)
 /* ------------------------------------------------------------------------ */
 /* push_block - push a block onto the block stack                           */
 /* ------------------------------------------------------------------------ */
-void push_block(uint64_t blk)
+static void push_block(uint64_t blk)
 {
 	int i, bhst;
 
@@ -1925,7 +1925,7 @@ void push_block(uint64_t blk)
 /* ------------------------------------------------------------------------ */
 /* pop_block - pop a block off the block stack                              */
 /* ------------------------------------------------------------------------ */
-uint64_t pop_block(void)
+static uint64_t pop_block(void)
 {
 	int i, bhst;
 
@@ -1949,7 +1949,7 @@ uint64_t pop_block(void)
 /* find_journal_block - figure out where a journal starts, given the name   */
 /* Returns: journal block number, changes j_size to the journal size        */
 /* ------------------------------------------------------------------------ */
-uint64_t find_journal_block(const char *journal, uint64_t *j_size)
+static uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 {
 	int journal_num;
 	uint64_t jindex_block, jblock = 0;
@@ -2005,7 +2005,7 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 /* This is used to find blocks that aren't represented in the bitmaps, such */
 /* as the RGs and bitmaps or the superblock.                                */
 /* ------------------------------------------------------------------------ */
-uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int print)
+static uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int print)
 {
 	uint64_t blk, last_fs_block;
 	int found = 0;
@@ -2046,7 +2046,7 @@ uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int print)
 /* all, if we're searching for a dinode, we want a real allocated inode,    */
 /* not just some block that used to be an inode in a previous incarnation.  */
 /* ------------------------------------------------------------------------ */
-uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int print)
+static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int print)
 {
 	uint64_t blk;
 	int first = 1, found = 0;
@@ -2107,7 +2107,7 @@ uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int print)
 /* ------------------------------------------------------------------------ */
 /* Find next metadata block AFTER a given point in the fs                   */
 /* ------------------------------------------------------------------------ */
-uint64_t find_metablockoftype(const char *strtype, int print)
+static uint64_t find_metablockoftype(const char *strtype, int print)
 {
 	int mtype = 0;
 	uint64_t startblk, blk = 0;
@@ -2142,7 +2142,7 @@ uint64_t find_metablockoftype(const char *strtype, int print)
 /* Check if the word is a keyword such as "sb" or "rindex"                  */
 /* Returns: block number if it is, else 0                                   */
 /* ------------------------------------------------------------------------ */
-uint64_t check_keywords(const char *kword)
+static uint64_t check_keywords(const char *kword)
 {
 	uint64_t blk = 0;
 
@@ -2206,7 +2206,7 @@ uint64_t check_keywords(const char *kword)
 /* ------------------------------------------------------------------------ */
 /* goto_block - go to a desired block entered by the user                   */
 /* ------------------------------------------------------------------------ */
-uint64_t goto_block(void)
+static uint64_t goto_block(void)
 {
 	char string[256];
 	int ch;
@@ -2243,7 +2243,7 @@ uint64_t goto_block(void)
 /* ------------------------------------------------------------------------ */
 /* init_colors                                                              */
 /* ------------------------------------------------------------------------ */
-void init_colors()
+static void init_colors(void)
 {
 
 	if (color_scheme) {
@@ -2269,7 +2269,7 @@ void init_colors()
 /* ------------------------------------------------------------------------ */
 /* hex_edit - Allow the user to edit the page by entering hex digits        */
 /* ------------------------------------------------------------------------ */
-void hex_edit(int *exitch)
+static void hex_edit(int *exitch)
 {
 	int left_off;
 	int ch;
@@ -2325,7 +2325,7 @@ void hex_edit(int *exitch)
 /* ------------------------------------------------------------------------ */
 /* page up                                                                  */
 /* ------------------------------------------------------------------------ */
-void pageup(void)
+static void pageup(void)
 {
 	if (dmode == EXTENDED_MODE) {
 		int dsplines = termlines - 6;
@@ -2359,7 +2359,7 @@ void pageup(void)
 /* ------------------------------------------------------------------------ */
 /* page down                                                                */
 /* ------------------------------------------------------------------------ */
-void pagedn(void)
+static void pagedn(void)
 {
 	if (dmode == EXTENDED_MODE) {
 		int dsplines = termlines - 6;
@@ -2387,7 +2387,7 @@ void pagedn(void)
 /* ------------------------------------------------------------------------ */
 /* jump - jump to the address the cursor is on                              */
 /* ------------------------------------------------------------------------ */
-void jump(void)
+static void jump(void)
 {
 	if (dmode == HEX_MODE) {
 		unsigned int col2;
@@ -2417,30 +2417,30 @@ void jump(void)
 /* ------------------------------------------------------------------------ */
 /* print block type                                                         */
 /* ------------------------------------------------------------------------ */
-void print_block_type(uint64_t block, int type, const char *additional)
+static void print_block_type(uint64_t tblock, int type, const char *additional)
 {
 	if (type <= GFS2_METATYPE_QC)
 		printf("%d (Block %lld is type %d: %s%s)\n", type,
-		       (unsigned long long)block, type, block_type_str[type],
+		       (unsigned long long)tblock, type, block_type_str[type],
 		       additional);
 	else
 		printf("%d (Block %lld is type %d: unknown%s)\n", type,
-		       (unsigned long long)block, type, additional);
+		       (unsigned long long)tblock, type, additional);
 }
 
 /* ------------------------------------------------------------------------ */
 /* find_print block type                                                    */
 /* ------------------------------------------------------------------------ */
-void find_print_block_type(void)
+static void find_print_block_type(void)
 {
-	uint64_t block;
+	uint64_t tblock;
 	struct gfs2_buffer_head *bh;
 	int type;
 
-	block = blockstack[blockhist % BLOCK_STACK_SIZE].block;
-	bh = bread(&sbd.buf_list, block);
+	tblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
+	bh = bread(&sbd.buf_list, tblock);
 	type = get_block_type(bh->b_data);
-	print_block_type(block, type, "");
+	print_block_type(tblock, type, "");
 	brelse(bh, NOT_UPDATED);
 	gfs2_rgrp_free(&sbd.rglist, not_updated);
 	exit(0);
@@ -2449,17 +2449,17 @@ void find_print_block_type(void)
 /* ------------------------------------------------------------------------ */
 /* Find and print the resource group associated with a given block          */
 /* ------------------------------------------------------------------------ */
-void find_print_block_rg(int bitmap)
+static void find_print_block_rg(int bitmap)
 {
-	uint64_t block, rgblock;
+	uint64_t rblock, rgblock;
 	int i;
 	struct rgrp_list *rgd;
 
-	block = blockstack[blockhist % BLOCK_STACK_SIZE].block;
-	if (block == sbd.sb_addr)
+	rblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
+	if (rblock == sbd.sb_addr)
 		printf("0 (the superblock is not in the bitmap)\n");
 	else {
-		rgd = gfs2_blk2rgrpd(&sbd, block);
+		rgd = gfs2_blk2rgrpd(&sbd, rblock);
 		if (rgd) {
 			rgblock = rgd->ri.ri_addr;
 			if (bitmap) {
@@ -2467,7 +2467,7 @@ void find_print_block_rg(int bitmap)
 
 				for (i = 0; i < rgd->ri.ri_length; i++) {
 					bits = &(rgd->bits[i]);
-					if (block - rgd->ri.ri_data0 <
+					if (rblock - rgd->ri.ri_data0 <
 					    ((bits->bi_start + bits->bi_len) *
 					     GFS2_NBBY)) {
 						break;
@@ -2492,9 +2492,9 @@ void find_print_block_rg(int bitmap)
 /* ------------------------------------------------------------------------ */
 /* find/change/print block allocation (what the bitmap says about block)    */
 /* ------------------------------------------------------------------------ */
-void find_change_block_alloc(int *newval)
+static void find_change_block_alloc(int *newval)
 {
-	uint64_t block;
+	uint64_t ablock;
 	int type;
 	struct rgrp_list *rgd;
 
@@ -2509,19 +2509,19 @@ void find_change_block_alloc(int *newval)
 		gfs2_rgrp_free(&sbd.rglist, not_updated);
 		exit(-1);
 	}
-	block = blockstack[blockhist % BLOCK_STACK_SIZE].block;
-	if (block == sbd.sb_addr)
+	ablock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
+	if (ablock == sbd.sb_addr)
 		printf("3 (the superblock is not in the bitmap)\n");
 	else {
 		if (newval) {
-			if (gfs2_set_bitmap(&sbd, block, *newval))
+			if (gfs2_set_bitmap(&sbd, ablock, *newval))
 				printf("-1 (block invalid or part of an rgrp).\n");
 			else
 				printf("%d\n", *newval);
 		} else {
-			rgd = gfs2_blk2rgrpd(&sbd, block);
+			rgd = gfs2_blk2rgrpd(&sbd, ablock);
 			if (rgd) {
-				type = gfs2_get_bitmap(&sbd, block, rgd);
+				type = gfs2_get_bitmap(&sbd, ablock, rgd);
 				printf("%d (%s)\n", type, allocdesc[type]);
 				gfs2_rgrp_relse(rgd, not_updated);
 			} else {
@@ -2540,20 +2540,20 @@ void find_change_block_alloc(int *newval)
 /* ------------------------------------------------------------------------ */
 /* process request to print a certain field from a previously pushed block  */
 /* ------------------------------------------------------------------------ */
-void process_field(const char *field, uint64_t *newval, int print_field)
+static void process_field(const char *field, uint64_t *newval, int print_field)
 {
-	uint64_t block;
+	uint64_t fblock;
 	struct gfs2_buffer_head *bh;
 	int type;
 	struct gfs2_rgrp rg;
 
-	block = blockstack[blockhist % BLOCK_STACK_SIZE].block;
+	fblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
 	bh = bread(&sbd.buf_list, block);
 	type = get_block_type(bh->b_data);
 	switch (type) {
 	case GFS2_METATYPE_SB:
 		if (print_field)
-			print_block_type(block, type,
+			print_block_type(fblock, type,
 					 " which is not implemented");
 		break;
 	case GFS2_METATYPE_RG:
@@ -2570,7 +2570,7 @@ void process_field(const char *field, uint64_t *newval, int print_field)
 		break;
 	case GFS2_METATYPE_RB:
 		if (print_field)
-			print_block_type(block, type,
+			print_block_type(fblock, type,
 					 " which is not implemented");
 		break;
 	case GFS2_METATYPE_DI:
@@ -2596,7 +2596,7 @@ void process_field(const char *field, uint64_t *newval, int print_field)
 	case GFS2_METATYPE_QC:
 	default:
 		if (print_field)
-			print_block_type(block, type,
+			print_block_type(fblock, type,
 					 " which is not implemented");
 		break;
 	}
@@ -2607,7 +2607,7 @@ void process_field(const char *field, uint64_t *newval, int print_field)
 /* ------------------------------------------------------------------------ */
 /* interactive_mode - accept keystrokes from user and display structures    */
 /* ------------------------------------------------------------------------ */
-void interactive_mode(void)
+static void interactive_mode(void)
 {
 	int ch, Quit;
 
@@ -2872,11 +2872,11 @@ void interactive_mode(void)
 /* ------------------------------------------------------------------------ */
 /* gfs_log_header_in - read in a gfs1-style log header                      */
 /* ------------------------------------------------------------------------ */
-void gfs_log_header_in(struct gfs_log_header *head, char *buf)
+void gfs_log_header_in(struct gfs_log_header *head, char *inbuf)
 {
-	struct gfs_log_header *str = (struct gfs_log_header *) buf;
+	struct gfs_log_header *str = (struct gfs_log_header *) inbuf;
 
-	gfs2_meta_header_in(&head->lh_header, buf);
+	gfs2_meta_header_in(&head->lh_header, inbuf);
 
 	head->lh_flags = be32_to_cpu(str->lh_flags);
 	head->lh_pad = be32_to_cpu(str->lh_pad);
@@ -2909,7 +2909,7 @@ void gfs_log_header_print(struct gfs_log_header *lh)
 /* print_ld_blocks - print all blocks given in a log descriptor             */
 /* returns: the number of block numbers it printed                          */
 /* ------------------------------------------------------------------------ */
-int print_ld_blocks(const uint64_t *b, const char *end, int start_line)
+static int print_ld_blocks(const uint64_t *b, const char *end, int start_line)
 {
 	int bcount = 0, i = 0;
 	static char str[256];
@@ -2941,7 +2941,7 @@ int print_ld_blocks(const uint64_t *b, const char *end, int start_line)
 /* fsck_readi - same as libgfs2's gfs2_readi, but sets absolute block #     */
 /*              of the first bit of data read.                              */
 /* ------------------------------------------------------------------------ */
-int fsck_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
+static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
 	       unsigned int size, uint64_t *abs_block)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -2955,18 +2955,18 @@ int fsck_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
 	int copied = 0;
 
 	*abs_block = 0;
-	if (offset >= ip->i_di.di_size)
+	if (roffset >= ip->i_di.di_size)
 		return 0;
-	if ((offset + size) > ip->i_di.di_size)
-		size = ip->i_di.di_size - offset;
+	if ((roffset + size) > ip->i_di.di_size)
+		size = ip->i_di.di_size - roffset;
 	if (!size)
 		return 0;
 	if (isdir) {
-		o = offset % sdp->sd_jbsize;
-		lblock = offset / sdp->sd_jbsize;
+		o = roffset % sdp->sd_jbsize;
+		lblock = roffset / sdp->sd_jbsize;
 	} else {
-		lblock = offset >> sdp->sd_sb.sb_bsize_shift;
-		o = offset & (sdp->bsize - 1);
+		lblock = roffset >> sdp->sd_sb.sb_bsize_shift;
+		o = roffset & (sdp->bsize - 1);
 	}
 
 	if (!ip->i_di.di_height) /* inode_is_stuffed */
@@ -2990,10 +2990,10 @@ int fsck_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
 		} else
 			bh = NULL;
 		if (bh) {
-			memcpy(buf, bh->b_data + o, amount);
+			memcpy(rbuf, bh->b_data + o, amount);
 			brelse(bh, not_updated);
 		} else {
-			memset(buf, 0, amount);
+			memset(rbuf, 0, amount);
 		}
 		copied += amount;
 		lblock++;
@@ -3002,7 +3002,7 @@ int fsck_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
 	return copied;
 }
 
-void check_journal_wrap(uint64_t seq, uint64_t *highest_seq)
+static void check_journal_wrap(uint64_t seq, uint64_t *highest_seq)
 {
 	if (seq < *highest_seq) {
 		print_gfs2("------------------------------------------------"
@@ -3020,7 +3020,7 @@ void check_journal_wrap(uint64_t seq, uint64_t *highest_seq)
 /* ------------------------------------------------------------------------ */
 /* dump_journal - dump a journal file's contents.                           */
 /* ------------------------------------------------------------------------ */
-void dump_journal(const char *journal)
+static void dump_journal(const char *journal)
 {
 	struct gfs2_buffer_head *j_bh = NULL;
 	uint64_t jblock, j_size, jb, abs_block;
@@ -3145,7 +3145,7 @@ void dump_journal(const char *journal)
 /* ------------------------------------------------------------------------ */
 /* usage - print command line usage                                         */
 /* ------------------------------------------------------------------------ */
-void usage(void)
+static void usage(void)
 {
 	fprintf(stderr,"\nFormat is: gfs2_edit [-c 1] [-V] [-x] [-h] [identify] [-p structures|blocks][blocktype][blockalloc [val]][blockbits][blockrg][find sb|rg|rb|di|in|lf|jd|lh|ld|ea|ed|lb|13|qc][field <f>[val]] /dev/device\n\n");
 	fprintf(stderr,"If only the device is specified, it enters into hexedit mode.\n");
@@ -3220,7 +3220,7 @@ void usage(void)
 /* ------------------------------------------------------------------------ */
 /* parameterpass1 - pre-processing for command-line parameters              */
 /* ------------------------------------------------------------------------ */
-void parameterpass1(int argc, char *argv[], int i)
+static void parameterpass1(int argc, char *argv[], int i)
 {
 	if (!strcasecmp(argv[i], "-V")) {
 		printf("%s version %s (built %s %s)\n",
@@ -3271,7 +3271,7 @@ void parameterpass1(int argc, char *argv[], int i)
 /*        normals parameters, device name, etc.  The second pass is for     */
 /*        figuring out what structures to print out.                        */
 /* ------------------------------------------------------------------------ */
-void process_parameters(int argc, char *argv[], int pass)
+static void process_parameters(int argc, char *argv[], int pass)
 {
 	int i;
 	uint64_t keyword_blk;

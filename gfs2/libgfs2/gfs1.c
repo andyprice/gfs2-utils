@@ -156,7 +156,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 	free(mp);
 }
 
-int gfs1_readi(struct gfs2_inode *ip, void *buf,
+int gfs1_readi(struct gfs2_inode *ip, void *bufin,
 	       uint64_t offset, unsigned int size)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -167,6 +167,7 @@ int gfs1_readi(struct gfs2_inode *ip, void *buf,
 	int not_new = 0;
 	int journaled = fs_is_jdata(ip);
 	int copied = 0;
+	char *buf = bufin;
 
 	if (offset >= ip->i_di.di_size)
 		return 0;
@@ -328,7 +329,7 @@ int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount)
 /* ------------------------------------------------------------------------ */
 /* gfs_dinode_in */
 /* ------------------------------------------------------------------------ */
-void gfs_dinode_in(struct gfs_dinode *di, char *buf)
+static void gfs_dinode_in(struct gfs_dinode *di, char *buf)
 {
 	struct gfs_dinode *str = (struct gfs_dinode *)buf;
 

@@ -25,7 +25,8 @@
 #define BUF_SIZE 4096
 #define RANDOM(values) ((values) * (random() / (RAND_MAX + 1.0)))
 
-void make_jdata(int fd, char *value)
+static void
+make_jdata(int fd, const char *value)
 {
         int err;
         uint32_t val;
@@ -42,7 +43,8 @@ void make_jdata(int fd, char *value)
                 die( _("error doing set flags (%d): %s\n"), err, strerror(errno));
 }
 
-int rename2system(struct gfs2_sbd *sdp, char *new_dir, char *new_name)
+static int
+rename2system(struct gfs2_sbd *sdp, const char *new_dir, const char *new_name)
 {
 	char oldpath[PATH_MAX], newpath[PATH_MAX];
 	int error = 0;
@@ -190,7 +192,7 @@ print_results(struct gfs2_sbd *sdp)
 
 }
 
-int 
+static int
 create_new_inode(struct gfs2_sbd *sdp)
 {
 	char name[PATH_MAX];
@@ -217,7 +219,8 @@ create_new_inode(struct gfs2_sbd *sdp)
 	return fd;
 }
 
-void add_ir(struct gfs2_sbd *sdp)
+static void
+add_ir(struct gfs2_sbd *sdp)
 {
 	int fd;
 	char new_name[256];
@@ -247,7 +250,7 @@ void add_ir(struct gfs2_sbd *sdp)
 		new_name, error, strerror(errno));
 }
 
-void 
+static void 
 add_sc(struct gfs2_sbd *sdp)
 {
 	int fd;
@@ -279,7 +282,7 @@ add_sc(struct gfs2_sbd *sdp)
 		    new_name, error, strerror(errno));
 }
 
-void 
+static void 
 add_qc(struct gfs2_sbd *sdp)
 {
 	int fd;
@@ -345,7 +348,7 @@ add_qc(struct gfs2_sbd *sdp)
 		    new_name, error, strerror(errno));
 }
 
-void 
+static void 
 gather_info(struct gfs2_sbd *sdp)
 {
 	struct statfs statbuf;
@@ -356,7 +359,7 @@ gather_info(struct gfs2_sbd *sdp)
 	sdp->bsize = statbuf.f_bsize;
 }
 
-void 
+static void 
 find_current_journals(struct gfs2_sbd *sdp)
 {
 	char jindex[PATH_MAX];
@@ -387,7 +390,7 @@ close:
 	sdp->orig_journals = existing_journals;
 }
 
-void 
+static void 
 add_j(struct gfs2_sbd *sdp)
 {
 	int fd;

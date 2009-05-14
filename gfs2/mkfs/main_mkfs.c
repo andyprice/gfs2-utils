@@ -348,7 +348,7 @@ static void are_you_sure(struct gfs2_sbd *sdp)
  *
  */
 
-void check_mount(char *device)
+static void check_mount(char *device)
 {
 	struct stat st_buf;
 	int fd;

@@ -342,7 +342,7 @@ static int clear_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 }
 
 /* Finds all references to duplicate blocks in the metadata */
-int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_blocks *b)
+static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_blocks *b)
 {
 	struct gfs2_inode *ip;
 	struct fxn_info myfi = {b->block_no, 0, 1};
@@ -397,7 +397,7 @@ int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_blocks *b)
 	return 0;
 }
 
-int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
+static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 {
 	osi_list_t *tmp;
 	struct inode_with_dups *id;
@@ -467,8 +467,8 @@ int pass1b(struct gfs2_sbd *sbp)
 	struct gfs2_block_query q;
 	osi_list_t *tmp = NULL, *x;
 	struct metawalk_fxns find_dirents = {0};
-	find_dirents.check_dentry = &find_dentry;
 	int rc = FSCK_OK;
+	find_dirents.check_dentry = &find_dentry;
 
 	log_info( _("Looking for duplicate blocks...\n"));
 
