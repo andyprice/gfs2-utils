@@ -682,7 +682,7 @@ static int dirent_alloc(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 											  GFS2_DIRENT_SIZE(cur_name_len));
 				new->de_name_len = cpu_to_be16(name_len);
 
-				be16_to_cpu(new->de_rec_len);
+				new->de_rec_len = be16_to_cpu(new->de_rec_len);
 				dent->de_rec_len = cpu_to_be16(cur_rec_len - new->de_rec_len);
 
 				*dent_out = new;
@@ -1073,7 +1073,7 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 			break;
 	} while (gfs2_dirent_next(dip, bh, &dent) == 0);
 
-	be16_to_cpu(dent->de_rec_len);
+	dent->de_rec_len = be16_to_cpu(dent->de_rec_len);
 	dent->de_rec_len = cpu_to_be16(dent->de_rec_len +
 		sizeof(struct gfs2_dinode) - sizeof(struct gfs2_leaf));
 
