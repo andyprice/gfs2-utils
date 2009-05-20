@@ -92,7 +92,13 @@ static int get_gfs_struct_info(char *gbuf, int *block_type, int *gstruct_len)
 			*gstruct_len = sizeof(struct gfs2_meta_header);
 		break;
 	case GFS2_METATYPE_LH:   /* 8 (log header) */
-		*gstruct_len = sizeof(struct gfs2_log_header);
+		if (gfs1)
+			*gstruct_len = 512; /* gfs copies the log header
+					       twice and compares the copy,
+					       so we need to save all 512
+					       bytes of it. */
+		else
+			*gstruct_len = sizeof(struct gfs2_log_header);
 		break;
 	case GFS2_METATYPE_LD:   /* 9 (log descriptor) */
 		*gstruct_len = sbd.bsize;
