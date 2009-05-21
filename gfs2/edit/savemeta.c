@@ -443,6 +443,40 @@ static void get_journal_inode_blocks(void)
 	}
 }
 
+int next_rg_freemeta(struct rgrp_list *rgd, uint64_t *block, int first)
+{
+	struct gfs2_bitmap *bits = NULL;
+	uint32_t length = rgd->ri.ri_length;
+	uint32_t blk = (first)? 0: (uint32_t)((*block+1)-rgd->ri.ri_data0);
+	int i;
+
+	if(!first && (*block < rgd->ri.ri_data0)) {
+		log_err("next_rg_freemeta:  Start block is outside rgrp "
+			"bounds.\n");
+		exit(1);
+	}
+	for(i=0; i < length; i++){
+		bits = &rgd->bits[i];
+		if(blk < bits->bi_len*GFS2_NBBY)
+			break;
+		blk -= bits->bi_len*GFS2_NBBY;
+	}
+	for(; i < length; i++){
+		bits = &rgd->bits[i];
+		blk = gfs2_bitfit((unsigned char *)rgd->bh[i]->b_data +
+				  bits->bi_offset, bits->bi_len, blk,
+				  GFS2_BLKST_UNLINKED);
+		if(blk != BFITNOENT){
+			*block = blk + (bits->bi_start * GFS2_NBBY) + rgd->ri.ri_data0;
+			break;
+		}
+		blk=0;
+	}
+	if(i == length)
+		return -1;
+	return 0;
+}
+
 void savemeta(char *out_fn, int saveoption)
 {
 	int out_fd;
@@ -608,14 +642,22 @@ void savemeta(char *out_fn, int saveoption)
 			}
 			/* Save off the other metadata: inodes, etc. */
 			if (saveoption != 2) {
-				while (!gfs2_next_rg_meta(rgd, &block, first)) {
-					int blktype;
+				int blktype;
 
+				while (!gfs2_next_rg_meta(rgd, &block, first)) {
 					warm_fuzzy_stuff(block, FALSE, TRUE);
 					blktype = save_block(sbd.device_fd,
 							     out_fd, block);
 					if (blktype == GFS2_METATYPE_DI)
 						save_inode_data(out_fd);
+					first = 0;
+				}
+				/* Save off the free/unlinked meta blocks too.
+				   If we don't, we may run into metadata
+				   allocation issues. */
+				while (!next_rg_freemeta(rgd, &block, first)) {
+					blktype = save_block(sbd.device_fd,
+							     out_fd, block);
 					first = 0;
 				}
 			}
