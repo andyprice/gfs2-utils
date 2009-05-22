@@ -28,8 +28,6 @@
 #define FITHAW          _IOWR('X', 120, int)    /* Thaw */
 #endif
 
-#define SYS_BASE "/sys/fs/gfs2" /* FIXME: Look in /proc/mounts to find this */
-
 /**
  * do_freeze - freeze a GFS2 filesystem
  * @argc:
@@ -75,8 +73,7 @@ void do_freeze(int argc, char **argv)
  *
  */
 
-void
-print_lockdump(int argc, char **argv)
+void print_lockdump(int argc, char **argv)
 {
 	char path[PATH_MAX];
 	char *name, line[PATH_MAX];
@@ -137,26 +134,12 @@ print_lockdump(int argc, char **argv)
 }
 
 /**
- * margs -
- * @argc:
- * @argv:
- *
- */
-
-void
-margs(int argc, char **argv)
-{
-	die( _("margs not implemented\n"));
-}
-
-/**
  * print_flags - print the flags in a dinode's di_flags field
  * @di: the dinode structure
  *
  */
 
-static void
-print_flags(struct gfs2_dinode *di)
+static void print_flags(struct gfs2_dinode *di)
 {
 	if (di->di_flags) {
 		printf( _("Flags:\n"));
@@ -183,8 +166,7 @@ print_flags(struct gfs2_dinode *di)
  * Use FS_XXX_FL flags defined in <linux/fs.h> which correspond to
  * GFS2_DIF_XXX
  */
-static unsigned int 
-get_flag_from_name(char *name)
+static unsigned int get_flag_from_name(char *name)
 {
 	if (strncmp(name, "jdata", 5) == 0)
 		return FS_JOURNAL_DATA_FL;
@@ -208,8 +190,7 @@ get_flag_from_name(char *name)
  * @argv:
  *
  */
-void
-set_flag(int argc, char **argv)
+void set_flag(int argc, char **argv)
 {
 	struct gfs2_dinode di;
 	char *flstr;
@@ -247,69 +228,13 @@ set_flag(int argc, char **argv)
 }
 
 /**
- * print_args -
- * @argc:
- * @argv:
- *
- */
-
-
-void
-print_args(int argc, char **argv)
-{
-	char *fs;
-	DIR *d;
-	struct dirent *de;
-	char path[PATH_MAX];
-	struct gfs2_sbd sbd;
-
-	if (optind == argc)
-		die( _("Usage: gfs2_tool getargs <mountpoint>\n"));
-
-	sbd.path_name = argv[optind];
-	if (check_for_gfs2(&sbd)) {
-		if (errno == EINVAL)
-			fprintf(stderr, _("Not a valid GFS2 mount point: %s\n"),
-					sbd.path_name);
-		else
-			fprintf(stderr, "%s\n", strerror(errno));
-		exit(-1);
-	}
-	fs = mp2fsname(argv[optind]);
-	if (!fs) {
-		fprintf(stderr, _("Couldn't find GFS2 filesystem mounted at %s\n"),
-				argv[optind]);
-		exit(-1);
-	}
-
-	memset(path, 0, PATH_MAX);
-	snprintf(path, PATH_MAX - 1, "%s/%s/args/", SYS_BASE, fs);
-
-	d = opendir(path);
-	if (!d)
-		die( _("can't open %s: %s\n"), path, strerror(errno));
-
-	while((de = readdir(d))) {
-		if (de->d_name[0] == '.')
-			continue;
-
-		snprintf(path, PATH_MAX - 1, "args/%s", de->d_name);
-		printf("%s %s\n", de->d_name, get_sysfs(fs, path));
-	}
-
-	closedir(d);
-	
-}
-
-/**
  * print_journals - print out the file system journal information
  * @argc:
  * @argv:
  *
  */
 
-void
-print_journals(int argc, char **argv)
+void print_journals(int argc, char **argv)
 {
 	struct gfs2_sbd sbd;
 	DIR *jindex;
@@ -377,117 +302,13 @@ print_journals(int argc, char **argv)
 }
 
 /**
- * print_list - print the list of mounted filesystems
- *
- */
-
-#define LIST_SIZE 1048576
-
-void
-print_list(void)
-{
-	char path[PATH_MAX];
-	char s_id[PATH_MAX];
-	char *list, *p;
-	int rv, fd, x = 0, total = 0;
-	DIR *d;
-	struct dirent *de;
-
-	list = malloc(LIST_SIZE);
-	if (!list)
-		die("out of memory\n");
-
-	memset(path, 0, PATH_MAX);
-	snprintf(path, PATH_MAX, "%s", SYS_BASE);
-
-	d = opendir(path);
-	if (!d)
-		die( _("can't open %s: %s\n"), SYS_BASE, strerror(errno));
-
-	while ((de = readdir(d))) {
-		if (de->d_name[0] == '.')
-			continue;
-
-		memset(path, 0, PATH_MAX);
-		snprintf(path, PATH_MAX, "%s/%s/id", SYS_BASE, de->d_name);
-
-		fd = open(path, O_RDONLY);
-		if (fd < 0)
-			die("can't open %s: %s\n", path, strerror(errno));
-
-		memset(s_id, 0, PATH_MAX);
-
-		rv = read(fd, s_id, sizeof(s_id));
-		if (rv < 0)
-			die("can't read %s: %s\n", path, strerror(errno));
-
-		close(fd);
-
-		p = strstr(s_id, "\n");
-		if (p)
-			*p = '\0';
-
-		total += strlen(s_id) + strlen(de->d_name) + 2;
-		if (total > LIST_SIZE)
-			break;
-
-		x += sprintf(list + x, "%s %s\n", s_id, de->d_name);
-
-	}
-
-	closedir(d);
-	printf("%s", list);
-	free(list);
-}
-
-/**
- * do_shrink - shrink the inode cache for a filesystem
- * @argc:
- * @argv:
- *
- */
-
-void
-do_shrink(int argc, char **argv)
-{
-	char *fs;
-	struct gfs2_sbd sbd;
-
-	if (optind == argc)
-		die("Usage: gfs2_tool shrink <mountpoint>\n");
-
-	sbd.path_name = argv[optind];
-	if (check_for_gfs2(&sbd)) {
-		if (errno == EINVAL)
-			fprintf(stderr, _("Not a valid GFS2 mount point: %s\n"),
-					sbd.path_name);
-		else
-			fprintf(stderr, "%s\n", strerror(errno));
-		exit(-1);
-	}
-	fs = mp2fsname(argv[optind]);
-	if (!fs) {
-		fprintf(stderr, _("Couldn't find GFS2 filesystem mounted at %s\n"),
-				argv[optind]);
-		exit(-1);
-	}
-	
-	if (set_sysfs(fs, "shrink", "1")) {
-		fprintf(stderr, _("Error writing to sysfs shrink file: %s\n"),
-				strerror(errno));
-		exit(-1);
-	}
-}
-
-/**
  * do_withdraw - withdraw a GFS2 filesystem
  * @argc:
  * @argv:
  *
  */
 
-void
-do_withdraw(int argc, char **argv)
+void do_withdraw(int argc, char **argv)
 {
 	char *name;
 	struct gfs2_sbd sbd;

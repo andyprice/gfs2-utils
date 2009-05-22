@@ -8,7 +8,10 @@ gfs2_tool - interface to gfs2 ioctl/sysfs calls
 \fICOMMAND\fR [\fIOPTION\fR]...
 
 .SH DESCRIPTION
-gfs2_tool is an interface to a variety of the GFS2 ioctl/sysfs calls.
+gfs2_tool is an interface to a variety of the GFS2 ioctl/sysfs calls. Some
+of the functions of gfs_tool have been replaced by standard system tools
+such as mount and chattr, so gfs2_tool doesn't have as many options
+as gfs_tool used to.
 
 .SH COMMANDS
 .TP
@@ -25,47 +28,21 @@ printed is more detailed than a standard "df".
 \fBfreeze\fP \fIMountPoint\fR
 Freeze (quiesce) a GFS2 cluster.
 .TP
-\fBgetargs\fP \fIMountPoint\fR
-Get the GFS-specific mount arguments used to mount a filesystem.
-.\".TP
-.\"\fBgetsb\fP \fIMountPoint\fR
-.\"Print out the superblock of a mounted filesystem.
-.TP
 \fBgettune\fP \fIMountPoint\fR
 Print out the current values of the tuning parameters in a running
-filesystem.
+filesystem. A better source of similar (more comprehensive) information
+is that in the /proc/mounts file. Running the mount command with no
+arguments will also provide the same information. This option is
+considered obsolete and will probably be removed at some future
+date.
 .TP
 \fBjournals\fP \fIMountPoint\fR
 Print out information about the journals in a mounted filesystem.
-.\".TP
-.\"\fBjindex\fP \fIMountPoint\fR
-.\"Print out the journal index of a mounted filesystem.
-.\".TP
-.\"\fBlayout\fP \fIFile\fR \fI[buffersize]\fR
-.\"Print out on-disk layout information about a file or directory.
-.\"Buffersize is the size of the buffer (in bytes) that gfs2_tool allocates
-.\"to store the file's metadata during processing.  It defaults to 4194304
-.\"bytes.  If you are printing a very big directory you may need to specify
-.\"a bigger size.
-.TP
-\fBlist\fP
-List the currently mounted GFS2 filesystems.  Each line represents
-a filesystem.  The columns represent (in order): 1) An identifier that
-represents the mounted filesystem. 2) The name of the
-device that holds the filesystem (well, the name as the Linux
-kernel knows it).
 .TP
 \fBlockdump\fP \fIMountPoint\fR
 Print out information about the locks this machine holds for a given
-filesystem.
-.\".TP
-.\"\fBmargs\fP \fIarguments\fR
-.\"This loads arguments into the module what will override the mount
-.\"options passed with the -o field on the next mount.  See gfs2_mount(8).
-.\".TP
-.\"\fBquota\fP \fIMountPoint\fR
-.\"Print out the quota file of a mounted filesystem.  Also see
-.\"the "gfs2_quota list" command.
+filesystem. This information is also available via the debugfs
+glock dump file.
 .\".TP
 .\"\fBrindex\fP \fIMountPoint\fR
 .\"Print out the resource group index of a mounted filesystem.
@@ -101,8 +78,9 @@ Print out the superblock.
 .TP
 \fBsetflag\fP \fIFlag\fR \fIFile1\fR \fIFile2\fR \fI...\fR 
 Set an attribute flag on a file.  The currently supported flags are 
-jdata, immutable, appendonly, noatime, and sync.  In most cases, the 
-chattr command may be used rather than gfs2_tool to set attributes.
+jdata, immutable, appendonly, noatime, and sync.  The 
+chattr command is the preferred way to set attributes on
+files.
 
 The \fIjdata\fR flag causes all the data written to a file
 to be journaled.  If the \fIjdata\fR flag is set for a directory,
@@ -125,10 +103,9 @@ stable storage immediately.  Same as chattr +S.
 .TP
 \fBsettune\fP \fIMountPoint\fR \fIparameter\fR \fInewvalue\fR
 Set the value of tuning parameter.  Use \fBgettune\fP for a listing of 
-tunable parameters.
-.TP
-\fBshrink\fP \fIMountPoint\fR
-Causes any unused locks to be thrown out of memory.
+tunable parameters. The mount -oremount command is the preferred way
+to set the values of tunable parameters. At some future stage, when
+all parameters can be set via mount, this option will be removed.
 .\".TP
 .\"\fBstat\fP \fIFile\fR
 .\"Print out extended stat information about a file.

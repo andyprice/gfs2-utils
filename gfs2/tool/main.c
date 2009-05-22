@@ -185,26 +185,18 @@ int main(int argc, char *argv[])
 		print_df(argc, argv);
 	else if (strcmp(action, "freeze") == 0)
 		do_freeze(argc, argv);
-	else if (strcmp(action, "getargs") == 0)
-		print_args(argc, argv);
 	else if (strcmp(action, "gettune") == 0)
 		get_tune(argc, argv);
 	else if (strcmp(action, "journals") == 0)
 		print_journals(argc, argv);
-	else if (strcmp(action, "list") == 0)
-		print_list();
 	else if (strcmp(action, "lockdump") == 0)
 		print_lockdump(argc, argv);
-	else if (strcmp(action, "margs") == 0)
-		margs(argc, argv);
 	else if (strcmp(action, "sb") == 0)
 		do_sb(argc, argv);
 	else if (strcmp(action, "setflag") == 0)
 		set_flag(argc, argv);
 	else if (strcmp(action, "settune") == 0)
 		set_tune(argc, argv);
-	else if (strcmp(action, "shrink") == 0)
-		do_shrink(argc, argv);
 	else if (strcmp(action, "unfreeze") == 0)
 		do_freeze(argc, argv);
 	else if (strcmp(action, "version") == 0)
