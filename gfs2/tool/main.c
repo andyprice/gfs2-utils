@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
 	prog_name = argv[0];
 
 	setlocale(LC_ALL, "");
-	textdomain("gfs2_tool");
+	textdomain("gfs2-utils");
 
 	if (argc < 2) {
 		print_usage();

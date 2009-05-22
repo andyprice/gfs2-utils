@@ -256,7 +256,7 @@ int main(int argc, char **argv)
 	int error = 0;
 
 	setlocale(LC_ALL, "");
-	textdomain("fsck.gfs2");
+	textdomain("gfs2-utils");
 
 	memset(sbp, 0, sizeof(*sbp));
 
