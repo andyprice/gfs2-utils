@@ -23,6 +23,11 @@
 #include "gfs2_tool.h"
 #include "iflags.h"
 
+#ifndef FIFREZE
+#define FIFREEZE        _IOWR('X', 119, int)    /* Freeze */
+#define FITHAW          _IOWR('X', 120, int)    /* Thaw */
+#endif
+
 #define SYS_BASE "/sys/fs/gfs2" /* FIXME: Look in /proc/mounts to find this */
 
 /**
@@ -32,37 +37,35 @@
  *
  */
 
-void
-do_freeze(int argc, char **argv)
+void do_freeze(int argc, char **argv)
 {
 	char *command = argv[optind - 1];
-	char *name;
+	int fd;
 
 	if (optind == argc)
 		die("Usage: gfs2_tool %s <mountpoint>\n", command);
 
-	name = mp2fsname2(argv[optind]);
-	if (!name) {
+	fd = open(argv[optind], O_NOCTTY|O_RDONLY);
+	if (fd < 0) {
 		fprintf(stderr, _("Couldn't find a GFS2 filesystem mounted at %s\n"),
 				argv[optind]);
 		exit(-1);
 	}
 
 	if (strcmp(command, "freeze") == 0) {
-		if (set_sysfs(name, "freeze", "1")) {
-			fprintf(stderr, _("Error writing to sysfs freeze file: %s\n"),
+		if (ioctl(fd, FIFREEZE, 0)) {
+			fprintf(stderr, _("Error freezing fs: %s\n"),
 					strerror(errno));
 			exit(-1);
 		}
 	} else if (strcmp(command, "unfreeze") == 0) {
-		if (set_sysfs(name, "freeze", "0")) {
-			fprintf(stderr, _("Error writing to sysfs freeze file: %s\n"),
+		if (ioctl(fd, FITHAW, 0)) {
+			fprintf(stderr, _("Error thawing fs: %s\n"),
 					strerror(errno));
 			exit(-1);
 		}
 	}
-
-	sync();
+	close(fd);
 }
 
 /**
