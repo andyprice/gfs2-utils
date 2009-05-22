@@ -175,12 +175,7 @@ do_df_one(char *path)
 
 	printf( _("  Mounted host data = \"%s\"\n"),
 	       get_sysfs(fs, "args/hostdata"));
-	printf( _("  Journal number = %s\n"), get_sysfs(fs, "lockstruct/jid"));
-
-	if (get_sysfs_uint(fs, "lockstruct/flags", &flags))
-		printf( _("  Lock module flags = (Not found: %s)\n"), strerror(errno));
-	else
-		printf( _("  Lock module flags = %x\n"), flags);
+	printf( _("  Journal number = %s\n"), get_sysfs(fs, "lock_module/jid"));
 
 	if (get_sysfs_uint(fs, "args/localflocks", &flags))
 		printf( _("  Lock flocks = (Not found: %s)\n"), strerror(errno));
