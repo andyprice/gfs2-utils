@@ -41,20 +41,6 @@ interpreted by the mount command nor by the kernel's Virtual File System.  GFS2
 and non-GFS2 options may be intermingled after the \fB-o\fP, separated by
 commas (but no spaces).
 
-As an alternative to mount command line options, you may send mount
-options to gfs2 using "gfs2_tool margs" (after loading the gfs2 kernel
-module, but before mounting GFS2).  For example, you may need to do
-this when working from an initial ramdisk \fBinitrd\fP(4).  The
-options are restricted to the ones described on this man page (no
-general \fBmount\fP(8) options will be recognized), must not be
-preceded by -o, and must be separated by commas (no spaces).  Example:
-
-# gfs2_tool margs "lockproto=lock_nolock,ignore_local_fs"
-
-Options loaded via "gfs2_tool margs" have a lifetime of only one GFS2
-mount.  If you wish to mount another GFS2 filesystem, you must set
-another group of options with "gfs2_tool margs".
-
 The options debug, acl, quota, suiddir, and data can be
 changed after mount using the "mount -o remount,option /mountpoint" command.
 The options debug, acl, and suiddir support the "no"
@@ -141,15 +127,6 @@ If you try to mount an old-version disk image, GFS2 will notify you via a syslog
 message that you need to upgrade.  Try mounting again, using the
 \fB-o upgrade\fP option.  When upgrading, only one node may mount the GFS2
 filesystem.
-.TP
-\fBnum_glockd=\fP\fINumber\fR
-Tunes GFS2 to alleviate memory pressure when rapidly acquiring many locks (e.g.
-several processes scanning through huge directory trees).  GFS2' glockd kernel
-daemon cleans up memory for no-longer-needed glocks.  Multiple instances
-of the daemon clean up faster than a single instance.  The default value is
-one daemon, with a maximum of 16.  Since this option was introduced, other
-methods of rapid cleanup have been developed within GFS2, so this option may go
-away in the future.
 .TP
 \fBacl\fP
 Enables POSIX Access Control List \fBacl\fP(5) support within GFS2.
