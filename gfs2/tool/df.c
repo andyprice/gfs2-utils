@@ -79,8 +79,7 @@ do_df_one(char *path)
 	unsigned int percentage;
 	unsigned int journals;
 	uint64_t rgrps;
-	unsigned int flags;
-	char *value, *fs;
+	char *fs;
 	int statfs_fd;
 	struct gfs2_sbd sbd;
 	char buf[GFS2_DEFAULT_BSIZE], statfs_fn[PATH_MAX];
@@ -157,35 +156,7 @@ do_df_one(char *path)
 	printf( _("  Block size = %u\n"), sbd.sd_sb.sb_bsize);
 	printf( _("  Journals = %u\n"), journals);
 	printf( _("  Resource Groups = %"PRIu64"\n"), rgrps);
-	value = get_sysfs(fs, "args/lockproto");
-	if (value)
-		printf( _("  Mounted lock proto = \"%s\"\n"),
-			value[0] ? value : sbd.sd_sb.sb_lockproto);
-	else
-		printf( _("  Mounted lock proto = (Not found: %s)\n"),
-				strerror(errno));
-
-	value = get_sysfs(fs, "args/locktable");
-	if (value)
-		printf( _("  Mounted lock table = \"%s\"\n"),
-			value[0] ? value : sbd.sd_sb.sb_locktable);
-	else
-		printf( _("  Mounted lock table = (Not found: %s)\n"),
-				strerror(errno));
-
-	printf( _("  Mounted host data = \"%s\"\n"),
-	       get_sysfs(fs, "args/hostdata"));
 	printf( _("  Journal number = %s\n"), get_sysfs(fs, "lock_module/jid"));
-
-	if (get_sysfs_uint(fs, "args/localflocks", &flags))
-		printf( _("  Lock flocks = (Not found: %s)\n"), strerror(errno));
-	else
-		printf( _("  Local flocks = %s\n"), flags ? "TRUE" : "FALSE");
-
-	if (get_sysfs_uint(fs, "args/localcaching", &flags))
-		printf( _("  Lock caching = (Not found: %s)\n"), strerror(errno));
-	else
-		printf( _("  Local caching = %s\n"), flags ? "TRUE" : "FALSE");
 
 	/* Read the master statfs file */
 	if (mount_gfs2_meta(&sbd)) {
