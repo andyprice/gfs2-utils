@@ -41,9 +41,9 @@ interpreted by the mount command nor by the kernel's Virtual File System.  GFS2
 and non-GFS2 options may be intermingled after the \fB-o\fP, separated by
 commas (but no spaces).
 
-The options debug, acl, quota, suiddir, and data can be
+The options debug, commit, discard, acl, quota, suiddir, and data can be
 changed after mount using the "mount -o remount,option /mountpoint" command.
-The options debug, acl, and suiddir support the "no"
+The options debug, quota, discard, acl, and suiddir support the "no"
 prefix.  For example, "noacl" turns off what "acl" turns on.
 
 If you have trouble mounting GFS2, check the syslog (e.g. /var/log/messages)
@@ -148,6 +148,18 @@ Turns quotas on or off for a filesystem.  Setting the quotas to be in
 the "account" state causes the per UID/GID usage statistics to be
 correctly maintained by the filesystem, limit and warn values are
 ignored.  The default value is "off".
+.TP
+\fBdiscard\fP
+Causes GFS2 to generate "discard" I/O requests for blocks which have
+been freed. These can be used by suitable hardware to implement
+thin-provisioning and similar schemes. This feature is supported
+in kernel version 2.6.30 and above.
+.TP
+\fBcommit=\fP\fIsecs\fR
+This is similar to the ext3 \fBcommit=\fP option in that it sets
+the maximum number of seconds between journal commits if there is
+dirty data in the journal. The default is 60 seconds. This option
+is only provided in kernel versions 2.6.31 and above.
 .TP
 \fBdata=\fP\fI[ordered/writeback]\fR
 When data=ordered is set, the user data modified by a transaction is

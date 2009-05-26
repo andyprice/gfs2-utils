@@ -5,7 +5,7 @@ gfs2_grow - Expand a GFS2 filesystem
 
 .SH SYNOPSIS
 .B gfs2_grow
-[\fIOPTION\fR]... <\fIDEVICE\fR|\fIMOINTPOINT\fR>...
+[\fIOPTION\fR]... <\fIDEVICE\fR|\fIMOUNTPOINT\fR>...
 
 .SH DESCRIPTION
 gfs2_grow is used to expand a GFS2 filesystem after the device
@@ -57,5 +57,10 @@ have done were it run without this flag.
 \fB-V\fP
 Version. Print out version information, then exit.
 
+.SH BUGS
+
+There is no way to shrink a GFS2 filesystem.
+
 .SH SEE ALSO
 mkfs.gfs2(8) gfs2_jadd(8)
+
