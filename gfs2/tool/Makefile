@@ -10,8 +10,7 @@ include $(OBJDIR)/make/clean.mk
 include $(OBJDIR)/make/install.mk
 include $(OBJDIR)/make/uninstall.mk
 
-OBJS=	df.o \
-	main.o \
+OBJS=	main.o \
 	misc.o \
 	ondisk.o \
 	sb.o \

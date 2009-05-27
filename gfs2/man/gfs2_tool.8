@@ -18,13 +18,6 @@ as gfs_tool used to.
 \fBclearflag\fP \fIFlag\fR \fIFile1\fR \fIFile2\fR \fI...\fR 
 Clear an attribute flag on a file. See \fBsetflag\fP for available flags.
 .TP
-\fBdf\fP \fIMountPoint\fR 
-Print out a space usage summary of a given filesystem.  The information
-printed is more detailed than a standard "df".
-.\".TP
-.\"\fBflush\fP \fIFile\fR
-.\"Sync out any dirty data for a file and drop its lock.
-.TP
 \fBfreeze\fP \fIMountPoint\fR
 Freeze (quiesce) a GFS2 cluster.
 .TP
@@ -106,9 +99,6 @@ Set the value of tuning parameter.  Use \fBgettune\fP for a listing of
 tunable parameters. The mount -oremount command is the preferred way
 to set the values of tunable parameters. At some future stage, when
 all parameters can be set via mount, this option will be removed.
-.\".TP
-.\"\fBstat\fP \fIFile\fR
-.\"Print out extended stat information about a file.
 .TP
 \fBunfreeze\fP \fIMountPoint\fR
 Unfreeze a GFS2 cluster.

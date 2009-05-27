@@ -20,11 +20,6 @@ extern int output_type;
 void print_counters(int argc, char **argv);
 
 
-/* From df.c */
-
-void print_df(int argc, char **argv);
-
-
 /* From main.c */
 
 void print_usage(void);

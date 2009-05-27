@@ -31,8 +31,6 @@ int output_type = OUTPUT_BLOCKS;
 static const char *usage = {
 	"Clear a flag on a inode\n"
 	"  gfs2_tool clearflag flag <filenames>\n"
-	"Do a GFS2 specific \"df\":\n"
-	"  gfs2_tool df <mountpoint>\n"
 	"Freeze a GFS2 cluster:\n"
 	"  gfs2_tool freeze <mountpoint>\n"
 	"Get tuneable parameters for a filesystem\n"
@@ -173,8 +171,6 @@ int main(int argc, char *argv[])
 
 	if (strcmp(action, "clearflag") == 0)
 		set_flag(argc, argv);
-	else if (strcmp(action, "df") == 0)
-		print_df(argc, argv);
 	else if (strcmp(action, "freeze") == 0)
 		do_freeze(argc, argv);
 	else if (strcmp(action, "gettune") == 0)
