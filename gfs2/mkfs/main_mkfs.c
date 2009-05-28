@@ -21,8 +21,6 @@
 #include "gfs2_mkfs.h"
 #include "libvolume_id.h"
 
-char *prog_name;
-
 /**
  * This function is for libgfs2's sake.
  */
@@ -38,11 +36,11 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 
 /**
  * print_usage - print out usage information
- *
+ * @prog_name: The name of this program
  */
 
 static void
-print_usage(void)
+print_usage(const char *prog_name)
 {
 	printf( _("Usage:\n\n"
 		"%s [options] <device> [ block-count ]\n\n"
@@ -96,7 +94,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			break;
 
 		case 'h':
-			print_usage();
+			print_usage(argv[0]);
 			exit(0);
 			break;
 
@@ -523,7 +521,7 @@ void main_mkfs(int argc, char *argv[])
 		sdp->orig_fssize >>= GFS2_BASIC_BLOCK_SHIFT;
 		if (sdp->orig_fssize > sdp->device.length) {
 			fprintf(stderr, _("%s: Specified block count is bigger "
-				"than the actual device.\n"), prog_name);
+				"than the actual device.\n"), argv[0]);
 			die( _("Device Size is %.2f GB (%"PRIu64" blocks)\n"),
 			       real_device_size / ((float)(1 << 30)),
 			       real_device_size / sdp->bsize);

@@ -23,7 +23,6 @@
 #define OP_LEAVE			5
 #define OP_JOINLEAVE			6
 
-static char *prog_name;
 static char *fsname;
 static int operation;
 static int opt_ind;
@@ -36,7 +35,7 @@ struct gfsc_mountgroup mgs[MAX_MG];
 struct gfsc_node nodes[MAX_NODES];
 
 
-static void print_usage(void)
+static void print_usage(const char *prog_name)
 {
 	printf("Usage:\n");
 	printf("\n");
@@ -64,13 +63,13 @@ static void decode_arguments(int argc, char **argv)
 			break;
 
 		case 'h':
-			print_usage();
+			print_usage(argv[0]);
 			exit(EXIT_SUCCESS);
 			break;
 
 		case 'V':
 			printf("%s %s (built %s %s)\n",
-				prog_name, RELEASE_VERSION, __DATE__, __TIME__);
+				argv[0], RELEASE_VERSION, __DATE__, __TIME__);
 			/* printf("%s\n", REDHAT_COPYRIGHT); */
 			exit(EXIT_SUCCESS);
 			break;
@@ -124,7 +123,7 @@ static void decode_arguments(int argc, char **argv)
 	}
 
 	if (!operation || !opt_ind) {
-		print_usage();
+		print_usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
@@ -439,7 +438,6 @@ static void do_dump(void)
 
 int main(int argc, char **argv)
 {
-	prog_name = argv[0];
 	decode_arguments(argc, argv);
 
 	switch (operation) {

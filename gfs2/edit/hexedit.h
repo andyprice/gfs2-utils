@@ -42,7 +42,6 @@ enum dsp_mode { HEX_MODE = 0, GFS2_MODE = 1, EXTENDED_MODE = 2 };
 #define GFS_LOG_DESC_Q          (402)    /* quota */
 #define GFS_LOG_DESC_LAST       (500)    /* final in a logged transaction */
 
-extern char *prog_name;
 extern uint64_t block;
 extern int blockhist;
 extern int edit_mode;

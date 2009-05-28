@@ -43,7 +43,6 @@
 
 #endif  /*  __BYTE_ORDER == __LITTLE_ENDIAN  */
 
-extern char *prog_name;
 extern char *fsname;
 extern int verbose;
 

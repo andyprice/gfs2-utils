@@ -17,8 +17,6 @@
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
 
-char *prog_name;
-
 /**
  * main - do everything
  * @argc:
@@ -35,10 +33,9 @@ main(int argc, char *argv[])
 	setlocale(LC_ALL, "");
 	textdomain("gfs2-utils");
 
-	prog_name = argv[0];
 	srandom(time(NULL) ^ getpid());
 
-	p = strdup(prog_name);
+	p = strdup(argv[0]);
 	whoami = basename(p);
 	
 	if (!strcmp(whoami, "gfs2_jadd"))

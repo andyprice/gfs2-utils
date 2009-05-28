@@ -19,7 +19,6 @@
 #include "gfs2_tool.h"
 #include "libgfs2.h"
 
-char *prog_name;
 char *action = NULL;
 int override = FALSE;
 int expert = FALSE;
@@ -157,8 +156,6 @@ static void decode_arguments(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-	prog_name = argv[0];
-
 	setlocale(LC_ALL, "");
 	textdomain("gfs2-utils");
 

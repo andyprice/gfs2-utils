@@ -64,6 +64,4 @@ void main_shrink(int argc, char *argv[]);
 #define FS_FL_USER_VISIBLE              0x0003DFFF /* User visible flags */
 #define FS_FL_USER_MODIFIABLE           0x000380FF /* User modifiable flags */
 
-extern char *prog_name;
-
 #endif /* __GFS2_MKFS_DOT_H__ */

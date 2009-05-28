@@ -1,6 +1,5 @@
 #include "util.h"
 
-extern char *prog_name;
 extern char *fsname;
 extern int verbose;
 static int ignoring_mtab;

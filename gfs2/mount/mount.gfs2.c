@@ -1,6 +1,5 @@
 #include "util.h"
 
-const char *prog_name;
 const char *fsname;
 int verbose, fake_mount = 0, no_mtab = 0;
 static sigset_t old_sigset;
@@ -165,12 +164,10 @@ int main(int argc, char **argv)
 	memset(&mo, 0, sizeof(mo));
 	memset(&sb, 0, sizeof(sb));
 
-	prog_name = argv[0];
+	if (!strstr(argv[0], "gfs"))
+		die("invalid mount helper name \"%s\"\n", argv[0]);
 
-	if (!strstr(prog_name, "gfs"))
-		die("invalid mount helper name \"%s\"\n", prog_name);
-
-	fsname = (strstr(prog_name, "gfs2")) ? "gfs2" : "gfs";
+	fsname = (strstr(argv[0], "gfs2")) ? "gfs2" : "gfs";
 	strcpy(mo.type, fsname);
 
 	if (argc < 2) {

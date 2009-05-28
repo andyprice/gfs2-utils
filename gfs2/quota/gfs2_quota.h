@@ -58,8 +58,6 @@ struct commandline {
 };
 typedef struct commandline commandline_t;
 
-extern char *prog_name;
-
 /*  main.c  */
 
 void do_get_super(int fd, struct gfs2_sb *sb);

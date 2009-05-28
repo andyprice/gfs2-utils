@@ -29,8 +29,6 @@
 
 #define OPTION_STRING ("bdf:g:hkl:mnsu:V")
 
-char *prog_name;
-
 /**
  * This function is for libgfs2's sake.
  */
@@ -46,11 +44,11 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 
 /**
  * print_usage - print usage info to the user
- *
+ * @prog_name: The name of this program
  */
 
 static void
-print_usage(void)
+print_usage(const char *prog_name)
 {
 	printf("Usage:\n");
 	printf("\n");
@@ -153,7 +151,7 @@ decode_arguments(int argc, char *argv[], commandline_t *comline)
 			break;
 
 		case 'h':
-			print_usage();
+			print_usage(argv[0]);
 			exit(EXIT_SUCCESS);
 			break;
 
@@ -1031,8 +1029,6 @@ main(int argc, char *argv[])
 {
     struct gfs2_sbd sbd, *sdp = &sbd;
 	commandline_t comline;
-
-	prog_name = argv[0];
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	memset(&comline, 0, sizeof(commandline_t));

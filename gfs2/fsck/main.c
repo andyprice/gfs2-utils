@@ -26,7 +26,6 @@ int errors_found = 0, errors_corrected = 0;
 const char *pass = "";
 uint64_t last_data_block;
 uint64_t first_data_block;
-const char *prog_name = "gfs2_fsck"; /* needed by libgfs2 */
 
 /* This function is for libgfs2's sake.                                      */
 void print_it(const char *label, const char *fmt, const char *fmt2, ...)

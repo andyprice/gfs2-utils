@@ -6,7 +6,6 @@
 #define OUTPUT_K      1
 #define OUTPUT_HUMAN  2
 
-extern char *prog_name;
 extern char *action;
 extern int override;
 extern int expert;

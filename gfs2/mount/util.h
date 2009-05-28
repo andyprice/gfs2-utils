@@ -23,20 +23,19 @@
 
 #define die(fmt, args...) \
 do { \
-	fprintf(stderr, "%s: ", prog_name); \
 	fprintf(stderr, fmt, ##args); \
 	exit(EXIT_FAILURE); \
 } while (0)
 
 #define warn(fmt, args...) \
 do { \
-	fprintf(stderr, "%s: " fmt "\n", prog_name, ##args); \
+	fprintf(stderr, fmt "\n", ##args); \
 } while (0)
 
 #define log_debug(fmt, args...) \
 do { \
 	if (verbose) \
-		printf("%s: " fmt "\n", prog_name, ##args); \
+		printf(fmt "\n", ##args); \
 } while (0)
 
 #define do_read(fd, buff, len) \

@@ -63,10 +63,10 @@ rename2system(struct gfs2_sbd *sdp, const char *new_dir, const char *new_name)
 
 /**
  * print_usage - print out usage information
- *
+ * @prog_name: The name of this program
  */
 
-static void print_usage(void)
+static void print_usage(const char *prog_name)
 {
 	printf( _("Usage:\n\n"
 		"%s [options] /path/to/filesystem\n\n"
@@ -104,7 +104,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			sdp->debug = TRUE;
 			break;
 		case 'h':
-			print_usage();
+			print_usage(argv[0]);
 			exit(0);
 			break;
 		case 'J':

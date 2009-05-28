@@ -131,7 +131,6 @@ int seconds;
 struct timeval tv;
 uint64_t dirs_fixed;
 uint64_t dirents_fixed;
-const char *prog_name = "gfs2_convert"; /* needed by libgfs2 */
 struct gfs1_jindex *sd_jindex = NULL;    /* gfs1 journal index in memory */
 int gfs2_inptrs;
 uint64_t gfs2_heightsize[GFS2_MAX_META_HEIGHT];
