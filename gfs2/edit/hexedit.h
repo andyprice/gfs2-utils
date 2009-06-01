@@ -80,6 +80,7 @@ extern int editing;
 extern uint64_t temp_blk;
 extern uint64_t starting_blk;
 extern const char *block_type_str[15];
+extern int dsplines;
 
 struct gfs_jindex {
         uint64_t ji_addr;       /* starting block of the journal */

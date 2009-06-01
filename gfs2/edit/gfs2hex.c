@@ -69,6 +69,8 @@ int editing = 0;
 int insert = 0;
 const char *termtype;
 WINDOW *wind;
+int dsplines = 0;
+
 const char *block_type_str[15] = {
 	"Clump",
 	"Superblock",
@@ -390,7 +392,7 @@ void do_leaf_extended(char *dlebuf, struct iinfo *indir)
 	struct gfs2_dirent de;
 
 	x = 0;
-	memset(indir, 0, sizeof(indir));
+	memset(indir, 0, sizeof(*indir));
 	/* Directory Entries: */
 	for (i = sizeof(struct gfs2_leaf); i < sbd.bsize;
 	     i += de.de_rec_len) {

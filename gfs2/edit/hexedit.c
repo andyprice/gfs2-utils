@@ -1285,19 +1285,19 @@ static void print_inode_type(__be16 de_type)
 /* ------------------------------------------------------------------------ */
 static int display_leaf(struct iinfo *ind)
 {
-	int start_line, total_dirents = 0;
+	int start_line, total_dirents = start_row[dmode];
 	int d;
 
 	eol(0);
 	if (gfs2_struct_type == GFS2_METATYPE_SB)
 		print_gfs2("The superblock has 2 directories");
 	else
-		print_gfs2("This directory contains %d directory entries.",
+		print_gfs2("This directory block contains %d directory entries.",
 			   ind->ii[0].dirents);
 
 	start_line = line;
-	for (d = 0; d < ind->ii[0].dirents; d++) {
-		if (termlines && d >= termlines - start_line - 1
+	for (d = start_row[dmode]; d < ind->ii[0].dirents; d++) {
+		if (termlines && d >= termlines - start_line - 2
 		    + start_row[dmode])
 			break;
 		total_dirents++;
@@ -1408,6 +1408,7 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_
 		eol(0);
 	}
 	start_line = line;
+	dsplines = termlines - line - 1;
 	for (pndx = start_row[dmode];
 		 (!termlines || pndx < termlines - start_line - 1
 		  + start_row[dmode]) && pndx < indblocks;
@@ -2328,16 +2329,14 @@ static void hex_edit(int *exitch)
 static void pageup(void)
 {
 	if (dmode == EXTENDED_MODE) {
-		int dsplines = termlines - 6;
-		
-		if (edit_row[dmode] - (dsplines / lines_per_row[dmode]) > 0) {
-			start_row[dmode] -= (dsplines / lines_per_row[dmode]);
+		if (edit_row[dmode] - (dsplines / lines_per_row[dmode]) > 0)
 			edit_row[dmode] -= (dsplines / lines_per_row[dmode]);
-		}
-		else {
-			start_row[dmode] = 0;
+		else
 			edit_row[dmode] = 0;
-		}
+		if (start_row[dmode] - (dsplines / lines_per_row[dmode]) > 0)
+			start_row[dmode] -= (dsplines / lines_per_row[dmode]);
+		else
+			start_row[dmode] = 0;
 	}
 	else {
 		start_row[dmode] = edit_row[dmode] = 0;
@@ -2362,15 +2361,16 @@ static void pageup(void)
 static void pagedn(void)
 {
 	if (dmode == EXTENDED_MODE) {
-		int dsplines = termlines - 6;
-
-		if ((edit_row[dmode] + dsplines) / lines_per_row[dmode] + 1 <
+		if ((edit_row[dmode] + dsplines) / lines_per_row[dmode] + 1 <=
 		    end_row[dmode]) {
 			start_row[dmode] += dsplines / lines_per_row[dmode];
 			edit_row[dmode] += dsplines / lines_per_row[dmode];
-		}
-		else
+		} else {
 			edit_row[dmode] = end_row[dmode] - 1;
+			while (edit_row[dmode] - start_row[dmode]
+			       + 1 > last_entry_onscreen[dmode])
+				start_row[dmode]++;
+		}
 	}
 	else {
 		start_row[dmode] = edit_row[dmode] = 0;
@@ -2725,7 +2725,8 @@ static void interactive_mode(void)
 		case '+':
 			if (dmode == EXTENDED_MODE) {
 				if (edit_row[dmode] + 1 < end_row[dmode]) {
-					if (edit_row[dmode] >= last_entry_onscreen[dmode])
+					if (edit_row[dmode] - start_row[dmode]
+					    + 1 > last_entry_onscreen[dmode])
 						start_row[dmode]++;
 					edit_row[dmode]++;
 				}
@@ -2817,7 +2818,6 @@ static void interactive_mode(void)
 		/* --------------------------------------------------------- */
 		case 0x168:
 			if (dmode == EXTENDED_MODE) {
-				int dsplines = termlines - 6;
 				int ents_per_screen = dsplines /
 					lines_per_row[dmode];
 
