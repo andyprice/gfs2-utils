@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <libintl.h>
+#include <locale.h>
 #define _(String) gettext(String)
 
 #include <linux/types.h>

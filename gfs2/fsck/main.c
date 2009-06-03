@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <signal.h>
 #include <libintl.h>
+#include <locale.h>
 #define _(String) gettext(String)
 
 #include "copyright.cf"
