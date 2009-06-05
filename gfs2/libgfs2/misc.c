@@ -180,7 +180,7 @@ int mount_gfs2_meta(struct gfs2_sbd *sdp)
 	if(!mkdtemp(sdp->metafs_path))
 		return -1;
 
-	ret = mount(sdp->path_name, sdp->metafs_path, "gfs2meta", 0, NULL);
+	ret = mount(sdp->path_name, sdp->metafs_path, "gfs2", 0, "meta");
 	if (ret) {
 		rmdir(sdp->metafs_path);
 		return -1;
