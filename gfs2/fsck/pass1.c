@@ -699,27 +699,6 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 		return -1;
 	}
 
-	/* FIXME: fix height and depth here - wasn't implemented in
-	 * old fsck either, so no biggy... */
-	if (ip->i_di.di_height < compute_height(sdp, ip->i_di.di_size)){
-		log_warn( _("Dinode #%llu (0x%llx) has bad height  "
-			 "Found %u, Expected >= %u\n"),
-			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 ip->i_di.di_height,
-			 compute_height(sdp, ip->i_di.di_size));
-			/* once implemented, remove continue statement */
-		log_warn( _("Marking inode invalid\n"));
-		if(gfs2_block_set(sdp, bl, block, gfs2_meta_inval)) {
-			stack;
-			fsck_inode_put(ip, f);
-			return -1;
-		}
-		gfs2_set_bitmap(sdp, block, GFS2_BLKST_FREE);
-		fsck_inode_put(ip, f);
-		return 0;
-	}
-
 	if (S_ISDIR(ip->i_di.di_mode) &&
 	    (ip->i_di.di_flags & GFS2_DIF_EXHASH)) {
 		if (((1 << ip->i_di.di_depth) * sizeof(uint64_t)) != ip->i_di.di_size){
