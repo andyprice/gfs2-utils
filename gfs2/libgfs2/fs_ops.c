@@ -47,7 +47,7 @@ void inode_put(struct gfs2_inode *ip, enum update_flags is_updated)
 {
 	if (is_updated)
 		gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
-	brelse(ip->i_bh, updated);
+	brelse(ip->i_bh, is_updated);
 	free(ip);
 }
 

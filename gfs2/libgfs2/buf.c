@@ -176,7 +176,7 @@ void brelse(struct gfs2_buffer_head *bh, enum update_flags is_updated)
 {
     /* We can't just say b_changed = updated because we don't want to     */
 	/* set it FALSE if it's TRUE until we write the changed data to disk. */
-	if (updated)
+	if (is_updated)
 		bh->b_changed = TRUE;
 	if (!bh->b_count) {
 		fprintf(stderr, "buffer count underflow for block %" PRIu64
