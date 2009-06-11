@@ -21,11 +21,9 @@ OBJS=	main.o \
 
 CFLAGS += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -D_GNU_SOURCE
 CFLAGS += -I${KERNEL_SRC}/include/
-CFLAGS += -I${volidincdir}
 CFLAGS += -I$(S)/../include -I$(S)/../libgfs2
 CFLAGS += -I${incdir}
 
-LDFLAGS += -L${volidlibdir} -lvolume_id
 LDFLAGS += -L../libgfs2 -lgfs2
 LDFLAGS += -L${libdir}
 
