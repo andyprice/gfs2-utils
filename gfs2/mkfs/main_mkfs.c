@@ -12,6 +12,8 @@
 #include <stdarg.h>
 #include <mntent.h>
 #include <ctype.h>
+#include <poll.h>
+#include <signal.h>
 #include <sys/time.h>
 #include <libintl.h>
 #define _(String) gettext(String)
@@ -19,7 +21,6 @@
 #include <linux/types.h>
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
-#include "libvolume_id.h"
 
 /**
  * This function is for libgfs2's sake.
@@ -293,6 +294,100 @@ static void verify_arguments(struct gfs2_sbd *sdp)
 		die( _("bad quota change size\n"));
 }
 
+static int get_file_output(int fd, char *buffer, size_t buflen)
+{
+	struct pollfd pf = { .fd = fd, .events = POLLIN|POLLRDHUP };
+	int flags;
+	int pos = 0;
+	int rv;
+
+	flags = fcntl(fd, F_GETFL, 0);
+	if (flags < 0)
+		return flags;
+
+	flags |= O_NONBLOCK;
+	rv = fcntl(fd, F_SETFL, flags);
+	if (rv < 0)
+		return rv;
+
+	while (1) {
+		rv = poll(&pf, 1, 10 * 1000);
+		if (rv == 0)
+			break;
+		if (rv < 0)
+			return rv;
+		if (pf.revents & POLLIN) {
+			rv = read(fd, buffer + pos,
+				   buflen - pos);
+			if (rv < 0) {
+				if (errno == EAGAIN)
+					continue;
+				return rv;
+			}
+			if (rv == 0)
+				break;
+			pos += rv;
+			if (pos >= buflen)
+				return -1;
+			buffer[pos] = 0;
+			continue;
+		}
+		if (pf.revents & (POLLRDHUP | POLLHUP | POLLERR))
+			break;
+	}
+	return 0;
+}
+
+static void check_dev_content(const char *devname)
+{
+	struct sigaction sa;
+	char content[1024] = { 0, };
+	char * const args[] = { "/usr/bin/file", "-bs", (char *)devname, NULL };
+	int p[2];
+	int ret;
+	int pid;
+
+	ret = sigaction(SIGCHLD, NULL, &sa);
+	if  (ret)
+		return;
+	sa.sa_handler = SIG_IGN;
+	sa.sa_flags |= (SA_NOCLDSTOP | SA_NOCLDWAIT);
+	ret = sigaction(SIGCHLD, &sa, NULL);
+	if (ret)
+		goto fail;
+
+	ret = pipe(p);
+	if (ret)
+		goto fail;
+
+	pid = fork();
+
+	if (pid < 0) {
+		close(p[1]);
+		goto fail;
+	}
+
+	if (pid) {
+		close(p[1]);
+		ret = get_file_output(p[0], content, sizeof(content));
+		if (ret) {
+fail:
+			printf( _("Content of file or device unknown (do you have GNU fileutils installed?)\n"));
+		} else {
+			if (*content == 0)
+				goto fail;
+			printf( _("It appears to contain: %s"), content);
+		}
+		close(p[0]);
+		return;
+	}
+
+	close(p[0]);
+	dup2(p[1], STDOUT_FILENO);
+	close(STDIN_FILENO);
+	exit(execv(args[0], args));
+}
+
 /**
  * are_you_sure - protect lusers from themselves
  * @sdp: the command line
@@ -302,33 +397,13 @@ static void verify_arguments(struct gfs2_sbd *sdp)
 static void are_you_sure(struct gfs2_sbd *sdp)
 {
 	char input[32];
-	struct volume_id *vid = NULL;
 	int fd;
 
-	fd = open(sdp->device_name, O_RDONLY);
+	fd = open(sdp->device_name, O_RDONLY|O_CLOEXEC);
 	if (fd < 0)
 		die( _("Error: device %s not found.\n"), sdp->device_name);
-	vid = volume_id_open_fd(fd);
-	if (vid == NULL) {
-		close(fd);
-		die( _("error identifying the contents of %s: %s\n"),
-		    sdp->device_name, strerror(errno));
-	}
 	printf( _("This will destroy any data on %s.\n"), sdp->device_name);
-	if (volume_id_probe_all(vid, 0, sdp->device_size) == 0) {
-		const char *fstype, *fsusage;
-		int rc;
-
-		rc = volume_id_get_type(vid, &fstype);
-		if (rc) {
-			rc = volume_id_get_usage(vid, &fsusage);
-			if (!rc || strncmp(fsusage, "other", 5) == 0)
-				fsusage = "partition";
-			printf( _("  It appears to contain a %s %s.\n"), fstype,
-			       fsusage);
-		}
-	}
-	volume_id_close(vid);
+	check_dev_content(sdp->device_name);
 	close(fd);
 	printf( _("\nAre you sure you want to proceed? [y/n] "));
 	if(!fgets(input, 32, stdin))
@@ -356,7 +431,7 @@ static void check_mount(char *device)
 	if (!S_ISBLK(st_buf.st_mode))
 		die( _("%s is not a block device\n"), device);
 
-	fd = open(device, O_RDONLY | O_NONBLOCK | O_EXCL);
+	fd = open(device, O_RDONLY | O_NONBLOCK | O_EXCL | O_CLOEXEC);
 
 	if (fd < 0) {
 		if (errno == EBUSY) {
@@ -383,7 +458,7 @@ static void get_random_bytes(void *buf, int nbytes)
 	struct timeval	tv;
 
 	gettimeofday(&tv, 0);
-	fd = open("/dev/urandom", O_RDONLY);
+	fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
 	srand((getpid() << 16) ^ getuid() ^ tv.tv_sec ^ tv.tv_usec);
 	/* Crank the random number generator a few times */
 	gettimeofday(&tv, 0);
@@ -495,7 +570,7 @@ void main_mkfs(int argc, char *argv[])
 
 	check_mount(sdp->device_name);
 
-	sdp->device_fd = open(sdp->device_name, O_RDWR);
+	sdp->device_fd = open(sdp->device_name, O_RDWR | O_CLOEXEC);
 	if (sdp->device_fd < 0)
 		die( _("can't open device %s: %s\n"),
 		    sdp->device_name, strerror(errno));

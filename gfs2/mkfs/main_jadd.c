@@ -204,7 +204,7 @@ create_new_inode(struct gfs2_sbd *sdp)
 		die("create_new_inode (1)\n");
 
 	for (;;) {
-		fd = open(name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
+		fd = open(name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
 		if (fd >= 0)
 			break;
 		if (errno == EEXIST) {
@@ -487,7 +487,7 @@ void main_jadd(int argc, char *argv[])
 	decode_arguments(argc, argv, sdp);
 	verify_arguments(sdp);
 	
-	sdp->path_fd = open(sdp->path_name, O_RDONLY);
+	sdp->path_fd = open(sdp->path_name, O_RDONLY | O_CLOEXEC);
 	if (sdp->path_fd < 0)
 		die( _("can't open root directory %s: %s\n"),
 		    sdp->path_name, strerror(errno));

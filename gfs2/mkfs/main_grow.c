@@ -262,7 +262,7 @@ main_grow(int argc, char *argv[])
 	
 	while ((argc - optind) > 0) {
 		sdp->path_name = argv[optind++];
-		sdp->path_fd = open(sdp->path_name, O_RDONLY);
+		sdp->path_fd = open(sdp->path_name, O_RDONLY | O_CLOEXEC);
 		if (sdp->path_fd < 0)
 			die("can't open root directory %s: %s\n",
 			    sdp->path_name, strerror(errno));
@@ -277,7 +277,7 @@ main_grow(int argc, char *argv[])
 			exit(-1);
 		}
 		sdp->device_fd = open(sdp->device_name,
-				      (test ? O_RDONLY : O_RDWR));
+				      (test ? O_RDONLY : O_RDWR) | O_CLOEXEC);
 		if (sdp->device_fd < 0)
 			die( _("can't open device %s: %s\n"),
 			    sdp->device_name, strerror(errno));
@@ -312,7 +312,7 @@ main_grow(int argc, char *argv[])
 		}
 
 		sprintf(rindex_name, "%s/rindex", sdp->metafs_path);
-		rindex_fd = open(rindex_name, (test ? O_RDONLY : O_RDWR));
+		rindex_fd = open(rindex_name, (test ? O_RDONLY : O_RDWR) | O_CLOEXEC);
 		if (rindex_fd < 0) {
 			cleanup_metafs(sdp);
 			die( _("GFS2 rindex not found.  Please run gfs2_fsck.\n"));
