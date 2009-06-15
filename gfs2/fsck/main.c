@@ -1,3 +1,5 @@
+#include "clusterautoconfig.h"
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -47,7 +49,7 @@ static void usage(char *name)
 static void version(void)
 {
 	printf( _("GFS2 fsck %s (built %s %s)\n"),
-	       RELEASE_VERSION, __DATE__, __TIME__);
+	       VERSION, __DATE__, __TIME__);
 	printf( _(REDHAT_COPYRIGHT "\n"));
 }
 

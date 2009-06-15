@@ -1,3 +1,5 @@
+#include "clusterautoconfig.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -74,7 +76,7 @@ void print_usage(void)
 
 static void print_version(void)
 {
-	printf( _("gfs2_tool " RELEASE_VERSION " (built " __DATE__ " " __TIME__ ")\n"));
+	printf( _("gfs2_tool " VERSION " (built " __DATE__ " " __TIME__ ")\n"));
 	puts( _(REDHAT_COPYRIGHT "\n") );
 }
 

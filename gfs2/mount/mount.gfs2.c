@@ -1,3 +1,5 @@
+#include "clusterautoconfig.h"
+
 #include "util.h"
 
 const char *fsname;
@@ -6,7 +8,7 @@ static sigset_t old_sigset;
 
 static void print_version(void)
 {
-	printf("mount.gfs2 %s (built %s %s)\n", RELEASE_VERSION,
+	printf("mount.gfs2 %s (built %s %s)\n", VERSION,
 	       __DATE__, __TIME__);
 }
 

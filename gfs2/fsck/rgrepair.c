@@ -1,3 +1,5 @@
+#include "clusterautoconfig.h"
+
 #include <unistd.h>
 #include <inttypes.h>
 #include <stdio.h>

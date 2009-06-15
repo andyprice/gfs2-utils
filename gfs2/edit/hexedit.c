@@ -1,3 +1,5 @@
+#include "clusterautoconfig.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -3224,7 +3226,7 @@ static void parameterpass1(int argc, char *argv[], int i)
 {
 	if (!strcasecmp(argv[i], "-V")) {
 		printf("%s version %s (built %s %s)\n",
-		       argv[0], RELEASE_VERSION, __DATE__, __TIME__);
+		       argv[0], VERSION, __DATE__, __TIME__);
 		printf("%s\n", REDHAT_COPYRIGHT);
 		exit(0);
 	}

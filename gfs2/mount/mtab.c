@@ -1,3 +1,5 @@
+#include "clusterautoconfig.h"
+
 #include "util.h"
 
 extern char *fsname;

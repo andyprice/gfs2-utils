@@ -1,6 +1,8 @@
 #ifndef __GFS_DAEMON_DOT_H__
 #define __GFS_DAEMON_DOT_H__
 
+#include "clusterautoconfig.h"
+
 #include <sys/types.h>
 #include <asm/types.h>
 #include <sys/uio.h>

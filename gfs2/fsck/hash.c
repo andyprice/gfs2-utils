@@ -1,3 +1,5 @@
+#include "clusterautoconfig.h"
+
 /* This is the same hash algorithm used by the glocks in gfs */
 
 #include <stdint.h>

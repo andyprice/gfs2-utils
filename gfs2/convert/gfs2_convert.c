@@ -6,6 +6,8 @@
 ******************************************************************************
 *****************************************************************************/
 
+#include "clusterautoconfig.h"
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -1197,7 +1199,7 @@ static void give_warning(void)
 /* ------------------------------------------------------------------------- */
 static void version(void)
 {
-	log_notice("gfs2_convert version %s (built %s %s)\n", RELEASE_VERSION,
+	log_notice("gfs2_convert version %s (built %s %s)\n", VERSION,
 			   __DATE__, __TIME__);
 	log_notice("%s\n\n", REDHAT_COPYRIGHT);
 }

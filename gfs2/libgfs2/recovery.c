@@ -1,3 +1,5 @@
+#include "clusterautoconfig.h"
+
 /*
  * NOTE:
  *

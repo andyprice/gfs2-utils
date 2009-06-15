@@ -5,7 +5,7 @@
 
 #include <linux/netlink.h>
 
-#define LOCKFILE_NAME	"/var/run/gfs_controld.pid"
+#define LOCKFILE_NAME	CLUSTERVARRUN "/gfs_controld.pid"
 #define CLIENT_NALLOC   32
 #define UEVENT_BUF_SIZE 4096
 
@@ -1245,7 +1245,7 @@ static void read_arguments(int argc, char **argv)
 
 		case 'V':
 			printf("gfs_controld %s (built %s %s)\n",
-				RELEASE_VERSION, __DATE__, __TIME__);
+				VERSION, __DATE__, __TIME__);
 			printf("%s\n", REDHAT_COPYRIGHT);
 			exit(EXIT_SUCCESS);
 			break;
@@ -1318,7 +1318,7 @@ int main(int argc, char **argv)
 	}
 	lockfile();
 	init_logging();
-	log_level(LOG_INFO, "gfs_controld %s started", RELEASE_VERSION);
+	log_level(LOG_INFO, "gfs_controld %s started", VERSION);
 	signal(SIGTERM, sigterm_handler);
 	set_scheduler();
 	set_oom_adj(-16);

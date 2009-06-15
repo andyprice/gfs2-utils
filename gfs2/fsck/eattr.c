@@ -1,3 +1,5 @@
+#include "clusterautoconfig.h"
+
 #include <stdint.h>
 #include <string.h>
 #include <libintl.h>

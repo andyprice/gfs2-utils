@@ -1,3 +1,5 @@
+#include "clusterautoconfig.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -70,7 +72,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			break;
 		case 'V':
 			printf("%s %s (built %s %s)\n", argv[0],
-			       RELEASE_VERSION, __DATE__, __TIME__);
+			       VERSION, __DATE__, __TIME__);
 			printf( _(REDHAT_COPYRIGHT "\n"));
 			exit(0);
 		case 'h':

@@ -1,3 +1,5 @@
+#include "clusterautoconfig.h"
+
 /* pass1 checks inodes for format & type, duplicate blocks, & incorrect
  * block count.
  *

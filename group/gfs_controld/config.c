@@ -1,3 +1,5 @@
+#include "gfs_daemon.h"
+
 #include <sys/types.h>
 #include <asm/types.h>
 #include <sys/uio.h>
@@ -21,7 +23,6 @@
 #include <unistd.h>
 #include <dirent.h>
 
-#include "gfs_daemon.h"
 #include "config.h"
 #include "ccs.h"
 

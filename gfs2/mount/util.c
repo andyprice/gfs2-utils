@@ -1,3 +1,5 @@
+#include "clusterautoconfig.h"
+
 #include <endian.h>
 #include <byteswap.h>
 #include "util.h"
