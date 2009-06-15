@@ -289,6 +289,35 @@ static void save_indirect_blocks(int out_fd, osi_list_t *cur_list,
 }
 
 /*
+ * save_ea_block - save off an extended attribute block
+ */
+void save_ea_block(int out_fd, struct gfs2_buffer_head *metabh)
+{
+	int i, e, ea_len = sbd.bsize;
+	struct gfs2_ea_header ea;
+
+	for (e = sizeof(struct gfs2_meta_header); e < sbd.bsize; e += ea_len) {
+		uint64_t blk, *b;
+		int charoff;
+
+		gfs2_ea_header_in(&ea, metabh->b_data + e);
+		for (i = 0; i < ea.ea_num_ptrs; i++) {
+			charoff = e + ea.ea_name_len +
+				sizeof(struct gfs2_ea_header) +
+				sizeof(uint64_t) - 1;
+			charoff /= sizeof(uint64_t);
+			b = (uint64_t *)(metabh->b_data);
+			b += charoff + i;
+			blk = be64_to_cpu(*b);
+			save_block(sbd.device_fd, out_fd, blk);
+		}
+		if (!ea.ea_rec_len)
+			break;
+		ea_len = ea.ea_rec_len;
+	}
+}
+
+/*
  * save_inode_data - save off important data associated with an inode
  *
  * out_fd - destination file descriptor
@@ -355,36 +384,27 @@ static void save_inode_data(int out_fd)
 		}
 	}
 	if (inode->i_di.di_eattr) { /* if this inode has extended attributes */
-		struct gfs2_ea_header ea;
 		struct gfs2_meta_header mh;
-		int e;
 
 		metabh = bread(&sbd.buf_list, inode->i_di.di_eattr);
 		save_block(sbd.device_fd, out_fd, inode->i_di.di_eattr);
 		gfs2_meta_header_in(&mh, metabh->b_data);
-		if (mh.mh_magic == GFS2_MAGIC) {
-			for (e = sizeof(struct gfs2_meta_header);
-			     e < sbd.bsize; e += ea.ea_rec_len) {
-				uint64_t blk, *b;
-				int charoff;
-
-				gfs2_ea_header_in(&ea, metabh->b_data + e);
-				for (i = 0; i < ea.ea_num_ptrs; i++) {
-					charoff = e + ea.ea_name_len +
-						sizeof(struct gfs2_ea_header) +
-						sizeof(uint64_t) - 1;
-					charoff /= sizeof(uint64_t);
-					b = (uint64_t *)(metabh->b_data);
-					b += charoff + i;
-					blk = be64_to_cpu(*b);
-					save_block(sbd.device_fd, out_fd, blk);
-				}
-				if (!ea.ea_rec_len)
-					break;
-			}
-		} else {
-			fprintf(stderr, "\nWarning: corrupt extended attribute"
-				" at block %llu (0x%llx) detected.\n",
+		if (mh.mh_magic == GFS2_MAGIC &&
+		    mh.mh_type == GFS2_METATYPE_EA)
+			save_ea_block(out_fd, metabh);
+		else if (mh.mh_magic == GFS2_MAGIC &&
+			 mh.mh_type == GFS2_METATYPE_IN)
+			save_indirect_blocks(out_fd, cur_list, metabh, 2, 2);
+		else {
+			if (mh.mh_magic == GFS2_MAGIC) /* if it's metadata */
+				save_block(sbd.device_fd, out_fd,
+					   inode->i_di.di_eattr);
+			fprintf(stderr,
+				"\nWarning: corrupt extended "
+				"attribute at block %llu (0x%llx) "
+				"detected in inode %lld (0x%llx).\n",
+				(unsigned long long)inode->i_di.di_eattr,
+				(unsigned long long)inode->i_di.di_eattr,
 				(unsigned long long)block,
 				(unsigned long long)block);
 		}
