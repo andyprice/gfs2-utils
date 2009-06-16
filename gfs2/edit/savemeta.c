@@ -185,8 +185,9 @@ static int save_block(int fd, int out_fd, uint64_t blk)
 	char *p;
 
 	if (blk > last_fs_block) {
-		fprintf(stderr, "\nWarning: bad block pointer ignored in "
-			"block (block %llu (%llx))",
+		fprintf(stderr, "\nWarning: bad block pointer '0x%llx' "
+			"ignored in block (block %llu (%llx))",
+			(unsigned long long)blk,
 			(unsigned long long)block, (unsigned long long)block);
 		return 0;
 	}
@@ -256,39 +257,6 @@ static int save_block(int fd, int out_fd, uint64_t blk)
 }
 
 /*
- * save_indirect_blocks - save all indirect blocks for the given buffer
- */
-static void save_indirect_blocks(int out_fd, osi_list_t *cur_list,
-			  struct gfs2_buffer_head *mybh, int height, int hgt)
-{
-	uint64_t old_block = 0, indir_block;
-	uint64_t *ptr;
-	int head_size;
-	struct gfs2_buffer_head *nbh;
-
-	head_size = (hgt > 1 ?
-		     sizeof(struct gfs2_meta_header) :
-		     sizeof(struct gfs2_dinode));
-
-	for (ptr = (uint64_t *)(mybh->b_data + head_size);
-	     (char *)ptr < (mybh->b_data + sbd.bsize); ptr++) {
-		if (!*ptr)
-			continue;
-		indir_block = be64_to_cpu(*ptr);
-		if (indir_block == old_block)
-			continue;
-		old_block = indir_block;
-		save_block(sbd.device_fd, out_fd, indir_block);
-		if (height != hgt) { /* If not at max height */
-			nbh = bread(&sbd.buf_list, indir_block);
-			osi_list_add_prev(&nbh->b_altlist,
-					  cur_list);
-			brelse(nbh, not_updated);
-		}
-	} /* for all data on the indirect block */
-}
-
-/*
  * save_ea_block - save off an extended attribute block
  */
 void save_ea_block(int out_fd, struct gfs2_buffer_head *metabh)
@@ -315,6 +283,44 @@ void save_ea_block(int out_fd, struct gfs2_buffer_head *metabh)
 			break;
 		ea_len = ea.ea_rec_len;
 	}
+}
+
+/*
+ * save_indirect_blocks - save all indirect blocks for the given buffer
+ */
+static void save_indirect_blocks(int out_fd, osi_list_t *cur_list,
+			  struct gfs2_buffer_head *mybh, int height, int hgt)
+{
+	uint64_t old_block = 0, indir_block;
+	uint64_t *ptr;
+	int head_size, blktype;
+	struct gfs2_buffer_head *nbh;
+
+	head_size = (hgt > 1 ?
+		     sizeof(struct gfs2_meta_header) :
+		     sizeof(struct gfs2_dinode));
+
+	for (ptr = (uint64_t *)(mybh->b_data + head_size);
+	     (char *)ptr < (mybh->b_data + sbd.bsize); ptr++) {
+		if (!*ptr)
+			continue;
+		indir_block = be64_to_cpu(*ptr);
+		if (indir_block == old_block)
+			continue;
+		old_block = indir_block;
+		blktype = save_block(sbd.device_fd, out_fd, indir_block);
+		if (blktype == GFS2_METATYPE_EA) {
+			nbh = bread(&sbd.buf_list, indir_block);
+			save_ea_block(out_fd, nbh);
+			brelse(nbh, not_updated);
+		}
+		if (height != hgt) { /* If not at max height */
+			nbh = bread(&sbd.buf_list, indir_block);
+			osi_list_add_prev(&nbh->b_altlist,
+					  cur_list);
+			brelse(nbh, not_updated);
+		}
+	} /* for all data on the indirect block */
 }
 
 /*
