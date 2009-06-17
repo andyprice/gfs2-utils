@@ -3,7 +3,7 @@
 
 AC_PREREQ([2.63b])
 AC_INIT([gfs2-utils], [master], [linux-cluster@redhat.com])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([-Wno-portability])
 LT_PREREQ([2.2.7])
 LT_INIT
 AM_PATH_PYTHON
