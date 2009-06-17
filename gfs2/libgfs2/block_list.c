@@ -293,12 +293,13 @@ int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 	return err;
 }
 
-int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
-		     uint64_t block, enum gfs2_mark_block m)
+/* gfs2_block_unmark clears ONE mark for the given block */
+int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+		      uint64_t block, enum gfs2_mark_block mark)
 {
 	int err = 0;
 
-	switch (m) {
+	switch (mark) {
 	case gfs2_dup_block:
 		gfs2_dup_clear(&sdp->dup_blocks, block);
 		break;
@@ -316,12 +317,25 @@ int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 	return err;
 }
 
+/* gfs2_block_clear clears all the marks for the given block */
+int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+		     uint64_t block)
+{
+	int err = 0;
+
+	gfs2_dup_clear(&sdp->dup_blocks, block);
+	gfs2_special_clear(&sdp->bad_blocks, block);
+	gfs2_special_clear(&sdp->eattr_blocks, block);
+	err = gfs2_bitmap_clear(&il->list.gbmap.group_map, block);
+	return err;
+}
+
 int gfs2_block_set(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 		   uint64_t block, enum gfs2_mark_block mark)
 {
 	int err;
 
-	err = gfs2_block_clear(sdp, il, block, mark);
+	err = gfs2_block_clear(sdp, il, block); /* clear all block status */
 	if(!err)
 		err = gfs2_block_mark(sdp, il, block, mark);
 	return err;
@@ -335,15 +349,15 @@ int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 	val->bad_block = 0;
 	val->dup_block = 0;
 	val->eattr_block = 0;
-	if((err = gfs2_bitmap_get(&il->list.gbmap.group_map, block,
-				  &val->block_type)))
-		return err;
 	if (blockfind(&sdp->bad_blocks, block))
 		val->bad_block = 1;
 	if (dupfind(&sdp->dup_blocks, block))
 		val->dup_block = 1;
 	if (blockfind(&sdp->eattr_blocks, block))
 		val->eattr_block = 1;
+	if((err = gfs2_bitmap_get(&il->list.gbmap.group_map, block,
+				  &val->block_type)))
+		return err;
 	return 0;
 }
 

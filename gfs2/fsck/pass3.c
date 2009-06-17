@@ -272,10 +272,11 @@ int pass3(struct gfs2_sbd *sbp)
 						return FSCK_ERROR;
 					}
 					log_warn( _("Directory relinked to lost+found\n"));
+					fsck_inode_put(ip, updated);
 				} else {
 					log_err( _("Unlinked directory remains unlinked\n"));
+					fsck_inode_put(ip, not_updated);
 				}
-				fsck_inode_put(ip, not_updated);
 				break;
 			}
 			else {

@@ -705,6 +705,8 @@ void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 {
 	uint16_t cur_rec_len, prev_rec_len;
 
+	if (dip->i_di.di_entries)
+		dip->i_di.di_entries--;
 	if (!prev) {
 		cur->de_inum.no_formal_ino = 0;
 		return;

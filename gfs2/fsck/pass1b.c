@@ -165,14 +165,15 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 	if(dh->ref_count == 1)
 		return 1;
 	if(block == dh->b->block_no) {
-		log_err( _("Found dup in inode \"%s\" (block #%llu"
-			") with block #%llu\n"),
-			dh->id->name ? dh->id->name : _("unknown name"),
-			(unsigned long long)ip->i_di.di_num.no_addr,
-			(unsigned long long)block);
+		log_err( _("Found duplicate reference in inode \"%s\" at "
+			   "block #%llu (0x%llx) with block #%llu (0x%llx)\n"),
+			 dh->id->name ? dh->id->name : _("unknown name"),
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)block, (unsigned long long)block);
 		log_err( _("Inode %s is in directory %"PRIu64" (0x%" PRIx64 ")\n"),
-				dh->id->name ? dh->id->name : "",
-				dh->id->parent, dh->id->parent);
+			 dh->id->name ? dh->id->name : "", dh->id->parent,
+			 dh->id->parent);
 		inode_hash_remove(inode_hash, ip->i_di.di_num.no_addr);
 		/* Setting the block to invalid means the inode is
 		 * cleared in pass2 */
@@ -184,31 +185,9 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 
 static int clear_dup_data(struct gfs2_inode *ip, uint64_t block, void *private)
 {
-	struct dup_handler *dh = (struct dup_handler *) private;
-
-	if(dh->ref_count == 1) {
-		return 1;
-	}
-	if(block == dh->b->block_no) {
-		log_err( _("Found dup in inode \"%s\" for block #%llu"
-			" (0x%llx) at block #%llu (0x%llx)\n"),
-			dh->id->name ? dh->id->name : _("unknown name"),
-			(unsigned long long)ip->i_di.di_num.no_addr,
-			(unsigned long long)ip->i_di.di_num.no_addr,
-			(unsigned long long)block,
-			(unsigned long long)block);
-		log_err( _("Inode %s is in directory %"PRIu64" (0x%" PRIx64 ")\n"),
-				dh->id->name ? dh->id->name : "", dh->id->parent,
-				dh->id->parent);
-		inode_hash_remove(inode_hash, ip->i_di.di_num.no_addr);
-		/* Setting the block to invalid means the inode is
-		 * cleared in pass2 */
-		gfs2_block_set(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
-			       gfs2_meta_inval);
-	}
-
-	return 0;
+	return clear_dup_metalist(ip, block, NULL, private);
 }
+
 static int clear_dup_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 				 uint64_t parent, struct gfs2_buffer_head **bh,
 				 enum update_flags *want_updated,
@@ -361,15 +340,15 @@ static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_block
 	enum update_flags update;
 
 	ip = fsck_load_inode(sbp, inode); /* bread, inode_get */
-	log_info( _("Checking inode %" PRIu64 " (0x%" PRIx64
-			 ")'s metatree for references to block %" PRIu64 " (0x%" PRIx64
-			 ")\n"), inode, inode, b->block_no, b->block_no);
+	log_debug( _("Checking inode %" PRIu64 " (0x%" PRIx64 ")'s "
+		     "metatree for references to block %" PRIu64 " (0x%" PRIx64
+		     ")\n"), inode, inode, b->block_no, b->block_no);
 	if(check_metatree(ip, &find_refs)) {
 		stack;
 		fsck_inode_put(ip, not_updated); /* out, brelse, free */
 		return -1;
 	}
-	log_info( _("Done checking metatree\n"));
+	log_debug( _("Done checking metatree\n"));
 	/* Check for ea references in the inode */
 	if(check_inode_eattr(ip, &update, &find_refs) < 0){
 		stack;
@@ -421,6 +400,51 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 		dh.ref_inode_count++;
 		dh.ref_count += id->dup_count;
 	}
+	/* A single reference to the block implies a possible situation where
+	   a data pointer points to a metadata block.  In other words, the
+	   duplicate reference in the file system is (1) Metadata block X and
+	   (2) A dinode reference such as a data pointer pointing to block X.
+	   We can't really check for that in pass1 because user data might
+	   just _look_ like metadata by coincidence, and at the time we're
+	   checking, we might not have processed the referenced block.
+	   Here in pass1b we're sure. */
+	if (dh.ref_count == 1) {
+		struct gfs2_buffer_head *bh;
+		uint32_t cmagic;
+
+		bh = bread(&sbp->buf_list, b->block_no);
+		cmagic = ((struct gfs2_meta_header *)(bh->b_data))->mh_magic;
+		brelse(bh, not_updated);
+		if (be32_to_cpu(cmagic) == GFS2_MAGIC) {
+			tmp = b->ref_inode_list.next;
+			id = osi_list_entry(tmp, struct inode_with_dups, list);
+			log_warn( _("Inode %s (%lld/0x%llx) has a reference to"
+				    " data block %llu (0x%llx), "
+				    "but the block is really metadata.\n"),
+				  id->name, (unsigned long long)id->block_no,
+				  (unsigned long long)id->block_no,
+				  (unsigned long long)b->block_no,
+				  (unsigned long long)b->block_no);
+			errors_found++;
+			if ((errors_corrected +=
+			     query(&opts, _("Clear the inode? (y/n) ")))) {
+				log_warn( _("Clearing...\n"));
+				ip = fsck_load_inode(sbp, id->block_no);
+				inode_hash_remove(inode_hash,
+						  ip->i_di.di_num.no_addr);
+				/* Setting the block to invalid means the inode
+				   is cleared in pass2 */
+				gfs2_block_set(ip->i_sbd, bl,
+					       ip->i_di.di_num.no_addr,
+					       gfs2_meta_inval);
+				fsck_inode_put(ip, updated);
+			} else {
+				log_warn( _("The bad inode was not cleared."));
+			}
+			return 0;
+		}
+	}
+
 	log_notice( _("Block %llu (0x%llx) has %d inodes referencing it"
 		   " for a total of %d duplicate references\n"),
 		   (unsigned long long)b->block_no,
@@ -429,10 +453,18 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 
 	osi_list_foreach(tmp, &b->ref_inode_list) {
 		id = osi_list_entry(tmp, struct inode_with_dups, list);
-		log_warn( _("Inode %s has %d reference(s) to block %"PRIu64
-				 " (0x%" PRIx64 ")\n"), id->name, id->dup_count, b->block_no,
-				 b->block_no);
-		/* FIXME: User input */
+		log_warn( _("Inode %s (%lld/0x%llx) has %d reference(s) to "
+			    "block %llu (0x%llx)\n"), id->name,
+			  (unsigned long long)id->block_no,
+			  (unsigned long long)id->block_no,
+			  id->dup_count, (unsigned long long)b->block_no,
+			  (unsigned long long)b->block_no);
+		errors_found++;
+		if (!(errors_corrected +=
+		      query(&opts, _("Clear the inode? (y/n) ")))) {
+			log_warn( _("The bad inode was not cleared...\n"));
+			continue;
+		}
 		log_warn( _("Clearing...\n"));
 		ip = fsck_load_inode(sbp, id->block_no);
 		dh.b = b;
@@ -444,7 +476,9 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 		if(!id->ea_only)
 			check_metatree(ip, &clear_dup_fxns);
 
-		fsck_inode_put(ip, not_updated); /* out, brelse, free */
+		gfs2_block_set(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
+			       gfs2_meta_inval);
+		fsck_inode_put(ip, updated); /* out, brelse, free */
 		dh.ref_inode_count--;
 		if(dh.ref_inode_count == 1)
 			break;

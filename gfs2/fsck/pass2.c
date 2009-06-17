@@ -142,6 +142,38 @@ static int check_file_type(uint8_t de_type, uint8_t block_type)
 	return 0;
 }
 
+static int delete_blocks(struct gfs2_inode *ip, uint64_t block,
+			 struct gfs2_buffer_head **bh, void *private)
+{
+	struct gfs2_block_query q = {0};
+
+	if (gfs2_check_range(ip->i_sbd, block) == 0) {
+		log_info(_("Deleting block %lld (0x%llx) as part of inode "
+			   "%lld (0x%llx)\n"), (unsigned long long)block,
+			 (unsigned long long)block,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr);
+		if (gfs2_block_check(ip->i_sbd, bl, block, &q))
+			return 0;
+		if (!q.dup_block) {
+			gfs2_block_set(ip->i_sbd, bl, block, gfs2_block_free);
+			gfs2_free_block(ip->i_sbd, block);
+		}
+	}
+	return 0;
+}
+
+static int delete_data(struct gfs2_inode *ip, uint64_t block, void *private)
+{
+	return delete_blocks(ip, block, NULL, private);
+}
+
+struct metawalk_fxns pass2_fxns_delete = {
+	.private = NULL,
+	.check_metalist = delete_blocks,
+	.check_data = delete_data,
+};
+
 /* FIXME: should maybe refactor this a bit - but need to deal with
  * FIXMEs internally first */
 static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
@@ -160,7 +192,6 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	struct gfs2_dirent dentry, *de;
 	uint32_t calculated_hash;
 
-	*update = not_updated;
 	memset(&dentry, 0, sizeof(struct gfs2_dirent));
 	gfs2_dirent_in(&dentry, (char *)dent);
 	de = &dentry;
@@ -242,22 +273,17 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	if(q.bad_block) {
 		/* This entry's inode has bad blocks in it */
 
-		/* FIXME: user interface */
-		/* FIXME: do i want to kill the inode here? */
 		/* Handle bad blocks */
 		log_err( _("Found a bad directory entry: %s\n"), filename);
 
 		errors_found++;
-		if(query(&opts, _("Clear entry to inode containing bad blocks? (y/n)"))) {
-
+		if(query(&opts, _("Clear inode containing bad blocks? (y/n)"))) {
 			errors_corrected++;
 			entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 			check_inode_eattr(entry_ip, update, &clear_eattrs);
 			fsck_inode_put(entry_ip, not_updated);
 
-			/* FIXME: make sure all blocks referenced by
-			 * this inode are cleared in the bitmap */
-
+			check_metatree(entry_ip, &pass2_fxns_delete);
 			dirent2_del(ip, bh, prev_de, dent);
 
 			gfs2_block_set(sbp, bl, de->de_inum.no_addr,
@@ -277,22 +303,44 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	   q.block_type != gfs2_inode_chr && q.block_type != gfs2_inode_fifo &&
 	   q.block_type != gfs2_inode_sock) {
 		log_err( _("Directory entry '%s' at block %llu (0x%llx"
-			") in dir inode %llu (0x%llx"
-			") has an invalid block type: %d.\n"), tmp_name,
-			(unsigned long long)de->de_inum.no_addr,
-			(unsigned long long)de->de_inum.no_addr,
-			(unsigned long long)ip->i_di.di_num.no_addr,
-			(unsigned long long)ip->i_di.di_num.no_addr,
-			q.block_type);
+			   ") in dir inode %llu (0x%llx"
+			   ") block type %d: %s.\n"), tmp_name,
+			 (unsigned long long)de->de_inum.no_addr,
+			 (unsigned long long)de->de_inum.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 q.block_type, q.block_type == gfs2_meta_inval ?
+			 _("previously marked invalid") :
+			 _("is not an inode"));
 
 		errors_found++;
-		if(query(&opts, _("Clear directory entry to non-inode block? (y/n) "))) {
-			/* FIXME: make sure all blocks referenced by
-			 * this inode are cleared in the bitmap */
+		if(query(&opts, _("Clear directory entry to non-inode block? "
+				  "(y/n) "))) {
+			struct gfs2_buffer_head *bhi;
+
 			errors_corrected++;
 			dirent2_del(ip, bh, prev_de, dent);
 			*update = updated;
 			log_warn( _("Directory entry '%s' cleared\n"), tmp_name);
+			/* If it was previously marked invalid (i.e. known
+			   to be bad, not just a free block, etc.) then
+			   delete any metadata it holds.  If not, return. */
+			if (q.block_type != gfs2_meta_inval)
+				return 1;
+
+			/* Now try to clear the dinode, if it is an dinode */
+			bhi = bread(&sbp->buf_list, de->de_inum.no_addr);
+			error = gfs2_check_meta(bhi, GFS2_METATYPE_DI);
+			brelse(bhi, updated);
+			if (error)
+				return 1; /* not a dinode: nothing to delete */
+
+			entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
+			check_metatree(entry_ip, &pass2_fxns_delete);
+			fsck_inode_put(entry_ip, updated);
+			gfs2_block_set(sbp, bl, de->de_inum.no_addr,
+				       gfs2_block_free);
+
 			return 1;
 		} else {
 			log_err( _("Directory entry to non-inode block remains\n"));
@@ -323,6 +371,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 
 			dirent2_del(ip, bh, prev_de, dent);
 			*update = updated;
+			log_err( _("Stale directory entry deleted\n"));
 			return 1;
 		} else {
 			log_err( _("Stale directory entry remains\n"));
@@ -585,27 +634,33 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 	}
 	if(!ds.dotdir) {
 		log_err( _("No '.' entry found for %s directory.\n"), dirname);
-		sprintf(tmp_name, ".");
-		filename_len = strlen(tmp_name);  /* no trailing NULL */
-		if(!(filename = malloc(sizeof(char) * filename_len))) {
-			log_err( _("Unable to allocate name string\n"));
-			stack;
-			return -1;
-		}
-		if(!(memset(filename, 0, sizeof(char) * filename_len))) {
-			log_err( _("Unable to zero name string\n"));
-			stack;
-			return -1;
-		}
-		memcpy(filename, tmp_name, filename_len);
-		log_warn( _("Adding '.' entry\n"));
-		dir_add(sysinode, filename, filename_len,
+		errors_found++;
+		if (query(&opts, _("Is it okay to add '.' entry? (y/n) "))) {
+			errors_corrected++;
+			sprintf(tmp_name, ".");
+			filename_len = strlen(tmp_name); /* no trailing NULL */
+			if(!(filename = malloc(sizeof(char) * filename_len))) {
+				log_err( _("Unable to allocate name string\n"));
+				stack;
+				return -1;
+			}
+			if(!(memset(filename, 0, sizeof(char) *
+				    filename_len))) {
+				log_err( _("Unable to zero name string\n"));
+				stack;
+				return -1;
+			}
+			memcpy(filename, tmp_name, filename_len);
+			log_warn( _("Adding '.' entry\n"));
+			dir_add(sysinode, filename, filename_len,
 				&(sysinode->i_di.di_num), DT_DIR);
-		increment_link(sysinode->i_sbd,
-					   sysinode->i_di.di_num.no_addr);
-		ds.entry_count++;
-		free(filename);
-		update = 1;
+			increment_link(sysinode->i_sbd,
+				       sysinode->i_di.di_num.no_addr);
+			ds.entry_count++;
+			free(filename);
+			update = 1;
+		} else
+			log_err( _("The directory was not fixed.\n"));
 	}
 	if(sysinode->i_di.di_entries != ds.entry_count) {
 		log_err( _("%s inode %llu (0x%llx"
@@ -671,6 +726,7 @@ int pass2(struct gfs2_sbd *sbp)
 	int filename_len;
 	char tmp_name[256];
 	int error = 0;
+	enum update_flags need_update = NOT_UPDATED;
 
 	/* Check all the system directory inodes. */
 	if (check_system_dir(sbp->md.jiinode, "jindex", build_jindex)) {
@@ -766,42 +822,61 @@ int pass2(struct gfs2_sbd *sbp)
 		bh = bread(&sbp->buf_list, i);
 		ip = fsck_inode_get(sbp, bh);
 		if(!ds.dotdir) {
-			log_err( _("No '.' entry found\n"));
-			sprintf(tmp_name, ".");
-			filename_len = strlen(tmp_name);  /* no trailing NULL */
-			if(!(filename = malloc(sizeof(char) * filename_len))) {
-				log_err( _("Unable to allocate name string\n"));
-				stack;
-				return FSCK_ERROR;
-			}
-			if(!memset(filename, 0, sizeof(char) * filename_len)) {
-				log_err( _("Unable to zero name string\n"));
-				stack;
-				return FSCK_ERROR;
-			}
-			memcpy(filename, tmp_name, filename_len);
+			log_err(_("No '.' entry found for directory inode at "
+				  "block %"PRIu64" (0x%" PRIx64 ")\n"), i, i);
 
-			dir_add(ip, filename, filename_len, &(ip->i_di.di_num), DT_DIR);
-			increment_link(ip->i_sbd, ip->i_di.di_num.no_addr);
-			ds.entry_count++;
-			free(filename);
+			errors_found++;
+			if (query(&opts,
+				  _("Is it okay to add '.' entry? (y/n) "))) {
+				errors_corrected++;
+				sprintf(tmp_name, ".");
+				filename_len = strlen(tmp_name); /* no trailing
+								    NULL */
+				if(!(filename = malloc(sizeof(char) *
+						       filename_len))) {
+					log_err(_("Unable to allocate name\n"));
+					stack;
+					return FSCK_ERROR;
+				}
+				if(!memset(filename, 0, sizeof(char) *
+					   filename_len)) {
+					log_err( _("Unable to zero name\n"));
+					stack;
+					return FSCK_ERROR;
+				}
+				memcpy(filename, tmp_name, filename_len);
 
+				dir_add(ip, filename, filename_len,
+					&(ip->i_di.di_num), DT_DIR);
+				increment_link(ip->i_sbd,
+					       ip->i_di.di_num.no_addr);
+				ds.entry_count++;
+				free(filename);
+				log_err( _("The directory was fixed.\n"));
+				need_update = UPDATED;
+			} else {
+				log_err( _("The directory was not fixed.\n"));
+			}
 		}
-		fsck_inode_put(ip, not_updated); /* does a brelse */
 
-		bh = bread(&sbp->buf_list, i);
-		ip = fsck_inode_get(sbp, bh);
 		if(ip->i_di.di_entries != ds.entry_count) {
 			log_err( _("Entries is %d - should be %d for inode "
 				"block %llu (0x%llx)\n"),
 				ip->i_di.di_entries, ds.entry_count,
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			ip->i_di.di_entries = ds.entry_count;
-			fsck_inode_put(ip, updated); /* does a gfs2_dinode_out, brelse */
+			errors_found++;
+			if (query(&opts,
+				  _("Fix the entry count? (y/n) "))) {
+				errors_corrected++;
+				ip->i_di.di_entries = ds.entry_count;
+				need_update = UPDATED;
+			} else {
+				log_err( _("The entry count was not fixed.\n"));
+			}
 		}
-		else
-			fsck_inode_put(ip, not_updated); /* does a brelse */
+		fsck_inode_put(ip, need_update); /* does a gfs2_dinode_out,
+						    brelse */
 	}
 	return FSCK_OK;
 }

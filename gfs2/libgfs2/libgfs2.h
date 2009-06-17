@@ -371,8 +371,12 @@ extern int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 	 		   uint64_t block, enum gfs2_mark_block mark);
 extern int gfs2_block_set(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 			  uint64_t block, enum gfs2_mark_block mark);
+/* gfs2_block_unmark clears ONE mark for the given block */
+extern int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+			     uint64_t block, enum gfs2_mark_block m);
+/* gfs2_block_clear clears all the marks for the given block */
 extern int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
-			    uint64_t block, enum gfs2_mark_block m);
+			    uint64_t block);
 extern int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 			    uint64_t block, struct gfs2_block_query *val);
 extern void *gfs2_block_list_destroy(struct gfs2_sbd *sdp,
