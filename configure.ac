@@ -13,6 +13,7 @@ AC_CONFIG_SRCDIR([group/gfs_controld/config.c])
 AC_CONFIG_HEADERS([make/clusterautoconfig.h])
 
 AC_CANONICAL_HOST
+AC_PROG_LIBTOOL
 
 AC_LANG([C])
 
@@ -31,7 +32,7 @@ if test "$prefix" = "NONE"; then
 			libdir="/usr/lib64"
 		else
 			libdir="/usr/lib"
-		fi	
+		fi
 	fi
 fi
 
@@ -271,7 +272,7 @@ AC_CONFIG_FILES([Makefile
 		 group/libgfscontrol/Makefile
 		 group/gfs_control/Makefile
 		 group/gfs_controld/Makefile
-		 group/man/Makefile	
+		 group/man/Makefile
 		 group/include/Makefile
 		 gfs2/Makefile
 		 gfs2/include/Makefile
