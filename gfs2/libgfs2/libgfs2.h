@@ -69,7 +69,8 @@ __BEGIN_DECLS
 
 #endif  /*  __BYTE_ORDER == __LITTLE_ENDIAN  */
 
-static __inline__ __attribute__((noreturn)) void die(const char *fmt, ...)
+static __inline__ __attribute__((noreturn, format (printf, 1, 2)))
+void die(const char *fmt, ...)
 {
 	va_list ap;
 	fprintf(stderr, "%s: ", __FILE__);

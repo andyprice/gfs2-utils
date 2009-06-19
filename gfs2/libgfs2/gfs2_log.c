@@ -29,8 +29,9 @@ void decrease_verbosity(void)
 	_state.print_level--;
 }
 
-static void print_msg(int priority, const char *file, int line, const char *format,
-		      va_list args) {
+static __attribute__((format (printf, 4, 0)))
+void print_msg(int priority, const char *file, int line,
+	       const char *format, va_list args) {
 
 	switch (priority) {
 

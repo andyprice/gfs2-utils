@@ -198,8 +198,8 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 
 		errors_found++;
 		log_err( _("Block %llu (0x%llx) seems to be data, but is "
-			   "marked as %s.\n", (unsigned long long)block,
-			   (unsigned long long)block, allocdesc[btype]));
+			   "marked as %s.\n"), (unsigned long long)block,
+			   (unsigned long long)block, allocdesc[btype]);
 		if(query(&opts, _("Okay to mark it as 'data'? (y/n)"))) {
 			errors_corrected++;
 			gfs2_set_bitmap(ip->i_sbd, block, GFS2_BLKST_USED);

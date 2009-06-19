@@ -160,8 +160,8 @@ int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state)
  *
  * Returns: state on success, -1 on error
  */
-static int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
-					struct rgrp_list *rgd)
+int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
+		    struct rgrp_list *rgd)
 {
 	int           i, val;
 	uint32_t        rgrp_block;

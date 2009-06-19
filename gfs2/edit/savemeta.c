@@ -261,7 +261,7 @@ static int save_block(int fd, int out_fd, uint64_t blk)
 /*
  * save_ea_block - save off an extended attribute block
  */
-void save_ea_block(int out_fd, struct gfs2_buffer_head *metabh)
+static void save_ea_block(int out_fd, struct gfs2_buffer_head *metabh)
 {
 	int i, e, ea_len = sbd.bsize;
 	struct gfs2_ea_header ea;
@@ -471,14 +471,14 @@ static void get_journal_inode_blocks(void)
 	}
 }
 
-int next_rg_freemeta(struct rgrp_list *rgd, uint64_t *block, int first)
+static int next_rg_freemeta(struct rgrp_list *rgd, uint64_t *nrfblock, int first)
 {
 	struct gfs2_bitmap *bits = NULL;
 	uint32_t length = rgd->ri.ri_length;
-	uint32_t blk = (first)? 0: (uint32_t)((*block+1)-rgd->ri.ri_data0);
+	uint32_t blk = (first)? 0: (uint32_t)((*nrfblock+1)-rgd->ri.ri_data0);
 	int i;
 
-	if(!first && (*block < rgd->ri.ri_data0)) {
+	if(!first && (*nrfblock < rgd->ri.ri_data0)) {
 		log_err("next_rg_freemeta:  Start block is outside rgrp "
 			"bounds.\n");
 		exit(1);
@@ -495,7 +495,8 @@ int next_rg_freemeta(struct rgrp_list *rgd, uint64_t *block, int first)
 				  bits->bi_offset, bits->bi_len, blk,
 				  GFS2_BLKST_UNLINKED);
 		if(blk != BFITNOENT){
-			*block = blk + (bits->bi_start * GFS2_NBBY) + rgd->ri.ri_data0;
+			*nrfblock = blk + (bits->bi_start * GFS2_NBBY) +
+				rgd->ri.ri_data0;
 			break;
 		}
 		blk=0;
