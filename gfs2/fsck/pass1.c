@@ -137,7 +137,7 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 {
 	struct gfs2_block_query q = {0};
 	struct block_count *bc = (struct block_count *) private;
-	int error = 0;
+	int error = 0, btype;
 
 	if (gfs2_check_range(ip->i_sbd, block)) {
 		log_err( _("Bad data block pointer (out of range)\n"));
@@ -168,17 +168,14 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 		   won't have metadata headers.  In that case, the block is
 		   marked as duplicate, but also as a data block. */
 		error = 1;
-		log_err( _("Block %" PRIu64 " (0x%"PRIx64 ") previous "
-			   "reference was invalid, so it likely is a data "
-			   "block.\n"),
-			block, block);
 		gfs2_block_unmark(ip->i_sbd, bl, block, gfs2_meta_inval);
 		gfs2_block_mark(ip->i_sbd, bl, block, gfs2_dup_block);
 	}
-	log_debug( _("Setting %" PRIu64 " (0x%" PRIx64 ") to data block\n"), block,
-			  block);
+	log_debug( _("Marking block %llu (0x%llx) as data block\n"),
+		   (unsigned long long)block, (unsigned long long)block);
 	gfs2_block_mark(ip->i_sbd, bl, block, gfs2_block_used);
-	/* This is confusing, so I'll clarify.  There are two bitmaps:
+
+	/* This is also confusing, so I'll clarify.  There are two bitmaps:
 	   (1) The gfs2_bmap that fsck uses to keep track of what block
 	   type has been discovered, and (2) The rgrp bitmap.  Function
 	   gfs2_block_set is used to set the former and gfs2_set_bitmap
@@ -188,8 +185,29 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 	   metadata when we're traversing the metadata with gfs2_next_rg_meta
 	   in func pass1().  If that happens, it will look at the block,
 	   say "hey this isn't metadata" and mark it incorrectly as an
-	   invalid metadata block and free it. */
-	gfs2_set_bitmap(ip->i_sbd, block, GFS2_BLKST_USED);
+	   invalid metadata block and free it.  Ordinarily, fsck will wait
+	   until pass5 to sync (2) so that it agrees with (1).  However, in
+	   this case, it's better to do it upfront.  The duplicate solving
+	   code in pass1b.c is better at resolving metadata referencing a
+	   data block than it is at resolving a data block referencing a
+	   metadata block. */
+	btype = gfs2_get_bitmap(ip->i_sbd, block, NULL);
+	if (btype != GFS2_BLKST_USED) {
+		const char *allocdesc[] = {"free space", "data", "unlinked",
+					   "metadata", "reserved"};
+
+		errors_found++;
+		log_err( _("Block %llu (0x%llx) seems to be data, but is "
+			   "marked as %s.\n", (unsigned long long)block,
+			   (unsigned long long)block, allocdesc[btype]));
+		if(query(&opts, _("Okay to mark it as 'data'? (y/n)"))) {
+			errors_corrected++;
+			gfs2_set_bitmap(ip->i_sbd, block, GFS2_BLKST_USED);
+			log_err( _("The block was reassigned as data.\n"));
+		} else {
+			log_err( _("The invalid block was ignored.\n"));
+		}
+	}
 	bc->data_count++;
 	return error;
 }
@@ -824,13 +842,22 @@ static int scan_meta(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			  uint64_t block)
 {
 	if (gfs2_check_meta(bh, 0)) {
-		log_info( _("Found invalid metadata at #%" PRIu64 " (0x%" PRIx64 ")\n"),
-				  block, block);
+		errors_found++;
+
+		log_info( _("Found invalid metadata at #%llu (0x%llx)\n"),
+			  (unsigned long long)block,
+			  (unsigned long long)block);
 		if(gfs2_block_set(sdp, bl, block, gfs2_meta_inval)) {
 			stack;
 			return -1;
 		}
-		gfs2_set_bitmap(sdp, block, GFS2_BLKST_FREE);
+		if(query(&opts, _("Okay to free the invalid block? (y/n)"))) {
+			errors_corrected++;
+			gfs2_set_bitmap(sdp, block, GFS2_BLKST_FREE);
+			log_err( _("The invalid block was freed.\n"));
+		} else {
+			log_err( _("The invalid block was ignored.\n"));
+		}
 		return 0;
 	}
 

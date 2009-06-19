@@ -426,6 +426,8 @@ extern uint32_t gfs2_blkalloc_internal(struct rgrp_list *rgd, uint32_t goal,
 extern int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno);
 
 /* functions with blk #'s that are file system relative */
+extern int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
+			   struct rgrp_list *rgd);
 extern int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state);
 
 /* fs_geometry.c */
