@@ -2,8 +2,6 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 noinst_PROGRAMS		= fsck.gfs2
 
-# noinst_PROGRAMS	= test_bitmap.c test_block_list.c
-
 noinst_HEADERS		= eattr.h fs_bits.h fsck.h fs_recovery.h hash.h \
 			  inode_hash.h link.h lost_n_found.h metawalk.h util.h
 
