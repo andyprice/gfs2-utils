@@ -229,4 +229,7 @@ void init_logging(void);
 void setup_logging(void);
 void close_logging(void);
 
+/* crc.c */
+uint32_t cpgname_to_crc(const char *data, int len);
+
 #endif

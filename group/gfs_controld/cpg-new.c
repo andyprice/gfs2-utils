@@ -4,8 +4,6 @@
 
 #define MAX_JOURNALS 256
 
-uint32_t cpgname_to_crc(const char *data, int len);
-
 /* gfs_header types */
 enum {
 	GFS_MSG_PROTOCOL		= 1,
