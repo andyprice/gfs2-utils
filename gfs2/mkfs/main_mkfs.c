@@ -344,7 +344,11 @@ static void check_dev_content(const char *devname)
 {
 	struct sigaction sa;
 	char content[1024] = { 0, };
-	char * args[] = { "/usr/bin/file", "-bs", (char *)devname, NULL };
+	char * args[] = {
+		(char *)"/usr/bin/file",
+		(char *)"-bs",
+		(char *)devname,
+		NULL };
 	int p[2];
 	int ret;
 	int pid;
