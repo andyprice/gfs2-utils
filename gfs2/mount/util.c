@@ -220,18 +220,29 @@ void read_proc_mounts(struct mount_options *mo)
 	char save_opts[PATH_MAX];
 	char save_device[PATH_MAX];
 	int found = 0;
+	struct stat st_mo_dev, st_mounts_dev;
 
 	file = fopen("/proc/mounts", "r");
 	if (!file)
 		die("can't open /proc/mounts: %s\n", strerror(errno));
+
+	memset(&st_mo_dev, 0, sizeof(struct stat));
+	if (mo->dev[0]) {
+		if (stat(mo->dev, &st_mo_dev))
+			warn("Can't stat device %s.\n", mo->dev);
+	}
 
 	while (fgets(line, PATH_MAX, file)) {
 		if (sscanf(line, "%s %s %s %s", device, path, type, opts) != 4)
 			continue;
 		if (strcmp(path, mo->dir))
 			continue;
-		if (mo->dev[0] && strcmp(device, mo->dev))
-			continue;
+		if (mo->dev[0]) {
+			if (stat(device, &st_mounts_dev))
+				continue;
+			if (st_mo_dev.st_rdev != st_mounts_dev.st_rdev)
+				continue;
+		}
 		if (strcmp(type, fsname))
 			die("%s is not a %s filesystem\n", mo->dir, fsname);
 
