@@ -503,9 +503,11 @@ int lock_dlm_join(struct mount_options *mo, struct gen_sb *sb)
 	if (!mo->hostdata[0])
 		snprintf(mo->hostdata, PATH_MAX, "%s", ma.hostdata);
 	else {
-		char *p = strstr(ma.hostdata, "=") + 1;
-		strcat(mo->hostdata, ":");
-		strcat(mo->hostdata, p);
+		const char *p = strstr(ma.hostdata, "=");
+		if (p) {
+			strcat(mo->hostdata, ":");
+			strcat(mo->hostdata, p + 1);
+		}
 	}
 
 	log_debug("lock_dlm_join: hostdata: \"%s\"", mo->hostdata);
