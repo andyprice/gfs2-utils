@@ -1,6 +1,11 @@
 MAINTAINERCLEANFILES	= Makefile.in
 
-noinst_PROGRAMS		= fsck.gfs2
+# install into /sbin, not /usr/sbin
+sbindir := $(shell test '$(exec_prefix):$(sbindir)' = /usr:/usr/sbin \
+	     && echo /sbin \
+	     || echo '$(exec_prefix)/sbin')
+
+sbin_PROGRAMS		= fsck.gfs2
 
 noinst_HEADERS		= eattr.h fs_bits.h fsck.h fs_recovery.h hash.h \
 			  inode_hash.h link.h lost_n_found.h metawalk.h util.h
@@ -15,11 +20,3 @@ fsck_gfs2_CPPFLAGS	= -D_FILE_OFFSET_BITS=64 -DHELPER_PROGRAM \
 			  -I$(top_srcdir)/gfs2/libgfs2
 
 fsck_gfs2_LDADD		= $(top_builddir)/gfs2/libgfs2/libgfs2.la
-
-install-exec-local:
-	$(INSTALL) -d $(DESTDIR)/sbin
-	$(INSTALL) -m 755 fsck.gfs2 $(DESTDIR)/sbin
-
-uninstall-local:
-	cd $(DESTDIR)/sbin && \
-		rm -f fsck.gfs2

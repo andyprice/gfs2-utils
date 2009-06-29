@@ -1,6 +1,11 @@
 MAINTAINERCLEANFILES	= Makefile.in
 
-noinst_PROGRAMS		= mkfs.gfs2
+# install into /sbin, not /usr/sbin
+sbindir := $(shell test '$(exec_prefix):$(sbindir)' = /usr:/usr/sbin \
+	     && echo /sbin \
+	     || echo '$(exec_prefix)/sbin')
+
+sbin_PROGRAMS		= mkfs.gfs2
 
 noinst_HEADERS		= gfs2_mkfs.h
 
@@ -15,20 +20,12 @@ mkfs_gfs2_LDADD		= $(top_builddir)/gfs2/libgfs2/libgfs2.la
 
 relative_sbin		= $(shell perl -MFile::Spec -le 'print File::Spec->abs2rel("/sbin", "$(sbindir)")')
 
-install-exec-local:
-	$(INSTALL) -d $(DESTDIR)/sbin
-	$(INSTALL) -m 755 mkfs.gfs2 $(DESTDIR)/sbin
-
-uninstall-local:
-	cd $(DESTDIR)/sbin && \
-		rm -f mkfs.gfs2
-
 install-exec-hook:
 	$(INSTALL) -d $(DESTDIR)/$(sbindir)
-	(cd $(DESTDIR)/$(sbindir) && \
+	cd $(DESTDIR)/$(sbindir) && \
 		rm -f gfs2_grow gfs2_jadd && \
 		$(LN_S) $(relative_sbin)/mkfs.gfs2 gfs2_grow && \
-		$(LN_S) $(relative_sbin)/mkfs.gfs2 gfs2_jadd)
+		$(LN_S) $(relative_sbin)/mkfs.gfs2 gfs2_jadd
 
 uninstall-hook:
-	(cd $(DESTDIR)/$(sbindir) && rm -f gfs2_jadd gfs2_grow)
+	cd $(DESTDIR)/$(sbindir) && rm -f gfs2_jadd gfs2_grow

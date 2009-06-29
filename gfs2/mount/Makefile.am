@@ -1,6 +1,11 @@
 MAINTAINERCLEANFILES	= Makefile.in
 
-noinst_PROGRAMS		= mount.gfs2
+# install into /sbin, not /usr/sbin
+sbindir := $(shell test '$(exec_prefix):$(sbindir)' = /usr:/usr/sbin \
+	     && echo /sbin \
+	     || echo '$(exec_prefix)/sbin')
+
+sbin_PROGRAMS		= mount.gfs2
 
 noinst_HEADERS		= gfs_ondisk.h util.h
 
@@ -12,11 +17,3 @@ mount_gfs2_CPPFLAGS	= -D_FILE_OFFSET_BITS=64 -DHELPER_PROGRAM \
 			  -I$(top_srcdir)/group/libgfscontrol
 
 mount_gfs2_LDADD	= $(top_builddir)/group/libgfscontrol/libgfscontrol.la
-
-install-exec-local:
-	$(INSTALL) -d $(DESTDIR)/sbin
-	$(INSTALL) -m 755 mount.gfs2 $(DESTDIR)/sbin
-
-uninstall-local:
-	cd $(DESTDIR)/sbin && \
-		rm -f mount.gfs2
