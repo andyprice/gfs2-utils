@@ -247,7 +247,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 		log_warn( _("Level %d RG check.\n"), trust_lvl + 1);
 		if ((rg_repair(sdp, trust_lvl, &rgcount) == 0) &&
 		    (ri_update(sdp, 0, &rgcount) == 0)) {
-			log_err( _("(level %d passed)\n"), trust_lvl + 1);
+			log_warn( _("(level %d passed)\n"), trust_lvl + 1);
 			break;
 		}
 		else
