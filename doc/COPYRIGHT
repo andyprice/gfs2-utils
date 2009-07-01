@@ -5,9 +5,6 @@ Copyright (C) 2004-2009 Red Hat, Inc.  All rights reserved.
 
 Exceptions:
 
-contrib/askant:
- Copyright (C) 2008-2009 Andrew Price <andy@andrewprice.me.uk>
-
 gfs2/man/gfs2_mount.8:
  Portions copyright (C) 2001-2003 The OpenGFS2 Project
  Portions copyright (C) 2004 <ben.m.cahill at intel.com>

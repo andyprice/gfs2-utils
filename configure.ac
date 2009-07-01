@@ -104,10 +104,6 @@ AC_ARG_WITH([sysloglevel],
 	[ SYSLOGLEVEL="$withval" ],
 	[ SYSLOGLEVEL="LOG_INFO" ])
 
-AC_ARG_ENABLE([contrib],
-	[  --enable-contrib       enable contrib build. ],
-	[ default="no" ])
-
 AC_ARG_WITH([kernel],
 	[  --with-kernel=path      path to kernel source. ],
 	[ KERNEL_DIR="$withval" ],
@@ -208,8 +204,6 @@ AC_DEFINE_UNQUOTED([SYSLOGFACILITY], $(eval echo ${SYSLOGFACILITY}),
 AC_DEFINE_UNQUOTED([SYSLOGLEVEL], $(eval echo ${SYSLOGLEVEL}),
 		   [Default syslog level])
 
-AM_CONDITIONAL(BUILD_CONTRIB, test "x${enable_contrib}" = xyes)
-
 ## *FLAGS handling
 
 ENV_CFLAGS="$CFLAGS"
@@ -285,8 +279,6 @@ AC_CONFIG_FILES([Makefile
 		 gfs2/quota/Makefile
 		 gfs2/tool/Makefile
 		 gfs2/man/Makefile
-		 contrib/Makefile
-		 contrib/askant/Makefile
 		 doc/Makefile
 		 ])
 

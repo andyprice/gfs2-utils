@@ -14,10 +14,6 @@ ACLOCAL_AMFLAGS		= -I m4
 
 SUBDIRS			= group gfs2 doc
 
-if BUILD_CONTRIB
-SUBDIRS			+= contrib
-endif
-
 install-exec-local:
 			$(INSTALL) -d $(DESTDIR)/$(LOGDIR)
 			$(INSTALL) -d $(DESTDIR)/$(CLUSTERVARRUN)
