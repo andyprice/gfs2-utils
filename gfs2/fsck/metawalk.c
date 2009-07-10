@@ -634,9 +634,10 @@ static int check_leaf_eattr(struct gfs2_inode *ip, uint64_t block,
 		if(error > 0) {
 			return 1;
 		}
-		error = check_eattr_entries(ip, bh, pass, want_updated);
-		if (bh)
+		if (bh) {
+			error = check_eattr_entries(ip, bh, pass, want_updated);
 			brelse(bh, *want_updated);
+		}
 		return error;
 	}
 
