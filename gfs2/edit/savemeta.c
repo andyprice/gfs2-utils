@@ -54,12 +54,13 @@ extern void read_superblock(void);
  */
 static int get_gfs_struct_info(char *gbuf, int *block_type, int *gstruct_len)
 {
-	struct gfs2_meta_header mh;
+	struct gfs2_meta_header mh, mhbuf;
 
 	*block_type = 0;
 	*gstruct_len = sbd.bsize;
 
-	gfs2_meta_header_in(&mh, gbuf);
+	memcpy(&mhbuf, gbuf, sizeof(mhbuf));
+	gfs2_meta_header_in(&mh, (void *)&mhbuf);
 	if (mh.mh_magic != GFS2_MAGIC)
 		return -1;
 
@@ -784,7 +785,10 @@ static int restore_data(int fd, int in_fd, int printblocksonly)
 				exit(-1);
 			}
 			if (first) {
-				gfs2_sb_in(&sbd.sd_sb, savedata->buf);
+				struct gfs2_sb bufsb;
+
+				memcpy(&bufsb, savedata->buf, sizeof(bufsb));
+				gfs2_sb_in(&sbd.sd_sb, (void *)&bufsb);
 				sbd1 = (struct gfs_sb *)&sbd.sd_sb;
 				if (sbd1->sb_fs_format == GFS_FORMAT_FS &&
 				    sbd1->sb_header.mh_type ==

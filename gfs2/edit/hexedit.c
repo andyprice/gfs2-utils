@@ -800,9 +800,8 @@ static void rgcount(void)
 /* ------------------------------------------------------------------------ */
 static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
 {
-	char fbuf[sizeof(struct gfs2_rindex)];
 	int amt;
-	struct gfs2_rindex ri;
+	struct gfs2_rindex fbuf, ri;
 	uint64_t foffset, gfs1_adj = 0;
 
 	foffset = rg * risize();
@@ -817,7 +816,7 @@ static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
 	amt = gfs2_readi(dif, (void *)&fbuf, foffset + gfs1_adj, risize());
 	if (!amt) /* end of file */
 		return 0;
-	gfs2_rindex_in(&ri, fbuf);
+	gfs2_rindex_in(&ri, (void *)&fbuf);
 	return ri.ri_addr;
 }
 
