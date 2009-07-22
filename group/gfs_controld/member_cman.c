@@ -84,12 +84,11 @@ void close_cluster_cfg(void)
 	corosync_cfg_finalize(ch);
 }
 
-/* what's the replacement for this? */
-#if 0
-	case CMAN_REASON_CONFIG_UPDATE:
-		setup_logging();
-		setup_ccs();
-		break;
-	}
-#endif
+/* what's the replacement for this?
+ *	case CMAN_REASON_CONFIG_UPDATE:
+ *		setup_logging();
+ *		setup_ccs();
+ *		break;
+ *	}
+ */
 

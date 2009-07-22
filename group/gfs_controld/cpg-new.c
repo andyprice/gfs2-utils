@@ -1755,7 +1755,6 @@ static void create_new_nodes(struct mountgroup *mg)
 	}
 }
 
-#if 0
 static void print_id_list(struct mountgroup *mg, struct id_info *ids,
 			  int id_count, int id_size)
 {
@@ -1768,7 +1767,6 @@ static void print_id_list(struct mountgroup *mg, struct id_info *ids,
 		id = (struct id_info *)((char *)id + id_size);
 	}
 }
-#endif
 
 static void create_failed_journals(struct mountgroup *mg)
 {
@@ -1783,7 +1781,7 @@ static void create_failed_journals(struct mountgroup *mg)
 		log_group(mg, "create_failed_journals all new");
 		return;
 	}
-	/* print_id_list(mg, ids, id_count, id_size); */
+	print_id_list(mg, ids, id_count, id_size);
 
 	id = ids;
 
@@ -2248,7 +2246,9 @@ static int pick_journal_to_recover(struct mountgroup *mg, int *jid)
 
 #if 0
 	/* FIXME: do something so this doesn't happen so regularly; maybe
-	   retry only after all nodes have failed */
+	 * retry only after all nodes have failed. This code doesn't work
+	 * but shows an idea of roughly how to fix the issue.
+	 */
 
 	/* Retry recoveries that failed the first time.  This is necessary
 	   at times for withrawn journals when all nodes fail the recovery
