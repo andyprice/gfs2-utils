@@ -34,7 +34,7 @@ You can run gfs2_grow with the \fB-T\fP flag to get a display
 of the current state of a mounted GFS2 filesystem.
 
 The gfs2_grow tool uses the resource group (RG) size that was originally
-calculated when mkfs.gfs2 was done.  This allows tools like gfs2_fsck
+calculated when mkfs.gfs2 was done.  This allows tools like fsck.gfs2
 to better ensure the integrity of the file system.  Since the new free
 space often does not lie on even boundaries based on that RG size,
 there may be some unused space on the device after gfs2_grow is run.

@@ -84,7 +84,7 @@ Valid block allocation types are: 0 (Free block), 1 (Data block),
 2 (Unlinked block), and 3 (Metadata block).  If a value from 0 to 3 is
 specified, the resource group bitmap will be changed to the new value.
 This may be used, for example, to artificially free or allocate a block
-in order to test gfs2_fsck's ability to detect and fix the problem.
+in order to test fsck.gfs2's ability to detect and fix the problem.
 
 Optionally, you may specify the keyword \fIblockbits\fR.  This option
 will locate and print the block containing the bitmap corresponding to
@@ -118,7 +118,7 @@ and resource groups are allowed.  If no value is specified after the
 field, the value of the field will be printed to stdout.  If a value
 is specified, the field's value will be changed.  This may be used,
 for example, to artificially change the di_size field for an inode
-in order to test gfs2_fsck's ability to detect and fix the problem.
+in order to test fsck.gfs2's ability to detect and fix the problem.
 
 .TP
 \fB-s\fs [\fIstructure\fR | \fIblock\fR]
