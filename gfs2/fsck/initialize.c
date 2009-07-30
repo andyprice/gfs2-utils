@@ -10,6 +10,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <libintl.h>
+#include <errno.h>
+
 #define _(String) gettext(String)
 
 #include "libgfs2.h"
@@ -22,20 +24,6 @@
 		free(x); \
 		x = NULL; \
 	}
-
-/**
- * init_journals
- *
- * Go through journals and replay them - then clear them
- */
-static int init_journals(struct gfs2_sbd *sbp)
-{
-	if(!opts.no) {
-		if(replay_journals(sbp))
-			return 1;
-	}
-	return 0;
-}
 
 /**
  * block_mounters
@@ -111,7 +99,8 @@ static void empty_super_block(struct gfs2_sbd *sdp)
 		}
 	}
 
-	gfs2_block_list_destroy(sdp, bl);
+	if (bl)
+		gfs2_block_list_destroy(sdp, bl);
 }
 
 
@@ -334,8 +323,13 @@ static int fill_super_block(struct gfs2_sbd *sdp)
  * initialize - initialize superblock pointer
  *
  */
-int initialize(struct gfs2_sbd *sbp)
+int initialize(struct gfs2_sbd *sbp, int force_check, int preen,
+	       int *all_clean)
 {
+	int clean_journals = 0;
+
+	*all_clean = 0;
+
 	if(opts.no) {
 		if ((sbp->device_fd = open(opts.device, O_RDONLY)) < 0) {
 			log_crit( _("Unable to open device: %s\n"), opts.device);
@@ -343,8 +337,13 @@ int initialize(struct gfs2_sbd *sbp)
 		}
 	} else {
 		/* read in sb from disk */
-		if ((sbp->device_fd = open(opts.device, O_RDWR)) < 0){
-			log_crit( _("Unable to open device: %s\n"), opts.device);
+		if ((sbp->device_fd = open(opts.device, O_RDWR | O_EXCL)) < 0){
+			if (errno == EBUSY)
+				log_crit( _("Device %s is busy.\n"),
+					 opts.device);
+			else
+				log_crit( _("Unable to open device: %s\n"),
+					  opts.device);
 			return FSCK_USAGE;
 		}
 	}
@@ -354,7 +353,7 @@ int initialize(struct gfs2_sbd *sbp)
 	}
 
 	/* Change lock protocol to be fsck_* instead of lock_* */
-	if(!opts.no) {
+	if(!opts.no && preen_is_safe(sbp, preen, force_check)) {
 		if(block_mounters(sbp, 1)) {
 			log_err( _("Unable to block other mounters\n"));
 			return FSCK_USAGE;
@@ -363,12 +362,21 @@ int initialize(struct gfs2_sbd *sbp)
 
 	/* verify various things */
 
-	if(init_journals(sbp)) {
-		if(!opts.no)
+	if(replay_journals(sbp, preen, force_check, &clean_journals)) {
+		if(!opts.no && preen_is_safe(sbp, preen, force_check))
 			block_mounters(sbp, 0);
 		stack;
 		return FSCK_ERROR;
 	}
+	if (sbp->md.journals == clean_journals)
+		*all_clean = 1;
+	else {
+		if (force_check || !preen)
+			log_notice( _("\nJournal recovery complete.\n"));
+	}
+
+	if (!force_check && *all_clean && preen)
+		return FSCK_OK;
 
 	if (init_system_inodes(sbp))
 		return FSCK_ERROR;

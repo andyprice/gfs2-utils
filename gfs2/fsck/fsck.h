@@ -65,9 +65,9 @@ struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp,
 				  struct gfs2_buffer_head *bh);
 void fsck_inode_put(struct gfs2_inode *ip, enum update_flags update);
 
-int initialize(struct gfs2_sbd *sbp);
+int initialize(struct gfs2_sbd *sbp, int force_check, int preen,
+	       int *all_clean);
 void destroy(struct gfs2_sbd *sbp);
-int block_mounters(struct gfs2_sbd *sbp, int block_em);
 int pass1(struct gfs2_sbd *sbp);
 int pass1b(struct gfs2_sbd *sbp);
 int pass1c(struct gfs2_sbd *sbp);

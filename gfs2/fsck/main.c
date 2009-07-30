@@ -22,13 +22,14 @@ struct gfs2_options opts = {0};
 struct gfs2_inode *lf_dip; /* Lost and found directory inode */
 osi_list_t dir_hash[FSCK_HASH_SIZE];
 osi_list_t inode_hash[FSCK_HASH_SIZE];
-struct gfs2_block_list *bl;
+struct gfs2_block_list *bl = NULL;
 uint64_t last_fs_block, last_reported_block = -1;
 int skip_this_pass = FALSE, fsck_abort = FALSE;
 int errors_found = 0, errors_corrected = 0;
 const char *pass = "";
 uint64_t last_data_block;
 uint64_t first_data_block;
+int preen = 0, force_check = 0;
 
 /* This function is for libgfs2's sake.                                      */
 void print_it(const char *label, const char *fmt, const char *fmt2, ...)
@@ -43,7 +44,7 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 
 static void usage(char *name)
 {
-	printf( _("Usage: %s [-hnqvVy] <device> \n"), basename(name));
+	printf("Usage: %s [-afhnpqvVy] <device> \n", basename(name));
 }
 
 static void version(void)
@@ -57,15 +58,26 @@ static int read_cmdline(int argc, char **argv, struct gfs2_options *gopts)
 {
 	int c;
 
-	while((c = getopt(argc, argv, "hnqvyV")) != -1) {
+	while((c = getopt(argc, argv, "afhnpqvyV")) != -1) {
 		switch(c) {
 
+		case 'a':
+			preen = 1;
+			gopts->yes = 1;
+			break;
+		case 'f':
+			force_check = 1;
+			break;
 		case 'h':
 			usage(argv[0]);
 			exit(FSCK_OK);
 			break;
 		case 'n':
 			gopts->no = 1;
+			break;
+		case 'p':
+			preen = 1;
+			gopts->yes = 1;
 			break;
 		case 'q':
 			decrease_verbosity();
@@ -256,6 +268,7 @@ int main(int argc, char **argv)
 	int j;
 	enum update_flags update_sys_files;
 	int error = 0;
+	int all_clean = 0;
 
 	setlocale(LC_ALL, "");
 	textdomain("gfs2-utils");
@@ -266,8 +279,14 @@ int main(int argc, char **argv)
 		exit(error);
 	setbuf(stdout, NULL);
 	log_notice( _("Initializing fsck\n"));
-	if ((error = initialize(sbp)))
+	if ((error = initialize(sbp, force_check, preen, &all_clean)))
 		exit(error);
+
+	if (!force_check && all_clean && preen) {
+		log_err( _("%s: clean.\n"), opts.device);
+		destroy(sbp);
+		exit(FSCK_OK);
+	}
 
 	signal(SIGINT, interrupt);
 	log_notice( _("Starting pass1\n"));

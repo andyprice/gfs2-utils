@@ -374,8 +374,34 @@ static int fix_journal_seq_no(struct gfs2_inode *ip)
 }
 
 /**
+ * preen_is_safe - Can we safely preen the file system?
+ *
+ * If a preen option was specified (-a or -p) we're likely to have been
+ * called from rc.sysinit.  We need to determine whether this is shared
+ * storage or not.  If it's local storage (locking protocol==lock_nolock)
+ * it's safe to preen the file system.  If it's lock_dlm, it's likely
+ * mounted by other nodes in the cluster, which is dangerous and therefore,
+ * we should warn the user to run fsck.gfs2 manually when it's safe.
+ */
+int preen_is_safe(struct gfs2_sbd *sdp, int preen, int force_check)
+{
+	if (!preen)       /* If preen was not specified */
+		return 1; /* not called by rc.sysinit--we're okay to preen */
+	if (force_check)  /* If check was forced by the user? */
+		return 1; /* user's responsibility--we're okay to preen */
+	if(!memcmp(sdp->sd_sb.sb_lockproto + 5, "nolock", 6))
+		return 1; /* local file system--preen is okay */
+	return 0; /* might be mounted on another node--not guaranteed safe */
+}
+
+/**
  * gfs2_recover_journal - recovery a given journal
  * @ip: the journal incore inode
+ * j: which journal to check
+ * preen: Was preen (-a or -p) specified?
+ * force_check: Was -f specified to force the check?
+ * @was_clean: if the journal was originally clean, this is set to 1.
+ *             if the journal was dirty from the start, this is set to 0.
  *
  * Acquire the journal's lock, check to see if the journal is clean, and
  * do recovery if necessary.
@@ -383,18 +409,37 @@ static int fix_journal_seq_no(struct gfs2_inode *ip)
  * Returns: errno
  */
 
-static int gfs2_recover_journal(struct gfs2_inode *ip, int j)
+static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
+				int force_check, int *was_clean)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct gfs2_log_header head;
 	unsigned int pass;
 	int error;
 
+	*was_clean = 0;
 	log_info( _("jid=%u: Looking at journal...\n"), j);
 
 	osi_list_init(&sd_revoke_list);
 	error = gfs2_find_jhead(ip, &head);
 	if (error) {
+		if (opts.no) {
+			log_err( _("Journal #%d (\"journal%d\") is corrupt.\n"
+				   "Not fixing it due to the -n option.\n"),
+				j+1, j);
+			goto out;
+		}
+		if (!preen_is_safe(sdp, preen, force_check)) {
+			log_err(_("Journal #%d (\"journal%d\") is corrupt.\n"),
+				j+1, j);
+			log_err(_("I'm not fixing it because it may be unsafe:\n"
+				 "Locking protocol is not lock_nolock and "
+				 "the -a or -p option was specified.\n"));
+			log_err(_("Please make sure no node has the file system "
+				 "mounted then rerun fsck.gfs2 manually "
+				 "without -a or -p.\n"));
+			goto out;
+		}
 		if (!query(&opts, _("\nJournal #%d (\"journal%d\") is "
 				    "corrupt.  Okay to repair it? (y/n)"),
 			   j+1, j)) {
@@ -420,10 +465,28 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j)
 	}
 	if (head.lh_flags & GFS2_LOG_HEAD_UNMOUNT) {
 		log_info( _("jid=%u: Journal is clean.\n"), j);
+		*was_clean = 1;
 		return 0;
 	}
-	if (query(&opts, _("\nJournal #%d (\"journal%d\") is dirty.  Okay to replay it? (y/n)"),
-		    j+1, j)) {
+	if (opts.no) {
+		log_err(_("Journal #%d (\"journal%d\") is dirty; not replaying"
+			  " due to the -n option.\n"),
+			j+1, j);
+		goto out;
+	}
+	if (!preen_is_safe(sdp, preen, force_check)) {
+		log_err( _("Journal #%d (\"journal%d\") is dirty.\n"), j+1, j);
+		log_err( _("I'm not replaying it because it may be unsafe:\n"
+			   "Locking protocol is not lock_nolock and "
+			   "the -a or -p option was specified.\n"));
+		log_err( _("Please make sure no node has the file system "
+			   "mounted then rerun fsck.gfs2 manually "
+			   "without -a or -p.\n"));
+		error = FSCK_ERROR;
+		goto out;
+	}
+	if (query(&opts, _("\nJournal #%d (\"journal%d\") is dirty.  Okay to "
+			   "replay it? (y/n)"), j+1, j)) {
 		log_info( _("jid=%u: Replaying journal...\n"), j);
 
 		sd_found_jblocks = sd_replayed_jblocks = 0;
@@ -457,13 +520,16 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j)
 	}
 
 out:
-	log_info( _("jid=%u: %s\n"), j, (error) ? "Failed" : "Done");
+	log_info( _("jid=%u: %s\n"), j, (error) ? _("Failed") : _("Done"));
 	return error;
 }
 
 /*
  * replay_journals - replay the journals
  * sdp: the super block
+ * preen: Was preen (-a or -p) specified?
+ * force_check: Was -f specified to force the check?
+ * @clean_journals - set to the number of clean journals we find
  *
  * There should be a flag to the fsck to enable/disable this
  * feature.  The fsck falls back to clearing the journal if an 
@@ -471,10 +537,13 @@ out:
  *
  * Returns: 0 on success, -1 on failure
  */
-int replay_journals(struct gfs2_sbd *sdp){
+int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
+		    int *clean_journals)
+{
 	int i;
+	int clean = 0, dirty_journals = 0, error = 0, gave_msg = 0;
 
-	log_notice( _("Recovering journals (this may take a while)"));
+	*clean_journals = 0;
 
 	/* Get master dinode */
 	sdp->master_dir = gfs2_load_inode(sdp,
@@ -488,17 +557,27 @@ int replay_journals(struct gfs2_sbd *sdp){
 	}
 
 	for(i = 0; i < sdp->md.journals; i++) {
-		if((i % 2) == 0)
-			log_at_notice(".");
-		gfs2_recover_journal(sdp->md.journal[i], i);
+		if (!error) {
+			error = gfs2_recover_journal(sdp->md.journal[i], i,
+						     preen, force_check,
+						     &clean);
+			if (!clean)
+				dirty_journals++;
+			if (!gave_msg && dirty_journals == 1 && !opts.no &&
+			    preen_is_safe(sdp, preen, force_check)) {
+				gave_msg = 1;
+				log_notice( _("Recovering journals (this may "
+					      "take a while)\n"));
+			}
+			*clean_journals += clean;
+		}
 		inode_put(sdp->md.journal[i],
 			  (opts.no ? not_updated : updated));
 	}
-	log_notice( _("\nJournal recovery complete.\n"));
 	inode_put(sdp->master_dir, not_updated);
 	inode_put(sdp->md.jiinode, not_updated);
 	/* Sync the buffers to disk so we get a fresh start. */
 	bsync(&sdp->buf_list);
 	bsync(&sdp->nvbuf_list);
-	return 0;
+	return error;
 }
