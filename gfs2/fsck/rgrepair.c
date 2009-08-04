@@ -371,6 +371,11 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 	/* ----------------------------------------------------------------- */
 	*num_rgs = sdp->md.riinode->i_di.di_size / sizeof(struct gfs2_rindex);
 	log_warn( _("L2: number of rgs in the index = %d.\n"), *num_rgs);
+	/* Move the rg list to the return list */
+	ret_list->next = sdp->rglist.next;
+	ret_list->prev = sdp->rglist.prev;
+	ret_list->next->prev = ret_list;
+	ret_list->prev->next = ret_list;
 	return 0;
 }
 
@@ -541,12 +546,11 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 					free(actual->bh);
 				if (actual->bits)
 					free(actual->bits);
-				gfs2_compute_bitstructs(sdp, actual);
 			}
 			else
 				log_err( _("RG index not fixed.\n"));
+			gfs2_compute_bitstructs(sdp, actual);
 			rindex_modified = FALSE;
-			
 		}
 	}
 	/* ------------------------------------------------------------- */
