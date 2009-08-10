@@ -55,7 +55,8 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
 				     struct gfs2_ea_header *ea_hdr_prev,
 				     enum update_flags *want_updated,
 				     void *private);
-static int finish_eattr_indir(struct gfs2_inode *ip, int indir_ok,
+static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
+			      int leaf_pointer_errors,
 			      enum update_flags *want_updated, void *private);
 
 struct metawalk_fxns pass1_fxns = {
@@ -107,20 +108,21 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 	if(q.block_type != gfs2_block_free) {
 		log_err( _("Found duplicate block referenced as metadata in "
 			   "indirect block - was marked %d\n"), q.block_type);
-		gfs2_block_set(ip->i_sbd, bl, block, gfs2_dup_block);
+		gfs2_block_mark(ip->i_sbd, bl, block, gfs2_dup_block);
 		found_dup = 1;
 	}
 	nbh = bread(&ip->i_sbd->buf_list, block);
 
 	if (gfs2_check_meta(nbh, GFS2_METATYPE_IN)){
-		log_debug( _("Bad indirect block pointer "
-				  "(points to something that is not an indirect block).\n"));
+		log_debug( _("Bad indirect block pointer (points to "
+			     "something that is not an indirect block).\n"));
 		if(!found_dup) {
 			gfs2_block_set(ip->i_sbd, bl, block, gfs2_meta_inval);
 			brelse(nbh, not_updated);
 			return 1;
 		}
-	}else  /* blk check ok */
+		brelse(nbh, not_updated);
+	} else /* blk check ok */
 		*bh = nbh;
 
 	if (!found_dup) {
@@ -140,15 +142,22 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 	int error = 0, btype;
 
 	if (gfs2_check_range(ip->i_sbd, block)) {
-		log_err( _("Bad data block pointer (out of range)\n"));
+		log_err( _("inode %lld (0x%llx) has a bad data block pointer "
+			   "%lld (out of range)\n"),
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)block);
 		/* Mark the owner of this block with the bad_block
-		 * designator so we know to check it for out of range blocks later */
+		 * designator so we know to check it for out of range
+		 * blocks later */
 		gfs2_block_set(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
 			       gfs2_bad_block);
 		return 1;
 	}
 	if(gfs2_block_check(ip->i_sbd, bl, block, &q)) {
 		stack;
+		log_err( _("Found bad block referenced as data at %"
+			   PRIu64 " (0x%"PRIx64 ")\n"), block, block);
 		return -1;
 	}
 	if(q.block_type != gfs2_block_free) {
@@ -156,6 +165,10 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 			   PRIu64 " (0x%"PRIx64 ")\n"), block, block);
 		if (q.block_type != gfs2_meta_inval) {
 			gfs2_block_mark(ip->i_sbd, bl, block, gfs2_dup_block);
+			/* If the prev ref was as data, this is likely a data
+			   block, so keep the block count for both refs. */
+			if (q.block_type == gfs2_block_used)
+				bc->data_count++;
 			return 1;
 		}
 		/* An explanation is in order here.  At this point we found
@@ -212,6 +225,51 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 	return error;
 }
 
+static int remove_inode_eattr(struct gfs2_inode *ip, struct block_count *bc,
+			      int duplicate, enum update_flags *want_updated)
+{
+	if (!duplicate) {
+		gfs2_set_bitmap(ip->i_sbd, ip->i_di.di_eattr,
+				GFS2_BLKST_FREE);
+		gfs2_block_set(ip->i_sbd, bl, ip->i_di.di_eattr,
+			       gfs2_block_free);
+	}
+	ip->i_di.di_eattr = 0;
+	bc->ea_count = 0;
+	ip->i_di.di_blocks = 1 + bc->indir_count + bc->data_count;
+	ip->i_di.di_flags &= ~GFS2_DIF_EA_INDIRECT;
+	*want_updated = updated;
+	return 0;
+}
+
+static int ask_remove_inode_eattr(struct gfs2_inode *ip,
+				  struct block_count *bc,
+				  enum update_flags *want_updated)
+{
+	log_err( _("Inode %lld (0x%llx) has unrecoverable Extended Attribute "
+		   "errors.\n"), (unsigned long long)ip->i_di.di_num.no_addr,
+		 (unsigned long long)ip->i_di.di_num.no_addr);
+	errors_found++;
+	if (query(&opts, _("Clear all Extended Attributes from the "
+			   "inode? (y/n) "))) {
+		struct gfs2_block_query q;
+
+		errors_corrected++;
+		if(gfs2_block_check(ip->i_sbd, bl, ip->i_di.di_eattr, &q)) {
+			stack;
+			return -1;
+		}
+		if (!remove_inode_eattr(ip, bc, q.dup_block, want_updated))
+			log_err( _("Extended attributes were removed.\n"));
+		else
+			log_err( _("Unable to remove inode eattr pointer; "
+				   "the error remains.\n"));
+	} else {
+		log_err( _("Extended attributes were not removed.\n"));
+	}
+	return 0;
+}
+
 /* clear_eas - clear the extended attributes for an inode
  *
  * @ip       - in core inode pointer
@@ -231,27 +289,22 @@ static int clear_eas(struct gfs2_inode *ip, struct block_count *bc,
 	log_err( _("Inode #%llu (0x%llx): %s"),
 		(unsigned long long)ip->i_di.di_num.no_addr,
 		(unsigned long long)ip->i_di.di_num.no_addr, emsg);
-	if (block)
-		log_err( _(" at block #%" PRIu64 " (0x%" PRIx64 ")"),
-			block, block);
-	log_err(".\n");
+	log_err( _(" at block #%lld (0x%llx).\n"),
+		 (unsigned long long)block, (unsigned long long)block);
 	errors_found++;
-	if ((errors_corrected += query(&opts, _("Clear the bad Extended "
-						"Attribute? (y/n) ")))) {
-		if (block == 0)
-			block = ip->i_di.di_eattr;
-		if (!duplicate) {
+	if (query(&opts, _("Clear the bad Extended Attribute? (y/n) "))) {
+		errors_corrected++;
+		if (block == ip->i_di.di_eattr) {
+			remove_inode_eattr(ip, bc, duplicate, want_updated);
+			log_err( _("The bad extended attribute was "
+				   "removed.\n"));
+		} else if (!duplicate) {
 			gfs2_block_set(sdp, bl, block, gfs2_block_free);
 			gfs2_set_bitmap(sdp, block, GFS2_BLKST_FREE);
+			log_err( _("The bad Extended Attribute was "
+				   "removed.\n"));
 		}
-		ip->i_di.di_flags &= ~GFS2_DIF_EA_INDIRECT;
-		if (block == ip->i_di.di_eattr)
-			ip->i_di.di_eattr = 0;
-		bc->ea_count = 0;
-		ip->i_di.di_blocks = 1 + bc->indir_count + bc->data_count;
-		gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
 		*want_updated = updated;
-		log_err( _("The bad Extended Attribute was removed.\n"));
 		return 1;
 	} else {
 		log_err( _("The bad Extended Attribute was not fixed.\n"));
@@ -294,8 +347,8 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 			if (!clear_eas(ip, bc, indirect, 1, want_updated,
 				       _("Bad indirect Extended Attribute "
 					 "duplicate found"))) {
-				gfs2_block_set(sdp, bl, indirect,
-					       gfs2_dup_block);
+				gfs2_block_mark(sdp, bl, indirect,
+						gfs2_dup_block);
 				bc->ea_count++;
 			}
 			return 1;
@@ -313,7 +366,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)indirect,
 			 (unsigned long long)indirect);
-		gfs2_block_set(sdp, bl, indirect, gfs2_dup_block);
+		gfs2_block_mark(sdp, bl, indirect, gfs2_dup_block);
 		bc->ea_count++;
 		ret = 1;
 	} else {
@@ -326,21 +379,99 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 	return ret;
 }
 
-static int finish_eattr_indir(struct gfs2_inode *ip, int indir_ok,
+static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
+			      int leaf_pointer_errors,
 			      enum update_flags *want_updated, void *private)
 {
-	if (indir_ok) {
-		log_debug( _("Marking inode #%llu (0x%llx) with eattr block\n"),
-			  (unsigned long long)ip->i_di.di_num.no_addr,
-			  (unsigned long long)ip->i_di.di_num.no_addr);
-		/* Mark the inode as having an eattr in the block map
-		   so pass1c can check it. */
-		gfs2_block_mark(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
-				gfs2_eattr_block);
+	struct block_count *bc = (struct block_count *) private;
+
+	if (leaf_pointer_errors == leaf_pointers) /* All eas were bad */
+		return ask_remove_inode_eattr(ip, bc, want_updated);
+	log_debug( _("Marking inode #%llu (0x%llx) with extended "
+		     "attribute block\n"),
+		   (unsigned long long)ip->i_di.di_num.no_addr,
+		   (unsigned long long)ip->i_di.di_num.no_addr);
+	/* Mark the inode as having an eattr in the block map
+	   so pass1c can check it. */
+	gfs2_block_mark(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
+			gfs2_eattr_block);
+	bc->ea_count++;
+	if (!leaf_pointer_errors)
 		return 0;
+	log_err( _("Inode %lld (0x%llx) has recoverable indirect "
+		   "Extended Attribute errors.\n"),
+		   (unsigned long long)ip->i_di.di_num.no_addr,
+		   (unsigned long long)ip->i_di.di_num.no_addr);
+	errors_found++;
+	if (query(&opts, _("Okay to fix the block count for the inode? "
+			   "(y/n) "))) {
+		errors_corrected++;
+		ip->i_di.di_blocks = 1 + bc->indir_count +
+			bc->data_count + bc->ea_count;
+		*want_updated = updated;
+		log_err( _("Block count fixed.\n"));
+		return 1;
 	}
-	clear_eas(ip, (struct block_count *)private, 0, 0, want_updated,
-		  _("has unrecoverable indirect Extended Attribute errors"));
+	log_err( _("Block count not fixed.\n"));
+	return 1;
+}
+
+static int check_leaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
+			    struct gfs2_buffer_head **bh,
+			    enum update_flags *want_updated, void *private)
+{
+	struct gfs2_buffer_head *leaf_bh = NULL;
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct gfs2_block_query q = {0};
+	struct block_count *bc = (struct block_count *) private;
+
+	if(gfs2_block_check(sdp, bl, block, &q)) {
+		stack;
+		return -1;
+	}
+	/* Special duplicate processing:  If we have an EA block, check if it
+	   really is an EA.  If it is, let duplicate handling sort it out.
+	   If it isn't, clear it but don't count it as a duplicate. */
+	leaf_bh = bread(&sdp->buf_list, block);
+	if(gfs2_check_meta(leaf_bh, btype)) {
+		if(q.block_type != gfs2_block_free) { /* Duplicate? */
+			clear_eas(ip, bc, block, 1, want_updated,
+				  _("Bad Extended Attribute duplicate found"));
+		} else {
+			clear_eas(ip, bc, block, 0, want_updated,
+				  _("Extended Attribute leaf block "
+				    "has incorrect type"));
+		}
+		brelse(leaf_bh, *want_updated);
+		return 1;
+	}
+	if(q.block_type != gfs2_block_free) { /* Duplicate? */
+		log_debug( _("Duplicate block found at #%lld (0x%llx).\n"),
+			   (unsigned long long)block,
+			   (unsigned long long)block);
+		gfs2_block_mark(sdp, bl, block, gfs2_dup_block);
+		bc->ea_count++;
+		brelse(leaf_bh, not_updated);
+		return 1;
+	}
+	if (ip->i_di.di_eattr == 0) {
+		/* Can only get in here if there were unrecoverable ea
+		   errors that caused clear_eas to be called.  What we
+		   need to do here is remove the subsequent ea blocks. */
+		clear_eas(ip, bc, block, 0, want_updated,
+			  _("Extended Attribute block removed due to "
+			    "previous errors.\n"));
+		brelse(leaf_bh, *want_updated);
+		return 1;
+	}
+	log_debug( _("Setting block #%lld (0x%llx) to eattr block\n"),
+		   (unsigned long long)block, (unsigned long long)block);
+	/* Point of confusion: We've got to set the ea block itself to
+	   gfs2_meta_eattr here.  Elsewhere we mark the inode with
+	   gfs2_eattr_block meaning it contains an eattr for pass1c. */
+	gfs2_block_set(sdp, bl, block, gfs2_meta_eattr);
+	bc->ea_count++;
+	*bh = leaf_bh;
 	return 0;
 }
 
@@ -362,16 +493,14 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
 				     enum update_flags *want_updated,
 				     void *private)
 {
-	struct gfs2_buffer_head *el_buf;
-	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_block_query q;
 	uint64_t el_blk = be64_to_cpu(*data_ptr);
-	struct block_count *bc = (struct block_count *) private;
-	int ret = 0;
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct gfs2_buffer_head *bh = NULL;
+	int error;
 
 	if(gfs2_check_range(sdp, el_blk)){
 		log_err( _("Inode #%llu (0x%llx): Extended Attribute block "
-			   "%llu (0x%llx) has an extemded leaf block #%llu "
+			   "%llu (0x%llx) has an extended leaf block #%llu "
 			   "(0x%llx) that is out of range.\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
@@ -382,46 +511,11 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
 		gfs2_block_set(sdp, bl, ip->i_di.di_eattr, gfs2_bad_block);
 		return 1;
 	}
-
-	if(gfs2_block_check(sdp, bl, el_blk, &q)) {
-		stack;
-		return -1;
-	}
-	el_buf = bread(&sdp->buf_list, el_blk);
-
-	/* Special duplicate processing:  If we have an EA block,
-	   check if it really is an EA.  If it is, let duplicate
-	   handling sort it out.  If it isn't, clear it but don't
-	   count it as a duplicate. */
-	if(gfs2_check_meta(el_buf, GFS2_METATYPE_ED)) {
-		if(q.block_type != gfs2_block_free) /* Duplicate? */
-			clear_eas(ip, bc, el_blk, 1, want_updated,
-				  _("has bad extended Extended Attribute "
-				    "duplicate"));
-		else
-			clear_eas(ip, bc, el_blk, 0, want_updated,
-				  _("Extended Attribute extended leaf block "
-				    "has incorrect type"));
-		ret = 1;
-	} else { /* If this looks like an EA */
-		if(q.block_type != gfs2_block_free) { /* Duplicate? */
-			log_debug( _("Duplicate block found at #%" PRIu64
-				  " (0x%" PRIx64 ").\n"),
-				  el_blk, el_blk);
-			gfs2_block_set(sdp, bl, el_blk, gfs2_dup_block);
-			bc->ea_count++;
-			ret = 1;
-		} else {
-			log_debug( _("Setting block #%" PRIu64
-				  " (0x%" PRIx64 ") to eattr block\n"),
-				  el_blk, el_blk);
-			gfs2_block_set(sdp, bl, el_blk, gfs2_meta_eattr);
-			bc->ea_count++;
-		}
-	}
-
-	brelse(el_buf, not_updated);
-	return ret;
+	error = check_leaf_block(ip, el_blk, GFS2_METATYPE_ED, &bh,
+				 want_updated, private);
+	if (bh)
+		brelse(bh, not_updated);
+	return error;
 }
 
 static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
@@ -429,75 +523,28 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			    enum update_flags *want_updated, void *private)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_buffer_head *leaf_bh = NULL;
-	int ret = 0;
-	struct gfs2_block_query q = {0};
-	struct block_count *bc = (struct block_count *) private;
 
-	/* Figure out the parent's block type */
-	gfs2_block_check(sdp, bl, parent, &q);
 	/* This inode contains an eattr - it may be invalid, but the
-	 * eattr attributes points to a non-zero block */
-	if (parent != ip->i_di.di_num.no_addr && /* if parent isn't the inode*/
-	    q.block_type != gfs2_indir_blk) { /* parent isn't indirect block */
-		log_debug( _("Setting %" PRIu64 " (0x%" PRIx64 ") to eattr block\n"),
-				  parent, parent);
-		gfs2_block_set(sdp, bl, parent, gfs2_eattr_block);
-	}
-	if(gfs2_check_range(sdp, block)){
+	 * eattr attributes points to a non-zero block.
+	 * Clarification: If we're here we're checking a leaf block, and the
+	 * source dinode needs to be marked as having extended attributes.
+	 * That instructs pass1c to check the contents of the ea blocks. */
+	log_debug( _("Setting inode %lld (0x%llx) as having eattr "
+		     "block(s) attached.\n"),
+		   (unsigned long long)ip->i_di.di_num.no_addr,
+		   (unsigned long long)ip->i_di.di_num.no_addr);
+	gfs2_block_mark(sdp, bl, ip->i_di.di_num.no_addr, gfs2_eattr_block);
+	if(gfs2_check_range(sdp, block)) {
 		log_warn( _("Inode #%llu (0x%llx): Extended Attribute leaf "
 			    "block #%llu (0x%llx) is out of range.\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)block, (unsigned long long)block);
 		gfs2_block_set(sdp, bl, ip->i_di.di_eattr, gfs2_bad_block);
-		ret = 1;
+		return 1;
 	}
-	else if(gfs2_block_check(sdp, bl, block, &q)) {
-		stack;
-		return -1;
-	}
-	else {
-		/* Special duplicate processing:  If we have an EA block,
-		   check if it really is an EA.  If it is, let duplicate
-		   handling sort it out.  If it isn't, clear it but don't
-		   count it as a duplicate. */
-		leaf_bh = bread(&sdp->buf_list, block);
-		if(gfs2_check_meta(leaf_bh, GFS2_METATYPE_EA)) {
-			if(q.block_type != gfs2_block_free) { /* Duplicate? */
-				clear_eas(ip, bc, block, 1, want_updated,
-					  _("Bad Extended Attribute duplicate "
-					    "found"));
-			} else {
-				clear_eas(ip, bc, block, 0, want_updated,
-					  _("Extended Attribute leaf block "
-					    "has incorrect type"));
-			}
-			ret = 1;
-			brelse(leaf_bh, not_updated);
-		} else { /* If this looks like an EA */
-			if(q.block_type != gfs2_block_free) { /* Duplicate? */
-				log_debug( _("Duplicate block found at #%" PRIu64
-					  " (0x%" PRIx64 ").\n"),
-					  block, block);
-				gfs2_block_set(sdp, bl, block, gfs2_dup_block);
-				bc->ea_count++;
-				ret = 1;
-				brelse(leaf_bh, not_updated);
-			} else {
-				log_debug( _("Setting block #%" PRIu64
-					  " (0x%" PRIx64 ") to eattr block\n"),
-					  block, block);
-				gfs2_block_set(sdp, bl, block,
-					       gfs2_meta_eattr);
-				bc->ea_count++;
-			}
-		}
-	}
-	if (!ret)
-		*bh = leaf_bh;
-
-	return ret;
+	return check_leaf_block(ip, block, GFS2_METATYPE_EA, bh, want_updated,
+				private);
 }
 
 static int check_eattr_entries(struct gfs2_inode *ip,
@@ -579,7 +626,9 @@ static int clear_leaf(struct gfs2_inode *ip, uint64_t block,
 	       struct gfs2_buffer_head *bh, void *private)
 {
 	struct gfs2_block_query q = {0};
-	log_crit("Clearing leaf #%" PRIu64 " (0x%" PRIx64 ")\n", block, block);
+
+	log_crit( _("Clearing leaf #%" PRIu64 " (0x%" PRIx64 ")\n"),
+		  block, block);
 
 	if(gfs2_block_check(ip->i_sbd, bl, block, &q)) {
 		stack;
@@ -595,7 +644,6 @@ static int clear_leaf(struct gfs2_inode *ip, uint64_t block,
 		return 0;
 	}
 	return 0;
-
 }
 
 int add_to_dir_list(struct gfs2_sbd *sbp, uint64_t block)
@@ -651,9 +699,10 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			(unsigned long long)ip->i_di.di_num.no_addr,
 			(unsigned long long)ip->i_di.di_num.no_addr);
 		errors_found++;
-		if((errors_corrected +=
-		    query(&opts, _("Fix address in inode at block #%"
-			  PRIu64 " (0x%" PRIx64 ")? (y/n) "), block, block))) {
+		if(query(&opts, _("Fix address in inode at block #%"
+				  PRIu64 " (0x%" PRIx64 ")? (y/n) "),
+			 block, block)) {
+			errors_corrected++;
 			ip->i_di.di_num.no_addr = ip->i_di.di_num.no_formal_ino = block;
 			gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
 			f = updated;
@@ -809,7 +858,11 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 		return 0;
 	}
 
-	check_inode_eattr(ip, &f, &pass1_fxns);
+	error = check_inode_eattr(ip, &f, &pass1_fxns);
+
+	if (error && f == updated &&
+	    !(ip->i_di.di_flags & GFS2_DIF_EA_INDIRECT))
+		ask_remove_inode_eattr(ip, &bc, &f);
 
 	if (ip->i_di.di_blocks != 
 		(1 + bc.indir_count + bc.data_count + bc.ea_count)) {
@@ -820,9 +873,15 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			(unsigned long long)ip->i_di.di_blocks,
 			(unsigned long long)1 + bc.indir_count +
 			bc.data_count + bc.ea_count);
+		log_info( _("inode has: %lld, but fsck counts: Dinode:1 + "
+			    "indir:%lld + data: %lld + ea: %lld\n"),
+			  (unsigned long long)ip->i_di.di_blocks,
+			  (unsigned long long)bc.indir_count,
+			  (unsigned long long)bc.data_count,
+			  (unsigned long long)bc.ea_count);
 		errors_found++;
-		if ((errors_corrected +=
-		     query(&opts, _("Fix ondisk block count? (y/n) ")))) {
+		if (query(&opts, _("Fix ondisk block count? (y/n) "))) {
+			errors_corrected++;
 			ip->i_di.di_blocks = 1 + bc.indir_count + bc.data_count +
 				bc.ea_count;
 			gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
@@ -873,12 +932,12 @@ static int scan_meta(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			return -1;
 		}
 	}
-	/* Ignore everything else - they should be hit by the handle_di step. */
-	/* Don't check NONE either, because check_meta passes everything if   */
-	/* GFS2_METATYPE_NONE is specified.                                   */
-	/* Hopefully, other metadata types such as indirect blocks will be    */
-	/* handled when the inode itself is processed, and if it's not, it    */
-	/* should be caught in pass5.                                         */
+	/* Ignore everything else - they should be hit by the handle_di step.
+	 * Don't check NONE either, because check_meta passes everything if
+	 * GFS2_METATYPE_NONE is specified.
+	 * Hopefully, other metadata types such as indirect blocks will be
+	 * handled when the inode itself is processed, and if it's not, it
+	 * should be caught in pass5. */
 	return 0;
 }
 

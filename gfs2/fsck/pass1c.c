@@ -17,32 +17,72 @@ static int remove_eattr_entry(struct gfs2_sbd *sdp,
 			      struct gfs2_ea_header *curr,
 			      struct gfs2_ea_header *prev)
 {
-	log_err( _("Bad Extended Attribute at block #%"PRIu64
-		   " (0x%" PRIx64 ") removed.\n"),
-		 leaf_bh->b_blocknr, leaf_bh->b_blocknr);
-	if(!prev)
+	if (!prev)
 		curr->ea_type = GFS2_EATYPE_UNUSED;
 	else {
-		prev->ea_rec_len =
-			be32_to_cpu(curr->ea_rec_len);
+		uint32_t tmp32 = be32_to_cpu(curr->ea_rec_len) +
 			be32_to_cpu(prev->ea_rec_len);
-			cpu_to_be32(curr->ea_rec_len + prev->ea_rec_len);
-
+		prev->ea_rec_len = cpu_to_be32(tmp32);
 		if (curr->ea_flags & GFS2_EAFLAG_LAST)
 			prev->ea_flags |= GFS2_EAFLAG_LAST;	
 	}
+	log_err( _("Bad Extended Attribute at block #%"PRIu64
+		   " (0x%" PRIx64 ") removed.\n"),
+		 leaf_bh->b_blocknr, leaf_bh->b_blocknr);
 	return 0;
+}
+
+static int ask_remove_eattr_entry(struct gfs2_sbd *sdp,
+				  struct gfs2_buffer_head *leaf_bh,
+				  struct gfs2_ea_header *curr,
+				  struct gfs2_ea_header *prev,
+				  int fix_curr, int fix_curr_len)
+{
+	errors_found++;
+	if (query(&opts, _("Remove the bad Extended Attribute entry? "
+			   "(y/n) "))) {
+		errors_corrected++;
+		if (fix_curr)
+			curr->ea_flags |= GFS2_EAFLAG_LAST;
+		if (fix_curr_len) {
+			uint32_t max_size = sdp->sd_sb.sb_bsize;
+			uint32_t offset = (uint32_t)(((unsigned long)curr) -
+					     ((unsigned long)leaf_bh->b_data));
+			curr->ea_rec_len = cpu_to_be32(max_size - offset);
+		}
+		if (remove_eattr_entry(sdp, leaf_bh, curr, prev)) {
+			stack;
+			return -1;
+		}
+	} else {
+		log_err( _("Bad Extended Attribute not removed.\n"));
+	}
+	return 1;
+}
+
+static int ask_remove_eattr(struct gfs2_inode *ip,
+			    enum update_flags *need_update)
+{
+	errors_found++;
+	if (query(&opts, _("Remove the bad Extended Attribute? (y/n) "))) {
+		errors_corrected++;
+		ip->i_di.di_eattr = 0;
+		*need_update = updated;
+		log_err( _("Bad Extended Attribute removed.\n"));
+	} else
+		log_err( _("Bad Extended Attribute not removed.\n"));
+	return 1;
 }
 
 static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 		      uint64_t parent, struct gfs2_buffer_head **bh,
-		      enum update_flags *update, void *private)
+		      enum update_flags *need_update, void *private)
 {
 	struct gfs2_sbd *sbp = ip->i_sbd;
 	struct gfs2_block_query q;
 	struct gfs2_buffer_head *indir_bh = NULL;
 
-	*update = not_updated;
+	*need_update = not_updated;
 	if(gfs2_check_range(sbp, block)) {
 		log_err( _("Extended attributes indirect block #%llu"
 			" (0x%llx) for inode #%llu"
@@ -51,16 +91,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 			(unsigned long long)block,
 			(unsigned long long)ip->i_di.di_num.no_addr,
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		errors_found++;
-		if ((errors_corrected +=
-		     query(&opts, _("Remove the bad Extended Attribute? "
-				    "(y/n) ")))) {
-			ip->i_di.di_eattr = 0;
-			*update = updated;
-			log_err( _("Bad Extended Attribute removed.\n"));
-		} else
-			log_err( _("Bad Extended Attribute not removed.\n"));
-		return 1;
+		return ask_remove_eattr(ip, need_update);
 	}
 	else if (gfs2_block_check(sbp, bl, block, &q)) {
 		stack;
@@ -74,17 +105,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 			(unsigned long long)block,
 			(unsigned long long)ip->i_di.di_num.no_addr,
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		errors_found++;
-		if ((errors_corrected +=
-		     query(&opts, _("Remove the bad Extended Attribute? "
-				    "(y/n) ")))) {
-			ip->i_di.di_eattr = 0;
-			*update = updated;
-			log_err( _("Bad Extended Attribute removed.\n"));
-		} else
-			log_err( _("Bad Extended Attribute not removed.\n"));
-
-		return 1;
+		return ask_remove_eattr(ip, need_update);
 	}
 	else
 		indir_bh = bread(&sbp->buf_list, block);
@@ -95,28 +116,17 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 
 static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 		     uint64_t parent, struct gfs2_buffer_head **bh,
-		     enum update_flags *update, void *private)
+		     enum update_flags *need_update, void *private)
 {
 	struct gfs2_sbd *sbp = ip->i_sbd;
 	struct gfs2_block_query q;
 
-	*update = not_updated;
 	if(gfs2_check_range(sbp, block)) {
 		log_err( _("Extended attributes block for inode #%llu"
 			" (0x%llx) out of range.\n"),
 			(unsigned long long)ip->i_di.di_num.no_addr,
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		errors_found++;
-		if ((errors_corrected +=
-		     query(&opts, _("Remove the bad Extended Attribute? "
-				    "(y/n) ")))) {
-			ip->i_di.di_eattr = 0;
-			*update = updated;
-			log_err( _("Bad Extended Attribute removed.\n"));
-		} else
-			log_err( _("Bad Extended Attribute not removed.\n"));
-
-		return 1;
+		return ask_remove_eattr(ip, need_update);
 	}
 	else if (gfs2_block_check(sbp, bl, block, &q)) {
 		stack;
@@ -127,17 +137,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			   " (0x%llx) invalid.\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
-		errors_found++;
-		if ((errors_corrected +=
-		     query(&opts, _("Remove the bad Extended Attribute? "
-				    "(y/n) ")))) {
-			ip->i_di.di_eattr = 0;
-			*update = updated;
-			log_err( _("Bad Extended Attribute removed.\n"));
-		} else
-			log_err( _("Bad Extended Attribute not removed.\n"));
-
-		return 1;
+		return ask_remove_eattr(ip, need_update);
 	}
 	else 
 		*bh = bread(&sbp->buf_list, block);
@@ -159,73 +159,24 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 
 	if(!ea_hdr->ea_name_len){
 		log_err( _("EA has name length == 0\n"));
-		errors_found++;
-		if ((errors_corrected +=
-		     query(&opts, _("Remove the bad Extended Attribute? "
-				    "(y/n) ")))) {
-			ea_hdr->ea_flags |= GFS2_EAFLAG_LAST;
-			ea_hdr->ea_rec_len = cpu_to_be32(max_size - offset);
-			if(remove_eattr_entry(sdp, leaf_bh, ea_hdr,
-					      ea_hdr_prev)){
-				stack;
-				return -1;
-			}
-		} else
-			log_err( _("Bad Extended Attribute not removed.\n"));
-
-		return 1;
+		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+					      ea_hdr_prev, 1, 1);
 	}
 	if(offset + be32_to_cpu(ea_hdr->ea_rec_len) > max_size){
 		log_err( _("EA rec length too long\n"));
-		errors_found++;
-		if ((errors_corrected +=
-		     query(&opts, _("Remove the bad Extended Attribute? "
-				    "(y/n) ")))) {
-			ea_hdr->ea_flags |= GFS2_EAFLAG_LAST;
-			ea_hdr->ea_rec_len = cpu_to_be32(max_size - offset);
-			if(remove_eattr_entry(sdp, leaf_bh, ea_hdr,
-					      ea_hdr_prev)){
-				stack;
-				return -1;
-			}
-		} else
-			log_err( _("Bad Extended Attribute not removed.\n"));
-
-		return 1;
+		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+					      ea_hdr_prev, 1, 1);
 	}
 	if(offset + be32_to_cpu(ea_hdr->ea_rec_len) == max_size &&
 	   (ea_hdr->ea_flags & GFS2_EAFLAG_LAST) == 0){
 		log_err( _("last EA has no last entry flag\n"));
-		errors_found++;
-		if ((errors_corrected +=
-		     query(&opts, _("Remove the bad Extended Attribute? "
-				    "(y/n) ")))) {
-			ea_hdr->ea_flags |= GFS2_EAFLAG_LAST;
-			if(remove_eattr_entry(sdp, leaf_bh, ea_hdr,
-					      ea_hdr_prev)){
-				stack;
-				return -1;
-			}
-		} else
-			log_err( _("Bad Extended Attribute not removed.\n"));
-
-		return 1;
+		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+					      ea_hdr_prev, 0, 0);
 	}
 	if(!ea_hdr->ea_name_len){
 		log_err( _("EA has name length == 0\n"));
-		errors_found++;
-		if ((errors_corrected +=
-		     query(&opts, _("Remove the bad Extended Attribute? "
-				    "(y/n) ")))) {
-			if(remove_eattr_entry(sdp, leaf_bh, ea_hdr,
-					      ea_hdr_prev)){
-				stack;
-				return -1;
-			}
-		} else
-			log_err( _("Bad Extended Attribute not removed.\n"));
-
-		return 1;
+		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+					      ea_hdr_prev, 0, 0);
 	}
 
 	memset(ea_name, 0, sizeof(ea_name));
@@ -236,19 +187,8 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 	   ((ea_hdr_prev) || (!ea_hdr_prev && ea_hdr->ea_type))){
 		log_err( _("EA (%s) type is invalid (%d > %d).\n"),
 			ea_name, ea_hdr->ea_type, GFS2_EATYPE_LAST);
-		errors_found++;
-		if ((errors_corrected +=
-		     query(&opts, _("Remove the bad Extended Attribute? "
-				    "(y/n) ")))) {
-			if(remove_eattr_entry(sdp, leaf_bh, ea_hdr,
-					      ea_hdr_prev)){
-				stack;
-				return -1;
-			}
-		} else
-			log_err( _("Bad Extended Attribute not removed.\n"));
-
-		return 1;
+		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+					      ea_hdr_prev, 0, 0);
 	}
 
 	if(ea_hdr->ea_num_ptrs){
@@ -260,23 +200,10 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 
 		if(max_ptrs > ea_hdr->ea_num_ptrs){
 			log_err( _("EA (%s) has incorrect number of pointers.\n"), ea_name);
-			log_err( _("  Required:  %d\n"
-				"  Reported:  %d\n"),
-				max_ptrs, ea_hdr->ea_num_ptrs);
-			errors_found++;
-			if ((errors_corrected +=
-			     query(&opts, _("Remove the bad Extended "
-					    "Attribute? (y/n) ")))) {
-				if(remove_eattr_entry(sdp, leaf_bh, ea_hdr,
-						      ea_hdr_prev)){
-					stack;
-					return -1;
-				}
-			} else
-				log_err( _("Bad Extended Attribute not "
-					   "removed.\n"));
-
-			return 1;
+			log_err( _("  Required:  %d\n  Reported:  %d\n"),
+				 max_ptrs, ea_hdr->ea_num_ptrs);
+			return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+						      ea_hdr_prev, 0, 0);
 		} else {
 			log_debug( _("  Pointers Required: %d\n  Pointers Reported: %d\n"),
 					  max_ptrs, ea_hdr->ea_num_ptrs);
@@ -294,7 +221,6 @@ static int check_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_ptr,
 	struct gfs2_block_query q;
 	struct gfs2_sbd *sbp = ip->i_sbd;
 
-	*want_updated = not_updated;
 	if(gfs2_block_check(sbp, bl, be64_to_cpu(*ea_ptr), &q)) {
 		stack;
 		return -1;
@@ -332,11 +258,12 @@ int pass1c(struct gfs2_sbd *sbp)
 	osi_list_foreach_safe(tmp, &sbp->eattr_blocks.list, x) {
 		ea_block = osi_list_entry(tmp, struct special_blocks, list);
 		block_no = ea_block->block;
+		warm_fuzzy_stuff(block_no);
 
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
 		bh = bread(&sbp->buf_list, block_no);
-		if (gfs2_check_meta(bh, GFS2_METATYPE_IN)) { /* if a dinode */
+		if (!gfs2_check_meta(bh, GFS2_METATYPE_DI)) { /* if a dinode */
 			log_info( _("EA in inode %"PRIu64" (0x%" PRIx64 ")\n"),
 				 block_no, block_no);
 			gfs2_block_unmark(sbp, bl, block_no, gfs2_eattr_block);

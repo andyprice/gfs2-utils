@@ -98,6 +98,17 @@ void fsck_inode_put(struct gfs2_inode *ip, enum update_flags update)
 	}
 }
 
+/**
+ * dirent_repair - attempt to repair a corrupt directory entry.
+ * @bh - The buffer header that contains the bad dirent
+ * @de - The directory entry in native format
+ * @dent - The directory entry in on-disk format
+ * @type - Type of directory (DIR_LINEAR or DIR_EXHASH)
+ * @first - TRUE if this is the first dirent in the buffer
+ *
+ * This function tries to repair a corrupt directory entry.  All we
+ * know at this point is that the length field is wrong.
+ */
 static int dirent_repair(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		  struct gfs2_dirent *de, struct gfs2_dirent *dent,
 		  int type, int first)
@@ -113,8 +124,7 @@ static int dirent_repair(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		else
 			de->de_rec_len = ip->i_sbd->bsize -
 				sizeof(struct gfs2_leaf);
-	}
-	else {
+	} else {
 		bh_end = bh->b_data + ip->i_sbd->bsize;
 		/* first, figure out a probable name length */
 		p = (char *)dent + sizeof(struct gfs2_dirent);
@@ -137,8 +147,40 @@ static int dirent_repair(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	return 0;
 }
 
+/**
+ * dirblk_truncate - truncate a directory block
+ */
+static void dirblk_truncate(struct gfs2_inode *ip, struct gfs2_dirent *fixb,
+			    struct gfs2_buffer_head *bh)
+{
+	char *bh_end;
+	struct gfs2_dirent de;
+	uint16_t old_rec_len;
+
+	bh_end = bh->b_data + ip->i_sbd->sd_sb.sb_bsize;
+	/* truncate the block to save the most dentries.  To do this we
+	   have to patch the previous dent. */
+	gfs2_dirent_in(&de, (char *)fixb);
+	old_rec_len = de.de_rec_len;
+	de.de_rec_len = bh_end - (char *)fixb;
+	gfs2_dirent_out(&de, (char *)fixb);
+}
+
+/*
+ * check_entries - check directory entries for a given block
+ *
+ * @ip - dinode associated with this leaf block
+ * bh - buffer for the leaf block
+ * type - type of block this is (linear or exhash)
+ * @update - set to 1 if the block was updated
+ * @count - set to the count entries
+ * @pass - structure pointing to pass-specific functions
+ *
+ * returns: 0 - good block or it was repaired to be good
+ *         -1 - error occurred
+ */
 static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
-		  int eindex, int type, enum update_flags *update,
+		  int type, enum update_flags *update,
 		  uint16_t *count, struct metawalk_fxns *pass)
 {
 	struct gfs2_leaf *leaf = NULL;
@@ -177,7 +219,8 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		filename = (char *)dent + sizeof(struct gfs2_dirent);
 
 		if (de.de_rec_len < sizeof(struct gfs2_dirent) +
-		    de.de_name_len || !de.de_name_len) {
+		    de.de_name_len ||
+		    (de.de_inum.no_formal_ino && !de.de_name_len && !first)) {
 			log_err( _("Directory block %llu (0x%llx"
 				"), entry %d of directory %llu"
 				"(0x%llx) is corrupt.\n"),
@@ -189,18 +232,29 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			errors_found++;
 			if (query(&opts, _("Attempt to repair it? (y/n) "))) {
 				if (dirent_repair(ip, bh, &de, dent, type,
-						  first))
-					break;
-				else {
+						  first)) {
+					if (first) /* make a new sentinel */
+						dirblk_truncate(ip, dent, bh);
+					else
+						dirblk_truncate(ip, prev, bh);
+					*update = updated;
+					log_err( _("Unable to repair corrupt "
+						   "directory entry; the "
+						   "entry was removed "
+						   "instead.\n"));
+					return 0;
+				} else {
+					log_err( _("Corrupt directory entry "
+						   "repaired.\n"));
 					errors_corrected++;
 					*update = updated;
+					/* keep looping through dentries */
 				}
-			}
-			else {
+			} else {
 				log_err( _("Corrupt directory entry ignored, "
 					"stopped after checking %d entries.\n"),
 					*count);
-				break;
+				return 0;
 			}
 		}
 		if (!de.de_inum.no_formal_ino){
@@ -216,7 +270,19 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 					(unsigned long long)bh->b_blocknr,
 					(unsigned long long)ip->i_di.di_num.no_addr,
 					(unsigned long long)ip->i_di.di_num.no_addr);
-				return 1;
+				if (query(&opts,
+					  _("Attempt to remove it? (y/n) "))) {
+					dirblk_truncate(ip, prev, bh);
+					*update = 1;
+					log_err(_("The corrupt directory "
+						  "entry was removed.\n"));
+				} else {
+					log_err( _("Corrupt directory entry "
+						   "ignored, stopped after "
+						   "checking %d entries.\n"),
+						 *count);
+				}
+				return 0;
 			}
 		} else {
 			if (!de.de_inum.no_addr && first) { /* reverse sentinel */
@@ -238,9 +304,6 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 					stack;
 					return -1;
 				}
-				/*if(error > 0) {
-				  return 1;
-				  }*/
 			}
 		}
 
@@ -295,8 +358,8 @@ static void warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no,
 }
 
 /* Checks exhash directory entries */
-static int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
-	       struct metawalk_fxns *pass)
+static int check_leaf_blks(struct gfs2_inode *ip, enum update_flags *update,
+			   struct metawalk_fxns *pass)
 {
 	int error;
 	struct gfs2_leaf leaf, oldleaf;
@@ -346,8 +409,8 @@ static int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 			ref_count++;
 			continue;
 		}
-		if(gfs2_check_range(ip->i_sbd, old_leaf) == 0 &&
-		   ref_count != exp_count){
+		if (gfs2_check_range(ip->i_sbd, old_leaf) == 0 &&
+		    ref_count != exp_count) {
 			log_err( _("Dir #%llu (0x%llx) has an incorrect "
 				   "number of pointers to leaf #%llu "
 				   " (0x%llx)\n\tFound: %u,  Expected: "
@@ -452,9 +515,8 @@ static int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 
 			if(pass->check_dentry &&
 			   S_ISDIR(ip->i_di.di_mode)) {
-				error = check_entries(ip, lbh, lindex,
-						      DIR_EXHASH, update,
-						      &count, pass);
+				error = check_entries(ip, lbh, DIR_EXHASH,
+						      update, &count, pass);
 
 				/* Since the buffer possibly got
 				 * updated directly, release it now,
@@ -466,9 +528,6 @@ static int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 					stack;
 					return -1;
 				}
-
-				if(error > 0)
-					return 1;
 
 				if(update && (count != leaf.lf_entries)) {
 					enum update_flags f = not_updated;
@@ -501,7 +560,7 @@ static int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 				}
 				/* FIXME: Need to get entry count and
 				 * compare it against leaf->lf_entries */
-				break;
+				break; /* not a chain; go back to outer loop */
 			} else {
 				brelse(lbh, *update);
 				if(!leaf.lf_next)
@@ -509,10 +568,10 @@ static int check_leaf(struct gfs2_inode *ip, enum update_flags *update,
 				leaf_no = leaf.lf_next;
 				log_debug( _("Leaf chain detected.\n"));
 			}
-		} while(1);
+		} while(1); /* while we have chained leaf blocks */
 		old_leaf = leaf_no;
 		memcpy(&oldleaf, &leaf, sizeof(oldleaf));
-	}
+	} /* for every leaf block */
 	return 0;
 }
 
@@ -536,12 +595,18 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 					  sizeof(struct gfs2_meta_header));
 
 	while(1){
-		error = pass->check_eattr_entry(ip, bh, ea_hdr, ea_hdr_prev,
-						pass->private);
+		if (ea_hdr->ea_type == GFS2_EATYPE_UNUSED)
+			error = 0;
+		else
+			error = pass->check_eattr_entry(ip, bh, ea_hdr,
+							ea_hdr_prev,
+							pass->private);
 		if(error < 0) {
 			stack;
 			return -1;
 		}
+		if (error > 0)
+			*update_it = updated;
 		if(error == 0 && pass->check_eattr_extentry &&
 		   ea_hdr->ea_num_ptrs) {
 			uint32_t tot_ealen = 0;
@@ -566,7 +631,6 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 							      update_it,
 							      pass->private)) {
 					errors_found++;
-					error = 1;
 					if (query(&opts, _("Repair the bad "
 							 "Extended Attribute? "
 							   "(y/n) "))) {
@@ -584,9 +648,11 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 							     gfs2_meta_eattr);
 						log_err( _("The EA was "
 							   "fixed.\n"));
-					} else
+					} else {
+						error = 1;
 						log_err( _("The bad EA was "
 							   "not fixed.\n"));
+					}
 				}
 				tot_ealen += sdp->sd_sb.sb_bsize -
 					sizeof(struct gfs2_meta_header);
@@ -620,23 +686,33 @@ static int check_leaf_eattr(struct gfs2_inode *ip, uint64_t block,
 {
 	struct gfs2_buffer_head *bh = NULL;
 	int error = 0;
+	enum update_flags updated_this_leaf = not_updated;
 
 	log_debug( _("Checking EA leaf block #%"PRIu64" (0x%" PRIx64 ").\n"),
 			  block, block);
 
 	if(pass->check_eattr_leaf) {
 		error = pass->check_eattr_leaf(ip, block, parent, &bh,
-					       want_updated, pass->private);
+					       &updated_this_leaf,
+					       pass->private);
+		if (updated_this_leaf) /* if this leaf was updated */
+			*want_updated = updated; /* signal it for the parent */
 		if(error < 0) {
 			stack;
 			return -1;
 		}
 		if(error > 0) {
+			if (bh)
+				brelse(bh, updated_this_leaf);
 			return 1;
 		}
 		if (bh) {
-			error = check_eattr_entries(ip, bh, pass, want_updated);
-			brelse(bh, *want_updated);
+			error = check_eattr_entries(ip, bh, pass,
+						    &updated_this_leaf);
+			brelse(bh, updated_this_leaf);
+			if (updated_this_leaf) /* if this leaf was updated */
+				*want_updated = updated; /* signal it for
+							    the parent */
 		}
 		return error;
 	}
@@ -653,12 +729,16 @@ static int check_leaf_eattr(struct gfs2_inode *ip, uint64_t block,
  */
 static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 				enum update_flags *want_updated,
-				struct metawalk_fxns *pass){
+				struct metawalk_fxns *pass)
+{
 	int error = 0;
 	uint64_t *ea_leaf_ptr, *end;
 	uint64_t block;
 	struct gfs2_buffer_head *indirect_buf = NULL;
 	struct gfs2_sbd *sdp = ip->i_sbd;
+	enum update_flags update_indir_block = not_updated;
+	int first_ea_is_bad = 0;
+	uint64_t di_eattr_save = ip->i_di.di_eattr;
 
 	*want_updated = not_updated;
 	log_debug( _("Checking EA indirect block #%"PRIu64" (0x%" PRIx64 ").\n"),
@@ -673,27 +753,69 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 		int leaf_pointers = 0, leaf_pointer_errors = 0;
 
 		ea_leaf_ptr = (uint64_t *)(indirect_buf->b_data
-								   + sizeof(struct gfs2_meta_header));
+					   + sizeof(struct gfs2_meta_header));
 		end = ea_leaf_ptr + ((sdp->sd_sb.sb_bsize
-							  - sizeof(struct gfs2_meta_header)) / 8);
+				      - sizeof(struct gfs2_meta_header)) / 8);
 
 		while(*ea_leaf_ptr && (ea_leaf_ptr < end)){
 			block = be64_to_cpu(*ea_leaf_ptr);
 			leaf_pointers++;
 			error = check_leaf_eattr(ip, block, indirect,
 						 want_updated, pass);
-			if (error)
+			if (error) {
 				leaf_pointer_errors++;
+				if (update_indir_block == not_updated) {
+					errors_found++;
+					if (query(&opts, _("Fix the indirect "
+						"block too? (y/n) "))) {
+						update_indir_block = updated;
+						errors_corrected++;
+						*ea_leaf_ptr = 0;
+					}
+				} else
+					*ea_leaf_ptr = 0;
+			}
+			/* If the first eattr lead is bad, we can't have
+			   a hole, so we have to treat this as an unrecoverable
+			   eattr error and delete all eattr info. Calling
+			   finish_eattr_indir here causes ip->i_di.di_eattr = 0
+			   and that ensures that subsequent calls to
+			   check_leaf_eattr result in the eattr
+			   check_leaf_block nuking them all "due to previous
+			   errors" */
+			if (leaf_pointers == 1 && leaf_pointer_errors == 1) {
+				first_ea_is_bad = 1;
+				if (pass->finish_eattr_indir)
+					pass->finish_eattr_indir(ip,
+							leaf_pointers,
+							leaf_pointer_errors,
+							want_updated,
+							pass->private);
+			} else if (leaf_pointer_errors) {
+				/* This is a bit tricky.  We can't have eattr
+				   holes. So if we have 4 good eattrs, 1 bad
+				   eattr and 5 more good ones: GGGGBGGGGG,
+				   we need to tell check_leaf_eattr to delete
+				   all eattrs after the bad one.  So we want:
+				   GGGG when we finish.  To do that, we set
+				   di_eattr to 0 temporarily. */
+				ip->i_di.di_eattr = 0;
+			}
 			ea_leaf_ptr++;
 		}
 		if (pass->finish_eattr_indir) {
-			int indir_ok = 1;
-
-			if (leaf_pointer_errors == leaf_pointers)
-				indir_ok = 0;
-			pass->finish_eattr_indir(ip, indir_ok, want_updated,
-						 pass->private);
-			if (!indir_ok) {
+			if (!first_ea_is_bad) {
+				/* If the first ea is good but subsequent ones
+				   were bad and deleted, we need to restore
+				   the saved di_eattr block. */
+				if (leaf_pointer_errors)
+					ip->i_di.di_eattr = di_eattr_save;
+				pass->finish_eattr_indir(ip, leaf_pointers,
+							 leaf_pointer_errors,
+							 want_updated,
+							 pass->private);
+			}
+			if (leaf_pointer_errors == leaf_pointers) {
 				if (*want_updated)
 					gfs2_set_bitmap(sdp, indirect,
 							GFS2_BLKST_FREE);
@@ -704,7 +826,7 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 		}
 	}
 	if (indirect_buf)
-		brelse(indirect_buf, not_updated);
+		brelse(indirect_buf, update_indir_block);
 
 	return error;
 }
@@ -720,9 +842,8 @@ int check_inode_eattr(struct gfs2_inode *ip, enum update_flags *want_updated,
 {
 	int error = 0;
 
-	if(!ip->i_di.di_eattr){
+	if(!ip->i_di.di_eattr)
 		return 0;
-	}
 
 	log_debug( _("Extended attributes exist for inode #%llu (0x%llx).\n"),
 		  (unsigned long long)ip->i_di.di_num.no_addr,
@@ -733,9 +854,10 @@ int check_inode_eattr(struct gfs2_inode *ip, enum update_flags *want_updated,
 						 want_updated, pass)))
 			stack;
 	} else {
-		if((error = check_leaf_eattr(ip, ip->i_di.di_eattr,
-					     ip->i_di.di_num.no_addr,
-					     want_updated, pass)))
+		error = check_leaf_eattr(ip, ip->i_di.di_eattr,
+					 ip->i_di.di_num.no_addr,
+					 want_updated, pass);
+		if (error)
 			stack;
 	}
 
@@ -790,7 +912,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip,
 			     (char *)ptr < (bh->b_data + ip->i_sbd->bsize);
 			     ptr++) {
 				nbh = NULL;
-		
+
 				if (!*ptr)
 					continue;
 
@@ -825,6 +947,7 @@ fail:
 		while (!osi_list_empty(list)) {
 			nbh = osi_list_entry(list->next,
 					     struct gfs2_buffer_head, b_altlist);
+			brelse(nbh, not_updated);
 			osi_list_del(&nbh->b_altlist);
 		}
 	}
@@ -919,7 +1042,7 @@ end:
         if (S_ISDIR(ip->i_di.di_mode)) {
 		/* check validity of leaf blocks and leaf chains */
 		if (ip->i_di.di_flags & GFS2_DIF_EXHASH) {
-			error = check_leaf(ip, &update, pass);
+			error = check_leaf_blks(ip, &update, pass);
 			if(error < 0)
 				return -1;
 			if(error > 0)
@@ -937,7 +1060,7 @@ static int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	int error = 0;
 	uint16_t count = 0;
 
-	error = check_entries(ip, bh, 0, DIR_LINEAR, update, &count, pass);
+	error = check_entries(ip, bh, DIR_LINEAR, update, &count, pass);
 	if(error < 0) {
 		stack;
 		return -1;
@@ -958,7 +1081,7 @@ int check_dir(struct gfs2_sbd *sbp, uint64_t block, struct metawalk_fxns *pass)
 	ip = fsck_inode_get(sbp, bh);
 
 	if(ip->i_di.di_flags & GFS2_DIF_EXHASH) {
-		error = check_leaf(ip, &update, pass);
+		error = check_leaf_blks(ip, &update, pass);
 		if(error < 0) {
 			stack;
 			fsck_inode_put(ip, not_updated); /* does brelse(bh); */
@@ -1105,4 +1228,57 @@ int dinode_hash_remove(osi_list_t *buckets, uint64_t key)
 		}
 	}
 	return -1;
+}
+
+/**
+ * delete_blocks - delete blocks associated with an inode
+ */
+int delete_blocks(struct gfs2_inode *ip, uint64_t block,
+		  struct gfs2_buffer_head **bh, const char *btype,
+		  void *private)
+{
+	struct gfs2_block_query q = {0};
+
+	if (gfs2_check_range(ip->i_sbd, block) == 0) {
+		if (gfs2_block_check(ip->i_sbd, bl, block, &q))
+			return 0;
+		if (!q.dup_block) {
+			log_info( _("Deleting %s block %lld (0x%llx) as part "
+				    "of inode %lld (0x%llx)\n"), btype,
+				  (unsigned long long)block,
+				  (unsigned long long)block,
+				  (unsigned long long)ip->i_di.di_num.no_addr,
+				  (unsigned long long)ip->i_di.di_num.no_addr);
+			gfs2_block_set(ip->i_sbd, bl, block, gfs2_block_free);
+			gfs2_free_block(ip->i_sbd, block);
+		}
+	}
+	return 0;
+}
+
+int delete_metadata(struct gfs2_inode *ip, uint64_t block,
+		    struct gfs2_buffer_head **bh, void *private)
+{
+	return delete_blocks(ip, block, bh, _("metadata"), private);
+}
+
+int delete_data(struct gfs2_inode *ip, uint64_t block, void *private)
+{
+	return delete_blocks(ip, block, NULL, _("data"), private);
+}
+
+int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
+		       struct gfs2_buffer_head **bh,
+		       enum update_flags *want_updated, void *private)
+{
+	return delete_blocks(ip, block, NULL, _("indirect extended attribute"),
+			     private);
+}
+
+int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
+		      struct gfs2_buffer_head **bh,
+		      enum update_flags *want_updated, void *private)
+{
+	return delete_blocks(ip, block, NULL, _("extended attribute"),
+			     private);
 }

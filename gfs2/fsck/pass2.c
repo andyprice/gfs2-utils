@@ -144,36 +144,12 @@ static int check_file_type(uint8_t de_type, uint8_t block_type)
 	return 0;
 }
 
-static int delete_blocks(struct gfs2_inode *ip, uint64_t block,
-			 struct gfs2_buffer_head **bh, void *private)
-{
-	struct gfs2_block_query q = {0};
-
-	if (gfs2_check_range(ip->i_sbd, block) == 0) {
-		log_info(_("Deleting block %lld (0x%llx) as part of inode "
-			   "%lld (0x%llx)\n"), (unsigned long long)block,
-			 (unsigned long long)block,
-			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)ip->i_di.di_num.no_addr);
-		if (gfs2_block_check(ip->i_sbd, bl, block, &q))
-			return 0;
-		if (!q.dup_block) {
-			gfs2_block_set(ip->i_sbd, bl, block, gfs2_block_free);
-			gfs2_free_block(ip->i_sbd, block);
-		}
-	}
-	return 0;
-}
-
-static int delete_data(struct gfs2_inode *ip, uint64_t block, void *private)
-{
-	return delete_blocks(ip, block, NULL, private);
-}
-
 struct metawalk_fxns pass2_fxns_delete = {
 	.private = NULL,
-	.check_metalist = delete_blocks,
+	.check_metalist = delete_metadata,
 	.check_data = delete_data,
+	.check_eattr_indir = delete_eattr_indir,
+	.check_eattr_leaf = delete_eattr_leaf,
 };
 
 /* FIXME: should maybe refactor this a bit - but need to deal with
@@ -279,18 +255,19 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		log_err( _("Found a bad directory entry: %s\n"), filename);
 
 		errors_found++;
-		if(query(&opts, _("Clear inode containing bad blocks? (y/n)"))) {
+		if(query(&opts, _("Delete inode containing bad blocks? (y/n)"))) {
 			errors_corrected++;
 			entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
-			check_inode_eattr(entry_ip, update, &clear_eattrs);
-			fsck_inode_put(entry_ip, not_updated);
-
+			check_inode_eattr(entry_ip, update,
+					  &pass2_fxns_delete);
 			check_metatree(entry_ip, &pass2_fxns_delete);
+			fsck_inode_put(entry_ip, updated);
 			dirent2_del(ip, bh, prev_de, dent);
-
 			gfs2_block_set(sbp, bl, de->de_inum.no_addr,
-				       gfs2_meta_inval);
+				       gfs2_block_free);
 			*update = updated;
+			log_warn( _("The inode containing bad blocks was "
+				    "deleted.\n"));
 			return 1;
 		} else {
 			log_warn( _("Entry to inode containing bad blocks remains\n"));
@@ -338,6 +315,8 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				return 1; /* not a dinode: nothing to delete */
 
 			entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
+			check_inode_eattr(entry_ip, update,
+					  &pass2_fxns_delete);
 			check_metatree(entry_ip, &pass2_fxns_delete);
 			fsck_inode_put(entry_ip, updated);
 			gfs2_block_set(sbp, bl, de->de_inum.no_addr,
@@ -723,12 +702,13 @@ int pass2(struct gfs2_sbd *sbp)
 	struct gfs2_block_query q;
 	struct dir_status ds = {0};
 	struct gfs2_inode *ip;
-	struct gfs2_buffer_head b, *bh = &b;
+	struct gfs2_buffer_head *bh = NULL;
 	char *filename;
 	int filename_len;
 	char tmp_name[256];
 	int error = 0;
 	enum update_flags need_update = NOT_UPDATED;
+	struct dup_blocks *b;
 
 	/* Check all the system directory inodes. */
 	if (check_system_dir(sbp->md.jiinode, "jindex", build_jindex)) {
@@ -750,6 +730,7 @@ int pass2(struct gfs2_sbd *sbp)
 	log_info( _("Checking directory inodes.\n"));
 	/* Grab each directory inode, and run checks on it */
 	for(i = 0; i < last_fs_block; i++) {
+		need_update = 0;
 		warm_fuzzy_stuff(i);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
@@ -777,8 +758,8 @@ int pass2(struct gfs2_sbd *sbp)
 			 * is valid */
 			ip = fsck_load_inode(sbp, i);
 			if(check_metatree(ip, &pass2_fxns)) {
+				fsck_inode_put(ip, not_updated);
 				stack;
-				free(ip);
 				return FSCK_ERROR;
 			}
 			fsck_inode_put(ip, not_updated);
@@ -879,6 +860,18 @@ int pass2(struct gfs2_sbd *sbp)
 		}
 		fsck_inode_put(ip, need_update); /* does a gfs2_dinode_out,
 						    brelse */
+	}
+	/* Now that we've deleted the inodes marked "bad" we can safely
+	   get rid of the duplicate block list.  If we do it any sooner,
+	   we won't discover that a given block is a duplicate and avoid
+	   deleting it from both inodes referencing it. Note: The other
+	   returns from this function are premature exits of the program
+	   and gfs2_block_list_destroy should get rid of the list for us. */
+	while (!osi_list_empty(&sbp->dup_blocks.list)) {
+		b = osi_list_entry(sbp->dup_blocks.list.next,
+				   struct dup_blocks, list);
+		osi_list_del(&b->list);
+		free(b);
 	}
 	return FSCK_OK;
 }

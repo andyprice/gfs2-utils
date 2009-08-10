@@ -168,7 +168,7 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 		return 1;
 	if(block == dh->b->block_no) {
 		log_err( _("Found duplicate reference in inode \"%s\" at "
-			   "block #%llu (0x%llx) with block #%llu (0x%llx)\n"),
+			   "block #%llu (0x%llx) to block #%llu (0x%llx)\n"),
 			 dh->id->name ? dh->id->name : _("unknown name"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
@@ -428,9 +428,11 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 				  (unsigned long long)b->block_no,
 				  (unsigned long long)b->block_no);
 			errors_found++;
-			if ((errors_corrected +=
-			     query(&opts, _("Clear the inode? (y/n) ")))) {
-				log_warn( _("Clearing...\n"));
+			if (query(&opts, _("Clear the inode? (y/n) "))) {
+				errors_corrected++;
+				log_warn( _("Clearing inode %lld (0x%llx)...\n"),
+					 (unsigned long long)id->block_no,
+					 (unsigned long long)id->block_no);
 				ip = fsck_load_inode(sbp, id->block_no);
 				inode_hash_remove(inode_hash,
 						  ip->i_di.di_num.no_addr);
@@ -461,13 +463,21 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 			  (unsigned long long)id->block_no,
 			  id->dup_count, (unsigned long long)b->block_no,
 			  (unsigned long long)b->block_no);
+	}
+	osi_list_foreach(tmp, &b->ref_inode_list) {
+		id = osi_list_entry(tmp, struct inode_with_dups, list);
 		errors_found++;
-		if (!(errors_corrected +=
-		      query(&opts, _("Clear the inode? (y/n) ")))) {
+		if (!(query(&opts, _("Okay to clear inode %lld (0x%llx)? "
+				     "(y/n) "),
+				     (unsigned long long)id->block_no,
+				     (unsigned long long)id->block_no))) {
 			log_warn( _("The bad inode was not cleared...\n"));
 			continue;
 		}
-		log_warn( _("Clearing...\n"));
+		errors_corrected++;
+		    log_warn( _("Clearing inode %lld (0x%llx)...\n"),
+			 (unsigned long long)id->block_no,
+			 (unsigned long long)id->block_no);
 		ip = fsck_load_inode(sbp, id->block_no);
 		dh.b = b;
 		dh.id = id;
@@ -556,13 +566,10 @@ int pass1b(struct gfs2_sbd *sbp)
 	 * it later */
 	log_info( _("Handling duplicate blocks\n"));
 out:
-	while (!osi_list_empty(&sbp->dup_blocks.list)) {
-		b = osi_list_entry(sbp->dup_blocks.list.next,
-				   struct dup_blocks, list);
+        osi_list_foreach_safe(tmp, &sbp->dup_blocks.list, x) {
+                b = osi_list_entry(tmp, struct dup_blocks, list);
 		if (!skip_this_pass && !rc) /* no error & not asked to skip the rest */
 			handle_dup_blk(sbp, b);
-		osi_list_del(&b->list);
-		free(b);
 	}
 	return rc;
 }

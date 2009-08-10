@@ -10,6 +10,15 @@
 #include "fsck.h"
 #include "lost_n_found.h"
 #include "inode_hash.h"
+#include "metawalk.h"
+
+struct metawalk_fxns pass4_fxns_delete = {
+	.private = NULL,
+	.check_metalist = delete_metadata,
+	.check_data = delete_data,
+	.check_eattr_indir = delete_eattr_indir,
+	.check_eattr_leaf = delete_eattr_leaf,
+};
 
 /* Updates the link count of an inode to what the fsck has seen for
  * link count */
@@ -64,8 +73,13 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 					(unsigned long long)ii->inode);
 				errors_found++;
 				if(query(&opts,
-						 _("Clear unlinked inode with bad blocks? (y/n) "))) {
+						 _("Delete unlinked inode with bad blocks? (y/n) "))) {
 					errors_corrected++;
+					ip = fsck_load_inode(sbp, ii->inode);
+					check_inode_eattr(ip, &f,
+							  &pass4_fxns_delete);
+					check_metatree(ip, &pass4_fxns_delete);
+					fsck_inode_put(ip, updated);
 					gfs2_block_set(sbp, bl, ii->inode,
 						       gfs2_block_free);
 					continue;
@@ -79,10 +93,24 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 			   q.block_type != gfs2_inode_chr &&
 			   q.block_type != gfs2_inode_fifo &&
 			   q.block_type != gfs2_inode_sock) {
-				log_err( _("Unlinked block marked as inode not an inode\n"));
-				gfs2_block_set(sbp, bl, ii->inode,
-					       gfs2_block_free);
-				log_err( _("Cleared\n"));
+				log_err( _("Unlinked block marked as inode is "
+					   "not an inode (%d)\n"),
+					 q.block_type);
+				ip = fsck_load_inode(sbp, ii->inode);
+				if(query(&opts, _("Delete unlinked inode "
+						  "? (y/n) "))) {
+					check_inode_eattr(ip, &f,
+							  &pass4_fxns_delete);
+					check_metatree(ip, &pass4_fxns_delete);
+					fsck_inode_put(ip, updated);
+					gfs2_block_set(sbp, bl, ii->inode,
+						       gfs2_block_free);
+					log_err( _("The inode was deleted\n"));
+				} else {
+					log_err( _("The inode was not "
+						   "deleted\n"));
+					fsck_inode_put(ip, not_updated);
+				}
 				continue;
 			}
 			ip = fsck_load_inode(sbp, ii->inode);
