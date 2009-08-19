@@ -66,10 +66,8 @@ void cleanup(void);
 void read_superblock(struct gfs2_sb *sb, struct gfs2_sbd *sdp);
 void get_last_quota_id(int fd, uint32_t *max_id);
 int is_valid_quota_list(int fd);
-inline void read_quota_internal(int fd, unsigned int id, int id_type, 
+void read_quota_internal(int fd, unsigned int id, int id_type,
 				struct gfs2_quota *q);
-inline void write_quota_internal(int fd, unsigned int id, int id_type, 
-				 struct gfs2_quota *q);
 void print_quota_list_warning(void);
 
 /*  check.c  */

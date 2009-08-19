@@ -308,7 +308,7 @@ read_superblock(struct gfs2_sb *sb, struct gfs2_sbd *sdp)
 	close(fd);
 }
 
-inline void 
+void
 read_quota_internal(int fd, uint32_t id, int id_type, struct gfs2_quota *q)
 {
 	/* seek to the appropriate offset in the quota file and read the 
@@ -331,7 +331,7 @@ read_quota_internal(int fd, uint32_t id, int id_type, struct gfs2_quota *q)
 	gfs2_quota_in(q, buf);
 }
 
-inline void 
+static inline void
 write_quota_internal(int fd, uint32_t id, int id_type, struct gfs2_quota *q)
 {
 	/* seek to the appropriate offset in the quota file and read the
