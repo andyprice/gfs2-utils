@@ -303,9 +303,6 @@ int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount)
 	if (gfs1_rindex_read(sdp, fd, &count1))
 	    goto fail;
 	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
-		enum update_flags f;
-
-		f = not_updated;
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
 		errblock = gfs2_rgrp_read(sdp, rgd);
 		if (errblock)

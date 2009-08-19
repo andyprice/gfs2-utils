@@ -79,7 +79,6 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified)
 		uint64_t old_length, new_chunk;
 
 		log_info("Existing resource groups:\n");
-		rgsize_specified = TRUE; /* consistently use existing size */
 		for (rgrp = 0, tmp = head->next; tmp != head;
 		     tmp = tmp->next, rgrp++) {
 			rl = osi_list_entry(tmp, struct rgrp_list, list);

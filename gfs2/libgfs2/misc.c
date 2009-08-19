@@ -123,9 +123,9 @@ int check_for_gfs2(struct gfs2_sbd *sdp)
 		if (strstr(buffer, "0") == 0)
 			continue;
 
-		if ((ret = sscanf(buffer, "%s %s %s %s %d %d",
-				  sdp->device_name, fspath, 
-				  fstype, fsoptions, &fsdump, &fspass)) != 6) 
+		ret = sscanf(buffer, "%s %s %s %s %d %d", sdp->device_name,
+				fspath, fstype, fsoptions, &fsdump, &fspass);
+		if (6 != ret)
 			continue;
 
 		if (strcmp(fstype, "gfs2") != 0)
