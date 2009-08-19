@@ -572,9 +572,9 @@ extern struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
 /* gfs2_log.c */
 struct gfs2_options {
 	char *device;
-	int yes:1;
-	int no:1;
-	int query:1;
+	unsigned int yes:1;
+	unsigned int no:1;
+	unsigned int query:1;
 };
 
 #define MSG_DEBUG       7
