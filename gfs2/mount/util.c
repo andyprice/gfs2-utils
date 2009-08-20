@@ -92,6 +92,7 @@ static struct opt_map opt_map[] = {
   { "owner",    0, 0, 0  },             /* Let the owner of the device mount */
   { "noowner",  0, 1, 0  },             /* Device owner has no special privs */
   { "_netdev",  0, 0, 0  },             /* Network device required (netfs) */
+  { "relatime", 0, 1, 0  },         /* Update atime relative to mtime/ctime. */
   { NULL,       0, 0, 0	 }
 };
 
