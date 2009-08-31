@@ -91,6 +91,25 @@ const char *block_type_str[15] = {
 	"Quota Change",
 };
 
+struct gfs1_rgrp {
+        struct gfs2_meta_header rg_header;
+
+        uint32_t rg_flags;      /* ?? */
+
+        uint32_t rg_free;       /* Number (qty) of free data blocks */
+
+        /* Dinodes are USEDMETA, but are handled separately from other METAs */
+        uint32_t rg_useddi;     /* Number (qty) of dinodes (used or free) */
+        uint32_t rg_freedi;     /* Number (qty) of unused (free) dinodes */
+        struct gfs2_inum rg_freedi_list; /* 1st block in chain of free dinodes */
+
+        /* These META statistics do not include dinodes (used or free) */
+        uint32_t rg_usedmeta;   /* Number (qty) of used metadata blocks */
+        uint32_t rg_freemeta;   /* Number (qty) of unused metadata blocks */
+
+        char rg_reserved[64];
+};
+
 void eol(int col) /* end of line */
 {
 	if (termlines) {
@@ -499,6 +518,40 @@ static void gfs2_sb_print2(struct gfs2_sb *sbp2)
 #endif
 }
 
+/**
+ * gfs1_rgrp_in - read in a gfs1 rgrp
+ */
+static void gfs1_rgrp_in(struct gfs1_rgrp *rgrp, char *rbuf)
+{
+        struct gfs1_rgrp *str = (struct gfs1_rgrp *)rbuf;
+
+        gfs2_meta_header_in(&rgrp->rg_header, rbuf);
+        rgrp->rg_flags = be32_to_cpu(str->rg_flags);
+        rgrp->rg_free = be32_to_cpu(str->rg_free);
+        rgrp->rg_useddi = be32_to_cpu(str->rg_useddi);
+        rgrp->rg_freedi = be32_to_cpu(str->rg_freedi);
+        gfs2_inum_in(&rgrp->rg_freedi_list, (char *)&str->rg_freedi_list);
+        rgrp->rg_usedmeta = be32_to_cpu(str->rg_usedmeta);
+        rgrp->rg_freemeta = be32_to_cpu(str->rg_freemeta);
+        memcpy(rgrp->rg_reserved, str->rg_reserved, 64);
+}
+
+/**
+ * gfs_rgrp_print - Print out a resource group header
+ */
+static void gfs1_rgrp_print(struct gfs1_rgrp *rg)
+{
+        gfs2_meta_header_print(&rg->rg_header);
+        pv(rg, rg_flags, "%u", "0x%x");
+        pv(rg, rg_free, "%u", "0x%x");
+        pv(rg, rg_useddi, "%u", "0x%x");
+        pv(rg, rg_freedi, "%u", "0x%x");
+        gfs2_inum_print(&rg->rg_freedi_list);
+
+        pv(rg, rg_usedmeta, "%u", "0x%x");
+        pv(rg, rg_freemeta, "%u", "0x%x");
+}
+
 /******************************************************************************
 *******************************************************************************
 **
@@ -548,8 +601,15 @@ int display_gfs2(void)
 			break;
 
 		case GFS2_METATYPE_RG:
-			gfs2_rgrp_in(&rg, buf);
-			gfs2_rgrp_print(&rg);
+			if (gfs1) {
+				struct gfs1_rgrp rg1;
+
+				gfs1_rgrp_in(&rg1, buf);
+				gfs1_rgrp_print(&rg1);
+			} else {
+				gfs2_rgrp_in(&rg, buf);
+				gfs2_rgrp_print(&rg);
+			}
 			break;
 
 		case GFS2_METATYPE_RB:
