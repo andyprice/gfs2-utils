@@ -963,27 +963,16 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 	eol(0);
 	lines_per_row[dmode] = 6;
 	memset(highlighted_addr, 0, sizeof(highlighted_addr));
-	if (gfs1) {
-		/* gfs1 rindex files have the meta_header which is not
-		   accounted for in gfs2's dinode size.  Therefore, adjust. */
-		dip->i_di.di_size += ((dip->i_di.di_size / sbd.bsize) + 1) *
-			sizeof(struct gfs2_meta_header);
-	}
+
 	for (print_entry_ndx=0; ; print_entry_ndx++) {
-		uint64_t gfs1_adj = 0;
-		uint64_t roffset = print_entry_ndx * risize();
+		uint64_t roff;
 
-		if (gfs1) {
-			uint64_t sd_jbsize =
-				(sbd.bsize - sizeof(struct gfs2_meta_header));
+		roff = print_entry_ndx * risize();
 
-			gfs1_adj = (roffset / sd_jbsize) *
-				sizeof(struct gfs2_meta_header);
-			gfs1_adj += sizeof(struct gfs2_meta_header);
-		}
-
-		error = gfs2_readi(dip, (void *)&rbuf, roffset + gfs1_adj,
-				   risize());
+		if (gfs1)
+			error = gfs1_readi(dip, (void *)&rbuf, roff, risize());
+		else
+			error = gfs2_readi(dip, (void *)&rbuf, roff, risize());
 		if (!error) /* end of file */
 			break;
 		gfs2_rindex_in(&ri, rbuf);
