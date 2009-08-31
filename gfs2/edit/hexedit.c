@@ -1671,6 +1671,8 @@ static void read_superblock(int fd)
 		struct gfs_sb *sbbuf = (struct gfs_sb *)buf;
 
 		gfs1 = TRUE;
+		sbd1->sb_flags = be32_to_cpu(sbbuf->sb_flags);
+		sbd1->sb_seg_size = be32_to_cpu(sbbuf->sb_seg_size);
 		gfs2_inum_in(&sbd1->sb_rindex_di, (void *)&sbbuf->sb_rindex_di);
 		gfs2_inum_in(&gfs1_quota_di, (void *)&sbbuf->sb_quota_di);
 		gfs2_inum_in(&gfs1_license_di, (void *)&sbbuf->sb_license_di);

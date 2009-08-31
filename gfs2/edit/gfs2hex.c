@@ -497,9 +497,12 @@ static void gfs2_sb_print2(struct gfs2_sb *sbp2)
 	pv(sbp2, sb_fs_format, "%u", "0x%x");
 	pv(sbp2, sb_multihost_format, "%u", "0x%x");
 
+	if (gfs1)
+		pv(sbd1, sb_flags, "%u", "0x%x");
 	pv(sbp2, sb_bsize, "%u", "0x%x");
 	pv(sbp2, sb_bsize_shift, "%u", "0x%x");
 	if (gfs1) {
+		pv(sbd1, sb_seg_size, "%u", "0x%x");
 		gfs2_inum_print2("jindex ino", &sbd1->sb_jindex_di);
 		gfs2_inum_print2("rindex ino", &sbd1->sb_rindex_di);
 	}
