@@ -565,7 +565,7 @@ extern void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 extern int gfs1_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
 		      unsigned int size);
 extern int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1);
-extern int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount);
+extern int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet);
 extern struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
 					struct gfs2_buffer_head *bh);
 

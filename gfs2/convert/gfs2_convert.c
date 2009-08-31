@@ -1167,7 +1167,7 @@ static int init(struct gfs2_sbd *sbp)
 	sbp->md.riinode->i_di.di_mode &= ~S_IFMT;
 	sbp->md.riinode->i_di.di_mode |= S_IFDIR;
 	printf("Examining file system");
-	if (gfs1_ri_update(sbp, 0, &rgcount)){
+	if (gfs1_ri_update(sbp, 0, &rgcount, 0)){
 		log_crit("Unable to fill in resource group information.\n");
 		return -1;
 	}

@@ -609,7 +609,7 @@ void savemeta(char *out_fn, int saveoption)
 		printf("Reading resource groups...");
 		fflush(stdout);
 		if (gfs1)
-			slow = gfs1_ri_update(&sbd, 0, &rgcount);
+			slow = gfs1_ri_update(&sbd, 0, &rgcount, 0);
 		else
 			slow = ri_update(&sbd, 0, &rgcount);
 		printf("Done.\n\n");

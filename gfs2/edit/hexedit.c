@@ -32,7 +32,9 @@
 
 const char *mtypes[] = {"none", "sb", "rg", "rb", "di", "in", "lf", "jd",
 			"lh", "ld", "ea", "ed", "lb", "13", "qc"};
-const char *allocdesc[] = {"Free ", "Data ", "Unlnk", "Meta ", "Resrv"};
+const char *allocdesc[2][5] = {
+	{"Free ", "Data ", "Unlnk", "Meta ", "Resrv"},
+	{"Free ", "Data ", "FreeM", "Meta ", "Resrv"},};
 
 #define RGLIST_DUMMY_BLOCK -2
 
@@ -582,7 +584,7 @@ int display_block_type(const char *lpBuffer, int from_restore)
 		print_gfs2("(p.%d of %d--%s)", pgnum + 1,
 			   (sbd.bsize % screen_chunk_size) > 0 ?
 			   sbd.bsize / screen_chunk_size + 1 : sbd.bsize /
-			   screen_chunk_size, allocdesc[type]);
+			   screen_chunk_size, allocdesc[gfs1][type]);
 		/*eol(9);*/
 		if ((*(lpBuffer+7) == GFS2_METATYPE_IN) ||
 		    (*(lpBuffer+7) == GFS2_METATYPE_DI &&
@@ -1663,10 +1665,6 @@ static void read_superblock(int fd)
 	osi_list_init(&sbd.rglist);
 	init_buf_list(&sbd, &sbd.buf_list, 128 << 20);
 	init_buf_list(&sbd, &sbd.nvbuf_list, 0xffffffff);
-	if (compute_constants(&sbd)) {
-		fprintf(stderr, "Bad constants (1)\n");
-		exit(-1);
-	}
 	gfs2_sb_in(&sbd.sd_sb, buf); /* parse it out into the sb structure */
 	/* Check to see if this is really gfs1 */
 	if (sbd1->sb_fs_format == GFS_FORMAT_FS &&
@@ -1703,6 +1701,8 @@ static void read_superblock(int fd)
 			sizeof(uint64_t);
 		sbd.md.riinode = gfs2_load_inode(&sbd,
 						 sbd1->sb_rindex_di.no_addr);
+		sbd.fssize = sbd.device.length;
+		gfs1_ri_update(&sbd, 0, &count, 1);
 	} else {
 		sbd.sd_inptrs = (sbd.bsize - sizeof(struct gfs2_meta_header)) /
 			sizeof(uint64_t);
@@ -1711,10 +1711,10 @@ static void read_superblock(int fd)
 		sbd.master_dir = gfs2_load_inode(&sbd,
 					    sbd.sd_sb.sb_master_dir.no_addr);
 		gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
+		sbd.fssize = sbd.device.length;
+		ri_update(&sbd, 0, &count);
 	}
 
-	sbd.fssize = sbd.device.length;
-	ri_update(&sbd, 0, &count);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -2443,7 +2443,7 @@ static void find_change_block_alloc(int *newval)
 		printf("Error: value %d is not valid.\nValid values are:\n",
 		       *newval);
 		for (i = GFS2_BLKST_FREE; i <= GFS2_BLKST_DINODE; i++)
-			printf("%d - %s\n", i, allocdesc[i]);
+			printf("%d - %s\n", i, allocdesc[gfs1][i]);
 		gfs2_rgrp_free(&sbd.rglist, not_updated);
 		exit(-1);
 	}
@@ -2460,7 +2460,7 @@ static void find_change_block_alloc(int *newval)
 			rgd = gfs2_blk2rgrpd(&sbd, ablock);
 			if (rgd) {
 				type = gfs2_get_bitmap(&sbd, ablock, rgd);
-				printf("%d (%s)\n", type, allocdesc[type]);
+				printf("%d (%s)\n", type, allocdesc[gfs1][type]);
 				gfs2_rgrp_relse(rgd, not_updated);
 			} else {
 				gfs2_rgrp_free(&sbd.rglist, not_updated);

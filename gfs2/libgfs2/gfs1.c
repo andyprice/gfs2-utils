@@ -293,7 +293,7 @@ int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1)
  *
  * Returns: 0 on success, -1 on failure.
  */
-int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount)
+int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet)
 {
 	struct rgrp_list *rgd;
 	osi_list_t *tmp;
@@ -308,7 +308,7 @@ int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount)
 		if (errblock)
 			return errblock;
 		count2++;
-		if (count2 % 100 == 0) {
+		if (!quiet && count2 % 100 == 0) {
 			printf(".");
 			fflush(stdout);
 		}
