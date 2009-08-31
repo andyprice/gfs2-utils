@@ -1180,6 +1180,38 @@ static int has_indirect_blocks(void)
 /* ------------------------------------------------------------------------ */
 static void print_inode_type(__be16 de_type)
 {
+	if (gfs1) {
+		switch(de_type) {
+		case GFS_FILE_NON:
+			print_gfs2("Unknown");
+			break;
+		case GFS_FILE_REG:
+			print_gfs2("File   ");
+			break;
+		case GFS_FILE_DIR:
+			print_gfs2("Dir    ");
+			break;
+		case GFS_FILE_LNK:
+			print_gfs2("Symlink");
+			break;
+		case GFS_FILE_BLK:
+			print_gfs2("BlkDev ");
+			break;
+		case GFS_FILE_CHR:
+			print_gfs2("ChrDev ");
+			break;
+		case GFS_FILE_FIFO:
+			print_gfs2("Fifo   ");
+			break;
+		case GFS_FILE_SOCK:
+			print_gfs2("Socket ");
+			break;
+		default:
+			print_gfs2("%04x   ", de_type);
+			break;
+		}
+		return;
+	}
 	switch(de_type) {
 	case DT_UNKNOWN:
 		print_gfs2("Unknown");
@@ -1244,10 +1276,8 @@ static int display_leaf(struct iinfo *ind)
 					strcpy(edit_fmt, "%"PRIx64);
 				}
 			}
-			print_gfs2("%d. (%d). %lld (0x%llx) / %lld (0x%llx): ",
+			print_gfs2("%d. (%d). %lld (0x%llx): ",
 				   total_dirents, d + 1,
-				   ind->ii[0].dirent[d].dirent.de_inum.no_formal_ino,
-				   ind->ii[0].dirent[d].dirent.de_inum.no_formal_ino,
 				   ind->ii[0].dirent[d].block,
 				   ind->ii[0].dirent[d].block);
 		}
