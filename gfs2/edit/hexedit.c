@@ -40,7 +40,6 @@ const char *allocdesc[2][5] = {
 
 int display(int identify_only);
 extern void do_leaf_extended(char *buf, struct iinfo *indir);
-extern int do_indirect_extended(char *buf, struct iinfo *ii);
 extern void savemeta(char *out_fn, int slow);
 extern void restoremeta(const char *in_fn, const char *out_device,
 			int printblocksonly);
@@ -428,8 +427,6 @@ static void print_usage(void)
 	while ((ch=getch()) == 0); // wait for input
 	Erase();
 }
-
-
 
 /* ------------------------------------------------------------------------ */
 /* get_block_type                                                           */
@@ -1300,14 +1297,70 @@ static int display_leaf(struct iinfo *ind)
 }
 
 /* ------------------------------------------------------------------------ */
+/* metapath_to_lblock - convert from metapath, height to logical block      */
+/* ------------------------------------------------------------------------ */
+static uint64_t metapath_to_lblock(struct metapath *mp, int hgt)
+{
+	int h;
+	uint64_t lblock = 0;
+	uint64_t factor[GFS2_MAX_META_HEIGHT];
+
+	if (di.di_height < 2)
+		return mp->mp_list[0];
+	/* figure out multiplication factors for each height */
+	memset(&factor, 0, sizeof(factor));
+	factor[di.di_height - 1] = 1ull;
+	for (h = di.di_height - 2; h >= 0; h--)
+		factor[h] = factor[h + 1] * sbd.sd_inptrs;
+	for (h = 0; h <= hgt; h++)
+		lblock += (mp->mp_list[h] * factor[h]);
+	return lblock;
+}
+
+/* ------------------------------------------------------------------------ */
+/* dinode_valid - check if we have a dinode in recent history               */
+/* ------------------------------------------------------------------------ */
+static int dinode_valid(void)
+{
+	int i;
+
+	if (gfs2_struct_type == GFS2_METATYPE_DI)
+		return 1;
+	for (i = 0; i <= blockhist && i < 5; i++) {
+		if (blockstack[(blockhist - i) %
+			       BLOCK_STACK_SIZE].gfs2_struct_type ==
+		    GFS2_METATYPE_DI)
+			return 1;
+	}
+	return 0;
+}
+
+/* ------------------------------------------------------------------------ */
+/* get_height                                                               */
+/* ------------------------------------------------------------------------ */
+static int get_height(void)
+{
+	int cur_height = 0, i;
+
+	if (gfs2_struct_type != GFS2_METATYPE_DI) {
+		for (i = 0; i <= blockhist && i < 5; i++) {
+			if (blockstack[(blockhist - i) %
+				       BLOCK_STACK_SIZE].gfs2_struct_type ==
+			    GFS2_METATYPE_DI)
+				break;
+			cur_height++;
+		}
+	}
+	return cur_height;
+}
+
+/* ------------------------------------------------------------------------ */
 /* display_indirect                                                         */
 /* ------------------------------------------------------------------------ */
 static int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_t startoff)
 {
 	int start_line, total_dirents;
-	int i, cur_height = -1, pndx;
-	uint64_t factor[5]={0,0,0,0,0};
-	int offsets[5];
+	int cur_height = -1, pndx;
 
 	last_entry_onscreen[dmode] = 0;
 	if (!has_indirect_blocks())
@@ -1326,39 +1379,15 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_
 				   indblocks);
 	}
 	total_dirents = 0;
-	/* Figure out multiplication factors for indirect pointers. */
-	if (!S_ISDIR(di.di_mode)) {
-		memset(&offsets, 0, sizeof(offsets));
+	if (dinode_valid() && !S_ISDIR(di.di_mode)) {
 		/* See if we are on an inode or have one in history. */
-		cur_height = level;
-		if (!level && gfs2_struct_type != GFS2_METATYPE_DI) {
-			for (i = 0; i <= blockhist && i < 5; i++) {
-				offsets[i] = blockstack[(blockhist - i) % BLOCK_STACK_SIZE].edit_row[dmode];
-				if (blockstack[(blockhist - i) % BLOCK_STACK_SIZE].gfs2_struct_type == GFS2_METATYPE_DI)
-					break;
-				cur_height++;
-			}
+		if (level)
+			cur_height = level;
+		else {
+			cur_height = get_height();
+			print_gfs2("  (at height %d of %d)",
+				   cur_height, di.di_height);
 		}
-		if (cur_height >= 0) {
-			int diptrs, inptrs;
-
-			if (gfs1) {
-				diptrs = 483;
-				inptrs = 501;
-			} else {
-				diptrs = (sbd.bsize - sizeof(sizeof(struct gfs2_dinode))) / sizeof(uint64_t);
-				inptrs = (sbd.bsize - sizeof(sizeof(struct gfs2_meta_header))) /
-					sizeof(uint64_t);
-			}
-			/* Multiply out the max factor based on inode height.*/
-			/* This is how much data is represented by each      */
-			/* indirect pointer at each height.                  */
-			factor[0] = 1ull;
-			for (i = 0; i < di.di_height; i++)
-				factor[i + 1] = factor[i] * inptrs;
-		}
-		if (!level)
-			print_gfs2("  (at height %d)", cur_height);
 	}
 	eol(0);
 	if (!level && indblocks) {
@@ -1403,20 +1432,13 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_
 				COLORS_NORMAL;
 			}
 		}
-		if (!S_ISDIR(di.di_mode)) {
-			int hgt;
+		if (dinode_valid() && !S_ISDIR(di.di_mode)) {
 			float human_off;
 			char h;
 
-			file_offset = startoff;
-
-			/* Now divide by how deep we are at the moment.      */
-			/* This is how much data is represented by each      */
-			/* indirect pointer for each height we've traversed. */
-			offsets[0] = pndx;
-			for (hgt = cur_height; hgt >= 0; hgt--)
-				file_offset += offsets[cur_height - hgt] *
-					factor[di.di_height - hgt - 1] * sbd.bsize;
+			file_offset = metapath_to_lblock(&ind->ii[pndx].mp,
+							 cur_height) *
+				sbd.bsize;
 			print_gfs2("     ");
 			h = 'K';
 			human_off = (file_offset / 1024.0);
@@ -1431,8 +1453,9 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_
 		}
 		else
 			file_offset = 0;
-		if (!termlines && ((level + 1 < di.di_height) ||
-				   (S_ISDIR(di.di_mode) && !level))) {
+		if (dinode_valid() && !termlines &&
+		    ((level + 1 < di.di_height) ||
+		     (S_ISDIR(di.di_mode) && !level))) {
 			struct iinfo *more_indir;
 			int more_ind;
 			char *tmpbuf;
@@ -1459,8 +1482,19 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_
 					do_leaf_extended(tmpbuf, more_indir);
 					display_leaf(more_indir);
 				} else {
+					int x;
+
+					for (x = 0; x < 512; x++) {
+						memcpy(&more_indir->ii[x].mp,
+						       &ind->ii[pndx].mp,
+						       sizeof(struct metapath));
+						more_indir->ii[x].
+							mp.mp_list[cur_height+1] =
+							x;
+					}
 					more_ind = do_indirect_extended(tmpbuf,
-									more_indir);
+							more_indir,
+							cur_height + 1);
 					display_indirect(more_indir,
 							 more_ind, level + 1,
 							 file_offset);
@@ -1826,8 +1860,15 @@ int display(int identify_only)
 		do_dinode_extended(&di, buf); /* get extended data, if any */
 	}
 	else if (gfs2_struct_type == GFS2_METATYPE_IN) { /* indirect block list */
-		do_indirect_extended(buf, indirect);
-		indirect_blocks = 1;
+		int i, hgt = get_height();
+
+		if (blockhist) {
+			for (i = 0; i < 512; i++)
+				memcpy(&indirect->ii[i].mp,
+				       &blockstack[blockhist - 1].mp,
+				       sizeof(struct metapath));
+		}
+		indirect_blocks = do_indirect_extended(buf, indirect, hgt);
 	}
 	else if (gfs2_struct_type == GFS2_METATYPE_LF) { /* directory leaf */
 		do_leaf_extended(buf, indirect);
@@ -1876,6 +1917,10 @@ static void push_block(uint64_t blk)
 			blockstack[bhst].lines_per_row[i] = lines_per_row[i];
 		}
 		blockstack[bhst].gfs2_struct_type = gfs2_struct_type;
+		if (edit_row[dmode] >= 0)
+			memcpy(&blockstack[bhst].mp,
+			       &indirect->ii[edit_row[dmode]].mp,
+			       sizeof(struct metapath));
 		blockhist++;
 		blockstack[blockhist % BLOCK_STACK_SIZE].block = blk;
 	}

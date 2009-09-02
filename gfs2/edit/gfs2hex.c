@@ -280,7 +280,7 @@ static int indirect_dirent(struct indirect_info *indir, char *ptr, int d)
 ******************************************************************************/
 void do_dinode_extended(struct gfs2_dinode *dine, char *dinebuf)
 {
-	unsigned int x, y;
+	unsigned int x, y, ptroff = 0;
 	uint64_t p, last;
 	int isdir = !!(S_ISDIR(dine->di_mode)) || 
 		(gfs1 && dine->__pad1 == GFS_FILE_DIR);
@@ -294,9 +294,12 @@ void do_dinode_extended(struct gfs2_dinode *dine, char *dinebuf)
 			p = be64_to_cpu(*(uint64_t *)(dinebuf + x));
 			if (p) {
 				indirect->ii[indirect_blocks].block = p;
+				indirect->ii[indirect_blocks].mp.mp_list[0] =
+					ptroff;
 				indirect->ii[indirect_blocks].is_dir = FALSE;
 				indirect_blocks++;
 			}
+			ptroff++;
 		}
 	}
 	else if (isdir && !(dine->di_flags & GFS2_DIF_EXHASH)) {
@@ -370,14 +373,20 @@ void do_dinode_extended(struct gfs2_dinode *dine, char *dinebuf)
 **
 *******************************************************************************
 ******************************************************************************/
-int do_indirect_extended(char *diebuf, struct iinfo *iinf)
+int do_indirect_extended(char *diebuf, struct iinfo *iinf, int hgt)
 {
 	unsigned int x, y;
 	uint64_t p;
 	int i_blocks;
 
 	i_blocks = 0;
-	memset(iinf, 0, sizeof(struct iinfo));
+	for (x = 0; x < 512; x++) {
+		iinf->ii[x].is_dir = 0;
+		iinf->ii[x].height = 0;
+		iinf->ii[x].block = 0;
+		iinf->ii[x].dirents = 0;
+		memset(&iinf->ii[x].dirent, 0, sizeof(struct gfs2_dirents));
+	}
 	for (x = (gfs1 ? sizeof(struct gfs_indirect):
 			  sizeof(struct gfs2_meta_header)), y = 0;
 		 x < sbd.bsize;
@@ -385,6 +394,7 @@ int do_indirect_extended(char *diebuf, struct iinfo *iinf)
 		p = be64_to_cpu(*(uint64_t *)(diebuf + x));
 		if (p) {
 			iinf->ii[i_blocks].block = p;
+			iinf->ii[i_blocks].mp.mp_list[hgt] = i_blocks;
 			iinf->ii[i_blocks].is_dir = FALSE;
 			i_blocks++;
 		}

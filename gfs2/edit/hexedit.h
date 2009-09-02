@@ -171,8 +171,10 @@ struct gfs2_dirents {
 
 struct indirect_info {
 	int is_dir;
+	int height;
 	uint64_t block;
 	uint32_t dirents;
+	struct metapath mp;
 	struct gfs2_dirents dirent[64];
 };
 
@@ -189,6 +191,7 @@ struct blkstack_info {
 	int edit_col[DMODES];
 	enum dsp_mode dmode;
 	int gfs2_struct_type;
+	struct metapath mp;
 };
 
 struct gfs_sb {
