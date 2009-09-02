@@ -1433,12 +1433,13 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_
 			file_offset = 0;
 		if (!termlines && ((level + 1 < di.di_height) ||
 				   (S_ISDIR(di.di_mode) && !level))) {
+			struct iinfo *more_indir;
 			int more_ind;
 			char *tmpbuf;
 			
+			more_indir = malloc(sizeof(struct iinfo));
 			tmpbuf = malloc(sbd.bsize);
 			if (tmpbuf) {
-				struct iinfo more_indir;
 				lseek(sbd.device_fd,
 				      ind->ii[pndx].block * sbd.bsize,
 				      SEEK_SET);
@@ -1453,19 +1454,20 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_
 						(unsigned long long)ind->ii[pndx].block);
 					exit(-1);
 				}
-				memset(&more_indir, 0, sizeof(struct iinfo));
+				memset(more_indir, 0, sizeof(struct iinfo));
 				if (S_ISDIR(di.di_mode)) {
-					do_leaf_extended(tmpbuf, &more_indir);
-					display_leaf(&more_indir);
+					do_leaf_extended(tmpbuf, more_indir);
+					display_leaf(more_indir);
 				} else {
 					more_ind = do_indirect_extended(tmpbuf,
-									&more_indir);
-					display_indirect(&more_indir,
+									more_indir);
+					display_indirect(more_indir,
 							 more_ind, level + 1,
 							 file_offset);
 				}
 				free(tmpbuf);
 			}
+			free(more_indir);
 		}
 		print_entry_ndx = pndx; /* restore after recursion */
 		eol(0);
