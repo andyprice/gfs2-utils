@@ -395,7 +395,6 @@ static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 	   so pass1c can check it. */
 	gfs2_block_mark(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
 			gfs2_eattr_block);
-	bc->ea_count++;
 	if (!leaf_pointer_errors)
 		return 0;
 	log_err( _("Inode %lld (0x%llx) has recoverable indirect "
