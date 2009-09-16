@@ -124,6 +124,9 @@ struct node {
 	int withdraw;
 	int send_withdraw_ack;
 
+	uint64_t cluster_add_time;
+	uint64_t cluster_remove_time;
+
 	struct protocol proto;
 };
 
@@ -156,6 +159,7 @@ struct change {
 	int we_joined;
 	uint32_t seq; /* used as a reference for debugging, and for queries */
 	uint32_t combined_seq; /* for queries */
+	uint64_t create_time;
 };
 
 struct save_msg {
@@ -165,7 +169,7 @@ struct save_msg {
 };
 
 static int dlmcontrol_fd;
-static int daemon_cpg_fd;
+static int cpg_fd_daemon;
 static struct protocol our_protocol;
 static struct list_head daemon_nodes;
 static struct cpg_address daemon_member[MAX_NODES];
@@ -258,6 +262,59 @@ static int daemon_member_count;
 static void apply_changes_recovery(struct mountgroup *mg);
 static void send_withdraw_acks(struct mountgroup *mg);
 static void leave_mountgroup(struct mountgroup *mg, int mnterr);
+
+static void log_config(const struct cpg_name *group_name,
+		       const struct cpg_address *member_list,
+		       size_t member_list_entries,
+		       const struct cpg_address *left_list,
+		       size_t left_list_entries,
+		       const struct cpg_address *joined_list,
+		       size_t joined_list_entries)
+{
+	char m_buf[128];
+	char j_buf[32];
+	char l_buf[32];
+	size_t i, len, pos;
+	int ret;
+
+	memset(m_buf, 0, sizeof(m_buf));
+	memset(j_buf, 0, sizeof(j_buf));
+	memset(l_buf, 0, sizeof(l_buf));
+
+	len = sizeof(m_buf);
+	pos = 0;
+	for (i = 0; i < member_list_entries; i++) {
+		ret = snprintf(m_buf + pos, len - pos, " %d",
+			       member_list[i].nodeid);
+		if (ret >= len - pos)
+			break;
+		pos += ret;
+	}
+
+	len = sizeof(j_buf);
+	pos = 0;
+	for (i = 0; i < joined_list_entries; i++) {
+		ret = snprintf(j_buf + pos, len - pos, " %d",
+			       joined_list[i].nodeid);
+		if (ret >= len - pos)
+			break;
+		pos += ret;
+	}
+
+	len = sizeof(l_buf);
+	pos = 0;
+	for (i = 0; i < left_list_entries; i++) {
+		ret = snprintf(l_buf + pos, len - pos, " %d",
+			       left_list[i].nodeid);
+		if (ret >= len - pos)
+			break;
+		pos += ret;
+	}
+
+	log_debug("%s conf %zu %zu %zu memb%s join%s left%s", group_name->value,
+		  member_list_entries, joined_list_entries, left_list_entries,
+		  m_buf, j_buf, l_buf);
+}
 
 static const char *msg_name(int type)
 {
@@ -468,7 +525,45 @@ static void node_history_init(struct mountgroup *mg, int nodeid,
 	node->nodeid = nodeid;
 	node->add_time = 0;
 	list_add_tail(&node->list, &mg->node_history);
-	node->added_seq = cg->seq;	/* for queries */
+
+	if (cg)
+		node->added_seq = cg->seq;	/* for queries */
+}
+
+void node_history_cluster_add(int nodeid)
+{
+	struct mountgroup *mg;
+	struct node *node;
+
+	list_for_each_entry(mg, &mountgroups, list) {
+		node_history_init(mg, nodeid, NULL);
+
+		node = get_node_history(mg, nodeid);
+		if (!node) {
+			log_error("node_history_cluster_add no nodeid %d",
+				  nodeid);
+			return;
+		}
+
+		node->cluster_add_time = time(NULL);
+	}
+}
+
+void node_history_cluster_remove(int nodeid)
+{
+	struct mountgroup *mg;
+	struct node *node;
+
+	list_for_each_entry(mg, &mountgroups, list) {
+		node = get_node_history(mg, nodeid);
+		if (!node) {
+			log_error("node_history_cluster_remove no nodeid %d",
+				  nodeid);
+			return;
+		}
+
+		node->cluster_remove_time = time(NULL);
+	}
 }
 
 static void node_history_start(struct mountgroup *mg, int nodeid)
@@ -855,6 +950,7 @@ static int match_change(struct mountgroup *mg, struct change *cg,
 {
 	struct id_info *id;
 	struct member *memb;
+	struct node *node;
 	uint32_t seq = hd->msgdata;
 	int i, members_mismatch;
 
@@ -875,6 +971,30 @@ static int match_change(struct mountgroup *mg, struct change *cg,
 	if (!memb) {
 		log_group(mg, "match_change %d:%u skip cg %u sender not member",
 			  hd->nodeid, seq, cg->seq);
+		return 0;
+	}
+
+	if (memb->start && hd->type == GFS_MSG_START) {
+		log_group(mg, "match_change %d:%u skip %u already start",
+			  hd->nodeid, seq, cg->seq);
+		return 0;
+	}
+
+	/* a node's start can't match a change if the node joined the cluster
+	   more recently than the change was created */
+
+	node = get_node_history(mg, hd->nodeid);
+	if (!node) {
+		log_group(mg, "match_change %d:%u skip cg %u no node history",
+			  hd->nodeid, seq, cg->seq);
+		return 0;
+	}
+
+	if (node->cluster_add_time > cg->create_time) {
+		log_group(mg, "match_change %d:%u skip cg %u created %llu "
+			  "cluster add %llu", hd->nodeid, seq, cg->seq,
+			  (unsigned long long)cg->create_time,
+			  (unsigned long long)node->cluster_add_time);
 		return 0;
 	}
 
@@ -1014,7 +1134,7 @@ static void receive_start(struct mountgroup *mg, struct gfs_header *hd, int len)
 
 	added = is_added(mg, hd->nodeid);
 
-	if (added && mi->started_count) {
+	if (added && mi->started_count && mg->started_count) {
 		log_error("receive_start %d:%u add node with started_count %u",
 			  hd->nodeid, seq, mi->started_count);
 
@@ -1685,11 +1805,11 @@ static void create_old_nodes(struct mountgroup *mg)
 			return;
 		}
 
-		node->jid                = id->jid;
+		node->jid		 = id->jid;
 		node->kernel_mount_done  = !!(id->flags & IDI_MOUNT_DONE);
 		node->kernel_mount_error = !!(id->flags & IDI_MOUNT_ERROR);
-		node->ro                 = !!(id->flags & IDI_MOUNT_RO);
-		node->spectator          = !!(id->flags & IDI_MOUNT_SPECTATOR);
+		node->ro		 = !!(id->flags & IDI_MOUNT_RO);
+		node->spectator		 = !!(id->flags & IDI_MOUNT_SPECTATOR);
 
 		j = malloc(sizeof(struct journal));
 		if (!j) {
@@ -1747,7 +1867,7 @@ static void create_new_nodes(struct mountgroup *mg)
 		}
 
 		node->jid       = JID_NONE;
-		node->ro        = !!(id->flags & IDI_MOUNT_RO);
+		node->ro	= !!(id->flags & IDI_MOUNT_RO);
 		node->spectator = !!(id->flags & IDI_MOUNT_SPECTATOR);
 
 		log_group(mg, "create_new_nodes %d ro %d spect %d",
@@ -2029,7 +2149,7 @@ static void sync_state(struct mountgroup *mg)
 	/* Normal case where nodes join an established group that completed
 	   first recovery sometime in the past.  Existing nodes that weren't
 	   around during first recovery come through here, and new nodes
-           being added in this cycle come through here. */
+	   being added in this cycle come through here. */
 
 	if (mg->first_recovery_needed) {
 		/* shouldn't happen */
@@ -2347,6 +2467,7 @@ static int add_change(struct mountgroup *mg,
 	INIT_LIST_HEAD(&cg->removed);
 	INIT_LIST_HEAD(&cg->saved_messages);
 	cg->state = CGST_WAIT_CONDITIONS;
+	cg->create_time = time(NULL);
 	cg->seq = ++mg->change_seq;
 	if (!cg->seq)
 		cg->seq = ++mg->change_seq;
@@ -2430,7 +2551,8 @@ static int add_change(struct mountgroup *mg,
 	return error;
 }
 
-static int we_left(const struct cpg_address *left_list, size_t left_list_entries)
+static int we_left(const struct cpg_address *left_list,
+		   size_t left_list_entries)
 {
 	int i;
 
@@ -2453,6 +2575,10 @@ static void confchg_cb(cpg_handle_t handle,
 	struct mountgroup *mg;
 	struct change *cg;
 	int rv;
+
+	log_config(group_name, member_list, member_list_entries,
+		   left_list, left_list_entries,
+		   joined_list, joined_list_entries);
 
 	mg = find_mg_handle(handle);
 	if (!mg) {
@@ -2589,7 +2715,7 @@ static cpg_callbacks_t cpg_callbacks = {
 	.cpg_confchg_fn = confchg_cb,
 };
 
-static void process_mountgroup_cpg(int ci)
+static void process_cpg_mountgroup(int ci)
 {
 	struct mountgroup *mg;
 	cpg_error_t error;
@@ -2632,7 +2758,7 @@ int gfs_join_mountgroup(struct mountgroup *mg)
 
 	cpg_fd_get(h, &fd);
 
-	ci = client_add(fd, process_mountgroup_cpg, NULL);
+	ci = client_add(fd, process_cpg_mountgroup, NULL);
 
 	mg->cpg_handle = h;
 	mg->cpg_client = ci;
@@ -3045,7 +3171,7 @@ int set_protocol(void)
 	int rv;
 
 	memset(&pollfd, 0, sizeof(pollfd));
-	pollfd.fd = daemon_cpg_fd;
+	pollfd.fd = cpg_fd_daemon;
 	pollfd.events = POLLIN;
 
 	while (1) {
@@ -3091,7 +3217,7 @@ int set_protocol(void)
 		}
 
 		if (pollfd.revents & POLLIN)
-			process_cpg(0);
+			process_cpg_daemon(0);
 		if (pollfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
 			log_error("set_protocol poll revents %u",
 				  pollfd.revents);
@@ -3137,6 +3263,8 @@ int set_protocol(void)
 		  our_protocol.kernel_max[0],
 		  our_protocol.kernel_max[1],
 		  our_protocol.kernel_max[2]);
+
+	send_protocol(&our_protocol);
 	return 0;
 }
 
@@ -3180,6 +3308,10 @@ static void confchg_cb_daemon(cpg_handle_t handle,
 {
 	int i;
 
+	log_config(group_name, member_list, member_list_entries,
+		   left_list, left_list_entries,
+		   joined_list, joined_list_entries);
+
 	if (joined_list_entries)
 		send_protocol(&our_protocol);
 
@@ -3197,7 +3329,7 @@ static cpg_callbacks_t cpg_callbacks_daemon = {
 	.cpg_confchg_fn = confchg_cb_daemon,
 };
 
-void process_cpg(int ci)
+void process_cpg_daemon(int ci)
 {
 	cpg_error_t error;
 
@@ -3206,7 +3338,7 @@ void process_cpg(int ci)
 		log_error("daemon cpg_dispatch error %d", error);
 }
 
-int setup_cpg(void)
+int setup_cpg_daemon(void)
 {
 	cpg_error_t error;
 	cpg_handle_t h;
@@ -3229,7 +3361,7 @@ int setup_cpg(void)
 		return -1;
 	}
 
-	cpg_fd_get(h, &daemon_cpg_fd);
+	cpg_fd_get(h, &cpg_fd_daemon);
 
 	cpg_handle_daemon = h;
 
@@ -3250,15 +3382,15 @@ int setup_cpg(void)
 		goto fail;
 	}
 
-	log_debug("setup_cpg %d", daemon_cpg_fd);
-	return daemon_cpg_fd;
+	log_debug("setup_cpg_daemon %d", cpg_fd_daemon);
+	return cpg_fd_daemon;
 
  fail:
 	cpg_finalize(h);
 	return -1;
 }
 
-void close_cpg(void)
+void close_cpg_daemon(void)
 {
 	struct mountgroup *mg;
 	cpg_error_t error;

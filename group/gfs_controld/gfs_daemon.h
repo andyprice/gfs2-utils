@@ -169,9 +169,9 @@ int read_ccs_int(const char *path, int *config_val);
 void read_ccs_nodir(struct mountgroup *mg, char *buf);
 
 /* cpg-new.c */
-int setup_cpg(void);
-void close_cpg(void);
-void process_cpg(int ci);
+int setup_cpg_daemon(void);
+void close_cpg_daemon(void);
+void process_cpg_daemon(int ci);
 int setup_dlmcontrol(void);
 void process_dlmcontrol(int ci);
 int set_protocol(void);
@@ -188,6 +188,8 @@ int set_mountgroups(int *count, struct gfsc_mountgroup **mgs_out);
 int set_mountgroup_nodes(struct mountgroup *mg, int option, int *node_count,
 	struct gfsc_node **nodes_out);
 void free_mg(struct mountgroup *mg);
+void node_history_cluster_add(int nodeid);
+void node_history_cluster_remove(int nodeid);
 
 /* main.c */
 int do_read(int fd, void *buf, size_t count);
