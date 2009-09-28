@@ -1,9 +1,12 @@
 MAINTAINERCLEANFILES	= Makefile.in
 
-# install into /sbin, not /usr/sbin
-sbindir := $(shell test '$(exec_prefix):$(sbindir)' = /usr:/usr/sbin \
-	     && echo /sbin \
-	     || echo '$(exec_prefix)/sbin')
+# When an exec_prefix setting would have us install into /usr/sbin,
+# use /sbin instead.
+# Accept an existing sbindir value of /usr/sbin (probably for older automake),
+# or an empty value, for automake-1.11 and newer.
+sbindir := $(shell rpl=0; test '$(exec_prefix):$(sbindir)' = /usr:/usr/sbin \
+		       || test '$(exec_prefix):$(sbindir)' = /usr: && rpl=1; \
+	     test $$rpl = 1 && echo /sbin || echo '$(exec_prefix)/sbin')
 
 sbin_PROGRAMS		= fsck.gfs2
 
