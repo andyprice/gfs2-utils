@@ -23,7 +23,7 @@ struct client {
 	struct mountgroup *mg;
 };
 
-static void do_withdraw(char *name);
+static void do_withdraw(struct mountgroup *mg);
 
 int do_read(int fd, void *buf, size_t count)
 {
@@ -189,20 +189,6 @@ struct mountgroup *find_mg_id(uint32_t id)
 	return NULL;
 }
 
-static void ping_kernel_mount(char *name)
-{
-	struct mountgroup *mg;
-	int rv, val;
-
-	mg = find_mg(name);
-	if (!mg)
-		return;
-
-	rv = read_sysfs_int(mg, "block", &val);
-
-	log_group(mg, "ping_kernel_mount %d", rv);
-}
-
 enum {
 	Env_ACTION = 0,
 	Env_SUBSYSTEM,
@@ -260,29 +246,21 @@ static void decode_uevent(const char *buf, unsigned len, const char *vars[],
 	}
 }
 
-static char *uevent_fsname(const char *vars[])
+static char *uevent_fsname(const char *vals[])
 {
 	char *name = NULL;
 
-	if (vars[Env_LOCKTABLE])
-		name = strchr(vars[Env_LOCKTABLE], ':');
-
-	/* When all kernels are converted, we can dispose with the following
-	 * grotty bit. This is for backward compatibility only.
-	 */
-	if (!name && vars[Env_DEVPATH]) {
-		name = strchr(vars[Env_DEVPATH], ':');
-		if (name) {
-			char *end = strstr(name, "/lock_module");
-			if (end)
-				*end = 0;
-		}
+	if (vals[Env_LOCKTABLE]) {
+		name = strchr(vals[Env_LOCKTABLE], ':');
+		if (name && *name)
+			name++;
 	}
-	return (name && name[0]) ? name + 1 : NULL;
+	return name;
 }
 
 static void process_uevent(int ci)
 {
+	struct mountgroup *mg;
 	char buf[UEVENT_BUF_SIZE];
 	const char *uevent_vals[Env_Last];
 	char *fsname;
@@ -306,7 +284,7 @@ static void process_uevent(int ci)
 	    !uevent_vals[Env_SUBSYSTEM])
 		return;
 
-	if (!strstr(uevent_vals[Env_DEVPATH], "/fs/gfs"))
+	if (strncmp(uevent_vals[Env_DEVPATH], "/fs/gfs", 7) != 0)
 		return;
 
 	log_debug("uevent %s %s %s",
@@ -323,6 +301,12 @@ static void process_uevent(int ci)
 		return;
 	}
 
+	mg = find_mg(fsname);
+	if (!mg) {
+		log_error("mount group %s not found", fsname);
+		return;
+	}
+
 	if (!strcmp(uevent_vals[Env_ACTION], "remove")) {
 		/* We want to trigger the leave at the very end of the kernel's
 		   unmount process, i.e. at the end of put_super(), so we do the
@@ -330,33 +314,37 @@ static void process_uevent(int ci)
 
 		if (strcmp(uevent_vals[Env_SUBSYSTEM], "lock_dlm") == 0)
 			return;
-		do_leave(fsname, 0);
+		do_leave(mg, 0);
+		return;
+	}
 
-	} else if (!strcmp(uevent_vals[Env_ACTION], "change")) {
-		int jid, status = -1, first = -1;
+	if (!strcmp(uevent_vals[Env_ACTION], "change")) {
+		int jid, status = -1;
 
-		if (!uevent_vals[Env_JID] ||
-		    (sscanf(uevent_vals[Env_JID], "%d", &jid) != 1))
-			jid = -1;
 
 		if (uevent_vals[Env_RECOVERY]) {
+			if (!uevent_vals[Env_JID] ||
+			    (sscanf(uevent_vals[Env_JID], "%d", &jid) != 1))
+				return;
 			if (strcmp(uevent_vals[Env_RECOVERY], "Done") == 0)
 				status = LM_RD_SUCCESS;
 			if (strcmp(uevent_vals[Env_RECOVERY], "Failed") == 0)
 				status = LM_RD_GAVEUP;
+			if (status < 0)
+				return;
+			process_recovery_uevent(mg, jid, status);
+			return;
 		}
 
 		if (uevent_vals[Env_FIRSTMOUNT] &&
-		    (strcmp(uevent_vals[Env_FIRSTMOUNT], "Done") == 0))
-			first = 1;
-
-		process_recovery_uevent(fsname, jid, status, first);
-
-	} else if (!strcmp(uevent_vals[Env_ACTION], "offline")) {
-		do_withdraw(fsname);
-	} else {
-		ping_kernel_mount(fsname);
+		    (strcmp(uevent_vals[Env_FIRSTMOUNT], "Done") == 0)) {
+			process_first_mount(mg);
+		}
+		return;
 	}
+
+	if (!strcmp(uevent_vals[Env_ACTION], "offline"))
+		do_withdraw(mg);
 }
 
 static int setup_uevent(void)
@@ -724,21 +712,14 @@ static void do_join(int ci, struct gfsc_mount_args *ma)
    and when it's been removed from the group, it tells the locally withdrawing
    gfs to clear out locks. */
 
-static void do_withdraw(char *name)
+static void do_withdraw(struct mountgroup *mg)
 {
-	struct mountgroup *mg;
 	int rv;
 
-	log_debug("withdraw: %s", name);
+	log_debug("withdraw: %s", mg->name);
 
 	if (!cfgd_enable_withdraw) {
 		log_error("withdraw feature not enabled");
-		return;
-	}
-
-	mg = find_mg(name);
-	if (!mg) {
-		log_error("do_withdraw no mountgroup %s", name);
 		return;
 	}
 
@@ -819,6 +800,7 @@ void process_connection(int ci)
 	struct gfsc_header h;
 	struct gfsc_mount_args empty;
 	struct gfsc_mount_args *ma;
+	struct mountgroup *mg;
 	char *extra = NULL;
 	int rv, extra_len;
 
@@ -875,7 +857,12 @@ void process_connection(int ci)
 		break;
 
 	case GFSC_CMD_FS_LEAVE:
-		do_leave(ma->table, h.data);
+		mg = find_mg(ma->table);
+		if (!mg) {
+			log_error("do_leave: %s not found", ma->table);
+			break;
+		}
+		do_leave(mg, h.data);
 		break;
 
 	case GFSC_CMD_FS_MOUNT_DONE:

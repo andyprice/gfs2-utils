@@ -76,49 +76,6 @@ int set_sysfs(struct mountgroup *mg, const char *field, int val)
 	return rv;
 }
 
-static int get_sysfs(struct mountgroup *mg, const char *field, char *buf, int len)
-{
-	char fname[PATH_MAX], *p;
-	int fd, rv;
-
-	snprintf(fname, PATH_MAX, "%s/%s/%s/lock_module/%s",
-		 SYSFS_DIR, mg->mount_args.type, mg->mount_args.table, field);
-
-	fd = open(fname, O_RDONLY);
-	if (fd < 0) {
-		log_group(mg, "get open %s error %d %d", fname, fd, errno);
-		return -1;
-	}
-
-	rv = read(fd, buf, len);
-	if (rv < 0)
-		log_error("read %s error %d %d", fname, rv, errno);
-	else {
-		rv = 0;
-		p = strchr(buf, '\n');
-		if (p)
-			*p = '\0';
-	}
-
-	close(fd);
-	return rv;
-}
-
-int read_sysfs_int(struct mountgroup *mg, const char *field, int *val_out)
-{
-	char buf[SYSFS_BUFLEN];
-	int rv;
-
-	memset(buf, 0, sizeof(buf));
-
-	rv = get_sysfs(mg, field, buf, sizeof(buf));
-	if (rv < 0)
-		return rv;
-
-	*val_out = atoi(buf);
-	return 0;
-}
-
 int run_dmsetup_suspend(struct mountgroup *mg, char *dev)
 {
 	struct sched_param sched_param;

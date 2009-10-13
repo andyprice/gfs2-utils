@@ -2201,114 +2201,81 @@ static void apply_changes(struct mountgroup *mg)
 	}
 }
 
+void process_first_mount(struct mountgroup *mg)
+{
+	/*
+	 * Assumption here is that only the first mounter will get
+	 * uevents when first_recovery_needed is set.
+	 */
+
+	/* make a local record of jid and recover_status; we may want
+	   to check below that we've seen uevents for all jids
+	   during first recovery before sending first_recovery_done. */
+
+	log_group(mg, "recovery_uevent mg %s first recovery done", mg->name);
+
+	/* ignore extraneous uevent from others_may_mount */
+	if (mg->first_done_uevent)
+		return;
+
+	log_group(mg, "recovery_uevent first_done");
+	mg->first_done_uevent = 1;
+	send_first_recovery_done(mg);
+
+	apply_changes_recovery(mg);
+}
+
 /* We send messages with the info from kernel uevents or mount.gfs ipc,
    and then process the uevent/ipc upon receiving the message for it, so
    that it can be processed in the same order by all nodes. */
 
-void process_recovery_uevent(char *name, int jid, int recover_status,
-			     int first_done)
+void process_recovery_uevent(struct mountgroup *mg, int jid, int recover_status)
 {
-	struct mountgroup *mg;
 	struct journal *j;
-	int rv;
 
-	mg = find_mg(name);
-	if (!mg) {
-		log_error("recovery_uevent mg not found %s", name);
+	if (mg->first_recovery_needed)
+		return;
+
+	if (!mg->local_recovery_busy) {
+		/* This will happen in two known situations:
+		   - we get a recovery_done uevent for our own journal
+		     when we mount  (jid == mg->our_jid)
+		   - the first mounter can read first_done and clear
+		     first_recovery_needed before seeing the change
+		     uevent from others_may_mount */
+		log_group(mg, "recovery_uevent jid %d ignore", jid);
 		return;
 	}
 
-	if (jid < 0) {
-		/* for back compat, sysfs file deprecated */
-		rv = read_sysfs_int(mg, "recover_done", &jid);
-		if (rv < 0) {
-			log_error("recovery_uevent recover_done read %d", rv);
-			return;
-		}
+	mg->local_recovery_busy = 0;
+
+	if (mg->local_recovery_jid != jid) {
+		log_error("recovery_uevent jid %d expected %d", jid,
+			  mg->local_recovery_jid);
+		return;
 	}
 
-	if (recover_status < 0) {
-		/* for back compat, sysfs file deprecated */
-		rv = read_sysfs_int(mg, "recover_status", &recover_status);
-		if (rv < 0) {
-			log_error("recovery_uevent recover_status read %d", rv);
-			return;
-		}
+	j = find_journal(mg, jid);
+	if (!j) {
+		log_error("recovery_uevent no journal %d", jid);
+		return;
 	}
 
-	if (!mg->first_recovery_needed) {
-		if (!mg->local_recovery_busy) {
-			/* This will happen in two known situations:
-			   - we get a recovery_done uevent for our own journal
-			     when we mount  (jid == mg->our_jid)
-			   - the first mounter can read first_done and clear
-			     first_recovery_needed before seeing the change
-			     uevent from others_may_mount */
-			log_group(mg, "recovery_uevent jid %d ignore", jid);
-			return;
-		}
+	log_group(mg, "recovery_uevent jid %d status %d "
+		  "local_recovery_done %d needs_recovery %d",
+		  jid, recover_status, j->local_recovery_done,
+		  j->needs_recovery);
 
-		mg->local_recovery_busy = 0;
+	j->local_recovery_done = 1;
+	j->local_recovery_result = recover_status;
 
-		if (mg->local_recovery_jid != jid) {
-			log_error("recovery_uevent jid %d expected %d", jid,
-				  mg->local_recovery_jid);
-			return;
-		}
+	/* j->needs_recovery will be cleared when we receive this
+	   recovery_result message.  if it's already set, then
+	   someone else has completed the recovery and there's
+	   no need to send our result */
 
-		j = find_journal(mg, jid);
-		if (!j) {
-			log_error("recovery_uevent no journal %d", jid);
-			return;
-		}
-
-		log_group(mg, "recovery_uevent jid %d status %d "
-			  "local_recovery_done %d needs_recovery %d",
-			  jid, recover_status, j->local_recovery_done,
-			  j->needs_recovery);
-
-		j->local_recovery_done = 1;
-		j->local_recovery_result = recover_status;
-
-		/* j->needs_recovery will be cleared when we receive this
-		   recovery_result message.  if it's already set, then
-		   someone else has completed the recovery and there's
-		   no need to send our result */
-
-		if (j->needs_recovery)
-			send_recovery_result(mg, jid, recover_status);
-	} else {
-		/*
-		 * Assumption here is that only the first mounter will get
-		 * uevents when first_recovery_needed is set.
-		 */
-
-		/* make a local record of jid and recover_status; we may want
-		   to check below that we've seen uevents for all jids
-		   during first recovery before sending first_recovery_done. */
-
-		log_group(mg, "recovery_uevent jid %d first recovery done %d",
-			  jid, mg->first_done_uevent);
-
-		/* ignore extraneous uevent from others_may_mount */
-		if (mg->first_done_uevent)
-			return;
-
-		if (first_done < 0) {
-			/* for back compat, sysfs file deprecated */
-			rv = read_sysfs_int(mg, "first_done", &first_done);
-			if (rv < 0) {
-				log_error("recovery_uevent first_done read %d", rv);
-				return;
-			}
-		}
-
-		if (first_done) {
-			log_group(mg, "recovery_uevent first_done");
-			mg->first_done_uevent = 1;
-			send_first_recovery_done(mg);
-		}
-	}
+	if (j->needs_recovery)
+		send_recovery_result(mg, jid, recover_status);
 
 	apply_changes_recovery(mg);
 }
@@ -2830,17 +2797,9 @@ static void leave_mountgroup(struct mountgroup *mg, int mnterr)
 		log_error("cpg_leave error %d", error);
 }
 
-void do_leave(char *name, int mnterr)
+void do_leave(struct mountgroup *mg, int mnterr)
 {
-	struct mountgroup *mg;
-
-	log_debug("do_leave %s mnterr %d", name, mnterr);
-
-	mg = find_mg(name);
-	if (!mg) {
-		log_error("do_leave: %s not found", name);
-		return;
-	}
+	log_debug("do_leave %s mnterr %d", mg->name, mnterr);
 
 	if (mg->withdraw_uevent) {
 		log_group(mg, "do_leave: ignored during withdraw");
