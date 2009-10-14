@@ -178,17 +178,6 @@ struct mountgroup *find_mg(char *name)
 	return NULL;
 }
 
-struct mountgroup *find_mg_id(uint32_t id)
-{
-	struct mountgroup *mg;
-
-	list_for_each_entry(mg, &mountgroups, list) {
-		if (mg->id == id)
-			return mg;
-	}
-	return NULL;
-}
-
 enum {
 	Env_ACTION = 0,
 	Env_SUBSYSTEM,

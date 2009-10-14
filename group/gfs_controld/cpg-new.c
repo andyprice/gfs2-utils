@@ -530,42 +530,6 @@ static void node_history_init(struct mountgroup *mg, int nodeid,
 		node->added_seq = cg->seq;	/* for queries */
 }
 
-void node_history_cluster_add(int nodeid)
-{
-	struct mountgroup *mg;
-	struct node *node;
-
-	list_for_each_entry(mg, &mountgroups, list) {
-		node_history_init(mg, nodeid, NULL);
-
-		node = get_node_history(mg, nodeid);
-		if (!node) {
-			log_error("node_history_cluster_add no nodeid %d",
-				  nodeid);
-			return;
-		}
-
-		node->cluster_add_time = time(NULL);
-	}
-}
-
-void node_history_cluster_remove(int nodeid)
-{
-	struct mountgroup *mg;
-	struct node *node;
-
-	list_for_each_entry(mg, &mountgroups, list) {
-		node = get_node_history(mg, nodeid);
-		if (!node) {
-			log_error("node_history_cluster_remove no nodeid %d",
-				  nodeid);
-			return;
-		}
-
-		node->cluster_remove_time = time(NULL);
-	}
-}
-
 static void node_history_start(struct mountgroup *mg, int nodeid)
 {
 	struct node *node;
