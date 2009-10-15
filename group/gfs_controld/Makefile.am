@@ -17,8 +17,8 @@ gfs_controld_CPPFLAGS	= -I$(top_srcdir)/group/libgfscontrol \
 
 gfs_controld_CFLAGS	= $(ccs_CFLAGS) $(logt_CFLAGS) $(dlmcontrol_CFLAGS) \
 			  $(fenced_CFLAGS) $(sackpt_CFLAGS) $(cpg_CFLAGS) \
-			  $(cfg_CFLAGS)
+			  $(cfg_CFLAGS) $(quorum_CFLAGS)
 
 gfs_controld_LDFLAGS	= $(ccs_LIBS) $(logt_LIBS) $(dlmcontrol_LIBS) \
 			  $(cpg_LIBS) $(cfg_LIBS) $(sackpt_LIBS) \
-			  $(fenced_LIBS) -lpthread
+			  $(fenced_LIBS) $(quorum_LIBS) -lpthread

@@ -212,6 +212,10 @@ void process_connection(int ci);
 void cluster_dead(int ci);
 
 /* member_cman.c */
+int setup_cluster(void);
+void close_cluster(void);
+void process_cluster(int ci);
+void update_cluster(void);
 int setup_cluster_cfg(void);
 void close_cluster_cfg(void);
 void process_cluster_cfg(int ci);
