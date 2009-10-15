@@ -189,6 +189,8 @@ int set_mountgroups(int *count, struct gfsc_mountgroup **mgs_out);
 int set_mountgroup_nodes(struct mountgroup *mg, int option, int *node_count,
 	struct gfsc_node **nodes_out);
 void free_mg(struct mountgroup *mg);
+void node_history_cluster_add(int nodeid);
+void node_history_cluster_remove(int nodeid);
 
 /* main.c */
 int do_read(int fd, void *buf, size_t count);
@@ -200,6 +202,7 @@ void client_ignore(int ci, int fd);
 void client_back(int ci, int fd);
 struct mountgroup *create_mg(char *name);
 struct mountgroup *find_mg(char *name);
+struct mountgroup *find_mg_id(uint32_t id);
 void client_reply_remount(struct mountgroup *mg, int ci, int result);
 void client_reply_join(int ci, struct gfsc_mount_args *ma, int result);
 void client_reply_join_full(struct mountgroup *mg, int result);
