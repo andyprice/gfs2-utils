@@ -211,6 +211,9 @@ static int convert_rgs(struct gfs2_sbd *sbp)
 		/* rg_freemeta is a gfs1 structure, so libgfs2 doesn't know to */
 		/* convert from be to cpu. We must do it now. */
 		rgd->rg.rg_free = rgd1->rg_free + be32_to_cpu(rgd1->rg_freemeta);
+		/* Zero it out so we don't add it again in case something breaks */
+		/* later on in the process and we have to re-run convert */
+		rgd1->rg_freemeta = 0;
 
 		sbp->blks_total += rgd->ri.ri_data;
 		sbp->blks_alloced += (rgd->ri.ri_data - rgd->rg.rg_free);
