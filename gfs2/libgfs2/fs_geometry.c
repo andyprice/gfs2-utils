@@ -114,7 +114,6 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified)
 			rl->length = dev->length -
 				(nrgrp - 1) * (dev->length / nrgrp);
 		}
-		rl->rgf_flags = dev->rgf_flags;
 
 		log_info("%d: start: %" PRIu64 " (0x%"
 			 PRIx64 "), length = %"PRIu64" (0x%"
@@ -185,7 +184,7 @@ void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 	struct rgrp_list *rl;
 	uint32_t rgblocks, bitblocks;
 	struct gfs2_rindex *ri;
-	struct gfs2_rgrp *rg;
+	struct gfs2_rgrp rg;
 	struct gfs2_meta_header mh;
 	unsigned int x;
 	struct gfs2_buffer_head *bh;
@@ -199,7 +198,6 @@ void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 	     tmp = tmp->next) {
 		rl = osi_list_entry(tmp, struct rgrp_list, list);
 		ri = &rl->ri;
-		rg = &rl->rg;
 
 		rgblocks = rl->length;
 		rgblocks2bitblocks(sdp->bsize, &rgblocks, &bitblocks);
@@ -210,19 +208,20 @@ void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 		ri->ri_data = rgblocks;
 		ri->ri_bitbytes = rgblocks / GFS2_NBBY;
 
-		rg->rg_header.mh_magic = GFS2_MAGIC;
-		rg->rg_header.mh_type = GFS2_METATYPE_RG;
-		rg->rg_header.mh_format = GFS2_FORMAT_RG;
-		rg->rg_flags = rl->rgf_flags;
-		rg->rg_free = rgblocks;
+		memset(&rg, 0, sizeof(rg));
+		rg.rg_header.mh_magic = GFS2_MAGIC;
+		rg.rg_header.mh_type = GFS2_METATYPE_RG;
+		rg.rg_header.mh_format = GFS2_FORMAT_RG;
+		rg.rg_free = rgblocks;
+		rl->rg_free = rgblocks;
 
 		if (do_write) {
 			for (x = 0; x < bitblocks; x++) {
-				bh = bget(&sdp->nvbuf_list, rl->start + x);
+				bh = bget(&sdp->buf_list, rl->start + x);
 				if (x)
 					gfs2_meta_header_out(&mh, bh->b_data);
 				else
-					gfs2_rgrp_out(rg, bh->b_data);
+					gfs2_rgrp_out(&rg, bh->b_data);
 				brelse(bh, updated);
 			}
 		}

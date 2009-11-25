@@ -563,8 +563,7 @@ void main_mkfs(int argc, char *argv[])
 	strcpy(sdp->lockproto, GFS2_DEFAULT_LOCKPROTO);
 	sdp->time = time(NULL);
 	osi_list_init(&sdp->rglist);
-	init_buf_list(sdp, &sdp->buf_list, 128 << 20);
-	init_buf_list(sdp, &sdp->nvbuf_list, 0xffffffff);
+	init_buf_list(sdp, &sdp->buf_list, 1 << 20);
 
 	decode_arguments(argc, argv, sdp);
 	if (sdp->rgsize == -1)                 /* if rg size not specified */
@@ -645,7 +644,6 @@ void main_mkfs(int argc, char *argv[])
 	inode_put(sdp->md.inum, updated);
 	inode_put(sdp->md.statfs, updated);
 	bsync(&sdp->buf_list);
-	bsync(&sdp->nvbuf_list);
 
 	error = fsync(sdp->device_fd);
 	if (error)

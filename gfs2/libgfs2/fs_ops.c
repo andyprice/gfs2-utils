@@ -58,16 +58,17 @@ static uint64_t blk_alloc_i(struct gfs2_sbd *sdp, unsigned int type)
 	osi_list_t *tmp, *head;
 	struct rgrp_list *rl = NULL;
 	struct gfs2_rindex *ri;
-	struct gfs2_rgrp *rg;
+	struct gfs2_rgrp rg;
+	struct gfs2_buffer_head **rgbh;
 	unsigned int block, bn = 0, x = 0, y = 0;
-	struct gfs2_buffer_head *bh;
 	unsigned int state;
 
+	memset(&rg, 0, sizeof(rg));
 	for (head = &sdp->rglist, tmp = head->next;
 	     tmp != head;
 	     tmp = tmp->next) {
 		rl = osi_list_entry(tmp, struct rgrp_list, list);
-		if (rl->rg.rg_free)
+		if (rl->rg_free)
 			break;
 	}
 
@@ -75,31 +76,43 @@ static uint64_t blk_alloc_i(struct gfs2_sbd *sdp, unsigned int type)
 		die("out of space\n");
 
 	ri = &rl->ri;
-	rg = &rl->rg;
+
+	if(!(rgbh = (struct gfs2_buffer_head **)
+	     malloc(rl->ri.ri_length *
+		    sizeof(struct gfs2_buffer_head *))))
+		return -1;
+	if(!memset(rgbh, 0, rl->ri.ri_length *
+		   sizeof(struct gfs2_buffer_head *))) {
+		free(rgbh);
+		return -1;
+	}
 
 	for (block = 0; block < ri->ri_length; block++) {
-		bh = bread(&sdp->nvbuf_list, ri->ri_addr + block);
+		rgbh[block] = bread(&sdp->buf_list, ri->ri_addr + block);
 		x = (block) ? sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_rgrp);
 
+		if (!block)
+			gfs2_rgrp_in(&rg, rgbh[0]->b_data);
 		for (; x < sdp->bsize; x++)
 			for (y = 0; y < GFS2_NBBY; y++) {
-				state = (bh->b_data[x] >> (GFS2_BIT_SIZE * y)) & 0x03;
+				state = (rgbh[block]->b_data[x] >>
+					 (GFS2_BIT_SIZE * y)) & 0x03;
 				if (state == GFS2_BLKST_FREE)
 					goto found;
 				bn++;
 			}
 
-		brelse(bh, FALSE);
+		brelse(rgbh[block], FALSE);
 	}
 
 	die("allocation is broken (1): %"PRIu64" %u\n",
-	    (uint64_t)rl->ri.ri_addr, rl->rg.rg_free);
+	    (uint64_t)rl->ri.ri_addr, rl->rg_free);
 
 found:
 	if (bn >= ri->ri_bitbytes * GFS2_NBBY)
 		die("allocation is broken (2): %u %u %"PRIu64" %u\n",
 		    bn, ri->ri_bitbytes * GFS2_NBBY,
-		    (uint64_t)rl->ri.ri_addr, rl->rg.rg_free);
+		    (uint64_t)rl->ri.ri_addr, rl->rg_free);
 
 	switch (type) {
 	case DATA:
@@ -108,24 +121,25 @@ found:
 		break;
 	case DINODE:
 		state = GFS2_BLKST_DINODE;
-		rg->rg_dinodes++;
+		rg.rg_dinodes++;
 		break;
 	default:
 		die("bad state\n");
 	}
 
-	bh->b_data[x] &= ~(0x03 << (GFS2_BIT_SIZE * y));
-	bh->b_data[x] |= state << (GFS2_BIT_SIZE * y);
-	rg->rg_free--;
+	rgbh[block]->b_data[x] &= ~(0x03 << (GFS2_BIT_SIZE * y));
+	rgbh[block]->b_data[x] |= state << (GFS2_BIT_SIZE * y);
+	rg.rg_free--;
+	rl->rg_free--;
 
-	brelse(bh, updated);
+	brelse(rgbh[block], updated);
 
-	bh = bread(&sdp->nvbuf_list, ri->ri_addr);
-	gfs2_rgrp_out(rg, bh->b_data);
-	brelse(bh, updated);
+	rgbh[0] = bread(&sdp->buf_list, ri->ri_addr);
+	gfs2_rgrp_out(&rg, rgbh[0]->b_data);
+	brelse(rgbh[0], updated);
 
 	sdp->blks_alloced++;
-
+	free(rgbh);
 	return ri->ri_data0 + bn;
 }
 
@@ -947,7 +961,7 @@ static int get_first_leaf(struct gfs2_inode *dip, uint32_t lindex,
  */
 
 static int get_next_leaf(struct gfs2_inode *dip,struct gfs2_buffer_head *bh_in,
-			 struct gfs2_buffer_head **bh_out)
+						 struct gfs2_buffer_head **bh_out)
 {
 	struct gfs2_leaf *leaf;
 
@@ -1583,13 +1597,16 @@ void gfs2_free_block(struct gfs2_sbd *sdp, uint64_t block)
 {
 	struct gfs2_buffer_head *bh;
 	struct rgrp_list *rgd;
+	struct gfs2_rgrp rg;
 
 	gfs2_set_bitmap(sdp, block, GFS2_BLKST_FREE);
 	/* Adjust the free space count for the freed block */
 	rgd = gfs2_blk2rgrpd(sdp, block); /* find the rg for indir block */
-	bh = bget(&sdp->nvbuf_list, rgd->ri.ri_addr); /* get the rg buffer */
-	rgd->rg.rg_free++; /* adjust the free count */
-	gfs2_rgrp_out(&rgd->rg, bh->b_data); /* back to the buffer */
+	bh = bget(&sdp->buf_list, rgd->ri.ri_addr); /* get the rg buffer */
+	gfs2_rgrp_in(&rg, bh->b_data); /* back to the buffer */
+	rg.rg_free++; /* adjust the free count */
+	rgd->rg_free++;
+	gfs2_rgrp_out(&rg, bh->b_data); /* back to the buffer */
 	brelse(bh, updated); /* release the buffer */
 }
 
@@ -1607,6 +1624,7 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 	uint32_t height;
 	osi_list_t metalist[GFS2_MAX_META_HEIGHT];
 	osi_list_t *cur_list, *next_list, *tmp;
+	struct gfs2_rgrp rg;
 
 	for (h = 0; h < GFS2_MAX_META_HEIGHT; h++)
 		osi_list_init(&metalist[h]);
@@ -1635,11 +1653,8 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 				gfs2_free_block(sdp, block);
 				if (h == height - 1) /* if not metadata */
 					continue; /* don't queue it up */
-				/* Read the next metadata block in the chain.
-				   First see if it's on the nvbuf_list. */
-				nbh = bfind(&sdp->nvbuf_list, block);
-				if (!nbh)
-					nbh = bread(&sdp->buf_list, block);
+				/* Read the next metadata block in the chain */
+				nbh = bread(&sdp->buf_list, block);
 				osi_list_add(&nbh->b_altlist, next_list);
 				brelse(nbh, not_updated);
 			}
@@ -1650,13 +1665,12 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 	inode_put(ip, updated);
 	/* Now we have to adjust the rg freespace count and inode count: */
 	rgd = gfs2_blk2rgrpd(sdp, diblock);
-	/* The rg itself is in memory as rgd->rg, but there's most likely a  */
-	/* buffer in memory for the rg on disk because we used it to fix the */
-	/* bitmaps, some of which are on the same block on disk.             */
-	bh = bread(&sdp->nvbuf_list, rgd->ri.ri_addr); /* get the buffer */
-	rgd->rg.rg_free++;
-	rgd->rg.rg_dinodes--; /* one less inode in use */
-	gfs2_rgrp_out(&rgd->rg, bh->b_data);
+	bh = bread(&sdp->buf_list, rgd->ri.ri_addr); /* get the buffer */
+	gfs2_rgrp_in(&rg, bh->b_data);
+	rg.rg_free++;
+	rgd->rg_free++;
+	rg.rg_dinodes--; /* one less inode in use */
+	gfs2_rgrp_out(&rg, bh->b_data);
 	brelse(bh, updated); /* release the buffer */
 	return 0;
 }

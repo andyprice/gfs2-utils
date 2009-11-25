@@ -74,14 +74,6 @@ int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
 	    rgd->bits[length - 1].bi_len) * GFS2_NBBY != rgd->ri.ri_data)
 		return -1;
 
-	if (rgd->bh)      /* If we already have a bh allocated */
-		return 0; /* don't want to allocate another */
-	if(!(rgd->bh = (struct gfs2_buffer_head **)
-		 malloc(length * sizeof(struct gfs2_buffer_head *))))
-		return -1;
-	if(!memset(rgd->bh, 0, length * sizeof(struct gfs2_buffer_head *)))
-		return -1;
-
 	return 0;
 }
 
@@ -116,51 +108,47 @@ struct rgrp_list *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
  * @rgd - resource group structure
  * returns: 0 if no error, otherwise the block number that failed
  */
-uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
+uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
+			struct gfs2_buffer_head **bh, struct gfs2_rgrp *rg)
 {
 	int x, length = rgd->ri.ri_length;
 
 	for (x = 0; x < length; x++){
-		rgd->bh[x] = bread(&sdp->nvbuf_list, rgd->ri.ri_addr + x);
-		if(gfs2_check_meta(rgd->bh[x],
+		bh[x] = bread(&sdp->buf_list, rgd->ri.ri_addr + x);
+		if(gfs2_check_meta(bh[x],
 				   (x) ? GFS2_METATYPE_RB : GFS2_METATYPE_RG))
 		{
 			uint64_t error;
 
 			error = rgd->ri.ri_addr + x;
 			for (; x >= 0; x--)
-				brelse(rgd->bh[x], not_updated);
+				brelse(bh[x], not_updated);
 			return error;
 		}
 	}
 
-	gfs2_rgrp_in(&rgd->rg, rgd->bh[0]->b_data);
+	gfs2_rgrp_in(rg, bh[0]->b_data);
+	rgd->rg_free = rg->rg_free;
 	return 0;
 }
 
-void gfs2_rgrp_relse(struct rgrp_list *rgd, enum update_flags is_updated)
+void gfs2_rgrp_relse(struct rgrp_list *rgd, enum update_flags is_updated,
+		     struct gfs2_buffer_head **bh)
 {
 	int x, length = rgd->ri.ri_length;
 
 	for (x = 0; x < length; x++)
-		brelse(rgd->bh[x], is_updated);
+		brelse(bh[x], is_updated);
 }
 
-void gfs2_rgrp_free(osi_list_t *rglist, enum update_flags is_updated)
+void gfs2_rgrp_free(osi_list_t *rglist)
 {
 	struct rgrp_list *rgd;
 
 	while(!osi_list_empty(rglist->next)){
 		rgd = osi_list_entry(rglist->next, struct rgrp_list, list);
-		if (rgd->bh && rgd->bh[0] && /* if a buffer exists and       */
-			rgd->bh[0]->b_count) /* the 1st buffer is allocated */
-			gfs2_rgrp_relse(rgd, is_updated); /* free them all. */
 		if(rgd->bits)
 			free(rgd->bits);
-		if(rgd->bh) {
-			free(rgd->bh);
-			rgd->bh = NULL;
-		}
 		osi_list_del(&rgd->list);
 		free(rgd);
 	}

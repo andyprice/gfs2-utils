@@ -39,6 +39,10 @@ static int write_buffer(struct buf_list *bl, struct gfs2_buffer_head *bh)
 		}
 		sdp->writes++;
 	}
+	bh->b_blocknr = -1;
+	bh->b_data = NULL;
+	bh->b_count = -1;
+	bh->b_changed = -1;
 	free(bh);
 	return 0;
 }

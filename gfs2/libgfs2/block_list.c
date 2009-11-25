@@ -161,8 +161,8 @@ struct gfs2_block_list *gfs2_block_list_create(struct gfs2_sbd *sdp,
 	if (!il || !memset(il, 0, sizeof(*il)))
 		return NULL;
 
-	if(gfs2_bitmap_create(&il->list.gbmap.group_map, size, 4)) {
-		*addl_mem_needed = il->list.gbmap.group_map.mapsize;
+	if(gfs2_bitmap_create(&il->list.gbmap, size, 4)) {
+		*addl_mem_needed = il->list.gbmap.mapsize;
 		free(il);
 		il = NULL;
 	}
@@ -290,7 +290,7 @@ int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 	else if(mark == gfs2_eattr_block)
 		gfs2_special_set(&sdp->eattr_blocks, block);
 	else
-		err = gfs2_bitmap_set(&il->list.gbmap.group_map, block,
+		err = gfs2_bitmap_set(&il->list.gbmap, block,
 				      mark_to_gbmap[mark]);
 	return err;
 }
@@ -313,7 +313,7 @@ int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 		break;
 	default:
 		/* FIXME: check types */
-		err = gfs2_bitmap_clear(&il->list.gbmap.group_map, block);
+		err = gfs2_bitmap_clear(&il->list.gbmap, block);
 		break;
 	}
 	return err;
@@ -328,7 +328,7 @@ int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 	gfs2_dup_clear(&sdp->dup_blocks, block);
 	gfs2_special_clear(&sdp->bad_blocks, block);
 	gfs2_special_clear(&sdp->eattr_blocks, block);
-	err = gfs2_bitmap_clear(&il->list.gbmap.group_map, block);
+	err = gfs2_bitmap_clear(&il->list.gbmap, block);
 	return err;
 }
 
@@ -357,8 +357,7 @@ int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 		val->dup_block = 1;
 	if (blockfind(&sdp->eattr_blocks, block))
 		val->eattr_block = 1;
-	if((err = gfs2_bitmap_get(&il->list.gbmap.group_map, block,
-				  &val->block_type)))
+	if((err = gfs2_bitmap_get(&il->list.gbmap, block, &val->block_type)))
 		return err;
 	return 0;
 }
@@ -366,7 +365,7 @@ int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 void *gfs2_block_list_destroy(struct gfs2_sbd *sdp, struct gfs2_block_list *il)
 {
 	if(il) {
-		gfs2_bitmap_destroy(&il->list.gbmap.group_map);
+		gfs2_bitmap_destroy(&il->list.gbmap);
 		free(il);
 		il = NULL;
 	}

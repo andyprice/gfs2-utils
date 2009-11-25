@@ -473,12 +473,14 @@ static void get_journal_inode_blocks(void)
 	}
 }
 
-static int next_rg_freemeta(struct rgrp_list *rgd, uint64_t *nrfblock, int first)
+static int next_rg_freemeta(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
+			    uint64_t *nrfblock, int first)
 {
 	struct gfs2_bitmap *bits = NULL;
 	uint32_t length = rgd->ri.ri_length;
 	uint32_t blk = (first)? 0: (uint32_t)((*nrfblock+1)-rgd->ri.ri_data0);
 	int i;
+	struct gfs2_buffer_head *bh;
 
 	if(!first && (*nrfblock < rgd->ri.ri_data0)) {
 		log_err("next_rg_freemeta:  Start block is outside rgrp "
@@ -493,9 +495,11 @@ static int next_rg_freemeta(struct rgrp_list *rgd, uint64_t *nrfblock, int first
 	}
 	for(; i < length; i++){
 		bits = &rgd->bits[i];
-		blk = gfs2_bitfit((unsigned char *)rgd->bh[i]->b_data +
+		bh = bread(&sdp->buf_list, rgd->ri.ri_addr + i);
+		blk = gfs2_bitfit((unsigned char *)bh->b_data +
 				  bits->bi_offset, bits->bi_len, blk,
 				  GFS2_BLKST_UNLINKED);
+		brelse(bh, not_updated);
 		if(blk != BFITNOENT){
 			*nrfblock = blk + (bits->bi_start * GFS2_NBBY) +
 				rgd->ri.ri_data0;
@@ -517,6 +521,8 @@ void savemeta(char *out_fn, int saveoption)
 	int rgcount;
 	uint64_t jindex_block;
 	struct gfs2_buffer_head *bh;
+	struct gfs2_rgrp rg;
+	struct gfs2_buffer_head **rgbh;
 
 	slow = (saveoption == 1);
 	sbd.md.journals = 1;
@@ -553,8 +559,7 @@ void savemeta(char *out_fn, int saveoption)
 			exit(-1);
 		}
 		osi_list_init(&sbd.rglist);
-		init_buf_list(&sbd, &sbd.buf_list, 128 << 20);
-		init_buf_list(&sbd, &sbd.nvbuf_list, 0xffffffff);
+		init_buf_list(&sbd, &sbd.buf_list, 1 << 20);
 		if (!gfs1)
 			sbd.sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 		if (compute_constants(&sbd)) {
@@ -651,7 +656,16 @@ void savemeta(char *out_fn, int saveoption)
 			int i, first;
 
 			rgd = osi_list_entry(tmp, struct rgrp_list, list);
-			slow = gfs2_rgrp_read(&sbd, rgd);
+			if(!(rgbh = (struct gfs2_buffer_head **)
+			     malloc(rgd->ri.ri_length *
+				    sizeof(struct gfs2_buffer_head *))))
+				break;
+			if(!memset(rgbh, 0, rgd->ri.ri_length *
+				   sizeof(struct gfs2_buffer_head *))) {
+				free(rgbh);
+				break;
+			}
+			slow = gfs2_rgrp_read(&sbd, rgd, rgbh, &rg);
 			if (slow)
 				continue;
 			log_debug("RG at %lld (0x%llx) is %u long\n",
@@ -675,7 +689,8 @@ void savemeta(char *out_fn, int saveoption)
 			if (saveoption != 2) {
 				int blktype;
 
-				while (!gfs2_next_rg_meta(rgd, &block, first)) {
+				while (!gfs2_next_rg_meta(&sbd, rgd, &block,
+							  first)) {
 					warm_fuzzy_stuff(block, FALSE, TRUE);
 					blktype = save_block(sbd.device_fd,
 							     out_fd, block);
@@ -686,13 +701,15 @@ void savemeta(char *out_fn, int saveoption)
 				/* Save off the free/unlinked meta blocks too.
 				   If we don't, we may run into metadata
 				   allocation issues. */
-				while (!next_rg_freemeta(rgd, &block, first)) {
+				while (!next_rg_freemeta(&sbd, rgd, &block,
+							 first)) {
 					blktype = save_block(sbd.device_fd,
 							     out_fd, block);
 					first = 0;
 				}
 			}
-			gfs2_rgrp_relse(rgd, not_updated);
+			gfs2_rgrp_relse(rgd, not_updated, rgbh);
+			free(rgbh);
 		}
 	}
 	if (slow) {

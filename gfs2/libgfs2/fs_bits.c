@@ -2,6 +2,7 @@
 
 #include <inttypes.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "libgfs2.h"
@@ -114,6 +115,8 @@ int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state)
 	struct rgrp_list *rgd;
 	unsigned char *byte, cur_state;
 	unsigned int bit;
+	struct gfs2_rgrp rg;
+	struct gfs2_buffer_head **rgbh;
 
 	/* FIXME: should GFS2_BLKST_INVALID be allowed */
 	if ((state < GFS2_BLKST_FREE) || (state > GFS2_BLKST_DINODE))
@@ -124,8 +127,20 @@ int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state)
 	if(!rgd)
 		return -1;
 
-	if(gfs2_rgrp_read(sdp, rgd))
+	if(!(rgbh = (struct gfs2_buffer_head **)
+	     malloc(rgd->ri.ri_length *
+		    sizeof(struct gfs2_buffer_head *))))
 		return -1;
+	if(!memset(rgbh, 0, rgd->ri.ri_length *
+		   sizeof(struct gfs2_buffer_head *))) {
+		free(rgbh);
+		return -1;
+	}
+
+	if(gfs2_rgrp_read(sdp, rgd, rgbh, &rg)) {
+		free(rgbh);
+		return -1;
+	}
 	rgrp_block = (uint32_t)(blkno - rgd->ri.ri_data0);
 	for(buf= 0; buf < rgd->ri.ri_length; buf++){
 		bits = &(rgd->bits[buf]);
@@ -133,7 +148,7 @@ int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state)
 			break;
 	}
 
-	byte = (unsigned char *)(rgd->bh[buf]->b_data + bits->bi_offset) +
+	byte = (unsigned char *)(rgbh[buf]->b_data + bits->bi_offset) +
 		(rgrp_block/GFS2_NBBY - bits->bi_start);
 	bit = (rgrp_block % GFS2_NBBY) * GFS2_BIT_SIZE;
 
@@ -141,12 +156,13 @@ int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state)
 	*byte ^= cur_state << bit;
 	*byte |= state << bit;
 
-	gfs2_rgrp_relse(rgd, updated);
+	gfs2_rgrp_relse(rgd, updated, rgbh);
+	free(rgbh);
 	return 0;
 }
 
 /*
- * fs_get_bitmap - get value of FS bitmap
+ * gfs2_get_bitmap - get value of FS bitmap
  * @sdp: super block
  * @blkno: block number relative to file system
  *
@@ -169,6 +185,9 @@ int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
 	unsigned int  bit;
 	unsigned char *byte;
 	int local_rgd = 0;
+	struct gfs2_rgrp rg;
+	struct gfs2_buffer_head **rgbh;
+	int bitmap_blocks = rgd->length;
 
 	if(gfs2_check_range(sdp, blkno))
 		return -1;
@@ -178,7 +197,16 @@ int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
 	}
 	if(rgd == NULL)
 		return -1;
-	if(gfs2_rgrp_read(sdp, rgd))
+	if(!(rgbh = (struct gfs2_buffer_head **)
+	     malloc(bitmap_blocks * sizeof(struct gfs2_buffer_head *))))
+		return -1;
+	if(!memset(rgbh, 0, bitmap_blocks *
+		   sizeof(struct gfs2_buffer_head *))) {
+		free(rgbh);
+		return -1;
+	}
+
+	if(gfs2_rgrp_read(sdp, rgd, rgbh, &rg))
 		return -1;
 
 	rgrp_block = (uint32_t)(blkno - rgd->ri.ri_data0);
@@ -191,17 +219,17 @@ int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
 	}
 
 	if(i >= rgd->ri.ri_length){
-		gfs2_rgrp_relse(rgd, not_updated);
+		gfs2_rgrp_relse(rgd, not_updated, rgbh);
 		return -1;
 	}
 
-	byte = (unsigned char *)(rgd->bh[i]->b_data + bits->bi_offset) +
+	byte = (unsigned char *)(rgbh[i]->b_data + bits->bi_offset) +
 		(rgrp_block/GFS2_NBBY - bits->bi_start);
 	bit = (rgrp_block % GFS2_NBBY) * GFS2_BIT_SIZE;
 
 	val = ((*byte >> bit) & GFS2_BIT_MASK);
 	if(local_rgd)
-		gfs2_rgrp_relse(rgd, not_updated);
+		gfs2_rgrp_relse(rgd, not_updated, rgbh);
 
 	return val;
 }

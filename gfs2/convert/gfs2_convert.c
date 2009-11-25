@@ -159,34 +159,29 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 /*                   valid in gfs1 but invalid in gfs2).                     */
 /* ------------------------------------------------------------------------- */
 static void convert_bitmaps(struct gfs2_sbd *sdp, struct rgrp_list *rgd2,
-					 int read_disk)
+			    struct gfs2_buffer_head **rgbh)
 {
 	uint32_t blk;
 	int x, y;
 	struct gfs2_rindex *ri;
 	unsigned char state;
-	struct gfs2_buffer_head *bh;
 
 	ri = &rgd2->ri;
-	if (gfs2_compute_bitstructs(sdp, rgd2)) { /* mallocs bh as array */
+	if (gfs2_compute_bitstructs(sdp, rgd2)) {
 		log_crit("gfs2_convert: Error converting bitmaps.\n");
 		exit(-1);
 	}
 	for (blk = 0; blk < ri->ri_length; blk++) {
-		bh = bget_generic(&sdp->nvbuf_list, ri->ri_addr + blk,
-				  read_disk, read_disk);
-		if (!rgd2->bh[blk])
-			rgd2->bh[blk] = bh;
-		x = (blk) ? sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_rgrp);
+		x = (blk) ? sizeof(struct gfs2_meta_header) :
+			sizeof(struct gfs2_rgrp);
 
 		for (; x < sdp->bsize; x++)
 			for (y = 0; y < GFS2_NBBY; y++) {
-				state = (rgd2->bh[blk]->b_data[x] >>
-						 (GFS2_BIT_SIZE * y)) & 0x03;
+				state = (rgbh[blk]->b_data[x] >>
+					 (GFS2_BIT_SIZE * y)) & 0x03;
 				if (state == 0x02) /* unallocated metadata state invalid */
-					rgd2->bh[blk]->b_data[x] &= ~(0x02 << (GFS2_BIT_SIZE * y));
+					rgbh[blk]->b_data[x] &= ~(0x02 << (GFS2_BIT_SIZE * y));
 			}
-		brelse(bh, updated);
 	}
 }/* convert_bitmaps */
 
@@ -197,38 +192,49 @@ static void convert_bitmaps(struct gfs2_sbd *sdp, struct rgrp_list *rgd2,
 static int convert_rgs(struct gfs2_sbd *sbp)
 {
 	struct rgrp_list *rgd;
+	struct gfs2_rgrp rg;
 	osi_list_t *tmp;
-	struct gfs2_buffer_head *bh;
 	struct gfs1_rgrp *rgd1;
 	int rgs = 0;
+	struct gfs2_buffer_head **rgbh;
 
 	/* --------------------------------- */
 	/* Now convert its rgs into gfs2 rgs */
 	/* --------------------------------- */
 	osi_list_foreach(tmp, &sbp->rglist) {
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
-		rgd1 = (struct gfs1_rgrp *)&rgd->rg; /* recast as gfs1 structure */
+		if(!(rgbh = (struct gfs2_buffer_head **)
+		     malloc(rgd->ri.ri_length *
+			    sizeof(struct gfs2_buffer_head *))))
+			return -1;
+		if(!memset(rgbh, 0, rgd->ri.ri_length *
+			   sizeof(struct gfs2_buffer_head *))) {
+			free(rgbh);
+			return -1;
+		}
+
+		gfs2_rgrp_read(sbp, rgd, rgbh, &rg);
+		rgd1 = (struct gfs1_rgrp *)&rg; /* recast as gfs1 structure */
 		/* rg_freemeta is a gfs1 structure, so libgfs2 doesn't know to */
 		/* convert from be to cpu. We must do it now. */
-		rgd->rg.rg_free = rgd1->rg_free + be32_to_cpu(rgd1->rg_freemeta);
+		rg.rg_free = rgd1->rg_free + be32_to_cpu(rgd1->rg_freemeta);
+		rgd->rg_free = rg.rg_free;
 		/* Zero it out so we don't add it again in case something breaks */
 		/* later on in the process and we have to re-run convert */
 		rgd1->rg_freemeta = 0;
 
 		sbp->blks_total += rgd->ri.ri_data;
-		sbp->blks_alloced += (rgd->ri.ri_data - rgd->rg.rg_free);
+		sbp->blks_alloced += (rgd->ri.ri_data - rg.rg_free);
 		sbp->dinodes_alloced += rgd1->rg_useddi;
-		convert_bitmaps(sbp, rgd, TRUE);
+		convert_bitmaps(sbp, rgd, rgbh);
 		/* Write the updated rgrp to the gfs2 buffer */
-		bh = bget(&sbp->nvbuf_list,
-			  rgd->ri.ri_addr); /* get a gfs2 buffer for the rg */
-		gfs2_rgrp_out(&rgd->rg, rgd->bh[0]->b_data);
-		brelse(bh, updated); /* release the buffer */
+		gfs2_rgrp_out(&rg, rgbh[0]->b_data);
 		rgs++;
 		if (rgs % 100 == 0) {
 			printf(".");
 			fflush(stdout);
 		}
+		free(rgbh);
 	}
 	return 0;
 }/* superblock_cvt */
@@ -696,6 +702,8 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
 	int first;
 	int error = 0;
 	int rgs_processed = 0;
+	struct gfs2_buffer_head **rgbh;
+	struct gfs2_rgrp rg;
 
 	log_notice("Converting inodes.\n");
 	sbp->md.next_inum = 1; /* starting inode numbering */
@@ -709,8 +717,18 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
 		rgs_processed++;
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
 		first = 1;
-		if (gfs2_rgrp_read(sbp, rgd)) {
+                if(!(rgbh = (struct gfs2_buffer_head **)
+                     malloc(rgd->ri.ri_length *
+                            sizeof(struct gfs2_buffer_head *))))
+                        return -1;
+                if(!memset(rgbh, 0, rgd->ri.ri_length *
+                           sizeof(struct gfs2_buffer_head *))) {
+			free(rgbh);
+                        return -1;
+		}
+		if (gfs2_rgrp_read(sbp, rgd, rgbh, &rg)) {
 			log_crit("Unable to read rgrp.\n");
+			free(rgbh);
 			return -1;
 		}
 		while (1) {    /* for all inodes in the resource group */
@@ -755,9 +773,9 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
 						sizeof(struct gfs2_rgrp);
 					/* if it's on this page */
 					if (buf_offset + bitmap_byte < sbp->bsize) {
-						rgd->bh[blk]->b_data[buf_offset + bitmap_byte] &=
+						rgbh[blk]->b_data[buf_offset + bitmap_byte] &=
 							~(0x03 << (GFS2_BIT_SIZE * byte_bit));
-						rgd->bh[blk]->b_data[buf_offset + bitmap_byte] |=
+						rgbh[blk]->b_data[buf_offset + bitmap_byte] |=
 							(0x01 << (GFS2_BIT_SIZE * byte_bit));
 						break;
 					}
@@ -767,7 +785,8 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
 			brelse(bh, updated);
 			first = 0;
 		} /* while 1 */
-		gfs2_rgrp_relse(rgd, updated);
+		gfs2_rgrp_relse(rgd, updated, rgbh);
+		free(rgbh);
 	} /* for all rgs */
 	log_notice("\r%" PRIu64" inodes from %d rgs converted.",
 		   sbp->md.next_inum, rgs_processed);
@@ -1093,8 +1112,7 @@ static int init(struct gfs2_sbd *sbp)
 	sbp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 	sbp->bsize = sbp->sd_sb.sb_bsize;
 	osi_list_init(&sbp->rglist);
-	init_buf_list(sbp, &sbp->buf_list, 128 << 20);
-	init_buf_list(sbp, &sbp->nvbuf_list, 0xffffffff);
+	init_buf_list(sbp, &sbp->buf_list, 1 << 20); /* only use 1MB of bufs */
 	if (compute_constants(sbp)) {
 		log_crit("Error: Bad constants (1)\n");
 		exit(-1);
@@ -1321,6 +1339,8 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 	struct rgrp_list *rgd, *rgdhigh;
 	osi_list_t *tmp;
 	struct gfs2_meta_header mh;
+	struct gfs2_rgrp rg;
+	struct gfs2_buffer_head **rgbh;
 
 	mh.mh_magic = GFS2_MAGIC;
 	mh.mh_type = GFS2_METATYPE_RB;
@@ -1331,12 +1351,12 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 		uint64_t size;
 
 		jndx = &sd_jindex[j];
-		/* go through all rg index entries, keeping track of the highest */
-		/* that's still in the first subdevice.                          */
-		/* Note: we really should go through all of the rgindex because  */
-		/* we might have had rg's added by gfs_grow, and journals added  */
-		/* by jadd.  gfs_grow adds rgs out of order, so we can't count   */
-		/* on them being in ascending order.                             */
+		/* go through all rg index entries, keeping track of the
+		   highest that's still in the first subdevice.
+		   Note: we really should go through all of the rgindex because
+		   we might have had rg's added by gfs_grow, and journals added
+		   by jadd.  gfs_grow adds rgs out of order, so we can't count
+		   on them being in ascending order. */
 		rgdhigh = NULL;
 		osi_list_foreach(tmp, &sdp->rglist) {
 			rgd = osi_list_entry(tmp, struct rgrp_list, list);
@@ -1361,11 +1381,11 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 		}
 		memset(rgd, 0, sizeof(struct rgrp_list));
 		size = jndx->ji_nsegment * be32_to_cpu(raw_gfs1_ondisk_sb.sb_seg_size);
-		rgd->rg.rg_header.mh_magic = GFS2_MAGIC;
-		rgd->rg.rg_header.mh_type = GFS2_METATYPE_RG;
-		rgd->rg.rg_header.mh_format = GFS2_FORMAT_RG;
-		rgd->rg.rg_flags = 0;
-		rgd->rg.rg_dinodes = 0;
+		rg.rg_header.mh_magic = GFS2_MAGIC;
+		rg.rg_header.mh_type = GFS2_METATYPE_RG;
+		rg.rg_header.mh_format = GFS2_FORMAT_RG;
+		rg.rg_flags = 0;
+		rg.rg_dinodes = 0;
 
 		rgd->ri.ri_addr = jndx->ji_addr; /* new rg addr becomes ji addr */
 		rgd->ri.ri_length = rgrp_length(size, sdp); /* aka bitblocks */
@@ -1376,19 +1396,32 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 		/* Round down to nearest multiple of GFS2_NBBY */
 		while (rgd->ri.ri_data & 0x03)
 			rgd->ri.ri_data--;
-		rgd->rg.rg_free = rgd->ri.ri_data;
+		rg.rg_free = rgd->ri.ri_data;
+		rgd->rg_free = rg.rg_free;
 		rgd->ri.ri_bitbytes = rgd->ri.ri_data / GFS2_NBBY;
-		convert_bitmaps(sdp, rgd, FALSE); /* allocates rgd->bh */
+
+		if(!(rgbh = (struct gfs2_buffer_head **)
+		     malloc(rgd->ri.ri_length *
+			    sizeof(struct gfs2_buffer_head *))))
+			return -1;
+		if(!memset(rgbh, 0, rgd->ri.ri_length *
+			   sizeof(struct gfs2_buffer_head *))) {
+			free(rgbh);
+			return -1;
+		}
+
+		convert_bitmaps(sdp, rgd, rgbh);
 		for (x = 0; x < rgd->ri.ri_length; x++) {
-			rgd->bh[x]->b_count++;
+			rgbh[x]->b_count++;
 			if (x)
-				gfs2_meta_header_out(&mh, rgd->bh[x]->b_data);
+				gfs2_meta_header_out(&mh, rgbh[x]->b_data);
 			else
-				gfs2_rgrp_out(&rgd->rg, rgd->bh[x]->b_data);
+				gfs2_rgrp_out(&rg, rgbh[x]->b_data);
 		}
 		/* Add the new gfs2 rg to our list: We'll output the rg index later. */
 		osi_list_add_prev((osi_list_t *)&rgd->list,
 						  (osi_list_t *)&sdp->rglist);
+		free(rgbh);
 	} /* for each journal */
 	return error;
 }/* journ_space_to_rg */
@@ -1529,7 +1562,7 @@ int main(int argc, char **argv)
 		if (error)
 			log_crit("%s: Unable to convert resource groups.\n",
 					device);
-		bcommit(&sb2.nvbuf_list); /* write the buffers to disk */
+		bcommit(&sb2.buf_list); /* write the buffers to disk */
 	}
 	/* ---------------------------------------------- */
 	/* Renumber the inodes consecutively.             */
@@ -1597,12 +1630,11 @@ int main(int argc, char **argv)
 		inode_put(sb2.md.statfs, updated);
 
 		bcommit(&sb2.buf_list); /* write the buffers to disk */
-		bcommit(&sb2.nvbuf_list); /* write the buffers to disk */
 
 		/* Now delete the now-obsolete gfs1 files: */
 		remove_obsolete_gfs1(&sb2);
 		/* Now free all the in memory */
-		gfs2_rgrp_free(&sb2.rglist, updated);
+		gfs2_rgrp_free(&sb2.rglist);
 		log_notice("Committing changes to disk.\n");
 		fflush(stdout);
 		/* Set filesystem type in superblock to gfs2.  We do this at the */
@@ -1616,7 +1648,6 @@ int main(int argc, char **argv)
 		brelse(bh, updated);
 
 		bsync(&sb2.buf_list); /* write the buffers to disk */
-		bsync(&sb2.nvbuf_list); /* write the buffers to disk */
 		error = fsync(sb2.device_fd);
 		if (error)
 			perror(device);

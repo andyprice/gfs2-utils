@@ -578,6 +578,5 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 	inode_put(sdp->md.jiinode, not_updated);
 	/* Sync the buffers to disk so we get a fresh start. */
 	bsync(&sdp->buf_list);
-	bsync(&sdp->nvbuf_list);
 	return error;
 }

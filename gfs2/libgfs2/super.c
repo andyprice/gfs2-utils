@@ -164,7 +164,7 @@ int ji_update(struct gfs2_sbd *sdp)
  *
  * Returns: 0 on success, -1 on failure
  */
-int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1)
+int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *bitmap_blocks)
 {
 	unsigned int rg;
 	int error;
@@ -174,6 +174,7 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1)
 
 	*count1 = 0;
 	prev_rgd = NULL;
+	*bitmap_blocks = 0;
 	for (rg = 0; ; rg++) {
 		if (fd > 0)
 			error = read(fd, &buf, sizeof(struct gfs2_rindex));
@@ -196,6 +197,8 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1)
 
 		gfs2_rindex_in(&rgd->ri, (char *)&buf);
 
+		if (rgd->ri.ri_length > *bitmap_blocks)
+			*bitmap_blocks = rgd->ri.ri_length;
 		rgd->start = rgd->ri.ri_addr;
 		if (prev_rgd) {
 			prev_length = rgd->start - prev_rgd->start;
@@ -230,19 +233,33 @@ int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount)
 	osi_list_t *tmp;
 	int count1 = 0, count2 = 0;
 	uint64_t errblock = 0;
+	struct gfs2_rgrp rg;
+	struct gfs2_buffer_head **rgbh = NULL;
+	int bitmap_blocks;
 
-	if (rindex_read(sdp, fd, &count1))
+	if (rindex_read(sdp, fd, &count1, &bitmap_blocks))
 	    goto fail;
+
+	if(!(rgbh = (struct gfs2_buffer_head **)
+	     malloc(bitmap_blocks * sizeof(struct gfs2_buffer_head *))))
+		return -1;
+	if(!memset(rgbh, 0, bitmap_blocks *
+		   sizeof(struct gfs2_buffer_head *))) {
+		free(rgbh);
+		return -1;
+	}
+
 	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
 		enum update_flags f;
 
 		f = not_updated;
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
-		errblock = gfs2_rgrp_read(sdp, rgd);
-		if (errblock)
+		errblock = gfs2_rgrp_read(sdp, rgd, rgbh, &rg);
+		if (errblock) {
+			free(rgbh);
 			return errblock;
-		else
-			gfs2_rgrp_relse(rgd, f);
+		} else
+			gfs2_rgrp_relse(rgd, f, rgbh);
 		count2++;
 	}
 
@@ -250,10 +267,12 @@ int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount)
 	if (count1 != count2)
 		goto fail;
 
+	free(rgbh);
 	return 0;
 
  fail:
-	gfs2_rgrp_free(&sdp->rglist, not_updated);
+	gfs2_rgrp_free(&sdp->rglist);
+	free(rgbh);
 	return -1;
 }
 
@@ -265,7 +284,6 @@ int write_sb(struct gfs2_sbd *sbp)
 	gfs2_sb_out(&sbp->sd_sb, bh->b_data);
 	brelse(bh, updated);
 	bcommit(&sbp->buf_list); /* make sure the change gets to disk ASAP */
-	bcommit(&sbp->nvbuf_list); /* make sure the change gets to disk ASAP */
 	return 0;
 }
 
