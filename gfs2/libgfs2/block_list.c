@@ -166,7 +166,6 @@ struct gfs2_block_list *gfs2_block_list_create(struct gfs2_sbd *sdp,
 		free(il);
 		il = NULL;
 	}
-	osi_list_init(&sdp->bad_blocks.list);
 	osi_list_init(&sdp->dup_blocks.list);
 	osi_list_init(&sdp->eattr_blocks.list);
 	return il;
@@ -283,9 +282,7 @@ int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 {
 	int err = 0;
 
-	if(mark == gfs2_bad_block)
-		gfs2_special_set(&sdp->bad_blocks, block);
-	else if(mark == gfs2_dup_block)
+	if(mark == gfs2_dup_block)
 		gfs2_dup_set(&sdp->dup_blocks, block);
 	else if(mark == gfs2_eattr_block)
 		gfs2_special_set(&sdp->eattr_blocks, block);
@@ -305,9 +302,6 @@ int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 	case gfs2_dup_block:
 		gfs2_dup_clear(&sdp->dup_blocks, block);
 		break;
-	case gfs2_bad_block:
-		gfs2_special_clear(&sdp->bad_blocks, block);
-		break;
 	case gfs2_eattr_block:
 		gfs2_special_clear(&sdp->eattr_blocks, block);
 		break;
@@ -326,7 +320,6 @@ int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 	int err = 0;
 
 	gfs2_dup_clear(&sdp->dup_blocks, block);
-	gfs2_special_clear(&sdp->bad_blocks, block);
 	gfs2_special_clear(&sdp->eattr_blocks, block);
 	err = gfs2_bitmap_clear(&il->list.gbmap, block);
 	return err;
@@ -348,11 +341,8 @@ int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 {
 	int err = 0;
 
-	val->bad_block = 0;
 	val->dup_block = 0;
 	val->eattr_block = 0;
-	if (blockfind(&sdp->bad_blocks, block))
-		val->bad_block = 1;
 	if (dupfind(&sdp->dup_blocks, block))
 		val->dup_block = 1;
 	if (blockfind(&sdp->eattr_blocks, block))
@@ -369,7 +359,6 @@ void *gfs2_block_list_destroy(struct gfs2_sbd *sdp, struct gfs2_block_list *il)
 		free(il);
 		il = NULL;
 	}
-	gfs2_special_free(&sdp->bad_blocks);
 	gfs2_dup_free(&sdp->dup_blocks);
 	gfs2_special_free(&sdp->eattr_blocks);
 	return il;

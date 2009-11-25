@@ -66,7 +66,7 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 				stack;
 				return -1;
 			}
-			if(q.bad_block) {
+			if(q.block_type == gfs2_bad_block) {
 				log_err( _("Unlinked inode %llu (0x%llx) contains"
 					"bad blocks\n"),
 					(unsigned long long)ii->inode,

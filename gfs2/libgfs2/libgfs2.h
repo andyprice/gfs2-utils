@@ -249,7 +249,6 @@ struct gfs2_sbd {
 	unsigned int writes;
 	int metafs_fd;
 	char metafs_path[PATH_MAX]; /* where metafs is mounted */
-	struct special_blocks bad_blocks;
 	struct dup_blocks dup_blocks;
 	struct special_blocks eattr_blocks;
 };
@@ -310,7 +309,7 @@ struct gfs2_bmap {
 #define JOURNAL_BLK     (0xB)  /*   1011 */
 #define OTHER_META      (0xC)  /*   1100 */
 #define EATTR_META      (0xD)  /*   1101 */
-#define UNUSED1         (0xE)  /*   1110 */
+#define BAD_BLOCK       (0xE)  /*   1110 */
 #define INVALID_META    (0xF)  /*   1111 */
 
 /* Must be kept in sync with mark_to_bitmap array in block_list.c */
@@ -329,16 +328,14 @@ enum gfs2_mark_block {
 	gfs2_journal_blk = JOURNAL_BLK,
 	gfs2_meta_other = OTHER_META,
 	gfs2_meta_eattr = EATTR_META,
-	gfs2_meta_unused = UNUSED1,
+	gfs2_bad_block = BAD_BLOCK, /* Contains at least one bad block */
 	gfs2_meta_inval = INVALID_META,
-	gfs2_bad_block,      /* Contains at least one bad block */
 	gfs2_dup_block,      /* Contains at least one duplicate block */
 	gfs2_eattr_block,    /* Contains an eattr */
 };
 
 struct gfs2_block_query {
         uint8_t block_type;
-        uint8_t bad_block;
         uint8_t dup_block;
         uint8_t eattr_block;
 };

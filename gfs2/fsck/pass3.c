@@ -219,7 +219,7 @@ int pass3(struct gfs2_sbd *sbp)
 					stack;
 					return FSCK_ERROR;
 				}
-				if(q.bad_block) {
+				if(q.block_type == gfs2_bad_block) {
 					log_err( _("Found unlinked directory containing bad block\n"));
 					errors_found++;
 					if(query(&opts,

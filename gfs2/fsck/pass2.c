@@ -248,7 +248,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		return -1;
 	}
 	/* Get the status of the directory inode */
-	if(q.bad_block) {
+	if(q.block_type == gfs2_bad_block) {
 		/* This entry's inode has bad blocks in it */
 
 		/* Handle bad blocks */
@@ -593,7 +593,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		}
 	}
 	pass2_fxns.private = (void *) &ds;
-	if(ds.q.bad_block) {
+	if(ds.q.block_type == gfs2_bad_block) {
 		/* First check that the directory's metatree is valid */
 		if(check_metatree(sysinode, &pass2_fxns)) {
 			stack;
@@ -753,7 +753,7 @@ int pass2(struct gfs2_sbd *sbp)
 
 		memset(&ds, 0, sizeof(ds));
 		pass2_fxns.private = (void *) &ds;
-		if(ds.q.bad_block) {
+		if(ds.q.block_type == gfs2_bad_block) {
 			/* First check that the directory's metatree
 			 * is valid */
 			ip = fsck_load_inode(sbp, i);
