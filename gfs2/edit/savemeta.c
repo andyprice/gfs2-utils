@@ -36,7 +36,7 @@ struct saved_metablock {
 
 struct saved_metablock *savedata;
 uint64_t last_fs_block, last_reported_block, blks_saved, total_out, pct;
-struct gfs2_block_list *blocklist = NULL;
+struct gfs2_bmap *blocklist = NULL;
 uint64_t journal_blocks[MAX_JOURNALS_SAVED];
 uint64_t gfs1_journal_size = 0; /* in blocks */
 int journals_found = 0;
@@ -622,8 +622,8 @@ void savemeta(char *out_fn, int saveoption)
 		fflush(stdout);
 	}
 	if (!slow) {
-		blocklist = gfs2_block_list_create(&sbd, last_fs_block + 1,
-						   &memreq);
+		blocklist = gfs2_bmap_create(&sbd, last_fs_block + 1,
+					     &memreq);
 		if (!blocklist)
 			slow = TRUE;
 	}
@@ -719,7 +719,7 @@ void savemeta(char *out_fn, int saveoption)
 	}
 	/* Clean up */
 	if (blocklist)
-		gfs2_block_list_destroy(&sbd, blocklist);
+		gfs2_bmap_destroy(&sbd, blocklist);
 	/* There may be a gap between end of file system and end of device */
 	/* so we tell the user that we've processed everything. */
 	block = last_fs_block;

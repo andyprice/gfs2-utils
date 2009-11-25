@@ -150,19 +150,18 @@ static void gfs2_bitmap_destroy(struct gfs2_bmap *bmap)
 	bmap->chunks_per_byte = 0;
 }
 
-struct gfs2_block_list *gfs2_block_list_create(struct gfs2_sbd *sdp,
-					       uint64_t size,
-					       uint64_t *addl_mem_needed)
+struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
+				   uint64_t *addl_mem_needed)
 {
-	struct gfs2_block_list *il;
+	struct gfs2_bmap *il;
 
 	*addl_mem_needed = 0L;
 	il = malloc(sizeof(*il));
 	if (!il || !memset(il, 0, sizeof(*il)))
 		return NULL;
 
-	if(gfs2_bitmap_create(&il->list.gbmap, size, 4)) {
-		*addl_mem_needed = il->list.gbmap.mapsize;
+	if(gfs2_bitmap_create(il, size, 4)) {
+		*addl_mem_needed = il->mapsize;
 		free(il);
 		il = NULL;
 	}
@@ -277,7 +276,7 @@ static void gfs2_dup_clear(struct dup_blocks *blocklist, uint64_t block)
 	}
 }
 
-int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 		    uint64_t block, enum gfs2_mark_block mark)
 {
 	int err = 0;
@@ -287,13 +286,12 @@ int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 	else if(mark == gfs2_eattr_block)
 		gfs2_special_set(&sdp->eattr_blocks, block);
 	else
-		err = gfs2_bitmap_set(&il->list.gbmap, block,
-				      mark_to_gbmap[mark]);
+		err = gfs2_bitmap_set(il, block, mark_to_gbmap[mark]);
 	return err;
 }
 
 /* gfs2_block_unmark clears ONE mark for the given block */
-int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 		      uint64_t block, enum gfs2_mark_block mark)
 {
 	int err = 0;
@@ -307,25 +305,25 @@ int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 		break;
 	default:
 		/* FIXME: check types */
-		err = gfs2_bitmap_clear(&il->list.gbmap, block);
+		err = gfs2_bitmap_clear(il, block);
 		break;
 	}
 	return err;
 }
 
 /* gfs2_block_clear clears all the marks for the given block */
-int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 		     uint64_t block)
 {
 	int err = 0;
 
 	gfs2_dup_clear(&sdp->dup_blocks, block);
 	gfs2_special_clear(&sdp->eattr_blocks, block);
-	err = gfs2_bitmap_clear(&il->list.gbmap, block);
+	err = gfs2_bitmap_clear(il, block);
 	return err;
 }
 
-int gfs2_block_set(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+int gfs2_block_set(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 		   uint64_t block, enum gfs2_mark_block mark)
 {
 	int err;
@@ -336,7 +334,7 @@ int gfs2_block_set(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 	return err;
 }
 
-int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 		     uint64_t block, struct gfs2_block_query *val)
 {
 	int err = 0;
@@ -347,15 +345,15 @@ int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
 		val->dup_block = 1;
 	if (blockfind(&sdp->eattr_blocks, block))
 		val->eattr_block = 1;
-	if((err = gfs2_bitmap_get(&il->list.gbmap, block, &val->block_type)))
+	if((err = gfs2_bitmap_get(il, block, &val->block_type)))
 		return err;
 	return 0;
 }
 
-void *gfs2_block_list_destroy(struct gfs2_sbd *sdp, struct gfs2_block_list *il)
+void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il)
 {
 	if(il) {
-		gfs2_bitmap_destroy(&il->list.gbmap);
+		gfs2_bitmap_destroy(il);
 		free(il);
 		il = NULL;
 	}

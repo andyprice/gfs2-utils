@@ -340,35 +340,24 @@ struct gfs2_block_query {
         uint8_t eattr_block;
 };
 
-union gfs2_block_lists {
-        struct gfs2_bmap gbmap;
-};
-
-/* bitmap implementation */
-struct gfs2_block_list {
-        union gfs2_block_lists list;
-};
-
-extern struct gfs2_block_list *gfs2_block_list_create(struct gfs2_sbd *sdp,
-					       uint64_t size,
-					       uint64_t *addl_mem_needed);
+extern struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
+					  uint64_t *addl_mem_needed);
 extern struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num);
 extern void gfs2_special_set(struct special_blocks *blocklist, uint64_t block);
 extern void gfs2_special_free(struct special_blocks *blist);
-extern int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+extern int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 	 		   uint64_t block, enum gfs2_mark_block mark);
-extern int gfs2_block_set(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+extern int gfs2_block_set(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 			  uint64_t block, enum gfs2_mark_block mark);
 /* gfs2_block_unmark clears ONE mark for the given block */
-extern int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+extern int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 			     uint64_t block, enum gfs2_mark_block m);
 /* gfs2_block_clear clears all the marks for the given block */
-extern int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+extern int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 			    uint64_t block);
-extern int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_block_list *il,
+extern int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 			    uint64_t block, struct gfs2_block_query *val);
-extern void *gfs2_block_list_destroy(struct gfs2_sbd *sdp,
-				     struct gfs2_block_list *il);
+extern void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il);
 
 /* buf.c */
 extern void init_buf_list(struct gfs2_sbd *sdp, struct buf_list *bl, uint32_t limit);

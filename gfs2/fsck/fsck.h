@@ -85,7 +85,7 @@ extern struct gfs2_options opts;
 extern struct gfs2_inode *lf_dip; /* Lost and found directory inode */
 extern osi_list_t dir_hash[FSCK_HASH_SIZE];
 extern osi_list_t inode_hash[FSCK_HASH_SIZE];
-extern struct gfs2_block_list *bl;
+extern struct gfs2_bmap *bl;
 extern uint64_t last_fs_block, last_reported_block;
 extern int skip_this_pass, fsck_abort;
 extern int errors_found, errors_corrected;

@@ -22,7 +22,7 @@ struct gfs2_options opts = {0};
 struct gfs2_inode *lf_dip; /* Lost and found directory inode */
 osi_list_t dir_hash[FSCK_HASH_SIZE];
 osi_list_t inode_hash[FSCK_HASH_SIZE];
-struct gfs2_block_list *bl = NULL;
+struct gfs2_bmap *bl = NULL;
 uint64_t last_fs_block, last_reported_block = -1;
 int skip_this_pass = FALSE, fsck_abort = FALSE;
 int errors_found = 0, errors_corrected = 0;
