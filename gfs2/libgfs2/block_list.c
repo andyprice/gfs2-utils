@@ -15,7 +15,7 @@ static int mark_to_gbmap[16] = {
 	FREE, BLOCK_IN_USE, DIR_INDIR_BLK, DIR_INODE, FILE_INODE,
 	LNK_INODE, BLK_INODE, CHR_INODE, FIFO_INODE, SOCK_INODE,
 	DIR_LEAF_INODE, JOURNAL_BLK, OTHER_META, EATTR_META,
-	INVALID_META, INVALID_META
+	BAD_BLOCK, INVALID_META
 };
 
 #define BITMAP_SIZE4(size) (size >> 1)
@@ -49,20 +49,6 @@ static int gfs2_bitmap_set(struct gfs2_bmap *bmap, uint64_t offset, uint8_t val)
 		byte = bmap->map + BITMAP_SIZE4(offset);
 		b = BITMAP_BYTE_OFFSET4(offset);
 		*byte |= (val & BITMAP_MASK4) << b;
-		return 0;
-	}
-	return -1;
-}
-
-static int gfs2_bitmap_get(struct gfs2_bmap *bmap, uint64_t bit, uint8_t *val)
-{
-	static char *byte;
-	static uint64_t b;
-
-	if(bit < bmap->size) {
-		byte = bmap->map + BITMAP_SIZE4(bit);
-		b = BITMAP_BYTE_OFFSET4(bit);
-		*val = (*byte & (BITMAP_MASK4 << b )) >> b;
 		return 0;
 	}
 	return -1;
@@ -256,7 +242,7 @@ int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 		     uint64_t block)
 {
-	int err = 0;
+	int err;
 
 	gfs2_dup_clear(&sdp->dup_blocks, block);
 	gfs2_special_clear(&sdp->eattr_blocks, block);
@@ -278,16 +264,17 @@ int gfs2_block_set(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 		     uint64_t block, struct gfs2_block_query *val)
 {
-	int err = 0;
+	static char *byte;
+	static uint64_t b;
 
-	val->dup_block = 0;
-	val->eattr_block = 0;
-	if (dupfind(&sdp->dup_blocks, block))
-		val->dup_block = 1;
-	if (blockfind(&sdp->eattr_blocks, block))
-		val->eattr_block = 1;
-	if((err = gfs2_bitmap_get(il, block, &val->block_type)))
-		return err;
+	if(block >= il->size)
+		return -1;
+
+	val->dup_block = (dupfind(&sdp->dup_blocks, block) ? 1 : 0);
+	val->eattr_block = (blockfind(&sdp->eattr_blocks, block) ? 1 : 0);
+	byte = il->map + BITMAP_SIZE4(block);
+	b = BITMAP_BYTE_OFFSET4(block);
+	val->block_type = (*byte & (BITMAP_MASK4 << b )) >> b;
 	return 0;
 }
 

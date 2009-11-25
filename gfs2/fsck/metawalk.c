@@ -16,7 +16,8 @@
 #include "metawalk.h"
 #include "hash.h"
 
-struct gfs2_inode *get_system_inode(struct gfs2_sbd *sbp, uint64_t block)
+static struct gfs2_inode *get_system_inode(struct gfs2_sbd *sbp,
+					   uint64_t block)
 {
 	int j;
 
