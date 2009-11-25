@@ -14,10 +14,6 @@
 
 static int convert_mark(struct gfs2_block_query *q, uint32_t *count)
 {
-	if (q->eattr_block) {
-		count[2]++;
-		return GFS2_BLKST_USED;
-	}
 	switch(q->block_type) {
 
 	case gfs2_meta_inval:

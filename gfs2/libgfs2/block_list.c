@@ -181,22 +181,22 @@ static void gfs2_dup_set(struct dup_blocks *blocklist, uint64_t block)
 	return;
 }
 
-static void gfs2_special_clear(struct special_blocks *blocklist, uint64_t block)
+static void gfs2_dup_clear(struct dup_blocks *blocklist, uint64_t block)
 {
-	struct special_blocks *b;
+	struct dup_blocks *b;
 
-	b = blockfind(blocklist, block);
+	b = dupfind(blocklist, block);
 	if (b) {
 		osi_list_del(&b->list);
 		free(b);
 	}
 }
 
-static void gfs2_dup_clear(struct dup_blocks *blocklist, uint64_t block)
+void gfs2_special_clear(struct special_blocks *blocklist, uint64_t block)
 {
-	struct dup_blocks *b;
+	struct special_blocks *b;
 
-	b = dupfind(blocklist, block);
+	b = blockfind(blocklist, block);
 	if (b) {
 		osi_list_del(&b->list);
 		free(b);
@@ -210,8 +210,6 @@ int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 
 	if(mark == gfs2_dup_block)
 		gfs2_dup_set(&sdp->dup_blocks, block);
-	else if(mark == gfs2_eattr_block)
-		gfs2_special_set(&sdp->eattr_blocks, block);
 	else
 		err = gfs2_bitmap_set(il, block, mark_to_gbmap[mark]);
 	return err;
@@ -223,18 +221,10 @@ int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 {
 	int err = 0;
 
-	switch (mark) {
-	case gfs2_dup_block:
+	if (mark == gfs2_dup_block)
 		gfs2_dup_clear(&sdp->dup_blocks, block);
-		break;
-	case gfs2_eattr_block:
-		gfs2_special_clear(&sdp->eattr_blocks, block);
-		break;
-	default:
-		/* FIXME: check types */
+	else
 		err = gfs2_bitmap_clear(il, block);
-		break;
-	}
 	return err;
 }
 
@@ -242,12 +232,8 @@ int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 		     uint64_t block)
 {
-	int err;
-
 	gfs2_dup_clear(&sdp->dup_blocks, block);
-	gfs2_special_clear(&sdp->eattr_blocks, block);
-	err = gfs2_bitmap_clear(il, block);
-	return err;
+	return gfs2_bitmap_clear(il, block);
 }
 
 int gfs2_block_set(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
@@ -271,7 +257,6 @@ int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 		return -1;
 
 	val->dup_block = (dupfind(&sdp->dup_blocks, block) ? 1 : 0);
-	val->eattr_block = (blockfind(&sdp->eattr_blocks, block) ? 1 : 0);
 	byte = il->map + BITMAP_SIZE4(block);
 	b = BITMAP_BYTE_OFFSET4(block);
 	val->block_type = (*byte & (BITMAP_MASK4 << b )) >> b;

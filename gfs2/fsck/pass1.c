@@ -393,8 +393,7 @@ static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 		   (unsigned long long)ip->i_di.di_num.no_addr);
 	/* Mark the inode as having an eattr in the block map
 	   so pass1c can check it. */
-	gfs2_block_mark(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
-			gfs2_eattr_block);
+	gfs2_special_set(&ip->i_sbd->eattr_blocks, ip->i_di.di_num.no_addr);
 	if (!leaf_pointer_errors)
 		return 0;
 	log_err( _("Inode %lld (0x%llx) has recoverable indirect "
@@ -532,7 +531,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 		     "block(s) attached.\n"),
 		   (unsigned long long)ip->i_di.di_num.no_addr,
 		   (unsigned long long)ip->i_di.di_num.no_addr);
-	gfs2_block_mark(sdp, bl, ip->i_di.di_num.no_addr, gfs2_eattr_block);
+	gfs2_special_set(&sdp->eattr_blocks, ip->i_di.di_num.no_addr);
 	if(gfs2_check_range(sdp, block)) {
 		log_warn( _("Inode #%llu (0x%llx): Extended Attribute leaf "
 			    "block #%llu (0x%llx) is out of range.\n"),

@@ -329,13 +329,11 @@ enum gfs2_mark_block {
 	gfs2_bad_block = BAD_BLOCK, /* Contains at least one bad block */
 	gfs2_meta_inval = INVALID_META,
 	gfs2_dup_block,      /* Contains at least one duplicate block */
-	gfs2_eattr_block,    /* Contains an eattr */
 };
 
 struct gfs2_block_query {
         uint8_t block_type;
         uint8_t dup_block;
-        uint8_t eattr_block;
 };
 
 extern struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
@@ -347,6 +345,8 @@ extern int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 	 		   uint64_t block, enum gfs2_mark_block mark);
 extern int gfs2_block_set(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 			  uint64_t block, enum gfs2_mark_block mark);
+extern void gfs2_special_clear(struct special_blocks *blocklist,
+			       uint64_t block);
 /* gfs2_block_unmark clears ONE mark for the given block */
 extern int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 			     uint64_t block, enum gfs2_mark_block m);

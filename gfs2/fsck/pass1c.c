@@ -266,7 +266,7 @@ int pass1c(struct gfs2_sbd *sbp)
 		if (!gfs2_check_meta(bh, GFS2_METATYPE_DI)) { /* if a dinode */
 			log_info( _("EA in inode %"PRIu64" (0x%" PRIx64 ")\n"),
 				 block_no, block_no);
-			gfs2_block_unmark(sbp, bl, block_no, gfs2_eattr_block);
+			gfs2_special_clear(&sbp->eattr_blocks, block_no);
 			ip = fsck_inode_get(sbp, bh);
 
 			log_debug( _("Found eattr at %llu (0x%llx)\n"),
