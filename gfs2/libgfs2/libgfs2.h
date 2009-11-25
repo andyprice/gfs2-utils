@@ -289,8 +289,6 @@ enum update_flags {
 struct gfs2_bmap {
         uint64_t size;
         uint64_t mapsize;
-        int chunksize;
-        int chunks_per_byte;
         char *map;
 };
 
