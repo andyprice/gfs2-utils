@@ -62,7 +62,7 @@ enum rgindex_trust_level { /* how far can we trust our RG index? */
 struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sbp, uint64_t block);
 struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp,
 				  struct gfs2_buffer_head *bh);
-void fsck_inode_put(struct gfs2_inode *ip, enum update_flags update);
+void fsck_inode_put(struct gfs2_inode *ip);
 
 int initialize(struct gfs2_sbd *sbp, int force_check, int preen,
 	       int *all_clean);

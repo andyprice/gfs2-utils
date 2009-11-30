@@ -31,6 +31,7 @@ static int fix_inode_count(struct gfs2_sbd *sbp, struct inode_info *ii,
 	if(ip->i_di.di_nlink == ii->counted_links)
 		return 0;
 	ip->i_di.di_nlink = ii->counted_links;
+	bmodified(ip->i_bh);
 
 	log_debug( _("Changing inode %llu (0x%llx) to have %u links\n"),
 		  (unsigned long long)ip->i_di.di_num.no_addr,
@@ -45,14 +46,12 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 	struct gfs2_inode *ip;
 	int lf_addition = 0;
 	struct gfs2_block_query q;
-	enum update_flags f;
 
 	/* FIXME: should probably factor this out into a generic
 	 * scanning fxn */
 	osi_list_foreach(tmp, list) {
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return 0;
-		f = not_updated;
 		if(!(ii = osi_list_entry(tmp, struct inode_info, list))) {
 			log_crit( _("osi_list_foreach broken in scan_info_list!!\n"));
 			exit(FSCK_ERROR);
@@ -76,10 +75,11 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 						 _("Delete unlinked inode with bad blocks? (y/n) "))) {
 					errors_corrected++;
 					ip = fsck_load_inode(sbp, ii->inode);
-					check_inode_eattr(ip, &f,
+					check_inode_eattr(ip,
 							  &pass4_fxns_delete);
 					check_metatree(ip, &pass4_fxns_delete);
-					fsck_inode_put(ip, updated);
+					bmodified(ip->i_bh);
+					fsck_inode_put(ip);
 					gfs2_block_set(sbp, bl, ii->inode,
 						       gfs2_block_free);
 					continue;
@@ -99,17 +99,17 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 				ip = fsck_load_inode(sbp, ii->inode);
 				if(query(&opts, _("Delete unlinked inode "
 						  "? (y/n) "))) {
-					check_inode_eattr(ip, &f,
+					check_inode_eattr(ip,
 							  &pass4_fxns_delete);
 					check_metatree(ip, &pass4_fxns_delete);
-					fsck_inode_put(ip, updated);
+					bmodified(ip->i_bh);
 					gfs2_block_set(sbp, bl, ii->inode,
 						       gfs2_block_free);
 					log_err( _("The inode was deleted\n"));
 				} else {
 					log_err( _("The inode was not "
 						   "deleted\n"));
-					fsck_inode_put(ip, not_updated);
+					fsck_inode_put(ip);
 				}
 				continue;
 			}
@@ -125,7 +125,7 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 					errors_corrected++;
 					gfs2_block_set(sbp, bl, ii->inode,
 						       gfs2_block_free);
-					fsck_inode_put(ip, not_updated);
+					fsck_inode_put(ip);
 					continue;
 				}
 
@@ -133,10 +133,10 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 			errors_found++;
 			if(query(&opts, _("Add unlinked inode to lost+found? (y/n)"))) {
 				errors_corrected++;
-				f = updated;
+				bmodified(ip->i_bh);
 				if(add_inode_to_lf(ip)) {
 					stack;
-					fsck_inode_put(ip, not_updated);
+					fsck_inode_put(ip);
 					return -1;
 				}
 				else {
@@ -145,7 +145,7 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 				}
 			} else
 				log_err( _("Unlinked inode left unlinked\n"));
-			fsck_inode_put(ip, f);
+			fsck_inode_put(ip);
 		} /* if(ii->counted_links == 0) */
 		else if(ii->link_count != ii->counted_links) {
 			log_err( _("Link count inconsistent for inode %" PRIu64
@@ -159,7 +159,8 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 				errors_corrected++;
 				ip = fsck_load_inode(sbp, ii->inode); /* bread, inode_get */
 				fix_inode_count(sbp, ii, ip);
-				fsck_inode_put(ip, updated); /* out, brelse, free */
+				bmodified(ip->i_bh);
+				fsck_inode_put(ip); /* out, brelse, free */
 				log_warn( _("Link count updated for inode %"
 						 PRIu64 " (0x%" PRIx64 ") \n"), ii->inode, ii->inode);
 			} else {

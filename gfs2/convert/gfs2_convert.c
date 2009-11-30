@@ -337,7 +337,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 		/* First, build up the metatree */
 		for (h = 0; h < blk->height; h++) {
 			lookup_block(ip, bh, h, &blk->mp, 1, &new, &block);
-			brelse(bh, updated);
+			brelse(bh);
 			if (!block)
 				break;
 
@@ -355,7 +355,8 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 		memcpy(bh->b_data + hdrsize + ptramt,
 		       (char *)srcptr, amount);
 		srcptr += amount;
-		brelse(bh, updated);
+		bmodified(bh);
+		brelse(bh);
 
 		copied += amount;
 
@@ -518,7 +519,8 @@ static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_buffer_head 
 			/* Zero the buffer so we can fill it in later */
 			memset(bh->b_data + sizeof(struct gfs_indirect), 0,
 			       bufsize);
-			brelse(bh, updated);
+			bmodified(bh);
+			brelse(bh);
 			/* Free the metadata block so we can reuse it.
 			   This allows us to convert a "full" file system. */
 			ip->i_di.di_blocks--;
@@ -780,12 +782,13 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
 						break;
 					}
 					bitmap_byte -= (sbp->bsize - buf_offset);
+					bmodified(bh);
 				}
 			}
-			brelse(bh, updated);
+			brelse(bh);
 			first = 0;
 		} /* while 1 */
-		gfs2_rgrp_relse(rgd, updated, rgbh);
+		gfs2_rgrp_relse(rgd, rgbh);
 		free(rgbh);
 	} /* for all rgs */
 	log_notice("\r%" PRIu64" inodes from %d rgs converted.",
@@ -807,7 +810,8 @@ static int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
 	fix_inode = inode_get(sbp, bh_fix);
 	inum->no_formal_ino = fix_inode->i_di.di_num.no_formal_ino;
 	inum->no_addr = fix_inode->i_di.di_num.no_addr;
-	brelse(bh_fix, updated);
+	bmodified(bh_fix);
+	brelse(bh_fix);
 	return 0;
 }/* fetch_inum */
 
@@ -946,7 +950,8 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip
 		}
 		gfs2_leaf_in(&leaf, (char *)bh_leaf->b_data); /* buffer to structure */
 		error = process_dirent_info(dip, sbp, bh_leaf, leaf.lf_entries);
-		brelse(bh_leaf, updated);
+		bmodified(bh_leaf);
+		brelse(bh_leaf);
 	} /* for leaf_num */
 	return 0;
 }/* fix_one_directory_exhash */
@@ -989,18 +994,21 @@ static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 		if (dip->i_di.di_flags & GFS2_DIF_EXHASH) {
 			if (fix_one_directory_exhash(sbp, dip)) {
 				log_crit("Error fixing exhash directory.\n");
-				brelse(bh_dir, updated);
+				bmodified(bh_dir);
+				brelse(bh_dir);
 				return -1;
 			}
 		}
 		else {
 			if (process_dirent_info(dip, sbp, bh_dir, dip->i_di.di_entries)) {
 				log_crit("Error fixing linear directory.\n");
-				brelse(bh_dir, updated);
+				bmodified(bh_dir);
+				brelse(bh_dir);
 				return -1;
 			}
 		}
-		brelse(bh_dir, updated);
+		bmodified(bh_dir);
+		brelse(bh_dir);
 	}
 	/* Free the last entry in memory: */
 	if (tmp) {
@@ -1128,7 +1136,7 @@ static int init(struct gfs2_sbd *sbp)
 	sbp->sd_diptrs = (sbp->bsize - sizeof(struct gfs_dinode)) /
 		sizeof(uint64_t);
 	sbp->sd_jbsize = sbp->bsize - sizeof(struct gfs2_meta_header);
-	brelse(bh, not_updated);
+	brelse(bh);
 	if (compute_heightsize(sbp, sbp->sd_heightsize, &sbp->sd_max_height,
 				sbp->bsize, sbp->sd_diptrs, sbp->sd_inptrs)) {
 		log_crit("Error: Bad constants (1)\n");
@@ -1195,8 +1203,8 @@ static int init(struct gfs2_sbd *sbp)
 	}
 	printf("\n");
 	fflush(stdout);
-	inode_put(sbp->md.riinode, updated);
-	inode_put(sbp->md.jiinode, updated);
+	inode_put(sbp->md.riinode);
+	inode_put(sbp->md.jiinode);
 	log_debug("%d rgs found.\n", rgcount);
 	return 0;
 }/* fill_super_block */
@@ -1510,7 +1518,7 @@ static void conv_build_jindex(struct gfs2_sbd *sdp)
 		ip = createi(jindex, name, S_IFREG | 0600, GFS2_DIF_SYSTEM);
 		write_journal(sdp, ip, j,
 			      sdp->jsize << 20 >> sdp->sd_sb.sb_bsize_shift);
-		inode_put(ip, updated);
+		inode_put(ip);
 		printf("done.\n");
 		fflush(stdout);
 	}
@@ -1520,7 +1528,7 @@ static void conv_build_jindex(struct gfs2_sbd *sdp)
 		gfs2_dinode_print(&jindex->i_di);
 	}
 
-	inode_put(jindex, updated);
+	inode_put(jindex);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1625,9 +1633,9 @@ int main(int argc, char **argv)
 		update_inode_file(&sb2);
 		write_statfs_file(&sb2);
 
-		inode_put(sb2.master_dir, updated);
-		inode_put(sb2.md.inum, updated);
-		inode_put(sb2.md.statfs, updated);
+		inode_put(sb2.master_dir);
+		inode_put(sb2.md.inum);
+		inode_put(sb2.md.statfs);
 
 		bcommit(&sb2.buf_list); /* write the buffers to disk */
 
@@ -1645,7 +1653,8 @@ int main(int argc, char **argv)
 		sb2.sd_sb.sb_fs_format = GFS2_FORMAT_FS;
 		sb2.sd_sb.sb_multihost_format = GFS2_FORMAT_MULTI;
 		gfs2_sb_out(&sb2.sd_sb, bh->b_data);
-		brelse(bh, updated);
+		bmodified(bh);
+		brelse(bh);
 
 		bsync(&sb2.buf_list); /* write the buffers to disk */
 		error = fsync(sb2.device_fd);

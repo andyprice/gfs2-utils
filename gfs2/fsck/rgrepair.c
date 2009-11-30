@@ -53,8 +53,7 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 		ip = sdp->md.journal[j];
 		jblocks = ip->i_di.di_size / sdp->sd_sb.sb_bsize;
 		for (b = 0; b < jblocks; b++) {
-			block_map(ip, b, &new, &dblock, &extlen, 0,
-				  not_updated);
+			block_map(ip, b, &new, &dblock, &extlen, 0);
 			if (!dblock)
 				break;
 			bh = bread(&sdp->buf_list, dblock);
@@ -63,7 +62,7 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 					  "0x%" PRIx64 "\n"), dblock);
 				gfs2_special_set(&false_rgrps, dblock);
 			}
-			brelse(bh, not_updated);
+			brelse(bh);
 		}
 	}
 }
@@ -165,7 +164,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 			number_of_rgs++;
 			blk += 250; /* skip ahead for performance */
 		}
-		brelse(bh, not_updated);
+		brelse(bh);
 	}
 	number_of_rgs = 0;
 	gfs2_special_free(&false_rgrps);
@@ -211,7 +210,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 		log_debug( _("Block 0x%" PRIx64 "\n"), blk);
 		bh = bread(&sdp->buf_list, blk);
 		rg_was_fnd = (!gfs2_check_meta(bh, GFS2_METATYPE_RG));
-		brelse(bh, not_updated);
+		brelse(bh);
 		/* Allocate a new RG and index. */
 		calc_rgd = malloc(sizeof(struct rgrp_list));
 		if (!calc_rgd) {
@@ -246,7 +245,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 			bh = bread(&sdp->buf_list, fwd_block);
 			bitmap_was_fnd =
 				(!gfs2_check_meta(bh, GFS2_METATYPE_RB));
-			brelse(bh, not_updated);
+			brelse(bh);
 			if (bitmap_was_fnd) /* if a bitmap */
 				calc_rgd->ri.ri_length++;
 			else
@@ -407,7 +406,8 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 			rg->rg_free = rgd->ri.ri_data;
 			gfs2_rgrp_out(rg, rgbh[x]->b_data);
 		}
-		brelse(rgbh[x], updated);
+		bmodified(rgbh[x]);
+		brelse(rgbh[x]);
 		return 0;
 	}
 	return 1;
@@ -586,7 +586,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 						 &rgrp);
 			}
 			else {
-				gfs2_rgrp_relse(rgd, not_updated, rgbh);
+				gfs2_rgrp_relse(rgd, rgbh);
 				free(rgbh);
 				break;
 			}

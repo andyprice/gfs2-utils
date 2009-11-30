@@ -122,7 +122,7 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 
 			error = rgd->ri.ri_addr + x;
 			for (; x >= 0; x--)
-				brelse(bh[x], not_updated);
+				brelse(bh[x]);
 			return error;
 		}
 	}
@@ -132,13 +132,12 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 	return 0;
 }
 
-void gfs2_rgrp_relse(struct rgrp_list *rgd, enum update_flags is_updated,
-		     struct gfs2_buffer_head **bh)
+void gfs2_rgrp_relse(struct rgrp_list *rgd, struct gfs2_buffer_head **bh)
 {
 	int x, length = rgd->ri.ri_length;
 
 	for (x = 0; x < length; x++)
-		brelse(bh[x], is_updated);
+		brelse(bh[x]);
 }
 
 void gfs2_rgrp_free(osi_list_t *rglist)

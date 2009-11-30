@@ -31,17 +31,15 @@ static int clear_blk_nodup(struct gfs2_sbd *sbp, uint64_t block)
 
 int clear_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 		      uint64_t parent, struct gfs2_buffer_head **bh,
-		      enum update_flags *want_updated, void *private)
+		      void *private)
 {
-	*want_updated = not_updated;
 	return clear_blk_nodup(ip->i_sbd, block);
 }
 
 int clear_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 		     uint64_t parent, struct gfs2_buffer_head **bh,
-		     enum update_flags *want_updated, void *private)
+		     void *private)
 {
-	*want_updated = not_updated;
 	return clear_blk_nodup(ip->i_sbd, block);
 }
 
@@ -93,12 +91,10 @@ int clear_eattr_entry (struct gfs2_inode *ip,
 int clear_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 			 struct gfs2_buffer_head *leaf_bh,
 			 struct gfs2_ea_header *ea_hdr,
-			 struct gfs2_ea_header *ea_hdr_prev,
-			 enum update_flags *want_updated, void *private)
+			 struct gfs2_ea_header *ea_hdr_prev, void *private)
 {
 	uint64_t block = be64_to_cpu(*ea_data_ptr);
 
-	*want_updated = not_updated;
 	return clear_blk_nodup(ip->i_sbd, block);
 
 }

@@ -349,7 +349,7 @@ void do_dinode_extended(struct gfs2_dinode *dine, char *dinebuf)
 					if (skip <= 0)
 						break;
 				}
-				brelse(tmp_bh, not_updated);
+				brelse(tmp_bh);
 				indirect->ii[indirect_blocks].block = last;
 				indirect_blocks++;
 				last = p;

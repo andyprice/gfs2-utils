@@ -330,7 +330,6 @@ int main(int argc, char **argv)
 	struct gfs2_sbd sb;
 	struct gfs2_sbd *sbp = &sb;
 	int j;
-	enum update_flags update_sys_files;
 	int error = 0;
 	int all_clean = 0;
 
@@ -449,23 +448,22 @@ int main(int argc, char **argv)
 	} else {
 		error = FSCK_CANCELED;
 	}
-	update_sys_files = (opts.no ? not_updated : updated);
 
 	check_statfs(sbp);
 
 	/* Free up our system inodes */
-	inode_put(sbp->md.inum, update_sys_files);
-	inode_put(sbp->md.statfs, update_sys_files);
+	inode_put(sbp->md.inum);
+	inode_put(sbp->md.statfs);
 	for (j = 0; j < sbp->md.journals; j++)
-		inode_put(sbp->md.journal[j], update_sys_files);
-	inode_put(sbp->md.jiinode, update_sys_files);
-	inode_put(sbp->md.riinode, update_sys_files);
-	inode_put(sbp->md.qinode, update_sys_files);
-	inode_put(sbp->md.pinode, update_sys_files);
-	inode_put(sbp->md.rooti, update_sys_files);
-	inode_put(sbp->master_dir, update_sys_files);
+		inode_put(sbp->md.journal[j]);
+	inode_put(sbp->md.jiinode);
+	inode_put(sbp->md.riinode);
+	inode_put(sbp->md.qinode);
+	inode_put(sbp->md.pinode);
+	inode_put(sbp->md.rooti);
+	inode_put(sbp->master_dir);
 	if (lf_dip)
-		inode_put(lf_dip, update_sys_files);
+		inode_put(lf_dip);
 
 	if (!opts.no && errors_corrected)
 		log_notice( _("Writing changes to disk\n"));

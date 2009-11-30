@@ -222,7 +222,8 @@ void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 					gfs2_meta_header_out(&mh, bh->b_data);
 				else
 					gfs2_rgrp_out(&rg, bh->b_data);
-				brelse(bh, updated);
+				bmodified(bh);
+				brelse(bh);
 			}
 		}
 

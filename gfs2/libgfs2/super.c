@@ -62,7 +62,7 @@ int read_sb(struct gfs2_sbd *sdp)
 
 	bh = bread(&sdp->buf_list, GFS2_SB_ADDR >> sdp->sd_fsb2bb_shift);
 	gfs2_sb_in(&sdp->sd_sb, bh->b_data);
-	brelse(bh, not_updated);
+	brelse(bh);
 
 	error = check_sb(&sdp->sd_sb);
 	if (error)
@@ -250,16 +250,13 @@ int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount)
 	}
 
 	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
-		enum update_flags f;
-
-		f = not_updated;
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
 		errblock = gfs2_rgrp_read(sdp, rgd, rgbh, &rg);
 		if (errblock) {
 			free(rgbh);
 			return errblock;
 		} else
-			gfs2_rgrp_relse(rgd, f, rgbh);
+			gfs2_rgrp_relse(rgd, rgbh);
 		count2++;
 	}
 
@@ -282,7 +279,8 @@ int write_sb(struct gfs2_sbd *sbp)
 
 	bh = bread(&sbp->buf_list, GFS2_SB_ADDR >> sbp->sd_fsb2bb_shift);
 	gfs2_sb_out(&sbp->sd_sb, bh->b_data);
-	brelse(bh, updated);
+	bmodified(bh);
+	brelse(bh);
 	bcommit(&sbp->buf_list); /* make sure the change gets to disk ASAP */
 	return 0;
 }

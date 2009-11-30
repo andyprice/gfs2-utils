@@ -29,6 +29,7 @@ static int remove_eattr_entry(struct gfs2_sbd *sdp,
 	log_err( _("Bad Extended Attribute at block #%"PRIu64
 		   " (0x%" PRIx64 ") removed.\n"),
 		 leaf_bh->b_blocknr, leaf_bh->b_blocknr);
+	bmodified(leaf_bh);
 	return 0;
 }
 
@@ -60,14 +61,13 @@ static int ask_remove_eattr_entry(struct gfs2_sbd *sdp,
 	return 1;
 }
 
-static int ask_remove_eattr(struct gfs2_inode *ip,
-			    enum update_flags *need_update)
+static int ask_remove_eattr(struct gfs2_inode *ip)
 {
 	errors_found++;
 	if (query(&opts, _("Remove the bad Extended Attribute? (y/n) "))) {
 		errors_corrected++;
 		ip->i_di.di_eattr = 0;
-		*need_update = updated;
+		bmodified(ip->i_bh);
 		log_err( _("Bad Extended Attribute removed.\n"));
 	} else
 		log_err( _("Bad Extended Attribute not removed.\n"));
@@ -76,13 +76,12 @@ static int ask_remove_eattr(struct gfs2_inode *ip,
 
 static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 		      uint64_t parent, struct gfs2_buffer_head **bh,
-		      enum update_flags *need_update, void *private)
+		      void *private)
 {
 	struct gfs2_sbd *sbp = ip->i_sbd;
 	struct gfs2_block_query q;
 	struct gfs2_buffer_head *indir_bh = NULL;
 
-	*need_update = not_updated;
 	if(gfs2_check_range(sbp, block)) {
 		log_err( _("Extended attributes indirect block #%llu"
 			" (0x%llx) for inode #%llu"
@@ -91,7 +90,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 			(unsigned long long)block,
 			(unsigned long long)ip->i_di.di_num.no_addr,
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		return ask_remove_eattr(ip, need_update);
+		return ask_remove_eattr(ip);
 	}
 	else if (gfs2_block_check(sbp, bl, block, &q)) {
 		stack;
@@ -105,7 +104,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 			(unsigned long long)block,
 			(unsigned long long)ip->i_di.di_num.no_addr,
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		return ask_remove_eattr(ip, need_update);
+		return ask_remove_eattr(ip);
 	}
 	else
 		indir_bh = bread(&sbp->buf_list, block);
@@ -116,7 +115,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 
 static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 		     uint64_t parent, struct gfs2_buffer_head **bh,
-		     enum update_flags *need_update, void *private)
+		     void *private)
 {
 	struct gfs2_sbd *sbp = ip->i_sbd;
 	struct gfs2_block_query q;
@@ -126,7 +125,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			" (0x%llx) out of range.\n"),
 			(unsigned long long)ip->i_di.di_num.no_addr,
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		return ask_remove_eattr(ip, need_update);
+		return ask_remove_eattr(ip);
 	}
 	else if (gfs2_block_check(sbp, bl, block, &q)) {
 		stack;
@@ -137,7 +136,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			   " (0x%llx) invalid.\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
-		return ask_remove_eattr(ip, need_update);
+		return ask_remove_eattr(ip);
 	}
 	else 
 		*bh = bread(&sbp->buf_list, block);
@@ -215,8 +214,7 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 static int check_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_ptr,
 			 struct gfs2_buffer_head *leaf_bh,
 			 struct gfs2_ea_header *ea_hdr,
-			 struct gfs2_ea_header *ea_hdr_prev,
-			 enum update_flags *want_updated, void *private)
+			 struct gfs2_ea_header *ea_hdr_prev, void *private)
 {
 	struct gfs2_block_query q;
 	struct gfs2_sbd *sbp = ip->i_sbd;
@@ -246,7 +244,6 @@ int pass1c(struct gfs2_sbd *sbp)
 	int error = 0;
 	osi_list_t *tmp, *x;
 	struct special_blocks *ea_block;
-	enum update_flags want_updated = not_updated;
 
 	pass1c_fxns.check_eattr_indir = &check_eattr_indir;
 	pass1c_fxns.check_eattr_leaf = &check_eattr_leaf;
@@ -273,18 +270,15 @@ int pass1c(struct gfs2_sbd *sbp)
 				  (unsigned long long)ip->i_di.di_eattr,
 				  (unsigned long long)ip->i_di.di_eattr);
 			/* FIXME: Handle walking the eattr here */
-			error = check_inode_eattr(ip, &want_updated,
-						  &pass1c_fxns);
+			error = check_inode_eattr(ip, &pass1c_fxns);
 			if(error < 0) {
 				stack;
-				brelse(bh, not_updated);
+				brelse(bh);
 				return FSCK_ERROR;
 			}
-
-			fsck_inode_put(ip, want_updated); /* dinode_out,
-							     brelse, free */
+			fsck_inode_put(ip); /* dinode_out, brelse, free */
 		} else {
-			brelse(bh, want_updated);
+			brelse(bh);
 		}
 	}
 	return FSCK_OK;

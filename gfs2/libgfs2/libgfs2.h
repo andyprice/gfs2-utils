@@ -271,20 +271,6 @@ struct metapath {
 #define META (2)
 #define DINODE (3)
 
-#define NOT_UPDATED (0)
-#define UPDATED (1)
-
-/* A bit of explanation is in order: */
-/* updated flag means the buffer was updated from THIS function before */
-/*         brelse was called. */
-/* not_updated flag means the buffer may or may not have been updated  */
-/*         by a function called within this one, but it wasn't updated */
-/*         by this function. */
-enum update_flags {
-	not_updated = NOT_UPDATED,
-	updated = UPDATED
-};
-
 /* bitmap.c */
 struct gfs2_bmap {
         uint64_t size;
@@ -369,7 +355,8 @@ extern struct gfs2_buffer_head *__bget(struct buf_list *bl, uint64_t num,
 extern struct gfs2_buffer_head *__bread(struct buf_list *bl, uint64_t num,
 					int line, const char *caller);
 extern struct gfs2_buffer_head *bhold(struct gfs2_buffer_head *bh);
-extern void brelse(struct gfs2_buffer_head *bh, enum update_flags is_updated);
+extern void bmodified(struct gfs2_buffer_head *bh);
+extern void brelse(struct gfs2_buffer_head *bh);
 extern void __bsync(struct buf_list *bl, int line, const char *caller);
 extern void __bcommit(struct buf_list *bl, int line, const char *caller);
 
@@ -421,7 +408,7 @@ extern void lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			 int create, int *new, uint64_t *block);
 extern struct gfs2_inode *inode_get(struct gfs2_sbd *sdp,
 				    struct gfs2_buffer_head *bh);
-extern void inode_put(struct gfs2_inode *ip, enum update_flags updated);
+extern void inode_put(struct gfs2_inode *ip);
 extern uint64_t data_alloc(struct gfs2_inode *ip);
 extern uint64_t meta_alloc(struct gfs2_inode *ip);
 extern uint64_t dinode_alloc(struct gfs2_sbd *sdp);
@@ -447,8 +434,7 @@ extern void dir_add(struct gfs2_inode *dip, const char *filename, int len,
 extern int gfs2_dirent_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 			   const char *filename, int filename_len);
 extern void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
-		      uint64_t *dblock, uint32_t *extlen, int prealloc,
-		      enum update_flags if_changed);
+		      uint64_t *dblock, uint32_t *extlen, int prealloc);
 extern void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t index,
 			     uint64_t *leaf_out);
 extern void gfs2_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out);
@@ -651,8 +637,8 @@ extern struct rgrp_list *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk);
 extern uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 			       struct gfs2_buffer_head **bh,
 			       struct gfs2_rgrp *rg);
-extern void gfs2_rgrp_relse(struct rgrp_list *rgd, enum update_flags updated,
-		     struct gfs2_buffer_head **bh);
+extern void gfs2_rgrp_relse(struct rgrp_list *rgd,
+			    struct gfs2_buffer_head **bh);
 extern void gfs2_rgrp_free(osi_list_t *rglist);
 
 /* structures.c */

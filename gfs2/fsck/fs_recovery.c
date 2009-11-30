@@ -100,7 +100,6 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 	struct gfs2_buffer_head *bh_log, *bh_ip;
 	uint64_t blkno;
 	int error = 0;
-	enum update_flags if_modified;
 
 	if (pass != 1 || be32_to_cpu(ld->ld_type) != GFS2_LOG_DESC_METADATA)
 		return 0;
@@ -127,14 +126,13 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 		check_magic = ((struct gfs2_meta_header *)
 			       (bh_ip->b_data))->mh_magic;
 		check_magic = be32_to_cpu(check_magic);
-		if (check_magic != GFS2_MAGIC) {
-			if_modified = not_updated;
+		if (check_magic != GFS2_MAGIC)
 			error = -EIO;
-		} else
-			if_modified = updated;
+		else
+			bmodified(bh_ip);
 
-		brelse(bh_log, not_updated);
-		brelse(bh_ip, if_modified);
+		brelse(bh_log);
+		brelse(bh_ip);
 		if (error)
 			break;
 
@@ -183,7 +181,8 @@ static int revoke_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			offset += sizeof(uint64_t);
 		}
 
-		brelse(bh, updated);
+		bmodified(bh);
+		brelse(bh);
 		offset = sizeof(struct gfs2_meta_header);
 		first = 0;
 	}
@@ -229,8 +228,9 @@ static int databuf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			*eptr = cpu_to_be32(GFS2_MAGIC);
 		}
 
-		brelse(bh_log, not_updated);
-		brelse(bh_ip, updated);
+		brelse(bh_log);
+		bmodified(bh_ip);
+		brelse(bh_ip);
 
 		sd_replayed_jblocks++;
 	}
@@ -271,7 +271,8 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 			       (bh->b_data))->mh_magic;
 		check_magic = be32_to_cpu(check_magic);
 		if (check_magic != GFS2_MAGIC) {
-			brelse(bh, updated);
+			bmodified(bh);
+			brelse(bh);
 			return -EIO;
 		}
 		ld = (struct gfs2_log_descriptor *)bh->b_data;
@@ -283,38 +284,45 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 			error = get_log_header(ip, start, &lh);
 			if (!error) {
 				gfs2_replay_incr_blk(ip, &start);
-				brelse(bh, updated);
+				bmodified(bh);
+				brelse(bh);
 				continue;
 			}
 			if (error == 1)
 				error = -EIO;
-			brelse(bh, updated);
+			bmodified(bh);
+			brelse(bh);
 			return error;
 		} else if (gfs2_check_meta(bh, GFS2_METATYPE_LD)) {
-			brelse(bh, updated);
+			bmodified(bh);
+			brelse(bh);
 			return -EIO;
 		}
 		ptr = (__be64 *)(bh->b_data + offset);
 		error = databuf_lo_scan_elements(ip, start, ld, ptr, pass);
 		if (error) {
-			brelse(bh, updated);
+			bmodified(bh);
+			brelse(bh);
 			return error;
 		}
 		error = buf_lo_scan_elements(ip, start, ld, ptr, pass);
 		if (error) {
-			brelse(bh, updated);
+			bmodified(bh);
+			brelse(bh);
 			return error;
 		}
 		error = revoke_lo_scan_elements(ip, start, ld, ptr, pass);
 		if (error) {
-			brelse(bh, updated);
+			bmodified(bh);
+			brelse(bh);
 			return error;
 		}
 
 		while (length--)
 			gfs2_replay_incr_blk(ip, &start);
 
-		brelse(bh, updated);
+		bmodified(bh);
+		brelse(bh);
 	}
 
 	return 0;
@@ -365,10 +373,11 @@ static int fix_journal_seq_no(struct gfs2_inode *ip)
 		lh.lh_sequence = highest_seq;
 		prev_seq = lh.lh_sequence;
 		log_warn( _("Renumbering it as 0x%llx\n"), lh.lh_sequence);
-		block_map(ip, blk, &new, &dblock, &extlen, FALSE, not_updated);
+		block_map(ip, blk, &new, &dblock, &extlen, FALSE);
 		bh = bread(&ip->i_sbd->buf_list, dblock);
 		gfs2_log_header_out(&lh, bh->b_data);
-		brelse(bh, updated);
+		bmodified(bh);
+		brelse(bh);
 	}
 	return 0;
 }
@@ -571,11 +580,10 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 			}
 			*clean_journals += clean;
 		}
-		inode_put(sdp->md.journal[i],
-			  (opts.no ? not_updated : updated));
+		inode_put(sdp->md.journal[i]);
 	}
-	inode_put(sdp->master_dir, not_updated);
-	inode_put(sdp->md.jiinode, not_updated);
+	inode_put(sdp->master_dir);
+	inode_put(sdp->md.jiinode);
 	/* Sync the buffers to disk so we get a fresh start. */
 	bsync(&sdp->buf_list);
 	return error;

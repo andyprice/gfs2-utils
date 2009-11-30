@@ -309,13 +309,13 @@ static void save_indirect_blocks(int out_fd, osi_list_t *cur_list,
 		if (blktype == GFS2_METATYPE_EA) {
 			nbh = bread(&sbd.buf_list, indir_block);
 			save_ea_block(out_fd, nbh);
-			brelse(nbh, not_updated);
+			brelse(nbh);
 		}
 		if (height != hgt) { /* If not at max height */
 			nbh = bread(&sbd.buf_list, indir_block);
 			osi_list_add_prev(&nbh->b_altlist,
 					  cur_list);
-			brelse(nbh, not_updated);
+			brelse(nbh);
 		}
 	} /* for all data on the indirect block */
 }
@@ -418,9 +418,9 @@ static void save_inode_data(int out_fd)
 				(unsigned long long)block,
 				(unsigned long long)block);
 		}
-		brelse(metabh, not_updated);
+		brelse(metabh);
 	}
-	inode_put(inode, not_updated);
+	inode_put(inode);
 }
 
 static void get_journal_inode_blocks(void)
@@ -454,7 +454,7 @@ static void get_journal_inode_blocks(void)
 			amt = gfs2_readi(j_inode, (void *)&jbuf,
 					 journal * sizeof(struct gfs_jindex),
 					 sizeof(struct gfs_jindex));
-			brelse(bh, not_updated);
+			brelse(bh);
 			if (!amt)
 				break;
 			gfs_jindex_in(&ji, jbuf);
@@ -467,7 +467,7 @@ static void get_journal_inode_blocks(void)
 			bh = bread(&sbd.buf_list, jblock);
 			j_inode = inode_get(&sbd, bh);
 			gfs2_dinode_in(&jdi, bh->b_data);
-			inode_put(j_inode, not_updated);
+			inode_put(j_inode);
 		}
 		journal_blocks[journals_found++] = jblock;
 	}
@@ -499,7 +499,7 @@ static int next_rg_freemeta(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 		blk = gfs2_bitfit((unsigned char *)bh->b_data +
 				  bits->bi_offset, bits->bi_len, blk,
 				  GFS2_BLKST_UNLINKED);
-		brelse(bh, not_updated);
+		brelse(bh);
 		if(blk != BFITNOENT){
 			*nrfblock = blk + (bits->bi_start * GFS2_NBBY) +
 				rgd->ri.ri_data0;
@@ -609,7 +609,7 @@ void savemeta(char *out_fn, int saveoption)
 		gfs2_dinode_in(&di, bh->b_data);
 		if (!gfs1)
 			do_dinode_extended(&di, bh->b_data);
-		brelse(bh, not_updated);
+		brelse(bh);
 	}
 	if (!slow) {
 		printf("Reading resource groups...");
@@ -708,7 +708,7 @@ void savemeta(char *out_fn, int saveoption)
 					first = 0;
 				}
 			}
-			gfs2_rgrp_relse(rgd, not_updated, rgbh);
+			gfs2_rgrp_relse(rgd, rgbh);
 			free(rgbh);
 		}
 	}

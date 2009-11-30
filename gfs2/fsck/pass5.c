@@ -150,9 +150,9 @@ static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int b
 	return 0;
 }
 
-static enum update_flags update_rgrp(struct gfs2_sbd *sbp, struct rgrp_list *rgp,
-			      uint32_t *count, struct gfs2_buffer_head **rgbh,
-			      struct gfs2_rgrp *rg)
+static void update_rgrp(struct gfs2_sbd *sbp, struct rgrp_list *rgp,
+			uint32_t *count, struct gfs2_buffer_head **rgbh,
+			struct gfs2_rgrp *rg)
 {
 	uint32_t i;
 	struct gfs2_bitmap *bits;
@@ -166,7 +166,7 @@ static enum update_flags update_rgrp(struct gfs2_sbd *sbp, struct rgrp_list *rgp
 		check_block_status(sbp, rgbh[i]->b_data + bits->bi_offset,
 						   bits->bi_len, &rg_block, rgp->ri.ri_data0, count);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
-			return 0;
+			return;
 	}
 
 	/* actually adjust counters and write out to disk */
@@ -199,11 +199,9 @@ static enum update_flags update_rgrp(struct gfs2_sbd *sbp, struct rgrp_list *rgp
 			log_warn( _("Resource group counts updated\n"));
 			/* write out the rgrp */
 			gfs2_rgrp_out(rg, rgbh[0]->b_data);
-			return updated;
 		} else
 			log_err( _("Resource group counts left inconsistent\n"));
 	}
-	return not_updated;
 }
 
 /**
@@ -223,8 +221,6 @@ int pass5(struct gfs2_sbd *sbp)
 
 	/* Reconcile RG bitmaps with fsck bitmap */
 	for(tmp = sbp->rglist.next; tmp != &sbp->rglist; tmp = tmp->next){
-		enum update_flags f;
-
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
 		log_info( _("Verifying Resource Group #%" PRIu64 "\n"), rg_count);
@@ -247,8 +243,8 @@ int pass5(struct gfs2_sbd *sbp)
 		}
 		rg_count++;
 		/* Compare the bitmaps and report the differences */
-		f = update_rgrp(sbp, rgd, count, rgbh, &rg);
-		gfs2_rgrp_relse(rgd, f, rgbh);
+		update_rgrp(sbp, rgd, count, rgbh, &rg);
+		gfs2_rgrp_relse(rgd, rgbh);
 		free(rgbh);
 	}
 	/* Fix up superblock info based on this - don't think there's

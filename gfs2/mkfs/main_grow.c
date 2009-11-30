@@ -172,8 +172,8 @@ static void initialize_new_portion(struct gfs2_sbd *sdp, int *old_rg_count)
 	/* Note: We do inode_put with not_updated because we only updated */
 	/* the new RGs/bitmaps themselves on disk.  The rindex file must  */
 	/* be updated through the meta_fs so the gfs2 kernel is informed. */
-	inode_put(sdp->md.riinode, not_updated);
-	inode_put(sdp->master_dir, not_updated);
+	inode_put(sdp->md.riinode);
+	inode_put(sdp->master_dir);
 
 	/* We're done with the libgfs portion, so commit it to disk.      */
 	bsync(&sdp->buf_list);

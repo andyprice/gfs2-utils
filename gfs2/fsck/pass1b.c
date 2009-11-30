@@ -62,12 +62,11 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 
 static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 			     uint64_t parent, struct gfs2_buffer_head **bh,
-			     enum update_flags *want_updated, void *private)
+			     void *private)
 {
 	struct gfs2_sbd *sbp = ip->i_sbd;
 	struct gfs2_buffer_head *indir_bh = NULL;
 
-	*want_updated = not_updated;
 	inc_if_found(block, 0, private);
 	indir_bh = bread(&sbp->buf_list, block);
 	*bh = indir_bh;
@@ -77,12 +76,11 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 
 static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			    uint64_t parent, struct gfs2_buffer_head **bh,
-			    enum update_flags *want_updated, void *private)
+			    void *private)
 {
 	struct gfs2_sbd *sbp = ip->i_sbd;
 	struct gfs2_buffer_head *leaf_bh = NULL;
 
-	*want_updated = not_updated;
 	inc_if_found(block, 0, private);
 	leaf_bh = bread(&sbp->buf_list, block);
 
@@ -102,11 +100,10 @@ static int check_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 				struct gfs2_buffer_head *leaf_bh,
 				struct gfs2_ea_header *ea_hdr,
 				struct gfs2_ea_header *ea_hdr_prev,
-				enum update_flags *want_updated, void *private)
+				void *private)
 {
 	uint64_t block = be64_to_cpu(*ea_data_ptr);
 
-	*want_updated = not_updated;
 	inc_if_found(block, 0, private);
 
 	return 0;
@@ -115,7 +112,7 @@ static int check_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 static int find_dentry(struct gfs2_inode *ip, struct gfs2_dirent *de,
 		       struct gfs2_dirent *prev,
 		       struct gfs2_buffer_head *bh, char *filename,
-		       enum update_flags *update, uint16_t *count, void *priv)
+		       uint16_t *count, void *priv)
 {
 	osi_list_t *tmp1, *tmp2;
 	struct dup_blocks *b;
@@ -192,14 +189,12 @@ static int clear_dup_data(struct gfs2_inode *ip, uint64_t block, void *private)
 
 static int clear_dup_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 				 uint64_t parent, struct gfs2_buffer_head **bh,
-				 enum update_flags *want_updated,
 				 void *private)
 {
 	struct dup_handler *dh = (struct dup_handler *) private;
 	/* Can't use fxns from eattr.c since we need to check the ref
 	 * count */
 	*bh = NULL;
-	*want_updated = not_updated;
 	if(dh->ref_count == 1)
 		return 1;
 	if(block == dh->b->block_no) {
@@ -222,11 +217,10 @@ static int clear_dup_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 
 static int clear_dup_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 				uint64_t parent, struct gfs2_buffer_head **bh,
-				enum update_flags *want_updated, void *private)
+				void *private)
 {
 	struct dup_handler *dh = (struct dup_handler *) private;
 
-	*want_updated = not_updated;
 	if(dh->ref_count == 1)
 		return 1;
 	if(block == dh->b->block_no) {
@@ -294,13 +288,11 @@ static int clear_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 				struct gfs2_buffer_head *leaf_bh,
 				struct gfs2_ea_header *ea_hdr,
 				struct gfs2_ea_header *ea_hdr_prev,
-				enum update_flags *want_updated,
 				void *private)
 {
 	uint64_t block = be64_to_cpu(*ea_data_ptr);
 	struct dup_handler *dh = (struct dup_handler *) private;
 
-	*want_updated = not_updated;
 	if(dh->ref_count == 1)
 		return 1;
 	if(block == dh->b->block_no) {
@@ -339,7 +331,6 @@ static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_block
 		.check_eattr_entry = check_eattr_entry,
 		.check_eattr_extentry = check_eattr_extentry,
 	};
-	enum update_flags update;
 
 	ip = fsck_load_inode(sbp, inode); /* bread, inode_get */
 	log_debug( _("Checking inode %" PRIu64 " (0x%" PRIx64 ")'s "
@@ -347,14 +338,14 @@ static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_block
 		     ")\n"), inode, inode, b->block_no, b->block_no);
 	if(check_metatree(ip, &find_refs)) {
 		stack;
-		fsck_inode_put(ip, not_updated); /* out, brelse, free */
+		fsck_inode_put(ip); /* out, brelse, free */
 		return -1;
 	}
 	log_debug( _("Done checking metatree\n"));
 	/* Check for ea references in the inode */
-	if(check_inode_eattr(ip, &update, &find_refs) < 0){
+	if(check_inode_eattr(ip, &find_refs) < 0){
 		stack;
-		fsck_inode_put(ip, not_updated); /* out, brelse, free */
+		fsck_inode_put(ip); /* out, brelse, free */
 		return -1;
 	}
 	if (myfi.found) {
@@ -374,7 +365,7 @@ static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_block
 		id->ea_only = myfi.ea_only;
 		osi_list_add_prev(&id->list, &b->ref_inode_list);
 	}
-	fsck_inode_put(ip, (opts.no ? not_updated : updated)); /* out, brelse, free */
+	fsck_inode_put(ip); /* out, brelse, free */
 	return 0;
 }
 
@@ -395,7 +386,6 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 	};
 	struct gfs2_inode *ip;
 	struct dup_handler dh = {0};
-	enum update_flags update;
 
 	osi_list_foreach(tmp, &b->ref_inode_list) {
 		id = osi_list_entry(tmp, struct inode_with_dups, list);
@@ -416,7 +406,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 
 		bh = bread(&sbp->buf_list, b->block_no);
 		cmagic = ((struct gfs2_meta_header *)(bh->b_data))->mh_magic;
-		brelse(bh, not_updated);
+		brelse(bh);
 		if (be32_to_cpu(cmagic) == GFS2_MAGIC) {
 			tmp = b->ref_inode_list.next;
 			id = osi_list_entry(tmp, struct inode_with_dups, list);
@@ -441,7 +431,8 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 				gfs2_block_set(ip->i_sbd, bl,
 					       ip->i_di.di_num.no_addr,
 					       gfs2_meta_inval);
-				fsck_inode_put(ip, updated);
+				bmodified(ip->i_bh);
+				fsck_inode_put(ip);
 			} else {
 				log_warn( _("The bad inode was not cleared."));
 			}
@@ -483,14 +474,14 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 		dh.id = id;
 		clear_dup_fxns.private = (void *) &dh;
 		/* Clear the EAs for the inode first */
-		check_inode_eattr(ip, &update, &clear_dup_fxns);
+		check_inode_eattr(ip, &clear_dup_fxns);
 		/* If the dup wasn't only in the EA, clear the inode */
 		if(!id->ea_only)
 			check_metatree(ip, &clear_dup_fxns);
 
 		gfs2_block_set(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
 			       gfs2_meta_inval);
-		fsck_inode_put(ip, updated); /* out, brelse, free */
+		fsck_inode_put(ip); /* out, brelse, free */
 		dh.ref_inode_count--;
 		if(dh.ref_inode_count == 1)
 			break;

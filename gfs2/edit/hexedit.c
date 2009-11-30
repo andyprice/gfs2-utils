@@ -784,7 +784,7 @@ static void rgcount(void)
 {
 	printf("%lld RGs in this file system.\n",
 	       (unsigned long long)sbd.md.riinode->i_di.di_size / risize());
-	inode_put(sbd.md.riinode, not_updated);
+	inode_put(sbd.md.riinode);
 	gfs2_rgrp_free(&sbd.rglist);
 	exit(EXIT_SUCCESS);
 }
@@ -883,7 +883,7 @@ static uint64_t get_rg_addr(int rgnum)
 	else
 		fprintf(stderr, "Error: File system only has %lld RGs.\n",
 			(unsigned long long)riinode->i_di.di_size / risize());
-	inode_put(riinode, not_updated);
+	inode_put(riinode);
 	return rgblk;
 }
 
@@ -918,7 +918,8 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 			gfs_rgrp_out(&rg.rg1, bh->b_data);
 		else
 			gfs2_rgrp_out(&rg.rg2, bh->b_data);
-		brelse(bh, updated);
+		bmodified(bh);
+		brelse(bh);
 	} else {
 		if (full) {
 			print_gfs2("RG #%d", rgnum);
@@ -933,7 +934,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 			printf("RG #%d (block %llu / 0x%llx) rg_flags = 0x%08x\n",
 			       rgnum, (unsigned long long)rgblk,
 			       (unsigned long long)rgblk, rg.rg2.rg_flags);
-		brelse(bh, not_updated);
+		brelse(bh);
 	}
 	if (modify)
 		bsync(&sbd.buf_list);
@@ -998,7 +999,7 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 					gfs2_rgrp_in(&rg, tmp_bh->b_data);
 					gfs2_rgrp_print(&rg);
 				}
-				brelse(tmp_bh, not_updated);
+				brelse(tmp_bh);
 			}
 			last_entry_onscreen[dmode] = print_entry_ndx;
 		}
@@ -1604,7 +1605,7 @@ int block_is_in_per_node(void)
 	gfs2_dinode_in(&per_node_di, per_node_bh->b_data);
 
 	do_dinode_extended(&per_node_di, per_node_bh->b_data);
-	brelse(per_node_bh, not_updated);
+	brelse(per_node_bh);
 
 	for (d = 0; d < indirect->ii[0].dirents; d++) {
 		if (block == indirect->ii[0].dirent[d].block)
@@ -1642,7 +1643,7 @@ static int display_extended(void)
 		tmp_bh = bread(&sbd.buf_list, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		parse_rindex(tmp_inode, TRUE);
-		brelse(tmp_bh, not_updated);
+		brelse(tmp_bh);
 	}
 	else if (has_indirect_blocks() && !indirect_blocks &&
 		 !display_leaf(indirect))
@@ -1657,31 +1658,31 @@ static int display_extended(void)
 			tmp_bh = bread(&sbd.buf_list, masterblock("rindex"));
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		parse_rindex(tmp_inode, FALSE);
-		brelse(tmp_bh, not_updated);
+		brelse(tmp_bh);
 	}
 	else if (block_is_jindex()) {
 		tmp_bh = bread(&sbd.buf_list, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		print_jindex(tmp_inode);
-		brelse(tmp_bh, not_updated);
+		brelse(tmp_bh);
 	}
 	else if (block_is_inum_file()) {
 		tmp_bh = bread(&sbd.buf_list, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		print_inum(tmp_inode);
-		brelse(tmp_bh, not_updated);
+		brelse(tmp_bh);
 	}
 	else if (block_is_statfs_file()) {
 		tmp_bh = bread(&sbd.buf_list, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		print_statfs(tmp_inode);
-		brelse(tmp_bh, not_updated);
+		brelse(tmp_bh);
 	}
 	else if (block_is_quota_file()) {
 		tmp_bh = bread(&sbd.buf_list, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		print_quota(tmp_inode);
-		brelse(tmp_bh, not_updated);
+		brelse(tmp_bh);
 	}
 	return 0;
 }
@@ -1970,7 +1971,7 @@ static uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 
 	if (!gfs1)
 		do_dinode_extended(&di, jindex_bh->b_data); /* parse dir. */
-	brelse(jindex_bh, not_updated);
+	brelse(jindex_bh);
 
 	if (gfs1) {
 		struct gfs2_inode *jiinode;
@@ -1993,7 +1994,7 @@ static uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 		j_inode = inode_get(&sbd, j_bh);
 		gfs2_dinode_in(&jdi, j_bh->b_data);/* parse dinode to struct */
 		*j_size = jdi.di_size;
-		brelse(j_bh, not_updated);
+		brelse(j_bh);
 	}
 	return jblock;
 }
@@ -2019,10 +2020,10 @@ static uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int p
 		    bh->b_data[4] == 0x00 && bh->b_data[5] == 0x00 &&
 		    bh->b_data[6] == 0x00 && bh->b_data[7] == metatype) {
 			found = 1;
-			brelse(bh, not_updated);
+			brelse(bh);
 			break;
 		}
-		brelse(bh, not_updated);
+		brelse(bh);
 	}
 	if (!found)
 		blk = 0;
@@ -2439,7 +2440,7 @@ static void find_print_block_type(void)
 	bh = bread(&sbd.buf_list, tblock);
 	type = get_block_type(bh->b_data);
 	print_block_type(tblock, type, "");
-	brelse(bh, NOT_UPDATED);
+	brelse(bh);
 	gfs2_rgrp_free(&sbd.rglist);
 	exit(0);
 }
@@ -2597,7 +2598,9 @@ static void process_field(const char *field, uint64_t *newval, int print_field)
 					 " which is not implemented");
 		break;
 	}
-	brelse(bh, newval ? UPDATED : NOT_UPDATED);
+	if (newval)
+		bmodified(bh);
+	brelse(bh);
 	bcommit(&sbd.buf_list);
 }
 
@@ -2977,7 +2980,7 @@ static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
 			amount = sdp->bsize - o;
 		if (!extlen)
 			block_map(ip, lblock, &not_new, &dblock, &extlen,
-				  FALSE, not_updated);
+				  FALSE);
 		if (dblock) {
 			bh = bread(&sdp->buf_list, dblock);
 			if (*abs_block == 0)
@@ -2988,7 +2991,7 @@ static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
 			bh = NULL;
 		if (bh) {
 			memcpy(rbuf, bh->b_data + o, amount);
-			brelse(bh, not_updated);
+			brelse(bh);
 		} else {
 			memset(rbuf, 0, amount);
 		}
@@ -3044,7 +3047,7 @@ static void dump_journal(const char *journal)
 	for (jb = 0; jb < j_size; jb += (gfs1 ? 1:sbd.bsize)) {
 		if (gfs1) {
 			if (j_bh)
-				brelse(j_bh, not_updated);
+				brelse(j_bh);
 			j_bh = bread(&sbd.buf_list, jblock + jb);
 			abs_block = jblock + jb;
 			memcpy(jbuf, j_bh->b_data, sbd.bsize);
@@ -3135,7 +3138,7 @@ static void dump_journal(const char *journal)
 						     start_line);
 		}
 	}
-	brelse(j_bh, not_updated);
+	brelse(j_bh);
 	blockhist = -1; /* So we don't print anything else */
 }
 

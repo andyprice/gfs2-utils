@@ -29,7 +29,7 @@ int gfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
 	uint64_t dblock;
 	uint32_t extlen;
 
-	block_map(ip, blk, &new, &dblock, &extlen, FALSE, not_updated);
+	block_map(ip, blk, &new, &dblock, &extlen, FALSE);
 	if (!dblock)
 		return -EIO;
 
@@ -69,7 +69,7 @@ int get_log_header(struct gfs2_inode *ip, unsigned int blk,
 	hash = gfs2_disk_hash(bh->b_data, sizeof(struct gfs2_log_header));
 	tmp->lh_hash = saved_hash;
 	gfs2_log_header_in(&lh, bh->b_data);
-	brelse(bh, not_updated);
+	brelse(bh);
 
 	if (error || lh.lh_blkno != blk || lh.lh_hash != hash)
 		return 1;
@@ -221,7 +221,7 @@ int clean_journal(struct gfs2_inode *ip, struct gfs2_log_header *head)
 
 	lblock = head->lh_blkno;
 	gfs2_replay_incr_blk(ip, &lblock);
-	block_map(ip, lblock, &new, &dblock, &extlen, 0, not_updated);
+	block_map(ip, lblock, &new, &dblock, &extlen, 0);
 	if (!dblock)
 		return -EIO;
 
@@ -238,8 +238,8 @@ int clean_journal(struct gfs2_inode *ip, struct gfs2_log_header *head)
 	lh->lh_blkno = cpu_to_be32(lblock);
 	hash = gfs2_disk_hash((const char *)lh, sizeof(struct gfs2_log_header));
 	lh->lh_hash = cpu_to_be32(hash);
-
-	brelse(bh, updated);
+	bmodified(bh);
+	brelse(bh);
 
 	return 0;
 }

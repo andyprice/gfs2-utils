@@ -156,7 +156,8 @@ int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state)
 	*byte ^= cur_state << bit;
 	*byte |= state << bit;
 
-	gfs2_rgrp_relse(rgd, updated, rgbh);
+	bmodified(rgbh[buf]);
+	gfs2_rgrp_relse(rgd, rgbh);
 	free(rgbh);
 	return 0;
 }
@@ -219,7 +220,7 @@ int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
 	}
 
 	if(i >= rgd->ri.ri_length){
-		gfs2_rgrp_relse(rgd, not_updated, rgbh);
+		gfs2_rgrp_relse(rgd, rgbh);
 		return -1;
 	}
 
@@ -229,7 +230,6 @@ int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
 
 	val = ((*byte >> bit) & GFS2_BIT_MASK);
 	if(local_rgd)
-		gfs2_rgrp_relse(rgd, not_updated, rgbh);
-
+		gfs2_rgrp_relse(rgd, rgbh);
 	return val;
 }
