@@ -7,11 +7,50 @@
 #include <sys/time.h>
 #include <stdio.h>
 #include <libintl.h>
+#include <ctype.h>
 #define _(String) gettext(String)
 
 #include "libgfs2.h"
 #include "fs_bits.h"
 #include "util.h"
+
+void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked)
+{
+	static struct timeval tv;
+	static uint32_t seconds = 0;
+	static uint64_t percent, fsize, chksize;
+	uint64_t one_percent = 0;
+	int i, cs;
+	const char *human_abbrev = " KMGTPE";
+
+	one_percent = ip->i_di.di_blocks / 100;
+	if (blks_checked - last_reported_fblock < one_percent)
+		return;
+
+	last_reported_block = blks_checked;
+	gettimeofday(&tv, NULL);
+	if (!seconds)
+		seconds = tv.tv_sec;
+	if (tv.tv_sec == seconds)
+		return;
+
+	fsize = ip->i_di.di_size;
+	for (i = 0; i < 6 && fsize > 1024; i++)
+		fsize /= 1024;
+	chksize = blks_checked * ip->i_sbd->bsize;
+	for (cs = 0; cs < 6 && chksize > 1024; cs++)
+		chksize /= 1024;
+	seconds = tv.tv_sec;
+	percent = (blks_checked * 100) / ip->i_di.di_blocks;
+	log_notice( _("\rChecking %lld%c of %lld%c of file at %lld (0x%llx)"
+		      "- %llu percent complete.                   \r"),
+		    (long long)chksize, human_abbrev[cs],
+		    (unsigned long long)fsize, human_abbrev[i],
+		    (unsigned long long)ip->i_di.di_num.no_addr,
+		    (unsigned long long)ip->i_di.di_num.no_addr,
+		    (unsigned long long)percent);
+	fflush(stdout);
+}
 
 /* Put out a warm, fuzzy message every second so the user     */
 /* doesn't think we hung.  (This may take a long time).       */
