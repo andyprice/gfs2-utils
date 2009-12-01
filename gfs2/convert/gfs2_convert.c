@@ -281,7 +281,7 @@ static void mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,
 
 	/* figure out multiplication factors for each height - gfs2 */
 	memset(&gfs2factor, 0, sizeof(gfs2factor));
-	gfs2factor[gfs1_h - 1] = 1ull;
+	gfs2factor[gfs2_h - 1] = 1ull;
 	for (h = gfs2_h - 1; h > 0; h--)
 		gfs2factor[h - 1] = gfs2factor[h] * gfs2_inptrs;
 
@@ -569,6 +569,7 @@ static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_buffer_head 
 		blk->mp.mp_list[di_height - 1] = ptrnum;
 		mp_gfs1_to_gfs2(sbp, di_height, gfs2_hgt, &blk->mp, &gfs2mp);
 		memcpy(&blk->mp, &gfs2mp, sizeof(struct metapath));
+		blk->height -= di_height - gfs2_hgt;
 		if (len)
 			fix_metatree(sbp, ip, blk, ptr1, len);
 		osi_list_del(tmp);
