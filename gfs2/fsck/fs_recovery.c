@@ -449,9 +449,9 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 				 "without -a or -p.\n"));
 			goto out;
 		}
-		if (!query(&opts, _("\nJournal #%d (\"journal%d\") is "
-				    "corrupt.  Okay to repair it? (y/n)"),
-			   j+1, j)) {
+		if (!query( _("\nJournal #%d (\"journal%d\") is "
+			      "corrupt.  Okay to repair it? (y/n)"),
+			    j+1, j)) {
 			log_err( _("jid=%u: The journal was not repaired.\n"),
 				 j);
 			goto out;
@@ -494,8 +494,8 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 		error = FSCK_ERROR;
 		goto out;
 	}
-	if (query(&opts, _("\nJournal #%d (\"journal%d\") is dirty.  Okay to "
-			   "replay it? (y/n)"), j+1, j)) {
+	if (query( _("\nJournal #%d (\"journal%d\") is dirty.  Okay to "
+		     "replay it? (y/n)"), j+1, j)) {
 		log_info( _("jid=%u: Replaying journal...\n"), j);
 
 		sd_found_jblocks = sd_replayed_jblocks = 0;
@@ -519,7 +519,7 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 		log_err( _("jid=%u: Replayed %u of %u metadata blocks\n"),
 			j, sd_replayed_metablocks, sd_found_metablocks);
 	} else {
-		if (query(&opts, _("Do you want to clear the dirty journal instead? (y/n)"))) {
+		if (query( _("Do you want to clear the dirty journal instead? (y/n)"))) {
 			write_journal(sdp, sdp->md.journal[j], j,
 				      sdp->md.journal[j]->i_di.di_size /
 				      sdp->sd_sb.sb_bsize);

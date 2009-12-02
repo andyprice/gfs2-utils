@@ -74,7 +74,7 @@ void print_fsck_log(int iif, int priority, const char *file, int line,
 	va_end(args);
 }
 
-static char gfs2_getch(void)
+char gfs2_getch(void)
 {
 	struct termios termattr, savetermattr;
 	char ch;

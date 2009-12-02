@@ -191,10 +191,7 @@ static int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 	 * system inodes before we can do any of that. */
 	if(!sysinode || ds.q.block_type != mark) {
 		log_err( _("Invalid or missing %s system inode.\n"), filename);
-		errors_found++;
-		if (query(&opts, _("Create new %s system inode? (y/n) "),
-			  filename)) {
-			errors_corrected++;
+		if (query(_("Create new %s system inode? (y/n) "), filename)) {
 			builder(sysinode->i_sbd);
 			gfs2_block_set(sysinode->i_sbd, bl,
 				       sysinode->i_di.di_num.no_addr,

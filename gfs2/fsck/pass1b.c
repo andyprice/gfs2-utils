@@ -417,9 +417,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 				  (unsigned long long)id->block_no,
 				  (unsigned long long)b->block_no,
 				  (unsigned long long)b->block_no);
-			errors_found++;
-			if (query(&opts, _("Clear the inode? (y/n) "))) {
-				errors_corrected++;
+			if (query( _("Clear the inode? (y/n) "))) {
 				log_warn( _("Clearing inode %lld (0x%llx)...\n"),
 					 (unsigned long long)id->block_no,
 					 (unsigned long long)id->block_no);
@@ -457,18 +455,15 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 	}
 	osi_list_foreach(tmp, &b->ref_inode_list) {
 		id = osi_list_entry(tmp, struct inode_with_dups, list);
-		errors_found++;
-		if (!(query(&opts, _("Okay to clear inode %lld (0x%llx)? "
-				     "(y/n) "),
-				     (unsigned long long)id->block_no,
-				     (unsigned long long)id->block_no))) {
+		if (!(query( _("Okay to clear inode %lld (0x%llx)? (y/n) "),
+			     (unsigned long long)id->block_no,
+			     (unsigned long long)id->block_no))) {
 			log_warn( _("The bad inode was not cleared...\n"));
 			continue;
 		}
-		errors_corrected++;
-		    log_warn( _("Clearing inode %lld (0x%llx)...\n"),
-			 (unsigned long long)id->block_no,
-			 (unsigned long long)id->block_no);
+		log_warn( _("Clearing inode %lld (0x%llx)...\n"),
+			  (unsigned long long)id->block_no,
+			  (unsigned long long)id->block_no);
 		ip = fsck_load_inode(sbp, id->block_no);
 		dh.b = b;
 		dh.id = id;

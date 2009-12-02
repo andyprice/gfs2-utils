@@ -586,6 +586,7 @@ do { print_log(1, MSG_ERROR, format); } while(0)
 #define log_at_crit(format...) \
 do { print_log(1, MSG_CRITICAL, format); } while(0)
 
+extern char gfs2_getch(void);
 extern void increase_verbosity(void);
 extern void decrease_verbosity(void);
 extern void print_fsck_log(int iif, int priority, const char *file, int line,

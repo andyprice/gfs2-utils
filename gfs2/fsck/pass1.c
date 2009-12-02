@@ -207,12 +207,10 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 		const char *allocdesc[] = {"free space", "data", "unlinked",
 					   "metadata", "reserved"};
 
-		errors_found++;
 		log_err( _("Block %llu (0x%llx) seems to be data, but is "
 			   "marked as %s.\n"), (unsigned long long)block,
 			   (unsigned long long)block, allocdesc[btype]);
-		if(query(&opts, _("Okay to mark it as 'data'? (y/n)"))) {
-			errors_corrected++;
+		if(query( _("Okay to mark it as 'data'? (y/n)"))) {
 			gfs2_set_bitmap(ip->i_sbd, block, GFS2_BLKST_USED);
 			log_err( _("The block was reassigned as data.\n"));
 		} else {
@@ -246,12 +244,10 @@ static int ask_remove_inode_eattr(struct gfs2_inode *ip,
 	log_err( _("Inode %lld (0x%llx) has unrecoverable Extended Attribute "
 		   "errors.\n"), (unsigned long long)ip->i_di.di_num.no_addr,
 		 (unsigned long long)ip->i_di.di_num.no_addr);
-	errors_found++;
-	if (query(&opts, _("Clear all Extended Attributes from the "
-			   "inode? (y/n) "))) {
+	if (query( _("Clear all Extended Attributes from the "
+		     "inode? (y/n) "))) {
 		struct gfs2_block_query q;
 
-		errors_corrected++;
 		if(gfs2_block_check(ip->i_sbd, bl, ip->i_di.di_eattr, &q)) {
 			stack;
 			return -1;
@@ -286,9 +282,7 @@ static int clear_eas(struct gfs2_inode *ip, struct block_count *bc,
 		(unsigned long long)ip->i_di.di_num.no_addr, emsg);
 	log_err( _(" at block #%lld (0x%llx).\n"),
 		 (unsigned long long)block, (unsigned long long)block);
-	errors_found++;
-	if (query(&opts, _("Clear the bad Extended Attribute? (y/n) "))) {
-		errors_corrected++;
+	if (query( _("Clear the bad Extended Attribute? (y/n) "))) {
 		if (block == ip->i_di.di_eattr) {
 			remove_inode_eattr(ip, bc, duplicate);
 			log_err( _("The bad extended attribute was "
@@ -393,10 +387,7 @@ static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 		   "Extended Attribute errors.\n"),
 		   (unsigned long long)ip->i_di.di_num.no_addr,
 		   (unsigned long long)ip->i_di.di_num.no_addr);
-	errors_found++;
-	if (query(&opts, _("Okay to fix the block count for the inode? "
-			   "(y/n) "))) {
-		errors_corrected++;
+	if (query( _("Okay to fix the block count for the inode? (y/n) "))) {
 		ip->i_di.di_blocks = 1 + bc->indir_count +
 			bc->data_count + bc->ea_count;
 		bmodified(ip->i_bh);
@@ -685,11 +676,9 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			(unsigned long long)block,
 			(unsigned long long)ip->i_di.di_num.no_addr,
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		errors_found++;
-		if(query(&opts, _("Fix address in inode at block #%"
-				  PRIu64 " (0x%" PRIx64 ")? (y/n) "),
+		if(query( _("Fix address in inode at block #%"
+			    PRIu64 " (0x%" PRIx64 ")? (y/n) "),
 			 block, block)) {
-			errors_corrected++;
 			ip->i_di.di_num.no_addr = ip->i_di.di_num.no_formal_ino = block;
 			gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
 			bmodified(ip->i_bh);
@@ -866,9 +855,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			  (unsigned long long)bc.indir_count,
 			  (unsigned long long)bc.data_count,
 			  (unsigned long long)bc.ea_count);
-		errors_found++;
-		if (query(&opts, _("Fix ondisk block count? (y/n) "))) {
-			errors_corrected++;
+		if (query( _("Fix ondisk block count? (y/n) "))) {
 			ip->i_di.di_blocks = 1 + bc.indir_count + bc.data_count +
 				bc.ea_count;
 			bmodified(ip->i_bh);
@@ -888,8 +875,6 @@ static int scan_meta(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			  uint64_t block)
 {
 	if (gfs2_check_meta(bh, 0)) {
-		errors_found++;
-
 		log_info( _("Found invalid metadata at #%llu (0x%llx)\n"),
 			  (unsigned long long)block,
 			  (unsigned long long)block);
@@ -897,8 +882,7 @@ static int scan_meta(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			stack;
 			return -1;
 		}
-		if(query(&opts, _("Okay to free the invalid block? (y/n)"))) {
-			errors_corrected++;
+		if(query( _("Okay to free the invalid block? (y/n)"))) {
 			gfs2_set_bitmap(sdp, block, GFS2_BLKST_FREE);
 			log_err( _("The invalid block was freed.\n"));
 		} else {

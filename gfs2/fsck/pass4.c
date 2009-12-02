@@ -70,10 +70,8 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 					"bad blocks\n"),
 					(unsigned long long)ii->inode,
 					(unsigned long long)ii->inode);
-				errors_found++;
-				if(query(&opts,
-						 _("Delete unlinked inode with bad blocks? (y/n) "))) {
-					errors_corrected++;
+				if(query(  _("Delete unlinked inode with bad "
+					     "blocks? (y/n) "))) {
 					ip = fsck_load_inode(sbp, ii->inode);
 					check_inode_eattr(ip,
 							  &pass4_fxns_delete);
@@ -97,8 +95,7 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 					   "not an inode (%d)\n"),
 					 q.block_type);
 				ip = fsck_load_inode(sbp, ii->inode);
-				if(query(&opts, _("Delete unlinked inode "
-						  "? (y/n) "))) {
+				if(query(_("Delete unlinked inode? (y/n) "))) {
 					check_inode_eattr(ip,
 							  &pass4_fxns_delete);
 					check_metatree(ip, &pass4_fxns_delete);
@@ -120,9 +117,7 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 			 * them. */
 			if(!ip->i_di.di_size && !ip->i_di.di_eattr){
 				log_err( _("Unlinked inode has zero size\n"));
-				errors_found++;
-				if(query(&opts, _("Clear zero-size unlinked inode? (y/n) "))) {
-					errors_corrected++;
+				if(query( _("Clear zero-size unlinked inode? (y/n) "))) {
 					gfs2_block_set(sbp, bl, ii->inode,
 						       gfs2_block_free);
 					fsck_inode_put(ip);
@@ -130,9 +125,7 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 				}
 
 			}
-			errors_found++;
-			if(query(&opts, _("Add unlinked inode to lost+found? (y/n)"))) {
-				errors_corrected++;
+			if(query( _("Add unlinked inode to lost+found? (y/n)"))) {
 				bmodified(ip->i_bh);
 				if(add_inode_to_lf(ip)) {
 					stack;
@@ -153,10 +146,9 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 					ii->inode, ii->link_count, ii->counted_links);
 			/* Read in the inode, adjust the link count,
 			 * and write it back out */
-			errors_found++;
-			if(query(&opts, _("Update link count for inode %"
-				 PRIu64 " (0x%" PRIx64 ") ? (y/n) "), ii->inode, ii->inode)) {
-				errors_corrected++;
+			if(query( _("Update link count for inode %" PRIu64
+				    " (0x%" PRIx64 ") ? (y/n) "),
+				  ii->inode, ii->inode)) {
 				ip = fsck_load_inode(sbp, ii->inode); /* bread, inode_get */
 				fix_inode_count(sbp, ii, ip);
 				bmodified(ip->i_bh);

@@ -231,8 +231,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 				(*count) + 1,
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			errors_found++;
-			if (query(&opts, _("Attempt to repair it? (y/n) "))) {
+			if (query( _("Attempt to repair it? (y/n) "))) {
 				if (dirent_repair(ip, bh, &de, dent, type,
 						  first)) {
 					if (first) /* make a new sentinel */
@@ -247,7 +246,6 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 				} else {
 					log_err( _("Corrupt directory entry "
 						   "repaired.\n"));
-					errors_corrected++;
 					bmodified(bh);
 					/* keep looping through dentries */
 				}
@@ -271,8 +269,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 					(unsigned long long)bh->b_blocknr,
 					(unsigned long long)ip->i_di.di_num.no_addr,
 					(unsigned long long)ip->i_di.di_num.no_addr);
-				if (query(&opts,
-					  _("Attempt to remove it? (y/n) "))) {
+				if (query(_("Attempt to remove it? (y/n) "))) {
 					dirblk_truncate(ip, prev, bh);
 					log_err(_("The corrupt directory "
 						  "entry was removed.\n"));
@@ -338,10 +335,8 @@ static void warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no,
 			(unsigned long long)*leaf_no,
 			(unsigned long long)*leaf_no, msg);
 	}
-	errors_found++;
 	if (*leaf_no == *bad_leaf ||
-	    query(&opts, _("Attempt to patch around it? (y/n) "))) {
-		errors_corrected++;
+	    query( _("Attempt to patch around it? (y/n) "))) {
 		if (gfs2_check_range(ip->i_sbd, old_leaf) == 0)
 			gfs2_put_leaf_nr(ip, pindex, old_leaf);
 		else
@@ -419,11 +414,9 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 				 (unsigned long long)old_leaf,
 				 (unsigned long long)old_leaf,
 				 ref_count, exp_count);
-			errors_found++;
-			if (query(&opts, _("Attempt to fix it? (y/n) "))) {
+			if (query( _("Attempt to fix it? (y/n) "))) {
 				int factor = 0, divisor = ref_count;
 
-				errors_corrected++;
 				lbh = bread(&sbp->buf_list, old_leaf);
 				while (divisor > 1) {
 					factor++;
@@ -544,9 +537,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 						(unsigned long long)
 						ip->i_di.di_num.no_addr,
 						leaf.lf_entries, count);
-					errors_found++;
-					if(query(&opts, _("Update leaf entry count? (y/n) "))) {
-						errors_corrected++;
+					if(query( _("Update leaf entry count? (y/n) "))) {
 						leaf.lf_entries = count;
 						gfs2_leaf_out(&leaf, lbh->b_data);
 						log_warn( _("Leaf entry count updated\n"));
@@ -622,11 +613,8 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 							      bh, ea_hdr,
 							      ea_hdr_prev,
 							      pass->private)) {
-					errors_found++;
-					if (query(&opts, _("Repair the bad "
-							 "Extended Attribute? "
-							   "(y/n) "))) {
-						errors_corrected++;
+					if (query( _("Repair the bad Extended "
+						     "Attribute? (y/n) "))) {
 						ea_hdr->ea_num_ptrs = i;
 						ea_hdr->ea_data_len =
 							cpu_to_be32(tot_ealen);
@@ -742,13 +730,9 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 			error = check_leaf_eattr(ip, block, indirect, pass);
 			if (error) {
 				leaf_pointer_errors++;
-				errors_found++;
-				if (query(&opts, _("Fix the indirect "
-						   "block too? (y/n) "))) {
-					bmodified(indirect_buf);
-					errors_corrected++;
+				if (query( _("Fix the indirect "
+					     "block too? (y/n) ")))
 					*ea_leaf_ptr = 0;
-				}
 			}
 			/* If the first eattr lead is bad, we can't have
 			   a hole, so we have to treat this as an unrecoverable

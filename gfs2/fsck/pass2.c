@@ -202,10 +202,8 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			log_err( _("\tName length found  = %u\n"
 					"\tHash expected      = %u (0x%x)\n"),
 					de->de_name_len, calculated_hash, calculated_hash);
-			errors_found++;
-			if(query(&opts, _("Fix directory hash for %s? (y/n) "),
-					 filename)) {
-				errors_corrected++;
+			if(query( _("Fix directory hash for %s? (y/n) "),
+				  filename)) {
 				de->de_hash = calculated_hash;
 				gfs2_dirent_out(de, (char *)dent);
 				log_err( _("Directory entry hash for %s fixed.\n"), filename);
@@ -226,10 +224,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	if(gfs2_check_range(ip->i_sbd, entryblock)) {
 		log_err( _("Block # referenced by directory entry %s is out of range\n"),
 				tmp_name);
-		errors_found++;
-		if(query(&opts, 
-				 _("Clear directory entry tp out of range block? (y/n) "))) {
-			errors_corrected++;
+		if(query( _("Clear directory entry tp out of range block? (y/n) "))) {
 			log_err( _("Clearing %s\n"), tmp_name);
 			dirent2_del(ip, bh, prev_de, dent);
 			bmodified(bh);
@@ -252,9 +247,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		/* Handle bad blocks */
 		log_err( _("Found a bad directory entry: %s\n"), filename);
 
-		errors_found++;
-		if(query(&opts, _("Delete inode containing bad blocks? (y/n)"))) {
-			errors_corrected++;
+		if(query( _("Delete inode containing bad blocks? (y/n)"))) {
 			entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 			check_inode_eattr(entry_ip, &pass2_fxns_delete);
 			check_metatree(entry_ip, &pass2_fxns_delete);
@@ -290,12 +283,10 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			 _("previously marked invalid") :
 			 _("is not an inode"));
 
-		errors_found++;
-		if(query(&opts, _("Clear directory entry to non-inode block? "
-				  "(y/n) "))) {
+		if(query( _("Clear directory entry to non-inode block? "
+			    "(y/n) "))) {
 			struct gfs2_buffer_head *bhi;
 
-			errors_corrected++;
 			dirent2_del(ip, bh, prev_de, dent);
 			bmodified(bh);
 			log_warn( _("Directory entry '%s' cleared\n"), tmp_name);
@@ -342,9 +333,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			 (unsigned long long)de->de_inum.no_addr,
 			 (unsigned long long)de->de_inum.no_addr,
 			 block_type_string(&q));
-		errors_found++;
-		if(query(&opts, _("Clear stale directory entry? (y/n) "))) {
-			errors_corrected++;
+		if(query( _("Clear stale directory entry? (y/n) "))) {
 			entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 			check_inode_eattr(entry_ip, &clear_eattrs);
 			fsck_inode_put(entry_ip);
@@ -369,10 +358,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				" (0x%llx)\n"),
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			errors_found++;
-			if(query(&opts, _("Clear duplicate '.' entry? (y/n) "))) {
-
-				errors_corrected++;
+			if(query( _("Clear duplicate '.' entry? (y/n) "))) {
 				entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 				check_inode_eattr(entry_ip, &clear_eattrs);
 				fsck_inode_put(entry_ip);
@@ -407,9 +393,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				(unsigned long long)de->de_inum.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			errors_found++;
-			if(query(&opts, _("Remove '.' reference? (y/n) "))) {
-				errors_corrected++;
+			if(query( _("Remove '.' reference? (y/n) "))) {
 				entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 				check_inode_eattr(entry_ip, &clear_eattrs);
 				fsck_inode_put(entry_ip);
@@ -443,10 +427,8 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				"(0x%llx)\n"),
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			errors_found++;
-			if(query(&opts, _("Clear duplicate '..' entry? (y/n) "))) {
+			if(query( _("Clear duplicate '..' entry? (y/n) "))) {
 
-				errors_corrected++;
 				entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 				check_inode_eattr(entry_ip, &clear_eattrs);
 				fsck_inode_put(entry_ip);
@@ -471,9 +453,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				"pointing to something that's not a directory"),
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			errors_found++;
-			if(query(&opts, _("Clear bad '..' directory entry? (y/n) "))) {
-				errors_corrected++;
+			if(query( _("Clear bad '..' directory entry? (y/n) "))) {
 				entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 				check_inode_eattr(entry_ip, &clear_eattrs);
 				fsck_inode_put(entry_ip);
@@ -523,9 +503,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		log_err( _("%s: Hard link to block %" PRIu64" (0x%" PRIx64
 				") detected.\n"), filename, entryblock, entryblock);
 
-		errors_found++;
-		if(query(&opts, _("Clear hard link to directory? (y/n) "))) {
-			errors_corrected++;
+		if(query( _("Clear hard link to directory? (y/n) "))) {
 			bmodified(bh);
 			dirent2_del(ip, bh, prev_de, dent);
 			log_warn( _("Directory entry %s cleared\n"), filename);
@@ -605,9 +583,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 	}
 	if(!ds.dotdir) {
 		log_err( _("No '.' entry found for %s directory.\n"), dirname);
-		errors_found++;
-		if (query(&opts, _("Is it okay to add '.' entry? (y/n) "))) {
-			errors_corrected++;
+		if (query( _("Is it okay to add '.' entry? (y/n) "))) {
 			sprintf(tmp_name, ".");
 			filename_len = strlen(tmp_name); /* no trailing NULL */
 			if(!(filename = malloc(sizeof(char) * filename_len))) {
@@ -639,12 +615,10 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 			(unsigned long long)sysinode->i_di.di_num.no_addr,
 			(unsigned long long)sysinode->i_di.di_num.no_addr,
 			sysinode->i_di.di_entries, ds.entry_count);
-		errors_found++;
-		if(query(&opts, _("Fix entries for %s inode %llu (0x%llx"
-			 ")? (y/n) "), dirname,
-			 (unsigned long long)sysinode->i_di.di_num.no_addr,
-			 (unsigned long long)sysinode->i_di.di_num.no_addr)) {
-			errors_corrected++;
+		if(query( _("Fix entries for %s inode %llu (0x%llx)? (y/n) "),
+			  dirname,
+			  (unsigned long long)sysinode->i_di.di_num.no_addr,
+			  (unsigned long long)sysinode->i_di.di_num.no_addr)) {
 			sysinode->i_di.di_entries = ds.entry_count;
 			bmodified(sysinode->i_bh);
 			log_warn( _("Entries updated\n"));
@@ -768,12 +742,10 @@ int pass2(struct gfs2_sbd *sbp)
 			}
 			if(error == 0) {
 				/* FIXME: factor */
-				errors_found++;
-				if(query(&opts, _("Remove directory entry for bad"
-						 " inode %"PRIu64" (0x%" PRIx64 ") in %"PRIu64
-						 " (0x%" PRIx64 ")? (y/n)"), i, i, di->treewalk_parent,
-						 di->treewalk_parent)) {
-					errors_corrected++;
+				if(query( _("Remove directory entry for bad"
+					    " inode %"PRIu64" (0x%" PRIx64 ") in %"PRIu64
+					    " (0x%" PRIx64 ")? (y/n)"), i, i, di->treewalk_parent,
+					  di->treewalk_parent)) {
 					error = remove_dentry_from_dir(sbp, di->treewalk_parent,
 												   i);
 					if(error < 0) {
@@ -798,10 +770,7 @@ int pass2(struct gfs2_sbd *sbp)
 			log_err(_("No '.' entry found for directory inode at "
 				  "block %"PRIu64" (0x%" PRIx64 ")\n"), i, i);
 
-			errors_found++;
-			if (query(&opts,
-				  _("Is it okay to add '.' entry? (y/n) "))) {
-				errors_corrected++;
+			if (query( _("Is it okay to add '.' entry? (y/n) "))) {
 				sprintf(tmp_name, ".");
 				filename_len = strlen(tmp_name); /* no trailing
 								    NULL */
@@ -838,10 +807,7 @@ int pass2(struct gfs2_sbd *sbp)
 				ip->i_di.di_entries, ds.entry_count,
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			errors_found++;
-			if (query(&opts,
-				  _("Fix the entry count? (y/n) "))) {
-				errors_corrected++;
+			if (query( _("Fix the entry count? (y/n) "))) {
 				ip->i_di.di_entries = ds.entry_count;
 				bmodified(ip->i_bh);
 			} else {

@@ -83,15 +83,14 @@ static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int b
 		   So we ignore it. */
 		if (rg_status == GFS2_BLKST_UNLINKED &&
 		    block_status == GFS2_BLKST_FREE) {
-			errors_found++;
 			if (free_unlinked == -1) {
 				log_err( _("Unlinked inode block found at "
 					   "block %llu (0x%llx).\n"),
 					 (unsigned long long)block,
 					 (unsigned long long)block);
-				if(query(&opts, _("Do you want me to fix the "
-						  "bitmap for all unlinked "
-						  "blocks? (y/n) ")))
+				if(query( _("Do you want me to fix the "
+					    "bitmap for all unlinked "
+					    "blocks? (y/n) ")))
 					free_unlinked = 1;
 				else
 					free_unlinked = 0;
@@ -103,13 +102,11 @@ static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int b
 						  "\n"),
 						(unsigned long long)block,
 						(unsigned long long)block);
-				else {
+				else
 					log_err(_("Unlinked block %llu "
 						  "(0x%llx) bitmap fixed.\n"),
 						(unsigned long long)block,
 						(unsigned long long)block);
-					errors_corrected++;
-				}
 			} else {
 				log_info( _("Unlinked block found at block %"
 					    PRIu64" (0x%" PRIx64 "), left "
@@ -127,10 +124,9 @@ static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int b
 			log_err( _("Metadata type is %u (%s)\n"), q.block_type,
 					block_type_string(&q));
 
-			errors_found++;
-			if(query(&opts, _("Fix bitmap for block %"
-					 PRIu64" (0x%" PRIx64 ") ? (y/n) "), block, block)) {
-				errors_corrected++;
+			if(query( _("Fix bitmap for block %" PRIu64
+				    " (0x%" PRIx64 ") ? (y/n) "),
+				  block, block)) {
 				if(gfs2_set_bitmap(sbp, block, block_status))
 					log_err( _("Failed.\n"));
 				else
@@ -193,9 +189,7 @@ static void update_rgrp(struct gfs2_sbd *sbp, struct rgrp_list *rgp,
 		exit(FSCK_ERROR);
 	}
 	if(update) {
-		errors_found++;
-		if(query(&opts, _("Update resource group counts? (y/n) "))) {
-			errors_corrected++;
+		if(query( _("Update resource group counts? (y/n) "))) {
 			log_warn( _("Resource group counts updated\n"));
 			/* write out the rgrp */
 			gfs2_rgrp_out(rg, rgbh[0]->b_data);

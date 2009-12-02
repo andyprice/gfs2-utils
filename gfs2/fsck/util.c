@@ -74,6 +74,7 @@ void warm_fuzzy_stuff(uint64_t block)
 			if (last_fs_block) {
 				percent = (block * 100) / last_fs_block;
 				log_notice( _("\r%" PRIu64 " percent complete.\r"), percent);
+				fflush(stdout);
 			}
 		}
 	}
@@ -89,4 +90,64 @@ const char *block_type_string(struct gfs2_block_query *q)
 	if (q->block_type < 16)
 		return (blktyp[q->block_type]);
 	return blktyp[15];
+}
+
+/* fsck_query: Same as gfs2_query except it adjusts errors_found and
+   errors_corrected. */
+int fsck_query(const char *format, ...)
+{
+	va_list args;
+	const char *transform;
+	char response;
+	int ret = 0;
+
+	errors_found++;
+	fsck_abort = 0;
+	if(opts.yes) {
+		errors_corrected++;
+		return 1;
+	}
+	if(opts.no)
+		return 0;
+
+	opts.query = TRUE;
+	while (1) {
+		va_start(args, format);
+		transform = _(format);
+		vprintf(transform, args);
+		va_end(args);
+
+		/* Make sure query is printed out */
+		fflush(NULL);
+		response = gfs2_getch();
+
+		printf("\n");
+		fflush(NULL);
+		if (response == 0x3) { /* if interrupted, by ctrl-c */
+			response = generic_interrupt("Question", "response",
+						     NULL,
+						     "Do you want to abort " \
+						     "or continue (a/c)?",
+						     "ac");
+			if (response == 'a') {
+				ret = 0;
+				fsck_abort = 1;
+				break;
+			}
+			printf("Continuing.\n");
+		} else if(tolower(response) == 'y') {
+			errors_corrected++;
+                        ret = 1;
+                        break;
+ 		} else if (tolower(response) == 'n') {
+			ret = 0;
+			break;
+		} else {
+			printf("Bad response %d, please type 'y' or 'n'.\n",
+			       response);
+		}
+	}
+
+	opts.query = FALSE;
+	return ret;
 }

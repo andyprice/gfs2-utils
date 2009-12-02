@@ -7,7 +7,7 @@
 #define FSCK_HASH_SIZE          (1 << FSCK_HASH_SHIFT)
 #define FSCK_HASH_MASK          (FSCK_HASH_SIZE - 1)
 
-#define query(opts, fmt, args...) gfs2_query(&fsck_abort, opts, fmt, ##args)
+#define query(fmt, args...) fsck_query(fmt, ##args)
 
 /*
  * Exit codes used by fsck-type programs
@@ -75,6 +75,8 @@ int pass3(struct gfs2_sbd *sbp);
 int pass4(struct gfs2_sbd *sbp);
 int pass5(struct gfs2_sbd *sbp);
 int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count);
+int fsck_query(const char *format, ...)
+	__attribute__((format(printf,1,2)));
 
 /* FIXME: Hack to get this going for pass2 - this should be pulled out
  * of pass1 and put somewhere else... */

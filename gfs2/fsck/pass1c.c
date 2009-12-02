@@ -39,10 +39,7 @@ static int ask_remove_eattr_entry(struct gfs2_sbd *sdp,
 				  struct gfs2_ea_header *prev,
 				  int fix_curr, int fix_curr_len)
 {
-	errors_found++;
-	if (query(&opts, _("Remove the bad Extended Attribute entry? "
-			   "(y/n) "))) {
-		errors_corrected++;
+	if (query( _("Remove the bad Extended Attribute entry? (y/n) "))) {
 		if (fix_curr)
 			curr->ea_flags |= GFS2_EAFLAG_LAST;
 		if (fix_curr_len) {
@@ -63,9 +60,7 @@ static int ask_remove_eattr_entry(struct gfs2_sbd *sdp,
 
 static int ask_remove_eattr(struct gfs2_inode *ip)
 {
-	errors_found++;
-	if (query(&opts, _("Remove the bad Extended Attribute? (y/n) "))) {
-		errors_corrected++;
+	if (query( _("Remove the bad Extended Attribute? (y/n) "))) {
 		ip->i_di.di_eattr = 0;
 		bmodified(ip->i_bh);
 		log_err( _("Bad Extended Attribute removed.\n"));
