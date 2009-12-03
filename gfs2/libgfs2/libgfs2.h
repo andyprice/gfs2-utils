@@ -687,7 +687,8 @@ extern int build_statfs(struct gfs2_sbd *sdp);
 extern int build_rindex(struct gfs2_sbd *sdp);
 extern int build_quota(struct gfs2_sbd *sdp);
 extern int build_root(struct gfs2_sbd *sdp);
-extern int do_init(struct gfs2_sbd *sdp);
+extern int do_init_inum(struct gfs2_sbd *sdp);
+extern int do_init_statfs(struct gfs2_sbd *sdp);
 extern int gfs2_check_meta(struct gfs2_buffer_head *bh, int type);
 extern int gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block, int first);
 extern int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_list *rgd,

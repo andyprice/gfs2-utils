@@ -635,7 +635,8 @@ void main_mkfs(int argc, char *argv[])
 	build_rindex(sdp);
 	build_quota(sdp);
 
-	do_init(sdp);
+	do_init_inum(sdp);
+	do_init_statfs(sdp);
 
 	/* Cleanup */
 

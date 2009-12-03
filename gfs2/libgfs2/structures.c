@@ -370,42 +370,42 @@ int build_root(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-int do_init(struct gfs2_sbd *sdp)
+int do_init_inum(struct gfs2_sbd *sdp)
 {
-	{
-		struct gfs2_inode *ip = sdp->md.inum;
-		uint64_t buf;
-		int count;
+	struct gfs2_inode *ip = sdp->md.inum;
+	uint64_t buf;
+	int count;
 
-		buf = cpu_to_be64(sdp->md.next_inum);
-		count = gfs2_writei(ip, &buf, 0, sizeof(uint64_t));
-		if (count != sizeof(uint64_t))
-			return -1;
+	buf = cpu_to_be64(sdp->md.next_inum);
+	count = gfs2_writei(ip, &buf, 0, sizeof(uint64_t));
+	if (count != sizeof(uint64_t))
+		return -1;
 
-		if (sdp->debug)
-			printf("\nNext Inum: %"PRIu64"\n",
-			       sdp->md.next_inum);
-	}
+	if (sdp->debug)
+		printf("\nNext Inum: %"PRIu64"\n",
+		       sdp->md.next_inum);
+	return 0;
+}
 
-	{
-		struct gfs2_inode *ip = sdp->md.statfs;
-		struct gfs2_statfs_change sc;
-		char buf[sizeof(struct gfs2_statfs_change)];
-		int count;
+int do_init_statfs(struct gfs2_sbd *sdp)
+{
+	struct gfs2_inode *ip = sdp->md.statfs;
+	struct gfs2_statfs_change sc;
+	char buf[sizeof(struct gfs2_statfs_change)];
+	int count;
 
-		sc.sc_total = sdp->blks_total;
-		sc.sc_free = sdp->blks_total - sdp->blks_alloced;
-		sc.sc_dinodes = sdp->dinodes_alloced;
+	sc.sc_total = sdp->blks_total;
+	sc.sc_free = sdp->blks_total - sdp->blks_alloced;
+	sc.sc_dinodes = sdp->dinodes_alloced;
 
-		gfs2_statfs_change_out(&sc, buf);
-		count = gfs2_writei(ip, buf, 0, sizeof(struct gfs2_statfs_change));
-		if (count != sizeof(struct gfs2_statfs_change))
-			return -1;
+	gfs2_statfs_change_out(&sc, buf);
+	count = gfs2_writei(ip, buf, 0, sizeof(struct gfs2_statfs_change));
+	if (count != sizeof(struct gfs2_statfs_change))
+		return -1;
 
-		if (sdp->debug) {
-			printf("\nStatfs:\n");
-			gfs2_statfs_change_print(&sc);
-		}
+	if (sdp->debug) {
+		printf("\nStatfs:\n");
+		gfs2_statfs_change_print(&sc);
 	}
 	return 0;
 }

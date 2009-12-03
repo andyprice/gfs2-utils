@@ -261,6 +261,70 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 	return 0;
 }
 
+static void check_statfs(struct gfs2_sbd *sdp)
+{
+	osi_list_t *tmp;
+	struct rgrp_list *rgd;
+	struct gfs2_rindex *ri;
+	struct gfs2_statfs_change sc;
+	char buf[sizeof(struct gfs2_statfs_change)];
+	int count;
+
+	/* Read the current statfs values */
+	count = gfs2_readi(sdp->md.statfs, buf, 0,
+			   sdp->md.statfs->i_di.di_size);
+	if (count == sizeof(struct gfs2_statfs_change))
+		gfs2_statfs_change_in(&sc, buf);
+
+	/* Calculate the real values from the rgrp information */
+	sdp->blks_total = 0;
+	sdp->blks_alloced = 0;
+	sdp->dinodes_alloced = 0;
+
+	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
+		rgd = osi_list_entry(tmp, struct rgrp_list, list);
+		ri = &rgd->ri;
+		sdp->blks_total += ri->ri_data;
+		sdp->blks_alloced += (ri->ri_data - rgd->rg.rg_free);
+		sdp->dinodes_alloced += rgd->rg.rg_dinodes;
+	}
+
+	/* See if they match */
+	if (sc.sc_total == sdp->blks_total &&
+	    sc.sc_free == (sdp->blks_total - sdp->blks_alloced) &&
+	    sc.sc_dinodes == sdp->dinodes_alloced) {
+		log_info( _("The statfs file is accurate.\n"));
+		return;
+	}
+	log_err( _("The statfs file is wrong:\n\n"));
+	log_err( _("Current statfs values:\n"));
+	log_err( _("blocks:  %lld (0x%llx)\n"),
+		sc.sc_total, sc.sc_total);
+	log_err( _("free:    %lld (0x%llx)\n"),
+		sc.sc_free, sc.sc_free);
+	log_err( _("dinodes: %lld (0x%llx)\n\n"),
+		sc.sc_dinodes, sc.sc_dinodes);
+
+	log_err( _("Calculated statfs values:\n"));
+	log_err( _("blocks:  %lld (0x%llx)\n"),
+		sdp->blks_total, sdp->blks_total);
+	log_err( _("free:    %lld (0x%llx)\n"),
+		sdp->blks_total - sdp->blks_alloced,
+		sdp->blks_total - sdp->blks_alloced);
+	log_err( _("dinodes: %lld (0x%llx)\n"),
+		sdp->dinodes_alloced, sdp->dinodes_alloced);
+
+	errors_found++;
+	if (!query(&opts, _("Okay to fix the master statfs file? (y/n)"))) {
+		log_err( _("The statfs file was not fixed.\n"));
+		return;
+	}
+
+	do_init_statfs(sdp);
+	log_err( _("The statfs file was fixed.\n"));
+	errors_corrected++;
+}
+
 int main(int argc, char **argv)
 {
 	struct gfs2_sbd sb;
@@ -386,6 +450,9 @@ int main(int argc, char **argv)
 		error = FSCK_CANCELED;
 	}
 	update_sys_files = (opts.no ? not_updated : updated);
+
+	check_statfs(sbp);
+
 	/* Free up our system inodes */
 	inode_put(sbp->md.inum, update_sys_files);
 	inode_put(sbp->md.statfs, update_sys_files);
@@ -400,8 +467,9 @@ int main(int argc, char **argv)
 	if (lf_dip)
 		inode_put(lf_dip, update_sys_files);
 
-	if (!opts.no)
+	if (!opts.no && errors_corrected)
 		log_notice( _("Writing changes to disk\n"));
+
 	bsync(&sbp->buf_list);
 	bsync(&sbp->nvbuf_list);
 	destroy(sbp);
