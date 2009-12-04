@@ -521,8 +521,6 @@ void savemeta(char *out_fn, int saveoption)
 	int rgcount;
 	uint64_t jindex_block;
 	struct gfs2_buffer_head *bh;
-	struct gfs2_rgrp rg;
-	struct gfs2_buffer_head **rgbh;
 
 	slow = (saveoption == 1);
 	sbd.md.journals = 1;
@@ -656,16 +654,7 @@ void savemeta(char *out_fn, int saveoption)
 			int i, first;
 
 			rgd = osi_list_entry(tmp, struct rgrp_list, list);
-			if(!(rgbh = (struct gfs2_buffer_head **)
-			     malloc(rgd->ri.ri_length *
-				    sizeof(struct gfs2_buffer_head *))))
-				break;
-			if(!memset(rgbh, 0, rgd->ri.ri_length *
-				   sizeof(struct gfs2_buffer_head *))) {
-				free(rgbh);
-				break;
-			}
-			slow = gfs2_rgrp_read(&sbd, rgd, rgbh, &rg);
+			slow = gfs2_rgrp_read(&sbd, rgd);
 			if (slow)
 				continue;
 			log_debug("RG at %lld (0x%llx) is %u long\n",
@@ -689,8 +678,7 @@ void savemeta(char *out_fn, int saveoption)
 			if (saveoption != 2) {
 				int blktype;
 
-				while (!gfs2_next_rg_meta(&sbd, rgd, &block,
-							  first)) {
+				while (!gfs2_next_rg_meta(rgd, &block, first)){
 					warm_fuzzy_stuff(block, FALSE, TRUE);
 					blktype = save_block(sbd.device_fd,
 							     out_fd, block);
@@ -708,8 +696,7 @@ void savemeta(char *out_fn, int saveoption)
 					first = 0;
 				}
 			}
-			gfs2_rgrp_relse(rgd, rgbh);
-			free(rgbh);
+			gfs2_rgrp_relse(rgd);
 		}
 	}
 	if (slow) {

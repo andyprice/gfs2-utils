@@ -213,7 +213,6 @@ void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 		rg.rg_header.mh_type = GFS2_METATYPE_RG;
 		rg.rg_header.mh_format = GFS2_FORMAT_RG;
 		rg.rg_free = rgblocks;
-		rl->rg_free = rgblocks;
 
 		if (do_write) {
 			for (x = 0; x < bitblocks; x++) {

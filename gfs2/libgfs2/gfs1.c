@@ -231,8 +231,7 @@ int gfs1_readi(struct gfs2_inode *ip, void *bufin,
  *
  * Returns: 0 on success, -1 on failure
  */
-int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1,
-		     int *bitmap_blocks)
+int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1)
 {
 	unsigned int rg;
 	int error;
@@ -242,7 +241,6 @@ int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1,
 
 	*count1 = 0;
 	prev_rgd = NULL;
-	*bitmap_blocks = 0;
 	for (rg = 0; ; rg++) {
 		if (fd > 0)
 			error = read(fd, &buf, sizeof(struct gfs2_rindex));
@@ -265,8 +263,6 @@ int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1,
 
 		gfs2_rindex_in(&rgd->ri, (char *)&buf);
 
-		if (rgd->ri.ri_length > *bitmap_blocks)
-			*bitmap_blocks = rgd->ri.ri_length;
 		rgd->start = rgd->ri.ri_addr;
 		if (prev_rgd) {
 			prev_length = rgd->start - prev_rgd->start;
@@ -297,48 +293,37 @@ int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1,
 int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet)
 {
 	struct rgrp_list *rgd;
+	struct gfs2_rindex *ri;
 	osi_list_t *tmp;
 	int count1 = 0, count2 = 0;
 	uint64_t errblock = 0;
-	struct gfs2_rgrp rg;
-	struct gfs2_buffer_head **rgbh = NULL;
-	int bitmap_blocks;
+	uint64_t rmax = 0;
 
-	if (gfs1_rindex_read(sdp, fd, &count1, &bitmap_blocks))
+	if (gfs1_rindex_read(sdp, fd, &count1))
 	    goto fail;
-
-	if(!(rgbh = (struct gfs2_buffer_head **)
-	     malloc(bitmap_blocks * sizeof(struct gfs2_buffer_head *))))
-		return -1;
-	if(!memset(rgbh, 0, bitmap_blocks *
-		   sizeof(struct gfs2_buffer_head *))) {
-		free(rgbh);
-		return -1;
-	}
 	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
-		errblock = gfs2_rgrp_read(sdp, rgd, rgbh, &rg);
-		if (errblock) {
-			free(rgbh);
+		errblock = gfs2_rgrp_read(sdp, rgd);
+		if (errblock)
 			return errblock;
-		}
 		count2++;
 		if (!quiet && count2 % 100 == 0) {
 			printf(".");
 			fflush(stdout);
 		}
+		ri = &rgd->ri;
+		if (ri->ri_data0 + ri->ri_data - 1 > rmax)
+			rmax = ri->ri_data0 + ri->ri_data - 1;
 	}
 
 	*rgcount = count1;
 	if (count1 != count2)
 		goto fail;
 
-	free(rgbh);
 	return 0;
 
  fail:
 	gfs2_rgrp_free(&sdp->rglist);
-	free(rgbh);
 	return -1;
 }
 

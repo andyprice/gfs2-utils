@@ -74,6 +74,14 @@ int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
 	    rgd->bits[length - 1].bi_len) * GFS2_NBBY != rgd->ri.ri_data)
 		return -1;
 
+	if (rgd->bh)      /* If we already have a bh allocated */
+		return 0; /* don't want to allocate another */
+	if(!(rgd->bh = (struct gfs2_buffer_head **)
+		 malloc(length * sizeof(struct gfs2_buffer_head *))))
+		return -1;
+	if(!memset(rgd->bh, 0, length * sizeof(struct gfs2_buffer_head *)))
+		return -1;
+
 	return 0;
 }
 
@@ -88,56 +96,63 @@ int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
 struct rgrp_list *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
 {
 	osi_list_t *tmp;
-	struct rgrp_list *rgd = NULL;
+	struct rgrp_list *rgd;
+	static struct rgrp_list *prev_rgd = NULL;
 	struct gfs2_rindex *ri;
 
-	for(tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next){
+	if (prev_rgd) {
+		ri = &prev_rgd->ri;
+		if (ri->ri_data0 <= blk && blk < ri->ri_data0 + ri->ri_data)
+			return prev_rgd;
+	}
+
+	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
 		ri = &rgd->ri;
 
-		if (ri->ri_data0 <= blk && blk < ri->ri_data0 + ri->ri_data){
-			break;
-		} else
-			rgd = NULL;
+		if (ri->ri_data0 <= blk && blk < ri->ri_data0 + ri->ri_data) {
+			prev_rgd = rgd;
+			return rgd;
+		}
 	}
-	return rgd;
+	return NULL;
 }
 
 /**
- * fs_rgrp_read - read in the resource group information from disk.
+ * gfs2_rgrp_read - read in the resource group information from disk.
  * @rgd - resource group structure
  * returns: 0 if no error, otherwise the block number that failed
  */
-uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
-			struct gfs2_buffer_head **bh, struct gfs2_rgrp *rg)
+uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
 {
 	int x, length = rgd->ri.ri_length;
 
 	for (x = 0; x < length; x++){
-		bh[x] = bread(&sdp->buf_list, rgd->ri.ri_addr + x);
-		if(gfs2_check_meta(bh[x],
+		rgd->bh[x] = bread(&sdp->buf_list, rgd->ri.ri_addr + x);
+		if(gfs2_check_meta(rgd->bh[x],
 				   (x) ? GFS2_METATYPE_RB : GFS2_METATYPE_RG))
 		{
 			uint64_t error;
 
 			error = rgd->ri.ri_addr + x;
 			for (; x >= 0; x--)
-				brelse(bh[x]);
+				brelse(rgd->bh[x]);
 			return error;
 		}
 	}
 
-	gfs2_rgrp_in(rg, bh[0]->b_data);
-	rgd->rg_free = rg->rg_free;
+	gfs2_rgrp_in(&rgd->rg, rgd->bh[0]->b_data);
 	return 0;
 }
 
-void gfs2_rgrp_relse(struct rgrp_list *rgd, struct gfs2_buffer_head **bh)
+void gfs2_rgrp_relse(struct rgrp_list *rgd)
 {
 	int x, length = rgd->ri.ri_length;
 
-	for (x = 0; x < length; x++)
-		brelse(bh[x]);
+	for (x = 0; x < length; x++) {
+		brelse(rgd->bh[x]);
+		rgd->bh[x] = NULL;
+	}
 }
 
 void gfs2_rgrp_free(osi_list_t *rglist)
@@ -146,8 +161,14 @@ void gfs2_rgrp_free(osi_list_t *rglist)
 
 	while(!osi_list_empty(rglist->next)){
 		rgd = osi_list_entry(rglist->next, struct rgrp_list, list);
+		if (rgd->bh && rgd->bh[0]) /* if a buffer exists        */
+			gfs2_rgrp_relse(rgd); /* free them all. */
 		if(rgd->bits)
 			free(rgd->bits);
+		if(rgd->bh) {
+			free(rgd->bh);
+			rgd->bh = NULL;
+		}
 		osi_list_del(&rgd->list);
 		free(rgd);
 	}

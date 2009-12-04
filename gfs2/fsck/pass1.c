@@ -936,8 +936,6 @@ int pass1(struct gfs2_sbd *sbp)
 	uint64_t blk_count;
 	uint64_t offset;
 	uint64_t rg_count = 0;
-	struct gfs2_rgrp rg;
-	struct gfs2_buffer_head **rgbh;
 
 	/* FIXME: In the gfs fsck, we had to mark things like the
 	 * journals and indices and such as 'other_meta' - in gfs2,
@@ -960,29 +958,10 @@ int pass1(struct gfs2_sbd *sbp)
 		log_info( _("Checking metadata in Resource Group #%" PRIu64 "\n"),
 				 rg_count);
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
-		if(!(rgbh = (struct gfs2_buffer_head **)
-		     malloc(rgd->ri.ri_length *
-			    sizeof(struct gfs2_buffer_head *))))
-			return FSCK_ERROR;
-		if(!memset(rgbh, 0, rgd->ri.ri_length *
-			   sizeof(struct gfs2_buffer_head *))) {
-			free(rgbh);
-			return FSCK_ERROR;
-		}
-		if(gfs2_rgrp_read(sbp, rgd, rgbh, &rg)){
-			stack;
-			free(rgbh);
-			return FSCK_ERROR;
-		}
-		log_debug( _("RG at %llu (0x%llx) is %u long\n"),
-			  (unsigned long long)rgd->ri.ri_addr,
-			  (unsigned long long)rgd->ri.ri_addr,
-			  rgd->ri.ri_length);
 		for (i = 0; i < rgd->ri.ri_length; i++) {
 			if(gfs2_block_set(sbp, bl, rgd->ri.ri_addr + i,
 					  gfs2_meta_other)){
 				stack;
-				free(rgbh);
 				return FSCK_ERROR;
 			}
 		}
@@ -993,14 +972,11 @@ int pass1(struct gfs2_sbd *sbp)
 
 		while (1) {
 			/* "block" is relative to the entire file system */
-			if (gfs2_next_rg_meta(sbp, rgd, &block, first))
+			if (gfs2_next_rg_meta(rgd, &block, first))
 				break;
 			warm_fuzzy_stuff(block);
-			if (fsck_abort) { /* if asked to abort */
-				gfs2_rgrp_relse(rgd, rgbh);
-				free(rgbh);
+			if (fsck_abort) /* if asked to abort */
 				return FSCK_OK;
-			}
 			if (skip_this_pass) {
 				printf( _("Skipping pass 1 is not a good idea.\n"));
 				skip_this_pass = FALSE;
@@ -1011,15 +987,11 @@ int pass1(struct gfs2_sbd *sbp)
 			if (scan_meta(sbp, bh, block)) {
 				stack;
 				brelse(bh);
-				gfs2_rgrp_relse(rgd, rgbh);
-				free(rgbh);
 				return FSCK_ERROR;
 			}
 			brelse(bh);
 			first = 0;
 		}
-		gfs2_rgrp_relse(rgd, rgbh);
-		free(rgbh);
 	}
 	return FSCK_OK;
 }

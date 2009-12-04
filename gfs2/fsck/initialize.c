@@ -72,17 +72,7 @@ static void empty_super_block(struct gfs2_sbd *sdp)
 	uint32_t i;
 
 	log_info( _("Freeing buffers.\n"));
-	while(!osi_list_empty(&sdp->rglist)){
-		struct rgrp_list *rgd;
-
-		rgd = osi_list_entry(sdp->rglist.next, struct rgrp_list, list);
-		log_debug( _("Deleting rgd for 0x%llx:  rgd=0x%p bits=0x%p\n"),
-			  (unsigned long long)rgd->ri.ri_addr, rgd, rgd->bits);
-		osi_list_del(&rgd->list);
-		if(rgd->bits)
-			free(rgd->bits);
-		free(rgd);
-	}
+	gfs2_rgrp_free(&sdp->rglist);
 
 	for(i = 0; i < FSCK_HASH_SIZE; i++) {
 		while(!osi_list_empty(&inode_hash[i])) {

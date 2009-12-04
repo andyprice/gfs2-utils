@@ -565,9 +565,11 @@ int display_block_type(const char *lpBuffer, int from_restore)
 		struct rgrp_list *rgd;
 
 		rgd = gfs2_blk2rgrpd(&sbd, block);
-		if (rgd)
+		if (rgd) {
+			gfs2_rgrp_read(&sbd, rgd);
 			type = gfs2_get_bitmap(&sbd, block, rgd);
-		else
+			gfs2_rgrp_relse(rgd);
+		} else
 			type = 4;
 		screen_chunk_size = ((termlines - 4) * 16) >> 8 << 8;
 		if (!screen_chunk_size)
@@ -1692,7 +1694,7 @@ static int display_extended(void)
 /* ------------------------------------------------------------------------ */
 static void read_superblock(int fd)
 {
-	int count, bitmap_blocks = 0;
+	int count;
 
 	sbd1 = (struct gfs_sb *)&sbd.sd_sb;
 	ioctl(fd, BLKFLSBUF, 0);
@@ -1751,8 +1753,7 @@ static void read_superblock(int fd)
 		sbd.md.riinode = gfs2_load_inode(&sbd,
 						 sbd1->sb_rindex_di.no_addr);
 		sbd.fssize = sbd.device.length;
-		gfs1_rindex_read(&sbd, fd, &count, &bitmap_blocks);
-		/*gfs1_ri_update(&sbd, 0, &count, 1);*/
+		gfs1_rindex_read(&sbd, 0, &count);
 	} else {
 		sbd.sd_inptrs = (sbd.bsize - sizeof(struct gfs2_meta_header)) /
 			sizeof(uint64_t);
@@ -1762,8 +1763,7 @@ static void read_superblock(int fd)
 					    sbd.sd_sb.sb_master_dir.no_addr);
 		gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
 		sbd.fssize = sbd.device.length;
-		rindex_read(&sbd, fd, &count, &bitmap_blocks);
-		/*ri_update(&sbd, 0, &count);*/
+		rindex_read(&sbd, 0, &count);
 	}
 
 }
@@ -2520,7 +2520,9 @@ static void find_change_block_alloc(int *newval)
 		} else {
 			rgd = gfs2_blk2rgrpd(&sbd, ablock);
 			if (rgd) {
+				gfs2_rgrp_read(&sbd, rgd);
 				type = gfs2_get_bitmap(&sbd, ablock, rgd);
+				gfs2_rgrp_relse(rgd);
 				printf("%d (%s)\n", type, allocdesc[gfs1][type]);
 			} else {
 				gfs2_rgrp_free(&sbd.rglist);

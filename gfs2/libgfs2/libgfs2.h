@@ -97,10 +97,11 @@ struct rgrp_list {
 	osi_list_t list;
 	uint64_t start;	   /* The offset of the beginning of this resource group */
 	uint64_t length;	/* The length of this resource group */
-	uint32_t rg_free;       /* Free blocks */
 
 	struct gfs2_rindex ri;
+	struct gfs2_rgrp rg;
 	struct gfs2_bitmap *bits;
+	struct gfs2_buffer_head **bh;
 };
 
 struct gfs2_buffer_head {
@@ -524,8 +525,7 @@ extern void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			   uint64_t *dblock, uint32_t *extlen, int prealloc);
 extern int gfs1_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
 		      unsigned int size);
-extern int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1,
-			    int *bitmap_blocks);
+extern int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1);
 extern int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet);
 extern struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
 					struct gfs2_buffer_head *bh);
@@ -635,11 +635,8 @@ extern int clean_journal(struct gfs2_inode *ip, struct gfs2_log_header *head);
 /* rgrp.c */
 extern int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_list *rgd);
 extern struct rgrp_list *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk);
-extern uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
-			       struct gfs2_buffer_head **bh,
-			       struct gfs2_rgrp *rg);
-extern void gfs2_rgrp_relse(struct rgrp_list *rgd,
-			    struct gfs2_buffer_head **bh);
+extern uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd);
+extern void gfs2_rgrp_relse(struct rgrp_list *rgd);
 extern void gfs2_rgrp_free(osi_list_t *rglist);
 
 /* structures.c */
@@ -655,16 +652,15 @@ extern int build_root(struct gfs2_sbd *sdp);
 extern int do_init_inum(struct gfs2_sbd *sdp);
 extern int do_init_statfs(struct gfs2_sbd *sdp);
 extern int gfs2_check_meta(struct gfs2_buffer_head *bh, int type);
-extern int gfs2_next_rg_meta(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
-			     uint64_t *block, int first);
+extern int gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block,
+			     int first);
 extern int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 				 uint64_t *block, uint32_t type, int first);
 /* super.c */
 extern int check_sb(struct gfs2_sb *sb);
 extern int read_sb(struct gfs2_sbd *sdp);
 extern int ji_update(struct gfs2_sbd *sdp);
-extern int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1,
-		       int *bitmap_blocks);
+extern int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1);
 extern int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount);
 extern int write_sb(struct gfs2_sbd *sdp);
 

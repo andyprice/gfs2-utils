@@ -375,36 +375,35 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, osi_list_t *ret_list,
  * rewrite_rg_block - rewrite ("fix") a buffer with rg or bitmap data
  * returns: 0 if the rg was repaired, otherwise 1
  */
-static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
-		     uint64_t errblock, struct gfs2_buffer_head **rgbh,
-		     struct gfs2_rgrp *rg)
+static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rg,
+		     uint64_t errblock)
 {
-	int x = errblock - rgd->ri.ri_addr;
+	int x = errblock - rg->ri.ri_addr;
 
 	log_err( _("Block #%"PRIu64" (0x%" PRIx64") (%d of %d) is neither"
 		" GFS2_METATYPE_RB nor GFS2_METATYPE_RG.\n"),
-		rgbh[x]->b_blocknr, rgbh[x]->b_blocknr,
-		(int)x+1, (int)rgd->ri.ri_length);
-	if (query( _("Fix the RG? (y/n)"))) {
+		rg->bh[x]->b_blocknr, rg->bh[x]->b_blocknr,
+		(int)x+1, (int)rg->ri.ri_length);
+	if (query( _("Fix the Resource Group? (y/n)"))) {
 		log_err( _("Attempting to repair the RG.\n"));
-		rgbh[x] = bread(&sdp->buf_list, rgd->ri.ri_addr + x);
+		rg->bh[x] = bread(&sdp->buf_list, rg->ri.ri_addr + x);
 		if (x) {
 			struct gfs2_meta_header mh;
 
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_RB;
 			mh.mh_format = GFS2_FORMAT_RB;
-			gfs2_meta_header_out(&mh, rgbh[x]->b_data);
+			gfs2_meta_header_out(&mh, rg->bh[x]->b_data);
 		} else {
-			memset(rg, 0, sizeof(struct gfs2_rgrp));
-			rg->rg_header.mh_magic = GFS2_MAGIC;
-			rg->rg_header.mh_type = GFS2_METATYPE_RG;
-			rg->rg_header.mh_format = GFS2_FORMAT_RG;
-			rg->rg_free = rgd->ri.ri_data;
-			gfs2_rgrp_out(rg, rgbh[x]->b_data);
+			memset(&rg->rg, 0, sizeof(struct gfs2_rgrp));
+			rg->rg.rg_header.mh_magic = GFS2_MAGIC;
+			rg->rg.rg_header.mh_type = GFS2_METATYPE_RG;
+			rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
+			rg->rg.rg_free = rg->ri.ri_data;
+			gfs2_rgrp_out(&rg->rg, rg->bh[x]->b_data);
 		}
-		bmodified(rgbh[x]);
-		brelse(rgbh[x]);
+		bmodified(rg->bh[x]);
+		brelse(rg->bh[x]);
 		return 0;
 	}
 	return 1;
@@ -425,7 +424,6 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 	int calc_rg_count = 0, rgcount_from_index, rg;
 	osi_list_t *exp, *act; /* expected, actual */
 	struct gfs2_rindex buf;
-	int bitmap_blocks;
 
 	if (trust_lvl == blind_faith)
 		return 0;
@@ -450,7 +448,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 	}
 	/* Read in the rindex */
 	osi_list_init(&sdp->rglist); /* Just to be safe */
-	rindex_read(sdp, 0, &rgcount_from_index, &bitmap_blocks);
+	rindex_read(sdp, 0, &rgcount_from_index);
 	if (sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex)) {
 		log_warn( _("WARNING: rindex file is corrupt.\n"));
 		gfs2_rgrp_free(&expected_rglist);
@@ -551,41 +549,22 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 		struct rgrp_list *rgd;
 		uint64_t prev_err = 0, errblock;
 		int i;
-		struct gfs2_rgrp rgrp;
-		struct gfs2_buffer_head **rgbh;
 
 		/* Now we try repeatedly to read in the rg.  For every block */
 		/* we encounter that has errors, repair it and try again.    */
 		i = 0;
 		do {
 			rgd = osi_list_entry(act, struct rgrp_list, list);
-
-			if(!(rgbh = (struct gfs2_buffer_head **)
-			     malloc(rgd->ri.ri_length *
-				    sizeof(struct gfs2_buffer_head *))))
-				return -1;
-			if(!memset(rgbh, 0, bitmap_blocks *
-				   sizeof(struct gfs2_buffer_head *))) {
-				free(rgbh);
-				return -1;
-			}
-
-			errblock = gfs2_rgrp_read(sdp, rgd, rgbh, &rgrp);
+			errblock = gfs2_rgrp_read(sdp, rgd);
 			if (errblock) {
-				if (errblock == prev_err) {
-					free(rgbh);
+				if (errblock == prev_err)
 					break;
-				}
 				prev_err = errblock;
-				rewrite_rg_block(sdp, rgd, errblock, rgbh,
-						 &rgrp);
-			}
-			else {
-				gfs2_rgrp_relse(rgd, rgbh);
-				free(rgbh);
+				rewrite_rg_block(sdp, rgd, errblock);
+			} else {
+				gfs2_rgrp_relse(rgd);
 				break;
 			}
-			free(rgbh);
 			i++;
 		} while (i < rgd->ri.ri_length);
 	}
