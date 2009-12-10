@@ -14,11 +14,15 @@
 #include <limits.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <linux/types.h>
+#include <linux/fiemap.h>
 
 #define __user
 #include "osi_list.h"
 
 #include "gfs2_quota.h"
+
+#define FS_IOC_FIEMAP                   _IOWR('f', 11, struct fiemap)
 
 struct values {
 	osi_list_t v_list;
@@ -176,9 +180,12 @@ read_quota_file(struct gfs2_sbd *sdp, commandline_t *comline,
 	char buf[sizeof(struct gfs2_quota)];
 	struct gfs2_quota q;
 	uint64_t offset = 0;
-	uint32_t id, prev, maxid;
-	int error, pass, id_type;
+	uint32_t id, startid;
+	int error = 0;
 	char quota_file[BUF_SIZE];
+	uint64_t quota_file_size = 0;
+	struct fiemap fmap = { 0, }, *fmap2;
+	struct stat statbuf;
 	
 	strcpy(sdp->path_name, comline->filesystem);
 	if (check_for_gfs2(sdp)) {
@@ -206,62 +213,73 @@ read_quota_file(struct gfs2_sbd *sdp, commandline_t *comline,
 		die("can't open file %s: %s\n", comline->filesystem,
 		    strerror(errno));
 	}
-
-	if (!is_valid_quota_list(fd)) {
-		print_quota_list_warning();
-		goto do_old_school;
+	if (fstat(fd, &statbuf) < 0) {
+		close(fd);
+		close(sdp->metafs_fd);
+		cleanup_metafs(sdp);
+		die("can't stat file %s: %s\n", quota_file,
+		    strerror(errno));
+        }
+	quota_file_size = statbuf.st_size;
+	/* First find the number of extents in the quota file */
+	fmap.fm_start = 0;
+	fmap.fm_length = (~0ULL);
+	error = ioctl(fd, FS_IOC_FIEMAP, &fmap);
+	if (error == -1) {
+		fprintf(stderr, "fiemap error (%d): %s\n", errno, strerror(errno));
+		goto out;
 	}
-	get_last_quota_id(fd, &maxid);
-	
-	for (pass=0; pass<2; pass++) {
-		id = 0;
-		id_type = pass ? GQ_ID_GROUP : GQ_ID_USER;
-		
-		do {
-			read_quota_internal(fd, id, id_type, &q);
-			prev = id;
-			q.qu_value <<= sdp->sd_sb.sb_bsize_shift - 9;
-			
-			if (q.qu_value) {
-				if (pass)
-					add_value(gid, id, q.qu_value);
-				else
-					add_value(uid, id, q.qu_value);
-			}
-			id = q.qu_ll_next;
-		} while(id && id > prev && id <= maxid);
+	fmap2 = malloc(sizeof(struct fiemap) +
+		       fmap.fm_mapped_extents * sizeof(struct fiemap_extent));
+	if (fmap2 == NULL) {
+		fprintf(stderr, "malloc error (%d): %s\n", errno, strerror(errno));
+		goto out;
 	}
-	goto out;
-	
-do_old_school:
-	do {
-		
-		memset(buf, 0, sizeof(struct gfs2_quota));
-		/* read hidden quota file here */
-		lseek(fd, offset, SEEK_SET);
-		error = read(fd, buf, sizeof(struct gfs2_quota));
-		if (error < 0) {
-			close(fd);
-			close(sdp->metafs_fd);
-			cleanup_metafs(sdp);
-			die("can't read quota file (%d): %s\n",
-			    error, strerror(errno));
+	fmap2->fm_start = 0;
+	fmap2->fm_length = (~0ULL);
+	fmap2->fm_extent_count = fmap.fm_mapped_extents;
+	error = ioctl(fd, FS_IOC_FIEMAP, fmap2);
+	if (error == -1) {
+		fprintf(stderr, "fiemap error (%d): %s\n", errno, strerror(errno));
+		goto fmap2_free;
+	}
+	if (fmap2->fm_mapped_extents) {
+		int i;
+		for (i=0; i<fmap2->fm_mapped_extents; i++) {
+			struct fiemap_extent *fe = &fmap2->fm_extents[i];
+			uint64_t end = fe->fe_logical + fe->fe_length;
+
+			end = end > quota_file_size ? quota_file_size : end;
+			startid = DIV_RU(fe->fe_logical, sizeof(struct gfs2_quota));
+			offset = startid * sizeof(struct gfs2_quota);
+			do {
+				memset(buf, 0, sizeof(struct gfs2_quota));
+				/* read hidden quota file here */
+				lseek(fd, offset, SEEK_SET);
+				error = read(fd, buf, sizeof(struct gfs2_quota));
+				if (error < 0) {
+					fprintf(stderr, "read error (%d): %s\n", 
+						errno, strerror(errno));
+					goto fmap2_free;
+				}
+				gfs2_quota_in(&q, buf);
+				id = (offset / sizeof(struct gfs2_quota)) >> 1;
+				q.qu_value <<= sdp->sd_sb.sb_bsize_shift - 9;
+
+				if (q.qu_value) {
+					if (id * sizeof(struct gfs2_quota) * 2 == offset)
+						add_value(uid, id, q.qu_value);
+					else
+						add_value(gid, id, q.qu_value);
+				}
+
+				offset += sizeof(struct gfs2_quota);
+			} while ((offset + sizeof(struct gfs2_quota)) < 
+				 end);
 		}
-		gfs2_quota_in(&q, buf);
-
-		id = (offset / sizeof(struct gfs2_quota)) >> 1;
-		q.qu_value <<= sdp->sd_sb.sb_bsize_shift - 9;
-
-		if (q.qu_value) {
-			if (id * sizeof(struct gfs2_quota) * 2 == offset)
-				add_value(uid, id, q.qu_value);
-			else
-				add_value(gid, id, q.qu_value);
-		}
-
-		offset += sizeof(struct gfs2_quota);
-	} while (error == sizeof(struct gfs2_quota));
-
+	}
+fmap2_free:
+	free(fmap2);
 out:
 	close(fd);
 	close(sdp->metafs_fd);
