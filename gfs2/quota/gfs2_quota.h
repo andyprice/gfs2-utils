@@ -4,6 +4,8 @@
 #include "libgfs2.h"
 #include <linux/gfs2_ondisk.h>
 
+#define DIV_RU(x, y) (((x) + (y) - 1) / (y))
+
 #define type_zalloc(ptr, type, count) \
 do { \
 	(ptr) = (type *)malloc(sizeof(type) * (count)); \
