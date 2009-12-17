@@ -86,13 +86,7 @@ static int get_gfs_struct_info(char *gbuf, int *block_type, int *gstruct_len)
 		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_leaf);*/
 		break;
 	case GFS2_METATYPE_JD:   /* 7 (journal data) */
-		/* GFS1 keeps indirect pointers in GFS2_METATYPE_JD blocks
-		   so we need to save the whole block.  For GFS2, we don't
-		   want to, or we might capture user data, which is bad.  */
-		if (gfs1)
-			*gstruct_len = sbd.bsize;
-		else
-			*gstruct_len = sizeof(struct gfs2_meta_header);
+		*gstruct_len = sbd.bsize;
 		break;
 	case GFS2_METATYPE_LH:   /* 8 (log header) */
 		if (gfs1)
@@ -360,8 +354,15 @@ static void save_inode_data(int out_fd)
 	height = inode->i_di.di_height;
 	/* If this is a user inode, we don't follow to the file height.
 	   We stop one level less.  That way we save off the indirect
-	   pointer blocks but not the actual file contents. */
-	if (height && !block_is_systemfile())
+	   pointer blocks but not the actual file contents. The exception
+	   is directories, where the height represents the level at which
+	   the hash table exists, and we have to save the directory data. */
+	if (inode->i_di.di_flags & GFS2_DIF_EXHASH &&
+	    (S_ISDIR(inode->i_di.di_mode) ||
+	     (gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR)))
+		height++;
+	else if (height && !block_is_systemfile() &&
+		 !S_ISDIR(inode->i_di.di_mode))
 		height--;
 	osi_list_add(&metabh->b_altlist, &metalist[0]);
         for (i = 1; i <= height; i++){
@@ -789,95 +790,98 @@ static int restore_data(int fd, int in_fd, int printblocksonly)
 		}
 		rs = read(in_fd, &buf16, sizeof(uint16_t));
 		savedata->siglen = be16_to_cpu(buf16);
-		if (savedata->siglen <= sizeof(savedata->buf)) {
-			if (savedata->siglen &&
-			    read(in_fd, savedata->buf, savedata->siglen) !=
-			    savedata->siglen) {
-				fprintf(stderr, "read error: %s from %s:%d: "
-					"block %lld (0x%llx)\n",
+		if (savedata->siglen > sizeof(savedata->buf)) {
+			fprintf(stderr, "\nBad record length: %d for block #%"
+				PRIu64 " (0x%" PRIx64").\n", savedata->siglen,
+				savedata->blk, savedata->blk);
+			return -1;
+		}
+		if (savedata->siglen &&
+		    read(in_fd, savedata->buf, savedata->siglen) !=
+		    savedata->siglen) {
+			fprintf(stderr, "read error: %s from %s:%d: "
+				"block %lld (0x%llx)\n",
+				strerror(errno), __FUNCTION__, __LINE__,
+				(unsigned long long)savedata->blk,
+				(unsigned long long)savedata->blk);
+			exit(-1);
+		}
+		if (first) {
+			struct gfs2_sb bufsb;
+
+			memcpy(&bufsb, savedata->buf, sizeof(bufsb));
+			gfs2_sb_in(&sbd.sd_sb, (void *)&bufsb);
+			sbd1 = (struct gfs_sb *)&sbd.sd_sb;
+			if (sbd1->sb_fs_format == GFS_FORMAT_FS &&
+			    sbd1->sb_header.mh_type ==
+			    GFS_METATYPE_SB &&
+			    sbd1->sb_header.mh_format ==
+			    GFS_FORMAT_SB &&
+			    sbd1->sb_multihost_format ==
+			    GFS_FORMAT_MULTI) {
+				gfs1 = TRUE;
+			} else if (check_sb(&sbd.sd_sb)) {
+				fprintf(stderr,"Error: Invalid superblock data.\n");
+				return -1;
+			}
+			sbd.bsize = sbd.sd_sb.sb_bsize;
+			if (!printblocksonly) {
+				last_fs_block =
+					lseek(fd, 0, SEEK_END) / sbd.bsize;
+				printf("There are %" PRIu64 " blocks of " \
+				       "%u bytes in the destination"	\
+				       " file system.\n\n",
+				       last_fs_block, sbd.bsize);
+			} else {
+				printf("This is %s metadata\n", gfs1 ?
+				       "gfs (not gfs2)" : "gfs2");
+			}
+			first = 0;
+		}
+		if (printblocksonly) {
+			block = savedata->blk;
+			if (block > highest_valid_block)
+				highest_valid_block = block;
+			if (printblocksonly > 1 && printblocksonly == block) {
+				memcpy(buf, savedata->buf, sbd.bsize);
+				block_in_mem = block;
+				display(0);
+				return 0;
+			} else if (printblocksonly == 1) {
+				print_gfs2("%d (l=0x%x): ", blks_saved,
+					   savedata->siglen);
+				display_block_type(savedata->buf, TRUE);
+			}
+		} else {
+			warm_fuzzy_stuff(savedata->blk, FALSE, FALSE);
+			if (savedata->blk >= last_fs_block) {
+				printf("\nOut of space on the destination "
+				       "device; quitting.\n");
+				break;
+			}
+			if (lseek(fd, savedata->blk * sbd.bsize, SEEK_SET) !=
+			    savedata->blk * sbd.bsize) {
+				fprintf(stderr, "bad seek: %s from %s:"
+					"%d: block %lld (0x%llx)\n",
 					strerror(errno), __FUNCTION__,
-					__LINE__,
+					__LINE__, (unsigned long long)
+					savedata->blk,
+					(unsigned long long)
+					savedata->blk);
+				exit(-1);
+			}
+			if (write(fd, savedata->buf, sbd.bsize) != sbd.bsize) {
+				fprintf(stderr, "write error: %s from "
+					"%s:%d: block %lld (0x%llx)\n",
+					strerror(errno),
+					__FUNCTION__, __LINE__,
 					(unsigned long long)savedata->blk,
 					(unsigned long long)savedata->blk);
 				exit(-1);
 			}
-			if (first) {
-				struct gfs2_sb bufsb;
-
-				memcpy(&bufsb, savedata->buf, sizeof(bufsb));
-				gfs2_sb_in(&sbd.sd_sb, (void *)&bufsb);
-				sbd1 = (struct gfs_sb *)&sbd.sd_sb;
-				if (sbd1->sb_fs_format == GFS_FORMAT_FS &&
-				    sbd1->sb_header.mh_type ==
-				    GFS_METATYPE_SB &&
-				    sbd1->sb_header.mh_format ==
-				    GFS_FORMAT_SB &&
-				    sbd1->sb_multihost_format ==
-				    GFS_FORMAT_MULTI) {
-					gfs1 = TRUE;
-				} else if (check_sb(&sbd.sd_sb)) {
-					fprintf(stderr,"Error: Invalid superblock data.\n");
-					return -1;
-				}
-				sbd.bsize = sbd.sd_sb.sb_bsize;
-				if (!printblocksonly) {
-					last_fs_block =
-						lseek(fd, 0, SEEK_END) /
-						sbd.bsize;
-					printf("There are %" PRIu64 " blocks of " \
-					       "%u bytes in the destination" \
-					       " file system.\n\n",
-					       last_fs_block, sbd.bsize);
-				} else {
-					printf("This is %s metadata\n", gfs1 ?
-					       "gfs (not gfs2)" : "gfs2");
-				}
-				first = 0;
-			}
-			if (printblocksonly) {
-				print_gfs2("%d (l=0x%x): ", blks_saved,
-					   savedata->siglen);
-				block = savedata->blk;
-				if (block > highest_valid_block)
-					highest_valid_block = block;
-				display_block_type(savedata->buf, TRUE);
-			} else {
-				warm_fuzzy_stuff(savedata->blk, FALSE, FALSE);
-				if (savedata->blk >= last_fs_block) {
-					printf("\nOut of space on the destination "
-					       "device; quitting.\n");
-					break;
-				}
-				if (lseek(fd, savedata->blk * sbd.bsize,
-					  SEEK_SET) !=
-				    savedata->blk * sbd.bsize) {
-					fprintf(stderr, "bad seek: %s from %s:"
-						"%d: block %lld (0x%llx)\n",
-						strerror(errno), __FUNCTION__,
-						__LINE__, (unsigned long long)
-						savedata->blk,
-						(unsigned long long)
-						savedata->blk);
-					exit(-1);
-				}
-				if (write(fd, savedata->buf, sbd.bsize) !=
-				    sbd.bsize) {
-					fprintf(stderr, "write error: %s from "
-						"%s:%d: block %lld (0x%llx)\n",
-						strerror(errno),
-						__FUNCTION__, __LINE__,
-						(unsigned long long)savedata->blk,
-						(unsigned long long)savedata->blk);
-					exit(-1);
-				}
-				writes++;
-			}
-			blks_saved++;
-		} else {
-			fprintf(stderr, "\nBad record length: %d for block #%"
-				PRIu64".\n", savedata->siglen, savedata->blk);
-			return -1;
+			writes++;
 		}
+		blks_saved++;
 	}
 	if (!printblocksonly)
 		warm_fuzzy_stuff(savedata->blk, TRUE, FALSE);
@@ -897,7 +901,7 @@ static void complain(const char *complaint)
 }
 
 void restoremeta(const char *in_fn, const char *out_device,
-		 int printblocksonly)
+		 uint64_t printblocksonly)
 {
 	int in_fd, error;
 
@@ -916,7 +920,9 @@ void restoremeta(const char *in_fn, const char *out_device,
 		if (sbd.device_fd < 0)
 			die("Can't open destination file system %s: %s\n",
 			    out_device, strerror(errno));
-	}
+	} else if (out_device) /* for printsavedmeta, the out_device is an
+				  optional block no */
+		printblocksonly = check_keywords(out_device);
 	savedata = malloc(sizeof(struct saved_metablock));
 	if (!savedata)
 		die("Can't allocate memory for the restore operation.\n");

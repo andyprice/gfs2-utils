@@ -18,7 +18,7 @@
 #endif
 
 #define DMODES 3
-enum dsp_mode { HEX_MODE = 0, GFS2_MODE = 1, EXTENDED_MODE = 2 };
+enum dsp_mode { HEX_MODE = 0, GFS2_MODE = 1, EXTENDED_MODE = 2, INIT_MODE = 3 };
 #define BLOCK_STACK_SIZE 256
 
 #define GFS_FORMAT_SB           (100)  /* Super-Block */
@@ -159,8 +159,11 @@ extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
 extern void gfs_log_header_in(struct gfs_log_header *head, char *buf);
 extern void gfs_log_header_print(struct gfs_log_header *lh);
 extern void gfs_dinode_in(struct gfs_dinode *di, char *buf);
+extern int display(int identify_only);
+extern uint64_t check_keywords(const char *kword);
 extern void savemeta(char *out_fn, int saveoption);
-extern void restoremeta(const char *in_fn, const char *out_device, int printblocksonly);
+extern void restoremeta(const char *in_fn, const char *out_device,
+			uint64_t printblocksonly);
 extern uint64_t masterblock(const char *fn);
 
 struct gfs2_dirents {

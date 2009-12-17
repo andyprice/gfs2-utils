@@ -39,10 +39,6 @@ const char *allocdesc[2][5] = {
 #define RGLIST_DUMMY_BLOCK -2
 
 int display(int identify_only);
-extern void do_leaf_extended(char *buf, struct iinfo *indir);
-extern void savemeta(char *out_fn, int slow);
-extern void restoremeta(const char *in_fn, const char *out_device,
-			int printblocksonly);
 
 /* for assigning numeric fields: */
 #define checkassign(strfield, struct, member, value) do {		\
@@ -1818,8 +1814,7 @@ int display(int identify_only)
 		if (read(sbd.device_fd, buf, sbd.bsize) != sbd.bsize) {
 			fprintf(stderr, "read error: %s from %s:%d: "
 				"offset %lld (0x%llx)\n",
-				strerror(errno), __FUNCTION__,
-				__LINE__,
+				strerror(errno), __FUNCTION__, __LINE__,
 				(unsigned long long)dev_offset,
 				(unsigned long long)dev_offset);
 			exit(-1);
@@ -2146,7 +2141,7 @@ static uint64_t find_metablockoftype(const char *strtype, int print)
 /* Check if the word is a keyword such as "sb" or "rindex"                  */
 /* Returns: block number if it is, else 0                                   */
 /* ------------------------------------------------------------------------ */
-static uint64_t check_keywords(const char *kword)
+uint64_t check_keywords(const char *kword)
 {
 	uint64_t blk = 0;
 
@@ -3253,17 +3248,22 @@ static void parameterpass1(int argc, char *argv[], int i)
 		termlines = 0;
 	else if (!strcasecmp(argv[i], "savergs"))
 		termlines = 0;
-	else if (!strcasecmp(argv[i], "printsavedmeta"))
-		restoremeta(argv[i+1], argv[i+2],
-			    TRUE);
-	else if (!strcasecmp(argv[i], "restoremeta"))
+	else if (!strcasecmp(argv[i], "printsavedmeta")) {
+		if (dmode == INIT_MODE)
+			dmode = GFS2_MODE;
+		restoremeta(argv[i+1], argv[i+2], TRUE);
+	} else if (!strcasecmp(argv[i], "restoremeta")) {
+		if (dmode == INIT_MODE)
+			dmode = HEX_MODE; /* hopefully not used */
 		restoremeta(argv[i+1], argv[i+2], FALSE);
-	else if (!strcmp(argv[i], "rgcount"))
+	} else if (!strcmp(argv[i], "rgcount"))
 		termlines = 0;
 	else if (!strcmp(argv[i], "rgflags"))
 		termlines = 0;
 	else if (!strcmp(argv[i], "rg"))
 		termlines = 0;
+	else if (!strcasecmp(argv[i], "-x"))
+		dmode = HEX_MODE;
 	else if (!device[0] && strchr(argv[i],'/'))
 		strcpy(device, argv[i]);
 }
@@ -3462,12 +3462,12 @@ int main(int argc, char *argv[])
 	memset(edit_col, 0, sizeof(edit_col));
 	memset(edit_size, 0, sizeof(edit_size));
 	memset(last_entry_onscreen, 0, sizeof(last_entry_onscreen));
-	dmode = HEX_MODE;
+	dmode = INIT_MODE;
 	sbd.bsize = 4096;
 	type_alloc(buf, char, sbd.bsize); /* allocate/malloc a new 4K buffer */
 	block = starting_blk = 0x10;
 	for (i = 0; i < BLOCK_STACK_SIZE; i++) {
-		blockstack[i].dmode = dmode;
+		blockstack[i].dmode = HEX_MODE;
 		blockstack[i].block = block;
 		for (j = 0; j < DMODES; j++) {
 			blockstack[i].start_row[j] = 0;
@@ -3483,6 +3483,8 @@ int main(int argc, char *argv[])
 	memset(device, 0, sizeof(device));
 	termlines = 30;  /* assume interactive mode until we find -p */
 	process_parameters(argc, argv, 0);
+	if (dmode == INIT_MODE)
+		dmode = HEX_MODE;
 
 	fd = open(device, O_RDWR);
 	if (fd < 0)
