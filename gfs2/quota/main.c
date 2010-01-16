@@ -287,7 +287,9 @@ read_superblock(struct gfs2_sb *sb, struct gfs2_sbd *sdp)
 {
 	int fd;
 	char buf[PATH_MAX];
-	
+	struct gfs2_buffer_head dummy_bh;
+
+	dummy_bh.b_data = buf;
 	fd = open(sdp->device_name, O_RDONLY);
 	if (fd < 0) {
 		die("Could not open the block device %s: %s\n",
@@ -305,7 +307,7 @@ read_superblock(struct gfs2_sb *sb, struct gfs2_sbd *sdp)
 			strerror(errno), __FUNCTION__, __LINE__);
 		exit(-1);
 	}
-	gfs2_sb_in(sb, buf);
+	gfs2_sb_in(sb, &dummy_bh);
 
 	close(fd);
 }

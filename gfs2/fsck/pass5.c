@@ -191,7 +191,7 @@ static void update_rgrp(struct gfs2_sbd *sbp, struct rgrp_list *rgp,
 		if(query( _("Update resource group counts? (y/n) "))) {
 			log_warn( _("Resource group counts updated\n"));
 			/* write out the rgrp */
-			gfs2_rgrp_out(&rgp->rg, rgp->bh[0]->b_data);
+			gfs2_rgrp_out(&rgp->rg, rgp->bh[0]);
 		} else
 			log_err( _("Resource group counts left inconsistent\n"));
 	}

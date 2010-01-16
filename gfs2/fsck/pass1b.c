@@ -151,7 +151,7 @@ static int find_dentry(struct gfs2_inode *ip, struct gfs2_dirent *de,
 	}
 	/* Return the number of leaf entries so metawalk doesn't flag this
 	   leaf as having none. */
-	gfs2_leaf_in(&leaf, bh->b_data);
+	gfs2_leaf_in(&leaf, bh);
 	*count = leaf.lf_entries;
 	return 0;
 }

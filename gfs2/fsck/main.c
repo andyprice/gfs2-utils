@@ -297,23 +297,28 @@ static void check_statfs(struct gfs2_sbd *sdp)
 	log_err( _("The statfs file is wrong:\n\n"));
 	log_err( _("Current statfs values:\n"));
 	log_err( _("blocks:  %lld (0x%llx)\n"),
-		sc.sc_total, sc.sc_total);
+		 (unsigned long long)sc.sc_total,
+		 (unsigned long long)sc.sc_total);
 	log_err( _("free:    %lld (0x%llx)\n"),
-		sc.sc_free, sc.sc_free);
+		 (unsigned long long)sc.sc_free,
+		 (unsigned long long)sc.sc_free);
 	log_err( _("dinodes: %lld (0x%llx)\n\n"),
-		sc.sc_dinodes, sc.sc_dinodes);
+		 (unsigned long long)sc.sc_dinodes,
+		 (unsigned long long)sc.sc_dinodes);
 
 	log_err( _("Calculated statfs values:\n"));
 	log_err( _("blocks:  %lld (0x%llx)\n"),
-		sdp->blks_total, sdp->blks_total);
+		 (unsigned long long)sdp->blks_total,
+		 (unsigned long long)sdp->blks_total);
 	log_err( _("free:    %lld (0x%llx)\n"),
-		sdp->blks_total - sdp->blks_alloced,
-		sdp->blks_total - sdp->blks_alloced);
+		 (unsigned long long)(sdp->blks_total - sdp->blks_alloced),
+		 (unsigned long long)(sdp->blks_total - sdp->blks_alloced));
 	log_err( _("dinodes: %lld (0x%llx)\n"),
-		sdp->dinodes_alloced, sdp->dinodes_alloced);
+		 (unsigned long long)sdp->dinodes_alloced,
+		 (unsigned long long)sdp->dinodes_alloced);
 
 	errors_found++;
-	if (!query(&opts, _("Okay to fix the master statfs file? (y/n)"))) {
+	if (!query( _("Okay to fix the master statfs file? (y/n)"))) {
 		log_err( _("The statfs file was not fixed.\n"));
 		return;
 	}

@@ -35,6 +35,7 @@ struct saved_metablock {
 };
 
 struct saved_metablock *savedata;
+struct gfs2_buffer_head *savebh;
 uint64_t last_fs_block, last_reported_block, blks_saved, total_out, pct;
 struct gfs2_bmap *blocklist = NULL;
 uint64_t journal_blocks[MAX_JOURNALS_SAVED];
@@ -52,15 +53,15 @@ extern void read_superblock(void);
  * returns: 0 if successful
  *          -1 if this isn't gfs metadata.
  */
-static int get_gfs_struct_info(char *gbuf, int *block_type, int *gstruct_len)
+static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, int *block_type,
+			       int *gstruct_len)
 {
-	struct gfs2_meta_header mh, mhbuf;
+	struct gfs2_meta_header mh;
 
 	*block_type = 0;
 	*gstruct_len = sbd.bsize;
 
-	memcpy(&mhbuf, gbuf, sizeof(mhbuf));
-	gfs2_meta_header_in(&mh, (void *)&mhbuf);
+	gfs2_meta_header_in(&mh, lbh);
 	if (mh.mh_magic != GFS2_MAGIC)
 		return -1;
 
@@ -189,28 +190,15 @@ static int save_block(int fd, int out_fd, uint64_t blk)
 		return 0;
 	}
 	memset(savedata, 0, sizeof(struct saved_metablock));
-	if (lseek(fd, blk * sbd.bsize, SEEK_SET) != blk * sbd.bsize) {
-		fprintf(stderr, "bad seek: %s from %s:%d: "
-			"block %lld (0x%llx)\n", strerror(errno),
-			__FUNCTION__, __LINE__,
-			(unsigned long long)blk, (unsigned long long)blk);
-		exit(-1);
-	}
-	/* read in the block */
-	if (read(fd, savedata->buf, sbd.bsize) != sbd.bsize) {
-		fprintf(stderr, "bad read: %s from %s:%d: "
-			"block %lld (0x%llx)\n", strerror(errno),
-			__FUNCTION__, __LINE__,
-			(unsigned long long)blk, (unsigned long long)blk);
-		exit(-1);
-	}
+	savebh = bread(&sbd.buf_list, blk);
+	memcpy(&savedata->buf, savebh->b_data, sbd.bsize);
 
 	/* If this isn't metadata and isn't a system file, we don't want it.
 	   Note that we're checking "block" here rather than blk.  That's
 	   because we want to know if the source inode's "block" is a system
 	   inode, not the block within the inode "blk". They may or may not
 	   be the same thing. */
-	if (get_gfs_struct_info(savedata->buf, &blktype, &blklen) &&
+	if (get_gfs_struct_info(savebh, &blktype, &blklen) &&
 	    !block_is_systemfile())
 		return 0; /* Not metadata, and not system file, so skip it */
 	trailing0 = 0;
@@ -395,16 +383,17 @@ static void save_inode_data(int out_fd)
 	}
 	if (inode->i_di.di_eattr) { /* if this inode has extended attributes */
 		struct gfs2_meta_header mh;
+		struct gfs2_buffer_head *lbh;
 
-		metabh = bread(&sbd.buf_list, inode->i_di.di_eattr);
+		lbh = bread(&sbd.buf_list, inode->i_di.di_eattr);
 		save_block(sbd.device_fd, out_fd, inode->i_di.di_eattr);
-		gfs2_meta_header_in(&mh, metabh->b_data);
+		gfs2_meta_header_in(&mh, lbh);
 		if (mh.mh_magic == GFS2_MAGIC &&
 		    mh.mh_type == GFS2_METATYPE_EA)
-			save_ea_block(out_fd, metabh);
+			save_ea_block(out_fd, lbh);
 		else if (mh.mh_magic == GFS2_MAGIC &&
 			 mh.mh_type == GFS2_METATYPE_IN)
-			save_indirect_blocks(out_fd, cur_list, metabh, 2, 2);
+			save_indirect_blocks(out_fd, cur_list, lbh, 2, 2);
 		else {
 			if (mh.mh_magic == GFS2_MAGIC) /* if it's metadata */
 				save_block(sbd.device_fd, out_fd,
@@ -418,15 +407,15 @@ static void save_inode_data(int out_fd)
 				(unsigned long long)block,
 				(unsigned long long)block);
 		}
-		brelse(metabh);
+		brelse(lbh);
 	}
 	inode_put(inode);
+	brelse(metabh);
 }
 
 static void get_journal_inode_blocks(void)
 {
 	int journal;
-	struct gfs2_buffer_head *bh;
 
 	journals_found = 0;
 	memset(journal_blocks, 0, sizeof(journal_blocks));
@@ -466,7 +455,7 @@ static void get_journal_inode_blocks(void)
 			jblock = indirect->ii[0].dirent[journal + 2].block;
 			bh = bread(&sbd.buf_list, jblock);
 			j_inode = inode_get(&sbd, bh);
-			gfs2_dinode_in(&jdi, bh->b_data);
+			gfs2_dinode_in(&jdi, bh);
 			inode_put(j_inode);
 		}
 		journal_blocks[journals_found++] = jblock;
@@ -480,7 +469,7 @@ static int next_rg_freemeta(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 	uint32_t length = rgd->ri.ri_length;
 	uint32_t blk = (first)? 0: (uint32_t)((*nrfblock+1)-rgd->ri.ri_data0);
 	int i;
-	struct gfs2_buffer_head *bh;
+	struct gfs2_buffer_head *lbh;
 
 	if(!first && (*nrfblock < rgd->ri.ri_data0)) {
 		log_err("next_rg_freemeta:  Start block is outside rgrp "
@@ -495,11 +484,11 @@ static int next_rg_freemeta(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 	}
 	for(; i < length; i++){
 		bits = &rgd->bits[i];
-		bh = bread(&sdp->buf_list, rgd->ri.ri_addr + i);
+		lbh = bread(&sdp->buf_list, rgd->ri.ri_addr + i);
 		blk = gfs2_bitfit((unsigned char *)bh->b_data +
 				  bits->bi_offset, bits->bi_len, blk,
 				  GFS2_BLKST_UNLINKED);
-		brelse(bh);
+		brelse(lbh);
 		if(blk != BFITNOENT){
 			*nrfblock = blk + (bits->bi_start * GFS2_NBBY) +
 				rgd->ri.ri_data0;
@@ -520,7 +509,7 @@ void savemeta(char *out_fn, int saveoption)
 	uint64_t memreq;
 	int rgcount;
 	uint64_t jindex_block;
-	struct gfs2_buffer_head *bh;
+	struct gfs2_buffer_head *lbh;
 
 	slow = (saveoption == 1);
 	sbd.md.journals = 1;
@@ -603,11 +592,11 @@ void savemeta(char *out_fn, int saveoption)
 					    &sbd.md.riinode);
 			jindex_block = masterblock("jindex");
 		}
-		bh = bread(&sbd.buf_list, jindex_block);
-		gfs2_dinode_in(&di, bh->b_data);
+		lbh = bread(&sbd.buf_list, jindex_block);
+		gfs2_dinode_in(&di, lbh);
 		if (!gfs1)
-			do_dinode_extended(&di, bh->b_data);
-		brelse(bh);
+			do_dinode_extended(&di, lbh);
+		brelse(lbh);
 	}
 	if (!slow) {
 		printf("Reading resource groups...");
@@ -847,14 +836,14 @@ static int restore_data(int fd, int in_fd, int printblocksonly)
 			if (block > highest_valid_block)
 				highest_valid_block = block;
 			if (printblocksonly > 1 && printblocksonly == block) {
-				memcpy(buf, savedata->buf, sbd.bsize);
+				memcpy(bh->b_data, savedata->buf, sbd.bsize);
 				block_in_mem = block;
 				display(0);
 				return 0;
 			} else if (printblocksonly == 1) {
 				print_gfs2("%d (l=0x%x): ", blks_saved,
 					   savedata->siglen);
-				display_block_type(savedata->buf, TRUE);
+				display_block_type(TRUE);
 			}
 		} else {
 			warm_fuzzy_stuff(savedata->blk, FALSE, FALSE);

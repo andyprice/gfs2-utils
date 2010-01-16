@@ -680,7 +680,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			    PRIu64 " (0x%" PRIx64 ")? (y/n) "),
 			 block, block)) {
 			ip->i_di.di_num.no_addr = ip->i_di.di_num.no_formal_ino = block;
-			gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
+			gfs2_dinode_out(&ip->i_di, ip->i_bh);
 			bmodified(ip->i_bh);
 		} else
 			log_err( _("Address in inode at block #%" PRIu64
@@ -859,7 +859,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			ip->i_di.di_blocks = 1 + bc.indir_count + bc.data_count +
 				bc.ea_count;
 			bmodified(ip->i_bh);
-			gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
+			gfs2_dinode_out(&ip->i_di, ip->i_bh);
 		} else
 			log_err( _("Bad block count for #%llu (0x%llx"
 				") not fixed\n"),

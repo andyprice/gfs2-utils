@@ -68,7 +68,7 @@ int get_log_header(struct gfs2_inode *ip, unsigned int blk,
 	tmp->lh_hash = 0;
 	hash = gfs2_disk_hash(bh->b_data, sizeof(struct gfs2_log_header));
 	tmp->lh_hash = saved_hash;
-	gfs2_log_header_in(&lh, bh->b_data);
+	gfs2_log_header_in(&lh, bh);
 	brelse(bh);
 
 	if (error || lh.lh_blkno != blk || lh.lh_hash != hash)

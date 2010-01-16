@@ -299,7 +299,9 @@ add_qc(struct gfs2_sbd *sdp)
 			sdp->qcsize << (20 - sdp->sd_sb.sb_bsize_shift);
 		unsigned int x;
 		struct gfs2_meta_header mh;
+		struct gfs2_buffer_head dummy_bh;
 
+		dummy_bh.b_data = buf;
 		make_jdata(fd, "clear");
 		memset(buf, 0, sdp->bsize);
 
@@ -321,7 +323,7 @@ add_qc(struct gfs2_sbd *sdp)
 		mh.mh_magic = GFS2_MAGIC;
 		mh.mh_type = GFS2_METATYPE_QC;
 		mh.mh_format = GFS2_FORMAT_QC;
-		gfs2_meta_header_out(&mh, buf);
+		gfs2_meta_header_out(&mh, &dummy_bh);
 
 		for (x=0; x<blocks; x++) {
 			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
@@ -433,10 +435,12 @@ add_j(struct gfs2_sbd *sdp)
 
 		for (x=0; x<blocks; x++) {
 			uint32_t hash;
+			struct gfs2_buffer_head dummy_bh;
 
+			dummy_bh.b_data = buf;
 			lh.lh_sequence = seq;
 			lh.lh_blkno = x;
-			gfs2_log_header_out(&lh, buf);
+			gfs2_log_header_out(&lh, &dummy_bh);
 			hash = gfs2_disk_hash(buf, sizeof(struct gfs2_log_header));
 			((struct gfs2_log_header *)buf)->lh_hash = cpu_to_be32(hash);
 

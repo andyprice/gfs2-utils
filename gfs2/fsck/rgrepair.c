@@ -393,16 +393,15 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rg,
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_RB;
 			mh.mh_format = GFS2_FORMAT_RB;
-			gfs2_meta_header_out(&mh, rg->bh[x]->b_data);
+			gfs2_meta_header_out(&mh, rg->bh[x]);
 		} else {
 			memset(&rg->rg, 0, sizeof(struct gfs2_rgrp));
 			rg->rg.rg_header.mh_magic = GFS2_MAGIC;
 			rg->rg.rg_header.mh_type = GFS2_METATYPE_RG;
 			rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
 			rg->rg.rg_free = rg->ri.ri_data;
-			gfs2_rgrp_out(&rg->rg, rg->bh[x]->b_data);
+			gfs2_rgrp_out(&rg->rg, rg->bh[x]);
 		}
-		bmodified(rg->bh[x]);
 		brelse(rg->bh[x]);
 		return 0;
 	}

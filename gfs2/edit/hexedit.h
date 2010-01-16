@@ -51,7 +51,7 @@ extern char estring[1024]; /* edit string */
 extern char efield[64];
 extern uint64_t dev_offset;
 extern uint64_t max_block;
-extern char *buf;
+extern struct gfs2_buffer_head *bh;
 extern int termlines;
 extern int termcols;
 extern int insert;
@@ -154,16 +154,17 @@ extern int block_is_statfs_file(void);
 extern int block_is_quota_file(void);
 extern int block_is_per_node(void);
 extern int block_is_in_per_node(void);
-extern int display_block_type(const char *lpBuffer, int from_restore);
+extern int display_block_type(int from_restore);
 extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
-extern void gfs_log_header_in(struct gfs_log_header *head, char *buf);
+extern void gfs_log_header_in(struct gfs_log_header *head,
+			      struct gfs2_buffer_head *bh);
 extern void gfs_log_header_print(struct gfs_log_header *lh);
-extern void gfs_dinode_in(struct gfs_dinode *di, char *buf);
-extern int display(int identify_only);
-extern uint64_t check_keywords(const char *kword);
+extern void gfs_dinode_in(struct gfs_dinode *di, struct gfs2_buffer_head *bh);
 extern void savemeta(char *out_fn, int saveoption);
 extern void restoremeta(const char *in_fn, const char *out_device,
 			uint64_t printblocksonly);
+extern int display(int identify_only);
+extern uint64_t check_keywords(const char *kword);
 extern uint64_t masterblock(const char *fn);
 
 struct gfs2_dirents {

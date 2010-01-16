@@ -30,7 +30,7 @@
 
 
 struct gfs2_sb sb;
-char *buf;
+struct gfs2_buffer_head *bh;
 struct gfs2_dinode di;
 int line, termlines;
 char edit_fmt[80];
@@ -278,7 +278,7 @@ static int indirect_dirent(struct indirect_info *indir, char *ptr, int d)
 **
 *******************************************************************************
 ******************************************************************************/
-void do_dinode_extended(struct gfs2_dinode *dine, char *dinebuf)
+void do_dinode_extended(struct gfs2_dinode *dine, struct gfs2_buffer_head *lbh)
 {
 	unsigned int x, y, ptroff = 0;
 	uint64_t p, last;
@@ -291,7 +291,7 @@ void do_dinode_extended(struct gfs2_dinode *dine, char *dinebuf)
 		/* Indirect pointers */
 		for (x = sizeof(struct gfs2_dinode); x < sbd.bsize;
 			 x += sizeof(uint64_t)) {
-			p = be64_to_cpu(*(uint64_t *)(dinebuf + x));
+			p = be64_to_cpu(*(uint64_t *)(lbh->b_data + x));
 			if (p) {
 				indirect->ii[indirect_blocks].block = p;
 				indirect->ii[indirect_blocks].mp.mp_list[0] =
@@ -310,8 +310,7 @@ void do_dinode_extended(struct gfs2_dinode *dine, char *dinebuf)
 		indirect->ii[0].block = block;
 		indirect->ii[0].is_dir = TRUE;
 		for (x = sizeof(struct gfs2_dinode); x < sbd.bsize; x += skip) {
-			skip = indirect_dirent(indirect->ii,
-					       dinebuf + x,
+			skip = indirect_dirent(indirect->ii, lbh->b_data + x,
 					       indirect->ii[0].dirents);
 			if (skip <= 0)
 				break;
@@ -322,12 +321,13 @@ void do_dinode_extended(struct gfs2_dinode *dine, char *dinebuf)
 			 dine->di_height == 0) {
 		/* Leaf Pointers: */
 		
-		last = be64_to_cpu(*(uint64_t *)(dinebuf + sizeof(struct gfs2_dinode)));
+		last = be64_to_cpu(*(uint64_t *)(lbh->b_data +
+						 sizeof(struct gfs2_dinode)));
     
 		for (x = sizeof(struct gfs2_dinode), y = 0;
 			 y < (1 << dine->di_depth);
 			 x += sizeof(uint64_t), y++) {
-			p = be64_to_cpu(*(uint64_t *)(dinebuf + x));
+			p = be64_to_cpu(*(uint64_t *)(lbh->b_data + x));
 
 			if (p != last || ((y + 1) * sizeof(uint64_t) == dine->di_size)) {
 				struct gfs2_buffer_head *tmp_bh;
@@ -338,7 +338,7 @@ void do_dinode_extended(struct gfs2_dinode *dine, char *dinebuf)
 				if (last >= max_block)
 					break;
 				tmp_bh = bread(&sbd.buf_list, last);
-				gfs2_leaf_in(&leaf, tmp_bh->b_data);
+				gfs2_leaf_in(&leaf, tmp_bh);
 				indirect->ii[indirect_blocks].dirents = 0;
 				for (direntcount = 0, bufoffset = sizeof(struct gfs2_leaf);
 					 bufoffset < sbd.bsize;
@@ -463,7 +463,7 @@ void do_leaf_extended(char *dlebuf, struct iinfo *indir)
 *******************************************************************************
 ******************************************************************************/
 
-static void do_eattr_extended(char *deebuf)
+static void do_eattr_extended(struct gfs2_buffer_head *ebh)
 {
 	struct gfs2_ea_header ea;
 	unsigned int x;
@@ -475,8 +475,9 @@ static void do_eattr_extended(char *deebuf)
 	for (x = sizeof(struct gfs2_meta_header); x < sbd.bsize; x += ea.ea_rec_len)
 	{
 		eol(0);
-		gfs2_ea_header_in(&ea, deebuf + x);
-		gfs2_ea_header_print(&ea, deebuf + x + sizeof(struct gfs2_ea_header));
+		gfs2_ea_header_in(&ea, ebh->b_data + x);
+		gfs2_ea_header_print(&ea, ebh->b_data + x +
+				     sizeof(struct gfs2_ea_header));
 	}
 }
 
@@ -534,11 +535,11 @@ static void gfs2_sb_print2(struct gfs2_sb *sbp2)
 /**
  * gfs1_rgrp_in - read in a gfs1 rgrp
  */
-static void gfs1_rgrp_in(struct gfs1_rgrp *rgrp, char *rbuf)
+static void gfs1_rgrp_in(struct gfs1_rgrp *rgrp, struct gfs2_buffer_head *rbh)
 {
-        struct gfs1_rgrp *str = (struct gfs1_rgrp *)rbuf;
+        struct gfs1_rgrp *str = (struct gfs1_rgrp *)rbh->b_data;
 
-        gfs2_meta_header_in(&rgrp->rg_header, rbuf);
+        gfs2_meta_header_in(&rgrp->rg_header, rbh);
         rgrp->rg_flags = be32_to_cpu(str->rg_flags);
         rgrp->rg_free = be32_to_cpu(str->rg_free);
         rgrp->rg_useddi = be32_to_cpu(str->rg_useddi);
@@ -594,12 +595,12 @@ int display_gfs2(void)
 
 	uint32_t magic;
 
-	magic = be32_to_cpu(*(uint32_t *)buf);
+	magic = be32_to_cpu(*(uint32_t *)bh->b_data);
 
 	switch (magic)
 	{
 	case GFS2_MAGIC:
-		gfs2_meta_header_in(&mh, buf);
+		gfs2_meta_header_in(&mh, bh);
 		if (mh.mh_type > GFS2_METATYPE_QC)
 			print_gfs2("Unknown metadata type");
 		else
@@ -609,7 +610,7 @@ int display_gfs2(void)
 		switch (mh.mh_type)
 		{
 		case GFS2_METATYPE_SB:
-			gfs2_sb_in(&sbd.sd_sb, buf);
+			gfs2_sb_in(&sbd.sd_sb, bh);
 			gfs2_sb_print2(&sbd.sd_sb);
 			break;
 
@@ -617,10 +618,10 @@ int display_gfs2(void)
 			if (gfs1) {
 				struct gfs1_rgrp rg1;
 
-				gfs1_rgrp_in(&rg1, buf);
+				gfs1_rgrp_in(&rg1, bh);
 				gfs1_rgrp_print(&rg1);
 			} else {
-				gfs2_rgrp_in(&rg, buf);
+				gfs2_rgrp_in(&rg, bh);
 				gfs2_rgrp_print(&rg);
 			}
 			break;
@@ -638,7 +639,7 @@ int display_gfs2(void)
 			break;
 
 		case GFS2_METATYPE_LF:
-			gfs2_leaf_in(&lf, buf);
+			gfs2_leaf_in(&lf, bh);
 			gfs2_leaf_print(&lf);
 			break;
 
@@ -648,21 +649,21 @@ int display_gfs2(void)
 
 		case GFS2_METATYPE_LH:
 			if (gfs1) {
-				gfs_log_header_in(&lh1, buf);
+				gfs_log_header_in(&lh1, bh);
 				gfs_log_header_print(&lh1);
 			} else {
-				gfs2_log_header_in(&lh, buf);
+				gfs2_log_header_in(&lh, bh);
 				gfs2_log_header_print(&lh);
 			}
 			break;
 
 		case GFS2_METATYPE_LD:
-			gfs2_log_descriptor_in(&ld, buf);
+			gfs2_log_descriptor_in(&ld, bh);
 			gfs2_log_descriptor_print(&ld);
 			break;
 
 		case GFS2_METATYPE_EA:
-			do_eattr_extended(buf);
+			do_eattr_extended(bh);
 			break;
 			
 		case GFS2_METATYPE_ED:
@@ -674,7 +675,7 @@ int display_gfs2(void)
 			break;
 
 		case GFS2_METATYPE_QC:
-			gfs2_quota_change_in(&qc, buf);
+			gfs2_quota_change_in(&qc, bh);
 			gfs2_quota_change_print(&qc);
 			break;
 

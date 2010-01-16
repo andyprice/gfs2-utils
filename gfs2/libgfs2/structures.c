@@ -65,8 +65,7 @@ void build_sb(struct gfs2_sbd *sdp, const unsigned char *uuid)
 	memcpy(sb.sb_uuid, uuid, sizeof(sb.sb_uuid));
 #endif
 	bh = bget(&sdp->buf_list, sdp->sb_addr);
-	gfs2_sb_out(&sb, bh->b_data);
-	bmodified(bh);
+	gfs2_sb_out(&sb, bh);
 	brelse(bh);
 
 	if (sdp->debug) {
@@ -109,11 +108,10 @@ int write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
 
 		lh.lh_sequence = seq;
 		lh.lh_blkno = x;
-		gfs2_log_header_out(&lh, bh->b_data);
+		gfs2_log_header_out(&lh, bh);
 		hash = gfs2_disk_hash(bh->b_data, sizeof(struct gfs2_log_header));
 		((struct gfs2_log_header *)bh->b_data)->lh_hash = cpu_to_be32(hash);
 
-		bmodified(bh);
 		brelse(bh);
 
 		if (++seq == blocks)
@@ -224,9 +222,8 @@ static int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 		if (!bh)
 			return -1;
 
-		gfs2_meta_header_out(&mh, bh->b_data);
+		gfs2_meta_header_out(&mh, bh);
 
-		bmodified(bh);
 		brelse(bh);
 	}
 

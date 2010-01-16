@@ -141,7 +141,7 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
 		}
 	}
 
-	gfs2_rgrp_in(&rgd->rg, rgd->bh[0]->b_data);
+	gfs2_rgrp_in(&rgd->rg, rgd->bh[0]);
 	return 0;
 }
 

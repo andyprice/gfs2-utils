@@ -115,8 +115,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_IN;
 			mh.mh_format = GFS2_FORMAT_IN;
-			gfs2_meta_header_out(&mh, bh->b_data);
-			bmodified(bh);
+			gfs2_meta_header_out(&mh, bh);
 		} else {
 			bh = bread(&sdp->buf_list, *dblock);
 		}
@@ -330,11 +329,11 @@ int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet)
 /* ------------------------------------------------------------------------ */
 /* gfs_dinode_in */
 /* ------------------------------------------------------------------------ */
-static void gfs_dinode_in(struct gfs_dinode *di, char *buf)
+static void gfs_dinode_in(struct gfs_dinode *di, struct gfs2_buffer_head *bh)
 {
-	struct gfs_dinode *str = (struct gfs_dinode *)buf;
+	struct gfs_dinode *str = (struct gfs_dinode *)bh->b_data;
 
-	gfs2_meta_header_in(&di->di_header, buf);
+	gfs2_meta_header_in(&di->di_header, bh);
 	gfs2_inum_in(&di->di_num, (char *)&str->di_num);
 
 	di->di_mode = be32_to_cpu(str->di_mode);
@@ -371,7 +370,7 @@ struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
 		exit(-1);
 	}
 
-	gfs_dinode_in(&gfs1_dinode, bh->b_data);
+	gfs_dinode_in(&gfs1_dinode, bh);
 	memcpy(&ip->i_di.di_header, &gfs1_dinode.di_header,
 	       sizeof(struct gfs2_meta_header));
 	memcpy(&ip->i_di.di_num, &gfs1_dinode.di_num,

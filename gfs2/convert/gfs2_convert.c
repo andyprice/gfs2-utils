@@ -209,7 +209,7 @@ static int convert_rgs(struct gfs2_sbd *sbp)
 		sbp->dinodes_alloced += rgd1->rg_useddi;
 		convert_bitmaps(sbp, rgd);
 		/* Write the updated rgrp to the gfs2 buffer */
-		gfs2_rgrp_out(&rgd->rg, rgd->bh[0]->b_data);
+		gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
 		rgs++;
 		if (rgs % 100 == 0) {
 			printf(".");
@@ -324,7 +324,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 			bh = bread(&sbp->buf_list, block);
 			if (new)
 				memset(bh->b_data, 0, sbp->bsize);
-			gfs2_meta_header_out(&mh, bh->b_data);
+			gfs2_meta_header_out(&mh, bh);
 		}
 
 		hdrsize = sizeof(struct gfs2_meta_header);
@@ -662,7 +662,7 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 			return -1;
 	}
 	
-	gfs2_dinode_out(&inode->i_di, bh->b_data);
+	gfs2_dinode_out(&inode->i_di, bh);
 	sbp->md.next_inum++; /* update inode count */
 	return 0;
 } /* adjust_inode */
@@ -910,7 +910,7 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip
 			log_crit("Error reading leaf %" PRIx64 "\n", leaf_block);
 			break;
 		}
-		gfs2_leaf_in(&leaf, (char *)bh_leaf->b_data); /* buffer to structure */
+		gfs2_leaf_in(&leaf, bh_leaf); /* buffer to structure */
 		error = process_dirent_info(dip, sbp, bh_leaf, leaf.lf_entries);
 		bmodified(bh_leaf);
 		brelse(bh_leaf);
@@ -1091,7 +1091,7 @@ static int init(struct gfs2_sbd *sbp)
 	bh = bread(&sbp->buf_list, GFS2_SB_ADDR >> sbp->sd_fsb2bb_shift);
 	memcpy(&raw_gfs1_ondisk_sb, (struct gfs1_sb *)bh->b_data,
 		   sizeof(struct gfs1_sb));
-	gfs2_sb_in(&sbp->sd_sb, bh->b_data);
+	gfs2_sb_in(&sbp->sd_sb, bh);
 	sbp->bsize = sbp->sd_sb.sb_bsize;
 	sbp->sd_inptrs = (sbp->bsize - sizeof(struct gfs_indirect)) /
 		sizeof(uint64_t);
@@ -1387,9 +1387,9 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 		convert_bitmaps(sdp, rgd);
 		for (x = 0; x < rgd->ri.ri_length; x++) {
 			if (x)
-				gfs2_meta_header_out(&mh, rgd->bh[x]->b_data);
+				gfs2_meta_header_out(&mh, rgd->bh[x]);
 			else
-				gfs2_rgrp_out(&rgd->rg, rgd->bh[x]->b_data);
+				gfs2_rgrp_out(&rgd->rg, rgd->bh[x]);
 		}
 		/* Add the new gfs2 rg to our list: We'll output the rg index later. */
 		osi_list_add_prev((osi_list_t *)&rgd->list,
@@ -1616,8 +1616,7 @@ int main(int argc, char **argv)
 		bh = bread(&sb2.buf_list, sb2.sb_addr);
 		sb2.sd_sb.sb_fs_format = GFS2_FORMAT_FS;
 		sb2.sd_sb.sb_multihost_format = GFS2_FORMAT_MULTI;
-		gfs2_sb_out(&sb2.sd_sb, bh->b_data);
-		bmodified(bh);
+		gfs2_sb_out(&sb2.sd_sb, bh);
 		brelse(bh);
 
 		bsync(&sb2.buf_list); /* write the buffers to disk */

@@ -218,10 +218,9 @@ void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 			for (x = 0; x < bitblocks; x++) {
 				bh = bget(&sdp->buf_list, rl->start + x);
 				if (x)
-					gfs2_meta_header_out(&mh, bh->b_data);
+					gfs2_meta_header_out(&mh, bh);
 				else
-					gfs2_rgrp_out(&rg, bh->b_data);
-				bmodified(bh);
+					gfs2_rgrp_out(&rg, bh);
 				brelse(bh);
 			}
 		}

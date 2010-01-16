@@ -73,7 +73,9 @@ do_sb(int argc, char **argv)
 	int fd;
 	unsigned char buf[GFS2_BASIC_BLOCK], input[256];
 	struct gfs2_sb sb;
+	struct gfs2_buffer_head dummy_bh;
 
+	dummy_bh.b_data = (char *)buf;
 	if (optind == argc)
 		die("Usage: gfs2_tool sb <device> <field> [newval]\n");
 
@@ -119,7 +121,7 @@ do_sb(int argc, char **argv)
 		exit(-1);
 	}
 
-	gfs2_sb_in(&sb, (char*) buf);
+	gfs2_sb_in(&sb, &dummy_bh);
 
 	if (sb.sb_header.mh_magic != GFS2_MAGIC ||
 	    sb.sb_header.mh_type != GFS2_METATYPE_SB)
@@ -203,7 +205,7 @@ do_sb(int argc, char **argv)
 		die( _("unknown field %s\n"), field);
 
 	if (newval) {
-		gfs2_sb_out(&sb,(char*) buf);
+		gfs2_sb_out(&sb, &dummy_bh);
 
 		if (lseek(fd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK, SEEK_SET) !=
 		    GFS2_SB_ADDR * GFS2_BASIC_BLOCK) {
