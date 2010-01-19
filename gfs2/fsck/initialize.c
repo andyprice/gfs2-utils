@@ -160,6 +160,132 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 }
 
 /**
+ * check_rgrp_integrity - verify a rgrp free block count against the bitmap
+ */
+static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
+				 int *fixit, int *this_rg_fixed,
+				 int *this_rg_bad)
+{
+	uint32_t rg_free, rg_reclaimed;
+	int rgb, x, y, off, bytes_to_check, total_bytes_to_check;
+	unsigned int state;
+
+	rg_free = rg_reclaimed = 0;
+	total_bytes_to_check = rgd->ri.ri_bitbytes;
+	*this_rg_fixed = *this_rg_bad = 0;
+
+	for (rgb = 0; rgb < rgd->ri.ri_length; rgb++){
+		/* Count up the free blocks in the bitmap */
+		off = (rgb) ? sizeof(struct gfs2_meta_header) :
+			sizeof(struct gfs2_rgrp);
+		if (total_bytes_to_check <= sdp->bsize - off)
+			bytes_to_check = total_bytes_to_check;
+		else
+			bytes_to_check = sdp->bsize - off;
+		total_bytes_to_check -= bytes_to_check;
+		for (x = 0; x < bytes_to_check; x++) {
+			unsigned char *byte;
+
+			byte = (unsigned char *)&rgd->bh[rgb]->b_data[off + x];
+			if (*byte == 0x55)
+				continue;
+			if (*byte == 0x00) {
+				rg_free += GFS2_NBBY;
+				continue;
+			}
+			for (y = 0; y < GFS2_NBBY; y++) {
+				state = (*byte >>
+					 (GFS2_BIT_SIZE * y)) & GFS2_BIT_MASK;
+				if (state == GFS2_BLKST_USED)
+					continue;
+				if (state == GFS2_BLKST_DINODE)
+					continue;
+				if (state == GFS2_BLKST_FREE) {
+					rg_free++;
+					continue;
+				}
+				/* GFS2_BLKST_UNLINKED */
+				*this_rg_bad = 1;
+				if (!(*fixit)) {
+					if (query(_("Okay to reclaim unlinked "
+						    "inodes? (y/n)")))
+						*fixit = 1;
+				}
+				if (!(*fixit))
+					continue;
+				*byte &= ~(GFS2_BIT_MASK <<
+					   (GFS2_BIT_SIZE * y));
+				bmodified(rgd->bh[rgb]);
+				rg_reclaimed++;
+				rg_free++;
+				*this_rg_fixed = 1;
+			}
+		}
+	}
+	if (rgd->rg.rg_free != rg_free) {
+		*this_rg_bad = 1;
+		log_err( _("Error: resource group %lld (0x%llx): "
+			   "free space (%d) does not match bitmap (%d)\n"),
+			 (unsigned long long)rgd->ri.ri_addr,
+			 (unsigned long long)rgd->ri.ri_addr,
+			 rgd->rg.rg_free, rg_free);
+		if (rg_reclaimed)
+			log_err( _("(%d blocks were reclaimed)\n"),
+				 rg_reclaimed);
+		if (query( _("Fix the rgrp free blocks count? (y/n)"))) {
+			rgd->rg.rg_free = rg_free;
+			gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
+			*this_rg_fixed = 1;
+			log_err( _("The rgrp was fixed.\n"));
+		} else
+			log_err( _("The rgrp was not fixed.\n"));
+	}
+	/*
+	else {
+		log_debug( _("Resource group %lld (0x%llx) free space "
+			     "is consistent: free: %d reclaimed: %d\n"),
+			   (unsigned long long)rgd->ri.ri_addr,
+			   (unsigned long long)rgd->ri.ri_addr,
+			   rg_free, rg_reclaimed);
+	}*/
+}
+
+/**
+ * check_rgrps_integrity - verify rgrp consistency
+ *
+ * Returns: 0 on success, 1 if errors were detected
+ */
+static int check_rgrps_integrity(struct gfs2_sbd *sdp)
+{
+	int rgs_good = 0, rgs_bad = 0, rgs_fixed = 0;
+	int was_bad = 0, was_fixed = 0, error = 0;
+	osi_list_t *tmp;
+	struct rgrp_list *rgd;
+	int reclaim_unlinked = 0;
+
+	log_info( _("Checking the integrity of all resource groups.\n"));
+	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
+		if (fsck_abort)
+			return 0;
+		rgd = osi_list_entry(tmp, struct rgrp_list, list);
+		check_rgrp_integrity(sdp, rgd, &reclaim_unlinked,
+				     &was_fixed, &was_bad);
+		if (was_fixed)
+			rgs_fixed++;
+		if (was_bad) {
+			error = 1;
+			rgs_bad++;
+		} else
+			rgs_good++;
+	}
+	if (rgs_bad)
+		log_err( _("RGs: Consistent: %d   Inconsistent: %d   Fixed: %d"
+			   "   Total: %d\n"),
+			 rgs_good, rgs_bad, rgs_fixed, rgs_good + rgs_bad);
+	return error;
+}
+
+/**
  * init_system_inodes
  *
  * Returns: 0 on success, -1 on failure
@@ -236,6 +362,8 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 		return -1;
 	}
 	log_info( _("%u resource groups found.\n"), rgcount);
+
+	check_rgrps_integrity(sdp);
 
 	/*******************************************************************
 	 *******  Now, set boundary fields in the super block  *************
