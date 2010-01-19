@@ -351,7 +351,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		if (first_leaf_ptr == -1)
 			first_leaf_ptr = first_ok_leaf;
 		if(gfs2_check_range(ip->i_sbd, first_ok_leaf) == 0) {
-			lbh = bread(&sbp->buf_list, first_ok_leaf);
+			lbh = bread(sbp, first_ok_leaf);
 			/* Make sure it's really a valid leaf block. */
 			if (gfs2_check_meta(lbh, GFS2_METATYPE_LF) == 0) {
 				brelse(lbh);
@@ -395,7 +395,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			if (query( _("Attempt to fix it? (y/n) "))) {
 				int factor = 0, divisor = ref_count;
 
-				lbh = bread(&sbp->buf_list, old_leaf);
+				lbh = bread(sbp, old_leaf);
 				while (divisor > 1) {
 					factor++;
 					divisor /= 2;
@@ -432,7 +432,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			}
 
 			/* Try to read in the leaf block. */
-			lbh = bread(&sbp->buf_list, leaf_no);
+			lbh = bread(sbp, leaf_no);
 			/* Make sure it's really a valid leaf block. */
 			if (gfs2_check_meta(lbh, GFS2_METATYPE_LF)) {
 				warn_and_patch(ip, &leaf_no, &bad_leaf,
@@ -498,7 +498,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 				}
 
 				if(count != leaf.lf_entries) {
-					lbh = bread(&sbp->buf_list, leaf_no);
+					lbh = bread(sbp, leaf_no);
 					gfs2_leaf_in(&leaf, lbh);
 
 					log_err( _("Leaf %llu (0x%llx) entry "
@@ -868,9 +868,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip,
 					continue;
 				}
 				if(!nbh)
-					nbh = bread(&ip->i_sbd->buf_list,
-						    block);
-
+					nbh = bread(ip->i_sbd, block);
 				osi_list_add(&nbh->b_altlist, cur_list);
 			} /* for all data on the indirect block */
 		} /* for blocks at that height */

@@ -906,7 +906,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 	uint64_t rgblk;
 
 	rgblk = get_rg_addr(rgnum);
-	rbh = bread(&sbd.buf_list, rgblk);
+	rbh = bread(&sbd, rgblk);
 	if (gfs1)
 		gfs_rgrp_in(&rg.rg1, rbh);
 	else
@@ -938,7 +938,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 		brelse(rbh);
 	}
 	if (modify)
-		bsync(&sbd.buf_list);
+		fsync(sbd.device_fd);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -990,7 +990,7 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 			else {
 				struct gfs2_buffer_head *tmp_bh;
 
-				tmp_bh = bread(&sbd.buf_list, ri.ri_addr);
+				tmp_bh = bread(&sbd, ri.ri_addr);
 				if (gfs1) {
 					struct gfs_rgrp rg1;
 					gfs_rgrp_in(&rg1, tmp_bh);
@@ -1639,7 +1639,7 @@ static int display_extended(void)
 
 	/* Display any indirect pointers that we have. */
 	if (block_is_rindex()) {
-		tmp_bh = bread(&sbd.buf_list, block);
+		tmp_bh = bread(&sbd, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		parse_rindex(tmp_inode, TRUE);
 		brelse(tmp_bh);
@@ -1651,34 +1651,34 @@ static int display_extended(void)
 		return -1;
 	else if (block_is_rglist()) {
 		if (gfs1)
-			tmp_bh = bread(&sbd.buf_list,
+			tmp_bh = bread(&sbd,
 				       sbd1->sb_rindex_di.no_addr);
 		else
-			tmp_bh = bread(&sbd.buf_list, masterblock("rindex"));
+			tmp_bh = bread(&sbd, masterblock("rindex"));
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		parse_rindex(tmp_inode, FALSE);
 		brelse(tmp_bh);
 	}
 	else if (block_is_jindex()) {
-		tmp_bh = bread(&sbd.buf_list, block);
+		tmp_bh = bread(&sbd, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		print_jindex(tmp_inode);
 		brelse(tmp_bh);
 	}
 	else if (block_is_inum_file()) {
-		tmp_bh = bread(&sbd.buf_list, block);
+		tmp_bh = bread(&sbd, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		print_inum(tmp_inode);
 		brelse(tmp_bh);
 	}
 	else if (block_is_statfs_file()) {
-		tmp_bh = bread(&sbd.buf_list, block);
+		tmp_bh = bread(&sbd, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		print_statfs(tmp_inode);
 		brelse(tmp_bh);
 	}
 	else if (block_is_quota_file()) {
-		tmp_bh = bread(&sbd.buf_list, block);
+		tmp_bh = bread(&sbd, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		print_quota(tmp_inode);
 		brelse(tmp_bh);
@@ -1698,14 +1698,13 @@ static void read_superblock(int fd)
 	memset(&sbd, 0, sizeof(struct gfs2_sbd));
 	sbd.bsize = GFS2_DEFAULT_BSIZE;
 	sbd.device_fd = fd;
-	bh = bread(&sbd.buf_list, 0x10);
+	bh = bread(&sbd, 0x10);
 	sbd.jsize = GFS2_DEFAULT_JSIZE;
 	sbd.rgsize = GFS2_DEFAULT_RGSIZE;
 	sbd.utsize = GFS2_DEFAULT_UTSIZE;
 	sbd.qcsize = GFS2_DEFAULT_QCSIZE;
 	sbd.time = time(NULL);
 	osi_list_init(&sbd.rglist);
-	init_buf_list(&sbd, &sbd.buf_list, 1 << 20);
 	gfs2_sb_in(&sbd.sd_sb, bh); /* parse it out into the sb structure */
 	/* Check to see if this is really gfs1 */
 	if (sbd1->sb_fs_format == GFS_FORMAT_FS &&
@@ -1802,7 +1801,7 @@ int display(int identify_only)
 	if (block_in_mem != blk) { /* If we changed blocks from the last read */
 		dev_offset = blk * sbd.bsize;
 		ioctl(sbd.device_fd, BLKFLSBUF, 0);
-		if (!(bh = bread(&sbd.buf_list, blk))) {
+		if (!(bh = bread(&sbd, blk))) {
 			fprintf(stderr, "read error: %s from %s:%d: "
 				"offset %lld (0x%llx)\n",
 				strerror(errno), __FUNCTION__, __LINE__,
@@ -1955,7 +1954,7 @@ static uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 	else
 		jindex_block = masterblock("jindex");
 	/* read in the block */
-	jindex_bh = bread(&sbd.buf_list, jindex_block);
+	jindex_bh = bread(&sbd, jindex_block);
 	/* get the dinode data from it. */
 	gfs2_dinode_in(&di, jindex_bh); /* parse disk inode to struct*/
 
@@ -1980,7 +1979,7 @@ static uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 		struct gfs2_dinode jdi;
 
 		jblock = indirect->ii[0].dirent[journal_num + 2].block;
-		j_bh = bread(&sbd.buf_list, jblock);
+		j_bh = bread(&sbd, jblock);
 		j_inode = inode_get(&sbd, j_bh);
 		gfs2_dinode_in(&jdi, j_bh);/* parse dinode to struct */
 		*j_size = jdi.di_size;
@@ -2003,7 +2002,7 @@ static uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int p
 
 	last_fs_block = lseek(sbd.device_fd, 0, SEEK_END) / sbd.bsize;
 	for (blk = startblk + 1; blk < last_fs_block; blk++) {
-		lbh = bread(&sbd.buf_list, blk);
+		lbh = bread(&sbd, blk);
 		/* Can't use get_block_type here (returns false "none") */
 		if (lbh->b_data[0] == 0x01 && lbh->b_data[1] == 0x16 &&
 		    lbh->b_data[2] == 0x19 && lbh->b_data[3] == 0x70 &&
@@ -2428,7 +2427,7 @@ static void find_print_block_type(void)
 	int type;
 
 	tblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
-	lbh = bread(&sbd.buf_list, tblock);
+	lbh = bread(&sbd, tblock);
 	type = get_block_type(lbh);
 	print_block_type(tblock, type, "");
 	brelse(lbh);
@@ -2524,7 +2523,7 @@ static void find_change_block_alloc(int *newval)
 	}
 	gfs2_rgrp_free(&sbd.rglist);
 	if (newval)
-		bcommit(&sbd.buf_list);
+		fsync(sbd.device_fd);
 	exit(0);
 }
 
@@ -2539,7 +2538,7 @@ static void process_field(const char *field, uint64_t *newval, int print_field)
 	struct gfs2_rgrp rg;
 
 	fblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
-	rbh = bread(&sbd.buf_list, block);
+	rbh = bread(&sbd, block);
 	type = get_block_type(rbh);
 	switch (type) {
 	case GFS2_METATYPE_SB:
@@ -2591,10 +2590,8 @@ static void process_field(const char *field, uint64_t *newval, int print_field)
 					 " which is not implemented");
 		break;
 	}
-	if (newval)
-		bmodified(rbh);
 	brelse(rbh);
-	bcommit(&sbd.buf_list);
+	fsync(sbd.device_fd);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -2976,7 +2973,7 @@ static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
 			block_map(ip, lblock, &not_new, &dblock, &extlen,
 				  FALSE);
 		if (dblock) {
-			lbh = bread(&sdp->buf_list, dblock);
+			lbh = bread(sdp, dblock);
 			if (*abs_block == 0)
 				*abs_block = lbh->b_blocknr;
 			dblock++;
@@ -3034,7 +3031,7 @@ static void dump_journal(const char *journal)
 	if (!jblock)
 		return;
 	if (!gfs1) {
-		j_bh = bread(&sbd.buf_list, jblock);
+		j_bh = bread(&sbd, jblock);
 		j_inode = inode_get(&sbd, j_bh);
 		jbuf = malloc(sbd.bsize);
 	}
@@ -3043,7 +3040,7 @@ static void dump_journal(const char *journal)
 		if (gfs1) {
 			if (j_bh)
 				brelse(j_bh);
-			j_bh = bread(&sbd.buf_list, jblock + jb);
+			j_bh = bread(&sbd, jblock + jb);
 			abs_block = jblock + jb;
 			dummy_bh.b_data = j_bh->b_data;
 		} else {

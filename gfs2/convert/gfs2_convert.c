@@ -322,7 +322,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 			if (!block)
 				break;
 
-			bh = bread(&sbp->buf_list, block);
+			bh = bread(sbp, block);
 			if (new)
 				memset(bh->b_data, 0, sbp->bsize);
 			gfs2_meta_header_out(&mh, bh);
@@ -495,7 +495,7 @@ static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
 			osi_list_add_prev(&newblk->list, &blocks.list);
 
 			/* read the new metadata block's pointers */
-			bh = bread(&sbp->buf_list, block);
+			bh = bread(sbp, block);
 			memcpy(newblk->ptrbuf, bh->b_data +
 			       sizeof(struct gfs_indirect), bufsize);
 			/* Zero the buffer so we can fill it in later */
@@ -723,7 +723,7 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
 				sbp->sd_sb.sb_root_dir.no_addr = block;
 				sbp->sd_sb.sb_root_dir.no_formal_ino = sbp->md.next_inum;
 			}
-			bh = bread(&sbp->buf_list, block);
+			bh = bread(sbp, block);
 			if (!gfs2_check_meta(bh, GFS_METATYPE_DI)) /* if it is an dinode */
 				error = adjust_inode(sbp, bh);
 			else { /* It's metadata, but not an inode, so fix the bitmap. */
@@ -1078,13 +1078,12 @@ static int init(struct gfs2_sbd *sbp)
 	sbp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 	sbp->bsize = sbp->sd_sb.sb_bsize;
 	osi_list_init(&sbp->rglist);
-	init_buf_list(sbp, &sbp->buf_list, 1 << 20); /* only use 1MB of bufs */
 	if (compute_constants(sbp)) {
 		log_crit("Error: Bad constants (1)\n");
 		exit(-1);
 	}
 
-	bh = bread(&sbp->buf_list, GFS2_SB_ADDR >> sbp->sd_fsb2bb_shift);
+	bh = bread(sbp, GFS2_SB_ADDR >> sbp->sd_fsb2bb_shift);
 	memcpy(&raw_gfs1_ondisk_sb, (struct gfs1_sb *)bh->b_data,
 		   sizeof(struct gfs1_sb));
 	gfs2_sb_in(&sbp->sd_sb, bh);
@@ -1372,7 +1371,7 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 			return -1;
 		}
 		for (x = 0; x < rgd->ri.ri_length; x++) {
-			rgd->bh[x] = bget(&sdp->buf_list, rgd->ri.ri_addr + x);
+			rgd->bh[x] = bget(sdp, rgd->ri.ri_addr + x);
 			memset(rgd->bh[x]->b_data, 0, sdp->bsize);
 		}
 		if (gfs2_compute_bitstructs(sdp, rgd)) {
@@ -1529,7 +1528,7 @@ int main(int argc, char **argv)
 		if (error)
 			log_crit("%s: Unable to convert resource groups.\n",
 					device);
-		bcommit(&sb2.buf_list); /* write the buffers to disk */
+		fsync(sb2.device_fd); /* write the buffers to disk */
 	}
 	/* ---------------------------------------------- */
 	/* Renumber the inodes consecutively.             */
@@ -1538,7 +1537,7 @@ int main(int argc, char **argv)
 		error = inode_renumber(&sb2, sb2.sd_sb.sb_root_dir.no_addr);
 		if (error)
 			log_crit("\n%s: Error renumbering inodes.\n", device);
-		bcommit(&sb2.buf_list); /* write the buffers to disk */
+		fsync(sb2.device_fd); /* write the buffers to disk */
 	}
 	/* ---------------------------------------------- */
 	/* Fix the directories to match the new numbers.  */
@@ -1559,7 +1558,7 @@ int main(int argc, char **argv)
 		error = journ_space_to_rg(&sb2);
 		if (error)
 			log_crit("%s: Error converting journal space.\n", device);
-		bcommit(&sb2.buf_list); /* write the buffers to disk */
+		fsync(sb2.device_fd); /* write the buffers to disk */
 	}
 	/* ---------------------------------------------- */
 	/* Create our system files and directories.       */
@@ -1596,7 +1595,7 @@ int main(int argc, char **argv)
 		inode_put(&sb2.md.inum);
 		inode_put(&sb2.md.statfs);
 
-		bcommit(&sb2.buf_list); /* write the buffers to disk */
+		fsync(sb2.device_fd); /* write the buffers to disk */
 
 		/* Now delete the now-obsolete gfs1 files: */
 		remove_obsolete_gfs1(&sb2);
@@ -1608,13 +1607,12 @@ int main(int argc, char **argv)
 		/* end because if the tool is interrupted in the middle, we want */
 		/* it to not reject the partially converted fs as already done   */
 		/* when it's run a second time.                                  */
-		bh = bread(&sb2.buf_list, sb2.sb_addr);
+		bh = bread(&sb2, sb2.sb_addr);
 		sb2.sd_sb.sb_fs_format = GFS2_FORMAT_FS;
 		sb2.sd_sb.sb_multihost_format = GFS2_FORMAT_MULTI;
 		gfs2_sb_out(&sb2.sd_sb, bh);
 		brelse(bh);
 
-		bsync(&sb2.buf_list); /* write the buffers to disk */
 		error = fsync(sb2.device_fd);
 		if (error)
 			perror(device);

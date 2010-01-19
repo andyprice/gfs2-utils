@@ -278,7 +278,6 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 	 ********************************************************************/
 	log_info( _("Initializing lists...\n"));
 	osi_list_init(&sdp->rglist);
-	init_buf_list(sdp, &sdp->buf_list, 1 << 20);
 	for(i = 0; i < FSCK_HASH_SIZE; i++) {
 		osi_list_init(&dir_hash[i]);
 		osi_list_init(&inode_hash[i]);

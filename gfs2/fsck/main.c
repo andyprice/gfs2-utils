@@ -335,8 +335,6 @@ int main(int argc, char **argv)
 	int j;
 	int error = 0;
 	int all_clean = 0;
-	osi_list_t *tmp;
-	struct rgrp_list *rgd;
 
 	setlocale(LC_ALL, "");
 	textdomain("gfs2-utils");
@@ -472,13 +470,7 @@ int main(int argc, char **argv)
 
 	if (!opts.no && errors_corrected)
 		log_notice( _("Writing changes to disk\n"));
-
-	for (tmp = sbp->rglist.next; tmp != &sbp->rglist; tmp = tmp->next) {
-		rgd = osi_list_entry(tmp, struct rgrp_list, list);
-		gfs2_rgrp_relse(rgd);
-	}
-
-	bsync(&sbp->buf_list);
+	fsync(sbp->device_fd);
 	destroy(sbp);
 	log_notice( _("gfs2_fsck complete    \n"));
 

@@ -190,7 +190,7 @@ static int save_block(int fd, int out_fd, uint64_t blk)
 		return 0;
 	}
 	memset(savedata, 0, sizeof(struct saved_metablock));
-	savebh = bread(&sbd.buf_list, blk);
+	savebh = bread(&sbd, blk);
 	memcpy(&savedata->buf, savebh->b_data, sbd.bsize);
 
 	/* If this isn't metadata and isn't a system file, we don't want it.
@@ -295,12 +295,12 @@ static void save_indirect_blocks(int out_fd, osi_list_t *cur_list,
 		old_block = indir_block;
 		blktype = save_block(sbd.device_fd, out_fd, indir_block);
 		if (blktype == GFS2_METATYPE_EA) {
-			nbh = bread(&sbd.buf_list, indir_block);
+			nbh = bread(&sbd, indir_block);
 			save_ea_block(out_fd, nbh);
 			brelse(nbh);
 		}
 		if (height != hgt) { /* If not at max height */
-			nbh = bread(&sbd.buf_list, indir_block);
+			nbh = bread(&sbd, indir_block);
 			osi_list_add_prev(&nbh->b_altlist,
 					  cur_list);
 			brelse(nbh);
@@ -334,7 +334,7 @@ static void save_inode_data(int out_fd)
 
 	for (i = 0; i < GFS2_MAX_META_HEIGHT; i++)
 		osi_list_init(&metalist[i]);
-	metabh = bread(&sbd.buf_list, block);
+	metabh = bread(&sbd, block);
 	if (gfs1)
 		inode = inode_get(&sbd, metabh);
 	else
@@ -385,7 +385,7 @@ static void save_inode_data(int out_fd)
 		struct gfs2_meta_header mh;
 		struct gfs2_buffer_head *lbh;
 
-		lbh = bread(&sbd.buf_list, inode->i_di.di_eattr);
+		lbh = bread(&sbd, inode->i_di.di_eattr);
 		save_block(sbd.device_fd, out_fd, inode->i_di.di_eattr);
 		gfs2_meta_header_in(&mh, lbh);
 		if (mh.mh_magic == GFS2_MAGIC &&
@@ -479,8 +479,8 @@ static int next_rg_freemeta(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 	}
 	for(; i < length; i++){
 		bits = &rgd->bits[i];
-		lbh = bread(&sdp->buf_list, rgd->ri.ri_addr + i);
-		blk = gfs2_bitfit((unsigned char *)bh->b_data +
+		lbh = bread(sdp, rgd->ri.ri_addr + i);
+		blk = gfs2_bitfit((unsigned char *)lbh->b_data +
 				  bits->bi_offset, bits->bi_len, blk,
 				  GFS2_BLKST_UNLINKED);
 		brelse(lbh);
@@ -541,7 +541,6 @@ void savemeta(char *out_fn, int saveoption)
 			exit(-1);
 		}
 		osi_list_init(&sbd.rglist);
-		init_buf_list(&sbd, &sbd.buf_list, 1 << 20);
 		if (!gfs1)
 			sbd.sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 		if (compute_constants(&sbd)) {
@@ -586,7 +585,7 @@ void savemeta(char *out_fn, int saveoption)
 					    &sbd.md.riinode);
 			jindex_block = masterblock("jindex");
 		}
-		lbh = bread(&sbd.buf_list, jindex_block);
+		lbh = bread(&sbd, jindex_block);
 		gfs2_dinode_in(&di, lbh);
 		if (!gfs1)
 			do_dinode_extended(&di, lbh);
@@ -755,6 +754,8 @@ static int restore_data(int fd, int in_fd, int printblocksonly)
 	blks_saved = total_out = 0;
 	last_fs_block = 0;
 	while (TRUE) {
+		struct gfs2_buffer_head dummy_bh;
+
 		memset(savedata, 0, sizeof(struct saved_metablock));
 		rs = read(in_fd, &buf64, sizeof(uint64_t));
 		if (!rs)
@@ -796,8 +797,9 @@ static int restore_data(int fd, int in_fd, int printblocksonly)
 		if (first) {
 			struct gfs2_sb bufsb;
 
+			dummy_bh.b_data = (char *)&bufsb;
 			memcpy(&bufsb, savedata->buf, sizeof(bufsb));
-			gfs2_sb_in(&sbd.sd_sb, (void *)&bufsb);
+			gfs2_sb_in(&sbd.sd_sb, &dummy_bh);
 			sbd1 = (struct gfs_sb *)&sbd.sd_sb;
 			if (sbd1->sb_fs_format == GFS_FORMAT_FS &&
 			    sbd1->sb_header.mh_type ==
@@ -825,12 +827,13 @@ static int restore_data(int fd, int in_fd, int printblocksonly)
 			}
 			first = 0;
 		}
+		bh = &dummy_bh;
+		bh->b_data = savedata->buf;
 		if (printblocksonly) {
 			block = savedata->blk;
 			if (block > highest_valid_block)
 				highest_valid_block = block;
 			if (printblocksonly > 1 && printblocksonly == block) {
-				memcpy(bh->b_data, savedata->buf, sbd.bsize);
 				block_in_mem = block;
 				display(0);
 				return 0;

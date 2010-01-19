@@ -55,7 +55,7 @@ struct gfs2_inode *inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
 		exit(-1);
 	}
-	ip->i_bh = bread(&sdp->buf_list, di_addr);
+	ip->i_bh = bread(sdp, di_addr);
 	gfs2_dinode_in(&ip->i_di, ip->i_bh);
 	ip->i_sbd = sdp;
 	ip->bh_owned = 1; /* We did the bread so we own the bh */
@@ -237,7 +237,7 @@ void unstuff_dinode(struct gfs2_inode *ip)
 	if (ip->i_di.di_size) {
 		if (isdir) {
 			block = meta_alloc(ip);
-			bh = bget(&sdp->buf_list, block);
+			bh = bget(sdp, block);
 			{
 				struct gfs2_meta_header mh;
 				mh.mh_magic = GFS2_MAGIC;
@@ -253,7 +253,7 @@ void unstuff_dinode(struct gfs2_inode *ip)
 			brelse(bh);
 		} else {
 			block = data_alloc(ip);
-			bh = bget(&sdp->buf_list, block);
+			bh = bget(sdp, block);
 
 			buffer_copy_tail(sdp, bh, 0,
 					 ip->i_bh, sizeof(struct gfs2_dinode));
@@ -315,7 +315,7 @@ void build_height(struct gfs2_inode *ip, int height)
 
 		if (new_block) {
 			block = meta_alloc(ip);
-			bh = bget(&sdp->buf_list, block);
+			bh = bget(sdp, block);
 			{
 				struct gfs2_meta_header mh;
 				mh.mh_magic = GFS2_MAGIC;
@@ -441,7 +441,7 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 
 		if (*new) {
 			struct gfs2_meta_header mh;
-			bh = bget(&sdp->buf_list, *dblock);
+			bh = bget(sdp, *dblock);
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_IN;
 			mh.mh_format = GFS2_FORMAT_IN;
@@ -450,7 +450,7 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			if (*dblock == ip->i_di.di_num.no_addr)
 				bh = ip->i_bh;
 			else
-				bh = bread(&sdp->buf_list, *dblock);
+				bh = bread(sdp, *dblock);
 		}
 	}
 
@@ -549,7 +549,7 @@ int gfs2_readi(struct gfs2_inode *ip, void *buf,
 			if (dblock == ip->i_di.di_num.no_addr)
 				bh = ip->i_bh;
 			else
-				bh = bread(&sdp->buf_list, dblock);
+				bh = bread(sdp, dblock);
 			dblock++;
 			extlen--;
 		} else
@@ -624,7 +624,7 @@ int gfs2_writei(struct gfs2_inode *ip, void *buf,
 		}
 
 		if (new) {
-			bh = bget(&sdp->buf_list, dblock);
+			bh = bget(sdp, dblock);
 			if (isdir) {
 				struct gfs2_meta_header mh;
 				mh.mh_magic = GFS2_MAGIC;
@@ -636,7 +636,7 @@ int gfs2_writei(struct gfs2_inode *ip, void *buf,
 			if (dblock == ip->i_di.di_num.no_addr)
 				bh = ip->i_bh;
 			else
-				bh = bread(&sdp->buf_list, dblock);
+				bh = bread(sdp, dblock);
 		}
 		copy_from_mem(bh, &buf, o, amount);
 		if (bh != ip->i_bh)
@@ -678,12 +678,12 @@ struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip, uint64_t lbn,
 		ip->i_di.di_size = (lbn + 1) << sdp->sd_sb.sb_bsize_shift;
 	}
 	if (new)
-		return bget(&sdp->buf_list, dbn);
+		return bget(sdp, dbn);
 	else {
 		if (dbn == ip->i_di.di_num.no_addr)
 			return ip->i_bh;
 		else
-			return bread(&sdp->buf_list, dbn);
+			return bread(sdp, dbn);
 	}
 }
 
@@ -852,7 +852,7 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex, uint64_t lea
 	int count;
 
 	bn = meta_alloc(dip);
-	nbh = bget(&dip->i_sbd->buf_list, bn);
+	nbh = bget(dip->i_sbd, bn);
 	{
 		struct gfs2_meta_header mh;
 		mh.mh_magic = GFS2_MAGIC;
@@ -864,7 +864,7 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex, uint64_t lea
 	nleaf = (struct gfs2_leaf *)nbh->b_data;
 	nleaf->lf_dirent_format = cpu_to_be32(GFS2_FORMAT_DE);
 
-	obh = bread(&dip->i_sbd->buf_list, leaf_no);
+	obh = bread(dip->i_sbd, leaf_no);
 	oleaf = (struct gfs2_leaf *)obh->b_data;
 
 	len = 1 << (dip->i_di.di_depth - be16_to_cpu(oleaf->lf_depth));
@@ -1004,7 +1004,7 @@ int gfs2_get_leaf(struct gfs2_inode *dip, uint64_t leaf_no,
 {
 	int error = 0;
 
-	*bhp = bread(&dip->i_sbd->buf_list, leaf_no);
+	*bhp = bread(dip->i_sbd, leaf_no);
 	if (error)
 		return error;
 	error = gfs2_check_meta(*bhp, GFS2_METATYPE_LF);
@@ -1028,7 +1028,7 @@ static int get_first_leaf(struct gfs2_inode *dip, uint32_t lindex,
 	uint64_t leaf_no;
 
 	gfs2_get_leaf_nr(dip, lindex, &leaf_no);
-	*bh_out = bread(&dip->i_sbd->buf_list, leaf_no);
+	*bh_out = bread(dip->i_sbd, leaf_no);
 	return 0;
 }
 
@@ -1050,7 +1050,7 @@ static int get_next_leaf(struct gfs2_inode *dip,struct gfs2_buffer_head *bh_in,
 
 	if (!leaf->lf_next)
 		return -1;
-	*bh_out = bread(&dip->i_sbd->buf_list, be64_to_cpu(leaf->lf_next));
+	*bh_out = bread(dip->i_sbd, be64_to_cpu(leaf->lf_next));
 	return 0;
 }
 
@@ -1075,7 +1075,7 @@ static void dir_e_add(struct gfs2_inode *dip, const char *filename, int len,
 	gfs2_get_leaf_nr(dip, lindex, &leaf_no);
 
 	for (;;) {
-		bh = bread(&dip->i_sbd->buf_list, leaf_no);
+		bh = bread(dip->i_sbd, leaf_no);
 		leaf = (struct gfs2_leaf *)bh->b_data;
 
 		if (dirent_alloc(dip, bh, len, &dent)) {
@@ -1097,7 +1097,7 @@ static void dir_e_add(struct gfs2_inode *dip, const char *filename, int len,
 
 			} else {
 				bn = meta_alloc(dip);
-				nbh = bget(&dip->i_sbd->buf_list, bn);
+				nbh = bget(dip->i_sbd, bn);
 				{
 					struct gfs2_meta_header mh;
 					mh.mh_magic = GFS2_MAGIC;
@@ -1147,7 +1147,7 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 	uint64_t *lp, bn;
 
 	bn = meta_alloc(dip);
-	bh = bget(&sdp->buf_list, bn);
+	bh = bget(sdp, bn);
 	{
 		struct gfs2_meta_header mh;
 		mh.mh_magic = GFS2_MAGIC;
@@ -1197,6 +1197,7 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 	dip->i_di.di_depth = y;
 
 	gfs2_dinode_out(&dip->i_di, dip->i_bh);
+	bwrite(dip->i_bh);
 }
 
 static void dir_l_add(struct gfs2_inode *dip, const char *filename, int len,
@@ -1233,7 +1234,7 @@ struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
 	struct gfs2_buffer_head *bh;
 	struct gfs2_dinode di;
 
-	bh = bget(&sdp->buf_list, inum->no_addr);
+	bh = bget(sdp, inum->no_addr);
 
 	memset(&di, 0, sizeof(struct gfs2_dinode));
 	di.di_header.mh_magic = GFS2_MAGIC;
@@ -1559,7 +1560,7 @@ static int dir_e_del(struct gfs2_inode *dip, const char *filename, int len)
 		gfs2_get_leaf_nr(dip, lindex, &leaf_no);
 
 		while(leaf_no && !found){
-			bh = bread(&dip->i_sbd->buf_list, leaf_no);
+			bh = bread(dip->i_sbd, leaf_no);
 			error = leaf_search(dip, bh, filename, len, &cur, &prev);
 			if (error) {
 				if(error != -ENOENT){
@@ -1698,7 +1699,7 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 	for (h = 0; h < GFS2_MAX_META_HEIGHT; h++)
 		osi_list_init(&metalist[h]);
 
-	bh = bread(&sdp->buf_list, diblock);
+	bh = bread(sdp, diblock);
 	ip = inode_get(sdp, bh);
 	height = ip->i_di.di_height;
 	osi_list_add(&bh->b_altlist, &metalist[0]);
@@ -1723,7 +1724,7 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 				if (h == height - 1) /* if not metadata */
 					continue; /* don't queue it up */
 				/* Read the next metadata block in the chain */
-				nbh = bread(&sdp->buf_list, block);
+				nbh = bread(sdp, block);
 				osi_list_add(&nbh->b_altlist, next_list);
 				brelse(nbh);
 			}

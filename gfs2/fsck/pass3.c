@@ -55,7 +55,6 @@ static int attach_dotdot_to(struct gfs2_sbd *sbp, uint64_t newdotdot,
 	increment_link(sbp, newdotdot);
 	bmodified(ip->i_bh);
 	fsck_inode_put(&ip);
-	bmodified(pip->i_bh);
 	fsck_inode_put(&pip);
 	return 0;
 }

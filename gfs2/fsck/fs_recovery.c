@@ -120,7 +120,7 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 		if (error)
 			return error;
 
-		bh_ip = bget(&sdp->buf_list, blkno);
+		bh_ip = bget(sdp, blkno);
 		memcpy(bh_ip->b_data, bh_log->b_data, sdp->bsize);
 
 		check_magic = ((struct gfs2_meta_header *)
@@ -219,7 +219,7 @@ static int databuf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 		if (error)
 			return error;
 
-		bh_ip = bget(&sdp->buf_list, blkno);
+		bh_ip = bget(sdp, blkno);
 		memcpy(bh_ip->b_data, bh_log->b_data, sdp->bsize);
 
 		/* Unescape */
@@ -374,7 +374,7 @@ static int fix_journal_seq_no(struct gfs2_inode *ip)
 		prev_seq = lh.lh_sequence;
 		log_warn( _("Renumbering it as 0x%llx\n"), lh.lh_sequence);
 		block_map(ip, blk, &new, &dblock, &extlen, FALSE);
-		bh = bread(&ip->i_sbd->buf_list, dblock);
+		bh = bread(ip->i_sbd, dblock);
 		gfs2_log_header_out(&lh, bh);
 		brelse(bh);
 	}
@@ -583,6 +583,6 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 	inode_put(&sdp->master_dir);
 	inode_put(&sdp->md.jiinode);
 	/* Sync the buffers to disk so we get a fresh start. */
-	bsync(&sdp->buf_list);
+	fsync(sdp->device_fd);
 	return error;
 }

@@ -81,14 +81,14 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 			     uint64_t parent, struct gfs2_buffer_head **bh,
 			     void *private)
 {
-	*bh = bread(&ip->i_sbd->buf_list, block);
+	*bh = bread(ip->i_sbd, block);
 	return 0;
 }
 static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			    uint64_t parent, struct gfs2_buffer_head **bh,
 			    void *private)
 {
-	*bh = bread(&ip->i_sbd->buf_list, block);
+	*bh = bread(ip->i_sbd, block);
 	return 0;
 }
 
@@ -297,7 +297,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				return 1;
 
 			/* Now try to clear the dinode, if it is an dinode */
-			bhi = bread(&sbp->buf_list, de->de_inum.no_addr);
+			bhi = bread(sbp, de->de_inum.no_addr);
 			error = gfs2_check_meta(bhi, GFS2_METATYPE_DI);
 			bmodified(bhi);
 			brelse(bhi);

@@ -14,120 +14,18 @@
 
 #include "libgfs2.h"
 
-static __inline__ osi_list_t *
-blkno2head(struct buf_list *bl, uint64_t blkno)
-{
-	return bl->buf_hash +
-		(gfs2_disk_hash((char *)&blkno, sizeof(uint64_t)) & BUF_HASH_MASK);
-}
-
-static int write_buffer(struct buf_list *bl, struct gfs2_buffer_head *bh)
-{
-	struct gfs2_sbd *sdp = bl->sbp;
-
-	osi_list_del(&bh->b_list);
-	osi_list_del(&bh->b_hash);
-	bl->num_bufs--;
-	if (bh->b_changed) {
-		if (lseek(sdp->device_fd, bh->b_blocknr * sdp->bsize,
-			  SEEK_SET) != bh->b_blocknr * sdp->bsize) {
-			return -1;
-		}
-		if (write(sdp->device_fd, bh->b_data, sdp->bsize) !=
-		    sdp->bsize) {
-			return -1;
-		}
-		sdp->writes++;
-	}
-	bh->b_blocknr = -1;
-	bh->b_data = NULL;
-	bh->b_count = -1;
-	bh->b_changed = -1;
-	free(bh);
-	return 0;
-}
-
-void init_buf_list(struct gfs2_sbd *sdp, struct buf_list *bl, uint32_t limit)
-{
-	int i;
-
-	bl->num_bufs = 0;
-	bl->spills = 0;
-	bl->limit = limit;
-	bl->sbp = sdp;
-	osi_list_init(&bl->list);
-	for(i = 0; i < BUF_HASH_SIZE; i++)
-		osi_list_init(&bl->buf_hash[i]);
-}
-
-static int add_buffer(struct buf_list *bl, struct gfs2_buffer_head *bh)
-{
-	osi_list_t *head = blkno2head(bl, bh->b_blocknr);
-
-	osi_list_add(&bh->b_list, &bl->list);
-	osi_list_add(&bh->b_hash, head);
-	bl->num_bufs++;
-
-	if (bl->num_bufs * bl->sbp->bsize > bl->limit) {
-		int found = 0;
-		osi_list_t *tmp, *x;
-
-		for (tmp = bl->list.prev, x = tmp->prev; tmp != &bl->list;
-		     tmp = x, x = x->prev) {
-			bh = osi_list_entry(tmp, struct gfs2_buffer_head,
-					    b_list);
-			if (!bh->b_count) {
-				if (write_buffer(bl, bh))
-					return -1;
-				found++;
-				if (found >= 10)
-					break;
-			}
-		}
-		bl->spills++;
-	}
-	return 0;
-}
-
-struct gfs2_buffer_head *bfind(struct buf_list *bl, uint64_t num)
-{
-	osi_list_t *head = blkno2head(bl, num);
-	osi_list_t *tmp;
-	struct gfs2_buffer_head *bh;
-
-	for (tmp = head->next; tmp != head; tmp = tmp->next) {
-		bh = osi_list_entry(tmp, struct gfs2_buffer_head, b_hash);
-		if (bh->b_blocknr == num) {
-			osi_list_del(&bh->b_list);
-			osi_list_add(&bh->b_list, &bl->list);
-			osi_list_del(&bh->b_hash);
-			osi_list_add(&bh->b_hash, head);
-			bh->b_count++;
-			return bh;
-		}
-	}
-
-	return NULL;
-}
-
-struct gfs2_buffer_head *__bget_generic(struct buf_list *bl, uint64_t num,
-					int find_existing, int read_disk,
+struct gfs2_buffer_head *__bget_generic(struct gfs2_sbd *sdp, uint64_t num,
+					int read_disk,
 					int line, const char *caller)
 {
 	struct gfs2_buffer_head *bh;
-	struct gfs2_sbd *sdp = bl->sbp;
 
-	if (find_existing) {
-		bh = bfind(bl, num);
-		if (bh)
-			return bh;
-	}
 	bh = calloc(1, sizeof(struct gfs2_buffer_head) + sdp->bsize);
 	if (bh == NULL)
 		return NULL;
 
-	bh->b_count = 1;
 	bh->b_blocknr = num;
+	bh->sdp = sdp;
 	bh->b_data = (char *)bh + sizeof(struct gfs2_buffer_head);
 	if (read_disk) {
 		if (lseek(sdp->device_fd, num * sdp->bsize, SEEK_SET) !=
@@ -146,119 +44,48 @@ struct gfs2_buffer_head *__bget_generic(struct buf_list *bl, uint64_t num,
 			exit(-1);
 		}
 	}
-	if (add_buffer(bl, bh)) {
-		fprintf(stderr, "bad write: %s from %s:%d: block "
-			"%llu (0x%llx)\n", strerror(errno),
-			caller, line, (unsigned long long)num,
-			(unsigned long long)num);
-		exit(-1);
-	}
-	bh->b_changed = FALSE;
 
 	return bh;
 }
 
-struct gfs2_buffer_head *__bget(struct buf_list *bl, uint64_t num, int line,
+struct gfs2_buffer_head *__bget(struct gfs2_sbd *sdp, uint64_t num, int line,
 				const char *caller)
 {
-	return __bget_generic(bl, num, TRUE, FALSE, line, caller);
+	return __bget_generic(sdp, num, FALSE, line, caller);
 }
 
-struct gfs2_buffer_head *__bread(struct buf_list *bl, uint64_t num, int line,
+struct gfs2_buffer_head *__bread(struct gfs2_sbd *sdp, uint64_t num, int line,
 				 const char *caller)
 {
-	return __bget_generic(bl, num, TRUE, TRUE, line, caller);
+	return __bget_generic(sdp, num, TRUE, line, caller);
 }
 
-struct gfs2_buffer_head *bhold(struct gfs2_buffer_head *bh)
+int bwrite(struct gfs2_buffer_head *bh)
 {
-	if (!bh->b_count)
-		return NULL;
-	bh->b_count++;
-	return bh;
-}
+	struct gfs2_sbd *sdp = bh->sdp;
 
-void bmodified(struct gfs2_buffer_head *bh)
-{
-	bh->b_changed = 1;
-}
-
-void brelse(struct gfs2_buffer_head *bh)
-{
-    /* We can't just say b_changed = updated because we don't want to     */
-	/* set it FALSE if it's TRUE until we write the changed data to disk. */
-	if (!bh->b_count) {
-		fprintf(stderr, "buffer count underflow for block %" PRIu64
-			" (0x%" PRIx64")\n", bh->b_blocknr, bh->b_blocknr);
-		exit(-1);
+	if (lseek(sdp->device_fd, bh->b_blocknr * sdp->bsize, SEEK_SET) !=
+	    bh->b_blocknr * sdp->bsize) {
+		return -1;
 	}
-	bh->b_count--;
+	if (write(sdp->device_fd, bh->b_data, sdp->bsize) != sdp->bsize)
+		return -1;
+	sdp->writes++;
+	bh->b_changed = 0;
+	return 0;
 }
 
-void __bsync(struct buf_list *bl, int line, const char *caller)
+int brelse(struct gfs2_buffer_head *bh)
 {
-	struct gfs2_buffer_head *bh;
+	int error = 0;
 
-	while (!osi_list_empty(&bl->list)) {
-		bh = osi_list_entry(bl->list.prev, struct gfs2_buffer_head,
-							b_list);
-		if (bh->b_count) {
-			fprintf(stderr, "buffer still held for block: %" PRIu64
-				" (0x%" PRIx64")\n", bh->b_blocknr, bh->b_blocknr);
-			exit(-1);
-		}
-		if (write_buffer(bl, bh)) {
-			fprintf(stderr, "bad write: %s from %s:%d: block "
-				"%lld (0x%llx)\n", strerror(errno),
-				caller, line,
-				(unsigned long long)bh->b_blocknr,
-				(unsigned long long)bh->b_blocknr);
-			exit(-1);
-		}
-	}
+	if (bh->b_blocknr == -1)
+		printf("Double free!\n");
+	if (bh->b_changed)
+		error = bwrite(bh);
+	bh->b_blocknr = -1;
+	if (bh->b_altlist.next && !osi_list_empty(&bh->b_altlist))
+		osi_list_del(&bh->b_altlist);
+	free(bh);
+	return error;
 }
-
-/* commit buffers to disk but do not discard */
-void __bcommit(struct buf_list *bl, int line, const char *caller)
-{
-	osi_list_t *tmp, *x;
-	struct gfs2_buffer_head *bh;
-	struct gfs2_sbd *sdp = bl->sbp;
-
-	osi_list_foreach_safe(tmp, &bl->list, x) {
-		bh = osi_list_entry(tmp, struct gfs2_buffer_head, b_list);
-		if (!bh->b_count) {            /* if not reserved for later */
-			if (write_buffer(bl, bh)) { /* write & free */
-				fprintf(stderr, "bad write: %s from %s:%d: "
-					"block %lld (0x%llx)\n",
-					strerror(errno), caller, line,
-					(unsigned long long)bh->b_blocknr,
-					(unsigned long long)bh->b_blocknr);
-				exit(-1);
-			}
-		} else if (bh->b_changed) {     /* if buffer has changed */
-			if (lseek(sdp->device_fd,
-				  bh->b_blocknr * sdp->bsize, SEEK_SET) !=
-			    bh->b_blocknr * sdp->bsize) {
-				fprintf(stderr, "bad seek: %s from %s:%d: "
-					"block %lld (0x%llx)\n",
-					strerror(errno), caller, line,
-					(unsigned long long)bh->b_blocknr,
-					(unsigned long long)bh->b_blocknr);
-				exit(-1);
-			}
-			if (write(sdp->device_fd, bh->b_data, sdp->bsize) !=
-			    sdp->bsize) {
-				fprintf(stderr, "bad write: %s from %s:%d: "
-					"block %lld (0x%llx)\n",
-					strerror(errno), caller, line,
-					(unsigned long long)bh->b_blocknr,
-					(unsigned long long)bh->b_blocknr);
-				exit(-1);
-			}
-			bh->b_changed = FALSE;    /* no longer changed */
-		}
-	}
-	fsync(sdp->device_fd);
-}
-

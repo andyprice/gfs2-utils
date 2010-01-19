@@ -105,15 +105,11 @@ struct rgrp_list {
 };
 
 struct gfs2_buffer_head {
-	osi_list_t b_list;
-	osi_list_t b_hash;
 	osi_list_t b_altlist; /* alternate list */
-
-	unsigned int b_count;
 	uint64_t b_blocknr;
-	char *b_data;
-
 	int b_changed;
+	char *b_data;
+	struct gfs2_sbd *sdp;
 };
 
 struct dup_blocks {
@@ -172,15 +168,6 @@ struct master_dir
 	struct gfs2_inode **journal;      /* Array of journals */
 	uint32_t journals;                /* Journal count */
 	struct per_node *pn;              /* Array of per_node entries */
-};
-
-struct buf_list {
-	unsigned int num_bufs;
-	unsigned int spills;
-	uint32_t limit;
-	osi_list_t list;
-	struct gfs2_sbd *sbp;
-	osi_list_t buf_hash[BUF_HASH_SIZE];
 };
 
 struct gfs2_sbd {
@@ -242,8 +229,6 @@ struct gfs2_sbd {
 	osi_list_t rglist;
 
 	unsigned int orig_journals;
-
-	struct buf_list buf_list;   /* transient buffer list */
 
 	struct gfs2_inode *master_dir;
 	struct master_dir md;
@@ -346,21 +331,18 @@ extern int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 extern void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il);
 
 /* buf.c */
-extern void init_buf_list(struct gfs2_sbd *sdp, struct buf_list *bl, uint32_t limit);
-extern struct gfs2_buffer_head *bfind(struct buf_list *bl, uint64_t num);
-extern struct gfs2_buffer_head *__bget_generic(struct buf_list *bl,
-					       uint64_t num, int find_existing,
+extern struct gfs2_buffer_head *__bget_generic(struct gfs2_sbd *sdp,
+					       uint64_t num,
 					       int read_disk, int line,
 					       const char *caller);
-extern struct gfs2_buffer_head *__bget(struct buf_list *bl, uint64_t num,
+extern struct gfs2_buffer_head *__bget(struct gfs2_sbd *sdp, uint64_t num,
 				       int line, const char *caller);
-extern struct gfs2_buffer_head *__bread(struct buf_list *bl, uint64_t num,
+extern struct gfs2_buffer_head *__bread(struct gfs2_sbd *sdp, uint64_t num,
 					int line, const char *caller);
-extern struct gfs2_buffer_head *bhold(struct gfs2_buffer_head *bh);
-extern void bmodified(struct gfs2_buffer_head *bh);
-extern void brelse(struct gfs2_buffer_head *bh);
-extern void __bsync(struct buf_list *bl, int line, const char *caller);
-extern void __bcommit(struct buf_list *bl, int line, const char *caller);
+extern int bwrite(struct gfs2_buffer_head *bh);
+extern int brelse(struct gfs2_buffer_head *bh);
+
+#define bmodified(bh) do { bh->b_changed = 1; } while(0)
 
 #define bget_generic(bl, num, find, read) __bget_generic(bl, num, find, read, \
 							 __LINE__, \

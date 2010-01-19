@@ -173,7 +173,7 @@ static void initialize_new_portion(struct gfs2_sbd *sdp, int *old_rg_count)
 	inode_put(&sdp->master_dir);
 
 	/* We're done with the libgfs portion, so commit it to disk.      */
-	bsync(&sdp->buf_list);
+	fsync(sdp->device_fd);
 }
 
 /**
@@ -285,7 +285,6 @@ main_grow(int argc, char *argv[])
 		}
 		log_info( _("Initializing lists...\n"));
 		osi_list_init(&sdp->rglist);
-		init_buf_list(sdp, &sdp->buf_list, 1 << 20);
 
 		sdp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 		sdp->bsize = sdp->sd_sb.sb_bsize;

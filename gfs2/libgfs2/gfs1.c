@@ -112,13 +112,13 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 		if (*new) {
 			struct gfs2_meta_header mh;
 
-			bh = bget(&sdp->buf_list, *dblock);
+			bh = bget(sdp, *dblock);
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_IN;
 			mh.mh_format = GFS2_FORMAT_IN;
 			gfs2_meta_header_out(&mh, bh);
 		} else {
-			bh = bread(&sdp->buf_list, *dblock);
+			bh = bread(sdp, *dblock);
 		}
 	}
 
@@ -201,7 +201,7 @@ int gfs1_readi(struct gfs2_inode *ip, void *bufin,
 				       &extlen, FALSE);
 
 		if (dblock) {
-			bh = bread(&sdp->buf_list, dblock);
+			bh = bread(sdp, dblock);
 			dblock++;
 			extlen--;
 		} else
@@ -414,7 +414,7 @@ struct gfs2_inode *gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 		exit(-1);
 	}
 
-	ip->i_bh = bread(&sdp->buf_list, di_addr);
+	ip->i_bh = bread(sdp, di_addr);
 	gfs_dinode_in(&gfs1_dinode, ip->i_bh);
 	memcpy(&ip->i_di.di_header, &gfs1_dinode.di_header,
 	       sizeof(struct gfs2_meta_header));

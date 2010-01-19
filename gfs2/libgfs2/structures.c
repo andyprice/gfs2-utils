@@ -44,7 +44,7 @@ void build_sb(struct gfs2_sbd *sdp, const unsigned char *uuid)
 
 	/* Zero out the beginning of the device up to the superblock */
 	for (x = 0; x < sdp->sb_addr; x++) {
-		bh = bget(&sdp->buf_list, x);
+		bh = bget(sdp, x);
 		memset(bh->b_data, 0, sdp->bsize);
 		bmodified(bh);
 		brelse(bh);
@@ -65,7 +65,7 @@ void build_sb(struct gfs2_sbd *sdp, const unsigned char *uuid)
 #ifdef GFS2_HAS_UUID
 	memcpy(sb.sb_uuid, uuid, sizeof(sb.sb_uuid));
 #endif
-	bh = bget(&sdp->buf_list, sdp->sb_addr);
+	bh = bget(sdp, sdp->sb_addr);
 	gfs2_sb_out(&sb, bh);
 	brelse(bh);
 
@@ -494,7 +494,7 @@ int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 			brelse(bh);
 		if (gfs2_next_rg_meta(rgd, block, first))
 			return -1;
-		bh = bread(&sdp->buf_list, *block);
+		bh = bread(sdp, *block);
 		first = 0;
 	} while(gfs2_check_meta(bh, type));
 	brelse(bh);

@@ -102,7 +102,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 		return ask_remove_eattr(ip);
 	}
 	else
-		indir_bh = bread(&sbp->buf_list, block);
+		indir_bh = bread(sbp, block);
 
 	*bh = indir_bh;
 	return 0;
@@ -134,7 +134,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 		return ask_remove_eattr(ip);
 	}
 	else 
-		*bh = bread(&sbp->buf_list, block);
+		*bh = bread(sbp, block);
 
 	return 0;
 }
@@ -254,7 +254,7 @@ int pass1c(struct gfs2_sbd *sbp)
 
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
-		bh = bread(&sbp->buf_list, block_no);
+		bh = bread(sbp, block_no);
 		if (!gfs2_check_meta(bh, GFS2_METATYPE_DI)) { /* if a dinode */
 			log_info( _("EA in inode %"PRIu64" (0x%" PRIx64 ")\n"),
 				 block_no, block_no);

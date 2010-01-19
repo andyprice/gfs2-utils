@@ -56,7 +56,7 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 			block_map(ip, b, &new, &dblock, &extlen, 0);
 			if (!dblock)
 				break;
-			bh = bread(&sdp->buf_list, dblock);
+			bh = bread(sdp, dblock);
 			if (!gfs2_check_meta(bh, GFS2_METATYPE_RG)) {
 				log_debug( _("False RG found at block "
 					  "0x%" PRIx64 "\n"), dblock);
@@ -130,7 +130,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 	for (blk = sdp->sb_addr + 1;
 	     blk < sdp->device.length && number_of_rgs < 6;
 	     blk++) {
-		bh = bread(&sdp->buf_list, blk);
+		bh = bread(sdp, blk);
 		if (((blk == sdp->sb_addr + 1) ||
 		    (!gfs2_check_meta(bh, GFS2_METATYPE_RG))) &&
 		    !is_false_rg(blk)) {
@@ -208,7 +208,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 	for (blk = sdp->sb_addr + 1; blk <= sdp->device.length;
 	     blk += block_bump) {
 		log_debug( _("Block 0x%" PRIx64 "\n"), blk);
-		bh = bread(&sdp->buf_list, blk);
+		bh = bread(sdp, blk);
 		rg_was_fnd = (!gfs2_check_meta(bh, GFS2_METATYPE_RG));
 		brelse(bh);
 		/* Allocate a new RG and index. */
@@ -242,7 +242,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 		for (fwd_block = blk + 1;
 		     fwd_block < sdp->device.length; 
 		     fwd_block++) {
-			bh = bread(&sdp->buf_list, fwd_block);
+			bh = bread(sdp, fwd_block);
 			bitmap_was_fnd =
 				(!gfs2_check_meta(bh, GFS2_METATYPE_RB));
 			brelse(bh);
@@ -386,7 +386,7 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rg,
 		(int)x+1, (int)rg->ri.ri_length);
 	if (query( _("Fix the Resource Group? (y/n)"))) {
 		log_err( _("Attempting to repair the RG.\n"));
-		rg->bh[x] = bread(&sdp->buf_list, rg->ri.ri_addr + x);
+		rg->bh[x] = bread(sdp, rg->ri.ri_addr + x);
 		if (x) {
 			struct gfs2_meta_header mh;
 

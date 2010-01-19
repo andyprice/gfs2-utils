@@ -33,7 +33,7 @@ int gfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
 	if (!dblock)
 		return -EIO;
 
-	*bh = bread(&ip->i_sbd->buf_list, dblock);
+	*bh = bread(ip->i_sbd, dblock);
 	return 0;
 }
 
@@ -225,7 +225,7 @@ int clean_journal(struct gfs2_inode *ip, struct gfs2_log_header *head)
 	if (!dblock)
 		return -EIO;
 
-	bh = bread(&ip->i_sbd->buf_list, dblock);
+	bh = bread(ip->i_sbd, dblock);
 	memset(bh->b_data, 0, ip->i_sbd->bsize);
 
 	lh = (struct gfs2_log_header *)bh->b_data;

@@ -68,7 +68,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 	struct gfs2_buffer_head *indir_bh = NULL;
 
 	inc_if_found(block, 0, private);
-	indir_bh = bread(&sbp->buf_list, block);
+	indir_bh = bread(sbp, block);
 	*bh = indir_bh;
 
 	return 0;
@@ -82,7 +82,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 	struct gfs2_buffer_head *leaf_bh = NULL;
 
 	inc_if_found(block, 0, private);
-	leaf_bh = bread(&sbp->buf_list, block);
+	leaf_bh = bread(sbp, block);
 
 	*bh = leaf_bh;
 	return 0;
@@ -404,7 +404,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 		struct gfs2_buffer_head *bh;
 		uint32_t cmagic;
 
-		bh = bread(&sbp->buf_list, b->block_no);
+		bh = bread(sbp, b->block_no);
 		cmagic = ((struct gfs2_meta_header *)(bh->b_data))->mh_magic;
 		brelse(bh);
 		if (be32_to_cpu(cmagic) == GFS2_MAGIC) {

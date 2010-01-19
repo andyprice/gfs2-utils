@@ -530,8 +530,6 @@ print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
 
 	if (sdp->debug) {
 		printf("\n");
-		printf( _("Spills:                    %u\n"),
-		       sdp->buf_list.spills);
 		printf( _("Writes:                    %u\n"), sdp->writes);
 	}
 
@@ -563,7 +561,6 @@ void main_mkfs(int argc, char *argv[])
 	strcpy(sdp->lockproto, GFS2_DEFAULT_LOCKPROTO);
 	sdp->time = time(NULL);
 	osi_list_init(&sdp->rglist);
-	init_buf_list(sdp, &sdp->buf_list, 1 << 20);
 
 	decode_arguments(argc, argv, sdp);
 	if (sdp->rgsize == -1)                 /* if rg size not specified */
@@ -643,7 +640,6 @@ void main_mkfs(int argc, char *argv[])
 	inode_put(&sdp->master_dir);
 	inode_put(&sdp->md.inum);
 	inode_put(&sdp->md.statfs);
-	bsync(&sdp->buf_list);
 
 	error = fsync(sdp->device_fd);
 	if (error)
