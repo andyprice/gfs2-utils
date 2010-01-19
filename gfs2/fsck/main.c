@@ -457,18 +457,18 @@ int main(int argc, char **argv)
 	check_statfs(sbp);
 
 	/* Free up our system inodes */
-	inode_put(sbp->md.inum);
-	inode_put(sbp->md.statfs);
+	inode_put(&sbp->md.inum);
+	inode_put(&sbp->md.statfs);
 	for (j = 0; j < sbp->md.journals; j++)
-		inode_put(sbp->md.journal[j]);
-	inode_put(sbp->md.jiinode);
-	inode_put(sbp->md.riinode);
-	inode_put(sbp->md.qinode);
-	inode_put(sbp->md.pinode);
-	inode_put(sbp->md.rooti);
-	inode_put(sbp->master_dir);
+		inode_put(&sbp->md.journal[j]);
+	inode_put(&sbp->md.jiinode);
+	inode_put(&sbp->md.riinode);
+	inode_put(&sbp->md.qinode);
+	inode_put(&sbp->md.pinode);
+	inode_put(&sbp->md.rooti);
+	inode_put(&sbp->master_dir);
 	if (lf_dip)
-		inode_put(lf_dip);
+		inode_put(&lf_dip);
 
 	if (!opts.no && errors_corrected)
 		log_notice( _("Writing changes to disk\n"));

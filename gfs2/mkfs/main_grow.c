@@ -169,11 +169,8 @@ static void initialize_new_portion(struct gfs2_sbd *sdp, int *old_rg_count)
 	/* Build the remaining resource groups */
 	build_rgrps(sdp, !test);
 
-	/* Note: We do inode_put with not_updated because we only updated */
-	/* the new RGs/bitmaps themselves on disk.  The rindex file must  */
-	/* be updated through the meta_fs so the gfs2 kernel is informed. */
-	inode_put(sdp->md.riinode);
-	inode_put(sdp->master_dir);
+	inode_put(&sdp->md.riinode);
+	inode_put(&sdp->master_dir);
 
 	/* We're done with the libgfs portion, so commit it to disk.      */
 	bsync(&sdp->buf_list);
@@ -319,7 +316,7 @@ main_grow(int argc, char *argv[])
 		}
 		/* Get master dinode */
 		sdp->master_dir =
-			gfs2_load_inode(sdp, sdp->sd_sb.sb_master_dir.no_addr);
+			inode_read(sdp, sdp->sd_sb.sb_master_dir.no_addr);
 		gfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
 		/* Fetch the rindex from disk.  We aren't using gfs2 here,  */
 		/* which means that the bitmaps will most likely be cached  */

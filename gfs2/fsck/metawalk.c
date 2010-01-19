@@ -21,8 +21,6 @@
 static struct gfs2_inode *get_system_inode(struct gfs2_sbd *sbp,
 					   uint64_t block)
 {
-	int j;
-
 	if (block == sbp->md.inum->i_di.di_num.no_addr)
 		return sbp->md.inum;
 	if (block == sbp->md.statfs->i_di.di_num.no_addr)
@@ -41,10 +39,7 @@ static struct gfs2_inode *get_system_inode(struct gfs2_sbd *sbp,
 		return sbp->master_dir;
 	if (lf_dip && block == lf_dip->i_di.di_num.no_addr)
 		return lf_dip;
-	for (j = 0; j < sbp->md.journals; j++)
-		if (block == sbp->md.journal[j]->i_di.di_num.no_addr)
-			return sbp->md.journal[j];
-	return NULL;
+	return is_system_inode(sbp, block);
 }
 
 /* fsck_load_inode - same as gfs2_load_inode() in libgfs2 but system inodes
@@ -54,11 +49,9 @@ struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sbp, uint64_t block)
 	struct gfs2_inode *ip = NULL;
 
 	ip = get_system_inode(sbp, block);
-	if (ip) {
-		bhold(ip->i_bh);
+	if (ip)
 		return ip;
-	}
-	return gfs2_load_inode(sbp, block);
+	return inode_read(sbp, block);
 }
 
 /* fsck_inode_get - same as inode_get() in libgfs2 but system inodes
@@ -66,39 +59,25 @@ struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sbp, uint64_t block)
 struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp,
 				  struct gfs2_buffer_head *bh)
 {
-	struct gfs2_inode *ip, *sysip;
+	struct gfs2_inode *sysip;
 
-	ip = calloc(1, sizeof(struct gfs2_inode));
-	if (ip == NULL) {
-		fprintf(stderr, _("Out of memory in %s\n"), __FUNCTION__);
-		exit(-1);
-	}
-	gfs2_dinode_in(&ip->i_di, bh);
-	ip->i_bh = bh;
-	ip->i_sbd = sdp;
-
-	sysip = get_system_inode(sdp, ip->i_di.di_num.no_addr);
-	if (sysip) {
-		free(ip);
+	sysip = get_system_inode(sdp, bh->b_blocknr);
+	if (sysip)
 		return sysip;
-	}
-	return ip;
+
+	return inode_get(sdp, bh);
 }
 
 /* fsck_inode_put - same as inode_put() in libgfs2 but system inodes
    get special treatment. */
-void fsck_inode_put(struct gfs2_inode *ip)
+void fsck_inode_put(struct gfs2_inode **ip_in)
 {
+	struct gfs2_inode *ip = *ip_in;
 	struct gfs2_inode *sysip;
 
 	sysip = get_system_inode(ip->i_sbd, ip->i_di.di_num.no_addr);
-	if (sysip) {
-		if (ip->i_bh->b_changed)
-			gfs2_dinode_out(&ip->i_di, ip->i_bh);
-		brelse(ip->i_bh);
-	} else {
-		inode_put(ip);
-	}
+	if (!sysip)
+		inode_put(ip_in);
 }
 
 /**
@@ -246,7 +225,6 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 				} else {
 					log_err( _("Corrupt directory entry "
 						   "repaired.\n"));
-					bmodified(bh);
 					/* keep looping through dentries */
 				}
 			} else {
@@ -755,6 +733,7 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 				   GGGG when we finish.  To do that, we set
 				   di_eattr to 0 temporarily. */
 				ip->i_di.di_eattr = 0;
+				bmodified(ip->i_bh);
 			}
 			ea_leaf_ptr++;
 		}
@@ -827,13 +806,11 @@ static int build_and_check_metalist(struct gfs2_inode *ip,
 				    struct metawalk_fxns *pass)
 {
 	uint32_t height = ip->i_di.di_height;
-	struct gfs2_buffer_head *bh, *nbh, *metabh;
+	struct gfs2_buffer_head *bh, *nbh, *metabh = ip->i_bh;
 	osi_list_t *prev_list, *cur_list, *tmp;
 	int i, head_size;
 	uint64_t *ptr, block;
 	int err;
-
-	metabh = bread(&ip->i_sbd->buf_list, ip->i_di.di_num.no_addr);
 
 	osi_list_add(&metabh->b_altlist, &mlp[0]);
 
@@ -879,8 +856,15 @@ static int build_and_check_metalist(struct gfs2_inode *ip,
 				}
 				if(err > 0) {
 					log_debug( _("Skipping block %" PRIu64
-						  " (0x%" PRIx64 ")\n"),
-						  block, block);
+						     " (0x%" PRIx64 ")\n"),
+						   block, block);
+					continue;
+				}
+				if (gfs2_check_range(ip->i_sbd, block)) {
+					log_debug( _("Skipping invalid block "
+						     "%lld (0x%llx)\n"),
+						   (unsigned long long)block,
+						   (unsigned long long)block);
 					continue;
 				}
 				if(!nbh)
@@ -903,8 +887,6 @@ fail:
 			osi_list_del(&nbh->b_altlist);
 		}
 	}
-	/* This is an error path, so we need to release the buffer here: */
-	brelse(metabh);
 	return -1;
 }
 
@@ -953,14 +935,23 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		bh = osi_list_entry(tmp, struct gfs2_buffer_head, b_altlist);
 
 		if (height > 1) {
-			/* if this isn't really a block list skip it */
-			if (gfs2_check_meta(bh, GFS2_METATYPE_IN))
+			if (gfs2_check_meta(bh, GFS2_METATYPE_IN)) {
+				if (bh == ip->i_bh)
+					osi_list_del(&bh->b_altlist);
+				else
+					brelse(bh);
 				continue;
+			}
 			head_size = sizeof(struct gfs2_meta_header);
 		} else {
 			/* if this isn't really a dinode, skip it */
-			if (gfs2_check_meta(bh, GFS2_METATYPE_DI))
+			if (gfs2_check_meta(bh, GFS2_METATYPE_DI)) {
+				if (bh == ip->i_bh)
+					osi_list_del(&bh->b_altlist);
+				else
+					brelse(bh);
 				continue;
+			}
 			head_size = sizeof(struct gfs2_dinode);
 		}
 		ptr = (uint64_t *)(bh->b_data + head_size);
@@ -999,7 +990,10 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		{
 			bh = osi_list_entry(list->next,
 					    struct gfs2_buffer_head, b_altlist);
-			brelse(bh);
+			if (bh == ip->i_bh)
+				osi_list_del(&bh->b_altlist);
+			else
+				brelse(bh);
 			osi_list_del(&bh->b_altlist);
 		}
 	}
@@ -1038,31 +1032,20 @@ static int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 
 int check_dir(struct gfs2_sbd *sbp, uint64_t block, struct metawalk_fxns *pass)
 {
-	struct gfs2_buffer_head *bh;
 	struct gfs2_inode *ip;
 	int error = 0;
 
-	bh = bread(&sbp->buf_list, block);
-	ip = fsck_inode_get(sbp, bh);
+	ip = fsck_load_inode(sbp, block);
 
-	if(ip->i_di.di_flags & GFS2_DIF_EXHASH) {
+	if(ip->i_di.di_flags & GFS2_DIF_EXHASH)
 		error = check_leaf_blks(ip, pass);
-		if(error < 0) {
-			stack;
-			fsck_inode_put(ip); /* does brelse(bh); */
-			return -1;
-		}
-	}
-	else {
-		error = check_linear_dir(ip, bh, pass);
-		if(error < 0) {
-			stack;
-			fsck_inode_put(ip); /* does brelse(bh); */
-			return -1;
-		}
-	}
+	else
+		error = check_linear_dir(ip, ip->i_bh, pass);
 
-	fsck_inode_put(ip); /* does a brelse */
+	if(error < 0)
+		stack;
+
+	fsck_inode_put(&ip); /* does a brelse */
 	return error;
 }
 

@@ -554,8 +554,7 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 	*clean_journals = 0;
 
 	/* Get master dinode */
-	sdp->master_dir = gfs2_load_inode(sdp,
-					  sdp->sd_sb.sb_master_dir.no_addr);
+	sdp->master_dir = inode_read(sdp, sdp->sd_sb.sb_master_dir.no_addr);
 	gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
 
 	/* read in the journal index data */
@@ -579,10 +578,10 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 			}
 			*clean_journals += clean;
 		}
-		inode_put(sdp->md.journal[i]);
+		inode_put(&sdp->md.journal[i]);
 	}
-	inode_put(sdp->master_dir);
-	inode_put(sdp->md.jiinode);
+	inode_put(&sdp->master_dir);
+	inode_put(&sdp->md.jiinode);
 	/* Sync the buffers to disk so we get a fresh start. */
 	bsync(&sdp->buf_list);
 	return error;

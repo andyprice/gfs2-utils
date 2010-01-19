@@ -34,29 +34,29 @@ static int attach_dotdot_to(struct gfs2_sbd *sbp, uint64_t newdotdot,
 	filename_len = strlen("..");
 	if(!(filename = malloc((sizeof(char) * filename_len) + 1))) {
 		log_err( _("Unable to allocate name\n"));
-		fsck_inode_put(ip);
-		fsck_inode_put(pip);
+		fsck_inode_put(&ip);
+		fsck_inode_put(&pip);
 		stack;
 		return -1;
 	}
 	if(!memset(filename, 0, (sizeof(char) * filename_len) + 1)) {
 		log_err( _("Unable to zero name\n"));
-		fsck_inode_put(ip);
-		fsck_inode_put(pip);
+		fsck_inode_put(&ip);
+		fsck_inode_put(&pip);
 		stack;
 		return -1;
 	}
 	memcpy(filename, "..", filename_len);
-	if(gfs2_dirent_del(ip, NULL, filename, filename_len))
+	if(gfs2_dirent_del(ip, filename, filename_len))
 		log_warn( _("Unable to remove \"..\" directory entry.\n"));
 	else
 		decrement_link(sbp, olddotdot);
 	dir_add(ip, filename, filename_len, &pip->i_di.di_num, DT_DIR);
 	increment_link(sbp, newdotdot);
 	bmodified(ip->i_bh);
-	fsck_inode_put(ip);
+	fsck_inode_put(&ip);
 	bmodified(pip->i_bh);
-	fsck_inode_put(pip);
+	fsck_inode_put(&pip);
 	return 0;
 }
 
@@ -255,7 +255,7 @@ int pass3(struct gfs2_sbd *sbp)
 						gfs2_block_set(sbp, bl,
 							       di->dinode,
 							       gfs2_block_free);
-						fsck_inode_put(ip);
+						fsck_inode_put(&ip);
 						break;
 					} else {
 						log_err( _("Zero-size unlinked directory remains\n"));
@@ -264,16 +264,16 @@ int pass3(struct gfs2_sbd *sbp)
 				if(query( _("Add unlinked directory to "
 					    "lost+found? (y/n) "))) {
 					if(add_inode_to_lf(ip)) {
-						fsck_inode_put(ip);
+						fsck_inode_put(&ip);
 						stack;
 						return FSCK_ERROR;
 					}
 					log_warn( _("Directory relinked to lost+found\n"));
 					bmodified(ip->i_bh);
-					fsck_inode_put(ip);
+					fsck_inode_put(&ip);
 				} else {
 					log_err( _("Unlinked directory remains unlinked\n"));
-					fsck_inode_put(ip);
+					fsck_inode_put(&ip);
 				}
 				break;
 			}

@@ -338,14 +338,14 @@ static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_block
 		     ")\n"), inode, inode, b->block_no, b->block_no);
 	if(check_metatree(ip, &find_refs)) {
 		stack;
-		fsck_inode_put(ip); /* out, brelse, free */
+		fsck_inode_put(&ip); /* out, brelse, free */
 		return -1;
 	}
 	log_debug( _("Done checking metatree\n"));
 	/* Check for ea references in the inode */
 	if(check_inode_eattr(ip, &find_refs) < 0){
 		stack;
-		fsck_inode_put(ip); /* out, brelse, free */
+		fsck_inode_put(&ip); /* out, brelse, free */
 		return -1;
 	}
 	if (myfi.found) {
@@ -365,7 +365,7 @@ static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_block
 		id->ea_only = myfi.ea_only;
 		osi_list_add_prev(&id->list, &b->ref_inode_list);
 	}
-	fsck_inode_put(ip); /* out, brelse, free */
+	fsck_inode_put(&ip); /* out, brelse, free */
 	return 0;
 }
 
@@ -430,7 +430,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 					       ip->i_di.di_num.no_addr,
 					       gfs2_meta_inval);
 				bmodified(ip->i_bh);
-				fsck_inode_put(ip);
+				fsck_inode_put(&ip);
 			} else {
 				log_warn( _("The bad inode was not cleared."));
 			}
@@ -476,7 +476,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 
 		gfs2_block_set(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
 			       gfs2_meta_inval);
-		fsck_inode_put(ip); /* out, brelse, free */
+		fsck_inode_put(&ip); /* out, brelse, free */
 		dh.ref_inode_count--;
 		if(dh.ref_inode_count == 1)
 			break;

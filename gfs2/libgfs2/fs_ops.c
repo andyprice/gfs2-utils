@@ -42,15 +42,76 @@ struct gfs2_inode *inode_get(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 	gfs2_dinode_in(&ip->i_di, bh);
 	ip->i_bh = bh;
 	ip->i_sbd = sdp;
+	ip->bh_owned = 0; /* caller did the bread so we don't own the bh */
 	return ip;
 }
 
-void inode_put(struct gfs2_inode *ip)
+struct gfs2_inode *inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 {
-	if (ip->i_bh->b_changed)
+	struct gfs2_inode *ip;
+
+	ip = calloc(1, sizeof(struct gfs2_inode));
+	if (ip == NULL) {
+		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
+		exit(-1);
+	}
+	ip->i_bh = bread(&sdp->buf_list, di_addr);
+	gfs2_dinode_in(&ip->i_di, ip->i_bh);
+	ip->i_sbd = sdp;
+	ip->bh_owned = 1; /* We did the bread so we own the bh */
+	return ip;
+}
+
+struct gfs2_inode *is_system_inode(struct gfs2_sbd *sdp, uint64_t block)
+{
+	int j;
+
+	if (sdp->md.inum && block == sdp->md.inum->i_di.di_num.no_addr)
+		return sdp->md.inum;
+	if (sdp->md.statfs && block == sdp->md.statfs->i_di.di_num.no_addr)
+		return sdp->md.statfs;
+	if (sdp->md.jiinode && block == sdp->md.jiinode->i_di.di_num.no_addr)
+		return sdp->md.jiinode;
+	if (sdp->md.riinode && block == sdp->md.riinode->i_di.di_num.no_addr)
+		return sdp->md.riinode;
+	if (sdp->md.qinode && block == sdp->md.qinode->i_di.di_num.no_addr)
+		return sdp->md.qinode;
+	if (sdp->md.pinode && block == sdp->md.pinode->i_di.di_num.no_addr)
+		return sdp->md.pinode;
+	if (sdp->md.rooti && block == sdp->md.rooti->i_di.di_num.no_addr)
+		return sdp->md.rooti;
+	if (sdp->master_dir && block == sdp->master_dir->i_di.di_num.no_addr)
+		return sdp->master_dir;
+	for (j = 0; j < sdp->md.journals; j++)
+		if (sdp->md.journal && sdp->md.journal[j] &&
+		    block == sdp->md.journal[j]->i_di.di_num.no_addr)
+			return sdp->md.journal[j];
+	return NULL;
+}
+
+void inode_put(struct gfs2_inode **ip_in)
+{
+	struct gfs2_inode *ip = *ip_in;
+	uint64_t block = ip->i_di.di_num.no_addr;
+	struct gfs2_sbd *sdp = ip->i_sbd;
+
+	if (ip->i_bh->b_changed) {
 		gfs2_dinode_out(&ip->i_di, ip->i_bh);
-	brelse(ip->i_bh);
+		if (!ip->bh_owned && is_system_inode(sdp, block))
+			fprintf(stderr, "Warning: Change made to inode "
+				"were discarded.\n");
+		/* This is for debugging only: a convenient place to set
+		   a breakpoint. This means a system inode was modified but
+		   not written.  That's not fatal: some places like
+		   adjust_inode in gfs2_convert will do this on purpose.
+		   It can also point out a coding problem, but we don't
+		   want to raise alarm in the users either. */
+	}
+	if (ip->bh_owned)
+		brelse(ip->i_bh);
+	ip->i_bh = NULL;
 	free(ip);
+	*ip_in = NULL; /* make sure the memory isn't accessed again */
 }
 
 static uint64_t blk_alloc_i(struct gfs2_sbd *sdp, unsigned int type)
@@ -128,6 +189,7 @@ uint64_t data_alloc(struct gfs2_inode *ip)
 	uint64_t x;
 	x = blk_alloc_i(ip->i_sbd, DATA);
 	ip->i_di.di_goal_data = x;
+	bmodified(ip->i_bh);
 	return x;
 }
 
@@ -136,6 +198,7 @@ uint64_t meta_alloc(struct gfs2_inode *ip)
 	uint64_t x;
 	x = blk_alloc_i(ip->i_sbd, META);
 	ip->i_di.di_goal_meta = x;
+	bmodified(ip->i_bh);
 	return x;
 }
 
@@ -323,6 +386,7 @@ void lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	*ptr = cpu_to_be64(*block);
 	bmodified(bh);
 	ip->i_di.di_blocks++;
+	bmodified(ip->i_bh);
 
 	*new = 1;
 }
@@ -366,11 +430,12 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 	mp = find_metapath(ip, lblock);
 	end_of_metadata = ip->i_di.di_height - 1;
 
-	bh = bhold(ip->i_bh);
+	bh = ip->i_bh;
 
 	for (x = 0; x < end_of_metadata; x++) {
 		lookup_block(ip, bh, x, mp, create, new, dblock);
-		brelse(bh);
+		if (bh != ip->i_bh)
+			brelse(bh);
 		if (!*dblock)
 			goto out;
 
@@ -381,8 +446,12 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			mh.mh_type = GFS2_METATYPE_IN;
 			mh.mh_format = GFS2_FORMAT_IN;
 			gfs2_meta_header_out(&mh, bh);
-		} else
-			bh = bread(&sdp->buf_list, *dblock);
+		} else {
+			if (*dblock == ip->i_di.di_num.no_addr)
+				bh = ip->i_bh;
+			else
+				bh = bread(&sdp->buf_list, *dblock);
+		}
 	}
 
 	if (!prealloc)
@@ -410,7 +479,8 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 		}
 	}
 
-	brelse(bh);
+	if (bh != ip->i_bh)
+		brelse(bh);
 
  out:
 	free(mp);
@@ -476,14 +546,17 @@ int gfs2_readi(struct gfs2_inode *ip, void *buf,
 				  FALSE);
 
 		if (dblock) {
-			bh = bread(&sdp->buf_list, dblock);
+			if (dblock == ip->i_di.di_num.no_addr)
+				bh = ip->i_bh;
+			else
+				bh = bread(&sdp->buf_list, dblock);
 			dblock++;
 			extlen--;
 		} else
 			bh = NULL;
 
 		copy2mem(bh, &buf, o, amount);
-		if (bh)
+		if (bh && bh != ip->i_bh)
 			brelse(bh);
 
 		copied += amount;
@@ -559,11 +632,15 @@ int gfs2_writei(struct gfs2_inode *ip, void *buf,
 				mh.mh_format = GFS2_FORMAT_JD;
 				gfs2_meta_header_out(&mh, bh);
 			}
-		} else
-			bh = bread(&sdp->buf_list, dblock);
+		} else {
+			if (dblock == ip->i_di.di_num.no_addr)
+				bh = ip->i_bh;
+			else
+				bh = bread(&sdp->buf_list, dblock);
+		}
 		copy_from_mem(bh, &buf, o, amount);
-		bmodified(bh);
-		brelse(bh);
+		if (bh != ip->i_bh)
+			brelse(bh);
 
 		copied += amount;
 		lblock++;
@@ -573,8 +650,10 @@ int gfs2_writei(struct gfs2_inode *ip, void *buf,
 		o = (isdir) ? sizeof(struct gfs2_meta_header) : 0;
 	}
 
-	if (ip->i_di.di_size < start + copied)
+	if (ip->i_di.di_size < start + copied) {
+		bmodified(ip->i_bh);
 		ip->i_di.di_size = start + copied;
+	}
 
 	return copied;
 }
@@ -594,13 +673,18 @@ struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip, uint64_t lbn,
 		die("get_file_buf\n");
 
 	if (!prealloc && new &&
-	    ip->i_di.di_size < (lbn + 1) << sdp->sd_sb.sb_bsize_shift)
+	    ip->i_di.di_size < (lbn + 1) << sdp->sd_sb.sb_bsize_shift) {
+		bmodified(ip->i_bh);
 		ip->i_di.di_size = (lbn + 1) << sdp->sd_sb.sb_bsize_shift;
-
+	}
 	if (new)
 		return bget(&sdp->buf_list, dbn);
-	else
-		return bread(&sdp->buf_list, dbn);
+	else {
+		if (dbn == ip->i_di.di_num.no_addr)
+			return ip->i_bh;
+		else
+			return bread(&sdp->buf_list, dbn);
+	}
 }
 
 int gfs2_dirent_first(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
@@ -659,6 +743,8 @@ static int dirent_alloc(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 		dent->de_name_len = cpu_to_be16(name_len);
 		bmodified(bh);
 		*dent_out = dent;
+		dip->i_di.di_entries++;
+		bmodified(dip->i_bh);
 		return 0;
 	}
 
@@ -687,6 +773,8 @@ static int dirent_alloc(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 
 				*dent_out = new;
 				bmodified(bh);
+				dip->i_di.di_entries++;
+				bmodified(dip->i_bh);
 				return 0;
 			}
 
@@ -694,6 +782,8 @@ static int dirent_alloc(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 
 			*dent_out = dent;
 			bmodified(bh);
+			dip->i_di.di_entries++;
+			bmodified(dip->i_bh);
 			return 0;
 		}
 	} while (gfs2_dirent_next(dip, bh, &dent) == 0);
@@ -707,9 +797,10 @@ void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 	uint16_t cur_rec_len, prev_rec_len;
 
 	bmodified(bh);
-	bmodified(dip->i_bh);
-	if (dip->i_di.di_entries)
+	if (dip->i_di.di_entries) {
+		bmodified(dip->i_bh);
 		dip->i_di.di_entries--;
+	}
 	if (!prev) {
 		cur->de_inum.no_formal_ino = 0;
 		return;
@@ -849,8 +940,10 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex, uint64_t lea
 	nleaf->lf_depth = oleaf->lf_depth;
 
 	dip->i_di.di_blocks++;
+	bmodified(dip->i_bh);
 
 	brelse(obh);
+	bmodified(nbh);
 	brelse(nbh);
 }
 
@@ -894,6 +987,7 @@ static void dir_double_exhash(struct gfs2_inode *dip)
 	free(buf);
 
 	dip->i_di.di_depth++;
+	bmodified(dip->i_bh);
 }
 
 /**
@@ -1020,6 +1114,7 @@ static void dir_e_add(struct gfs2_inode *dip, const char *filename, int len,
 
 				dirent_alloc(dip, nbh, len, &dent);
 				dip->i_di.di_blocks++;
+				bmodified(dip->i_bh);
 				bmodified(bh);
 				brelse(bh);
 				bh = nbh;
@@ -1037,9 +1132,6 @@ static void dir_e_add(struct gfs2_inode *dip, const char *filename, int len,
 
 		bmodified(bh);
 		brelse(bh);
-
-		dip->i_di.di_entries++;
-		bmodified(dip->i_bh);
 		return;
 	}
 }
@@ -1103,6 +1195,8 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 
 	for (x = sdp->sd_hash_ptrs, y = -1; x; x >>= 1, y++) ;
 	dip->i_di.di_depth = y;
+
+	gfs2_dinode_out(&dip->i_di, dip->i_bh);
 }
 
 static void dir_l_add(struct gfs2_inode *dip, const char *filename, int len,
@@ -1121,9 +1215,6 @@ static void dir_l_add(struct gfs2_inode *dip, const char *filename, int len,
 	dent->de_hash = cpu_to_be32(dent->de_hash);
 	dent->de_type = cpu_to_be16(type);
 	memcpy((char *)(dent + 1), filename, len);
-
-	dip->i_di.di_entries++;
-	bmodified(dip->i_bh);
 }
 
 void dir_add(struct gfs2_inode *dip, const char *filename, int len,
@@ -1215,13 +1306,16 @@ struct gfs2_inode *createi(struct gfs2_inode *dip, const char *filename,
 
 		dir_add(dip, filename, strlen(filename), &inum, IF2DT(mode));
 
-		if(S_ISDIR(mode))
+		if(S_ISDIR(mode)) {
+			bmodified(dip->i_bh);
 			dip->i_di.di_nlink++;
+		}
 
 		bh = init_dinode(sdp, &inum, mode, flags, &dip->i_di.di_num);
 		ip = inode_get(sdp, bh);
 		bmodified(bh);
 	}
+	ip->bh_owned = 1;
 	return ip;
 }
 
@@ -1337,7 +1431,7 @@ static int linked_leaf_search(struct gfs2_inode *dip, const char *filename,
 
 	/*  Find the entry  */
 	do{
-		if (bh)
+		if (bh && bh != dip->i_bh)
 			brelse(bh);
 
 		bh = bh_next;
@@ -1352,14 +1446,16 @@ static int linked_leaf_search(struct gfs2_inode *dip, const char *filename,
 			break;
 			
 		default:
-			brelse(bh);
+			if (bh && bh != dip->i_bh)
+				brelse(bh);
 			return error;
 		}
 		
 		error = get_next_leaf(dip, bh, &bh_next);
 	} while (!error);
 	
-	brelse(bh);
+	if (bh && bh != dip->i_bh)
+		brelse(bh);
 	
 	return error;
 }
@@ -1404,21 +1500,18 @@ static int dir_e_search(struct gfs2_inode *dip, const char *filename,
 static int dir_l_search(struct gfs2_inode *dip, const char *filename,
 			int len, unsigned int *type, struct gfs2_inum *inum)
 {
-	struct gfs2_buffer_head *dibh;
 	struct gfs2_dirent *dent;
 	int error;
 
 	if(!inode_is_stuffed(dip))
 		return -1;
 
-	dibh = bread(&dip->i_sbd->buf_list, dip->i_di.di_num.no_addr);
-	error = leaf_search(dip, dibh, filename, len, &dent, NULL);
+	error = leaf_search(dip, dip->i_bh, filename, len, &dent, NULL);
 	if (!error) {
 		gfs2_inum_in(inum, (char *)&dent->de_inum);
 		if(type)
 			*type = be16_to_cpu(dent->de_type);
 	}
-	brelse(dibh);
 	return error;
 }
 
@@ -1490,37 +1583,23 @@ static int dir_e_del(struct gfs2_inode *dip, const char *filename, int len)
 	return 0;
 }
 
-static int dir_l_del(struct gfs2_inode *dip, struct gfs2_buffer_head *dibh,
-		     const char *filename, int len){
+static int dir_l_del(struct gfs2_inode *dip, const char *filename, int len)
+{
 	int error=0;
-	int got_buf = 0;
 	struct gfs2_dirent *cur, *prev;
 
 	if(!inode_is_stuffed(dip))
 		return -1;
 
-	if(!dibh) {
-		dibh = bread(&dip->i_sbd->buf_list, dip->i_di.di_num.no_addr);
-		if (error)
-			return -1;
-		got_buf = 1;
-	}
-
-	error = leaf_search(dip, dibh, filename, len, &cur, &prev);
+	error = leaf_search(dip, dip->i_bh, filename, len, &cur, &prev);
 	if (error) {
-		if (got_buf)
-			brelse(dibh);
 		if (error == -ENOENT)
 			return 1;
 		else
 			return -1;
 	}
 
-	dirent2_del(dip, dibh, prev, cur);
-	if (got_buf) {
-		bmodified(dibh);
-		brelse(dibh);
-	}
+	dirent2_del(dip, dip->i_bh, prev, cur);
 	return 0;
 }
 
@@ -1536,8 +1615,8 @@ static int dir_l_del(struct gfs2_inode *dip, struct gfs2_buffer_head *dibh,
  *
  * Returns: 0 on success (or if it doesn't already exist), -1 on failure
  */
-int gfs2_dirent_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
-		    const char *filename, int len){
+int gfs2_dirent_del(struct gfs2_inode *dip, const char *filename, int len)
+{
 	int error;
 
 	if(!S_ISDIR(dip->i_di.di_mode))
@@ -1546,7 +1625,7 @@ int gfs2_dirent_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 	if (dip->i_di.di_flags & GFS2_DIF_EXHASH)
 		error = dir_e_del(dip, filename, len);
 	else
-		error = dir_l_del(dip, bh, filename, len);
+		error = dir_l_del(dip, filename, len);
 	bmodified(dip->i_bh);
 	return error;
 }
@@ -1580,7 +1659,7 @@ int gfs2_lookupi(struct gfs2_inode *dip, const char *filename, int len,
 			return 0;
 	}
 	else
-		*ipp = gfs2_load_inode(sdp, inum.no_addr);
+		*ipp = inode_read(sdp, inum.no_addr);
 
 	return error;
 }
@@ -1652,8 +1731,7 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 	}
 	/* Set the bitmap type for inode to free space: */
 	gfs2_set_bitmap(sdp, ip->i_di.di_num.no_addr, GFS2_BLKST_FREE);
-	bmodified(ip->i_bh);
-	inode_put(ip);
+	inode_put(&ip);
 	/* Now we have to adjust the rg freespace count and inode count: */
 	rgd = gfs2_blk2rgrpd(sdp, diblock);
 	rgd->rg.rg_free++;

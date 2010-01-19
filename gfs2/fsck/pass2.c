@@ -252,7 +252,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			check_inode_eattr(entry_ip, &pass2_fxns_delete);
 			check_metatree(entry_ip, &pass2_fxns_delete);
 			bmodified(entry_ip->i_bh);
-			fsck_inode_put(entry_ip);
+			fsck_inode_put(&entry_ip);
 			dirent2_del(ip, bh, prev_de, dent);
 			gfs2_block_set(sbp, bl, de->de_inum.no_addr,
 				       gfs2_block_free);
@@ -308,7 +308,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			check_inode_eattr(entry_ip, &pass2_fxns_delete);
 			check_metatree(entry_ip, &pass2_fxns_delete);
 			bmodified(entry_ip->i_bh);
-			fsck_inode_put(entry_ip);
+			fsck_inode_put(&entry_ip);
 			gfs2_block_set(sbp, bl, de->de_inum.no_addr,
 				       gfs2_block_free);
 
@@ -336,7 +336,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		if(query( _("Clear stale directory entry? (y/n) "))) {
 			entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 			check_inode_eattr(entry_ip, &clear_eattrs);
-			fsck_inode_put(entry_ip);
+			fsck_inode_put(&entry_ip);
 
 			dirent2_del(ip, bh, prev_de, dent);
 			bmodified(bh);
@@ -361,7 +361,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			if(query( _("Clear duplicate '.' entry? (y/n) "))) {
 				entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 				check_inode_eattr(entry_ip, &clear_eattrs);
-				fsck_inode_put(entry_ip);
+				fsck_inode_put(&entry_ip);
 
 				dirent2_del(ip, bh, prev_de, dent);
 				bmodified(bh);
@@ -396,7 +396,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			if(query( _("Remove '.' reference? (y/n) "))) {
 				entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 				check_inode_eattr(entry_ip, &clear_eattrs);
-				fsck_inode_put(entry_ip);
+				fsck_inode_put(&entry_ip);
 
 				dirent2_del(ip, bh, prev_de, dent);
 				bmodified(bh);
@@ -431,7 +431,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 
 				entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 				check_inode_eattr(entry_ip, &clear_eattrs);
-				fsck_inode_put(entry_ip);
+				fsck_inode_put(&entry_ip);
 
 				dirent2_del(ip, bh, prev_de, dent);
 				bmodified(bh);
@@ -456,7 +456,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			if(query( _("Clear bad '..' directory entry? (y/n) "))) {
 				entry_ip = fsck_load_inode(sbp, de->de_inum.no_addr);
 				check_inode_eattr(entry_ip, &clear_eattrs);
-				fsck_inode_put(entry_ip);
+				fsck_inode_put(&entry_ip);
 
 				dirent2_del(ip, bh, prev_de, dent);
 				bmodified(bh);
@@ -546,7 +546,6 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 {
 	uint64_t iblock = 0;
 	struct dir_status ds = {0};
-	struct gfs2_buffer_head b, *bh = &b;
 	char *filename;
 	int filename_len;
 	char tmp_name[256];
@@ -576,7 +575,6 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 	if (error > 0)
 		gfs2_block_set(sysinode->i_sbd, bl, iblock, gfs2_meta_inval);
 
-	bh = bhold(sysinode->i_bh);
 	if(check_inode_eattr(sysinode, &pass2_fxns)) {
 		stack;
 		return -1;
@@ -605,7 +603,6 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 				       sysinode->i_di.di_num.no_addr);
 			ds.entry_count++;
 			free(filename);
-			bmodified(sysinode->i_bh);
 		} else
 			log_err( _("The directory was not fixed.\n"));
 	}
@@ -631,10 +628,6 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 				sysinode->i_di.di_num.no_addr);
 		}
 	}
-
-	if (!opts.no)
-		bmodified(bh);
-	brelse(bh);
 	return 0;
 }
 
@@ -668,7 +661,6 @@ int pass2(struct gfs2_sbd *sbp)
 	struct gfs2_block_query q;
 	struct dir_status ds = {0};
 	struct gfs2_inode *ip;
-	struct gfs2_buffer_head *bh = NULL;
 	char *filename;
 	int filename_len;
 	char tmp_name[256];
@@ -722,11 +714,10 @@ int pass2(struct gfs2_sbd *sbp)
 			 * is valid */
 			ip = fsck_load_inode(sbp, i);
 			if(check_metatree(ip, &pass2_fxns)) {
-				fsck_inode_put(ip);
+				fsck_inode_put(&ip);
 				stack;
 				return FSCK_ERROR;
 			}
-			fsck_inode_put(ip);
 		}
 		error = check_dir(sbp, i, &pass2_fxns);
 		if(error < 0) {
@@ -764,8 +755,7 @@ int pass2(struct gfs2_sbd *sbp)
 			}
 			gfs2_block_set(sbp, bl, i, gfs2_meta_inval);
 		}
-		bh = bread(&sbp->buf_list, i);
-		ip = fsck_inode_get(sbp, bh);
+		ip = fsck_load_inode(sbp, i);
 		if(!ds.dotdir) {
 			log_err(_("No '.' entry found for directory inode at "
 				  "block %"PRIu64" (0x%" PRIx64 ")\n"), i, i);
@@ -795,7 +785,6 @@ int pass2(struct gfs2_sbd *sbp)
 				ds.entry_count++;
 				free(filename);
 				log_err( _("The directory was fixed.\n"));
-				bmodified(ip->i_bh);
 			} else {
 				log_err( _("The directory was not fixed.\n"));
 			}
@@ -814,7 +803,7 @@ int pass2(struct gfs2_sbd *sbp)
 				log_err( _("The entry count was not fixed.\n"));
 			}
 		}
-		fsck_inode_put(ip); /* does a gfs2_dinode_out, brelse */
+		fsck_inode_put(&ip); /* does a gfs2_dinode_out, brelse */
 	}
 	/* Now that we've deleted the inodes marked "bad" we can safely
 	   get rid of the duplicate block list.  If we do it any sooner,

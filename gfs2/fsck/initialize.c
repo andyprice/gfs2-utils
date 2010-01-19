@@ -180,10 +180,9 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	log_info( _("Initializing special inodes...\n"));
 
 	/* Get master dinode */
-	sdp->master_dir = gfs2_load_inode(sdp,
-					  sdp->sd_sb.sb_master_dir.no_addr);
+	sdp->master_dir = inode_read(sdp, sdp->sd_sb.sb_master_dir.no_addr);
 	/* Get root dinode */
-	sdp->md.rooti = gfs2_load_inode(sdp, sdp->sd_sb.sb_root_dir.no_addr);
+	sdp->md.rooti = inode_read(sdp, sdp->sd_sb.sb_root_dir.no_addr);
 
 	/* Look for "inum" entry in master dinode */
 	gfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);

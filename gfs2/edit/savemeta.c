@@ -409,7 +409,7 @@ static void save_inode_data(int out_fd)
 		}
 		brelse(lbh);
 	}
-	inode_put(inode);
+	inode_put(&inode);
 	brelse(metabh);
 }
 
@@ -431,19 +431,18 @@ static void get_journal_inode_blocks(void)
 	for (journal = 0; ; journal++) { /* while journals exist */
 		uint64_t jblock;
 		int amt;
-		struct gfs2_dinode jdi;
 		struct gfs2_inode *j_inode = NULL;
 
 		if (gfs1) {
 			struct gfs_jindex ji;
 			char jbuf[sizeof(struct gfs_jindex)];
 
-			bh = bread(&sbd.buf_list, sbd1->sb_jindex_di.no_addr);
-			j_inode = gfs_inode_get(&sbd, bh);
+			j_inode = gfs_inode_read(&sbd,
+						 sbd1->sb_jindex_di.no_addr);
 			amt = gfs2_readi(j_inode, (void *)&jbuf,
 					 journal * sizeof(struct gfs_jindex),
 					 sizeof(struct gfs_jindex));
-			brelse(bh);
+			inode_put(&j_inode);
 			if (!amt)
 				break;
 			gfs_jindex_in(&ji, jbuf);
@@ -453,10 +452,6 @@ static void get_journal_inode_blocks(void)
 			if (journal > indirect->ii[0].dirents - 3)
 				break;
 			jblock = indirect->ii[0].dirent[journal + 2].block;
-			bh = bread(&sbd.buf_list, jblock);
-			j_inode = inode_get(&sbd, bh);
-			gfs2_dinode_in(&jdi, bh);
-			inode_put(j_inode);
 		}
 		journal_blocks[journals_found++] = jblock;
 	}
@@ -579,14 +574,13 @@ void savemeta(char *out_fn, int saveoption)
 	       last_fs_block, sbd.bsize);
 	if (!slow) {
 		if (gfs1) {
-			sbd.md.riinode =
-				gfs2_load_inode(&sbd,
+			sbd.md.riinode = inode_read(&sbd,
 						sbd1->sb_rindex_di.no_addr);
 			jindex_block = sbd1->sb_jindex_di.no_addr;
 		} else {
 			sbd.master_dir =
-				gfs2_load_inode(&sbd,
-						sbd.sd_sb.sb_master_dir.no_addr);
+				inode_read(&sbd,
+					sbd.sd_sb.sb_master_dir.no_addr);
 
 			slow = gfs2_lookupi(sbd.master_dir, "rindex", 6, 
 					    &sbd.md.riinode);

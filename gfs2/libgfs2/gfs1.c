@@ -100,11 +100,12 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 	mp = find_metapath(ip, lblock);
 	end_of_metadata = ip->i_di.di_height - 1;
 
-	bh = bhold(ip->i_bh);
+	bh = ip->i_bh;
 
 	for (x = 0; x < end_of_metadata; x++) {
 		gfs1_lookup_block(ip, bh, x, mp, create, new, dblock);
-		brelse(bh);
+		if (bh != ip->i_bh)
+			brelse(bh);
 		if (!*dblock)
 			goto out;
 
@@ -148,7 +149,8 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 		}
 	}
 
-	brelse(bh);
+	if (bh != ip->i_bh)
+		brelse(bh);
 
  out:
 	free(mp);
@@ -397,5 +399,49 @@ struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
 	ip->i_di.di_eattr = gfs1_dinode.di_eattr;
 	ip->i_bh = bh;
 	ip->i_sbd = sdp;
+	ip->bh_owned = 0;
 	return ip;
 }
+
+struct gfs2_inode *gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
+{
+	struct gfs_dinode gfs1_dinode;
+	struct gfs2_inode *ip;
+
+	ip = calloc(1, sizeof(struct gfs2_inode));
+	if (ip == NULL) {
+		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
+		exit(-1);
+	}
+
+	ip->i_bh = bread(&sdp->buf_list, di_addr);
+	gfs_dinode_in(&gfs1_dinode, ip->i_bh);
+	memcpy(&ip->i_di.di_header, &gfs1_dinode.di_header,
+	       sizeof(struct gfs2_meta_header));
+	memcpy(&ip->i_di.di_num, &gfs1_dinode.di_num,
+	       sizeof(struct gfs2_inum));
+	ip->i_di.di_mode = gfs1_dinode.di_mode;
+	ip->i_di.di_uid = gfs1_dinode.di_uid;
+	ip->i_di.di_gid = gfs1_dinode.di_gid;
+	ip->i_di.di_nlink = gfs1_dinode.di_nlink;
+	ip->i_di.di_size = gfs1_dinode.di_size;
+	ip->i_di.di_blocks = gfs1_dinode.di_blocks;
+	ip->i_di.di_atime = gfs1_dinode.di_atime;
+	ip->i_di.di_mtime = gfs1_dinode.di_mtime;
+	ip->i_di.di_ctime = gfs1_dinode.di_ctime;
+	ip->i_di.di_major = gfs1_dinode.di_major;
+	ip->i_di.di_minor = gfs1_dinode.di_minor;
+	ip->i_di.di_goal_data = gfs1_dinode.di_goal_dblk;
+	ip->i_di.di_goal_meta = gfs1_dinode.di_goal_mblk;
+	ip->i_di.di_flags = gfs1_dinode.di_flags;
+	ip->i_di.di_payload_format = gfs1_dinode.di_payload_format;
+	ip->i_di.__pad1 = gfs1_dinode.di_type;
+	ip->i_di.di_height = gfs1_dinode.di_height;
+	ip->i_di.di_depth = gfs1_dinode.di_depth;
+	ip->i_di.di_entries = gfs1_dinode.di_entries;
+	ip->i_di.di_eattr = gfs1_dinode.di_eattr;
+	ip->i_sbd = sdp;
+	ip->bh_owned = 1;
+	return ip;
+}
+

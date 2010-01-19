@@ -32,6 +32,7 @@ int build_master(struct gfs2_sbd *sdp)
 		printf("\nMaster dir:\n");
 		gfs2_dinode_print(&sdp->master_dir->i_di);
 	}
+	sdp->master_dir->bh_owned = 1;
 	return 0;
 }
 
@@ -112,6 +113,7 @@ int write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
 		hash = gfs2_disk_hash(bh->b_data, sizeof(struct gfs2_log_header));
 		((struct gfs2_log_header *)bh->b_data)->lh_hash = cpu_to_be32(hash);
 
+		bmodified(bh);
 		brelse(bh);
 
 		if (++seq == blocks)
@@ -144,8 +146,7 @@ int build_jindex(struct gfs2_sbd *sdp)
 			      sdp->jsize << 20 >> sdp->sd_sb.sb_bsize_shift);
 		if (ret)
 			return ret;
-		bmodified(ip->i_bh);
-		inode_put(ip);
+		inode_put(&ip);
 	}
 
 	if (sdp->debug) {
@@ -153,8 +154,7 @@ int build_jindex(struct gfs2_sbd *sdp)
 		gfs2_dinode_print(&jindex->i_di);
 	}
 
-	bmodified(jindex->i_bh);
-	inode_put(jindex);
+	inode_put(&jindex);
 	return 0;
 }
 
@@ -168,14 +168,14 @@ static int build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 	ip = createi(per_node, name, S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
 	ip->i_di.di_size = sizeof(struct gfs2_inum_range);
+	gfs2_dinode_out(&ip->i_di, ip->i_bh);
 
 	if (sdp->debug) {
 		printf("\nInum Range %u:\n", j);
 		gfs2_dinode_print(&ip->i_di);
 	}
 
-	bmodified(ip->i_bh);
-	inode_put(ip);
+	inode_put(&ip);
 	return 0;
 }
 
@@ -189,14 +189,14 @@ static void build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 	ip = createi(per_node, name, S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
 	ip->i_di.di_size = sizeof(struct gfs2_statfs_change);
+	gfs2_dinode_out(&ip->i_di, ip->i_bh);
 
 	if (sdp->debug) {
 		printf("\nStatFS Change %u:\n", j);
 		gfs2_dinode_print(&ip->i_di);
 	}
 
-	bmodified(ip->i_bh);
-	inode_put(ip);
+	inode_put(&ip);
 }
 
 static int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
@@ -232,8 +232,7 @@ static int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 		gfs2_dinode_print(&ip->i_di);
 	}
 
-	bmodified(ip->i_bh);
-	inode_put(ip);
+	inode_put(&ip);
 	return 0;
 }
 
@@ -256,8 +255,7 @@ int build_per_node(struct gfs2_sbd *sdp)
 		gfs2_dinode_print(&per_node->i_di);
 	}
 
-	bmodified(per_node->i_bh);
-	inode_put(per_node);
+	inode_put(&per_node);
 	return 0;
 }
 
@@ -304,6 +302,7 @@ int build_rindex(struct gfs2_sbd *sdp)
 	ip = createi(sdp->master_dir, "rindex", S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
 	ip->i_di.di_payload_format = GFS2_FORMAT_RI;
+	bmodified(ip->i_bh);
 
 	for (head = &sdp->rglist, tmp = head->next;
 	     tmp != head;
@@ -323,8 +322,7 @@ int build_rindex(struct gfs2_sbd *sdp)
 		gfs2_dinode_print(&ip->i_di);
 	}
 
-	bmodified(ip->i_bh);
-	inode_put(ip);
+	inode_put(&ip);
 	return 0;
 }
 
@@ -338,6 +336,7 @@ int build_quota(struct gfs2_sbd *sdp)
 	ip = createi(sdp->master_dir, "quota", S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
 	ip->i_di.di_payload_format = GFS2_FORMAT_QU;
+	bmodified(ip->i_bh);
 
 	memset(&qu, 0, sizeof(struct gfs2_quota));
 	qu.qu_value = 1;
@@ -355,8 +354,7 @@ int build_quota(struct gfs2_sbd *sdp)
 		gfs2_quota_print(&qu);
 	}
 
-	bmodified(ip->i_bh);
-	inode_put(ip);
+	inode_put(&ip);
 	return 0;
 }
 
@@ -377,6 +375,7 @@ int build_root(struct gfs2_sbd *sdp)
 		printf("\nRoot directory:\n");
 		gfs2_dinode_print(&sdp->md.rooti->i_di);
 	}
+	sdp->md.rooti->bh_owned = 1;
 	return 0;
 }
 
@@ -418,16 +417,6 @@ int do_init_statfs(struct gfs2_sbd *sdp)
 		gfs2_statfs_change_print(&sc);
 	}
 	return 0;
-}
-
-struct gfs2_inode *gfs2_load_inode(struct gfs2_sbd *sbp, uint64_t block)
-{
-	struct gfs2_buffer_head *bh;
-	struct gfs2_inode *ip;
-
-	bh = bread(&sbp->buf_list, block);
-	ip = inode_get(sbp, bh);
-	return ip;
 }
 
 int gfs2_check_meta(struct gfs2_buffer_head *bh, int type)

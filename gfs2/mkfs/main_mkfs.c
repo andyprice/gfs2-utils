@@ -639,14 +639,10 @@ void main_mkfs(int argc, char *argv[])
 
 	/* Cleanup */
 
-	bmodified(sdp->md.rooti->i_bh);
-	inode_put(sdp->md.rooti);
-	bmodified(sdp->master_dir->i_bh);
-	inode_put(sdp->master_dir);
-	bmodified(sdp->md.inum->i_bh);
-	inode_put(sdp->md.inum);
-	bmodified(sdp->md.statfs->i_bh);
-	inode_put(sdp->md.statfs);
+	inode_put(&sdp->md.rooti);
+	inode_put(&sdp->master_dir);
+	inode_put(&sdp->md.inum);
+	inode_put(&sdp->md.statfs);
 	bsync(&sdp->buf_list);
 
 	error = fsync(sdp->device_fd);

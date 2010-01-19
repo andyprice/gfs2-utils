@@ -788,7 +788,7 @@ static void rgcount(void)
 {
 	printf("%lld RGs in this file system.\n",
 	       (unsigned long long)sbd.md.riinode->i_di.di_size / risize());
-	inode_put(sbd.md.riinode);
+	inode_put(&sbd.md.riinode);
 	gfs2_rgrp_free(&sbd.rglist);
 	exit(EXIT_SUCCESS);
 }
@@ -872,7 +872,6 @@ static void gfs_rgrp_print(struct gfs_rgrp *rg)
 /* ------------------------------------------------------------------------ */
 static uint64_t get_rg_addr(int rgnum)
 {
-	struct gfs2_buffer_head *lbh;
 	uint64_t rgblk = 0, gblock;
 	struct gfs2_inode *riinode;
 
@@ -880,14 +879,13 @@ static uint64_t get_rg_addr(int rgnum)
 		gblock = sbd1->sb_rindex_di.no_addr;
 	else
 		gblock = masterblock("rindex");
-	lbh = bread(&sbd.buf_list, gblock);
-	riinode = inode_get(&sbd, lbh);
+	riinode = inode_read(&sbd, gblock);
 	if (rgnum < riinode->i_di.di_size / risize())
 		rgblk = find_rgrp_block(riinode, rgnum);
 	else
 		fprintf(stderr, "Error: File system only has %lld RGs.\n",
 			(unsigned long long)riinode->i_di.di_size / risize());
-	inode_put(riinode);
+	inode_put(&riinode);
 	return rgblk;
 }
 
@@ -1598,17 +1596,15 @@ int block_is_per_node(void)
 int block_is_in_per_node(void)
 {
 	int d;
-	struct gfs2_dinode per_node_di;
-	struct gfs2_buffer_head *per_node_bh;
+	struct gfs2_inode *per_node_di;
 
 	if (gfs1)
 		return FALSE;
 
-	per_node_bh = bread(&sbd.buf_list, masterblock("per_node"));
-	gfs2_dinode_in(&per_node_di, per_node_bh);
+	per_node_di = inode_read(&sbd, masterblock("per_node"));
 
-	do_dinode_extended(&per_node_di, per_node_bh);
-	brelse(per_node_bh);
+	do_dinode_extended(&per_node_di->i_di, per_node_di->i_bh);
+	inode_put(&per_node_di);
 
 	for (d = 0; d < indirect->ii[0].dirents; d++) {
 		if (block == indirect->ii[0].dirent[d].block)
@@ -1746,8 +1742,7 @@ static void read_superblock(int fd)
 			sizeof(uint64_t);
 		sbd.sd_diptrs = (sbd.bsize - sizeof(struct gfs_dinode)) /
 			sizeof(uint64_t);
-		sbd.md.riinode = gfs2_load_inode(&sbd,
-						 sbd1->sb_rindex_di.no_addr);
+		sbd.md.riinode = inode_read(&sbd, sbd1->sb_rindex_di.no_addr);
 		sbd.fssize = sbd.device.length;
 		gfs1_rindex_read(&sbd, 0, &count);
 	} else {
@@ -1755,7 +1750,7 @@ static void read_superblock(int fd)
 			sizeof(uint64_t);
 		sbd.sd_diptrs = (sbd.bsize - sizeof(struct gfs2_dinode)) /
 			sizeof(uint64_t);
-		sbd.master_dir = gfs2_load_inode(&sbd,
+		sbd.master_dir = inode_read(&sbd,
 					    sbd.sd_sb.sb_master_dir.no_addr);
 		gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
 		sbd.fssize = sbd.device.length;

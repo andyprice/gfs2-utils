@@ -79,7 +79,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 		}
 		memcpy(filename, tmp_name, filename_len);
 
-		if(gfs2_dirent_del(ip, NULL, filename, filename_len))
+		if(gfs2_dirent_del(ip, filename, filename_len))
 			log_warn( _("add_inode_to_lf:  "
 					 "Unable to remove \"..\" directory entry.\n"));
 

@@ -312,12 +312,13 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 	amount = size;
 
 	while (copied < size) {
-		bh = bhold(ip->i_bh);
-
+		bh = ip->i_bh;
 		/* First, build up the metatree */
 		for (h = 0; h < blk->height; h++) {
-			lookup_block(ip, bh, h, &blk->mp, 1, &new, &block);
-			brelse(bh);
+			lookup_block(ip, ip->i_bh, h, &blk->mp, 1, &new,
+				     &block);
+			if (bh != ip->i_bh)
+				brelse(bh);
 			if (!block)
 				break;
 
@@ -336,7 +337,8 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 		       (char *)srcptr, amount);
 		srcptr += amount;
 		bmodified(bh);
-		brelse(bh);
+		if (bh != ip->i_bh)
+			brelse(bh);
 
 		copied += amount;
 
@@ -406,8 +408,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 /*                                                                           */
 /* Adapted from gfs2_fsck metawalk.c's build_and_check_metalist              */
 /* ------------------------------------------------------------------------- */
-static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_buffer_head *dibh,
-			   struct gfs2_inode *ip)
+static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
 {
 	uint32_t gfs2_hgt;
 	struct gfs2_buffer_head *bh;
@@ -418,6 +419,7 @@ static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_buffer_head 
 	int error = 0, di_height;
 	struct blocklist blocks, *blk, *newblk;
 	struct metapath gfs2mp;
+	struct gfs2_buffer_head *dibh = ip->i_bh;			   
 
 	/* if there are no indirect blocks to check */
 	if (ip->i_di.di_height <= 1)
@@ -658,11 +660,12 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 		inode->i_di.di_goal_data = 0; /* make sure the upper 32b are 0 */
 		inode->i_di.di_goal_data = gfs1_dinode_struct->di_goal_dblk;
 		inode->i_di.di_generation = 0;
-		if (adjust_indirect_blocks(sbp, bh, inode))
+		if (adjust_indirect_blocks(sbp, inode))
 			return -1;
 	}
 	
-	gfs2_dinode_out(&inode->i_di, bh);
+	bmodified(inode->i_bh);
+	inode_put(&inode); /* does gfs2_dinode_out if modified */
 	sbp->md.next_inum++; /* update inode count */
 	return 0;
 } /* adjust_inode */
@@ -765,15 +768,12 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
 static int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
 					   struct gfs2_inum *inum)
 {
-	struct gfs2_buffer_head *bh_fix;
 	struct gfs2_inode *fix_inode;
 
-	bh_fix = bread(&sbp->buf_list, iblock);
-	fix_inode = inode_get(sbp, bh_fix);
+	fix_inode = inode_read(sbp, iblock);
 	inum->no_formal_ino = fix_inode->i_di.di_num.no_formal_ino;
 	inum->no_addr = fix_inode->i_di.di_num.no_addr;
-	bmodified(bh_fix);
-	brelse(bh_fix);
+	inode_put(&fix_inode);
 	return 0;
 }/* fetch_inum */
 
@@ -928,7 +928,6 @@ static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 	struct inode_block *dir_iblk;
 	uint64_t offset, dirblock;
 	struct gfs2_inode *dip;
-	struct gfs2_buffer_head *bh_dir;
 
 	dirs_fixed = 0;
 	dirents_fixed = 0;
@@ -950,27 +949,24 @@ static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 		dir_iblk = (struct inode_block *)fix;
 		dirblock = dir_iblk->di_addr; /* addr of dir inode */
 		/* read in the directory inode */
-		bh_dir = bread(&sbp->buf_list, dirblock);
-		dip = inode_get(sbp, bh_dir);
+		dip = inode_read(sbp, dirblock);
 		/* fix the directory: either exhash (leaves) or linear (stuffed) */
 		if (dip->i_di.di_flags & GFS2_DIF_EXHASH) {
 			if (fix_one_directory_exhash(sbp, dip)) {
 				log_crit("Error fixing exhash directory.\n");
-				bmodified(bh_dir);
-				brelse(bh_dir);
+				inode_put(&dip);
 				return -1;
 			}
 		}
 		else {
-			if (process_dirent_info(dip, sbp, bh_dir, dip->i_di.di_entries)) {
+			if (process_dirent_info(dip, sbp, dip->i_bh,
+						dip->i_di.di_entries)) {
 				log_crit("Error fixing linear directory.\n");
-				bmodified(bh_dir);
-				brelse(bh_dir);
+				inode_put(&dip);
 				return -1;
 			}
 		}
-		bmodified(bh_dir);
-		brelse(bh_dir);
+		inode_put(&dip);
 	}
 	/* Free the last entry in memory: */
 	if (tmp) {
@@ -1142,11 +1138,10 @@ static int init(struct gfs2_sbd *sbp)
 	}
 	/* get gfs1 rindex inode - gfs1's rindex inode ptr became __pad2 */
 	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_rindex_di);
-	bh = bread(&sbp->buf_list, inum.no_addr);
-	sbp->md.riinode = gfs_inode_get(sbp, bh);
+	sbp->md.riinode = gfs_inode_read(sbp, inum.no_addr);
 	/* get gfs1 jindex inode - gfs1's journal index inode ptr became master */
 	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_jindex_di);
-	sbp->md.jiinode = gfs2_load_inode(sbp, inum.no_addr);
+	sbp->md.jiinode = inode_read(sbp, inum.no_addr);
 	/* read in the journal index data */
 	read_gfs1_jiindex(sbp);
 	/* read in the resource group index data: */
@@ -1165,8 +1160,8 @@ static int init(struct gfs2_sbd *sbp)
 	}
 	printf("\n");
 	fflush(stdout);
-	inode_put(sbp->md.riinode);
-	inode_put(sbp->md.jiinode);
+	inode_put(&sbp->md.riinode);
+	inode_put(&sbp->md.jiinode);
 	log_debug("%d rgs found.\n", rgcount);
 	return 0;
 }/* fill_super_block */
@@ -1466,11 +1461,10 @@ static void remove_obsolete_gfs1(struct gfs2_sbd *sbp)
 /* ------------------------------------------------------------------------- */
 static void conv_build_jindex(struct gfs2_sbd *sdp)
 {
-	struct gfs2_inode *jindex;
 	unsigned int j;
 
-	jindex = createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
-			 GFS2_DIF_SYSTEM);
+	sdp->md.jiinode = createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
+				  GFS2_DIF_SYSTEM);
 
 	for (j = 0; j < sdp->md.journals; j++) {
 		char name[256];
@@ -1479,20 +1473,21 @@ static void conv_build_jindex(struct gfs2_sbd *sdp)
 		printf("Writing journal #%d...", j + 1);
 		fflush(stdout);
 		sprintf(name, "journal%u", j);
-		ip = createi(jindex, name, S_IFREG | 0600, GFS2_DIF_SYSTEM);
+		ip = createi(sdp->md.jiinode, name, S_IFREG | 0600,
+			     GFS2_DIF_SYSTEM);
 		write_journal(sdp, ip, j,
 			      sdp->jsize << 20 >> sdp->sd_sb.sb_bsize_shift);
-		inode_put(ip);
+		inode_put(&ip);
 		printf("done.\n");
 		fflush(stdout);
 	}
 
 	if (sdp->debug) {
 		printf("\nJindex:\n");
-		gfs2_dinode_print(&jindex->i_di);
+		gfs2_dinode_print(&sdp->md.jiinode->i_di);
 	}
 
-	inode_put(jindex);
+	inode_put(&sdp->md.jiinode);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1597,9 +1592,9 @@ int main(int argc, char **argv)
 		update_inode_file(&sb2);
 		write_statfs_file(&sb2);
 
-		inode_put(sb2.master_dir);
-		inode_put(sb2.md.inum);
-		inode_put(sb2.md.statfs);
+		inode_put(&sb2.master_dir);
+		inode_put(&sb2.md.inum);
+		inode_put(&sb2.md.statfs);
 
 		bcommit(&sb2.buf_list); /* write the buffers to disk */
 

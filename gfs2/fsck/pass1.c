@@ -423,7 +423,6 @@ static int check_leaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 				  _("Extended Attribute leaf block "
 				    "has incorrect type"));
 		}
-		bmodified(leaf_bh);
 		brelse(leaf_bh);
 		return 1;
 	}
@@ -689,7 +688,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 
 	if(gfs2_block_check(sdp, bl, block, &q)) {
 		stack;
-		fsck_inode_put(ip);
+		fsck_inode_put(&ip);
 		return -1;
 	}
 	if(q.block_type != gfs2_block_free) {
@@ -697,10 +696,10 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			   "#%" PRIu64 " (0x%" PRIx64 ")\n"), block, block);
 		if(gfs2_block_mark(sdp, bl, block, gfs2_dup_block)) {
 			stack;
-			fsck_inode_put(ip);
+			fsck_inode_put(&ip);
 			return -1;
 		}
-		fsck_inode_put(ip);
+		fsck_inode_put(&ip);
 		return 0;
 	}
 
@@ -711,12 +710,12 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 				  block, block);
 		if(gfs2_block_set(sdp, bl, block, gfs2_inode_dir)) {
 			stack;
-			fsck_inode_put(ip);
+			fsck_inode_put(&ip);
 			return -1;
 		}
 		if(add_to_dir_list(sdp, block)) {
 			stack;
-			fsck_inode_put(ip);
+			fsck_inode_put(&ip);
 			return -1;
 		}
 		break;
@@ -725,7 +724,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 				  block, block);
 		if(gfs2_block_set(sdp, bl, block, gfs2_inode_file)) {
 			stack;
-			fsck_inode_put(ip);
+			fsck_inode_put(&ip);
 			return -1;
 		}
 		break;
@@ -734,7 +733,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 				  block, block);
 		if(gfs2_block_set(sdp, bl, block, gfs2_inode_lnk)) {
 			stack;
-			fsck_inode_put(ip);
+			fsck_inode_put(&ip);
 			return -1;
 		}
 		break;
@@ -743,7 +742,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 				  block, block);
 		if(gfs2_block_set(sdp, bl, block, gfs2_inode_blk)) {
 			stack;
-			fsck_inode_put(ip);
+			fsck_inode_put(&ip);
 			return -1;
 		}
 		break;
@@ -752,7 +751,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 				  block, block);
 		if(gfs2_block_set(sdp, bl, block, gfs2_inode_chr)) {
 			stack;
-			fsck_inode_put(ip);
+			fsck_inode_put(&ip);
 			return -1;
 		}
 		break;
@@ -761,7 +760,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 				  block, block);
 		if(gfs2_block_set(sdp, bl, block, gfs2_inode_fifo)) {
 			stack;
-			fsck_inode_put(ip);
+			fsck_inode_put(&ip);
 			return -1;
 		}
 		break;
@@ -770,7 +769,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 				  block, block);
 		if(gfs2_block_set(sdp, bl, block, gfs2_inode_sock)) {
 			stack;
-			fsck_inode_put(ip);
+			fsck_inode_put(&ip);
 			return -1;
 		}
 		break;
@@ -779,16 +778,16 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 				  block, block);
 		if(gfs2_block_set(sdp, bl, block, gfs2_meta_inval)) {
 			stack;
-			fsck_inode_put(ip);
+			fsck_inode_put(&ip);
 			return -1;
 		}
 		gfs2_set_bitmap(sdp, block, GFS2_BLKST_FREE);
-		fsck_inode_put(ip);
+		fsck_inode_put(&ip);
 		return 0;
 	}
 	if(set_link_count(ip->i_sbd, ip->i_di.di_num.no_addr, ip->i_di.di_nlink)) {
 		stack;
-		fsck_inode_put(ip);
+		fsck_inode_put(&ip);
 		return -1;
 	}
 
@@ -805,11 +804,11 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			log_warn( _("Marking inode invalid\n"));
 			if(gfs2_block_set(sdp, bl, block, gfs2_meta_inval)) {
 				stack;
-				fsck_inode_put(ip);
+				fsck_inode_put(&ip);
 				return -1;
 			}
 			gfs2_set_bitmap(sdp, block, GFS2_BLKST_FREE);
-			fsck_inode_put(ip);
+			fsck_inode_put(&ip);
 			return 0;
 		}
 	}
@@ -818,7 +817,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 
 	error = check_metatree(ip, &pass1_fxns);
 	if (fsck_abort || error < 0) {
-		fsck_inode_put(ip);
+		fsck_inode_put(&ip);
 		return 0;
 	}
 	if(error > 0) {
@@ -830,7 +829,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 		gfs2_block_set(sdp, bl, ip->i_di.di_num.no_addr,
 			       gfs2_meta_inval);
 		gfs2_set_bitmap(sdp, ip->i_di.di_num.no_addr, GFS2_BLKST_FREE);
-		fsck_inode_put(ip);
+		fsck_inode_put(&ip);
 		return 0;
 	}
 
@@ -867,7 +866,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 				(unsigned long long)ip->i_di.di_num.no_addr);
 	}
 
-	fsck_inode_put(ip);
+	fsck_inode_put(&ip);
 	return 0;
 }
 
@@ -897,7 +896,6 @@ static int scan_meta(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	if (!gfs2_check_meta(bh, GFS2_METATYPE_DI)) {
 		/* handle_di calls inode_get, then inode_put, which does brelse.   */
 		/* In order to prevent brelse from getting the count off, hold it. */
-		bhold(bh);
 		if(handle_di(sdp, bh, block)) {
 			stack;
 			return -1;

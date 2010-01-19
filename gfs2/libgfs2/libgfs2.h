@@ -129,6 +129,7 @@ struct special_blocks {
 
 struct gfs2_sbd;
 struct gfs2_inode {
+	int bh_owned; /* Is this bh owned, iow, should we release it later? */
 	struct gfs2_dinode i_di;
 	struct gfs2_buffer_head *i_bh;
 	struct gfs2_sbd *i_sbd;
@@ -409,7 +410,10 @@ extern void lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			 int create, int *new, uint64_t *block);
 extern struct gfs2_inode *inode_get(struct gfs2_sbd *sdp,
 				    struct gfs2_buffer_head *bh);
-extern void inode_put(struct gfs2_inode *ip);
+extern struct gfs2_inode *inode_read(struct gfs2_sbd *sdp, uint64_t di_addr);
+extern struct gfs2_inode *is_system_inode(struct gfs2_sbd *sdp,
+					  uint64_t block);
+extern void inode_put(struct gfs2_inode **ip);
 extern uint64_t data_alloc(struct gfs2_inode *ip);
 extern uint64_t meta_alloc(struct gfs2_inode *ip);
 extern uint64_t dinode_alloc(struct gfs2_sbd *sdp);
@@ -427,13 +431,12 @@ extern struct gfs2_inode *createi(struct gfs2_inode *dip, const char *filename,
 				  unsigned int mode, uint32_t flags);
 extern void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 			struct gfs2_dirent *prev, struct gfs2_dirent *cur);
-extern struct gfs2_inode *gfs2_load_inode(struct gfs2_sbd *sbp, uint64_t block);
 extern int gfs2_lookupi(struct gfs2_inode *dip, const char *filename, int len,
 			struct gfs2_inode **ipp);
 extern void dir_add(struct gfs2_inode *dip, const char *filename, int len,
 		    struct gfs2_inum *inum, unsigned int type);
-extern int gfs2_dirent_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
-			   const char *filename, int filename_len);
+extern int gfs2_dirent_del(struct gfs2_inode *dip, const char *filename,
+			   int filename_len);
 extern void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 		      uint64_t *dblock, uint32_t *extlen, int prealloc);
 extern void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t index,
@@ -529,6 +532,8 @@ extern int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1);
 extern int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet);
 extern struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
 					struct gfs2_buffer_head *bh);
+extern struct gfs2_inode *gfs_inode_read(struct gfs2_sbd *sdp,
+					 uint64_t di_addr);
 
 /* gfs2_log.c */
 struct gfs2_options {

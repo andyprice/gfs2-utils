@@ -260,6 +260,7 @@ int pass1c(struct gfs2_sbd *sbp)
 				 block_no, block_no);
 			gfs2_special_clear(&sbp->eattr_blocks, block_no);
 			ip = fsck_inode_get(sbp, bh);
+			ip->bh_owned = 1;
 
 			log_debug( _("Found eattr at %llu (0x%llx)\n"),
 				  (unsigned long long)ip->i_di.di_eattr,
@@ -271,7 +272,8 @@ int pass1c(struct gfs2_sbd *sbp)
 				brelse(bh);
 				return FSCK_ERROR;
 			}
-			fsck_inode_put(ip); /* dinode_out, brelse, free */
+
+			fsck_inode_put(&ip); /* dinode_out, brelse, free */
 		} else {
 			brelse(bh);
 		}
