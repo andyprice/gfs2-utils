@@ -81,15 +81,15 @@ void warm_fuzzy_stuff(uint64_t block)
 	}
 }
 
-const char *block_type_string(struct gfs2_block_query *q)
+const char *block_type_string(uint8_t q)
 {
 	const char *blktyp[] = {"free", "used", "indirect data", "inode",
 							"file", "symlink", "block dev", "char dev",
 							"fifo", "socket", "dir leaf", "journ data",
 							"other meta", "eattribute", "unused",
 							"invalid"};
-	if (q->block_type < 16)
-		return (blktyp[q->block_type]);
+	if (q < 16)
+		return (blktyp[q]);
 	return blktyp[15];
 }
 

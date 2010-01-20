@@ -300,10 +300,6 @@ enum gfs2_mark_block {
 	gfs2_meta_inval = INVALID_META,
 };
 
-struct gfs2_block_query {
-        uint8_t block_type;
-};
-
 extern struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
 					  uint64_t *addl_mem_needed);
 extern struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num);
@@ -319,8 +315,6 @@ extern int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 /* gfs2_block_clear clears all the marks for the given block */
 extern int gfs2_blockmap_clear(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 			    uint64_t block);
-extern int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
-			    uint64_t block, struct gfs2_block_query *val);
 extern void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il);
 
 /* buf.c */

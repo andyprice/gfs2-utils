@@ -44,7 +44,7 @@ struct dir_info
 struct dir_status {
 	uint8_t dotdir:1;
 	uint8_t dotdotdir:1;
-	struct gfs2_block_query q;
+	uint8_t q;
 	uint32_t entry_count;
 };
 

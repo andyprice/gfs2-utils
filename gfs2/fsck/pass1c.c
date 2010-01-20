@@ -74,7 +74,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 		      void *private)
 {
 	struct gfs2_sbd *sbp = ip->i_sbd;
-	struct gfs2_block_query q;
+	uint8_t q;
 	struct gfs2_buffer_head *indir_bh = NULL;
 
 	if(gfs2_check_range(sbp, block)) {
@@ -87,11 +87,8 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 			(unsigned long long)ip->i_di.di_num.no_addr);
 		return ask_remove_eattr(ip);
 	}
-	else if (gfs2_block_check(sbp, bl, block, &q)) {
-		stack;
-		return -1;
-	}
-	else if(q.block_type != gfs2_indir_blk) {
+	q = block_type(block);
+	if(q != gfs2_indir_blk) {
 		log_err( _("Extended attributes indirect block #%llu"
 			" (0x%llx) for inode #%llu"
 			" (0x%llx) invalid.\n"),
@@ -113,7 +110,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 		     void *private)
 {
 	struct gfs2_sbd *sbp = ip->i_sbd;
-	struct gfs2_block_query q;
+	uint8_t q;
 
 	if(gfs2_check_range(sbp, block)) {
 		log_err( _("Extended attributes block for inode #%llu"
@@ -122,11 +119,8 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			(unsigned long long)ip->i_di.di_num.no_addr);
 		return ask_remove_eattr(ip);
 	}
-	else if (gfs2_block_check(sbp, bl, block, &q)) {
-		stack;
-		return -1;
-	}
-	else if(q.block_type != gfs2_meta_eattr) {
+	q = block_type(block);
+	if(q != gfs2_meta_eattr) {
 		log_err( _("Extended attributes block for inode #%llu"
 			   " (0x%llx) invalid.\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
@@ -211,14 +205,12 @@ static int check_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_ptr,
 			 struct gfs2_ea_header *ea_hdr,
 			 struct gfs2_ea_header *ea_hdr_prev, void *private)
 {
-	struct gfs2_block_query q;
+	uint8_t q;
 	struct gfs2_sbd *sbp = ip->i_sbd;
 
-	if(gfs2_block_check(sbp, bl, be64_to_cpu(*ea_ptr), &q)) {
-		stack;
-		return -1;
-	}
-	if(q.block_type != gfs2_meta_eattr) {
+
+	q = block_type(be64_to_cpu(*ea_ptr));
+	if(q != gfs2_meta_eattr) {
 		if(remove_eattr_entry(sbp, leaf_bh, ea_hdr, ea_hdr_prev)){
 			stack;
 			return -1;

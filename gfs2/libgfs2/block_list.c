@@ -139,21 +139,6 @@ int gfs2_blockmap_set(struct gfs2_sbd *sdp, struct gfs2_bmap *bmap,
 	return 0;
 }
 
-int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
-		     uint64_t block, struct gfs2_block_query *val)
-{
-	static unsigned char *byte;
-	static uint64_t b;
-
-	if(block >= il->size)
-		return -1;
-
-	byte = il->map + BLOCKMAP_SIZE4(block);
-	b = BLOCKMAP_BYTE_OFFSET4(block);
-	val->block_type = (*byte & (BLOCKMAP_MASK4 << b )) >> b;
-	return 0;
-}
-
 void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il)
 {
 	if(il) {

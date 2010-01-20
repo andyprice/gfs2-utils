@@ -85,7 +85,7 @@ static int leaf(struct gfs2_inode *ip, uint64_t block,
 static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			  struct gfs2_buffer_head **bh, void *private)
 {
-	struct gfs2_block_query q = {0};
+	uint8_t q;
 	int found_dup = 0;
 	struct gfs2_buffer_head *nbh;
 	struct block_count *bc = (struct block_count *)private;
@@ -99,13 +99,10 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 
 		return 1;
 	}
-	if(gfs2_block_check(ip->i_sbd, bl, block, &q)) {
-		stack;
-		return -1;
-	}
-	if(q.block_type != gfs2_block_free) {
+	q = block_type(block);
+	if(q != gfs2_block_free) {
 		log_err( _("Found duplicate block referenced as metadata in "
-			   "indirect block - was marked %d\n"), q.block_type);
+			   "indirect block - was marked %d\n"), q);
 		gfs2_dup_set(block);
 		found_dup = 1;
 	}
@@ -135,7 +132,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 
 static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 {
-	struct gfs2_block_query q = {0};
+	uint8_t q;
 	struct block_count *bc = (struct block_count *) private;
 	int error = 0, btype;
 
@@ -152,20 +149,15 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 			       gfs2_bad_block);
 		return 1;
 	}
-	if(gfs2_block_check(ip->i_sbd, bl, block, &q)) {
-		stack;
-		log_err( _("Found bad block referenced as data at %"
-			   PRIu64 " (0x%"PRIx64 ")\n"), block, block);
-		return -1;
-	}
-	if(q.block_type != gfs2_block_free) {
+	q = block_type(block);
+	if(q != gfs2_block_free) {
 		log_err( _("Found duplicate block referenced as data at %"
 			   PRIu64 " (0x%"PRIx64 ")\n"), block, block);
-		if (q.block_type != gfs2_meta_inval) {
+		if (q != gfs2_meta_inval) {
 			gfs2_dup_set(block);
 			/* If the prev ref was as data, this is likely a data
 			   block, so keep the block count for both refs. */
-			if (q.block_type == gfs2_block_used)
+			if (q == gfs2_block_used)
 				bc->data_count++;
 			return 1;
 		}
@@ -246,11 +238,6 @@ static int ask_remove_inode_eattr(struct gfs2_inode *ip,
 		 (unsigned long long)ip->i_di.di_num.no_addr);
 	if (query( _("Clear all Extended Attributes from the "
 		     "inode? (y/n) "))) {
-		struct gfs2_block_query q;
-		if(gfs2_block_check(ip->i_sbd, bl, ip->i_di.di_eattr, &q)) {
-			stack;
-			return -1;
-		}
 		if (!remove_inode_eattr(ip, bc,
 					is_duplicate(ip->i_di.di_eattr)))
 			log_err( _("Extended attributes were removed.\n"));
@@ -307,7 +294,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	int ret = 0;
-	struct gfs2_block_query q = {0};
+	uint8_t q;
 	struct block_count *bc = (struct block_count *) private;
 
 	/* This inode contains an eattr - it may be invalid, but the
@@ -320,10 +307,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 		 * in pass1c */
 		return 1;
 	}
-	if(gfs2_block_check(sdp, bl, indirect, &q)) {
-		stack;
-		return -1;
-	}
+	q = block_type(indirect);
 
 	/* Special duplicate processing:  If we have an EA block,
 	   check if it really is an EA.  If it is, let duplicate
@@ -331,7 +315,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 	   count it as a duplicate. */
 	*bh = bread(sdp, indirect);
 	if(gfs2_check_meta(*bh, GFS2_METATYPE_IN)) {
-		if(q.block_type != gfs2_block_free) { /* Duplicate? */
+		if(q != gfs2_block_free) { /* Duplicate? */
 			if (!clear_eas(ip, bc, indirect, 1,
 				       _("Bad indirect Extended Attribute "
 					 "duplicate found"))) {
@@ -345,7 +329,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 			    "type"));
 		return 1;
 	}
-	if(q.block_type != gfs2_block_free) { /* Duplicate? */
+	if(q != gfs2_block_free) { /* Duplicate? */
 		log_err( _("Inode #%llu (0x%llx): Duplicate Extended "
 			   "Attribute indirect block found at #%llu "
 			   "(0x%llx).\n"),
@@ -402,19 +386,16 @@ static int check_leaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 {
 	struct gfs2_buffer_head *leaf_bh = NULL;
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_block_query q = {0};
+	uint8_t q;
 	struct block_count *bc = (struct block_count *) private;
 
-	if(gfs2_block_check(sdp, bl, block, &q)) {
-		stack;
-		return -1;
-	}
+	q = block_type(block);
 	/* Special duplicate processing:  If we have an EA block, check if it
 	   really is an EA.  If it is, let duplicate handling sort it out.
 	   If it isn't, clear it but don't count it as a duplicate. */
 	leaf_bh = bread(sdp, block);
 	if(gfs2_check_meta(leaf_bh, btype)) {
-		if(q.block_type != gfs2_block_free) { /* Duplicate? */
+		if(q != gfs2_block_free) { /* Duplicate? */
 			clear_eas(ip, bc, block, 1,
 				  _("Bad Extended Attribute duplicate found"));
 		} else {
@@ -425,7 +406,7 @@ static int check_leaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 		brelse(leaf_bh);
 		return 1;
 	}
-	if(q.block_type != gfs2_block_free) { /* Duplicate? */
+	if(q != gfs2_block_free) { /* Duplicate? */
 		log_debug( _("Duplicate block found at #%lld (0x%llx).\n"),
 			   (unsigned long long)block,
 			   (unsigned long long)block);
@@ -569,14 +550,8 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 static int clear_metalist(struct gfs2_inode *ip, uint64_t block,
 		   struct gfs2_buffer_head **bh, void *private)
 {
-	struct gfs2_block_query q = {0};
-
 	*bh = NULL;
 
-	if(gfs2_block_check(ip->i_sbd, bl, block, &q)) {
-		stack;
-		return -1;
-	}
 	if(!is_duplicate(block)) {
 		gfs2_blockmap_set(ip->i_sbd, bl, block, gfs2_block_free);
 		return 0;
@@ -586,12 +561,6 @@ static int clear_metalist(struct gfs2_inode *ip, uint64_t block,
 
 static int clear_data(struct gfs2_inode *ip, uint64_t block, void *private)
 {
-	struct gfs2_block_query q = {0};
-
-	if(gfs2_block_check(ip->i_sbd, bl, block, &q)) {
-		stack;
-		return -1;
-	}
 	if(!is_duplicate(block)) {
 		gfs2_blockmap_set(ip->i_sbd, bl, block, gfs2_block_free);
 		return 0;
@@ -603,15 +572,9 @@ static int clear_data(struct gfs2_inode *ip, uint64_t block, void *private)
 static int clear_leaf(struct gfs2_inode *ip, uint64_t block,
 	       struct gfs2_buffer_head *bh, void *private)
 {
-	struct gfs2_block_query q = {0};
-
 	log_crit( _("Clearing leaf #%" PRIu64 " (0x%" PRIx64 ")\n"),
 		  block, block);
 
-	if(gfs2_block_check(ip->i_sbd, bl, block, &q)) {
-		stack;
-		return -1;
-	}
 	if(!is_duplicate(block)) {
 		log_crit( _("Setting leaf #%" PRIu64 " (0x%" PRIx64 ") invalid\n"),
 				 block, block);
@@ -657,7 +620,7 @@ int add_to_dir_list(struct gfs2_sbd *sbp, uint64_t block)
 static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			  uint64_t block)
 {
-	struct gfs2_block_query q = {0};
+	uint8_t q;
 	struct gfs2_inode *ip;
 	int error;
 	struct block_count bc = {0};
@@ -685,12 +648,8 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 				 " (0x%" PRIx64 ") not fixed\n"), block, block);
 	}
 
-	if(gfs2_block_check(sdp, bl, block, &q)) {
-		stack;
-		fsck_inode_put(&ip);
-		return -1;
-	}
-	if(q.block_type != gfs2_block_free) {
+	q = block_type(block);
+	if(q != gfs2_block_free) {
 		log_err( _("Found duplicate block referenced as an inode at "
 			   "#%" PRIu64 " (0x%" PRIx64 ")\n"), block, block);
 		gfs2_dup_set(block);

@@ -11,6 +11,7 @@
 #include "lost_n_found.h"
 #include "inode_hash.h"
 #include "metawalk.h"
+#include "util.h"
 
 struct metawalk_fxns pass4_fxns_delete = {
 	.private = NULL,
@@ -45,7 +46,7 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 	struct inode_info *ii;
 	struct gfs2_inode *ip;
 	int lf_addition = 0;
-	struct gfs2_block_query q;
+	uint8_t q;
 
 	/* FIXME: should probably factor this out into a generic
 	 * scanning fxn */
@@ -61,11 +62,8 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 		if(ii->counted_links == 0) {
 			log_err( _("Found unlinked inode at %" PRIu64 " (0x%" PRIx64 ")\n"),
 					ii->inode, ii->inode);
-			if(gfs2_block_check(sbp, bl, ii->inode, &q)) {
-				stack;
-				return -1;
-			}
-			if(q.block_type == gfs2_bad_block) {
+			q = block_type(ii->inode);
+			if(q == gfs2_bad_block) {
 				log_err( _("Unlinked inode %llu (0x%llx) contains"
 					"bad blocks\n"),
 					(unsigned long long)ii->inode,
@@ -84,16 +82,15 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 				} else
 					log_err( _("Unlinked inode with bad blocks not cleared\n"));
 			}
-			if(q.block_type != gfs2_inode_dir &&
-			   q.block_type != gfs2_inode_file &&
-			   q.block_type != gfs2_inode_lnk &&
-			   q.block_type != gfs2_inode_blk &&
-			   q.block_type != gfs2_inode_chr &&
-			   q.block_type != gfs2_inode_fifo &&
-			   q.block_type != gfs2_inode_sock) {
+			if(q != gfs2_inode_dir &&
+			   q != gfs2_inode_file &&
+			   q != gfs2_inode_lnk &&
+			   q != gfs2_inode_blk &&
+			   q != gfs2_inode_chr &&
+			   q != gfs2_inode_fifo &&
+			   q != gfs2_inode_sock) {
 				log_err( _("Unlinked block marked as inode is "
-					   "not an inode (%d)\n"),
-					 q.block_type);
+					   "not an inode (%d)\n"), q);
 				ip = fsck_load_inode(sbp, ii->inode);
 				if(query(_("Delete unlinked inode? (y/n) "))) {
 					check_inode_eattr(ip,

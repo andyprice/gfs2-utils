@@ -14,6 +14,7 @@
 #include "lost_n_found.h"
 #include "link.h"
 #include "metawalk.h"
+#include "util.h"
 
 static int attach_dotdot_to(struct gfs2_sbd *sbp, uint64_t newdotdot,
 			    uint64_t olddotdot, uint64_t block)
@@ -63,7 +64,7 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 										struct dir_info *di)
 {
 	struct dir_info *pdi;
-	struct gfs2_block_query q_dotdot, q_treewalk;
+	uint8_t q_dotdot, q_treewalk;
 
 	di->checked = 1;
 
@@ -77,19 +78,8 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 				   PRIu64" (0x%" PRIx64 ")\n"), di->dotdot_parent,
 				   di->dotdot_parent, di->treewalk_parent,
 				   di->treewalk_parent);
-		if(gfs2_block_check(sbp, bl, di->dotdot_parent, &q_dotdot)) {
-			log_err( _("Unable to find block %"PRIu64
-					" (0x%" PRIx64 ") in block map.\n"),
-					di->dotdot_parent, di->dotdot_parent);
-			return NULL;
-		}
-		if(gfs2_block_check(sbp, bl, di->treewalk_parent,
-				    &q_treewalk)) {
-			log_err( _("Unable to find block %"PRIu64
-					" (0x%" PRIx64 ") in block map\n"),
-					di->treewalk_parent, di->treewalk_parent);
-			return NULL;
-		}
+		q_dotdot = block_type(di->dotdot_parent);
+		q_treewalk = block_type(di->treewalk_parent);
 		/* if the dotdot entry isn't a directory, but the
 		 * treewalk is, treewalk is correct - if the treewalk
 		 * entry isn't a directory, but the dotdot is, dotdot
@@ -97,8 +87,8 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 		 * choose? if neither are directories, we have a
 		 * problem - need to move this directory into lost+found
 		 */
-		if(q_dotdot.block_type != gfs2_inode_dir) {
-			if(q_treewalk.block_type != gfs2_inode_dir) {
+		if(q_dotdot != gfs2_inode_dir) {
+			if(q_treewalk != gfs2_inode_dir) {
 				log_err( _("Orphaned directory, move to lost+found\n"));
 				return NULL;
 			}
@@ -112,7 +102,7 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 			}
 		}
 		else {
-			if(q_treewalk.block_type != gfs2_inode_dir) {
+			if(q_treewalk != gfs2_inode_dir) {
 				int error = 0;
 				log_warn( _(".. parent is valid, but treewalk"
 						 "is bad - reattaching to lost+found"));
@@ -154,13 +144,8 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 		}
 	}
 	else {
-		if(gfs2_block_check(sbp, bl, di->dotdot_parent, &q_dotdot)) {
-			log_err( _("Unable to find parent block %"PRIu64
-					" (0x%" PRIx64 ")  in block map\n"),
-					di->dotdot_parent, di->dotdot_parent);
-			return NULL;
-		}
-		if(q_dotdot.block_type != gfs2_inode_dir) {
+		q_dotdot = block_type(di->dotdot_parent);
+		if(q_dotdot != gfs2_inode_dir) {
 			log_err( _("Orphaned directory at block %" PRIu64 " (0x%" PRIx64
 					") moved to lost+found\n"), di->dinode, di->dinode);
 			return NULL;
@@ -182,7 +167,7 @@ int pass3(struct gfs2_sbd *sbp)
 	osi_list_t *tmp;
 	struct dir_info *di, *tdi;
 	struct gfs2_inode *ip;
-	struct gfs2_block_query q;
+	uint8_t q;
 	int i;
 
 	find_di(sbp, sbp->md.rooti->i_di.di_num.no_addr, &di);
@@ -214,11 +199,8 @@ int pass3(struct gfs2_sbd *sbp)
 
 			/* FIXME: Factor this ? */
 			if(!tdi) {
-				if(gfs2_block_check(sbp, bl, di->dinode, &q)) {
-					stack;
-					return FSCK_ERROR;
-				}
-				if(q.block_type == gfs2_bad_block) {
+				q = block_type(di->dinode);
+				if(q == gfs2_bad_block) {
 					log_err( _("Found unlinked directory containing bad block\n"));
 					if(query(
 					   _("Clear unlinked directory with bad blocks? (y/n) "))) {
@@ -229,13 +211,13 @@ int pass3(struct gfs2_sbd *sbp)
 					} else
 						log_err( _("Unlinked directory with bad block remains\n"));
 				}
-				if(q.block_type != gfs2_inode_dir &&
-				   q.block_type != gfs2_inode_file &&
-				   q.block_type != gfs2_inode_lnk &&
-				   q.block_type != gfs2_inode_blk &&
-				   q.block_type != gfs2_inode_chr &&
-				   q.block_type != gfs2_inode_fifo &&
-				   q.block_type != gfs2_inode_sock) {
+				if(q != gfs2_inode_dir &&
+				   q != gfs2_inode_file &&
+				   q != gfs2_inode_lnk &&
+				   q != gfs2_inode_blk &&
+				   q != gfs2_inode_chr &&
+				   q != gfs2_inode_fifo &&
+				   q != gfs2_inode_sock) {
 					log_err( _("Unlinked block marked as inode not an inode\n"));
 					gfs2_blockmap_set(sbp, bl, di->dinode,
 						       gfs2_block_free);

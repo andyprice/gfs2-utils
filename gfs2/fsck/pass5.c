@@ -12,9 +12,9 @@
 #include "fs_bits.h"
 #include "util.h"
 
-static int convert_mark(struct gfs2_block_query *q, uint32_t *count)
+static int convert_mark(uint8_t q, uint32_t *count)
 {
-	switch(q->block_type) {
+	switch(q) {
 
 	case gfs2_meta_inval:
 		/* Convert invalid metadata to free blocks */
@@ -45,7 +45,7 @@ static int convert_mark(struct gfs2_block_query *q, uint32_t *count)
 		return GFS2_BLKST_USED;
 
 	default:
-		log_err( _("Invalid state %d found\n"), q->block_type);
+		log_err( _("Invalid state %d found\n"), q);
 		return -1;
 	}
 	return -1;
@@ -57,7 +57,7 @@ static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int b
 	unsigned char *byte, *end;
 	unsigned int bit;
 	unsigned char rg_status, block_status;
-	struct gfs2_block_query q;
+	uint8_t q;
 	uint64_t block;
 	static int free_unlinked = -1;
 
@@ -72,9 +72,9 @@ static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int b
 		warm_fuzzy_stuff(block);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return 0;
-		gfs2_block_check(sbp, bl, block, &q);
+		q = block_type(block);
 
-		block_status = convert_mark(&q, count);
+		block_status = convert_mark(q, count);
 
 		/* If one node opens a file and another node deletes it, we
 		   may be left with a block that appears to be "unlinked" in
@@ -121,8 +121,8 @@ static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int b
 			log_err( _("Ondisk status is %u (%s) but FSCK thinks it should be "),
 					rg_status, blockstatus[rg_status]);
 			log_err("%u (%s)\n", block_status, blockstatus[block_status]);
-			log_err( _("Metadata type is %u (%s)\n"), q.block_type,
-					block_type_string(&q));
+			log_err( _("Metadata type is %u (%s)\n"), q,
+					block_type_string(q));
 
 			if(query( _("Fix bitmap for block %" PRIu64
 				    " (0x%" PRIx64 ") ? (y/n) "),

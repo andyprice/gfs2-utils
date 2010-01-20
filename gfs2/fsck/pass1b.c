@@ -496,7 +496,7 @@ int pass1b(struct gfs2_sbd *sbp)
 {
 	struct dup_blks *b;
 	uint64_t i;
-	struct gfs2_block_query q;
+	uint8_t q;
 	osi_list_t *tmp = NULL, *x;
 	struct metawalk_fxns find_dirents = {0};
 	int rc = FSCK_OK;
@@ -521,18 +521,14 @@ int pass1b(struct gfs2_sbd *sbp)
 			goto out;
 		log_debug( _("Scanning block %" PRIu64 " (0x%" PRIx64 ") for inodes\n"),
 				  i, i);
-		if(gfs2_block_check(sbp, bl, i, &q)) {
-			stack;
-			rc = FSCK_ERROR;
-			goto out;
-		}
-		if((q.block_type == gfs2_inode_dir) ||
-		   (q.block_type == gfs2_inode_file) ||
-		   (q.block_type == gfs2_inode_lnk) ||
-		   (q.block_type == gfs2_inode_blk) ||
-		   (q.block_type == gfs2_inode_chr) ||
-		   (q.block_type == gfs2_inode_fifo) ||
-		   (q.block_type == gfs2_inode_sock)) {
+		q = block_type(i);
+		if((q == gfs2_inode_dir) ||
+		   (q == gfs2_inode_file) ||
+		   (q == gfs2_inode_lnk) ||
+		   (q == gfs2_inode_blk) ||
+		   (q == gfs2_inode_chr) ||
+		   (q == gfs2_inode_fifo) ||
+		   (q == gfs2_inode_sock)) {
 			osi_list_foreach_safe(tmp, &dup_blocks.list, x) {
 				b = osi_list_entry(tmp, struct dup_blks,
 						   list);
@@ -543,7 +539,7 @@ int pass1b(struct gfs2_sbd *sbp)
 				}
 			}
 		}
-		if(q.block_type == gfs2_inode_dir) {
+		if(q == gfs2_inode_dir) {
 			check_dir(sbp, i, &find_dirents);
 		}
 	}

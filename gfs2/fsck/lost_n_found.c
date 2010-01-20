@@ -14,6 +14,7 @@
 #include "libgfs2.h"
 #include "lost_n_found.h"
 #include "link.h"
+#include "util.h"
 
 /* add_inode_to_lf - Add dir entry to lost+found for the inode
  * @ip: inode to add to lost + found
@@ -31,16 +32,13 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	__be32 inode_type;
 
 	if(!lf_dip) {
-		struct gfs2_block_query q = {0};
+		uint8_t q;
 
 		log_info( _("Locating/Creating lost and found directory\n"));
 
         lf_dip = createi(ip->i_sbd->md.rooti, "lost+found", S_IFDIR | 0700, 0);
-	if(gfs2_block_check(ip->i_sbd, bl, lf_dip->i_di.di_num.no_addr, &q)) {
-			stack;
-			return -1;
-		}
-		if(q.block_type != gfs2_inode_dir) {
+		q = block_type(lf_dip->i_di.di_num.no_addr);
+		if(q != gfs2_inode_dir) {
 			/* This is a new lost+found directory, so set its
 			 * block type and increment link counts for
 			 * the directories */

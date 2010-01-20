@@ -17,6 +17,7 @@
 #include "libgfs2.h"
 #include "fsck.h"
 #include "osi_list.h"
+#include "util.h"
 
 struct gfs2_options opts = {0};
 struct gfs2_inode *lf_dip; /* Lost and found directory inode */
@@ -163,22 +164,17 @@ static int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 		
 		/* FIXME: check this block's validity */
 
-		if(gfs2_block_check(sysinode->i_sbd, bl, iblock, &ds.q)) {
-			log_crit( _("Can't get %s inode block %" PRIu64 " (0x%"
-				 PRIx64 ") from block list\n"), filename,
-				 iblock, iblock);
-			return -1;
-		}
+		ds.q = block_type(iblock);
 		/* If the inode exists but the block is marked      */
 		/* free, we might be recovering from a corrupt      */
 		/* bitmap.  In that case, don't rebuild the inode.  */
 		/* Just reuse the inode and fix the bitmap.         */
-		if (ds.q.block_type == gfs2_block_free) {
+		if (ds.q == gfs2_block_free) {
 			log_info( _("The inode exists but the block is not marked 'in use'; fixing it.\n"));
 			gfs2_blockmap_set(sysinode->i_sbd, bl,
 				       sysinode->i_di.di_num.no_addr,
 				       mark);
-			ds.q.block_type = mark;
+			ds.q = mark;
 			if (mark == gfs2_inode_dir)
 				add_to_dir_list(sysinode->i_sbd,
 						sysinode->i_di.di_num.no_addr);
@@ -190,14 +186,14 @@ static int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 	 * create a new inode and get it all setup - of course,
 	 * everything will be in lost+found then, but we *need* our
 	 * system inodes before we can do any of that. */
-	if(!sysinode || ds.q.block_type != mark) {
+	if(!sysinode || ds.q != mark) {
 		log_err( _("Invalid or missing %s system inode.\n"), filename);
 		if (query(_("Create new %s system inode? (y/n) "), filename)) {
 			builder(sysinode->i_sbd);
 			gfs2_blockmap_set(sysinode->i_sbd, bl,
 				       sysinode->i_di.di_num.no_addr,
 				       mark);
-			ds.q.block_type = mark;
+			ds.q = mark;
 			if (mark == gfs2_inode_dir)
 				add_to_dir_list(sysinode->i_sbd,
 						sysinode->i_di.di_num.no_addr);

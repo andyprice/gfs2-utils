@@ -1088,7 +1088,7 @@ int remove_dentry_from_dir(struct gfs2_sbd *sbp, uint64_t dir,
 			   uint64_t dentryblock)
 {
 	struct metawalk_fxns remove_dentry_fxns = {0};
-	struct gfs2_block_query q;
+	uint8_t q;
 	int error;
 
 	log_debug( _("Removing dentry %" PRIu64 " (0x%" PRIx64 ") from directory %"
@@ -1100,11 +1100,8 @@ int remove_dentry_from_dir(struct gfs2_sbd *sbp, uint64_t dir,
 	remove_dentry_fxns.private = &dentryblock;
 	remove_dentry_fxns.check_dentry = remove_dentry;
 
-	if(gfs2_block_check(sbp, bl, dir, &q)) {
-		stack;
-		return -1;
-	}
-	if(q.block_type != gfs2_inode_dir) {
+	q = block_type(dir);
+	if(q != gfs2_inode_dir) {
 		log_info( _("Parent block is not a directory...ignoring\n"));
 		return 1;
 	}
@@ -1195,11 +1192,7 @@ int delete_blocks(struct gfs2_inode *ip, uint64_t block,
 		  struct gfs2_buffer_head **bh, const char *btype,
 		  void *private)
 {
-	struct gfs2_block_query q = {0};
-
 	if (gfs2_check_range(ip->i_sbd, block) == 0) {
-		if (gfs2_block_check(ip->i_sbd, bl, block, &q))
-			return 0;
 		if(!is_duplicate(block)) {
 			log_info( _("Deleting %s block %lld (0x%llx) as part "
 				    "of inode %lld (0x%llx)\n"), btype,
