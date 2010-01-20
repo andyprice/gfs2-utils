@@ -176,7 +176,7 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 		inode_hash_remove(inode_hash, ip->i_di.di_num.no_addr);
 		/* Setting the block to invalid means the inode is
 		 * cleared in pass2 */
-		gfs2_block_set(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
+		gfs2_blockmap_set(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
 			       gfs2_meta_inval);
 	}
 	return 0;
@@ -208,7 +208,7 @@ static int clear_dup_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 		log_err( _("Inode %s is in directory %" PRIu64 " (0x%" PRIx64 ")\n"),
 				dh->id->name ? dh->id->name : "",
 				dh->id->parent, dh->id->parent);
-		gfs2_block_set(ip->i_sbd, bl, ip->i_di.di_eattr,
+		gfs2_blockmap_set(ip->i_sbd, bl, ip->i_di.di_eattr,
 			       gfs2_meta_inval);
 	}
 
@@ -235,7 +235,7 @@ static int clear_dup_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 				dh->id->name ? dh->id->name : "",
 				dh->id->parent, dh->id->parent);
 		/* mark the main eattr block invalid */
-		gfs2_block_set(ip->i_sbd, bl, ip->i_di.di_eattr,
+		gfs2_blockmap_set(ip->i_sbd, bl, ip->i_di.di_eattr,
 			       gfs2_meta_inval);
 	}
 
@@ -306,7 +306,7 @@ static int clear_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 				dh->id->name ? dh->id->name : "",
 				dh->id->parent, dh->id->parent);
 		/* mark the main eattr block invalid */
-		gfs2_block_set(ip->i_sbd, bl, ip->i_di.di_eattr,
+		gfs2_blockmap_set(ip->i_sbd, bl, ip->i_di.di_eattr,
 			       gfs2_meta_inval);
 	}
 
@@ -426,7 +426,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 						  ip->i_di.di_num.no_addr);
 				/* Setting the block to invalid means the inode
 				   is cleared in pass2 */
-				gfs2_block_set(ip->i_sbd, bl,
+				gfs2_blockmap_set(ip->i_sbd, bl,
 					       ip->i_di.di_num.no_addr,
 					       gfs2_meta_inval);
 				bmodified(ip->i_bh);
@@ -474,7 +474,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
 		if(!id->ea_only)
 			check_metatree(ip, &clear_dup_fxns);
 
-		gfs2_block_set(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
+		gfs2_blockmap_set(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
 			       gfs2_meta_inval);
 		fsck_inode_put(&ip); /* out, brelse, free */
 		dh.ref_inode_count--;

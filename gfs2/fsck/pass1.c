@@ -77,7 +77,7 @@ static int leaf(struct gfs2_inode *ip, uint64_t block,
 
 	log_debug( _("\tLeaf block at %15" PRIu64 " (0x%" PRIx64 ")\n"),
 			  block, block);
-	gfs2_block_set(ip->i_sbd, bl, block, gfs2_leaf_blk);
+	gfs2_blockmap_set(ip->i_sbd, bl, block, gfs2_leaf_blk);
 	bc->indir_count++;
 	return 0;
 }
@@ -93,7 +93,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 	*bh = NULL;
 
 	if (gfs2_check_range(ip->i_sbd, block)){ /* blk outside of FS */
-		gfs2_block_set(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
+		gfs2_blockmap_set(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
 			       gfs2_bad_block);
 		log_debug( _("Bad indirect block pointer (out of range).\n"));
 
@@ -115,7 +115,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 		log_debug( _("Bad indirect block pointer (points to "
 			     "something that is not an indirect block).\n"));
 		if(!found_dup) {
-			gfs2_block_set(ip->i_sbd, bl, block, gfs2_meta_inval);
+			gfs2_blockmap_set(ip->i_sbd, bl, block, gfs2_meta_inval);
 			brelse(nbh);
 			return 1;
 		}
@@ -126,7 +126,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 	if (!found_dup) {
 		log_debug( _("Setting %" PRIu64 " (0x%" PRIx64 ") to indirect "
 			     "block.\n"), block, block);
-		gfs2_block_set(ip->i_sbd, bl, block, gfs2_indir_blk);
+		gfs2_blockmap_set(ip->i_sbd, bl, block, gfs2_indir_blk);
 	}
 	bc->indir_count++;
 
@@ -148,7 +148,7 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 		/* Mark the owner of this block with the bad_block
 		 * designator so we know to check it for out of range
 		 * blocks later */
-		gfs2_block_set(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
+		gfs2_blockmap_set(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
 			       gfs2_bad_block);
 		return 1;
 	}
@@ -189,7 +189,7 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 	/* This is also confusing, so I'll clarify.  There are two bitmaps:
 	   (1) The gfs2_bmap that fsck uses to keep track of what block
 	   type has been discovered, and (2) The rgrp bitmap.  Function
-	   gfs2_block_set is used to set the former and gfs2_set_bitmap
+	   gfs2_blockmap_set is used to set the former and gfs2_set_bitmap
 	   is used to set the latter.  In this function we need to set both
 	   because we found a "data" block that could be "meta" in the rgrp
 	   bitmap.  If we don't we could run into the data block again as
@@ -227,7 +227,7 @@ static int remove_inode_eattr(struct gfs2_inode *ip, struct block_count *bc,
 	if (!duplicate) {
 		gfs2_set_bitmap(ip->i_sbd, ip->i_di.di_eattr,
 				GFS2_BLKST_FREE);
-		gfs2_block_set(ip->i_sbd, bl, ip->i_di.di_eattr,
+		gfs2_blockmap_set(ip->i_sbd, bl, ip->i_di.di_eattr,
 			       gfs2_block_free);
 	}
 	ip->i_di.di_eattr = 0;
@@ -288,7 +288,7 @@ static int clear_eas(struct gfs2_inode *ip, struct block_count *bc,
 			log_err( _("The bad extended attribute was "
 				   "removed.\n"));
 		} else if (!duplicate) {
-			gfs2_block_set(sdp, bl, block, gfs2_block_free);
+			gfs2_blockmap_set(sdp, bl, block, gfs2_block_free);
 			gfs2_set_bitmap(sdp, block, GFS2_BLKST_FREE);
 			log_err( _("The bad Extended Attribute was "
 				   "removed.\n"));
@@ -315,7 +315,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 	if(gfs2_check_range(sdp, indirect)) {
 		/*log_warn("EA indirect block #%"PRIu64" is out of range.\n",
 			indirect);
-			gfs2_block_set(sdp, bl, parent, bad_block);*/
+			gfs2_blockmap_set(sdp, bl, parent, bad_block);*/
 		/* Doesn't help to mark this here - this gets checked
 		 * in pass1c */
 		return 1;
@@ -361,7 +361,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 		log_debug( _("Setting #%" PRIu64 " (0x%" PRIx64
 			  ") to indirect Extended Attribute block\n"),
 			   indirect, indirect);
-		gfs2_block_set(sdp, bl, indirect, gfs2_indir_blk);
+		gfs2_blockmap_set(sdp, bl, indirect, gfs2_indir_blk);
 		bc->ea_count++;
 	}
 	return ret;
@@ -451,7 +451,7 @@ static int check_leaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 	/* Point of confusion: We've got to set the ea block itself to
 	   gfs2_meta_eattr here.  Elsewhere we mark the inode with
 	   gfs2_eattr_block meaning it contains an eattr for pass1c. */
-	gfs2_block_set(sdp, bl, block, gfs2_meta_eattr);
+	gfs2_blockmap_set(sdp, bl, block, gfs2_meta_eattr);
 	bc->ea_count++;
 	*bh = leaf_bh;
 	return 0;
@@ -489,7 +489,7 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
 			 (unsigned long long)ip->i_di.di_eattr,
 			 (unsigned long long)el_blk,
 			 (unsigned long long)el_blk);
-		gfs2_block_set(sdp, bl, ip->i_di.di_eattr, gfs2_bad_block);
+		gfs2_blockmap_set(sdp, bl, ip->i_di.di_eattr, gfs2_bad_block);
 		return 1;
 	}
 	error = check_leaf_block(ip, el_blk, GFS2_METATYPE_ED, &bh, private);
@@ -520,7 +520,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)block, (unsigned long long)block);
-		gfs2_block_set(sdp, bl, ip->i_di.di_eattr, gfs2_bad_block);
+		gfs2_blockmap_set(sdp, bl, ip->i_di.di_eattr, gfs2_bad_block);
 		return 1;
 	}
 	return check_leaf_block(ip, block, GFS2_METATYPE_EA, bh, private);
@@ -579,7 +579,7 @@ static int clear_metalist(struct gfs2_inode *ip, uint64_t block,
 		return -1;
 	}
 	if(!q.dup_block) {
-		gfs2_block_set(ip->i_sbd, bl, block, gfs2_block_free);
+		gfs2_blockmap_set(ip->i_sbd, bl, block, gfs2_block_free);
 		return 0;
 	}
 	return 0;
@@ -594,7 +594,7 @@ static int clear_data(struct gfs2_inode *ip, uint64_t block, void *private)
 		return -1;
 	}
 	if(!q.dup_block) {
-		gfs2_block_set(ip->i_sbd, bl, block, gfs2_block_free);
+		gfs2_blockmap_set(ip->i_sbd, bl, block, gfs2_block_free);
 		return 0;
 	}
 	return 0;
@@ -616,7 +616,7 @@ static int clear_leaf(struct gfs2_inode *ip, uint64_t block,
 	if(!q.dup_block) {
 		log_crit( _("Setting leaf #%" PRIu64 " (0x%" PRIx64 ") invalid\n"),
 				 block, block);
-		if(gfs2_block_set(ip->i_sbd, bl, block, gfs2_block_free)) {
+		if(gfs2_blockmap_set(ip->i_sbd, bl, block, gfs2_block_free)) {
 			stack;
 			return -1;
 		}
@@ -708,7 +708,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	case S_IFDIR:
 		log_debug( _("Setting %" PRIu64 " (0x%" PRIx64 ") to directory inode.\n"),
 				  block, block);
-		if(gfs2_block_set(sdp, bl, block, gfs2_inode_dir)) {
+		if(gfs2_blockmap_set(sdp, bl, block, gfs2_inode_dir)) {
 			stack;
 			fsck_inode_put(&ip);
 			return -1;
@@ -722,7 +722,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	case S_IFREG:
 		log_debug( _("Setting %" PRIu64 " (0x%" PRIx64 ") to file inode.\n"),
 				  block, block);
-		if(gfs2_block_set(sdp, bl, block, gfs2_inode_file)) {
+		if(gfs2_blockmap_set(sdp, bl, block, gfs2_inode_file)) {
 			stack;
 			fsck_inode_put(&ip);
 			return -1;
@@ -731,7 +731,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	case S_IFLNK:
 		log_debug( _("Setting %" PRIu64 " (0x%" PRIx64 ") to symlink inode.\n"),
 				  block, block);
-		if(gfs2_block_set(sdp, bl, block, gfs2_inode_lnk)) {
+		if(gfs2_blockmap_set(sdp, bl, block, gfs2_inode_lnk)) {
 			stack;
 			fsck_inode_put(&ip);
 			return -1;
@@ -740,7 +740,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	case S_IFBLK:
 		log_debug( _("Setting %" PRIu64 " (0x%" PRIx64 ") to block dev inode.\n"),
 				  block, block);
-		if(gfs2_block_set(sdp, bl, block, gfs2_inode_blk)) {
+		if(gfs2_blockmap_set(sdp, bl, block, gfs2_inode_blk)) {
 			stack;
 			fsck_inode_put(&ip);
 			return -1;
@@ -749,7 +749,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	case S_IFCHR:
 		log_debug( _("Setting %" PRIu64 " (0x%" PRIx64 ") to char dev inode.\n"),
 				  block, block);
-		if(gfs2_block_set(sdp, bl, block, gfs2_inode_chr)) {
+		if(gfs2_blockmap_set(sdp, bl, block, gfs2_inode_chr)) {
 			stack;
 			fsck_inode_put(&ip);
 			return -1;
@@ -758,7 +758,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	case S_IFIFO:
 		log_debug( _("Setting %" PRIu64 " (0x%" PRIx64 ") to fifo inode.\n"),
 				  block, block);
-		if(gfs2_block_set(sdp, bl, block, gfs2_inode_fifo)) {
+		if(gfs2_blockmap_set(sdp, bl, block, gfs2_inode_fifo)) {
 			stack;
 			fsck_inode_put(&ip);
 			return -1;
@@ -767,7 +767,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	case S_IFSOCK:
 		log_debug( _("Setting %" PRIu64 " (0x%" PRIx64 ") to socket inode.\n"),
 				  block, block);
-		if(gfs2_block_set(sdp, bl, block, gfs2_inode_sock)) {
+		if(gfs2_blockmap_set(sdp, bl, block, gfs2_inode_sock)) {
 			stack;
 			fsck_inode_put(&ip);
 			return -1;
@@ -776,7 +776,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	default:
 		log_debug( _("Setting %" PRIu64 " (0x%" PRIx64 ") to invalid.\n"),
 				  block, block);
-		if(gfs2_block_set(sdp, bl, block, gfs2_meta_inval)) {
+		if(gfs2_blockmap_set(sdp, bl, block, gfs2_meta_inval)) {
 			stack;
 			fsck_inode_put(&ip);
 			return -1;
@@ -802,7 +802,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 				 (1 >> (ip->i_di.di_size/sizeof(uint64_t))));
 			/* once implemented, remove continue statement */
 			log_warn( _("Marking inode invalid\n"));
-			if(gfs2_block_set(sdp, bl, block, gfs2_meta_inval)) {
+			if(gfs2_blockmap_set(sdp, bl, block, gfs2_meta_inval)) {
 				stack;
 				fsck_inode_put(&ip);
 				return -1;
@@ -826,7 +826,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
 		/* FIXME: Must set all leaves invalid as well */
 		check_metatree(ip, &invalidate_metatree);
-		gfs2_block_set(sdp, bl, ip->i_di.di_num.no_addr,
+		gfs2_blockmap_set(sdp, bl, ip->i_di.di_num.no_addr,
 			       gfs2_meta_inval);
 		gfs2_set_bitmap(sdp, ip->i_di.di_num.no_addr, GFS2_BLKST_FREE);
 		fsck_inode_put(&ip);
@@ -877,7 +877,7 @@ static int scan_meta(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 		log_info( _("Found invalid metadata at #%llu (0x%llx)\n"),
 			  (unsigned long long)block,
 			  (unsigned long long)block);
-		if(gfs2_block_set(sdp, bl, block, gfs2_meta_inval)) {
+		if(gfs2_blockmap_set(sdp, bl, block, gfs2_meta_inval)) {
 			stack;
 			return -1;
 		}
@@ -957,7 +957,7 @@ int pass1(struct gfs2_sbd *sbp)
 				 rg_count);
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
 		for (i = 0; i < rgd->ri.ri_length; i++) {
-			if(gfs2_block_set(sbp, bl, rgd->ri.ri_addr + i,
+			if(gfs2_blockmap_set(sbp, bl, rgd->ri.ri_addr + i,
 					  gfs2_meta_other)){
 				stack;
 				return FSCK_ERROR;

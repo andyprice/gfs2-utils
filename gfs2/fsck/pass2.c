@@ -186,7 +186,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			"\tName length = %u\n"),
 			de->de_rec_len,
 			de->de_name_len);
-		gfs2_block_set(sbp, bl, ip->i_di.di_num.no_addr,
+		gfs2_blockmap_set(sbp, bl, ip->i_di.di_num.no_addr,
 			       gfs2_meta_inval);
 		return 1;
 		/* FIXME: should probably delete the entry here at the
@@ -254,7 +254,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			bmodified(entry_ip->i_bh);
 			fsck_inode_put(&entry_ip);
 			dirent2_del(ip, bh, prev_de, dent);
-			gfs2_block_set(sbp, bl, de->de_inum.no_addr,
+			gfs2_blockmap_set(sbp, bl, de->de_inum.no_addr,
 				       gfs2_block_free);
 			bmodified(bh);
 			log_warn( _("The inode containing bad blocks was "
@@ -309,7 +309,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			check_metatree(entry_ip, &pass2_fxns_delete);
 			bmodified(entry_ip->i_bh);
 			fsck_inode_put(&entry_ip);
-			gfs2_block_set(sbp, bl, de->de_inum.no_addr,
+			gfs2_blockmap_set(sbp, bl, de->de_inum.no_addr,
 				       gfs2_block_free);
 
 			return 1;
@@ -573,7 +573,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		return -1;
 	}
 	if (error > 0)
-		gfs2_block_set(sysinode->i_sbd, bl, iblock, gfs2_meta_inval);
+		gfs2_blockmap_set(sysinode->i_sbd, bl, iblock, gfs2_meta_inval);
 
 	if(check_inode_eattr(sysinode, &pass2_fxns)) {
 		stack;
@@ -753,7 +753,7 @@ int pass2(struct gfs2_sbd *sbp)
 				} else
 					log_err( _("Directory entry to invalid inode remains.\n"));
 			}
-			gfs2_block_set(sbp, bl, i, gfs2_meta_inval);
+			gfs2_blockmap_set(sbp, bl, i, gfs2_meta_inval);
 		}
 		ip = fsck_load_inode(sbp, i);
 		if(!ds.dotdir) {

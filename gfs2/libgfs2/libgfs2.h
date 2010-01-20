@@ -69,6 +69,10 @@ __BEGIN_DECLS
 
 #endif  /*  __BYTE_ORDER == __LITTLE_ENDIAN  */
 
+#define BLOCKMAP_SIZE4(size) (size >> 1)
+#define BLOCKMAP_BYTE_OFFSET4(x) ((x & 0x0000000000000001) << 2)
+#define BLOCKMAP_MASK4 (0xf)
+
 static __inline__ __attribute__((noreturn, format (printf, 1, 2)))
 void die(const char *fmt, ...)
 {
@@ -262,7 +266,7 @@ struct metapath {
 struct gfs2_bmap {
         uint64_t size;
         uint64_t mapsize;
-        char *map;
+        unsigned char *map;
 };
 
 /* block_list.c */
@@ -314,17 +318,17 @@ extern struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
 extern struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num);
 extern void gfs2_special_set(struct special_blocks *blocklist, uint64_t block);
 extern void gfs2_special_free(struct special_blocks *blist);
-extern int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
-	 		   uint64_t block, enum gfs2_mark_block mark);
-extern int gfs2_block_set(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
+extern int gfs2_blockmap_set(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 			  uint64_t block, enum gfs2_mark_block mark);
 extern void gfs2_special_clear(struct special_blocks *blocklist,
 			       uint64_t block);
+extern int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
+			   uint64_t block, enum gfs2_mark_block mark);
 /* gfs2_block_unmark clears ONE mark for the given block */
 extern int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 			     uint64_t block, enum gfs2_mark_block m);
 /* gfs2_block_clear clears all the marks for the given block */
-extern int gfs2_block_clear(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
+extern int gfs2_blockmap_clear(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 			    uint64_t block);
 extern int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 			    uint64_t block, struct gfs2_block_query *val);
