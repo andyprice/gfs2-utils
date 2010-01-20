@@ -116,12 +116,6 @@ struct gfs2_buffer_head {
 	struct gfs2_sbd *sdp;
 };
 
-struct dup_blocks {
-	osi_list_t list;
-	uint64_t block_no;
-	osi_list_t ref_inode_list;
-};
-
 struct special_blocks {
 	osi_list_t list;
 	uint64_t block;
@@ -240,7 +234,6 @@ struct gfs2_sbd {
 	unsigned int writes;
 	int metafs_fd;
 	char metafs_path[PATH_MAX]; /* where metafs is mounted */
-	struct dup_blocks dup_blocks;
 	struct special_blocks eattr_blocks;
 };
 
@@ -305,12 +298,10 @@ enum gfs2_mark_block {
 	gfs2_meta_eattr = EATTR_META,
 	gfs2_bad_block = BAD_BLOCK, /* Contains at least one bad block */
 	gfs2_meta_inval = INVALID_META,
-	gfs2_dup_block,      /* Contains at least one duplicate block */
 };
 
 struct gfs2_block_query {
         uint8_t block_type;
-        uint8_t dup_block;
 };
 
 extern struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
@@ -322,8 +313,6 @@ extern int gfs2_blockmap_set(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 			  uint64_t block, enum gfs2_mark_block mark);
 extern void gfs2_special_clear(struct special_blocks *blocklist,
 			       uint64_t block);
-extern int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
-			   uint64_t block, enum gfs2_mark_block mark);
 /* gfs2_block_unmark clears ONE mark for the given block */
 extern int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 			     uint64_t block, enum gfs2_mark_block m);

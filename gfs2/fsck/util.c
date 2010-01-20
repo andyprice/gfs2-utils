@@ -12,6 +12,7 @@
 
 #include "libgfs2.h"
 #include "fs_bits.h"
+#include "metawalk.h"
 #include "util.h"
 
 void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked)
@@ -150,4 +151,20 @@ int fsck_query(const char *format, ...)
 
 	opts.query = FALSE;
 	return ret;
+}
+
+void gfs2_dup_set(uint64_t block)
+{
+	struct dup_blks *b;
+
+	if (dupfind(block))
+		return;
+	b = malloc(sizeof(struct dup_blks));
+	if (b) {
+		memset(b, 0, sizeof(*b));
+		b->block_no = block;
+		osi_list_init(&b->ref_inode_list);
+		osi_list_add(&b->list, &dup_blocks.list);
+	}
+	return;
 }

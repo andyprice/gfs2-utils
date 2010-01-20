@@ -25,6 +25,9 @@ int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
 		       struct gfs2_buffer_head **bh, void *private);
 int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
 		      struct gfs2_buffer_head **bh, void *private);
+struct dup_blks *dupfind(uint64_t num);
+
+#define is_duplicate(dblock) ((dupfind(dblock)) ? 1 : 0)
 
 /* metawalk_fxns: function pointers to check various parts of the fs
  *

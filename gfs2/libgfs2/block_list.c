@@ -10,14 +10,6 @@
 
 #include "libgfs2.h"
 
-/* Must be kept in sync with mark_block enum in libgfs2.h */
-static int mark_to_gbmap[16] = {
-	FREE, BLOCK_IN_USE, DIR_INDIR_BLK, DIR_INODE, FILE_INODE,
-	LNK_INODE, BLK_INODE, CHR_INODE, FIFO_INODE, SOCK_INODE,
-	DIR_LEAF_INODE, JOURNAL_BLK, OTHER_META, EATTR_META,
-	BAD_BLOCK, INVALID_META
-};
-
 static int gfs2_blockmap_create(struct gfs2_bmap *bmap, uint64_t size)
 {
 	bmap->size = size;
@@ -59,7 +51,6 @@ struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
 		free(il);
 		il = NULL;
 	}
-	osi_list_init(&sdp->dup_blocks.list);
 	osi_list_init(&sdp->eattr_blocks.list);
 	return il;
 }
@@ -76,19 +67,6 @@ void gfs2_special_free(struct special_blocks *blist)
 	}
 }
 
-static void gfs2_dup_free(struct dup_blocks *blist)
-{
-	struct dup_blocks *f;
-
-	while(!osi_list_empty(&blist->list)) {
-		f = osi_list_entry(blist->list.next, struct dup_blocks, list);
-		while (!osi_list_empty(&f->ref_inode_list))
-			osi_list_del(&f->ref_inode_list);
-		osi_list_del(&f->list);
-		free(f);
-	}
-}
-
 struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num)
 {
 	osi_list_t *head = &blist->list;
@@ -98,20 +76,6 @@ struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num)
 	for (tmp = head->next; tmp != head; tmp = tmp->next) {
 		b = osi_list_entry(tmp, struct special_blocks, list);
 		if (b->block == num)
-			return b;
-	}
-	return NULL;
-}
-
-static struct dup_blocks *dupfind(struct dup_blocks *blist, uint64_t num)
-{
-	osi_list_t *head = &blist->list;
-	osi_list_t *tmp;
-	struct dup_blocks *b;
-
-	for (tmp = head->next; tmp != head; tmp = tmp->next) {
-		b = osi_list_entry(tmp, struct dup_blocks, list);
-		if (b->block_no == num)
 			return b;
 	}
 	return NULL;
@@ -132,33 +96,6 @@ void gfs2_special_set(struct special_blocks *blocklist, uint64_t block)
 	return;
 }
 
-static void gfs2_dup_set(struct dup_blocks *blocklist, uint64_t block)
-{
-	struct dup_blocks *b;
-
-	if (dupfind(blocklist, block))
-		return;
-	b = malloc(sizeof(struct dup_blocks));
-	if (b) {
-		memset(b, 0, sizeof(*b));
-		b->block_no = block;
-		osi_list_init(&b->ref_inode_list);
-		osi_list_add(&b->list, &blocklist->list);
-	}
-	return;
-}
-
-static void gfs2_dup_clear(struct dup_blocks *blocklist, uint64_t block)
-{
-	struct dup_blocks *b;
-
-	b = dupfind(blocklist, block);
-	if (b) {
-		osi_list_del(&b->list);
-		free(b);
-	}
-}
-
 void gfs2_special_clear(struct special_blocks *blocklist, uint64_t block)
 {
 	struct special_blocks *b;
@@ -170,39 +107,20 @@ void gfs2_special_clear(struct special_blocks *blocklist, uint64_t block)
 	}
 }
 
-int gfs2_block_mark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
-		    uint64_t block, enum gfs2_mark_block mark)
-{
-	int err = 0;
-
-	if(mark == gfs2_dup_block)
-		gfs2_dup_set(&sdp->dup_blocks, block);
-	else
-		err = gfs2_blockmap_set(sdp, il, block, mark_to_gbmap[mark]);
-	return err;
-}
-
 /* gfs2_block_unmark clears ONE mark for the given block */
 int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_bmap *bmap,
 		      uint64_t block, enum gfs2_mark_block mark)
 {
-	int err = 0;
+	static unsigned char *byte;
+	static uint64_t b;
 
-	if (mark == gfs2_dup_block)
-		gfs2_dup_clear(&sdp->dup_blocks, block);
-	else {
-		static unsigned char *byte;
-		static uint64_t b;
+	if(block > bmap->size)
+		return -1;
 
-		if(block > bmap->size)
-			return -1;
-
-		byte = bmap->map + BLOCKMAP_SIZE4(block);
-		b = BLOCKMAP_BYTE_OFFSET4(block);
-		*byte &= ~(BLOCKMAP_MASK4 << b);
-		return 0;
-	}
-	return err;
+	byte = bmap->map + BLOCKMAP_SIZE4(block);
+	b = BLOCKMAP_BYTE_OFFSET4(block);
+	*byte &= ~(BLOCKMAP_MASK4 << b);
+	return 0;
 }
 
 int gfs2_blockmap_set(struct gfs2_sbd *sdp, struct gfs2_bmap *bmap,
@@ -230,7 +148,6 @@ int gfs2_block_check(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
 	if(block >= il->size)
 		return -1;
 
-	val->dup_block = (dupfind(&sdp->dup_blocks, block) ? 1 : 0);
 	byte = il->map + BLOCKMAP_SIZE4(block);
 	b = BLOCKMAP_BYTE_OFFSET4(block);
 	val->block_type = (*byte & (BLOCKMAP_MASK4 << b )) >> b;
@@ -244,7 +161,6 @@ void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il)
 		free(il);
 		il = NULL;
 	}
-	gfs2_dup_free(&sdp->dup_blocks);
 	gfs2_special_free(&sdp->eattr_blocks);
 	return il;
 }

@@ -57,6 +57,19 @@ static int block_mounters(struct gfs2_sbd *sbp, int block_em)
 	return 0;
 }
 
+static void gfs2_dup_free(void)
+{
+	struct dup_blks *f;
+
+	while(!osi_list_empty(&dup_blocks.list)) {
+		f = osi_list_entry(dup_blocks.list.next, struct dup_blks,
+				   list);
+		while (!osi_list_empty(&f->ref_inode_list))
+			osi_list_del(&f->ref_inode_list);
+		osi_list_del(&f->list);
+		free(f);
+	}
+}
 
 /*
  * empty_super_block - free all structures in the super block
@@ -89,8 +102,10 @@ static void empty_super_block(struct gfs2_sbd *sdp)
 		}
 	}
 
-	if (bl)
+	if (bl) {
 		gfs2_bmap_destroy(sdp, bl);
+		gfs2_dup_free();
+	}
 }
 
 
@@ -382,6 +397,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 		log_crit( _("Please increase your swap space by that amount and run gfs2_fsck again.\n"));
 		goto fail;
 	}
+	osi_list_init(&dup_blocks.list);
 	return 0;
  fail:
 	empty_super_block(sdp);

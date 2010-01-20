@@ -18,6 +18,20 @@
 
 #define COMFORTABLE_BLKS 5242880 /* 20GB in 4K blocks */
 
+struct dup_blks *dupfind(uint64_t num)
+{
+	osi_list_t *head = &dup_blocks.list;
+	osi_list_t *tmp;
+	struct dup_blks *b;
+
+	for (tmp = head->next; tmp != head; tmp = tmp->next) {
+		b = osi_list_entry(tmp, struct dup_blks, list);
+		if (b->block_no == num)
+			return b;
+	}
+	return NULL;
+}
+
 static struct gfs2_inode *get_system_inode(struct gfs2_sbd *sbp,
 					   uint64_t block)
 {
@@ -1186,7 +1200,7 @@ int delete_blocks(struct gfs2_inode *ip, uint64_t block,
 	if (gfs2_check_range(ip->i_sbd, block) == 0) {
 		if (gfs2_block_check(ip->i_sbd, bl, block, &q))
 			return 0;
-		if (!q.dup_block) {
+		if(!is_duplicate(block)) {
 			log_info( _("Deleting %s block %lld (0x%llx) as part "
 				    "of inode %lld (0x%llx)\n"), btype,
 				  (unsigned long long)block,

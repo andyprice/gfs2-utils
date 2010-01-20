@@ -106,7 +106,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 	if(q.block_type != gfs2_block_free) {
 		log_err( _("Found duplicate block referenced as metadata in "
 			   "indirect block - was marked %d\n"), q.block_type);
-		gfs2_block_mark(ip->i_sbd, bl, block, gfs2_dup_block);
+		gfs2_dup_set(block);
 		found_dup = 1;
 	}
 	nbh = bread(ip->i_sbd, block);
@@ -162,7 +162,7 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 		log_err( _("Found duplicate block referenced as data at %"
 			   PRIu64 " (0x%"PRIx64 ")\n"), block, block);
 		if (q.block_type != gfs2_meta_inval) {
-			gfs2_block_mark(ip->i_sbd, bl, block, gfs2_dup_block);
+			gfs2_dup_set(block);
 			/* If the prev ref was as data, this is likely a data
 			   block, so keep the block count for both refs. */
 			if (q.block_type == gfs2_block_used)
@@ -180,11 +180,11 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 		   marked as duplicate, but also as a data block. */
 		error = 1;
 		gfs2_block_unmark(ip->i_sbd, bl, block, gfs2_meta_inval);
-		gfs2_block_mark(ip->i_sbd, bl, block, gfs2_dup_block);
+		gfs2_dup_set(block);
 	}
 	log_debug( _("Marking block %llu (0x%llx) as data block\n"),
 		   (unsigned long long)block, (unsigned long long)block);
-	gfs2_block_mark(ip->i_sbd, bl, block, gfs2_block_used);
+	gfs2_blockmap_set(ip->i_sbd, bl, block, gfs2_block_used);
 
 	/* This is also confusing, so I'll clarify.  There are two bitmaps:
 	   (1) The gfs2_bmap that fsck uses to keep track of what block
@@ -247,12 +247,12 @@ static int ask_remove_inode_eattr(struct gfs2_inode *ip,
 	if (query( _("Clear all Extended Attributes from the "
 		     "inode? (y/n) "))) {
 		struct gfs2_block_query q;
-
 		if(gfs2_block_check(ip->i_sbd, bl, ip->i_di.di_eattr, &q)) {
 			stack;
 			return -1;
 		}
-		if (!remove_inode_eattr(ip, bc, q.dup_block))
+		if (!remove_inode_eattr(ip, bc,
+					is_duplicate(ip->i_di.di_eattr)))
 			log_err( _("Extended attributes were removed.\n"));
 		else
 			log_err( _("Unable to remove inode eattr pointer; "
@@ -335,8 +335,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 			if (!clear_eas(ip, bc, indirect, 1,
 				       _("Bad indirect Extended Attribute "
 					 "duplicate found"))) {
-				gfs2_block_mark(sdp, bl, indirect,
-						gfs2_dup_block);
+				gfs2_dup_set(indirect);
 				bc->ea_count++;
 			}
 			return 1;
@@ -354,7 +353,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)indirect,
 			 (unsigned long long)indirect);
-		gfs2_block_mark(sdp, bl, indirect, gfs2_dup_block);
+		gfs2_dup_set(indirect);
 		bc->ea_count++;
 		ret = 1;
 	} else {
@@ -430,7 +429,7 @@ static int check_leaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 		log_debug( _("Duplicate block found at #%lld (0x%llx).\n"),
 			   (unsigned long long)block,
 			   (unsigned long long)block);
-		gfs2_block_mark(sdp, bl, block, gfs2_dup_block);
+		gfs2_dup_set(block);
 		bc->ea_count++;
 		brelse(leaf_bh);
 		return 1;
@@ -578,7 +577,7 @@ static int clear_metalist(struct gfs2_inode *ip, uint64_t block,
 		stack;
 		return -1;
 	}
-	if(!q.dup_block) {
+	if(!is_duplicate(block)) {
 		gfs2_blockmap_set(ip->i_sbd, bl, block, gfs2_block_free);
 		return 0;
 	}
@@ -593,7 +592,7 @@ static int clear_data(struct gfs2_inode *ip, uint64_t block, void *private)
 		stack;
 		return -1;
 	}
-	if(!q.dup_block) {
+	if(!is_duplicate(block)) {
 		gfs2_blockmap_set(ip->i_sbd, bl, block, gfs2_block_free);
 		return 0;
 	}
@@ -613,7 +612,7 @@ static int clear_leaf(struct gfs2_inode *ip, uint64_t block,
 		stack;
 		return -1;
 	}
-	if(!q.dup_block) {
+	if(!is_duplicate(block)) {
 		log_crit( _("Setting leaf #%" PRIu64 " (0x%" PRIx64 ") invalid\n"),
 				 block, block);
 		if(gfs2_blockmap_set(ip->i_sbd, bl, block, gfs2_block_free)) {
@@ -694,11 +693,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	if(q.block_type != gfs2_block_free) {
 		log_err( _("Found duplicate block referenced as an inode at "
 			   "#%" PRIu64 " (0x%" PRIx64 ")\n"), block, block);
-		if(gfs2_block_mark(sdp, bl, block, gfs2_dup_block)) {
-			stack;
-			fsck_inode_put(&ip);
-			return -1;
-		}
+		gfs2_dup_set(block);
 		fsck_inode_put(&ip);
 		return 0;
 	}

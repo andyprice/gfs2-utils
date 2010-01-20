@@ -30,7 +30,7 @@ struct fxn_info {
 };
 
 struct dup_handler {
-	struct dup_blocks *b;
+	struct dup_blks *b;
 	struct inode_with_dups *id;
 	int ref_inode_count;
 	int ref_count;
@@ -115,12 +115,12 @@ static int find_dentry(struct gfs2_inode *ip, struct gfs2_dirent *de,
 		       uint16_t *count, void *priv)
 {
 	osi_list_t *tmp1, *tmp2;
-	struct dup_blocks *b;
+	struct dup_blks *b;
 	struct inode_with_dups *id;
 	struct gfs2_leaf leaf;
 
-	osi_list_foreach(tmp1, &ip->i_sbd->dup_blocks.list) {
-		b = osi_list_entry(tmp1, struct dup_blocks, list);
+	osi_list_foreach(tmp1, &dup_blocks.list) {
+		b = osi_list_entry(tmp1, struct dup_blks, list);
 		osi_list_foreach(tmp2, &b->ref_inode_list) {
 			id = osi_list_entry(tmp2, struct inode_with_dups,
 					    list);
@@ -315,7 +315,7 @@ static int clear_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 }
 
 /* Finds all references to duplicate blocks in the metadata */
-static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_blocks *b)
+static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_blks *b)
 {
 	struct gfs2_inode *ip;
 	struct fxn_info myfi = {b->block_no, 0, 1};
@@ -369,7 +369,7 @@ static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_block
 	return 0;
 }
 
-static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
+static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blks *b)
 {
 	osi_list_t *tmp;
 	struct inode_with_dups *id;
@@ -494,7 +494,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blocks *b)
  * use in pass2 */
 int pass1b(struct gfs2_sbd *sbp)
 {
-	struct dup_blocks *b;
+	struct dup_blks *b;
 	uint64_t i;
 	struct gfs2_block_query q;
 	osi_list_t *tmp = NULL, *x;
@@ -505,7 +505,7 @@ int pass1b(struct gfs2_sbd *sbp)
 	log_info( _("Looking for duplicate blocks...\n"));
 
 	/* If there were no dups in the bitmap, we don't need to do anymore */
-	if(osi_list_empty(&sbp->dup_blocks.list)) {
+	if(osi_list_empty(&dup_blocks.list)) {
 		log_info( _("No duplicate blocks found\n"));
 		return FSCK_OK;
 	}
@@ -533,8 +533,8 @@ int pass1b(struct gfs2_sbd *sbp)
 		   (q.block_type == gfs2_inode_chr) ||
 		   (q.block_type == gfs2_inode_fifo) ||
 		   (q.block_type == gfs2_inode_sock)) {
-			osi_list_foreach_safe(tmp, &sbp->dup_blocks.list, x) {
-				b = osi_list_entry(tmp, struct dup_blocks,
+			osi_list_foreach_safe(tmp, &dup_blocks.list, x) {
+				b = osi_list_entry(tmp, struct dup_blks,
 						   list);
 				if(find_block_ref(sbp, i, b)) {
 					stack;
@@ -552,8 +552,8 @@ int pass1b(struct gfs2_sbd *sbp)
 	 * it later */
 	log_info( _("Handling duplicate blocks\n"));
 out:
-        osi_list_foreach_safe(tmp, &sbp->dup_blocks.list, x) {
-                b = osi_list_entry(tmp, struct dup_blocks, list);
+        osi_list_foreach_safe(tmp, &dup_blocks.list, x) {
+                b = osi_list_entry(tmp, struct dup_blks, list);
 		if (!skip_this_pass && !rc) /* no error & not asked to skip the rest */
 			handle_dup_blk(sbp, b);
 	}

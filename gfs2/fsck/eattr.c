@@ -8,17 +8,11 @@
 #include "libgfs2.h"
 #include "fsck.h"
 #include "eattr.h"
+#include "metawalk.h"
 
 static int clear_blk_nodup(struct gfs2_sbd *sbp, uint64_t block)
 {
-	struct gfs2_block_query q;
-
-	if(gfs2_block_check(sbp, bl, block, &q)) {
-		stack;
-		return -1;
-	}
-
-	if(q.dup_block) {
+	if(is_duplicate(block)) {
 		log_debug( _("Not clearing block with marked as a duplicate\n"));
 		return 1;
 	}

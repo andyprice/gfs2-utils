@@ -59,6 +59,12 @@ enum rgindex_trust_level { /* how far can we trust our RG index? */
 			  gfs2_grow or something.  Count the RGs by hand. */
 };
 
+struct dup_blks {
+	osi_list_t list;
+	uint64_t block_no;
+	osi_list_t ref_inode_list;
+};
+
 extern struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sbp, uint64_t block);
 extern struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp,
 				  struct gfs2_buffer_head *bh);
@@ -93,5 +99,6 @@ extern int skip_this_pass, fsck_abort;
 extern int errors_found, errors_corrected;
 extern uint64_t last_data_block;
 extern uint64_t first_data_block;
+extern struct dup_blks dup_blocks;
 
 #endif /* _FSCK_H */
