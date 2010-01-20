@@ -6,26 +6,33 @@
 
 struct metawalk_fxns;
 
-int check_inode_eattr(struct gfs2_inode *ip, struct metawalk_fxns *pass);
-int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass);
-int check_dir(struct gfs2_sbd *sbp, uint64_t block,
-			  struct metawalk_fxns *pass);
-int remove_dentry_from_dir(struct gfs2_sbd *sbp, uint64_t dir,
-						   uint64_t dentryblock);
-int find_di(struct gfs2_sbd *sbp, uint64_t childblock, struct dir_info **dip);
-int dinode_hash_insert(osi_list_t *buckets, uint64_t key, struct dir_info *di);
-int dinode_hash_remove(osi_list_t *buckets, uint64_t key);
-int delete_blocks(struct gfs2_inode *ip, uint64_t block,
-		  struct gfs2_buffer_head **bh, const char *btype,
-		  void *private);
-int delete_metadata(struct gfs2_inode *ip, uint64_t block,
-		    struct gfs2_buffer_head **bh, void *private);
-int delete_data(struct gfs2_inode *ip, uint64_t block, void *private);
-int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
-		       struct gfs2_buffer_head **bh, void *private);
-int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
-		      struct gfs2_buffer_head **bh, void *private);
-struct dup_blks *dupfind(uint64_t num);
+extern int check_inode_eattr(struct gfs2_inode *ip,
+			     struct metawalk_fxns *pass);
+extern int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass);
+extern int check_dir(struct gfs2_sbd *sbp, uint64_t block,
+		     struct metawalk_fxns *pass);
+extern int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
+			    struct metawalk_fxns *pass);
+extern int remove_dentry_from_dir(struct gfs2_sbd *sbp, uint64_t dir,
+				  uint64_t dentryblock);
+extern int find_di(struct gfs2_sbd *sbp, uint64_t childblock,
+		   struct dir_info **dip);
+extern int dinode_hash_insert(osi_list_t *buckets, uint64_t key,
+			      struct dir_info *di);
+extern int dinode_hash_remove(osi_list_t *buckets, uint64_t key);
+extern int delete_blocks(struct gfs2_inode *ip, uint64_t block,
+			 struct gfs2_buffer_head **bh, const char *btype,
+			 void *private);
+extern int delete_metadata(struct gfs2_inode *ip, uint64_t block,
+			   struct gfs2_buffer_head **bh, void *private);
+extern int delete_data(struct gfs2_inode *ip, uint64_t block, void *private);
+extern int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block,
+			      uint64_t parent, struct gfs2_buffer_head **bh,
+			      void *private);
+extern int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
+			     uint64_t parent, struct gfs2_buffer_head **bh,
+			     void *private);
+extern struct dup_blks *dupfind(uint64_t num);
 
 #define is_duplicate(dblock) ((dupfind(dblock)) ? 1 : 0)
 
@@ -74,8 +81,7 @@ struct metawalk_fxns {
 				     struct gfs2_ea_header *ea_hdr_prev,
 				     void *private);
 	int (*finish_eattr_indir) (struct gfs2_inode *ip, int leaf_pointers,
-				   int leaf_pointer_errors,
-				   void *private);
+				   int leaf_pointer_errors, void *private);
 };
 
 #endif /* _METAWALK_H */

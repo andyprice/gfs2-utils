@@ -111,7 +111,7 @@ struct rgrp_list {
 struct gfs2_buffer_head {
 	osi_list_t b_altlist; /* alternate list */
 	uint64_t b_blocknr;
-	int b_changed;
+	int b_modified;
 	char *b_data;
 	struct gfs2_sbd *sdp;
 };
@@ -329,7 +329,7 @@ extern struct gfs2_buffer_head *__bread(struct gfs2_sbd *sdp, uint64_t num,
 extern int bwrite(struct gfs2_buffer_head *bh);
 extern int brelse(struct gfs2_buffer_head *bh);
 
-#define bmodified(bh) do { bh->b_changed = 1; } while(0)
+#define bmodified(bh) do { bh->b_modified = 1; } while(0)
 
 #define bget_generic(bl, num, find, read) __bget_generic(bl, num, find, read, \
 							 __LINE__, \
@@ -700,7 +700,6 @@ extern void gfs2_leaf_print(struct gfs2_leaf *lf);
 extern void gfs2_ea_header_print(struct gfs2_ea_header *ea, char *name);
 extern void gfs2_log_header_print(struct gfs2_log_header *lh);
 extern void gfs2_log_descriptor_print(struct gfs2_log_descriptor *ld);
-extern void gfs2_inum_range_print(struct gfs2_inum_range *ir);
 extern void gfs2_statfs_change_print(struct gfs2_statfs_change *sc);
 extern void gfs2_quota_change_print(struct gfs2_quota_change *qc);
 

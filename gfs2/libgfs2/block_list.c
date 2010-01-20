@@ -93,7 +93,6 @@ void gfs2_special_set(struct special_blocks *blocklist, uint64_t block)
 		b->block = block;
 		osi_list_add(&b->list, &blocklist->list);
 	}
-	return;
 }
 
 void gfs2_special_clear(struct special_blocks *blocklist, uint64_t block)

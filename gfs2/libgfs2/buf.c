@@ -71,7 +71,7 @@ int bwrite(struct gfs2_buffer_head *bh)
 	if (write(sdp->device_fd, bh->b_data, sdp->bsize) != sdp->bsize)
 		return -1;
 	sdp->writes++;
-	bh->b_changed = 0;
+	bh->b_modified = 0;
 	return 0;
 }
 
@@ -81,7 +81,7 @@ int brelse(struct gfs2_buffer_head *bh)
 
 	if (bh->b_blocknr == -1)
 		printf("Double free!\n");
-	if (bh->b_changed)
+	if (bh->b_modified)
 		error = bwrite(bh);
 	bh->b_blocknr = -1;
 	if (bh->b_altlist.next && !osi_list_empty(&bh->b_altlist))

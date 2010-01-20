@@ -333,8 +333,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 		if (amount > sbp->bsize - hdrsize - ptramt)
 			amount = sbp->bsize - hdrsize - ptramt;
 
-		memcpy(bh->b_data + hdrsize + ptramt,
-		       (char *)srcptr, amount);
+		memcpy(bh->b_data + hdrsize + ptramt, (char *)srcptr, amount);
 		srcptr += amount;
 		bmodified(bh);
 		if (bh != ip->i_bh)
@@ -786,7 +785,7 @@ static int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
 static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
-						struct gfs2_buffer_head *bh, int dir_entries)
+			       struct gfs2_buffer_head *bh, int dir_entries)
 {
 	int error;
 	struct gfs2_dirent *dent;

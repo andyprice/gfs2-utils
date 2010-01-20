@@ -472,7 +472,8 @@ static void do_eattr_extended(struct gfs2_buffer_head *ebh)
 	print_gfs2("Eattr Entries:");
 	eol(0);
 
-	for (x = sizeof(struct gfs2_meta_header); x < sbd.bsize; x += ea.ea_rec_len)
+	for (x = sizeof(struct gfs2_meta_header); x < sbd.bsize;
+	     x += ea.ea_rec_len)
 	{
 		eol(0);
 		gfs2_ea_header_in(&ea, ebh->b_data + x);

@@ -60,7 +60,7 @@ void warm_fuzzy_stuff(uint64_t block)
 	static uint64_t one_percent = 0;
 	static struct timeval tv;
 	static uint32_t seconds = 0;
-	
+
 	if (!one_percent)
 		one_percent = last_fs_block / 100;
 	if (block - last_reported_block >= one_percent) {
@@ -162,7 +162,7 @@ void gfs2_dup_set(uint64_t block)
 	b = malloc(sizeof(struct dup_blks));
 	if (b) {
 		memset(b, 0, sizeof(*b));
-		b->block_no = block;
+		b->block = block;
 		osi_list_init(&b->ref_inode_list);
 		osi_list_add(&b->list, &dup_blocks.list);
 	}

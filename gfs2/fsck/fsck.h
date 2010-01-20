@@ -61,7 +61,7 @@ enum rgindex_trust_level { /* how far can we trust our RG index? */
 
 struct dup_blks {
 	osi_list_t list;
-	uint64_t block_no;
+	uint64_t block;
 	osi_list_t ref_inode_list;
 };
 
@@ -70,19 +70,21 @@ extern struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp,
 				  struct gfs2_buffer_head *bh);
 extern void fsck_inode_put(struct gfs2_inode **ip);
 
-int initialize(struct gfs2_sbd *sbp, int force_check, int preen,
-	       int *all_clean);
-void destroy(struct gfs2_sbd *sbp);
-int pass1(struct gfs2_sbd *sbp);
-int pass1b(struct gfs2_sbd *sbp);
-int pass1c(struct gfs2_sbd *sbp);
-int pass2(struct gfs2_sbd *sbp);
-int pass3(struct gfs2_sbd *sbp);
-int pass4(struct gfs2_sbd *sbp);
-int pass5(struct gfs2_sbd *sbp);
-int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count);
-int fsck_query(const char *format, ...)
+extern int initialize(struct gfs2_sbd *sbp, int force_check, int preen,
+		      int *all_clean);
+extern void destroy(struct gfs2_sbd *sbp);
+extern int pass1(struct gfs2_sbd *sbp);
+extern int pass1b(struct gfs2_sbd *sbp);
+extern int pass1c(struct gfs2_sbd *sbp);
+extern int pass2(struct gfs2_sbd *sbp);
+extern int pass3(struct gfs2_sbd *sbp);
+extern int pass4(struct gfs2_sbd *sbp);
+extern int pass5(struct gfs2_sbd *sbp);
+extern int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count);
+extern int fsck_query(const char *format, ...)
 	__attribute__((format(printf,1,2)));
+extern struct dir_info *dirtree_find(uint64_t block);
+extern void dirtree_delete(struct dir_info *b);
 
 /* FIXME: Hack to get this going for pass2 - this should be pulled out
  * of pass1 and put somewhere else... */

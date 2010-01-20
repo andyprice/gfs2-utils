@@ -3044,7 +3044,7 @@ static void dump_journal(const char *journal)
 			abs_block = jblock + jb;
 			dummy_bh.b_data = j_bh->b_data;
 		} else {
-			error = fsck_readi(j_inode, (void *)&jbuf, jb,
+			error = fsck_readi(j_inode, (void *)jbuf, jb,
 					   sbd.bsize, &abs_block);
 			if (!error) /* end of file */
 				break;

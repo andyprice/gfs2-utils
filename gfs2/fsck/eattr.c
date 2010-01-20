@@ -44,16 +44,11 @@ int clear_eattr_entry (struct gfs2_inode *ip,
 		       void *private)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	char ea_name[256];
 
 	if(!ea_hdr->ea_name_len){
 		/* Skip this entry for now */
 		return 1;
 	}
-
-	memset(ea_name, 0, sizeof(ea_name));
-	strncpy(ea_name, (char *)ea_hdr + sizeof(struct gfs2_ea_header),
-		ea_hdr->ea_name_len);
 
 	if(!GFS2_EATYPE_VALID(ea_hdr->ea_type) &&
 	   ((ea_hdr_prev) || (!ea_hdr_prev && ea_hdr->ea_type))){
@@ -73,8 +68,7 @@ int clear_eattr_entry (struct gfs2_inode *ip,
 		} else {
 			log_debug( _("  Pointers Required: %d\n"
 				  "  Pointers Reported: %d\n"),
-				  max_ptrs,
-				  ea_hdr->ea_num_ptrs);
+				  max_ptrs, ea_hdr->ea_num_ptrs);
 		}
 
 

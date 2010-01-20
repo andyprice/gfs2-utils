@@ -26,7 +26,8 @@ struct metawalk_fxns pass4_fxns_delete = {
 static int fix_inode_count(struct gfs2_sbd *sbp, struct inode_info *ii,
 					struct gfs2_inode *ip)
 {
-	log_info( _("Fixing inode count for %llu (0x%llx) \n"),
+	log_info( _("Fixing inode link count (%d->%d) for %llu (0x%llx) \n"),
+		  ip->i_di.di_nlink, ii->counted_links,
 		 (unsigned long long)ip->i_di.di_num.no_addr,
 		 (unsigned long long)ip->i_di.di_num.no_addr);
 	if(ip->i_di.di_nlink == ii->counted_links)
@@ -57,8 +58,6 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 			log_crit( _("osi_list_foreach broken in scan_info_list!!\n"));
 			exit(FSCK_ERROR);
 		}
-		log_debug( _("Checking reference count on inode at block %" PRIu64
-				  " (0x%" PRIx64 ")\n"), ii->inode, ii->inode);
 		if(ii->counted_links == 0) {
 			log_err( _("Found unlinked inode at %" PRIu64 " (0x%" PRIx64 ")\n"),
 					ii->inode, ii->inode);
@@ -89,8 +88,11 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 			   q != gfs2_inode_chr &&
 			   q != gfs2_inode_fifo &&
 			   q != gfs2_inode_sock) {
-				log_err( _("Unlinked block marked as inode is "
-					   "not an inode (%d)\n"), q);
+				log_err( _("Unlinked block %lld (0x%llx) "
+					   "marked as inode is "
+					   "not an inode (%d)\n"),
+					 (unsigned long long)ii->inode,
+					 (unsigned long long)ii->inode, q);
 				ip = fsck_load_inode(sbp, ii->inode);
 				if(query(_("Delete unlinked inode? (y/n) "))) {
 					check_inode_eattr(ip,
@@ -128,8 +130,7 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 					stack;
 					fsck_inode_put(&ip);
 					return -1;
-				}
-				else {
+				} else {
 					fix_inode_count(sbp, ii, ip);
 					lf_addition = 1;
 				}
@@ -150,8 +151,10 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 				fix_inode_count(sbp, ii, ip);
 				bmodified(ip->i_bh);
 				fsck_inode_put(&ip); /* out, brelse, free */
-				log_warn( _("Link count updated for inode %"
-						 PRIu64 " (0x%" PRIx64 ") \n"), ii->inode, ii->inode);
+				log_warn( _("Link count updated to %d for "
+					    "inode %" PRIu64 " (0x%"
+					    PRIx64 ") \n"), ii->link_count,
+					  ii->inode, ii->inode);
 			} else {
 				log_err( _("Link count for inode %" PRIu64 " (0x%" PRIx64
 						") still incorrect\n"), ii->inode, ii->inode);

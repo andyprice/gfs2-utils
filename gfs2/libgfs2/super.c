@@ -133,7 +133,7 @@ int ji_update(struct gfs2_sbd *sdp)
 	int i;
 
 	if(!ip) {
-		log_crit("Journal inode not found.\n");
+		log_crit("Journal index inode not found.\n");
 		return -1;
 	}
 

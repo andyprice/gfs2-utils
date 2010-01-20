@@ -57,11 +57,12 @@ static int attach_dotdot_to(struct gfs2_sbd *sbp, uint64_t newdotdot,
 	bmodified(ip->i_bh);
 	fsck_inode_put(&ip);
 	fsck_inode_put(&pip);
+	free(filename);
 	return 0;
 }
 
 static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
-										struct dir_info *di)
+					       struct dir_info *di)
 {
 	struct dir_info *pdi;
 	uint8_t q_dotdot, q_treewalk;
@@ -100,8 +101,7 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 								 di->dotdot_parent, di->dinode);
 				di->dotdot_parent = di->treewalk_parent;
 			}
-		}
-		else {
+		} else {
 			if(q_treewalk != gfs2_inode_dir) {
 				int error = 0;
 				log_warn( _(".. parent is valid, but treewalk"
@@ -135,10 +135,11 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 			}
 			else {
 				log_err( _("Both .. and treewalk parents are "
-						"directories, going with treewalk for "
-						"now...\n"));
+					   "directories, going with treewalk "
+					   "for now...\n"));
 				attach_dotdot_to(sbp, di->treewalk_parent,
-								 di->dotdot_parent, di->dinode);
+						 di->dotdot_parent,
+						 di->dinode);
 				di->dotdot_parent = di->treewalk_parent;
 			}
 		}

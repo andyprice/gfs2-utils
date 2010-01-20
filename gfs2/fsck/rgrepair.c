@@ -21,11 +21,11 @@ struct special_blocks false_rgrps;
 
 #define ri_compare(rg, ondisk, expected, field, fmt)	\
 	if (ondisk.field != expected.field) { \
-		log_warn("rindex #%d " #field " discrepancy: index 0x%" fmt \
-			 " != expected: 0x%" fmt "\n",			\
-			 rg + 1, ondisk.field, expected.field);		\
-		ondisk.field = expected.field; \
-		rindex_modified = TRUE; \
+		log_warn( _("rindex #%d " #field " discrepancy: index 0x%" \
+			    fmt	" != expected: 0x%" fmt "\n"),		\
+			  rg + 1, ondisk.field, expected.field);	\
+		ondisk.field = expected.field;				\
+		rindex_modified = TRUE;					\
 	}
 
 /*

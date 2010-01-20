@@ -45,7 +45,7 @@ static int convert_mark(uint8_t q, uint32_t *count)
 		return GFS2_BLKST_USED;
 
 	default:
-		log_err( _("Invalid state %d found\n"), q);
+		log_err( _("Invalid block type %d found\n"), q);
 		return -1;
 	}
 	return -1;
@@ -124,9 +124,9 @@ static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int b
 			log_err( _("Metadata type is %u (%s)\n"), q,
 					block_type_string(q));
 
-			if(query( _("Fix bitmap for block %" PRIu64
-				    " (0x%" PRIx64 ") ? (y/n) "),
-				  block, block)) {
+			if(query(_("Fix bitmap for block %" PRIu64
+				   " (0x%" PRIx64 ") ? (y/n) "),
+				 block, block)) {
 				if(gfs2_set_bitmap(sbp, block, block_status))
 					log_err( _("Failed.\n"));
 				else

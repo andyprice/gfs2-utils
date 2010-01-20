@@ -854,17 +854,16 @@ static int restore_data(int fd, int in_fd, int printblocksonly)
 				fprintf(stderr, "bad seek: %s from %s:"
 					"%d: block %lld (0x%llx)\n",
 					strerror(errno), __FUNCTION__,
-					__LINE__, (unsigned long long)
-					savedata->blk,
-					(unsigned long long)
-					savedata->blk);
+					__LINE__,
+					(unsigned long long)savedata->blk,
+					(unsigned long long)savedata->blk);
 				exit(-1);
 			}
 			if (write(fd, savedata->buf, sbd.bsize) != sbd.bsize) {
 				fprintf(stderr, "write error: %s from "
 					"%s:%d: block %lld (0x%llx)\n",
-					strerror(errno),
-					__FUNCTION__, __LINE__,
+					strerror(errno), __FUNCTION__,
+					__LINE__,
 					(unsigned long long)savedata->blk,
 					(unsigned long long)savedata->blk);
 				exit(-1);

@@ -52,19 +52,16 @@ void print_msg(int priority, const char *file, int line,
 		vfprintf(stderr, format, args);
 		break;
 	}
-	return;
 }
 
 
 void print_fsck_log(int iif, int priority, const char *file, int line,
 		    const char *format, ...)
 {
-
 	va_list args;
 	const char *transform;
 
-        va_start(args, format);
-
+	va_start(args, format);
 	transform = _(format);
 
 	if((_state.print_level == priority) ||
@@ -152,7 +149,6 @@ char generic_interrupt(const char *caller, const char *where,
 int gfs2_query(int *setonabort, struct gfs2_options *opts,
 	       const char *format, ...)
 {
-
 	va_list args;
 	const char *transform;
 	char response;

@@ -95,7 +95,7 @@ void inode_put(struct gfs2_inode **ip_in)
 	uint64_t block = ip->i_di.di_num.no_addr;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 
-	if (ip->i_bh->b_changed) {
+	if (ip->i_bh->b_modified) {
 		gfs2_dinode_out(&ip->i_di, ip->i_bh);
 		if (!ip->bh_owned && is_system_inode(sdp, block))
 			fprintf(stderr, "Warning: Change made to inode "
@@ -156,8 +156,9 @@ static uint64_t blk_alloc_i(struct gfs2_sbd *sdp, unsigned int type)
 
 found:
 	if (bn >= ri->ri_bitbytes * GFS2_NBBY)
-		die("allocation is broken (2): %u %u %"PRIu64" %u\n",
-		    bn, ri->ri_bitbytes * GFS2_NBBY,
+		die("allocation is broken (2): bn: %u %u rgrp: %"PRIu64
+		    " (0x%" PRIx64 ") Free:%u\n",
+		    bn, ri->ri_bitbytes * GFS2_NBBY, (uint64_t)rl->ri.ri_addr,
 		    (uint64_t)rl->ri.ri_addr, rl->rg.rg_free);
 
 	switch (type) {
@@ -236,15 +237,14 @@ void unstuff_dinode(struct gfs2_inode *ip)
 
 	if (ip->i_di.di_size) {
 		if (isdir) {
+			struct gfs2_meta_header mh;
+
 			block = meta_alloc(ip);
 			bh = bget(sdp, block);
-			{
-				struct gfs2_meta_header mh;
-				mh.mh_magic = GFS2_MAGIC;
-				mh.mh_type = GFS2_METATYPE_JD;
-				mh.mh_format = GFS2_FORMAT_JD;
-				gfs2_meta_header_out(&mh, bh);
-			}
+			mh.mh_magic = GFS2_MAGIC;
+			mh.mh_type = GFS2_METATYPE_JD;
+			mh.mh_format = GFS2_FORMAT_JD;
+			gfs2_meta_header_out(&mh, bh);
 
 			buffer_copy_tail(sdp, bh,
 					 sizeof(struct gfs2_meta_header),
@@ -314,15 +314,14 @@ void build_height(struct gfs2_inode *ip, int height)
 			}
 
 		if (new_block) {
+			struct gfs2_meta_header mh;
+
 			block = meta_alloc(ip);
 			bh = bget(sdp, block);
-			{
-				struct gfs2_meta_header mh;
-				mh.mh_magic = GFS2_MAGIC;
-				mh.mh_type = GFS2_METATYPE_IN;
-				mh.mh_format = GFS2_FORMAT_IN;
-				gfs2_meta_header_out(&mh, bh);
-			}
+			mh.mh_magic = GFS2_MAGIC;
+			mh.mh_type = GFS2_METATYPE_IN;
+			mh.mh_format = GFS2_FORMAT_IN;
+			gfs2_meta_header_out(&mh, bh);
 			buffer_copy_tail(sdp, bh,
 					 sizeof(struct gfs2_meta_header),
 					 ip->i_bh, sizeof(struct gfs2_dinode));
@@ -569,7 +568,7 @@ int gfs2_readi(struct gfs2_inode *ip, void *buf,
 }
 
 static void copy_from_mem(struct gfs2_buffer_head *bh, void **buf,
-						  unsigned int offset, unsigned int size)
+			  unsigned int offset, unsigned int size)
 {
 	char **p = (char **)buf;
 
@@ -765,7 +764,7 @@ static int dirent_alloc(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 				memset(new, 0, sizeof(struct gfs2_dirent));
 
 				new->de_rec_len = cpu_to_be16(cur_rec_len -
-											  GFS2_DIRENT_SIZE(cur_name_len));
+					  GFS2_DIRENT_SIZE(cur_name_len));
 				new->de_name_len = cpu_to_be16(name_len);
 
 				new_rec_len = be16_to_cpu(new->de_rec_len);
@@ -814,14 +813,13 @@ void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 }
 
 void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t lindex,
-					  uint64_t *leaf_out)
+		      uint64_t *leaf_out)
 {
 	uint64_t leaf_no;
 	int count;
 
-	count = gfs2_readi(dip, (char *)&leaf_no,
-		      lindex * sizeof(uint64_t),
-		      sizeof(uint64_t));
+	count = gfs2_readi(dip, (char *)&leaf_no, lindex * sizeof(uint64_t),
+			   sizeof(uint64_t));
 	if (count != sizeof(uint64_t))
 		die("gfs2_get_leaf_nr:  Bad internal read.\n");
 
@@ -840,7 +838,8 @@ void gfs2_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out)
 		die("gfs2_put_leaf_nr:  Bad internal write.\n");
 }
 
-static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex, uint64_t leaf_no)
+static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
+			   uint64_t leaf_no)
 {
 	struct gfs2_buffer_head *nbh, *obh;
 	struct gfs2_leaf *nleaf, *oleaf;
@@ -877,16 +876,11 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex, uint64_t lea
 		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
 		exit(-1);
 	}
-	count = gfs2_readi(dip, (char *)lp, start * sizeof(uint64_t),
-		      half_len * sizeof(uint64_t));
-	if (count != half_len * sizeof(uint64_t))
-		die("dir_split_leaf (1)\n");
-
 	for (x = 0; x < half_len; x++)
 		lp[x] = cpu_to_be64(bn);
 
 	count = gfs2_writei(dip, (char *)lp, start * sizeof(uint64_t),
-		       half_len * sizeof(uint64_t));
+			    half_len * sizeof(uint64_t));
 	if (count != half_len * sizeof(uint64_t))
 		die("dir_split_leaf (2)\n");
 
@@ -978,7 +972,7 @@ static void dir_double_exhash(struct gfs2_inode *dip)
 		}
 
 		count = gfs2_writei(dip, (char *)buf + sdp->sd_hash_bsize,
-							block * sdp->bsize, sdp->bsize);
+				    block * sdp->bsize, sdp->bsize);
 		if (count != sdp->bsize)
 			die("dir_double_exhash (2)\n");
 
@@ -1064,8 +1058,8 @@ static void dir_e_add(struct gfs2_inode *dip, const char *filename, int len,
 	uint32_t hash;
 	uint64_t leaf_no, bn;
 
- restart:
 	hash = gfs2_disk_hash(filename, len);
+restart:
 	/* Have to kludge because (hash >> 32) gives hash for some reason. */
 	if (dip->i_di.di_depth)
 		lindex = hash >> (32 - dip->i_di.di_depth);
@@ -1096,15 +1090,14 @@ static void dir_e_add(struct gfs2_inode *dip, const char *filename, int len,
 				continue;
 
 			} else {
+				struct gfs2_meta_header mh;
+
 				bn = meta_alloc(dip);
 				nbh = bget(dip->i_sbd, bn);
-				{
-					struct gfs2_meta_header mh;
-					mh.mh_magic = GFS2_MAGIC;
-					mh.mh_type = GFS2_METATYPE_LF;
-					mh.mh_format = GFS2_FORMAT_LF;
-					gfs2_meta_header_out(&mh, nbh);
-				}
+				mh.mh_magic = GFS2_MAGIC;
+				mh.mh_type = GFS2_METATYPE_LF;
+				mh.mh_format = GFS2_FORMAT_LF;
+				gfs2_meta_header_out(&mh, nbh);
 
 				leaf->lf_next = cpu_to_be64(bn);
 

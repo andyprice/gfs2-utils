@@ -27,8 +27,6 @@
  */
 int add_inode_to_lf(struct gfs2_inode *ip){
 	char tmp_name[256];
-	char *filename;
-	int filename_len;
 	__be32 inode_type;
 
 	if(!lf_dip) {
@@ -36,7 +34,8 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 
 		log_info( _("Locating/Creating lost and found directory\n"));
 
-        lf_dip = createi(ip->i_sbd->md.rooti, "lost+found", S_IFDIR | 0700, 0);
+		lf_dip = createi(ip->i_sbd->md.rooti, "lost+found",
+				 S_IFDIR | 0700, 0);
 		q = block_type(lf_dip->i_di.di_num.no_addr);
 		if(q != gfs2_inode_dir) {
 			/* This is a new lost+found directory, so set its
@@ -61,28 +60,16 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	}
 	switch(ip->i_di.di_mode & S_IFMT){
 	case S_IFDIR:
-		log_info( _("Adding .. entry pointing to lost+found for %llu\n"),
-				 (unsigned long long)ip->i_di.di_num.no_addr);
-		sprintf(tmp_name, "..");
-		filename_len = strlen(tmp_name);  /* no trailing NULL */
-		if(!(filename = malloc((sizeof(char) * filename_len) + 1))) {
-			log_err( _("Unable to allocate name\n"));
-			stack;
-			return -1;
-		}
-		if(!memset(filename, 0, (sizeof(char) * filename_len) + 1)) {
-			log_err( _("Unable to zero name\n"));
-			stack;
-			return -1;
-		}
-		memcpy(filename, tmp_name, filename_len);
+		log_info( _("Adding .. entry pointing to lost+found for "
+			    "directory %llu (0x%llx)\n"),
+			  (unsigned long long)ip->i_di.di_num.no_addr,
+			  (unsigned long long)ip->i_di.di_num.no_addr);
 
-		if(gfs2_dirent_del(ip, filename, filename_len))
-			log_warn( _("add_inode_to_lf:  "
-					 "Unable to remove \"..\" directory entry.\n"));
+		if(gfs2_dirent_del(ip, "..", 2))
+			log_warn( _("add_inode_to_lf: Unable to remove "
+				    "\"..\" directory entry.\n"));
 
-		dir_add(ip, filename, filename_len, &(lf_dip->i_di.di_num), DT_DIR);
-		free(filename);
+		dir_add(ip, "..", 2, &(lf_dip->i_di.di_num), DT_DIR);
 		sprintf(tmp_name, "lost_dir_%llu",
 			(unsigned long long)ip->i_di.di_num.no_addr);
 		inode_type = DT_DIR;
@@ -123,26 +110,14 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 		inode_type = DT_REG;
 		break;
 	}
-	filename_len = strlen(tmp_name);  /* no trailing NULL */
-	if(!(filename = malloc(sizeof(char) * filename_len))) {
-		log_err( _("Unable to allocate name\n"));
-			stack;
-			return -1;
-		}
-	if(!memset(filename, 0, sizeof(char) * filename_len)) {
-		log_err( _("Unable to zero name\n"));
-		stack;
-		return -1;
-	}
-	memcpy(filename, tmp_name, filename_len);
 
-	dir_add(lf_dip, filename, filename_len, &(ip->i_di.di_num), inode_type);
-  	increment_link(ip->i_sbd, ip->i_di.di_num.no_addr);
+	dir_add(lf_dip, tmp_name, strlen(tmp_name), &(ip->i_di.di_num),
+		inode_type);
+	increment_link(ip->i_sbd, ip->i_di.di_num.no_addr);
 	if(S_ISDIR(ip->i_di.di_mode))
 		increment_link(ip->i_sbd, lf_dip->i_di.di_num.no_addr);
 
-	free(filename);
 	log_notice( _("Added inode #%llu to lost+found dir\n"),
-		   (unsigned long long)ip->i_di.di_num.no_addr);
+		    (unsigned long long)ip->i_di.di_num.no_addr);
 	return 0;
 }

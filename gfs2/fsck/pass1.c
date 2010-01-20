@@ -75,8 +75,11 @@ static int leaf(struct gfs2_inode *ip, uint64_t block,
 {
 	struct block_count *bc = (struct block_count *) private;
 
-	log_debug( _("\tLeaf block at %15" PRIu64 " (0x%" PRIx64 ")\n"),
-			  block, block);
+	log_debug( _("\tDinode %lld (0x%llx) references leaf block #%lld "
+		     "(0x%llx)\n"),
+		   (unsigned long long)ip->i_di.di_num.no_addr,
+		   (unsigned long long)ip->i_di.di_num.no_addr,
+		   (unsigned long long)block, (unsigned long long)block);
 	gfs2_blockmap_set(ip->i_sbd, bl, block, gfs2_leaf_blk);
 	bc->indir_count++;
 	return 0;
@@ -150,7 +153,7 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 		return 1;
 	}
 	q = block_type(block);
-	if(q != gfs2_block_free) {
+	if (q != gfs2_block_free) {
 		log_err( _("Found duplicate block referenced as data at %"
 			   PRIu64 " (0x%"PRIx64 ")\n"), block, block);
 		if (q != gfs2_meta_inval) {
@@ -236,8 +239,7 @@ static int ask_remove_inode_eattr(struct gfs2_inode *ip,
 	log_err( _("Inode %lld (0x%llx) has unrecoverable Extended Attribute "
 		   "errors.\n"), (unsigned long long)ip->i_di.di_num.no_addr,
 		 (unsigned long long)ip->i_di.di_num.no_addr);
-	if (query( _("Clear all Extended Attributes from the "
-		     "inode? (y/n) "))) {
+	if (query( _("Clear all Extended Attributes from the inode? (y/n) "))){
 		if (!remove_inode_eattr(ip, bc,
 					is_duplicate(ip->i_di.di_eattr)))
 			log_err( _("Extended attributes were removed.\n"));
@@ -768,14 +770,14 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	}
 
 	pass1_fxns.private = &bc;
-
 	error = check_metatree(ip, &pass1_fxns);
 	if (fsck_abort || error < 0) {
 		fsck_inode_put(&ip);
 		return 0;
 	}
-	if(error > 0) {
-		log_warn( _("Marking inode #%llu (0x%llx) invalid\n"),
+	if (error > 0) {
+		log_err( _("Error: inode %llu (0x%llx) has unrecoverable "
+			   "errors; invalidating.\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
 		/* FIXME: Must set all leaves invalid as well */
@@ -812,7 +814,9 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			ip->i_di.di_blocks = 1 + bc.indir_count + bc.data_count +
 				bc.ea_count;
 			bmodified(ip->i_bh);
-			gfs2_dinode_out(&ip->i_di, ip->i_bh);
+			log_err( _("Block count for #%llu (0x%llx) fixed\n"),
+				(unsigned long long)ip->i_di.di_num.no_addr,
+				(unsigned long long)ip->i_di.di_num.no_addr);
 		} else
 			log_err( _("Bad block count for #%llu (0x%llx"
 				") not fixed\n"),
@@ -821,46 +825,6 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	}
 
 	fsck_inode_put(&ip);
-	return 0;
-}
-
-static int scan_meta(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
-			  uint64_t block)
-{
-	if (gfs2_check_meta(bh, 0)) {
-		log_info( _("Found invalid metadata at #%llu (0x%llx)\n"),
-			  (unsigned long long)block,
-			  (unsigned long long)block);
-		if(gfs2_blockmap_set(sdp, bl, block, gfs2_meta_inval)) {
-			stack;
-			return -1;
-		}
-		if(query( _("Okay to free the invalid block? (y/n)"))) {
-			gfs2_set_bitmap(sdp, block, GFS2_BLKST_FREE);
-			log_err( _("The invalid block was freed.\n"));
-		} else {
-			log_err( _("The invalid block was ignored.\n"));
-		}
-		return 0;
-	}
-
-	log_debug( _("Checking metadata block #%" PRIu64 " (0x%" PRIx64 ")\n"), block,
-			  block);
-
-	if (!gfs2_check_meta(bh, GFS2_METATYPE_DI)) {
-		/* handle_di calls inode_get, then inode_put, which does brelse.   */
-		/* In order to prevent brelse from getting the count off, hold it. */
-		if(handle_di(sdp, bh, block)) {
-			stack;
-			return -1;
-		}
-	}
-	/* Ignore everything else - they should be hit by the handle_di step.
-	 * Don't check NONE either, because check_meta passes everything if
-	 * GFS2_METATYPE_NONE is specified.
-	 * Hopefully, other metadata types such as indirect blocks will be
-	 * handled when the inode itself is processed, and if it's not, it
-	 * should be caught in pass5. */
 	return 0;
 }
 
@@ -904,10 +868,9 @@ int pass1(struct gfs2_sbd *sbp)
 	 * uses the rg bitmaps, so maybe that's the best way to start
 	 * things - we can change the method later if necessary.
 	 */
-
 	for (tmp = sbp->rglist.next; tmp != &sbp->rglist;
-	     tmp = tmp->next, rg_count++){
-		log_info( _("Checking metadata in Resource Group #%" PRIu64 "\n"),
+	     tmp = tmp->next, rg_count++) {
+		log_debug( _("Checking metadata in Resource Group #%" PRIu64 "\n"),
 				 rg_count);
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
 		for (i = 0; i < rgd->ri.ri_length; i++) {
@@ -924,9 +887,12 @@ int pass1(struct gfs2_sbd *sbp)
 
 		while (1) {
 			/* "block" is relative to the entire file system */
+			/* Get the next dinode in the file system, according
+			   to the bitmap.  This should ONLY be dinodes. */
 			if (gfs2_next_rg_meta(rgd, &block, first))
 				break;
 			warm_fuzzy_stuff(block);
+
 			if (fsck_abort) /* if asked to abort */
 				return FSCK_OK;
 			if (skip_this_pass) {
@@ -936,11 +902,36 @@ int pass1(struct gfs2_sbd *sbp)
 			}
 			bh = bread(sbp, block);
 
-			if (scan_meta(sbp, bh, block)) {
+			/*log_debug( _("Checking metadata block #%" PRIu64
+			  " (0x%" PRIx64 ")\n"), block, block);*/
+
+			if (gfs2_check_meta(bh, GFS2_METATYPE_DI)) {
+				log_err( _("Found invalid inode at block #"
+					   "%llu (0x%llx)\n"),
+					 (unsigned long long)block,
+					 (unsigned long long)block);
+				if(query( _("Okay to free the invalid block? "
+					    "(y/n)"))) {
+					gfs2_set_bitmap(sbp, block,
+							GFS2_BLKST_FREE);
+					log_err( _("The invalid block was "
+						   "freed.\n"));
+				} else {
+					log_err( _("The invalid block was "
+						   "ignored.\n"));
+				}
+			} else if (handle_di(sbp, bh, block) < 0) {
 				stack;
 				brelse(bh);
 				return FSCK_ERROR;
 			}
+			/* Ignore everything else - they should be hit by the
+			   handle_di step.  Don't check NONE either, because
+			   check_meta passes everything if GFS2_METATYPE_NONE
+			   is specified.  Hopefully, other metadata types such
+			   as indirect blocks will be handled when the inode
+			   itself is processed, and if it's not, it should be
+			   caught in pass5. */
 			brelse(bh);
 			first = 0;
 		}

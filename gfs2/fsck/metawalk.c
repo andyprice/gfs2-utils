@@ -26,7 +26,7 @@ struct dup_blks *dupfind(uint64_t num)
 
 	for (tmp = head->next; tmp != head; tmp = tmp->next) {
 		b = osi_list_entry(tmp, struct dup_blks, list);
-		if (b->block_no == num)
+		if (b->block == num)
 			return b;
 	}
 	return NULL;
@@ -283,8 +283,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 				bmodified(bh);
 				/* Mark dirent buffer as modified */
 				first = 0;
-			}
-			else {
+			} else {
 				error = pass->check_dentry(ip, dent, prev, bh,
 							   filename, count,
 							   pass->private);
@@ -296,7 +295,12 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		}
 
 		if ((char *)dent + de.de_rec_len >= bh_end){
-			log_debug( _("Last entry processed.\n"));
+			log_debug( _("Last entry processed for %lld->%lld "
+				     "(0x%llx->0x%llx).\n"),
+				   (unsigned long long)ip->i_di.di_num.no_addr,
+				   (unsigned long long)bh->b_blocknr,
+				   (unsigned long long)ip->i_di.di_num.no_addr,
+				   (unsigned long long)bh->b_blocknr);
 			break;
 		}
 
@@ -389,8 +393,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 								  leaf info */
 			ref_count++;
 			continue;
-		}
-		else if(old_leaf == leaf_no) {
+		} else if(old_leaf == leaf_no) {
 			ref_count++;
 			continue;
 		}
@@ -492,11 +495,11 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 				break;
 			}
 			exp_count = (1 << (ip->i_di.di_depth - leaf.lf_depth));
-			log_debug( _("expected count %u - di_depth %u, leaf depth %u\n"),
-					  exp_count, ip->i_di.di_depth, leaf.lf_depth);
+			/*log_debug( _("expected count %u - di_depth %u,
+			  leaf depth %u\n"),
+			  exp_count, ip->i_di.di_depth, leaf.lf_depth);*/
 
-			if(pass->check_dentry &&
-			   S_ISDIR(ip->i_di.di_mode)) {
+			if(pass->check_dentry && S_ISDIR(ip->i_di.di_mode)) {
 				error = check_entries(ip, lbh, DIR_EXHASH,
 						      &count, pass);
 
@@ -562,9 +565,8 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 	int error = 0;
 	uint32_t offset = (uint32_t)sizeof(struct gfs2_meta_header);
 
-	if(!pass->check_eattr_entry) {
+	if(!pass->check_eattr_entry)
 		return 0;
-	}
 
 	ea_hdr = (struct gfs2_ea_header *)(bh->b_data +
 					  sizeof(struct gfs2_meta_header));
@@ -763,7 +765,7 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 							 pass->private);
 			}
 			if (leaf_pointer_errors == leaf_pointers) {
-				if (indirect_buf->b_changed)
+				if (indirect_buf->b_modified)
 					gfs2_set_bitmap(sdp, indirect,
 							GFS2_BLKST_FREE);
 				gfs2_blockmap_set(sdp, bl, indirect,
@@ -796,8 +798,7 @@ int check_inode_eattr(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		  (unsigned long long)ip->i_di.di_num.no_addr);
 
 	if(ip->i_di.di_flags & GFS2_DIF_EA_INDIRECT){
-		if((error = check_indirect_eattr(ip, ip->i_di.di_eattr,
-						 pass)))
+		if((error = check_indirect_eattr(ip, ip->i_di.di_eattr, pass)))
 			stack;
 	} else {
 		error = check_leaf_eattr(ip, ip->i_di.di_eattr,
@@ -811,12 +812,13 @@ int check_inode_eattr(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 
 /**
  * build_and_check_metalist - check a bunch of indirect blocks
- * Note: Every buffer put on the metalist should be "held".
+ *                            This includes hash table blocks for directories
+ *                            which are technically "data" in the bitmap.
+ *
  * @ip:
  * @mlp:
  */
-static int build_and_check_metalist(struct gfs2_inode *ip,
-				    osi_list_t *mlp,
+static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 				    struct metawalk_fxns *pass)
 {
 	uint32_t height = ip->i_di.di_height;
@@ -831,7 +833,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip,
 	/* if(<there are no indirect blocks to check>) */
 	if (height < 2)
 		return 0;
-	for (i = 1; i < height; i++){
+	for (i = 1; i < height; i++) {
 		prev_list = &mlp[i - 1];
 		cur_list = &mlp[i];
 
@@ -850,7 +852,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip,
 					continue;
 				head_size = sizeof(struct gfs2_dinode);
 			}
-
+			/* Now check the metadata itself */
 			for (ptr = (uint64_t *)(bh->b_data + head_size);
 			     (char *)ptr < (bh->b_data + ip->i_sbd->bsize);
 			     ptr++) {
@@ -984,7 +986,6 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 				big_file_comfort(ip, blks_checked);
 		}
 	}
-
 	if (ip->i_di.di_blocks > COMFORTABLE_BLKS) {
 		log_notice( _("\rLarge file at %lld (0x%llx) - 100 percent "
 			      "complete.                                   "
@@ -1026,8 +1027,8 @@ end:
 }
 
 /* Checks stuffed inode directories */
-static int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
-			    struct metawalk_fxns *pass)
+int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
+		     struct metawalk_fxns *pass)
 {
 	int error = 0;
 	uint16_t count = 0;
@@ -1040,7 +1041,6 @@ static int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 
 	return error;
 }
-
 
 int check_dir(struct gfs2_sbd *sbp, uint64_t block, struct metawalk_fxns *pass)
 {
