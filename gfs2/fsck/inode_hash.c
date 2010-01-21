@@ -2,78 +2,69 @@
 
 #include <stdint.h>
 #include <unistd.h>
+#include <libintl.h>
 
 #include "libgfs2.h"
 #include "osi_list.h"
 #include "hash.h"
 #include "inode_hash.h"
 #include "fsck.h"
+#define _(String) gettext(String)
 
-static uint32_t gfs2_inode_hash(uint64_t block_no)
+struct inode_info *inodetree_find(uint64_t block)
 {
-	unsigned int h;
+	struct osi_node *node = inodetree.osi_node;
 
-	h = fsck_hash(&block_no, sizeof (uint64_t));
-	h &= FSCK_HASH_MASK;
+	while (node) {
+		struct inode_info *data = (struct inode_info *)node;
 
-	return h;
-}
-
-struct inode_info *inode_hash_search(osi_list_t *buckets, uint64_t key)
-{
-	struct inode_info *ii;
-	osi_list_t *tmp;
-	osi_list_t *bucket = &buckets[gfs2_inode_hash(key)];
-
-	osi_list_foreach(tmp, bucket) {
-		ii = osi_list_entry(tmp, struct inode_info, list);
-		if(ii->inode == key) {
-			return ii;
-		}
+		if (block < data->inode)
+			node = node->osi_left;
+		else if (block > data->inode)
+			node = node->osi_right;
+		else
+			return data;
 	}
 	return NULL;
 }
 
-int inode_hash_insert(osi_list_t *buckets, uint64_t key, struct inode_info *ii)
+struct inode_info *inodetree_insert(uint64_t dblock)
 {
-	osi_list_t *tmp;
-	osi_list_t *bucket = &buckets[gfs2_inode_hash(key)];
-	struct inode_info *itmp = NULL;
+	struct osi_node **newn = &inodetree.osi_node, *parent = NULL;
+	struct inode_info *data;
 
-	if(osi_list_empty(bucket)) {
-		osi_list_add(&ii->list, bucket);
-		return 0;
+	/* Figure out where to put new node */
+	while (*newn) {
+		struct inode_info *cur = (struct inode_info *)*newn;
+
+		parent = *newn;
+		if (dblock < cur->inode)
+			newn = &((*newn)->osi_left);
+		else if (dblock > cur->inode)
+			newn = &((*newn)->osi_right);
+		else
+			return cur;
 	}
 
-	osi_list_foreach(tmp, bucket) {
-		itmp = osi_list_entry(tmp, struct inode_info, list);
-		if(itmp->inode < key) {
-			continue;
-		} else {
-			osi_list_add_prev(&ii->list, tmp);
-			return 0;
-		}
+	data = malloc(sizeof(struct inode_info));
+	if (!data) {
+		log_crit( _("Unable to allocate inode_info structure\n"));
+		return NULL;
 	}
-	osi_list_add_prev(&ii->list, bucket);
-	return 0;
+	if (!memset(data, 0, sizeof(struct inode_info))) {
+		log_crit( _("Error while zeroing inode_info structure\n"));
+		return NULL;
+	}
+	/* Add new node and rebalance tree. */
+	data->inode = dblock;
+	osi_link_node(&data->node, parent, newn);
+	osi_insert_color(&data->node, &inodetree);
+
+	return data;
 }
 
-
-int inode_hash_remove(osi_list_t *buckets, uint64_t key)
+void inodetree_delete(struct inode_info *b)
 {
-	osi_list_t *tmp;
-	osi_list_t *bucket = &buckets[gfs2_inode_hash(key)];
-	struct inode_info *itmp = NULL;
-
-	if(osi_list_empty(bucket)) {
-		return -1;
-	}
-	osi_list_foreach(tmp, bucket) {
-		itmp = osi_list_entry(tmp, struct inode_info, list);
-		if(itmp->inode == key) {
-			osi_list_del(tmp);
-			return 0;
-		}
-	}
-	return -1;
+	osi_erase(&b->node, &inodetree);
+	free(b);
 }

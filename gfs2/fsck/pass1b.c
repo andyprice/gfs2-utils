@@ -165,7 +165,6 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 		log_err( _("Inode %s is in directory %"PRIu64" (0x%" PRIx64 ")\n"),
 			 dh->id->name ? dh->id->name : "", dh->id->parent,
 			 dh->id->parent);
-		inode_hash_remove(inode_hash, ip->i_di.di_num.no_addr);
 		/* Setting the block to invalid means the inode is
 		 * cleared in pass2 */
 		gfs2_blockmap_set(ip->i_sbd, bl, ip->i_di.di_num.no_addr,
@@ -410,12 +409,15 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
 				  (unsigned long long)b->block,
 				  (unsigned long long)b->block);
 			if (query( _("Clear the inode? (y/n) "))) {
+				struct inode_info *ii;
+
 				log_warn( _("Clearing inode %lld (0x%llx)...\n"),
 					 (unsigned long long)id->block_no,
 					 (unsigned long long)id->block_no);
 				ip = fsck_load_inode(sbp, id->block_no);
-				inode_hash_remove(inode_hash,
-						  ip->i_di.di_num.no_addr);
+				ii = inodetree_find(ip->i_di.di_num.no_addr);
+				if (ii)
+					inodetree_delete(ii);
 				/* Setting the block to invalid means the inode
 				   is cleared in pass2 */
 				gfs2_blockmap_set(ip->i_sbd, bl,

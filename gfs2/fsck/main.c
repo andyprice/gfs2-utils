@@ -21,8 +21,6 @@
 
 struct gfs2_options opts = {0};
 struct gfs2_inode *lf_dip; /* Lost and found directory inode */
-osi_list_t dir_hash[FSCK_HASH_SIZE];
-osi_list_t inode_hash[FSCK_HASH_SIZE];
 struct gfs2_bmap *bl = NULL;
 uint64_t last_fs_block, last_reported_block = -1;
 int64_t last_reported_fblock = -1000000;
@@ -34,6 +32,7 @@ uint64_t first_data_block;
 int preen = 0, force_check = 0;
 struct osi_root dup_blocks = (struct osi_root) { NULL, };
 struct osi_root dirtree = (struct osi_root) { NULL, };
+struct osi_root inodetree = (struct osi_root) { NULL, };
 
 /* This function is for libgfs2's sake.                                      */
 void print_it(const char *label, const char *fmt, const char *fmt2, ...)

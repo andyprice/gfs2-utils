@@ -23,6 +23,7 @@
 
 #include "libgfs2.h"
 #include "fsck.h"
+#include "inode_hash.h"
 #include "util.h"
 #include "link.h"
 #include "metawalk.h"
@@ -711,7 +712,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 		fsck_inode_put(&ip);
 		return 0;
 	}
-	if(set_link_count(ip->i_sbd, ip->i_di.di_num.no_addr, ip->i_di.di_nlink)) {
+	if(set_link_count(ip->i_di.di_num.no_addr, ip->i_di.di_nlink)) {
 		stack;
 		fsck_inode_put(&ip);
 		return -1;

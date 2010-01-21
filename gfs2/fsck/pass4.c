@@ -23,8 +23,7 @@ struct metawalk_fxns pass4_fxns_delete = {
 
 /* Updates the link count of an inode to what the fsck has seen for
  * link count */
-static int fix_inode_count(struct gfs2_sbd *sbp, struct inode_info *ii,
-					struct gfs2_inode *ip)
+static int fix_link_count(struct inode_info *ii, struct gfs2_inode *ip)
 {
 	log_info( _("Fixing inode link count (%d->%d) for %llu (0x%llx) \n"),
 		  ip->i_di.di_nlink, ii->counted_links,
@@ -42,8 +41,8 @@ static int fix_inode_count(struct gfs2_sbd *sbp, struct inode_info *ii,
 	return 0;
 }
 
-static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
-	osi_list_t *tmp;
+static int scan_inode_list(struct gfs2_sbd *sbp) {
+	struct osi_node *tmp;
 	struct inode_info *ii;
 	struct gfs2_inode *ip;
 	int lf_addition = 0;
@@ -51,11 +50,11 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 
 	/* FIXME: should probably factor this out into a generic
 	 * scanning fxn */
-	osi_list_foreach(tmp, list) {
+	for (tmp = osi_first(&inodetree); tmp; tmp = osi_next(tmp)) {
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return 0;
-		if(!(ii = osi_list_entry(tmp, struct inode_info, list))) {
-			log_crit( _("osi_list_foreach broken in scan_info_list!!\n"));
+		if(!(ii = (struct inode_info *)tmp)) {
+			log_crit( _("osi_tree broken in scan_info_list!!\n"));
 			exit(FSCK_ERROR);
 		}
 		if(ii->counted_links == 0) {
@@ -131,7 +130,7 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 					fsck_inode_put(&ip);
 					return -1;
 				} else {
-					fix_inode_count(sbp, ii, ip);
+					fix_link_count(ii, ip);
 					lf_addition = 1;
 				}
 			} else
@@ -148,8 +147,8 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 				    " (0x%" PRIx64 ") ? (y/n) "),
 				  ii->inode, ii->inode)) {
 				ip = fsck_load_inode(sbp, ii->inode); /* bread, inode_get */
-				fix_inode_count(sbp, ii, ip);
-				bmodified(ip->i_bh);
+				fix_link_count(ii, ip);
+				ii->link_count = ii->counted_links;
 				fsck_inode_put(&ip); /* out, brelse, free */
 				log_warn( _("Link count updated to %d for "
 					    "inode %" PRIu64 " (0x%"
@@ -165,12 +164,11 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
 	} /* osi_list_foreach(tmp, list) */
 
 	if (lf_addition) {
-		if(!(ii = inode_hash_search(inode_hash,
-									lf_dip->i_di.di_num.no_addr))) {
+		if(!(ii = inodetree_find(lf_dip->i_di.di_num.no_addr))) {
 			log_crit( _("Unable to find lost+found inode in inode_hash!!\n"));
 			return -1;
 		} else {
-			fix_inode_count(sbp, ii, lf_dip);
+			fix_link_count(ii, lf_dip);
 		}
 	}
 
@@ -188,20 +186,13 @@ static int scan_inode_list(struct gfs2_sbd *sbp, osi_list_t *list) {
  */
 int pass4(struct gfs2_sbd *sbp)
 {
-	uint32_t i;
-	osi_list_t *list;
 	if(lf_dip)
 		log_debug( _("At beginning of pass4, lost+found entries is %u\n"),
 				  lf_dip->i_di.di_entries);
 	log_info( _("Checking inode reference counts.\n"));
-	for (i = 0; i < FSCK_HASH_SIZE; i++) {
-		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
-			return FSCK_OK;
-		list = &inode_hash[i];
-		if(scan_inode_list(sbp, list)) {
-			stack;
-			return FSCK_ERROR;
-		}
+	if(scan_inode_list(sbp)) {
+		stack;
+		return FSCK_ERROR;
 	}
 
 	if(lf_dip)

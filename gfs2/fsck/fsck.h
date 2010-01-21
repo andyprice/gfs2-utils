@@ -25,7 +25,7 @@
 
 struct inode_info
 {
-        osi_list_t list;
+        struct osi_node node;
         uint64_t   inode;
         uint16_t   link_count;   /* the number of links the inode
                                   * thinks it has */
@@ -114,7 +114,6 @@ struct dir_info *dirtree_insert(uint64_t dblock);
 
 extern struct gfs2_options opts;
 extern struct gfs2_inode *lf_dip; /* Lost and found directory inode */
-extern osi_list_t inode_hash[FSCK_HASH_SIZE];
 extern struct gfs2_bmap *bl;
 extern uint64_t last_fs_block, last_reported_block;
 extern int64_t last_reported_fblock;
@@ -124,5 +123,6 @@ extern uint64_t last_data_block;
 extern uint64_t first_data_block;
 extern struct osi_root dup_blocks;
 extern struct osi_root dirtree;
+extern struct osi_root inodetree;
 
 #endif /* _FSCK_H */

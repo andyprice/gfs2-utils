@@ -18,6 +18,8 @@
 #include "fsck.h"
 #include "util.h"
 #include "fs_recovery.h"
+#include "metawalk.h"
+#include "inode_hash.h"
 
 #define CLEAR_POINTER(x) \
 	if(x) { \
@@ -79,6 +81,17 @@ static void gfs2_dirtree_free(void)
 	}
 }
 
+static void gfs2_inodetree_free(void)
+{
+	struct osi_node *n;
+	struct inode_info *dt;
+
+	while ((n = osi_first(&inodetree))) {
+		dt = (struct inode_info *)n;
+		inodetree_delete(dt);
+	}
+}
+
 /*
  * empty_super_block - free all structures in the super block
  * sdp: the in-core super block
@@ -90,22 +103,12 @@ static void gfs2_dirtree_free(void)
  */
 static void empty_super_block(struct gfs2_sbd *sdp)
 {
-	uint32_t i;
-
 	log_info( _("Freeing buffers.\n"));
 	gfs2_rgrp_free(&sdp->rglist);
 
-	for(i = 0; i < FSCK_HASH_SIZE; i++) {
-		while(!osi_list_empty(&inode_hash[i])) {
-			struct inode_info *ii;
-			ii = osi_list_entry(inode_hash[i].next, struct inode_info, list);
-			osi_list_del(&ii->list);
-			free(ii);
-		}
-	}
-
 	if (bl)
 		gfs2_bmap_destroy(sdp, bl);
+	gfs2_inodetree_free();
 	gfs2_dirtree_free();
 	gfs2_dup_free();
 }
@@ -414,8 +417,6 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
  */
 static int fill_super_block(struct gfs2_sbd *sdp)
 {
-	uint32_t i;
-
 	sync();
 
 	/********************************************************************
@@ -423,8 +424,6 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 	 ********************************************************************/
 	log_info( _("Initializing lists...\n"));
 	osi_list_init(&sdp->rglist);
-	for(i = 0; i < FSCK_HASH_SIZE; i++)
-		osi_list_init(&inode_hash[i]);
 
 	/********************************************************************
 	 ************  next, read in on-disk SB and set constants  **********
