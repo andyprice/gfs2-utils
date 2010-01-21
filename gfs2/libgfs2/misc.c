@@ -182,7 +182,7 @@ int mount_gfs2_meta(struct gfs2_sbd *sdp)
 	if(!mkdtemp(sdp->metafs_path))
 		return -1;
 
-	ret = mount(sdp->device_name, sdp->metafs_path, "gfs2", 0, "meta");
+	ret = mount(sdp->path_name, sdp->metafs_path, "gfs2meta", 0, NULL);
 	if (ret) {
 		rmdir(sdp->metafs_path);
 		return -1;
