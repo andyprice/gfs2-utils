@@ -25,7 +25,8 @@ static int set_parent_dir(struct gfs2_sbd *sbp, uint64_t childblock,
 {
 	struct dir_info *di;
 
-	if(!find_di(sbp, childblock, &di)) {
+	di = dirtree_find(childblock);
+	if (di) {
 		if(di->dinode == childblock) {
 			if (di->treewalk_parent) {
 				log_err( _("Another directory at block %" PRIu64
@@ -52,7 +53,8 @@ static int set_dotdot_dir(struct gfs2_sbd *sbp, uint64_t childblock,
 {
 	struct dir_info *di;
 
-	if(!find_di(sbp, childblock, &di)) {
+	di = dirtree_find(childblock);
+	if(di) {
 		if(di->dinode == childblock) {
 			/* Special case for root inode because we set
 			 * it earlier */
@@ -724,8 +726,8 @@ int pass2(struct gfs2_sbd *sbp)
 		if (error > 0) {
 			struct dir_info *di = NULL;
 
-			error = find_di(sbp, dirblk, &di);
-			if(error < 0) {
+			di = dirtree_find(dirblk);
+			if(!di) {
 				stack;
 				return FSCK_ERROR;
 			}

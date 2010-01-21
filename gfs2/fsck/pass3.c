@@ -152,7 +152,7 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 			return NULL;
 		}
 	}
-	find_di(sbp, di->dotdot_parent, &pdi);
+	pdi = dirtree_find(di->dotdot_parent);
 
 	return pdi;
 }
@@ -165,19 +165,18 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
  */
 int pass3(struct gfs2_sbd *sbp)
 {
-	osi_list_t *tmp;
+	struct osi_node *tmp;
 	struct dir_info *di, *tdi;
 	struct gfs2_inode *ip;
 	uint8_t q;
-	int i;
 
-	find_di(sbp, sbp->md.rooti->i_di.di_num.no_addr, &di);
-	if(di) {
+	di = dirtree_find(sbp->md.rooti->i_di.di_num.no_addr);
+	if (di) {
 		log_info( _("Marking root inode connected\n"));
 		di->checked = 1;
 	}
-	find_di(sbp, sbp->master_dir->i_di.di_num.no_addr, &di);
-	if(di) {
+	di = dirtree_find(sbp->master_dir->i_di.di_num.no_addr);
+	if (di) {
 		log_info( _("Marking master directory inode connected\n"));
 		di->checked = 1;
 	}
@@ -187,9 +186,8 @@ int pass3(struct gfs2_sbd *sbp)
 	 * find a parent, put in lost+found.
 	 */
 	log_info( _("Checking directory linkage.\n"));
-	for(i = 0; i < FSCK_HASH_SIZE; i++) {
-	osi_list_foreach(tmp, &dir_hash[i]) {
-		di = osi_list_entry(tmp, struct dir_info, list);
+	for (tmp = osi_first(&dirtree); tmp; tmp = osi_next(tmp)) {
+		di = (struct dir_info *)tmp;
 		while(!di->checked) {
 			/* FIXME: Change this so it returns success or
 			 * failure and put the parent inode in a
@@ -265,7 +263,6 @@ int pass3(struct gfs2_sbd *sbp)
 			}
 			di = tdi;
 		}
-	}
 	}
 	if(lf_dip)
 		log_debug( _("At end of pass3, lost+found entries is %u\n"),

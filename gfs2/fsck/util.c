@@ -183,6 +183,58 @@ struct duptree *gfs2_dup_set(uint64_t dblock)
 	return data;
 }
 
+struct dir_info *dirtree_insert(uint64_t dblock)
+{
+	struct osi_node **newn = &dirtree.osi_node, *parent = NULL;
+	struct dir_info *data;
+
+	/* Figure out where to put new node */
+	while (*newn) {
+		struct dir_info *cur = (struct dir_info *)*newn;
+
+		parent = *newn;
+		if (dblock < cur->dinode)
+			newn = &((*newn)->osi_left);
+		else if (dblock > cur->dinode)
+			newn = &((*newn)->osi_right);
+		else
+			return cur;
+	}
+
+	data = malloc(sizeof(struct dir_info));
+	if (!data) {
+		log_crit( _("Unable to allocate dir_info structure\n"));
+		return NULL;
+	}
+	if (!memset(data, 0, sizeof(struct dir_info))) {
+		log_crit( _("Error while zeroing dir_info structure\n"));
+		return NULL;
+	}
+	/* Add new node and rebalance tree. */
+	data->dinode = dblock;
+	osi_link_node(&data->node, parent, newn);
+	osi_insert_color(&data->node, &dirtree);
+
+	return data;
+}
+
+struct dir_info *dirtree_find(uint64_t block)
+{
+	struct osi_node *node = dirtree.osi_node;
+
+	while (node) {
+		struct dir_info *data = (struct dir_info *)node;
+
+		if (block < data->dinode)
+			node = node->osi_left;
+		else if (block > data->dinode)
+			node = node->osi_right;
+		else
+			return data;
+	}
+	return NULL;
+}
+
 void dup_delete(struct duptree *b)
 {
 	struct inode_with_dups *id;
@@ -197,5 +249,11 @@ void dup_delete(struct duptree *b)
 		free(id);
 	}
 	osi_erase(&b->node, &dup_blocks);
+	free(b);
+}
+
+void dirtree_delete(struct dir_info *b)
+{
+	osi_erase(&b->node, &dirtree);
 	free(b);
 }

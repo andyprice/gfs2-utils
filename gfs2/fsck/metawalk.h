@@ -15,11 +15,6 @@ extern int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			    struct metawalk_fxns *pass);
 extern int remove_dentry_from_dir(struct gfs2_sbd *sbp, uint64_t dir,
 				  uint64_t dentryblock);
-extern int find_di(struct gfs2_sbd *sbp, uint64_t childblock,
-		   struct dir_info **dip);
-extern int dinode_hash_insert(osi_list_t *buckets, uint64_t key,
-			      struct dir_info *di);
-extern int dinode_hash_remove(osi_list_t *buckets, uint64_t key);
 extern int delete_blocks(struct gfs2_inode *ip, uint64_t block,
 			 struct gfs2_buffer_head **bh, const char *btype,
 			 void *private);

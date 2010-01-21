@@ -68,6 +68,17 @@ void gfs2_dup_free(void)
 	}
 }
 
+static void gfs2_dirtree_free(void)
+{
+	struct osi_node *n;
+	struct dir_info *dt;
+
+	while ((n = osi_first(&dirtree))) {
+		dt = (struct dir_info *)n;
+		dirtree_delete(dt);
+	}
+}
+
 /*
  * empty_super_block - free all structures in the super block
  * sdp: the in-core super block
@@ -91,16 +102,11 @@ static void empty_super_block(struct gfs2_sbd *sdp)
 			osi_list_del(&ii->list);
 			free(ii);
 		}
-		while(!osi_list_empty(&dir_hash[i])) {
-			struct dir_info *di;
-			di = osi_list_entry(dir_hash[i].next, struct dir_info, list);
-			osi_list_del(&di->list);
-			free(di);
-		}
 	}
 
 	if (bl)
 		gfs2_bmap_destroy(sdp, bl);
+	gfs2_dirtree_free();
 	gfs2_dup_free();
 }
 
@@ -417,10 +423,8 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 	 ********************************************************************/
 	log_info( _("Initializing lists...\n"));
 	osi_list_init(&sdp->rglist);
-	for(i = 0; i < FSCK_HASH_SIZE; i++) {
-		osi_list_init(&dir_hash[i]);
+	for(i = 0; i < FSCK_HASH_SIZE; i++)
 		osi_list_init(&inode_hash[i]);
-	}
 
 	/********************************************************************
 	 ************  next, read in on-disk SB and set constants  **********

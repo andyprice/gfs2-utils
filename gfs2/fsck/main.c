@@ -33,6 +33,7 @@ uint64_t last_data_block;
 uint64_t first_data_block;
 int preen = 0, force_check = 0;
 struct osi_root dup_blocks = (struct osi_root) { NULL, };
+struct osi_root dirtree = (struct osi_root) { NULL, };
 
 /* This function is for libgfs2's sake.                                      */
 void print_it(const char *label, const char *fmt, const char *fmt2, ...)
@@ -176,8 +177,7 @@ static int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 				       mark);
 			ds.q = mark;
 			if (mark == gfs2_inode_dir)
-				add_to_dir_list(sysinode->i_sbd,
-						sysinode->i_di.di_num.no_addr);
+				dirtree_insert(sysinode->i_di.di_num.no_addr);
 		}
 	}
 	else
@@ -195,8 +195,7 @@ static int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 				       mark);
 			ds.q = mark;
 			if (mark == gfs2_inode_dir)
-				add_to_dir_list(sysinode->i_sbd,
-						sysinode->i_di.di_num.no_addr);
+				dirtree_insert(sysinode->i_di.di_num.no_addr);
 		}
 		else {
 			log_err( _("Cannot continue without valid %s inode\n"),

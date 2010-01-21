@@ -34,7 +34,7 @@ struct inode_info
 
 struct dir_info
 {
-        osi_list_t list;
+        struct osi_node node;
         uint64_t dinode;
         uint64_t treewalk_parent;
         uint64_t dotdot_parent;
@@ -110,11 +110,10 @@ extern void dirtree_delete(struct dir_info *b);
 
 /* FIXME: Hack to get this going for pass2 - this should be pulled out
  * of pass1 and put somewhere else... */
-int add_to_dir_list(struct gfs2_sbd *sbp, uint64_t block);
+struct dir_info *dirtree_insert(uint64_t dblock);
 
 extern struct gfs2_options opts;
 extern struct gfs2_inode *lf_dip; /* Lost and found directory inode */
-extern osi_list_t dir_hash[FSCK_HASH_SIZE];
 extern osi_list_t inode_hash[FSCK_HASH_SIZE];
 extern struct gfs2_bmap *bl;
 extern uint64_t last_fs_block, last_reported_block;
@@ -124,5 +123,6 @@ extern int errors_found, errors_corrected;
 extern uint64_t last_data_block;
 extern uint64_t first_data_block;
 extern struct osi_root dup_blocks;
+extern struct osi_root dirtree;
 
 #endif /* _FSCK_H */

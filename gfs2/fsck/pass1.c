@@ -589,36 +589,6 @@ static int clear_leaf(struct gfs2_inode *ip, uint64_t block,
 	return 0;
 }
 
-int add_to_dir_list(struct gfs2_sbd *sbp, uint64_t block)
-{
-	struct dir_info *di = NULL;
-	struct dir_info *newdi;
-
-	/* FIXME: This list should probably be a b-tree or
-	 * something...but since most of the time we're going to be
-	 * tacking the directory onto the end of the list, it doesn't
-	 * matter too much */
-	find_di(sbp, block, &di);
-	if(di) {
-		log_err( _("Attempting to add directory block #%" PRIu64
-				" (0x%" PRIx64 ") which is already in list\n"), block, block);
-		return -1;
-	}
-
-	if(!(newdi = (struct dir_info *) malloc(sizeof(struct dir_info)))) {
-		log_crit( _("Unable to allocate dir_info structure\n"));
-		return -1;
-	}
-	if(!memset(newdi, 0, sizeof(*newdi))) {
-		log_crit( _("Error while zeroing dir_info structure\n"));
-		return -1;
-	}
-
-	newdi->dinode = block;
-	dinode_hash_insert(dir_hash, block, newdi);
-	return 0;
-}
-
 static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			  uint64_t block)
 {
@@ -669,7 +639,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			fsck_inode_put(&ip);
 			return -1;
 		}
-		if(add_to_dir_list(sdp, block)) {
+		if(!dirtree_insert(block)) {
 			stack;
 			fsck_inode_put(&ip);
 			return -1;
