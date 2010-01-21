@@ -901,7 +901,8 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
 		    be32_to_cpu(dent->de_hash) < divider) {
 			name_len = be16_to_cpu(dent->de_name_len);
 
-			dirent_alloc(dip, nbh, name_len, &new);
+			if (dirent_alloc(dip, nbh, name_len, &new))
+				die("dir_split_leaf (3)\n");
 
 			new->de_inum = dent->de_inum;
 			new->de_hash = dent->de_hash;
@@ -927,7 +928,8 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
 	} while (dent);
 
 	if (!moved) {
-		dirent_alloc(dip, nbh, 0, &new);
+		if (dirent_alloc(dip, nbh, 0, &new))
+			die("dir_split_leaf (4)\n");
 		new->de_inum.no_formal_ino = 0;
 	}
 
@@ -1107,7 +1109,8 @@ restart:
 				nleaf->lf_depth = leaf->lf_depth;
 				nleaf->lf_dirent_format = cpu_to_be32(GFS2_FORMAT_DE);
 
-				dirent_alloc(dip, nbh, len, &dent);
+				if (dirent_alloc(dip, nbh, len, &dent))
+					die("dir_split_leaf (3)\n");
 				dip->i_di.di_blocks++;
 				bmodified(dip->i_bh);
 				bmodified(bh);
