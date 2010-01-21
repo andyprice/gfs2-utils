@@ -858,6 +858,8 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
 		mh.mh_type = GFS2_METATYPE_LF;
 		mh.mh_format = GFS2_FORMAT_LF;
 		gfs2_meta_header_out(&mh, nbh);
+		buffer_clear_tail(dip->i_sbd, nbh,
+				  sizeof(struct gfs2_meta_header));
 	}
 
 	nleaf = (struct gfs2_leaf *)nbh->b_data;
