@@ -171,9 +171,8 @@ static int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 		/* Just reuse the inode and fix the bitmap.         */
 		if (ds.q == gfs2_block_free) {
 			log_info( _("The inode exists but the block is not marked 'in use'; fixing it.\n"));
-			gfs2_blockmap_set(sysinode->i_sbd, bl,
-				       sysinode->i_di.di_num.no_addr,
-				       mark);
+			gfs2_blockmap_set(bl,sysinode->i_di.di_num.no_addr,
+					  mark);
 			ds.q = mark;
 			if (mark == gfs2_inode_dir)
 				dirtree_insert(sysinode->i_di.di_num.no_addr);
@@ -189,9 +188,8 @@ static int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 		log_err( _("Invalid or missing %s system inode.\n"), filename);
 		if (query(_("Create new %s system inode? (y/n) "), filename)) {
 			builder(sysinode->i_sbd);
-			gfs2_blockmap_set(sysinode->i_sbd, bl,
-				       sysinode->i_di.di_num.no_addr,
-				       mark);
+			gfs2_blockmap_set(bl, sysinode->i_di.di_num.no_addr,
+					  mark);
 			ds.q = mark;
 			if (mark == gfs2_inode_dir)
 				dirtree_insert(sysinode->i_di.di_num.no_addr);

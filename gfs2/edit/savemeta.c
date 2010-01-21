@@ -644,7 +644,7 @@ void savemeta(char *out_fn, int saveoption)
 				  (unsigned long long)rgd->ri.ri_addr,
 				  rgd->ri.ri_length);
 			for (i = 0; i < rgd->ri.ri_length; i++) {
-				if(gfs2_blockmap_set(&sbd, blocklist,
+				if(gfs2_blockmap_set(blocklist,
 						     rgd->ri.ri_addr + i,
 						     gfs2_meta_other))
 					break;

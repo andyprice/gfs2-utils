@@ -617,7 +617,7 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 						/* Endianness doesn't matter
 						   in this case because it's
 						   a single byte. */
-						gfs2_blockmap_set(sdp, bl,
+						gfs2_blockmap_set(bl,
 							     ip->i_di.di_eattr,
 							     gfs2_meta_eattr);
 						log_err( _("The EA was "
@@ -771,8 +771,8 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 				if (indirect_buf->b_modified)
 					gfs2_set_bitmap(sdp, indirect,
 							GFS2_BLKST_FREE);
-				gfs2_blockmap_set(sdp, bl, indirect,
-					       gfs2_block_free);
+				gfs2_blockmap_set(bl, indirect,
+						  gfs2_block_free);
 				error = 1;
 			}
 		}
@@ -1130,7 +1130,7 @@ int delete_blocks(struct gfs2_inode *ip, uint64_t block,
 				  (unsigned long long)block,
 				  (unsigned long long)ip->i_di.di_num.no_addr,
 				  (unsigned long long)ip->i_di.di_num.no_addr);
-			gfs2_blockmap_set(ip->i_sbd, bl, block, gfs2_block_free);
+			gfs2_blockmap_set(bl, block, gfs2_block_free);
 			gfs2_free_block(ip->i_sbd, block);
 		}
 	}

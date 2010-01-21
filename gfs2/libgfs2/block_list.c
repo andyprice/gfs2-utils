@@ -127,8 +127,8 @@ int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_bmap *bmap,
 	return 0;
 }
 
-int gfs2_blockmap_set(struct gfs2_sbd *sdp, struct gfs2_bmap *bmap,
-		      uint64_t bblock, enum gfs2_mark_block mark)
+int gfs2_blockmap_set(struct gfs2_bmap *bmap, uint64_t bblock,
+		      enum gfs2_mark_block mark)
 {
 	static unsigned char *byte;
 	static uint64_t b;

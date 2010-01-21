@@ -46,8 +46,8 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 			 * directory or just found an old one, and we
 			 * used that instead of the block_type to run
 			 * this */
-			gfs2_blockmap_set(ip->i_sbd, bl,
-				       lf_dip->i_di.di_num.no_addr, gfs2_inode_dir);
+			gfs2_blockmap_set(bl, lf_dip->i_di.di_num.no_addr,
+					  gfs2_inode_dir);
 			increment_link(ip->i_sbd,
 						   ip->i_sbd->md.rooti->i_di.di_num.no_addr);
 			increment_link(ip->i_sbd, lf_dip->i_di.di_num.no_addr);
