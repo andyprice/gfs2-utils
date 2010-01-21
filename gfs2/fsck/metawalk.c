@@ -18,30 +18,6 @@
 
 #define COMFORTABLE_BLKS 5242880 /* 20GB in 4K blocks */
 
-static struct gfs2_inode *get_system_inode(struct gfs2_sbd *sbp,
-					   uint64_t block)
-{
-	if (block == sbp->md.inum->i_di.di_num.no_addr)
-		return sbp->md.inum;
-	if (block == sbp->md.statfs->i_di.di_num.no_addr)
-		return sbp->md.statfs;
-	if (block == sbp->md.jiinode->i_di.di_num.no_addr)
-		return sbp->md.jiinode;
-	if (block == sbp->md.riinode->i_di.di_num.no_addr)
-		return sbp->md.riinode;
-	if (block == sbp->md.qinode->i_di.di_num.no_addr)
-		return sbp->md.qinode;
-	if (block == sbp->md.pinode->i_di.di_num.no_addr)
-		return sbp->md.pinode;
-	if (block == sbp->md.rooti->i_di.di_num.no_addr)
-		return sbp->md.rooti;
-	if (block == sbp->master_dir->i_di.di_num.no_addr)
-		return sbp->master_dir;
-	if (lf_dip && block == lf_dip->i_di.di_num.no_addr)
-		return lf_dip;
-	return is_system_inode(sbp, block);
-}
-
 struct duptree *dupfind(uint64_t block)
 {
 	struct osi_node *node = dup_blocks.osi_node;
@@ -59,13 +35,21 @@ struct duptree *dupfind(uint64_t block)
 	return NULL;
 }
 
+static struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
+					    uint64_t block)
+{
+	if (lf_dip && lf_dip->i_di.di_num.no_addr == block)
+		return lf_dip;
+	return is_system_inode(sdp, block);
+}
+
 /* fsck_load_inode - same as gfs2_load_inode() in libgfs2 but system inodes
    get special treatment. */
 struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sbp, uint64_t block)
 {
 	struct gfs2_inode *ip = NULL;
 
-	ip = get_system_inode(sbp, block);
+	ip = fsck_system_inode(sbp, block);
 	if (ip)
 		return ip;
 	return inode_read(sbp, block);
@@ -78,7 +62,7 @@ struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp,
 {
 	struct gfs2_inode *sysip;
 
-	sysip = get_system_inode(sdp, bh->b_blocknr);
+	sysip = fsck_system_inode(sdp, bh->b_blocknr);
 	if (sysip)
 		return sysip;
 
@@ -92,7 +76,7 @@ void fsck_inode_put(struct gfs2_inode **ip_in)
 	struct gfs2_inode *ip = *ip_in;
 	struct gfs2_inode *sysip;
 
-	sysip = get_system_inode(ip->i_sbd, ip->i_di.di_num.no_addr);
+	sysip = fsck_system_inode(ip->i_sbd, ip->i_di.di_num.no_addr);
 	if (!sysip)
 		inode_put(ip_in);
 }
