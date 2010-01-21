@@ -7,6 +7,18 @@
 
 #include "libgfs2.h"
 
+#if BITS_PER_LONG == 32
+#define LBITMASK   (0x55555555UL)
+#define LBITSKIP55 (0x55555555UL)
+#define LBITSKIP00 (0x00000000UL)
+#else
+#define LBITMASK   (0x5555555555555555UL)
+#define LBITSKIP55 (0x5555555555555555UL)
+#define LBITSKIP00 (0x0000000000000000UL)
+#endif
+
+#define ALIGN(x,a) (((x)+(a)-1)&~((a)-1))
+
 /**
  * gfs2_bitfit - Find a free block in the bitmaps
  * @buffer: the buffer that holds the bitmaps
@@ -20,32 +32,55 @@
 uint32_t gfs2_bitfit(unsigned char *buffer, unsigned int buflen,
 		     uint32_t goal, unsigned char old_state)
 {
-	unsigned char *byte, *end, alloc;
-	uint32_t blk = goal;
-	unsigned int bit;
+	const uint8_t *byte, *start, *end;
+	int bit, startbit;
+	uint32_t g1, g2, misaligned;
+	unsigned long *plong;
+	unsigned long lskipval;
 
-	byte = buffer + (goal / GFS2_NBBY);
-	bit = (goal % GFS2_NBBY) * GFS2_BIT_SIZE;
-	end = buffer + buflen;
-	alloc = (old_state & 1) ? 0 : 0x55;
-
-	while (byte < end){
-		if ((*byte & 0x55) == alloc){
-			blk += (8 - bit) >> 1;
-			bit = 0;
-			byte++;
-			continue;
+	lskipval = (old_state & GFS2_BLKST_USED) ? LBITSKIP00 : LBITSKIP55;
+	g1 = (goal / GFS2_NBBY);
+	start = buffer + g1;
+	byte = start;
+        end = buffer + buflen;
+	g2 = ALIGN(g1, sizeof(unsigned long));
+	plong = (unsigned long *)(buffer + g2);
+	startbit = bit = (goal % GFS2_NBBY) * GFS2_BIT_SIZE;
+	misaligned = g2 - g1;
+	if (!misaligned)
+		goto ulong_aligned;
+/* parse the bitmap a byte at a time */
+misaligned:
+	while (byte < end) {
+		if (((*byte >> bit) & GFS2_BIT_MASK) == old_state) {
+			return goal +
+				(((byte - start) * GFS2_NBBY) +
+				 ((bit - startbit) >> 1));
 		}
-
-		if (((*byte >> bit) & GFS2_BIT_MASK) == old_state)
-			return blk;
-
 		bit += GFS2_BIT_SIZE;
-		if (bit >= 8){
+		if (bit >= GFS2_NBBY * GFS2_BIT_SIZE) {
 			bit = 0;
 			byte++;
+			misaligned--;
+			if (!misaligned) {
+				plong = (unsigned long *)byte;
+				goto ulong_aligned;
+			}
 		}
-		blk++;
+	}
+	return BFITNOENT;
+
+/* parse the bitmap a unsigned long at a time */
+ulong_aligned:
+	while ((unsigned char *)plong < end) {
+		if (((*plong) & LBITMASK) != lskipval)
+			break;
+		plong++;
+	}
+	if ((unsigned char *)plong < end) {
+		byte = (const uint8_t *)plong;
+		misaligned += sizeof(unsigned long) - 1;
+		goto misaligned;
 	}
 	return BFITNOENT;
 }
