@@ -18,20 +18,6 @@
 
 #define COMFORTABLE_BLKS 5242880 /* 20GB in 4K blocks */
 
-struct dup_blks *dupfind(uint64_t num)
-{
-	osi_list_t *head = &dup_blocks.list;
-	osi_list_t *tmp;
-	struct dup_blks *b;
-
-	for (tmp = head->next; tmp != head; tmp = tmp->next) {
-		b = osi_list_entry(tmp, struct dup_blks, list);
-		if (b->block == num)
-			return b;
-	}
-	return NULL;
-}
-
 static struct gfs2_inode *get_system_inode(struct gfs2_sbd *sbp,
 					   uint64_t block)
 {
@@ -54,6 +40,23 @@ static struct gfs2_inode *get_system_inode(struct gfs2_sbd *sbp,
 	if (lf_dip && block == lf_dip->i_di.di_num.no_addr)
 		return lf_dip;
 	return is_system_inode(sbp, block);
+}
+
+struct duptree *dupfind(uint64_t block)
+{
+	struct osi_node *node = dup_blocks.osi_node;
+
+	while (node) {
+		struct duptree *data = (struct duptree *)node;
+
+		if (block < data->block)
+			node = node->osi_left;
+		else if (block > data->block)
+			node = node->osi_right;
+		else
+			return data;
+	}
+	return NULL;
 }
 
 /* fsck_load_inode - same as gfs2_load_inode() in libgfs2 but system inodes

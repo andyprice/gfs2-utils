@@ -14,15 +14,6 @@
 #include "metawalk.h"
 #include "inode_hash.h"
 
-struct inode_with_dups {
-	osi_list_t list;
-	uint64_t block_no;
-	int dup_count;
-	int ea_only;
-	uint64_t parent;
-	char *name;
-};
-
 struct fxn_info {
 	uint64_t block;
 	int found;
@@ -30,7 +21,7 @@ struct fxn_info {
 };
 
 struct dup_handler {
-	struct dup_blks *b;
+	struct duptree *b;
 	struct inode_with_dups *id;
 	int ref_inode_count;
 	int ref_count;
@@ -114,13 +105,14 @@ static int find_dentry(struct gfs2_inode *ip, struct gfs2_dirent *de,
 		       struct gfs2_buffer_head *bh, char *filename,
 		       uint16_t *count, void *priv)
 {
-	osi_list_t *tmp1, *tmp2;
-	struct dup_blks *b;
+	struct osi_node *n;
+	osi_list_t *tmp2;
+	struct duptree *b;
 	struct inode_with_dups *id;
 	struct gfs2_leaf leaf;
 
-	osi_list_foreach(tmp1, &dup_blocks.list) {
-		b = osi_list_entry(tmp1, struct dup_blks, list);
+	for (n = osi_first(&dup_blocks); n; n = osi_next(n)) {
+		b = (struct duptree *)n;
 		osi_list_foreach(tmp2, &b->ref_inode_list) {
 			id = osi_list_entry(tmp2, struct inode_with_dups,
 					    list);
@@ -315,7 +307,7 @@ static int clear_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 }
 
 /* Finds all references to duplicate blocks in the metadata */
-static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_blks *b)
+static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct duptree *b)
 {
 	struct gfs2_inode *ip;
 	struct fxn_info myfi = {b->block, 0, 1};
@@ -369,7 +361,7 @@ static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode, struct dup_blks 
 	return 0;
 }
 
-static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blks *b)
+static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
 {
 	osi_list_t *tmp;
 	struct inode_with_dups *id;
@@ -493,10 +485,10 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct dup_blks *b)
  * use in pass2 */
 int pass1b(struct gfs2_sbd *sbp)
 {
-	struct dup_blks *b;
+	struct duptree *b;
 	uint64_t i;
 	uint8_t q;
-	osi_list_t *tmp = NULL, *x;
+	struct osi_node *n;
 	struct metawalk_fxns find_dirents = {0};
 	int rc = FSCK_OK;
 	find_dirents.check_dentry = &find_dentry;
@@ -504,7 +496,7 @@ int pass1b(struct gfs2_sbd *sbp)
 	log_info( _("Looking for duplicate blocks...\n"));
 
 	/* If there were no dups in the bitmap, we don't need to do anymore */
-	if(osi_list_empty(&dup_blocks.list)) {
+	if (dup_blocks.osi_node == NULL) {
 		log_info( _("No duplicate blocks found\n"));
 		return FSCK_OK;
 	}
@@ -528,9 +520,8 @@ int pass1b(struct gfs2_sbd *sbp)
 		   (q == gfs2_inode_chr) ||
 		   (q == gfs2_inode_fifo) ||
 		   (q == gfs2_inode_sock)) {
-			osi_list_foreach_safe(tmp, &dup_blocks.list, x) {
-				b = osi_list_entry(tmp, struct dup_blks,
-						   list);
+			for (n = osi_first(&dup_blocks); n; n = osi_next(n)) {
+				b = (struct duptree *)n;
 				if(find_block_ref(sbp, i, b)) {
 					stack;
 					rc = FSCK_ERROR;
@@ -547,8 +538,8 @@ int pass1b(struct gfs2_sbd *sbp)
 	 * it later */
 	log_info( _("Handling duplicate blocks\n"));
 out:
-        osi_list_foreach_safe(tmp, &dup_blocks.list, x) {
-                b = osi_list_entry(tmp, struct dup_blks, list);
+        for (n = osi_first(&dup_blocks); n; n = osi_next(n)) {
+                b = (struct duptree *)n;
 		if (!skip_this_pass && !rc) /* no error & not asked to skip the rest */
 			handle_dup_blk(sbp, b);
 		/* Do not attempt to free the dup_blocks list or its parts

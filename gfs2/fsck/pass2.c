@@ -667,7 +667,6 @@ int pass2(struct gfs2_sbd *sbp)
 	int filename_len;
 	char tmp_name[256];
 	int error = 0;
-	struct dup_blks *b;
 
 	/* Check all the system directory inodes. */
 	if (check_system_dir(sbp->md.jiinode, "jindex", build_jindex)) {
@@ -813,12 +812,7 @@ int pass2(struct gfs2_sbd *sbp)
 	   deleting it from both inodes referencing it. Note: The other
 	   returns from this function are premature exits of the program
 	   and gfs2_block_list_destroy should get rid of the list for us. */
-	while (!osi_list_empty(&dup_blocks.list)) {
-		b = osi_list_entry(dup_blocks.list.next,
-				   struct dup_blks, list);
-		osi_list_del(&b->list);
-		free(b);
-	}
+	gfs2_dup_free();
 	return FSCK_OK;
 }
 

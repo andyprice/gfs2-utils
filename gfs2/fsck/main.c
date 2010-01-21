@@ -32,7 +32,7 @@ const char *pass = "";
 uint64_t last_data_block;
 uint64_t first_data_block;
 int preen = 0, force_check = 0;
-struct dup_blks dup_blocks;
+struct osi_root dup_blocks = (struct osi_root) { NULL, };
 
 /* This function is for libgfs2's sake.                                      */
 void print_it(const char *label, const char *fmt, const char *fmt2, ...)

@@ -153,18 +153,49 @@ int fsck_query(const char *format, ...)
 	return ret;
 }
 
-void gfs2_dup_set(uint64_t block)
+struct duptree *gfs2_dup_set(uint64_t dblock)
 {
-	struct dup_blks *b;
+	struct osi_node **newn = &dup_blocks.osi_node, *parent = NULL;
+	struct duptree *data;
 
-	if (dupfind(block))
-		return;
-	b = malloc(sizeof(struct dup_blks));
-	if (b) {
-		memset(b, 0, sizeof(*b));
-		b->block = block;
-		osi_list_init(&b->ref_inode_list);
-		osi_list_add(&b->list, &dup_blocks.list);
+	/* Figure out where to put new node */
+	while (*newn) {
+		struct duptree *cur = (struct duptree *)*newn;
+
+		parent = *newn;
+		if (dblock < cur->block)
+			newn = &((*newn)->osi_left);
+		else if (dblock > cur->block)
+			newn = &((*newn)->osi_right);
+		else
+			return cur;
 	}
-	return;
+
+	data = malloc(sizeof(struct duptree));
+	memset(data, 0, sizeof(struct duptree));
+	/* Add new node and rebalance tree. */
+	data->block = dblock;
+	data->refs = 2; /* first call is the second reference to the block */
+	osi_list_init(&data->ref_inode_list);
+	osi_link_node(&data->node, parent, newn);
+	osi_insert_color(&data->node, &dup_blocks);
+
+	return data;
+}
+
+void dup_delete(struct duptree *b)
+{
+	struct inode_with_dups *id;
+	osi_list_t *tmp;
+
+	while (!osi_list_empty(&b->ref_inode_list)) {
+		tmp = (&b->ref_inode_list)->next;
+		id = osi_list_entry(tmp, struct inode_with_dups, list);
+		if (id->name)
+			free(id->name);
+		osi_list_del(&id->list);
+		free(id);
+	}
+	osi_erase(&b->node, &dup_blocks);
+	free(b);
 }

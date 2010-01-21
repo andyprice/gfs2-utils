@@ -2,6 +2,7 @@
 #define _FSCK_H
 
 #include "libgfs2.h"
+#include "osi_tree.h"
 
 #define FSCK_HASH_SHIFT         (13)
 #define FSCK_HASH_SIZE          (1 << FSCK_HASH_SHIFT)
@@ -48,6 +49,31 @@ struct dir_status {
 	uint32_t entry_count;
 };
 
+struct duptree {
+	struct osi_node node;
+	int first_ref_found; /* Has the original reference been found? */
+	int refs;
+	uint64_t block;
+	osi_list_t ref_inode_list; /* list of inodes referencing a dup block */
+	osi_list_t ref_invinode_list; /* list of invalid inodes referencing */
+};
+
+enum dup_ref_type {
+	ref_as_data = 0,
+	ref_as_meta = 1,
+	ref_as_ea   = 2,
+	ref_types   = 3
+};
+
+struct inode_with_dups {
+	osi_list_t list;
+	uint64_t block_no;
+	int dup_count;
+	int ea_only;
+	uint64_t parent;
+	char *name;
+};
+
 enum rgindex_trust_level { /* how far can we trust our RG index? */
 	blind_faith = 0, /* We'd like to trust the rgindex. We always used to
 			    before bz 179069. This should cover most cases. */
@@ -57,12 +83,6 @@ enum rgindex_trust_level { /* how far can we trust our RG index? */
 	distrust = 2   /* The world isn't perfect, our RGs are not on nice neat
 			  boundaries.  The fs must have been messed with by
 			  gfs2_grow or something.  Count the RGs by hand. */
-};
-
-struct dup_blks {
-	osi_list_t list;
-	uint64_t block;
-	osi_list_t ref_inode_list;
 };
 
 extern struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sbp, uint64_t block);
@@ -81,9 +101,11 @@ extern int pass3(struct gfs2_sbd *sbp);
 extern int pass4(struct gfs2_sbd *sbp);
 extern int pass5(struct gfs2_sbd *sbp);
 extern int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count);
+extern void gfs2_dup_free(void);
 extern int fsck_query(const char *format, ...)
 	__attribute__((format(printf,1,2)));
 extern struct dir_info *dirtree_find(uint64_t block);
+extern void dup_delete(struct duptree *b);
 extern void dirtree_delete(struct dir_info *b);
 
 /* FIXME: Hack to get this going for pass2 - this should be pulled out
@@ -101,6 +123,6 @@ extern int skip_this_pass, fsck_abort;
 extern int errors_found, errors_corrected;
 extern uint64_t last_data_block;
 extern uint64_t first_data_block;
-extern struct dup_blks dup_blocks;
+extern struct osi_root dup_blocks;
 
 #endif /* _FSCK_H */

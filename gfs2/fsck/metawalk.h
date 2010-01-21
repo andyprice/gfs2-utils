@@ -32,7 +32,7 @@ extern int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 extern int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			     uint64_t parent, struct gfs2_buffer_head **bh,
 			     void *private);
-extern struct dup_blks *dupfind(uint64_t num);
+extern struct duptree *dupfind(uint64_t block);
 
 #define is_duplicate(dblock) ((dupfind(dblock)) ? 1 : 0)
 

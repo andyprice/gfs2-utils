@@ -11,7 +11,7 @@ struct di_info *search_list(osi_list_t *list, uint64_t addr);
 void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked);
 void warm_fuzzy_stuff(uint64_t block);
 const char *block_type_string(uint8_t q);
-void gfs2_dup_set(uint64_t block);
+struct duptree *gfs2_dup_set(uint64_t dblock);
 
 static inline uint8_t block_type(uint64_t bblock)
 {
