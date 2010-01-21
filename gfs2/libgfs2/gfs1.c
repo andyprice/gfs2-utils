@@ -317,6 +317,7 @@ int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet)
 			rmax = ri->ri_data0 + ri->ri_data - 1;
 	}
 
+	sdp->fssize = rmax;
 	*rgcount = count1;
 	if (count1 != count2)
 		goto fail;

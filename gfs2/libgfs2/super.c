@@ -231,6 +231,7 @@ int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount)
 	osi_list_t *tmp;
 	int count1 = 0, count2 = 0;
 	uint64_t errblock = 0;
+	uint64_t rmax = 0;
 
 	if (rindex_read(sdp, fd, &count1))
 	    goto fail;
@@ -240,9 +241,12 @@ int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount)
 		if (errblock)
 			return errblock;
 		ri = &rgd->ri;
+		if (ri->ri_data0 + ri->ri_data - 1 > rmax)
+			rmax = ri->ri_data0 + ri->ri_data - 1;
 		count2++;
 	}
 
+	sdp->fssize = rmax;
 	*rgcount = count1;
 	if (count1 != count2)
 		goto fail;
