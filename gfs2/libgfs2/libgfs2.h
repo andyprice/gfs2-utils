@@ -512,6 +512,8 @@ struct gfs2_options {
 	unsigned int query:1;
 };
 
+extern int print_level;
+
 #define MSG_DEBUG       7
 #define MSG_INFO        6
 #define MSG_NOTICE      5
@@ -520,52 +522,34 @@ struct gfs2_options {
 #define MSG_CRITICAL    2
 #define MSG_NULL        1
 
-#define print_log(iif, priority, format...)     \
-do { print_fsck_log(iif, priority, __FILE__, __LINE__, ## format); } while(0)
+#define print_log(priority, format...) \
+	do { print_fsck_log(priority, __FILE__, __LINE__, ## format); } while(0)
 
 #define log_debug(format...) \
-do { print_log(0, MSG_DEBUG, format); } while(0)
+	do { if(print_level >= MSG_DEBUG) print_log(MSG_DEBUG, format); } while(0)
 #define log_info(format...) \
-do { print_log(0, MSG_INFO, format); } while(0)
+	do { if(print_level >= MSG_INFO) print_log(MSG_INFO, format); } while(0)
 
 #define log_notice(format...) \
-do { print_log(0, MSG_NOTICE, format); } while(0)
+	do { if(print_level >= MSG_NOTICE) print_log(MSG_NOTICE, format); } while(0)
 
 #define log_warn(format...) \
-do { print_log(0, MSG_WARN, format); } while(0)
+	do { if(print_level >= MSG_WARN) print_log(MSG_WARN, format); } while(0)
 
 #define log_err(format...) \
-do { print_log(0, MSG_ERROR, format); } while(0)
+	do { if(print_level >= MSG_ERROR) print_log(MSG_ERROR, format); } while(0)
 
 #define log_crit(format...) \
-do { print_log(0, MSG_CRITICAL, format); } while(0)
+	do { if(print_level >= MSG_CRITICAL) print_log(MSG_CRITICAL, format); } while(0)
 
 #define stack log_debug("<backtrace> - %s()\n", __func__)
-
-#define log_at_debug(format...)         \
-do { print_log(1, MSG_DEBUG, format); } while(0)
-
-#define log_at_info(format...) \
-do { print_log(1, MSG_INFO, format); } while(0)
-
-#define log_at_notice(format...) \
-do { print_log(1, MSG_NOTICE, format); } while(0)
-
-#define log_at_warn(format...) \
-do { print_log(1, MSG_WARN, format); } while(0)
-
-#define log_at_err(format...) \
-do { print_log(1, MSG_ERROR, format); } while(0)
-
-#define log_at_crit(format...) \
-do { print_log(1, MSG_CRITICAL, format); } while(0)
 
 extern char gfs2_getch(void);
 extern void increase_verbosity(void);
 extern void decrease_verbosity(void);
-extern void print_fsck_log(int iif, int priority, const char *file, int line,
+extern void print_fsck_log(int priority, const char *file, int line,
 			   const char *format, ...)
-	__attribute__((format(printf,5,6)));
+	__attribute__((format(printf,4,5)));
 extern char generic_interrupt(const char *caller, const char *where,
 			      const char *progress, const char *question,
 			      const char *answers);

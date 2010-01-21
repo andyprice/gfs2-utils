@@ -14,19 +14,16 @@
 
 #define _(String) gettext(String)
 
-struct log_state {
-	int print_level;
-};
-static struct log_state _state = {MSG_NOTICE};
+int print_level = MSG_NOTICE;
 
 void increase_verbosity(void)
 {
-	_state.print_level++;
+	print_level++;
 }
 
 void decrease_verbosity(void)
 {
-	_state.print_level--;
+	print_level--;
 }
 
 static __attribute__((format (printf, 4, 0)))
@@ -36,9 +33,8 @@ void print_msg(int priority, const char *file, int line,
 	switch (priority) {
 
 	case MSG_DEBUG:
-		printf("(%s:%d)\t", file, line);
+		printf("(%s:%d) ", file, line);
 		vprintf(format, args);
-		fflush(NULL);
 		break;
 	case MSG_INFO:
 	case MSG_NOTICE:
@@ -55,7 +51,7 @@ void print_msg(int priority, const char *file, int line,
 }
 
 
-void print_fsck_log(int iif, int priority, const char *file, int line,
+void print_fsck_log(int priority, const char *file, int line,
 		    const char *format, ...)
 {
 	va_list args;
@@ -63,11 +59,7 @@ void print_fsck_log(int iif, int priority, const char *file, int line,
 
 	va_start(args, format);
 	transform = _(format);
-
-	if((_state.print_level == priority) ||
-	   (!iif && (_state.print_level >= priority)))
-		print_msg(priority, file, line, transform, args);
-
+	print_msg(priority, file, line, transform, args);
 	va_end(args);
 }
 
