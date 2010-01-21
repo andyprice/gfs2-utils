@@ -81,18 +81,23 @@ struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num)
 	return NULL;
 }
 
-void gfs2_special_set(struct special_blocks *blocklist, uint64_t block)
+void gfs2_special_add(struct special_blocks *blocklist, uint64_t block)
 {
 	struct special_blocks *b;
 
-	if (blockfind(blocklist, block))
-		return;
 	b = malloc(sizeof(struct special_blocks));
 	if (b) {
 		memset(b, 0, sizeof(*b));
 		b->block = block;
 		osi_list_add(&b->list, &blocklist->list);
 	}
+}
+
+void gfs2_special_set(struct special_blocks *blocklist, uint64_t block)
+{
+	if (blockfind(blocklist, block))
+		return;
+	gfs2_special_add(blocklist, block);
 }
 
 void gfs2_special_clear(struct special_blocks *blocklist, uint64_t block)
