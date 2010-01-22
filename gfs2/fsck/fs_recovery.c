@@ -120,6 +120,10 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 		if (error)
 			return error;
 
+		log_info( _("Journal replay writing metadata block #"
+			    "%lld (0x%llx) for journal+0x%x\n"),
+			  (unsigned long long)blkno, (unsigned long long)blkno,
+			  start);
 		bh_ip = bget(sdp, blkno);
 		memcpy(bh_ip->b_data, bh_log->b_data, sdp->bsize);
 
@@ -170,6 +174,11 @@ static int revoke_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 		}
 		while (offset + sizeof(uint64_t) <= sdp->sd_sb.sb_bsize) {
 			blkno = be64_to_cpu(*(__be64 *)(bh->b_data + offset));
+			log_info( _("Journal replay processing revoke for "
+				    "block #%lld (0x%llx) for journal+0x%x\n"),
+				  (unsigned long long)blkno,
+				  (unsigned long long)blkno,
+				  start);
 			error = gfs2_revoke_add(sdp, blkno, start);
 			if (error < 0)
 				return error;
@@ -219,6 +228,10 @@ static int databuf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 		if (error)
 			return error;
 
+		log_info( _("Journal replay writing data block #%lld (0x%llx)"
+			    " for journal+0x%x\n"),
+			  (unsigned long long)blkno, (unsigned long long)blkno,
+			  start);
 		bh_ip = bget(sdp, blkno);
 		memcpy(bh_ip->b_data, bh_log->b_data, sdp->bsize);
 
