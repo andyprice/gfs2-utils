@@ -2,7 +2,9 @@
 #define _LINK_H
 
 int set_link_count(uint64_t inode_no, uint32_t count);
-int increment_link(struct gfs2_sbd *sbp, uint64_t inode_no);
-int decrement_link(struct gfs2_sbd *sbp, uint64_t inode_no);
+int increment_link(uint64_t inode_no, uint64_t referenced_from,
+		   const char *why);
+int decrement_link(uint64_t inode_no, uint64_t referenced_from,
+		   const char *why);
 
 #endif /* _LINK_H */

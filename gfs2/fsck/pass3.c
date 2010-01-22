@@ -51,9 +51,9 @@ static int attach_dotdot_to(struct gfs2_sbd *sbp, uint64_t newdotdot,
 	if(gfs2_dirent_del(ip, filename, filename_len))
 		log_warn( _("Unable to remove \"..\" directory entry.\n"));
 	else
-		decrement_link(sbp, olddotdot);
+		decrement_link(olddotdot, block, _("old \"..\""));
 	dir_add(ip, filename, filename_len, &pip->i_di.di_num, DT_DIR);
-	increment_link(sbp, newdotdot);
+	increment_link(newdotdot, block, _("new \"..\""));
 	bmodified(ip->i_bh);
 	fsck_inode_put(&ip);
 	fsck_inode_put(&pip);

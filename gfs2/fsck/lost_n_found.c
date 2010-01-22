@@ -48,10 +48,16 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 			 * this */
 			gfs2_blockmap_set(bl, lf_dip->i_di.di_num.no_addr,
 					  gfs2_inode_dir);
-			increment_link(ip->i_sbd,
-						   ip->i_sbd->md.rooti->i_di.di_num.no_addr);
-			increment_link(ip->i_sbd, lf_dip->i_di.di_num.no_addr);
-			increment_link(ip->i_sbd, lf_dip->i_di.di_num.no_addr);
+			/* root inode links to lost+found */
+			increment_link(ip->i_sbd->md.rooti->i_di.di_num.no_addr,
+				       lf_dip->i_di.di_num.no_addr, _("root"));
+			/* lost+found link for '.' from itself */
+			increment_link(lf_dip->i_di.di_num.no_addr,
+				       lf_dip->i_di.di_num.no_addr, "\".\"");
+			/* lost+found link for '..' back to root */
+			increment_link(lf_dip->i_di.di_num.no_addr,
+				       ip->i_sbd->md.rooti->i_di.di_num.no_addr,
+				       "\"..\"");
 		}
 	}
 	if(ip->i_di.di_num.no_addr == lf_dip->i_di.di_num.no_addr) {
@@ -113,9 +119,13 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 
 	dir_add(lf_dip, tmp_name, strlen(tmp_name), &(ip->i_di.di_num),
 		inode_type);
-	increment_link(ip->i_sbd, ip->i_di.di_num.no_addr);
+	/* This inode is linked from lost+found */
+  	increment_link(ip->i_di.di_num.no_addr, lf_dip->i_di.di_num.no_addr,
+		       _("from lost+found"));
+	/* If it's a directory, lost+found is back-linked to it via .. */
 	if(S_ISDIR(ip->i_di.di_mode))
-		increment_link(ip->i_sbd, lf_dip->i_di.di_num.no_addr);
+		increment_link(lf_dip->i_di.di_num.no_addr,
+			       ip->i_di.di_mode, _("to lost+found"));
 
 	log_notice( _("Added inode #%llu to lost+found dir\n"),
 		    (unsigned long long)ip->i_di.di_num.no_addr);

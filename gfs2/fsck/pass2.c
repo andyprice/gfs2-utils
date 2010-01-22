@@ -379,7 +379,9 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				/* FIXME: Should we continue on here
 				 * and check the rest of the '.'
 				 * entry? */
-				increment_link(sbp, entryblock);
+				increment_link(entryblock,
+					       ip->i_di.di_num.no_addr,
+					       _("valid reference"));
 				(*count)++;
 				ds->entry_count++;
 				return 0;
@@ -414,7 +416,9 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				log_err( _("Invalid '.' reference remains\n"));
 				/* Not setting ds->dotdir here since
 				 * this '.' entry is invalid */
-				increment_link(sbp, entryblock);
+				increment_link(entryblock,
+					       ip->i_di.di_num.no_addr,
+					       _("valid reference"));
 				(*count)++;
 				ds->entry_count++;
 				return 0;
@@ -422,7 +426,8 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		}
 
 		ds->dotdir = 1;
-		increment_link(sbp, entryblock);
+		increment_link(entryblock, ip->i_di.di_num.no_addr,
+			       _("valid reference"));
 		(*count)++;
 		ds->entry_count++;
 
@@ -449,7 +454,9 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				/* FIXME: Should we continue on here
 				 * and check the rest of the '..'
 				 * entry? */
-				increment_link(sbp, entryblock);
+				increment_link(entryblock,
+					       ip->i_di.di_num.no_addr,
+					       _("valid reference"));
 				(*count)++;
 				ds->entry_count++;
 				return 0;
@@ -472,7 +479,9 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				return 1;
 			} else {
 				log_err( _("Bad '..' directory entry remains\n"));
-				increment_link(sbp, entryblock);
+				increment_link(entryblock,
+					       ip->i_di.di_num.no_addr,
+					       _("valid reference"));
 				(*count)++;
 				ds->entry_count++;
 				return 0;
@@ -489,7 +498,8 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		}
 
 		ds->dotdotdir = 1;
-		increment_link(sbp, entryblock);
+		increment_link(entryblock, ip->i_di.di_num.no_addr,
+			       _("valid reference"));
 		(*count)++;
 		ds->entry_count++;
 		return 0;
@@ -498,7 +508,8 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	/* After this point we're only concerned with directories */
 	if(q != gfs2_inode_dir) {
 		log_debug( _("Found non-dir inode dentry\n"));
-		increment_link(sbp, entryblock);
+		increment_link(entryblock, ip->i_di.di_num.no_addr,
+			       _("valid reference"));
 		(*count)++;
 		ds->entry_count++;
 		return 0;
@@ -526,7 +537,8 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		stack;
 		return -1;
 	}
-	increment_link(sbp, entryblock);
+	increment_link(entryblock, ip->i_di.di_num.no_addr,
+		       _("valid reference"));
 	(*count)++;
 	ds->entry_count++;
 	/* End of checks */
@@ -603,8 +615,10 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 			log_warn( _("Adding '.' entry\n"));
 			dir_add(sysinode, filename, filename_len,
 				&(sysinode->i_di.di_num), DT_DIR);
-			increment_link(sysinode->i_sbd,
-				       sysinode->i_di.di_num.no_addr);
+			/* This system inode is linked to itself via '.' */
+			increment_link(sysinode->i_di.di_num.no_addr,
+				       sysinode->i_di.di_num.no_addr,
+				       "sysinode \".\"");
 			ds.entry_count++;
 			free(filename);
 		} else
@@ -783,8 +797,10 @@ int pass2(struct gfs2_sbd *sbp)
 
 				dir_add(ip, filename, filename_len,
 					&(ip->i_di.di_num), DT_DIR);
-				increment_link(ip->i_sbd,
-					       ip->i_di.di_num.no_addr);
+				/* directory links to itself via '.' */
+				increment_link(ip->i_di.di_num.no_addr,
+					       ip->i_di.di_num.no_addr,
+					       _("\". (itself)\""));
 				ds.entry_count++;
 				free(filename);
 				log_err( _("The directory was fixed.\n"));
