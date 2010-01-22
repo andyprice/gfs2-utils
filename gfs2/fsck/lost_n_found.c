@@ -29,6 +29,7 @@
 int add_inode_to_lf(struct gfs2_inode *ip){
 	char tmp_name[256];
 	__be32 inode_type;
+	uint64_t lf_blocks;
 	struct dir_info *di;
 
 	if(!lf_dip) {
@@ -83,6 +84,8 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 		log_err( _("Trying to add lost+found to itself...skipping"));
 		return 0;
 	}
+	lf_blocks = lf_dip->i_di.di_blocks;
+
 	switch(ip->i_di.di_mode & S_IFMT){
 	case S_IFDIR:
 		log_info( _("Adding .. entry pointing to lost+found for "
@@ -165,6 +168,11 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 
 	dir_add(lf_dip, tmp_name, strlen(tmp_name), &(ip->i_di.di_num),
 		inode_type);
+	/* If the lf directory had new blocks added we have to mark them
+	   properly in the bitmap so they're not freed. */
+	if (lf_dip->i_di.di_blocks != lf_blocks)
+		reprocess_inode(lf_dip, "lost+found");
+
 	/* This inode is linked from lost+found */
   	increment_link(ip->i_di.di_num.no_addr, lf_dip->i_di.di_num.no_addr,
 		       _("from lost+found"));

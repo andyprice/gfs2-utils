@@ -22,6 +22,7 @@ static int attach_dotdot_to(struct gfs2_sbd *sbp, uint64_t newdotdot,
 	char *filename;
 	int filename_len;
 	struct gfs2_inode *ip, *pip;
+	uint64_t cur_blks;
 
 	ip = fsck_load_inode(sbp, block);
 	pip = fsck_load_inode(sbp, newdotdot);
@@ -52,7 +53,16 @@ static int attach_dotdot_to(struct gfs2_sbd *sbp, uint64_t newdotdot,
 		log_warn( _("Unable to remove \"..\" directory entry.\n"));
 	else
 		decrement_link(olddotdot, block, _("old \"..\""));
+	cur_blks = ip->i_di.di_blocks;
 	dir_add(ip, filename, filename_len, &pip->i_di.di_num, DT_DIR);
+	if (cur_blks != ip->i_di.di_blocks) {
+		char dirname[80];
+
+		sprintf(dirname, _("Directory at %lld (0x%llx)"),
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)ip->i_di.di_num.no_addr);
+		reprocess_inode(ip, dirname);
+	}
 	increment_link(newdotdot, block, _("new \"..\""));
 	bmodified(ip->i_bh);
 	fsck_inode_put(&ip);

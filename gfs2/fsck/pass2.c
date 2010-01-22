@@ -551,6 +551,8 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 	if(!ds.dotdir) {
 		log_err( _("No '.' entry found for %s directory.\n"), dirname);
 		if (query( _("Is it okay to add '.' entry? (y/n) "))) {
+			uint64_t cur_blks = sysinode->i_di.di_blocks;
+
 			sprintf(tmp_name, ".");
 			filename_len = strlen(tmp_name); /* no trailing NULL */
 			if(!(filename = malloc(sizeof(char) * filename_len))) {
@@ -568,6 +570,8 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 			log_warn( _("Adding '.' entry\n"));
 			dir_add(sysinode, filename, filename_len,
 				&(sysinode->i_di.di_num), DT_DIR);
+			if (cur_blks != sysinode->i_di.di_blocks)
+				reprocess_inode(sysinode, dirname);
 			/* This system inode is linked to itself via '.' */
 			increment_link(sysinode->i_di.di_num.no_addr,
 				       sysinode->i_di.di_num.no_addr,
@@ -733,6 +737,8 @@ int pass2(struct gfs2_sbd *sbp)
 				dirblk, dirblk);
 
 			if (query( _("Is it okay to add '.' entry? (y/n) "))) {
+				uint64_t cur_blks;
+
 				sprintf(tmp_name, ".");
 				filename_len = strlen(tmp_name); /* no trailing
 								    NULL */
@@ -750,8 +756,18 @@ int pass2(struct gfs2_sbd *sbp)
 				}
 				memcpy(filename, tmp_name, filename_len);
 
+				cur_blks = ip->i_di.di_blocks;
 				dir_add(ip, filename, filename_len,
 					&(ip->i_di.di_num), DT_DIR);
+				if (cur_blks != ip->i_di.di_blocks) {
+					char dirname[80];
+
+					sprintf(dirname, _("Directory at %lld "
+							   "(0x%llx)"),
+						(unsigned long long)dirblk,
+						(unsigned long long)dirblk);
+					reprocess_inode(ip, dirname);
+				}
 				/* directory links to itself via '.' */
 				increment_link(ip->i_di.di_num.no_addr,
 					       ip->i_di.di_num.no_addr,
