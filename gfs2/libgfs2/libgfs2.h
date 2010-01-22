@@ -263,42 +263,55 @@ struct gfs2_bmap {
 };
 
 /* block_list.c */
-#define FREE	        (0x0)  /*   0000 */
-#define BLOCK_IN_USE    (0x1)  /*   0001 */
-#define DIR_INDIR_BLK   (0x2)  /*   0010 */
-#define DIR_INODE       (0x3)  /*   0011 */
-#define FILE_INODE      (0x4)  /*   0100 */
-#define LNK_INODE       (0x5)
-#define BLK_INODE       (0x6)
-#define CHR_INODE       (0x7)
-#define FIFO_INODE      (0x8)
-#define SOCK_INODE      (0x9)
-#define DIR_LEAF_INODE  (0xA)  /*   1010 */
-#define JOURNAL_BLK     (0xB)  /*   1011 */
-#define OTHER_META      (0xC)  /*   1100 */
-#define EATTR_META      (0xD)  /*   1101 */
-#define BAD_BLOCK       (0xE)  /*   1110 */
-#define INVALID_META    (0xF)  /*   1111 */
 
-/* Must be kept in sync with mark_to_bitmap array in block_list.c */
 enum gfs2_mark_block {
-	gfs2_block_free = FREE,
-	gfs2_block_used = BLOCK_IN_USE,
-	gfs2_indir_blk = DIR_INDIR_BLK,
-	gfs2_inode_dir = DIR_INODE,
-	gfs2_inode_file = FILE_INODE,
-	gfs2_inode_lnk = LNK_INODE,
-	gfs2_inode_blk = BLK_INODE,
-	gfs2_inode_chr = CHR_INODE,
-	gfs2_inode_fifo = FIFO_INODE,
-	gfs2_inode_sock = SOCK_INODE,
-	gfs2_leaf_blk = DIR_LEAF_INODE,
-	gfs2_journal_blk = JOURNAL_BLK,
-	gfs2_meta_other = OTHER_META,
-	gfs2_meta_eattr = EATTR_META,
-	gfs2_bad_block = BAD_BLOCK, /* Contains at least one bad block */
-	gfs2_meta_inval = INVALID_META,
+	gfs2_block_free    = (0x0),
+	gfs2_block_used    = (0x1),
+	gfs2_indir_blk     = (0x2),
+	gfs2_inode_dir     = (0x3),
+	gfs2_inode_file    = (0x4),
+
+	gfs2_inode_lnk     = (0x5),
+	gfs2_inode_blk     = (0x6),
+	gfs2_inode_chr     = (0x7),
+	gfs2_inode_fifo    = (0x8),
+	gfs2_inode_sock    = (0x9),
+
+	gfs2_journal_blk   = (0xa),
+	gfs2_meta_inval    = (0xb),
+	gfs2_leaf_blk      = (0xc),
+	gfs2_meta_other    = (0xd),
+	gfs2_meta_eattr    = (0xe),
+
+	gfs2_bad_block     = (0xf), /* Contains at least one bad block */
 };
+
+static const inline char *block_type_string(uint8_t q)
+{
+	const char *blktyp[] = {
+		"free",
+		"data",
+		"indirect data",
+		"directory",
+		"file",
+
+		"symlink",
+		"block device",
+		"char device",
+		"fifo",
+		"socket",
+
+		"journaled data",
+		"invalid meta",
+		"dir leaf",
+		"other metadata",
+		"eattribute",
+
+		"bad"};
+	if (q < 16)
+		return (blktyp[q]);
+	return blktyp[15];
+}
 
 extern struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
 					  uint64_t *addl_mem_needed);
