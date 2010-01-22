@@ -534,7 +534,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	int error;
 	struct gfs2_leaf leaf, oldleaf;
 	uint64_t leaf_no, old_leaf, bad_leaf = -1;
-	uint64_t first_leaf_ptr = -1, first_ok_leaf = -1;
+	uint64_t first_ok_leaf;
 	struct gfs2_buffer_head *lbh;
 	int lindex;
 	struct gfs2_sbd *sbp = ip->i_sbd;
@@ -544,20 +544,26 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	/* Find the first valid leaf pointer in range and use it as our "old"
 	   leaf. That way, bad blocks at the beginning will be overwritten
 	   with the first valid leaf. */
-	first_ok_leaf = -1;
+	first_ok_leaf = leaf_no = -1;
 	for(lindex = 0; lindex < (1 << ip->i_di.di_depth); lindex++) {
-		gfs2_get_leaf_nr(ip, lindex, &first_ok_leaf);
-		if (first_leaf_ptr == -1)
-			first_leaf_ptr = first_ok_leaf;
-		if(gfs2_check_range(ip->i_sbd, first_ok_leaf) == 0) {
-			lbh = bread(sbp, first_ok_leaf);
+		gfs2_get_leaf_nr(ip, lindex, &leaf_no);
+		if (gfs2_check_range(ip->i_sbd, leaf_no) == 0) {
+			lbh = bread(sbp, leaf_no);
 			/* Make sure it's really a valid leaf block. */
 			if (gfs2_check_meta(lbh, GFS2_METATYPE_LF) == 0) {
 				brelse(lbh);
+				first_ok_leaf = leaf_no;
 				break;
 			}
 			brelse(lbh);
 		}
+	}
+	if (first_ok_leaf == -1) { /* no valid leaf found */
+		log_err( _("Directory #%llu (0x%llx) has no valid leaf "
+			   "blocks\n"),
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr);
+		return 1;
 	}
 	old_leaf = -1;
 	memset(&oldleaf, 0, sizeof(oldleaf));
