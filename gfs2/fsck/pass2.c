@@ -182,41 +182,6 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	entryblock = de->de_inum.no_addr;
 
 	/* Start of checks */
-	if (de->de_rec_len < GFS2_DIRENT_SIZE(de->de_name_len)){
-		log_err( _("Dir entry with bad record or name length\n"
-			"\tRecord length = %u\n"
-			"\tName length = %u\n"),
-			de->de_rec_len,
-			de->de_name_len);
-		gfs2_blockmap_set(bl, ip->i_di.di_num.no_addr,
-				  gfs2_meta_inval);
-		return 1;
-		/* FIXME: should probably delete the entry here at the
-		 * very least - maybe look at attempting to fix it */
-	}
-	
-	calculated_hash = gfs2_disk_hash(filename, de->de_name_len);
-	if (de->de_hash != calculated_hash){
-	        log_err( _("Dir entry with bad hash or name length\n"
-					"\tHash found         = %u (0x%x)\n"
-					"\tFilename           = %s\n"), de->de_hash, de->de_hash,
-					filename);
-			log_err( _("\tName length found  = %u\n"
-					"\tHash expected      = %u (0x%x)\n"),
-					de->de_name_len, calculated_hash, calculated_hash);
-			if(query( _("Fix directory hash for %s? (y/n) "),
-				  filename)) {
-				de->de_hash = calculated_hash;
-				gfs2_dirent_out(de, (char *)dent);
-				log_err( _("Directory entry hash for %s fixed.\n"), filename);
-			}
-			else {
-				log_err( _("Directory entry hash for %s not fixed.\n"), filename);
-				return 1;
-			}
-	}
-	/* FIXME: This should probably go to the top of the fxn, and
-	 * references to filename should be replaced with tmp_name */
 	memset(tmp_name, 0, MAX_FILENAME);
 	if(de->de_name_len < MAX_FILENAME)
 		strncpy(tmp_name, filename, de->de_name_len);
@@ -228,11 +193,9 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			   "%lld (0x%llx) is out of range\n"),
 			 tmp_name, (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
-		if(query( _("Clear directory entry tp out of range block? (y/n) "))) {
-			log_err( _("Clearing %s\n"), tmp_name);
-			dirent2_del(ip, bh, prev_de, dent);
-			bmodified(bh);
-			return 1;
+		if(query( _("Clear directory entry to out of range block? "
+			    "(y/n) "))) {
+			goto nuke_dentry;
 		} else {
 			log_err( _("Directory entry to out of range block remains\n"));
 			(*count)++;
@@ -242,6 +205,43 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			return 0;
 		}
 	}
+
+	if (de->de_rec_len < GFS2_DIRENT_SIZE(de->de_name_len)) {
+		log_err( _("Dir entry with bad record or name length\n"
+			"\tRecord length = %u\n\tName length = %u\n"),
+			de->de_rec_len, de->de_name_len);
+		if(!query( _("Clear the directory entry? (y/n) "))) {
+			log_err( _("Directory entry not fixed.\n"));
+			goto dentry_is_valid;
+		}
+		gfs2_blockmap_set(bl, ip->i_di.di_num.no_addr,
+				  gfs2_meta_inval);
+		log_err( _("Bad directory entry deleted.\n"));
+		return 1;
+	}
+	
+	calculated_hash = gfs2_disk_hash(tmp_name, de->de_name_len);
+	if (de->de_hash != calculated_hash){
+	        log_err( _("Dir entry with bad hash or name length\n"
+			   "\tHash found         = %u (0x%x)\n"
+			   "\tFilename           = %s\n"),
+			 de->de_hash, de->de_hash, tmp_name);
+		log_err( _("\tName length found  = %u\n"
+			   "\tHash expected      = %u (0x%x)\n"),
+			 de->de_name_len, calculated_hash, calculated_hash);
+		if(!query( _("Fix directory hash for %s? (y/n) "),
+			   tmp_name)) {
+			log_err( _("Directory entry hash for %s not "
+				   "fixed.\n"), tmp_name);
+			goto dentry_is_valid;
+		}
+		de->de_hash = calculated_hash;
+		gfs2_dirent_out(de, (char *)dent);
+		bmodified(bh);
+		log_err( _("Directory entry hash for %s fixed.\n"),
+			 tmp_name);
+	}
+
 	q = block_type(entryblock);
 	/* Get the status of the directory inode */
 	if(q == gfs2_bad_block) {
@@ -250,25 +250,21 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		/* Handle bad blocks */
 		log_err( _("Found a bad directory entry: %s\n"), filename);
 
-		if(query( _("Delete inode containing bad blocks? (y/n)"))) {
-			entry_ip = fsck_load_inode(sbp, entryblock);
-			check_inode_eattr(entry_ip, &pass2_fxns_delete);
-			check_metatree(entry_ip, &pass2_fxns_delete);
-			bmodified(entry_ip->i_bh);
-			fsck_inode_put(&entry_ip);
-			dirent2_del(ip, bh, prev_de, dent);
-			gfs2_blockmap_set(bl, entryblock, gfs2_block_free);
-			bmodified(bh);
-			log_warn( _("The inode containing bad blocks was "
-				    "deleted.\n"));
-			return 1;
-		} else {
+		if(!query( _("Delete inode containing bad blocks? (y/n)"))) {
 			log_warn( _("Entry to inode containing bad blocks remains\n"));
-			(*count)++;
-			ds->entry_count++;
-			return 0;
+			goto dentry_is_valid;
 		}
 
+		if (ip->i_di.di_num.no_addr == entryblock)
+			entry_ip = ip;
+		else
+			entry_ip = fsck_load_inode(sbp, entryblock);
+		check_inode_eattr(entry_ip, &pass2_fxns_delete);
+		check_metatree(entry_ip, &pass2_fxns_delete);
+		if (entry_ip != ip)
+			fsck_inode_put(&entry_ip);
+		gfs2_blockmap_set(bl, entryblock, gfs2_block_free);
+		goto nuke_dentry;
 	}
 	if(q < gfs2_inode_dir || q > gfs2_inode_sock) {
 		log_err( _("Directory entry '%s' referencing inode %llu "
@@ -282,41 +278,29 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			 _("previously marked invalid") :
 			 _("is not an inode"));
 
-		if(query( _("Clear directory entry to non-inode block? "
-			    "(y/n) "))) {
-			struct gfs2_buffer_head *bhi;
-
-			dirent2_del(ip, bh, prev_de, dent);
-			bmodified(bh);
-			log_warn( _("Directory entry '%s' cleared\n"), tmp_name);
-			/* If it was previously marked invalid (i.e. known
-			   to be bad, not just a free block, etc.) then
-			   delete any metadata it holds.  If not, return. */
-			if (q != gfs2_meta_inval)
-				return 1;
-
-			/* Now try to clear the dinode, if it is an dinode */
-			bhi = bread(sbp, entryblock);
-			error = gfs2_check_meta(bhi, GFS2_METATYPE_DI);
-			bmodified(bhi);
-			brelse(bhi);
-			if (error)
-				return 1; /* not a dinode: nothing to delete */
-
-			entry_ip = fsck_load_inode(sbp, entryblock);
-			check_inode_eattr(entry_ip, &pass2_fxns_delete);
-			check_metatree(entry_ip, &pass2_fxns_delete);
-			bmodified(entry_ip->i_bh);
-			fsck_inode_put(&entry_ip);
-			gfs2_blockmap_set(bl, entryblock, gfs2_block_free);
-
-			return 1;
-		} else {
+		if(!query( _("Clear directory entry to non-inode block? "
+			     "(y/n) "))) {
 			log_err( _("Directory entry to non-inode block remains\n"));
-			(*count)++;
-			ds->entry_count++;
-			return 0;
+			goto dentry_is_valid;
 		}
+
+		/* Don't decrement the link here: Here in pass2, we increment
+		   only when we know it's okay.
+		   decrement_link(ip->i_di.di_num.no_addr); */
+		/* If it was previously marked invalid (i.e. known
+		   to be bad, not just a free block, etc.) then the temptation
+		   would be to delete any metadata it holds.  The trouble is:
+		   if it's invalid, we may or _may_not_ have traversed its
+		   metadata tree, and therefore may or may not have marked the
+		   blocks it points to as a metadata type, or as a duplicate.
+		   If there is really a duplicate reference, but we didn't
+		   process the metadata tree because it's invalid, some other
+		   inode has a reference to the metadata block, in which case
+		   freeing it would do more harm than good.  IOW we cannot
+		   count on "delete_block_if_notdup" knowing whether it's
+		   really a duplicate block if we never traversed the metadata
+		   tree for the invalid inode. */
+		goto nuke_dentry;
 	}
 
 	error = check_file_type(de->de_type, q);
@@ -340,22 +324,18 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			 (unsigned long long)entryblock,
 			 (unsigned long long)entryblock,
 			 block_type_string(q));
-		if(query( _("Clear stale directory entry? (y/n) "))) {
+		if(!query( _("Clear stale directory entry? (y/n) "))) {
+			log_err( _("Stale directory entry remains\n"));
+			goto dentry_is_valid;
+		}
+		if (ip->i_di.di_num.no_addr == entryblock)
+			entry_ip = ip;
+		else
 			entry_ip = fsck_load_inode(sbp, entryblock);
 		check_inode_eattr(entry_ip, &clear_eattrs);
 		if (entry_ip != ip)
 			fsck_inode_put(&entry_ip);
-
-			dirent2_del(ip, bh, prev_de, dent);
-			bmodified(bh);
-			log_err( _("Stale directory entry deleted\n"));
-			return 1;
-		} else {
-			log_err( _("Stale directory entry remains\n"));
-			(*count)++;
-			ds->entry_count++;
-			return 0;
-		}
+		goto nuke_dentry;
 	}
 
 	if(!strcmp(".", tmp_name)) {
@@ -366,26 +346,20 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				" (0x%llx)\n"),
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			if(query( _("Clear duplicate '.' entry? (y/n) "))) {
-				entry_ip = fsck_load_inode(sbp, entryblock);
-				check_inode_eattr(entry_ip, &clear_eattrs);
-				fsck_inode_put(&entry_ip);
-
-				dirent2_del(ip, bh, prev_de, dent);
-				bmodified(bh);
-				return 1;
-			} else {
+			if(!query( _("Clear duplicate '.' entry? (y/n) "))) {
 				log_err( _("Duplicate '.' entry remains\n"));
 				/* FIXME: Should we continue on here
-				 * and check the rest of the '.'
-				 * entry? */
-				increment_link(entryblock,
-					       ip->i_di.di_num.no_addr,
-					       _("valid reference"));
-				(*count)++;
-				ds->entry_count++;
-				return 0;
+				 * and check the rest of the '.' entry? */
+				goto dentry_is_valid;
 			}
+			if (ip->i_di.di_num.no_addr == entryblock)
+				entry_ip = ip;
+			else
+				entry_ip = fsck_load_inode(sbp, entryblock);
+			check_inode_eattr(entry_ip, &clear_eattrs);
+			if (entry_ip != ip)
+				fsck_inode_put(&entry_ip);
+			goto nuke_dentry;
 		}
 
 		/* GFS2 does not rely on '.' being in a certain
@@ -403,35 +377,24 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				(unsigned long long)entryblock,
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			if(query( _("Remove '.' reference? (y/n) "))) {
-				entry_ip = fsck_load_inode(sbp, entryblock);
-				check_inode_eattr(entry_ip, &clear_eattrs);
-				fsck_inode_put(&entry_ip);
-
-				dirent2_del(ip, bh, prev_de, dent);
-				bmodified(bh);
-				return 1;
-
-			} else {
+			if(!query( _("Remove '.' reference? (y/n) "))) {
 				log_err( _("Invalid '.' reference remains\n"));
 				/* Not setting ds->dotdir here since
 				 * this '.' entry is invalid */
-				increment_link(entryblock,
-					       ip->i_di.di_num.no_addr,
-					       _("valid reference"));
-				(*count)++;
-				ds->entry_count++;
-				return 0;
+				goto dentry_is_valid;
 			}
+			if (ip->i_di.di_num.no_addr == entryblock)
+				entry_ip = ip;
+			else
+				entry_ip = fsck_load_inode(sbp, entryblock);
+			check_inode_eattr(entry_ip, &clear_eattrs);
+			if (entry_ip != ip)
+				fsck_inode_put(&entry_ip);
+			goto nuke_dentry;
 		}
 
 		ds->dotdir = 1;
-		increment_link(entryblock, ip->i_di.di_num.no_addr,
-			       _("valid reference"));
-		(*count)++;
-		ds->entry_count++;
-
-		return 0;
+		goto dentry_is_valid;
 	}
 	if(!strcmp("..", tmp_name)) {
 		log_debug( _("Found .. dentry\n"));
@@ -440,27 +403,23 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				"(0x%llx)\n"),
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			if(query( _("Clear duplicate '..' entry? (y/n) "))) {
-
-				entry_ip = fsck_load_inode(sbp, entryblock);
-				check_inode_eattr(entry_ip, &clear_eattrs);
-				fsck_inode_put(&entry_ip);
-
-				dirent2_del(ip, bh, prev_de, dent);
-				bmodified(bh);
-				return 1;
-			} else {
+			if(!query( _("Clear duplicate '..' entry? (y/n) "))) {
 				log_err( _("Duplicate '..' entry remains\n"));
 				/* FIXME: Should we continue on here
 				 * and check the rest of the '..'
 				 * entry? */
-				increment_link(entryblock,
-					       ip->i_di.di_num.no_addr,
-					       _("valid reference"));
-				(*count)++;
-				ds->entry_count++;
-				return 0;
+				goto dentry_is_valid;
 			}
+
+			if (ip->i_di.di_num.no_addr == entryblock)
+				entry_ip = ip;
+			else
+				entry_ip = fsck_load_inode(sbp, entryblock);
+			check_inode_eattr(entry_ip, &clear_eattrs);
+			if (entry_ip != ip)
+				fsck_inode_put(&entry_ip);
+
+			goto nuke_dentry;
 		}
 
 		if(q != gfs2_inode_dir) {
@@ -468,24 +427,19 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				"pointing to something that's not a directory"),
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			if(query( _("Clear bad '..' directory entry? (y/n) "))) {
+			if(!query( _("Clear bad '..' directory entry? (y/n) "))) {
+				log_err( _("Bad '..' directory entry remains\n"));
+				goto dentry_is_valid;
+			}
+			if (ip->i_di.di_num.no_addr == entryblock)
+				entry_ip = ip;
+			else
 				entry_ip = fsck_load_inode(sbp, entryblock);
 			check_inode_eattr(entry_ip, &clear_eattrs);
 			if (entry_ip != ip)
 				fsck_inode_put(&entry_ip);
 
-				dirent2_del(ip, bh, prev_de, dent);
-				bmodified(bh);
-				return 1;
-			} else {
-				log_err( _("Bad '..' directory entry remains\n"));
-				increment_link(entryblock,
-					       ip->i_di.di_num.no_addr,
-					       _("valid reference"));
-				(*count)++;
-				ds->entry_count++;
-				return 0;
-			}
+			goto nuke_dentry;
 		}
 		/* GFS2 does not rely on '..' being in a certain location */
 
@@ -498,21 +452,16 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		}
 
 		ds->dotdotdir = 1;
-		increment_link(entryblock, ip->i_di.di_num.no_addr,
-			       _("valid reference"));
-		(*count)++;
-		ds->entry_count++;
-		return 0;
+		goto dentry_is_valid;
 	}
 
 	/* After this point we're only concerned with directories */
 	if(q != gfs2_inode_dir) {
-		log_debug( _("Found non-dir inode dentry\n"));
-		increment_link(entryblock, ip->i_di.di_num.no_addr,
-			       _("valid reference"));
-		(*count)++;
-		ds->entry_count++;
-		return 0;
+		log_debug( _("Found non-dir inode dentry pointing to %lld "
+			     "(0x%llx)\n"),
+			   (unsigned long long)entryblock,
+			   (unsigned long long)entryblock);
+		goto dentry_is_valid;
 	}
 
 	/*log_debug( _("Found plain directory dentry\n"));*/
@@ -521,28 +470,29 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		log_err( _("%s: Hard link to block %" PRIu64" (0x%" PRIx64
 			   ") detected.\n"), tmp_name, entryblock, entryblock);
 
-		if(query( _("Clear hard link to directory? (y/n) "))) {
-			bmodified(bh);
-			dirent2_del(ip, bh, prev_de, dent);
-			log_warn( _("Directory entry %s cleared\n"), filename);
-
-			return 1;
-		} else {
+		if(query( _("Clear hard link to directory? (y/n) ")))
+			goto nuke_dentry;
+		else {
 			log_err( _("Hard link to directory remains\n"));
-			(*count)++;
-			ds->entry_count++;
-			return 0;
+			goto dentry_is_valid;
 		}
 	} else if (error < 0) {
 		stack;
 		return -1;
 	}
+dentry_is_valid:
+	/* This directory inode links to this inode via this dentry */
 	increment_link(entryblock, ip->i_di.di_num.no_addr,
 		       _("valid reference"));
 	(*count)++;
 	ds->entry_count++;
 	/* End of checks */
 	return 0;
+
+nuke_dentry:
+	dirent2_del(ip, bh, prev_de, dent);
+	log_err( _("Bad directory entry '%s' cleared.\n"), tmp_name);
+	return 1;
 }
 
 
