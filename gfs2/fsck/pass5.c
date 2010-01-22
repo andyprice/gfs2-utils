@@ -59,7 +59,6 @@ static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int b
 	unsigned char rg_status, block_status;
 	uint8_t q;
 	uint64_t block;
-	static int free_unlinked = -1;
 
 	/* FIXME verify cast */
 	byte = (unsigned char *) buffer;
@@ -83,19 +82,11 @@ static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int b
 		   So we ignore it. */
 		if (rg_status == GFS2_BLKST_UNLINKED &&
 		    block_status == GFS2_BLKST_FREE) {
-			if (free_unlinked == -1) {
-				log_err( _("Unlinked inode block found at "
-					   "block %llu (0x%llx).\n"),
-					 (unsigned long long)block,
-					 (unsigned long long)block);
-				if(query( _("Do you want me to fix the "
-					    "bitmap for all unlinked "
-					    "blocks? (y/n) ")))
-					free_unlinked = 1;
-				else
-					free_unlinked = 0;
-			}
-			if (free_unlinked) {
+			log_err( _("Unlinked inode block found at "
+				   "block %llu (0x%llx).\n"),
+				 (unsigned long long)block,
+				 (unsigned long long)block);
+			if(query(_("Do you want to fix the bitmap? (y/n) "))) {
 				if(gfs2_set_bitmap(sbp, block, block_status))
 					log_err(_("Unlinked block %llu "
 						  "(0x%llx) bitmap not fixed."

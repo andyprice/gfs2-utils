@@ -418,7 +418,7 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rg,
  */
 int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 {
-	int error, descrepencies;
+	int error, discrepancies;
 	osi_list_t expected_rglist;
 	int calc_rg_count = 0, rgcount_from_index, rg;
 	osi_list_t *exp, *act; /* expected, actual */
@@ -470,7 +470,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 	/* we have a large number that are completely wrong, we should   */
 	/* abandon this method of recovery and try a better one.         */
 	/* ------------------------------------------------------------- */
-	descrepencies = 0;
+	discrepancies = 0;
 	for (rg = 0, act = sdp->rglist.next, exp = expected_rglist.next;
 	     act != &sdp->rglist && exp != &expected_rglist;
 	     act = act->next, exp = exp->next, rg++) {
@@ -483,14 +483,14 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 		    !ri_equal(actual->ri, expected->ri, ri_data0) ||
 		    !ri_equal(actual->ri, expected->ri, ri_data) ||
 		    !ri_equal(actual->ri, expected->ri, ri_bitbytes)) {
-			descrepencies++;
+			discrepancies++;
 		}
 	}
-	if (trust_lvl < distrust && descrepencies > (trust_lvl * 8)) {
+	if (trust_lvl < distrust && discrepancies > (trust_lvl * 8)) {
 		log_warn( _("Level %d didn't work.  Too many descepencies.\n"),
 			 trust_lvl + 1);
 		log_warn( _("%d out of %d RGs did not match what was expected.\n"),
-			 descrepencies, rg);
+			 discrepancies, rg);
 		gfs2_rgrp_free(&expected_rglist);
 		gfs2_rgrp_free(&sdp->rglist);
 		return -1;

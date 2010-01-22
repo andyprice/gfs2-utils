@@ -257,9 +257,9 @@ struct metapath {
 
 /* bitmap.c */
 struct gfs2_bmap {
-        uint64_t size;
-        uint64_t mapsize;
-        unsigned char *map;
+	uint64_t size;
+	uint64_t mapsize;
+	unsigned char *map;
 };
 
 /* block_list.c */

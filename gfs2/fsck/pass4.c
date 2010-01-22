@@ -116,7 +116,8 @@ static int scan_inode_list(struct gfs2_sbd *sbp) {
 			 * them. */
 			if(!ip->i_di.di_size && !ip->i_di.di_eattr){
 				log_err( _("Unlinked inode has zero size\n"));
-				if(query( _("Clear zero-size unlinked inode? (y/n) "))) {
+				if(query(_("Clear zero-size unlinked inode? "
+					   "(y/n) "))) {
 					fsck_blockmap_set(ip, ii->inode,
 						_("unlinked zero-length"),
 							  gfs2_block_free);

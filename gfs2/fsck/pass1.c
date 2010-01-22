@@ -85,31 +85,53 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			  struct gfs2_buffer_head **bh, void *private)
 {
 	uint8_t q;
-	int found_dup = 0;
+	int found_dup = 0, iblk_type;
 	struct gfs2_buffer_head *nbh;
 	struct block_count *bc = (struct block_count *)private;
+	const char *blktypedesc;
 
 	*bh = NULL;
 
 	if (gfs2_check_range(ip->i_sbd, block)){ /* blk outside of FS */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
 				  _("itself"), gfs2_bad_block);
-		log_debug( _("Bad indirect block pointer (out of range).\n"));
+		log_debug( _("Bad indirect block pointer (out of range) "
+			     "found in inode %lld (0x%llx).\n"),
+			   (unsigned long long)ip->i_di.di_num.no_addr,
+			   (unsigned long long)ip->i_di.di_num.no_addr);
 
 		return 1;
 	}
+	if (S_ISDIR(ip->i_di.di_mode)) {
+		iblk_type = GFS2_METATYPE_JD;
+		blktypedesc = _("a directory hash table block");
+	} else {
+		iblk_type = GFS2_METATYPE_IN;
+		blktypedesc = _("a journaled data block");
+	}
 	q = block_type(block);
 	if(q != gfs2_block_free) {
-		log_err( _("Found duplicate block referenced as metadata in "
-			   "indirect block - was marked %d\n"), q);
+		log_err( _("Found duplicate block %llu (0x%llx) referenced "
+			   "as metadata in indirect block for dinode "
+			   "%llu (0x%llx) - was marked %d (%s)\n"),
+ 			 (unsigned long long)block,
+			 (unsigned long long)block,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr, q,
+			 block_type_string(q));
 		gfs2_dup_set(block);
 		found_dup = 1;
 	}
 	nbh = bread(ip->i_sbd, block);
 
-	if (gfs2_check_meta(nbh, GFS2_METATYPE_IN)){
-		log_debug( _("Bad indirect block pointer (points to "
-			     "something that is not an indirect block).\n"));
+	if (gfs2_check_meta(nbh, iblk_type)){
+		log_debug( _("Inode %lld (0x%llx) has a bad indirect block "
+			     "pointer %lld (0x%llx) (points to something "
+			     "that is not %s).\n"),
+			   (unsigned long long)ip->i_di.di_num.no_addr,
+			   (unsigned long long)ip->i_di.di_num.no_addr,
+			   (unsigned long long)block,
+			   (unsigned long long)block, blktypedesc);
 		if(!found_dup) {
 			fsck_blockmap_set(ip, block, _("bad indirect"),
 					  gfs2_meta_inval);
@@ -380,7 +402,6 @@ static int check_leaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 		clear_eas(ip, bc, block, 0,
 			  _("Extended Attribute block removed due to "
 			    "previous errors.\n"));
-		bmodified(leaf_bh);
 		brelse(leaf_bh);
 		return 1;
 	}
@@ -559,7 +580,6 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			    PRIu64 " (0x%" PRIx64 ")? (y/n) "),
 			 block, block)) {
 			ip->i_di.di_num.no_addr = ip->i_di.di_num.no_formal_ino = block;
-			gfs2_dinode_out(&ip->i_di, ip->i_bh);
 			bmodified(ip->i_bh);
 		} else
 			log_err( _("Address in inode at block #%" PRIu64

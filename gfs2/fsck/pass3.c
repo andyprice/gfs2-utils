@@ -64,7 +64,6 @@ static int attach_dotdot_to(struct gfs2_sbd *sbp, uint64_t newdotdot,
 		reprocess_inode(ip, dirname);
 	}
 	increment_link(newdotdot, block, _("new \"..\""));
-	bmodified(ip->i_bh);
 	fsck_inode_put(&ip);
 	fsck_inode_put(&pip);
 	free(filename);

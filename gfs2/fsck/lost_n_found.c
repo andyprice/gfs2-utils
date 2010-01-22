@@ -30,21 +30,22 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	char tmp_name[256];
 	__be32 inode_type;
 	uint64_t lf_blocks;
+	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct dir_info *di;
 
 	if(!lf_dip) {
 		uint8_t q;
 
-		log_info( _("Locating/Creating lost and found directory\n"));
+		log_info( _("Locating/Creating lost+found directory\n"));
 
-		lf_dip = createi(ip->i_sbd->md.rooti, "lost+found",
+		lf_dip = createi(sdp->md.rooti, "lost+found",
 				 S_IFDIR | 0700, 0);
 		/* createi will have incremented the di_nlink link count for
 		   the root directory.  We must increment the nlink value
 		   in the hash table to keep them in sync so that pass4 can
-		   detect and fix any discrepancies. */
-		set_link_count(ip->i_sbd->sd_sb.sb_root_dir.no_addr,
-			       ip->i_sbd->md.rooti->i_di.di_nlink);
+		   detect and fix any descrepancies. */
+		set_link_count(sdp->sd_sb.sb_root_dir.no_addr,
+			       sdp->md.rooti->i_di.di_nlink);
 
 		q = block_type(lf_dip->i_di.di_num.no_addr);
 		if(q != gfs2_inode_dir) {
@@ -60,14 +61,14 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 					  _("lost+found dinode"),
 					  gfs2_inode_dir);
 			/* root inode links to lost+found */
-			increment_link(ip->i_sbd->md.rooti->i_di.di_num.no_addr,
+			increment_link(sdp->md.rooti->i_di.di_num.no_addr,
 				       lf_dip->i_di.di_num.no_addr, _("root"));
 			/* lost+found link for '.' from itself */
 			increment_link(lf_dip->i_di.di_num.no_addr,
 				       lf_dip->i_di.di_num.no_addr, "\".\"");
 			/* lost+found link for '..' back to root */
 			increment_link(lf_dip->i_di.di_num.no_addr,
-				       ip->i_sbd->md.rooti->i_di.di_num.no_addr,
+				       sdp->md.rooti->i_di.di_num.no_addr,
 				       "\"..\"");
 		}
 		log_info( _("lost+found directory is dinode %lld (0x%llx)\n"),
@@ -96,7 +97,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 		/* If there's a pre-existing .. directory entry, we have to
 		   back out the links. */
 		di = dirtree_find(ip->i_di.di_num.no_addr);
-		if (di && gfs2_check_range(ip->i_sbd, di->dotdot_parent) == 0){
+		if (di && gfs2_check_range(sdp, di->dotdot_parent) == 0) {
 			struct gfs2_inode *dip;
 
 			log_debug(_("Directory %lld (0x%llx) already had a "
@@ -108,7 +109,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 			decrement_link(di->dotdot_parent,
 				       ip->i_di.di_num.no_addr,
 				       _(".. unlinked, moving to lost+found"));
-			dip = fsck_load_inode(ip->i_sbd, di->dotdot_parent);
+			dip = fsck_load_inode(sdp, di->dotdot_parent);
 			dip->i_di.di_nlink--;
 			log_debug(_("Decrementing its links to %d\n"),
 				  dip->i_di.di_nlink);
@@ -121,7 +122,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 				  (unsigned long long)ip->i_di.di_num.no_addr,
 				  (unsigned long long)ip->i_di.di_num.no_addr);
 		if(gfs2_dirent_del(ip, "..", 2))
-			log_warn( _("add_inode_to_lf: Unable to remove "
+			log_warn( _("add_inode_to_lf:  Unable to remove "
 				    "\"..\" directory entry.\n"));
 
 		dir_add(ip, "..", 2, &(lf_dip->i_di.di_num), DT_DIR);
@@ -181,7 +182,8 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 		increment_link(lf_dip->i_di.di_num.no_addr,
 			       ip->i_di.di_mode, _("to lost+found"));
 
-	log_notice( _("Added inode #%llu to lost+found dir\n"),
+	log_notice( _("Added inode #%llu (0x%llx) to lost+found dir\n"),
+		    (unsigned long long)ip->i_di.di_num.no_addr,
 		    (unsigned long long)ip->i_di.di_num.no_addr);
 	return 0;
 }

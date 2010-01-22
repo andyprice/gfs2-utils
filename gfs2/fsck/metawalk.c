@@ -251,6 +251,7 @@ static int dirent_repair(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		/* first, figure out a probable name length */
 		p = (char *)dent + sizeof(struct gfs2_dirent);
 		while (*p &&         /* while there's a non-zero char and */
+		       isprint(*p) && /* a printable character and */
 		       p < bh_end) { /* not past end of buffer */
 			calc_de_name_len++;
 			p++;
@@ -1116,6 +1117,8 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 			for (ptr = (uint64_t *)(bh->b_data + head_size);
 			     (char *)ptr < (bh->b_data + ip->i_sbd->bsize);
 			     ptr++) {
+				if (skip_this_pass || fsck_abort)
+					return FSCK_OK;
 				nbh = NULL;
 
 				if (!*ptr)
@@ -1248,6 +1251,8 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		last_reported_fblock = -10000000;
 
 	while (error >= 0 && !osi_list_empty(list)) {
+		if (fsck_abort)
+			return 0;
 		bh = osi_list_entry(list->next, struct gfs2_buffer_head,
 				    b_altlist);
 

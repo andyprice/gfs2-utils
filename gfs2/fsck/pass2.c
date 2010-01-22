@@ -26,22 +26,30 @@ static int set_parent_dir(struct gfs2_sbd *sbp, uint64_t childblock,
 	struct dir_info *di;
 
 	di = dirtree_find(childblock);
-	if (di) {
-		if(di->dinode == childblock) {
-			if (di->treewalk_parent) {
-				log_err( _("Another directory at block %" PRIu64
-						" (0x%" PRIx64 ") already contains"
-						" this child - checking %" PRIu64 " (0x%" PRIx64 ")\n"),
-						di->treewalk_parent, di->treewalk_parent,
-						parentblock, parentblock);
-				return 1;
-			}
-			di->treewalk_parent = parentblock;
-		}
-	} else {
+	if(!di) {
 		log_err( _("Unable to find block %"PRIu64" (0x%" PRIx64
 			   ") in dir_info list\n"), childblock, childblock);
 		return -1;
+	}
+
+	if(di->dinode == childblock) {
+		if (di->treewalk_parent) {
+			log_err( _("Another directory at block %" PRIu64
+				   " (0x%" PRIx64 ") already contains this "
+				   "child %lld (%llx) - checking parent %"
+				   PRIu64 " (0x%" PRIx64 ")\n"),
+				 di->treewalk_parent, di->treewalk_parent,
+				 (unsigned long long)childblock,
+				 (unsigned long long)childblock,
+				 parentblock, parentblock);
+			return 1;
+		}
+		log_debug( _("Child %lld (0x%llx) has parent %lld (0x%llx)\n"),
+			   (unsigned long long)childblock,
+			   (unsigned long long)childblock,
+			   (unsigned long long)parentblock,
+			   (unsigned long long)parentblock);
+		di->treewalk_parent = parentblock;
 	}
 
 	return 0;
@@ -249,7 +257,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		/* This entry's inode has bad blocks in it */
 
 		/* Handle bad blocks */
-		log_err( _("Found a bad directory entry: %s\n"), filename);
+		log_err( _("Found a bad directory entry: %s\n"), tmp_name);
 
 		if(!query( _("Delete inode containing bad blocks? (y/n)"))) {
 			log_warn( _("Entry to inode containing bad blocks remains\n"));
@@ -530,9 +538,10 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 	pass2_fxns.private = (void *) &ds;
 	if(ds.q == gfs2_bad_block) {
 		/* First check that the directory's metatree is valid */
-		if(check_metatree(sysinode, &pass2_fxns)) {
+		error = check_metatree(sysinode, &pass2_fxns);
+		if (error < 0) {
 			stack;
-			return -1;
+			return error;
 		}
 	}
 	error = check_dir(sysinode->i_sbd, iblock, &pass2_fxns);
@@ -683,10 +692,11 @@ int pass2(struct gfs2_sbd *sbp)
 			/* First check that the directory's metatree
 			 * is valid */
 			ip = fsck_load_inode(sbp, dirblk);
-			if(check_metatree(ip, &pass2_fxns)) {
-				fsck_inode_put(&ip);
+			error = check_metatree(ip, &pass2_fxns);
+			fsck_inode_put(&ip);
+			if (error < 0) {
 				stack;
-				return FSCK_ERROR;
+				return error;
 			}
 		}
 		error = check_dir(sbp, dirblk, &pass2_fxns);
@@ -695,40 +705,43 @@ int pass2(struct gfs2_sbd *sbp)
 			return FSCK_ERROR;
 		}
 		if (error > 0) {
-			struct dir_info *di = NULL;
+			struct dir_info *di;
 
 			di = dirtree_find(dirblk);
 			if(!di) {
 				stack;
 				return FSCK_ERROR;
 			}
-			if(error == 0) {
-				/* FIXME: factor */
-				if(query( _("Remove directory entry for bad"
-					    " inode %"PRIu64" (0x%" PRIx64 ") in %"PRIu64
-					    " (0x%" PRIx64 ")? (y/n)"),
-					  dirblk, dirblk, di->treewalk_parent,
-					  di->treewalk_parent)) {
-					error = remove_dentry_from_dir(sbp,
-							di->treewalk_parent,
-								       dirblk);
-					if(error < 0) {
-						stack;
-						return FSCK_ERROR;
-					}
-					if(error > 0) {
-						log_warn( _("Unable to find dentry for %"
-							    PRIu64 " (0x%" PRIx64 ") in %" PRIu64
-							    " (0x%" PRIx64 ")\n"), dirblk, dirblk,
-							  di->treewalk_parent, di->treewalk_parent);
-					}
-					log_warn( _("Directory entry removed\n"));
-				} else
-					log_err( _("Directory entry to invalid inode remains.\n"));
-			}
+			if(query( _("Remove directory entry for bad"
+				    " inode %"PRIu64" (0x%" PRIx64 ") in %"PRIu64
+				    " (0x%" PRIx64 ")? (y/n)"), dirblk,
+				  dirblk, di->treewalk_parent,
+				  di->treewalk_parent)) {
+				error = remove_dentry_from_dir(sbp, di->treewalk_parent,
+							       dirblk);
+				if(error < 0) {
+					stack;
+					return FSCK_ERROR;
+				}
+				if(error > 0) {
+					log_warn( _("Unable to find dentry for %"
+						    PRIu64 " (0x%" PRIx64 ") in %" PRIu64
+						    " (0x%" PRIx64 ")\n"),
+						  dirblk, dirblk,
+						  di->treewalk_parent,
+						  di->treewalk_parent);
+				}
+				log_warn( _("Directory entry removed\n"));
+			} else
+				log_err( _("Directory entry to invalid inode remains.\n"));
+			log_debug( _("Directory block %lld (0x%llx) "
+				     "is now marked as 'invalid'\n"),
+				   (unsigned long long)dirblk,
+				   (unsigned long long)dirblk);
 			/* Can't use fsck_blockmap_set here because we don't
 			   have an inode in memory. */
 			gfs2_blockmap_set(bl, dirblk, gfs2_meta_inval);
+			check_n_fix_bitmap(sbp, dirblk, gfs2_meta_inval);
 		}
 		ip = fsck_load_inode(sbp, dirblk);
 		if(!ds.dotdir) {
@@ -780,7 +793,7 @@ int pass2(struct gfs2_sbd *sbp)
 			}
 		}
 
-		if(ip->i_di.di_entries != ds.entry_count) {
+		if(!fsck_abort && ip->i_di.di_entries != ds.entry_count) {
 			log_err( _("Entries is %d - should be %d for inode "
 				"block %llu (0x%llx)\n"),
 				ip->i_di.di_entries, ds.entry_count,
