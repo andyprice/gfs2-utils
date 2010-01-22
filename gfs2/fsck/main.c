@@ -17,6 +17,7 @@
 #include "libgfs2.h"
 #include "fsck.h"
 #include "osi_list.h"
+#include "metawalk.h"
 #include "util.h"
 
 struct gfs2_options opts = {0};
@@ -170,9 +171,11 @@ static int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 		/* bitmap.  In that case, don't rebuild the inode.  */
 		/* Just reuse the inode and fix the bitmap.         */
 		if (ds.q == gfs2_block_free) {
-			log_info( _("The inode exists but the block is not marked 'in use'; fixing it.\n"));
-			gfs2_blockmap_set(bl,sysinode->i_di.di_num.no_addr,
-					  mark);
+			log_info( _("The inode exists but the block is not "
+				    "marked 'in use'; fixing it.\n"));
+			fsck_blockmap_set(sysinode,
+					  sysinode->i_di.di_num.no_addr,
+					  filename, mark);
 			ds.q = mark;
 			if (mark == gfs2_inode_dir)
 				dirtree_insert(sysinode->i_di.di_num.no_addr);
@@ -188,8 +191,9 @@ static int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 		log_err( _("Invalid or missing %s system inode.\n"), filename);
 		if (query(_("Create new %s system inode? (y/n) "), filename)) {
 			builder(sysinode->i_sbd);
-			gfs2_blockmap_set(bl, sysinode->i_di.di_num.no_addr,
-					  mark);
+			fsck_blockmap_set(sysinode,
+					  sysinode->i_di.di_num.no_addr,
+					  filename, mark);
 			ds.q = mark;
 			if (mark == gfs2_inode_dir)
 				dirtree_insert(sysinode->i_di.di_num.no_addr);

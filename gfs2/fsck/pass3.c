@@ -203,9 +203,20 @@ int pass3(struct gfs2_sbd *sbp)
 					log_err( _("Found unlinked directory containing bad block\n"));
 					if(query(
 					   _("Clear unlinked directory with bad blocks? (y/n) "))) {
+						log_warn( _("inode %lld (0x%llx) is "
+						       "now marked as free\n"),
+							  (unsigned long long)
+							  di->dinode,
+							  (unsigned long long)
+							  di->dinode);
+						/* Can't use fsck_blockmap_set
+						   because we don't have ip */
 						gfs2_blockmap_set(bl,
-							       di->dinode,
-							       gfs2_block_free);
+								  di->dinode,
+							  gfs2_block_free);
+						check_n_fix_bitmap(sbp,
+								   di->dinode,
+							   gfs2_block_free);
 						break;
 					} else
 						log_err( _("Unlinked directory with bad block remains\n"));
@@ -218,9 +229,25 @@ int pass3(struct gfs2_sbd *sbp)
 				   q != gfs2_inode_fifo &&
 				   q != gfs2_inode_sock) {
 					log_err( _("Unlinked block marked as inode not an inode\n"));
+					if(!query(_("Clear the unlinked block?"
+						    " (y/n) "))) {
+						log_err( _("The block was not "
+							   "cleared\n"));
+						break;
+					}
+					log_warn( _("inode %lld (0x%llx) is now "
+						    "marked as free\n"),
+						  (unsigned long long)
+						  di->dinode,
+						  (unsigned long long)
+						  di->dinode);
+					/* Can't use fsck_blockmap_set
+					   because we don't have ip */
 					gfs2_blockmap_set(bl, di->dinode,
 							  gfs2_block_free);
-					log_err( _("Cleared\n"));
+					check_n_fix_bitmap(sbp, di->dinode,
+							   gfs2_block_free);
+					log_err( _("The block was cleared\n"));
 					break;
 				}
 
@@ -232,9 +259,10 @@ int pass3(struct gfs2_sbd *sbp)
 				if(!ip->i_di.di_size && !ip->i_di.di_eattr){
 					log_err( _("Unlinked directory has zero size.\n"));
 					if(query( _("Remove zero-size unlinked directory? (y/n) "))) {
-						gfs2_blockmap_set(bl,
-							       di->dinode,
-							       gfs2_block_free);
+						fsck_blockmap_set(ip,
+								  di->dinode,
+						_("zero-sized unlinked inode"),
+							  gfs2_block_free);
 						fsck_inode_put(&ip);
 						break;
 					} else {

@@ -313,6 +313,34 @@ static const inline char *block_type_string(uint8_t q)
 	return blktyp[15];
 }
 
+/* Must be kept in sync with gfs2_mark_block enum above. Blocks marked as
+   invalid or bad are considered metadata until actually freed. */
+static inline int blockmap_to_bitmap(enum gfs2_mark_block m)
+{
+	static int bitmap_states[16] = {
+		GFS2_BLKST_FREE,
+		GFS2_BLKST_USED,
+		GFS2_BLKST_USED,
+		GFS2_BLKST_DINODE,
+		GFS2_BLKST_DINODE,
+
+		GFS2_BLKST_DINODE,
+		GFS2_BLKST_DINODE,
+		GFS2_BLKST_DINODE,
+		GFS2_BLKST_DINODE,
+		GFS2_BLKST_DINODE,
+
+		GFS2_BLKST_FREE,
+		GFS2_BLKST_FREE,
+		GFS2_BLKST_USED,
+		GFS2_BLKST_USED,
+		GFS2_BLKST_USED,
+
+		GFS2_BLKST_USED
+	};
+	return bitmap_states[m];
+}
+
 extern struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
 					  uint64_t *addl_mem_needed);
 extern struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num);

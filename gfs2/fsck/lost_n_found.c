@@ -14,6 +14,7 @@
 #include "libgfs2.h"
 #include "lost_n_found.h"
 #include "link.h"
+#include "metawalk.h"
 #include "util.h"
 
 /* add_inode_to_lf - Add dir entry to lost+found for the inode
@@ -46,7 +47,8 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 			 * directory or just found an old one, and we
 			 * used that instead of the block_type to run
 			 * this */
-			gfs2_blockmap_set(bl, lf_dip->i_di.di_num.no_addr,
+			fsck_blockmap_set(ip, lf_dip->i_di.di_num.no_addr,
+					  _("lost+found dinode"),
 					  gfs2_inode_dir);
 			/* root inode links to lost+found */
 			increment_link(ip->i_sbd->md.rooti->i_di.di_num.no_addr,

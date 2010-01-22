@@ -10,14 +10,15 @@
 #include "eattr.h"
 #include "metawalk.h"
 
-static int clear_blk_nodup(struct gfs2_sbd *sbp, uint64_t block)
+static int clear_blk_nodup(struct gfs2_inode *ip, uint64_t block)
 {
 	if(is_duplicate(block)) {
 		log_debug( _("Not clearing block with marked as a duplicate\n"));
 		return 1;
 	}
 
-	gfs2_blockmap_set(bl, block, gfs2_block_free);
+	fsck_blockmap_set(ip, block, _("cleared eattr block"),
+			  gfs2_block_free);
 
 	return 0;
 
@@ -27,14 +28,14 @@ int clear_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 		      uint64_t parent, struct gfs2_buffer_head **bh,
 		      void *private)
 {
-	return clear_blk_nodup(ip->i_sbd, block);
+	return clear_blk_nodup(ip, block);
 }
 
 int clear_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 		     uint64_t parent, struct gfs2_buffer_head **bh,
 		     void *private)
 {
-	return clear_blk_nodup(ip->i_sbd, block);
+	return clear_blk_nodup(ip, block);
 }
 
 int clear_eattr_entry (struct gfs2_inode *ip,
@@ -83,7 +84,7 @@ int clear_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 {
 	uint64_t block = be64_to_cpu(*ea_data_ptr);
 
-	return clear_blk_nodup(ip->i_sbd, block);
+	return clear_blk_nodup(ip, block);
 
 }
 

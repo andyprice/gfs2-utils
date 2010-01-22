@@ -27,9 +27,17 @@ extern int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 extern int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			     uint64_t parent, struct gfs2_buffer_head **bh,
 			     void *private);
+extern int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
+		       const char *btype, enum gfs2_mark_block mark,
+		       const char *caller, int line);
+extern int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
+		       enum gfs2_mark_block new_blockmap_state);
 extern struct duptree *dupfind(uint64_t block);
 
 #define is_duplicate(dblock) ((dupfind(dblock)) ? 1 : 0)
+
+#define fsck_blockmap_set(ip, b, bt, m) _fsck_blockmap_set(ip, b, bt, m, \
+							   __FILE__, __LINE__)
 
 /* metawalk_fxns: function pointers to check various parts of the fs
  *

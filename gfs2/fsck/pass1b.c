@@ -167,8 +167,8 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 			 dh->id->parent);
 		/* Setting the block to invalid means the inode is
 		 * cleared in pass2 */
-		gfs2_blockmap_set(bl, ip->i_di.di_num.no_addr,
-				  gfs2_meta_inval);
+		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
+				  _("inode with duplicate"), gfs2_meta_inval);
 	}
 	return 0;
 }
@@ -199,7 +199,8 @@ static int clear_dup_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 		log_err( _("Inode %s is in directory %" PRIu64 " (0x%" PRIx64 ")\n"),
 				dh->id->name ? dh->id->name : "",
 				dh->id->parent, dh->id->parent);
-		gfs2_blockmap_set(bl, ip->i_di.di_eattr, gfs2_meta_inval);
+		fsck_blockmap_set(ip, ip->i_di.di_eattr,
+				  _("indirect eattr"), gfs2_meta_inval);
 	}
 
 	return 0;
@@ -225,7 +226,8 @@ static int clear_dup_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 				dh->id->name ? dh->id->name : "",
 				dh->id->parent, dh->id->parent);
 		/* mark the main eattr block invalid */
-		gfs2_blockmap_set(bl, ip->i_di.di_eattr, gfs2_meta_inval);
+		fsck_blockmap_set(ip, ip->i_di.di_eattr,
+				  _("indirect eattr leaf"), gfs2_meta_inval);
 	}
 
 	return 0;
@@ -295,7 +297,8 @@ static int clear_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 				dh->id->name ? dh->id->name : "",
 				dh->id->parent, dh->id->parent);
 		/* mark the main eattr block invalid */
-		gfs2_blockmap_set(bl, ip->i_di.di_eattr, gfs2_meta_inval);
+		fsck_blockmap_set(ip, ip->i_di.di_eattr,
+				  _("extended eattr leaf"), gfs2_meta_inval);
 	}
 
 	return 0;
@@ -417,9 +420,9 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
 					inodetree_delete(ii);
 				/* Setting the block to invalid means the inode
 				   is cleared in pass2 */
-				gfs2_blockmap_set(bl, ip->i_di.di_num.no_addr,
-						  gfs2_meta_inval);
-				bmodified(ip->i_bh);
+				fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
+						 _("inode with bad duplicate"),
+						 gfs2_meta_inval);
 				fsck_inode_put(&ip);
 			} else {
 				log_warn( _("The bad inode was not cleared."));
@@ -463,8 +466,8 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
 		if(!id->ea_only)
 			check_metatree(ip, &clear_dup_fxns);
 
-		gfs2_blockmap_set(bl, ip->i_di.di_num.no_addr,
-				  gfs2_meta_inval);
+		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
+				  _("inode with duplicate"), gfs2_meta_inval);
 		fsck_inode_put(&ip); /* out, brelse, free */
 		dh.ref_inode_count--;
 		if(dh.ref_inode_count == 1)

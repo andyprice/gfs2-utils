@@ -8,15 +8,154 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <libintl.h>
+#include <ctype.h>
 #define _(String) gettext(String)
 
 #include "libgfs2.h"
+#include "osi_tree.h"
 #include "fsck.h"
 #include "util.h"
 #include "metawalk.h"
 #include "hash.h"
+#include "inode_hash.h"
 
 #define COMFORTABLE_BLKS 5242880 /* 20GB in 4K blocks */
+
+/* There are two bitmaps: (1) The "blockmap" that fsck uses to keep track of
+   what block type has been discovered, and (2) The rgrp bitmap.  Function
+   gfs2_blockmap_set is used to set the former and gfs2_set_bitmap
+   is used to set the latter.  The two must be kept in sync, otherwise
+   you'll get bitmap mismatches.  This function checks the status of the
+   bitmap whenever the blockmap changes, and fixes it accordingly. */
+int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
+		       enum gfs2_mark_block new_blockmap_state)
+{
+	int old_bitmap_state, new_bitmap_state;
+	struct rgrp_list *rgd;
+
+	rgd = gfs2_blk2rgrpd(sdp, blk);
+
+	old_bitmap_state = gfs2_get_bitmap(sdp, blk, rgd);
+	if (old_bitmap_state < 0) {
+		log_err( _("Block %lld (0x%llx) is not represented in the"
+			   "system bitmap; part of an rgrp or superblock.\n"),
+			 (unsigned long long)blk, (unsigned long long)blk);
+		return -1;
+	}
+	new_bitmap_state = blockmap_to_bitmap(new_blockmap_state);
+	if (old_bitmap_state != new_bitmap_state) {
+		const char *allocdesc[] = {"free space", "data", "unlinked",
+					   "inode", "reserved"};
+
+		log_err( _("Block %llu (0x%llx) seems to be %s, but is "
+			   "marked as %s in the bitmap.\n"),
+			 (unsigned long long)blk, (unsigned long long)blk,
+			 allocdesc[new_bitmap_state],
+			 allocdesc[old_bitmap_state]);
+		if(query( _("Okay to fix the bitmap? (y/n)"))) {
+			/* If the new bitmap state is free (and therefore the
+			   old state was not) we have to add to the free
+			   space in the rgrp. If the old bitmap state was
+			   free (and therefore it no longer is) we have to
+			   subtract to the free space.  If the type changed
+			   from dinode to data or data to dinode, no change in
+			   free space. */
+			gfs2_set_bitmap(sdp, blk, new_bitmap_state);
+			if (new_bitmap_state == GFS2_BLKST_FREE) {
+				/* If we're freeing a dinode, get rid of
+				   the hash table entries for it. */
+				if (old_bitmap_state == GFS2_BLKST_DINODE) {
+					struct dir_info *dt;
+					struct inode_info *ii;
+
+					dt = dirtree_find(blk);
+					if (dt)
+						dirtree_delete(dt);
+					ii = inodetree_find(blk);
+					if (ii)
+						inodetree_delete(ii);
+				}
+				rgd->rg.rg_free++;
+				gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
+			} else if (old_bitmap_state == GFS2_BLKST_FREE) {
+				rgd->rg.rg_free--;
+				gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
+			}
+			log_err( _("The bitmap was fixed.\n"));
+		} else {
+			log_err( _("The bitmap inconsistency was ignored.\n"));
+		}
+	}
+	return 0;
+}
+
+/*
+ * _fsck_blockmap_set - Mark a block in the 4-bit blockmap and the 2-bit
+ *                      bitmap, and adjust free space accordingly.
+ */
+int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
+		       const char *btype, enum gfs2_mark_block mark,
+		       const char *caller, int fline)
+{
+	int error;
+
+	if (print_level >= MSG_DEBUG) {
+		const char *p;
+
+		p = strrchr(caller, '/');
+		if (p)
+			p++;
+		else
+			p = caller;
+		/* I'm circumventing the log levels here on purpose to make the
+		   output easier to debug. */
+		if (ip->i_di.di_num.no_addr == bblock) {
+			print_fsck_log(MSG_DEBUG, p, fline,
+				       _("%s inode found at block %lld "
+					 "(0x%llx): marking as '%s'\n"),
+				       btype, (unsigned long long)
+				       ip->i_di.di_num.no_addr,
+				       (unsigned long long)
+				       ip->i_di.di_num.no_addr,
+				       block_type_string(mark));
+		} else if (mark == gfs2_bad_block || mark == gfs2_meta_inval) {
+			print_fsck_log(MSG_DEBUG, p, fline,
+				       _("inode %lld (0x%llx) references "
+					 "%s block %lld (0x%llx): "
+					 "marking as '%s'\n"),
+				       (unsigned long long)
+				       ip->i_di.di_num.no_addr,
+				       (unsigned long long)
+				       ip->i_di.di_num.no_addr,
+				       btype, (unsigned long long)bblock,
+				       (unsigned long long)bblock,
+				       block_type_string(mark));
+		} else {
+			print_fsck_log(MSG_DEBUG, p, fline,
+				       _("inode %lld (0x%llx) references "
+					 "%s block %lld (0x%llx): "
+					 "marking as '%s'\n"),
+				       (unsigned long long)
+				       ip->i_di.di_num.no_addr,
+				       (unsigned long long)
+				       ip->i_di.di_num.no_addr, btype,
+				       (unsigned long long)bblock,
+				       (unsigned long long)bblock,
+				       block_type_string(mark));
+		}
+	}
+
+	/* First, check the rgrp bitmap against what we think it should be.
+	   If that fails, it's an invalid block--part of an rgrp. */
+	error = check_n_fix_bitmap(ip->i_sbd, bblock, mark);
+	if (error) {
+		log_err( _("This block is not represented in the bitmap.\n"));
+		return error;
+	}
+
+	error = gfs2_blockmap_set(bl, bblock, mark);
+	return error;
+}
 
 struct duptree *dupfind(uint64_t block)
 {
@@ -694,9 +833,10 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 						/* Endianness doesn't matter
 						   in this case because it's
 						   a single byte. */
-						gfs2_blockmap_set(bl,
-							     ip->i_di.di_eattr,
-							     gfs2_meta_eattr);
+						fsck_blockmap_set(ip,
+						       ip->i_di.di_eattr,
+						       _("extended attribute"),
+						       gfs2_meta_eattr);
 						log_err( _("The EA was "
 							   "fixed.\n"));
 					} else {
@@ -845,10 +985,9 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 							 pass->private);
 			}
 			if (leaf_pointer_errors == leaf_pointers) {
-				if (indirect_buf->b_modified)
-					gfs2_set_bitmap(sdp, indirect,
-							GFS2_BLKST_FREE);
-				gfs2_blockmap_set(bl, indirect,
+				fsck_blockmap_set(ip, indirect,
+						  _("indirect extended "
+						    "attribute"),
 						  gfs2_block_free);
 				error = 1;
 			}
@@ -888,6 +1027,29 @@ int check_inode_eattr(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	}
 
 	return error;
+}
+
+/**
+ * free_metalist - free all metadata on a multi-level metadata list
+ */
+static void free_metalist(struct gfs2_inode *ip, osi_list_t *mlp)
+{
+	int i;
+	struct gfs2_buffer_head *nbh;
+
+	for (i = 0; i < GFS2_MAX_META_HEIGHT; i++) {
+		osi_list_t *list;
+
+		list = &mlp[i];
+		while (!osi_list_empty(list)) {
+			nbh = osi_list_entry(list->next,
+					     struct gfs2_buffer_head, b_altlist);
+			if (nbh == ip->i_bh)
+				osi_list_del(&nbh->b_altlist);
+			else
+				brelse(nbh);
+		}
+	}
 }
 
 /**
@@ -971,16 +1133,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 	} /* for height */
 	return 0;
 fail:
-	for (i = 0; i < GFS2_MAX_META_HEIGHT; i++) {
-		osi_list_t *list;
-		list = &mlp[i];
-		while (!osi_list_empty(list)) {
-			nbh = osi_list_entry(list->next,
-					     struct gfs2_buffer_head, b_altlist);
-			brelse(nbh);
-			osi_list_del(&nbh->b_altlist);
-		}
-	}
+	free_metalist(ip, mlp);
 	return -1;
 }
 
@@ -993,7 +1146,7 @@ fail:
 int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	osi_list_t metalist[GFS2_MAX_META_HEIGHT];
-	osi_list_t *list, *tmp;
+	osi_list_t *list;
 	struct gfs2_buffer_head *bh;
 	uint64_t block, *ptr;
 	uint32_t height = ip->i_di.di_height;
@@ -1025,8 +1178,9 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	if (ip->i_di.di_blocks > COMFORTABLE_BLKS)
 		last_reported_fblock = -10000000;
 
-	for (tmp = list->next; tmp != list; tmp = tmp->next) {
-		bh = osi_list_entry(tmp, struct gfs2_buffer_head, b_altlist);
+	while (error >= 0 && !osi_list_empty(list)) {
+		bh = osi_list_entry(list->next, struct gfs2_buffer_head,
+				    b_altlist);
 
 		if (height > 1) {
 			if (gfs2_check_meta(bh, GFS2_METATYPE_IN)) {
@@ -1065,6 +1219,10 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			if (ip->i_di.di_blocks > COMFORTABLE_BLKS)
 				big_file_comfort(ip, blks_checked);
 		}
+		if (bh == ip->i_bh)
+			osi_list_del(&bh->b_altlist);
+		else
+			brelse(bh);
 	}
 	if (ip->i_di.di_blocks > COMFORTABLE_BLKS) {
 		log_notice( _("\rLarge file at %lld (0x%llx) - 100 percent "
@@ -1073,22 +1231,6 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			    (unsigned long long)ip->i_di.di_num.no_addr,
 			    (unsigned long long)ip->i_di.di_num.no_addr);
 		fflush(stdout);
-	}
-
-	/* free metalists */
-	for (i = 0; i < GFS2_MAX_META_HEIGHT; i++)
-	{
-		list = &metalist[i];
-		while (!osi_list_empty(list))
-		{
-			bh = osi_list_entry(list->next,
-					    struct gfs2_buffer_head, b_altlist);
-			if (bh == ip->i_bh)
-				osi_list_del(&bh->b_altlist);
-			else
-				brelse(bh);
-			osi_list_del(&bh->b_altlist);
-		}
 	}
 
 end:
@@ -1207,7 +1349,7 @@ int delete_blocks(struct gfs2_inode *ip, uint64_t block,
 				  (unsigned long long)block,
 				  (unsigned long long)ip->i_di.di_num.no_addr,
 				  (unsigned long long)ip->i_di.di_num.no_addr);
-			gfs2_blockmap_set(bl, block, gfs2_block_free);
+			fsck_blockmap_set(ip, block, btype, gfs2_block_free);
 			gfs2_free_block(ip->i_sbd, block);
 		}
 	}
