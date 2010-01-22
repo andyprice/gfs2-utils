@@ -1072,11 +1072,23 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 	uint32_t height = ip->i_di.di_height;
 	struct gfs2_buffer_head *bh, *nbh, *metabh = ip->i_bh;
 	osi_list_t *prev_list, *cur_list, *tmp;
-	int i, head_size;
+	int i, head_size, iblk_type;
 	uint64_t *ptr, block;
-	int err;
+	int error = 0, err;
 
 	osi_list_add(&metabh->b_altlist, &mlp[0]);
+
+	/* Directories are special.  Their 'data' is the hash table, which is
+	   basically an indirect block list. Their height is not important
+	   because it checks everything through the hash table using
+	   "depth" field calculations. However, we still have to check the
+	   indirect blocks, even if the height == 1.  */
+	if (S_ISDIR(ip->i_di.di_mode)) {
+		height++;
+		iblk_type = GFS2_METATYPE_JD;
+	} else {
+		iblk_type = GFS2_METATYPE_IN;
+	}
 
 	/* if(<there are no indirect blocks to check>) */
 	if (height < 2)
@@ -1091,7 +1103,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 
 			if (i > 1) {
 				/* if this isn't really a block list skip it */
-				if (gfs2_check_meta(bh, GFS2_METATYPE_IN))
+				if (gfs2_check_meta(bh, iblk_type))
 					continue;
 				head_size = sizeof(struct gfs2_meta_header);
 			} else {
@@ -1116,9 +1128,12 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 				   it gets with "bread". */
 				if(err < 0) {
 					stack;
+					error = err;
 					goto fail;
 				}
 				if(err > 0) {
+					if (!error)
+						error = err;
 					log_debug( _("Skipping block %" PRIu64
 						     " (0x%" PRIx64 ")\n"),
 						   block, block);
@@ -1137,10 +1152,10 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 			} /* for all data on the indirect block */
 		} /* for blocks at that height */
 	} /* for height */
-	return 0;
+	return error;
 fail:
 	free_metalist(ip, mlp);
-	return -1;
+	return error;
 }
 
 /**
@@ -1158,26 +1173,32 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	uint32_t height = ip->i_di.di_height;
 	int  i, head_size;
 	uint64_t blks_checked = 0;
-	int error = 0;
+	int error;
 
-	if (!height)
-		goto end;
+	if (!height && !S_ISDIR(ip->i_di.di_mode))
+		return 0;
 
 	for (i = 0; i < GFS2_MAX_META_HEIGHT; i++)
 		osi_list_init(&metalist[i]);
 
-	/* create metalist for each level */
-	if (build_and_check_metalist(ip, &metalist[0], pass)){
+	/* create and check the metadata list for each height */
+	error = build_and_check_metalist(ip, &metalist[0], pass);
+	if (error) {
 		stack;
-		return -1;
+		return error;
 	}
 
-	/* We don't need to record directory blocks - they will be
-	 * recorded later...i think... */
-        if (S_ISDIR(ip->i_di.di_mode))
-		log_debug( _("Directory with height > 0 at %llu (0x%llx)\n"),
-			  (unsigned long long)ip->i_di.di_num.no_addr,
-			  (unsigned long long)ip->i_di.di_num.no_addr);
+	/* For directories, we've already checked the "data" blocks which
+	 * comprise the directory hash table, so we perform the directory
+	 * checks and exit. */
+        if (S_ISDIR(ip->i_di.di_mode)) {
+		free_metalist(ip, &metalist[0]);
+		if (!(ip->i_di.di_flags & GFS2_DIF_EXHASH))
+			return 0;
+		/* check validity of leaf blocks and leaf chains */
+		error = check_leaf_blks(ip, pass);
+		return error;
+	}
 
 	/* check data blocks */
 	list = &metalist[height - 1];
@@ -1238,20 +1259,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			    (unsigned long long)ip->i_di.di_num.no_addr);
 		fflush(stdout);
 	}
-
-end:
-        if (S_ISDIR(ip->i_di.di_mode)) {
-		/* check validity of leaf blocks and leaf chains */
-		if (ip->i_di.di_flags & GFS2_DIF_EXHASH) {
-			error = check_leaf_blks(ip, pass);
-			if(error < 0)
-				return -1;
-			if(error > 0)
-				return 1;
-		}
-	}
-
-	return 0;
+	return error;
 }
 
 /* Checks stuffed inode directories */
