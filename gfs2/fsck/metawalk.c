@@ -1159,6 +1159,49 @@ fail:
 }
 
 /**
+ * check_data - check all data pointers for a given buffer
+ *              This does not include "data" blocks that are really
+ *              hash table blocks for directories.
+ *
+ * @ip: 
+ * 
+ * returns: +ENOENT if there are too many bad pointers
+ *          -1 if a more serious error occurred.
+ *          0 if no errors occurred
+ *          1 if errors were found and corrected
+ *          2 (ENOENT) is there were too many bad pointers
+ */
+static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
+		      uint64_t *ptr_start, char *ptr_end,
+		      uint64_t *blks_checked)
+{
+	int error = 0, rc = 0;
+	uint64_t block, *ptr;
+
+	/* If there isn't much pointer corruption check the pointers */
+	for (ptr = ptr_start ; (char *)ptr < ptr_end && !fsck_abort; ptr++) {
+		if (!*ptr)
+			continue;
+
+		if (skip_this_pass || fsck_abort)
+			return error;
+		block =  be64_to_cpu(*ptr);
+		/* It's important that we don't call gfs2_check_range and
+		   bypass calling check_data on invalid blocks because that
+		   would defeat the rangecheck_block related functions in
+		   pass1. Therefore the individual check_data functions
+		   should do a range check. */
+		rc = pass->check_data(ip, block, pass->private);
+		if (rc < 0)
+			return rc;
+		if (!error && rc)
+			error = rc;
+		(*blks_checked)++;
+	}
+	return error;
+}
+
+/**
  * check_metatree
  * @ip:
  * @rgd:
@@ -1169,11 +1212,10 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	osi_list_t metalist[GFS2_MAX_META_HEIGHT];
 	osi_list_t *list;
 	struct gfs2_buffer_head *bh;
-	uint64_t block, *ptr;
 	uint32_t height = ip->i_di.di_height;
 	int  i, head_size;
 	uint64_t blks_checked = 0;
-	int error;
+	int error, rc;
 
 	if (!height && !S_ISDIR(ip->i_di.di_mode))
 		return 0;
@@ -1229,23 +1271,19 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			}
 			head_size = sizeof(struct gfs2_dinode);
 		}
-		ptr = (uint64_t *)(bh->b_data + head_size);
 
-		for ( ; (char *)ptr < (bh->b_data + ip->i_sbd->bsize); ptr++) {
-			if (!*ptr)
-				continue;
+		if (pass->check_data)
+			rc = check_data(ip, pass, (uint64_t *)
+					(bh->b_data + head_size),
+					(bh->b_data + ip->i_sbd->bsize),
+					&blks_checked);
+		else
+			rc = 0;
 
-			block =  be64_to_cpu(*ptr);
-
-			if(pass->check_data &&
-			   (pass->check_data(ip, block, pass->private) < 0)) {
-				stack;
-				return -1;
-			}
-			blks_checked++;
-			if (ip->i_di.di_blocks > COMFORTABLE_BLKS)
-				big_file_comfort(ip, blks_checked);
-		}
+		if (rc && (!error || rc < 0))
+			error = rc;
+		if (ip->i_di.di_blocks > COMFORTABLE_BLKS)
+			big_file_comfort(ip, blks_checked);
 		if (bh == ip->i_bh)
 			osi_list_del(&bh->b_altlist);
 		else
