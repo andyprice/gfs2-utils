@@ -1300,6 +1300,21 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		return error;
 	}
 
+	/* Free the metalist buffers from heights we don't need to check.
+	   For the rest we'll free as we check them to save time.
+	   metalist[0] will only have the dinode bh, so we can skip it. */
+	for (i = 1; i < height - 1; i++) {
+		list = &metalist[i];
+		while (!osi_list_empty(list)) {
+			bh = osi_list_entry(list->next,
+					    struct gfs2_buffer_head, b_altlist);
+			if (bh == ip->i_bh)
+				osi_list_del(&bh->b_altlist);
+			else
+				brelse(bh);
+		}
+	}
+
 	/* check data blocks */
 	list = &metalist[height - 1];
 	if (ip->i_di.di_blocks > COMFORTABLE_BLKS)
