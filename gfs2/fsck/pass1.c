@@ -867,13 +867,13 @@ struct metawalk_fxns rangecheck_fxns = {
         .check_eattr_leaf = rangecheck_eattr_leaf,
 };
 
-static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
-			  uint64_t block)
+static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 {
 	uint8_t q;
 	struct gfs2_inode *ip;
 	int error;
 	struct block_count bc = {0};
+	uint64_t block = bh->b_blocknr;
 	long bad_pointers;
 
 	q = block_type(block);
@@ -1192,7 +1192,7 @@ int pass1(struct gfs2_sbd *sbp)
 				}
 				check_n_fix_bitmap(sbp, block,
 						   gfs2_block_free);
-			} else if (handle_di(sbp, bh, block) < 0) {
+			} else if (handle_di(sbp, bh) < 0) {
 				stack;
 				brelse(bh);
 				return FSCK_ERROR;
