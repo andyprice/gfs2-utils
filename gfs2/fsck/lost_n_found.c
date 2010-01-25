@@ -185,5 +185,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	log_notice( _("Added inode #%llu (0x%llx) to lost+found dir\n"),
 		    (unsigned long long)ip->i_di.di_num.no_addr,
 		    (unsigned long long)ip->i_di.di_num.no_addr);
+	gfs2_dinode_out(&lf_dip->i_di, lf_dip->i_bh);
+	bwrite(lf_dip->i_bh);
 	return 0;
 }
