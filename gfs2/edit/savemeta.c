@@ -37,7 +37,6 @@ struct saved_metablock {
 struct saved_metablock *savedata;
 struct gfs2_buffer_head *savebh;
 uint64_t last_fs_block, last_reported_block, blks_saved, total_out, pct;
-struct gfs2_bmap *blocklist = NULL;
 uint64_t journal_blocks[MAX_JOURNALS_SAVED];
 uint64_t gfs1_journal_size = 0; /* in blocks */
 int journals_found = 0;
@@ -501,7 +500,6 @@ void savemeta(char *out_fn, int saveoption)
 	int out_fd;
 	int slow;
 	osi_list_t *tmp;
-	uint64_t memreq;
 	int rgcount;
 	uint64_t jindex_block;
 	struct gfs2_buffer_head *lbh;
@@ -601,12 +599,6 @@ void savemeta(char *out_fn, int saveoption)
 		printf("Done.\n\n");
 		fflush(stdout);
 	}
-	if (!slow) {
-		blocklist = gfs2_bmap_create(&sbd, last_fs_block + 1,
-					     &memreq);
-		if (!blocklist)
-			slow = TRUE;
-	}
 	get_journal_inode_blocks();
 	if (!slow) {
 		/* Save off the superblock */
@@ -633,7 +625,7 @@ void savemeta(char *out_fn, int saveoption)
 		for (tmp = sbd.rglist.next; tmp != &sbd.rglist;
 		     tmp = tmp->next){
 			struct rgrp_list *rgd;
-			int i, first;
+			int first;
 
 			rgd = osi_list_entry(tmp, struct rgrp_list, list);
 			slow = gfs2_rgrp_read(&sbd, rgd);
@@ -643,12 +635,6 @@ void savemeta(char *out_fn, int saveoption)
 				  (unsigned long long)rgd->ri.ri_addr,
 				  (unsigned long long)rgd->ri.ri_addr,
 				  rgd->ri.ri_length);
-			for (i = 0; i < rgd->ri.ri_length; i++) {
-				if(gfs2_blockmap_set(blocklist,
-						     rgd->ri.ri_addr + i,
-						     gfs2_meta_other))
-					break;
-			}
 			first = 1;
 			/* Save off the rg and bitmaps */
 			for (block = rgd->ri.ri_addr;
@@ -687,8 +673,6 @@ void savemeta(char *out_fn, int saveoption)
 		}
 	}
 	/* Clean up */
-	if (blocklist)
-		gfs2_bmap_destroy(&sbd, blocklist);
 	/* There may be a gap between end of file system and end of device */
 	/* so we tell the user that we've processed everything. */
 	block = last_fs_block;
