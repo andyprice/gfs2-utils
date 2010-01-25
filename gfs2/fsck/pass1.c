@@ -910,11 +910,18 @@ int pass1(struct gfs2_sbd *sbp)
 				 rg_count);
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
 		for (i = 0; i < rgd->ri.ri_length; i++) {
+			log_debug( _("rgrp block %lld (0x%llx) "
+				     "is now marked as 'rgrp data'\n"),
+				   rgd->ri.ri_addr + i, rgd->ri.ri_addr + i);
 			if(gfs2_blockmap_set(bl, rgd->ri.ri_addr + i,
-					     gfs2_meta_other)){
+					     gfs2_meta_rgrp)){
 				stack;
 				return FSCK_ERROR;
 			}
+			/* rgrps and bitmaps don't have bits to represent
+			   their blocks, so don't do this:
+			check_n_fix_bitmap(sbp, rgd->ri.ri_addr + i,
+			gfs2_meta_rgrp);*/
 		}
 
 		offset = sizeof(struct gfs2_rgrp);

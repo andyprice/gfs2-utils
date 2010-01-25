@@ -280,7 +280,7 @@ enum gfs2_mark_block {
 	gfs2_inode_invalid = (0xa),
 	gfs2_meta_inval    = (0xb),
 	gfs2_leaf_blk      = (0xc),
-	gfs2_meta_other    = (0xd),
+	gfs2_meta_rgrp     = (0xd),
 	gfs2_meta_eattr    = (0xe),
 
 	gfs2_bad_block     = (0xf), /* Contains at least one bad block */
@@ -301,10 +301,10 @@ static const inline char *block_type_string(uint8_t q)
 		"fifo",
 		"socket",
 
-		"journaled data",
+		"invalid inode",
 		"invalid meta",
 		"dir leaf",
-		"other metadata",
+		"rgrp meta",
 		"eattribute",
 
 		"bad"};

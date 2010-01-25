@@ -39,7 +39,7 @@ static int convert_mark(uint8_t q, uint32_t *count)
 
 	case gfs2_indir_blk:
 	case gfs2_leaf_blk:
-	case gfs2_meta_other:
+	case gfs2_meta_rgrp:
 	case gfs2_meta_eattr:
 		count[2]++;
 		return GFS2_BLKST_USED;
