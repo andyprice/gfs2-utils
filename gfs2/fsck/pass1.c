@@ -445,7 +445,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 	if(gfs2_check_range(sdp, indirect)) {
 		/*log_warn("EA indirect block #%"PRIu64" is out of range.\n",
 			indirect);
-			gfs2_blockmap_set(bl, parent, bad_block);*/
+			fsck_blockmap_set(parent, "bad", bad_block);*/
 		/* Doesn't help to mark this here - this gets checked
 		 * in pass1c */
 		return 1;
@@ -1016,7 +1016,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 	if (S_ISDIR(ip->i_di.di_mode) &&
 	    (ip->i_di.di_flags & GFS2_DIF_EXHASH)) {
 		if (((1 << ip->i_di.di_depth) * sizeof(uint64_t)) != ip->i_di.di_size){
-			log_warn( _("Directory dinode #%llu (0x%llx"
+			log_warn( _("Directory dinode block #%llu (0x%llx"
 				 ") has bad depth.  Found %u, Expected %u\n"),
 				 (unsigned long long)ip->i_di.di_num.no_addr,
 				 (unsigned long long)ip->i_di.di_num.no_addr,
@@ -1144,8 +1144,8 @@ int pass1(struct gfs2_sbd *sbp)
 			log_debug( _("rgrp block %lld (0x%llx) "
 				     "is now marked as 'rgrp data'\n"),
 				   rgd->ri.ri_addr + i, rgd->ri.ri_addr + i);
-			if(gfs2_blockmap_set(bl, rgd->ri.ri_addr + i,
-					     gfs2_meta_rgrp)){
+			if (gfs2_blockmap_set(bl, rgd->ri.ri_addr + i,
+					      gfs2_meta_rgrp)) {
 				stack;
 				return FSCK_ERROR;
 			}

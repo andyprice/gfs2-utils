@@ -351,12 +351,6 @@ extern int gfs2_blockmap_set(struct gfs2_bmap *il, uint64_t block,
 			     enum gfs2_mark_block mark);
 extern void gfs2_special_clear(struct special_blocks *blocklist,
 			       uint64_t block);
-/* gfs2_block_unmark clears ONE mark for the given block */
-extern int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
-			     uint64_t block, enum gfs2_mark_block m);
-/* gfs2_block_clear clears all the marks for the given block */
-extern int gfs2_blockmap_clear(struct gfs2_sbd *sdp, struct gfs2_bmap *il,
-			    uint64_t block);
 extern void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il);
 
 /* buf.c */

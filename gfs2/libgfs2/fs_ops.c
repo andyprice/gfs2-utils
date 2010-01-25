@@ -709,7 +709,7 @@ int gfs2_dirent_next(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 	bh_end = bh->b_data + dip->i_sbd->bsize;
 	cur_rec_len = be16_to_cpu((*dent)->de_rec_len);
 
-	if ((char *)(*dent) + cur_rec_len >= bh_end)
+	if (cur_rec_len == 0 || (char *)(*dent) + cur_rec_len >= bh_end)
 		return -ENOENT;
 
 	*dent = (struct gfs2_dirent *)((char *)(*dent) + cur_rec_len);
@@ -1407,7 +1407,6 @@ static int leaf_search(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 
 static int linked_leaf_search(struct gfs2_inode *dip, const char *filename,
 			      int len, struct gfs2_dirent **dent_out,
-			      struct gfs2_dirent **dent_prev,
 			      struct gfs2_buffer_head **bh_out)
 {
 	struct gfs2_buffer_head *bh = NULL, *bh_next;
@@ -1434,8 +1433,8 @@ static int linked_leaf_search(struct gfs2_inode *dip, const char *filename,
 			brelse(bh);
 
 		bh = bh_next;
-		
-		error = leaf_search(dip, bh, filename, len, dent_out, dent_prev);
+
+		error = leaf_search(dip, bh, filename, len, dent_out, NULL);
 		switch (error){
 		case 0:
 			*bh_out = bh;
@@ -1474,7 +1473,7 @@ static int dir_e_search(struct gfs2_inode *dip, const char *filename,
 	struct gfs2_dirent *dent;
 	int error;
 
-	error = linked_leaf_search(dip, filename, len, &dent, NULL, &bh);
+	error = linked_leaf_search(dip, filename, len, &dent, &bh);
 	if (error)
 		return error;
 

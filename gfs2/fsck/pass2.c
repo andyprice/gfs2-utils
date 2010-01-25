@@ -286,8 +286,8 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 q, q == gfs2_inode_invalid ?
-			 _("previously marked invalid") :
-			 _("is not an inode"));
+			 _("was previously marked invalid") :
+			 _("was deleted or is not an inode"));
 
 		if(!query( _("Clear directory entry to non-inode block? "
 			     "(y/n) "))) {

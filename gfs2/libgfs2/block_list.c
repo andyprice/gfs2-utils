@@ -111,22 +111,6 @@ void gfs2_special_clear(struct special_blocks *blocklist, uint64_t block)
 	}
 }
 
-/* gfs2_block_unmark clears ONE mark for the given block */
-int gfs2_block_unmark(struct gfs2_sbd *sdp, struct gfs2_bmap *bmap,
-		      uint64_t block, enum gfs2_mark_block mark)
-{
-	static unsigned char *byte;
-	static uint64_t b;
-
-	if(block > bmap->size)
-		return -1;
-
-	byte = bmap->map + BLOCKMAP_SIZE4(block);
-	b = BLOCKMAP_BYTE_OFFSET4(block);
-	*byte &= ~(BLOCKMAP_MASK4 << b);
-	return 0;
-}
-
 int gfs2_blockmap_set(struct gfs2_bmap *bmap, uint64_t bblock,
 		      enum gfs2_mark_block mark)
 {
