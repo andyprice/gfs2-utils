@@ -506,42 +506,47 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 		error = FSCK_ERROR;
 		goto out;
 	}
-	if (query( _("\nJournal #%d (\"journal%d\") is dirty.  Okay to "
-		     "replay it? (y/n)"), j+1, j)) {
-		log_info( _("jid=%u: Replaying journal...\n"), j);
+	if (!query( _("\nJournal #%d (\"journal%d\") is dirty.  Okay to "
+		      "replay it? (y/n)"), j+1, j))
+		goto reinit;
 
-		sd_found_jblocks = sd_replayed_jblocks = 0;
-		sd_found_metablocks = sd_replayed_metablocks = 0;
-		sd_found_revokes = 0;
-		sd_replay_tail = head.lh_tail;
-		for (pass = 0; pass < 2; pass++) {
-			error = foreach_descriptor(ip, head.lh_tail,
-						   head.lh_blkno, pass);
-			if (error)
-				goto out;
-		}
-		log_info( _("jid=%u: Found %u revoke tags\n"), j,
-			 sd_found_revokes);
-		gfs2_revoke_clean(sdp);
-		error = clean_journal(ip, &head);
+	log_info( _("jid=%u: Replaying journal...\n"), j);
+
+	sd_found_jblocks = sd_replayed_jblocks = 0;
+	sd_found_metablocks = sd_replayed_metablocks = 0;
+	sd_found_revokes = 0;
+	sd_replay_tail = head.lh_tail;
+	for (pass = 0; pass < 2; pass++) {
+		error = foreach_descriptor(ip, head.lh_tail,
+					   head.lh_blkno, pass);
 		if (error)
 			goto out;
-		log_err( _("jid=%u: Replayed %u of %u journaled data blocks\n"),
-			j, sd_replayed_jblocks, sd_found_jblocks);
-		log_err( _("jid=%u: Replayed %u of %u metadata blocks\n"),
-			j, sd_replayed_metablocks, sd_found_metablocks);
-	} else {
-		if (query( _("Do you want to clear the dirty journal instead? (y/n)"))) {
-			write_journal(sdp, sdp->md.journal[j], j,
+	}
+	log_info( _("jid=%u: Found %u revoke tags\n"), j, sd_found_revokes);
+	gfs2_revoke_clean(sdp);
+	error = clean_journal(ip, &head);
+	if (error)
+		goto out;
+	log_err( _("jid=%u: Replayed %u of %u journaled data blocks\n"),
+		 j, sd_replayed_jblocks, sd_found_jblocks);
+	log_err( _("jid=%u: Replayed %u of %u metadata blocks\n"),
+		 j, sd_replayed_metablocks, sd_found_metablocks);
+
+	/* Check for errors and give them the option to reinitialize the
+	   journal. */
+out:
+	if (!error) {
+		log_info( _("jid=%u: Done\n"), j);
+		return 0;
+	}
+	log_info( _("jid=%u: Failed\n"), j);
+reinit:
+	if (query( _("Do you want to clear the journal instead? (y/n)")))
+		error = write_journal(sdp, sdp->md.journal[j], j,
 				      sdp->md.journal[j]->i_di.di_size /
 				      sdp->sd_sb.sb_bsize);
-			
-		} else
-			log_err( _("jid=%u: Dirty journal not replayed or cleared.\n"), j);
-	}
-
-out:
-	log_info( _("jid=%u: %s\n"), j, (error) ? _("Failed") : _("Done"));
+	else
+		log_err( _("jid=%u: journal not cleared.\n"), j);
 	return error;
 }
 
