@@ -1023,7 +1023,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 				 ip->i_di.di_depth,
 				 (1 >> (ip->i_di.di_size/sizeof(uint64_t))));
 			if(fsck_blockmap_set(ip, block, _("bad depth"),
-					     gfs2_meta_inval)) {
+					     gfs2_block_free)) {
 				stack;
 				fsck_inode_put(&ip);
 				return -1;
