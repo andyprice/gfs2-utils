@@ -768,7 +768,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 		break;
 	default:
 		if (fsck_blockmap_set(ip, block, _("invalid mode"),
-				      gfs2_meta_inval)) {
+				      gfs2_inode_invalid)) {
 			stack;
 			fsck_inode_put(&ip);
 			return -1;

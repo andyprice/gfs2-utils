@@ -277,7 +277,7 @@ enum gfs2_mark_block {
 	gfs2_inode_fifo    = (0x8),
 	gfs2_inode_sock    = (0x9),
 
-	gfs2_journal_blk   = (0xa),
+	gfs2_inode_invalid = (0xa),
 	gfs2_meta_inval    = (0xb),
 	gfs2_leaf_blk      = (0xc),
 	gfs2_meta_other    = (0xd),

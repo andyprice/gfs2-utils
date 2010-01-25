@@ -224,7 +224,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		}
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
 				  _("corrupt directory entry"),
-				  gfs2_meta_inval);
+				  gfs2_inode_invalid);
 		log_err( _("Bad directory entry deleted.\n"));
 		return 1;
 	}
@@ -253,7 +253,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 
 	q = block_type(entryblock);
 	/* Get the status of the directory inode */
-	if(q == gfs2_bad_block) {
+	if(q == gfs2_inode_invalid || q == gfs2_bad_block) {
 		/* This entry's inode has bad blocks in it */
 
 		/* Handle bad blocks */
@@ -284,7 +284,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			 (unsigned long long)entryblock,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 q, q == gfs2_meta_inval ?
+			 q, q == gfs2_inode_invalid ?
 			 _("previously marked invalid") :
 			 _("is not an inode"));
 
@@ -551,7 +551,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 	}
 	if (error > 0)
 		fsck_blockmap_set(sysinode, iblock, dirname,
-				  gfs2_meta_inval);
+				  gfs2_inode_invalid);
 
 	if(check_inode_eattr(sysinode, &pass2_fxns)) {
 		stack;
@@ -740,8 +740,8 @@ int pass2(struct gfs2_sbd *sbp)
 				   (unsigned long long)dirblk);
 			/* Can't use fsck_blockmap_set here because we don't
 			   have an inode in memory. */
-			gfs2_blockmap_set(bl, dirblk, gfs2_meta_inval);
-			check_n_fix_bitmap(sbp, dirblk, gfs2_meta_inval);
+			gfs2_blockmap_set(bl, dirblk, gfs2_inode_invalid);
+			check_n_fix_bitmap(sbp, dirblk, gfs2_inode_invalid);
 		}
 		ip = fsck_load_inode(sbp, dirblk);
 		if(!ds.dotdir) {

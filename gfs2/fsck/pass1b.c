@@ -168,7 +168,8 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 		/* Setting the block to invalid means the inode is
 		 * cleared in pass2 */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-				  _("inode with duplicate"), gfs2_meta_inval);
+				  _("inode with duplicate"),
+				  gfs2_inode_invalid);
 	}
 	return 0;
 }
@@ -422,7 +423,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
 				   is cleared in pass2 */
 				fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
 						 _("inode with bad duplicate"),
-						 gfs2_meta_inval);
+						 gfs2_inode_invalid);
 				fsck_inode_put(&ip);
 			} else {
 				log_warn( _("The bad inode was not cleared."));
@@ -467,7 +468,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
 			check_metatree(ip, &clear_dup_fxns);
 
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-				  _("inode with duplicate"), gfs2_meta_inval);
+				  _("bad"), gfs2_inode_invalid);
 		fsck_inode_put(&ip); /* out, brelse, free */
 		dh.ref_inode_count--;
 		if(dh.ref_inode_count == 1)
@@ -514,20 +515,18 @@ int pass1b(struct gfs2_sbd *sbp)
 		log_debug( _("Scanning block %" PRIu64 " (0x%" PRIx64 ") for inodes\n"),
 				  i, i);
 		q = block_type(i);
-		if((q == gfs2_inode_dir) ||
-		   (q == gfs2_inode_file) ||
-		   (q == gfs2_inode_lnk) ||
-		   (q == gfs2_inode_blk) ||
-		   (q == gfs2_inode_chr) ||
-		   (q == gfs2_inode_fifo) ||
-		   (q == gfs2_inode_sock)) {
-			for (n = osi_first(&dup_blocks); n; n = osi_next(n)) {
-				b = (struct duptree *)n;
-				if(find_block_ref(sbp, i, b)) {
-					stack;
-					rc = FSCK_ERROR;
-					goto out;
-				}
+
+		if (q < gfs2_inode_dir)
+			continue;
+		if (q > gfs2_inode_sock)
+			continue;
+
+		for (n = osi_first(&dup_blocks); n; n = osi_next(n)) {
+			b = (struct duptree *)n;
+			if(find_block_ref(sbp, i, b)) {
+				stack;
+				rc = FSCK_ERROR;
+				goto out;
 			}
 		}
 		if(q == gfs2_inode_dir) {
