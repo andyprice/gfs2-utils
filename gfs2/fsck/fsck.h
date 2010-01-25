@@ -23,6 +23,8 @@
 #define FSCK_CANCELED    32     /* Aborted with a signal or ^C */
 #define FSCK_LIBRARY     128    /* Shared library error */
 
+#define BAD_POINTER_TOLERANCE 10 /* How many bad pointers is too many? */
+
 struct inode_info
 {
         struct osi_node node;

@@ -556,6 +556,97 @@ static int clear_leaf(struct gfs2_inode *ip, uint64_t block,
 	return 0;
 }
 
+/**
+ * Check for massive amounts of pointer corruption.  If the block has
+ * lots of out-of-range pointers, we can't trust any of the pointers.
+ * For example, a stray pointer with a value of 0x1d might be
+ * corruption/nonsense, and if so, we don't want to delete an
+ * important file (like master or the root directory) because of it.
+ * We need to check for a large number of bad pointers BEFORE we start
+ * messing with them because we don't want to mark a block as a
+ * duplicate (for example) until we know if the pointers in general can
+ * be trusted. Thus it needs to be in a separate loop.
+ */
+static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
+			    struct gfs2_buffer_head **bh,
+			    const char *btype, void *private)
+{
+	long *bad_pointers = (long *)private;
+	uint8_t q;
+
+	if (gfs2_check_range(ip->i_sbd, block) != 0) {
+		(*bad_pointers)++;
+		log_debug( _("Bad %s block pointer (out of range #%ld) "
+			     "found in inode %lld (0x%llx).\n"), btype,
+			   *bad_pointers,
+			   (unsigned long long)ip->i_di.di_num.no_addr,
+			   (unsigned long long)ip->i_di.di_num.no_addr);
+		if ((*bad_pointers) <= BAD_POINTER_TOLERANCE)
+			return ENOENT;
+		else
+			return -ENOENT; /* Exits check_metatree quicker */
+	}
+	/* See how many duplicate blocks it has */
+	q = block_type(block);
+	if (q != gfs2_block_free) {
+		(*bad_pointers)++;
+		log_debug( _("Duplicated %s block pointer (violation #%ld) "
+			     "found in inode %lld (0x%llx).\n"), btype,
+			   *bad_pointers,
+			   (unsigned long long)ip->i_di.di_num.no_addr,
+			   (unsigned long long)ip->i_di.di_num.no_addr);
+		if ((*bad_pointers) <= BAD_POINTER_TOLERANCE)
+			return ENOENT;
+		else
+			return -ENOENT; /* Exits check_metatree quicker */
+	}
+	return 0;
+}
+
+static int rangecheck_metadata(struct gfs2_inode *ip, uint64_t block,
+			       struct gfs2_buffer_head **bh, void *private)
+{
+	return rangecheck_block(ip, block, bh, _("metadata"), private);
+}
+
+static int rangecheck_leaf(struct gfs2_inode *ip, uint64_t block,
+			   struct gfs2_buffer_head *bh, void *private)
+{
+	return rangecheck_block(ip, block, &bh, _("leaf"), private);
+}
+
+static int rangecheck_data(struct gfs2_inode *ip, uint64_t block,
+			   void *private)
+{
+	return rangecheck_block(ip, block, NULL, _("data"), private);
+}
+
+static int rangecheck_eattr_indir(struct gfs2_inode *ip, uint64_t block,
+				  uint64_t parent,
+				  struct gfs2_buffer_head **bh, void *private)
+{
+	return rangecheck_block(ip, block, NULL,
+				_("indirect extended attribute"),
+				private);
+}
+
+static int rangecheck_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
+				 uint64_t parent, struct gfs2_buffer_head **bh,
+				 void *private)
+{
+	return rangecheck_block(ip, block, NULL, _("extended attribute"),
+				private);
+}
+
+struct metawalk_fxns rangecheck_fxns = {
+        .private = NULL,
+        .check_metalist = rangecheck_metadata,
+        .check_data = rangecheck_data,
+        .check_leaf = rangecheck_leaf,
+        .check_eattr_indir = rangecheck_eattr_indir,
+        .check_eattr_leaf = rangecheck_eattr_leaf,
+};
+
 static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			  uint64_t block)
 {
@@ -564,10 +655,16 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	int error;
 	struct block_count bc = {0};
 	struct metawalk_fxns invalidate_metatree = {0};
+	long bad_pointers;
 
-	invalidate_metatree.check_metalist = clear_metalist;
-	invalidate_metatree.check_data = clear_data;
-	invalidate_metatree.check_leaf = clear_leaf;
+	q = block_type(block);
+	if(q != gfs2_block_free) {
+		log_err( _("Found duplicate block referenced as an inode at "
+			   "#%" PRIu64 " (0x%" PRIx64 ")\n"), block, block);
+		gfs2_dup_set(block);
+		fsck_inode_put(&ip);
+		return 0;
+	}
 
 	ip = fsck_inode_get(sdp, bh);
 	if (ip->i_di.di_num.no_addr != block) {
@@ -586,11 +683,22 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 				 " (0x%" PRIx64 ") not fixed\n"), block, block);
 	}
 
-	q = block_type(block);
-	if(q != gfs2_block_free) {
-		log_err( _("Found duplicate block referenced as an inode at "
-			   "#%" PRIu64 " (0x%" PRIx64 ")\n"), block, block);
-		gfs2_dup_set(block);
+	bad_pointers = 0L;
+
+	/* First, check the metadata for massive amounts of pointer corruption.
+	   Such corruption can only lead us to ruin trying to clean it up,
+	   so it's better to check it up front and delete the inode if
+	   there is corruption. */
+	rangecheck_fxns.private = &bad_pointers;
+	error = check_metatree(ip, &rangecheck_fxns);
+	if (bad_pointers > BAD_POINTER_TOLERANCE) {
+		log_err( _("Error: inode %llu (0x%llx) has more than "
+			   "%d bad pointers.\n"),
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 BAD_POINTER_TOLERANCE);
+		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
+				  _("badly corrupt"), gfs2_block_free);
 		fsck_inode_put(&ip);
 		return 0;
 	}
@@ -705,6 +813,10 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			   "errors; invalidating.\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
+		invalidate_metatree.check_metalist = clear_metalist;
+		invalidate_metatree.check_data = clear_data;
+		invalidate_metatree.check_leaf = clear_leaf;
+
 		/* FIXME: Must set all leaves invalid as well */
 		check_metatree(ip, &invalidate_metatree);
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
