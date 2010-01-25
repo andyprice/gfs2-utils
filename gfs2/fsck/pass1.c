@@ -38,7 +38,11 @@ static int leaf(struct gfs2_inode *ip, uint64_t block,
 		struct gfs2_buffer_head *bh, void *private);
 static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			  struct gfs2_buffer_head **bh, void *private);
+static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
+			       struct gfs2_buffer_head **bh, void *private);
 static int check_data(struct gfs2_inode *ip, uint64_t block, void *private);
+static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
+			   void *private);
 static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 			     uint64_t parent, struct gfs2_buffer_head **bh,
 			     void *private);
@@ -69,6 +73,12 @@ struct metawalk_fxns pass1_fxns = {
 	.check_eattr_entry = check_eattr_entries,
 	.check_eattr_extentry = check_extended_leaf_eattr,
 	.finish_eattr_indir = finish_eattr_indir,
+};
+
+struct metawalk_fxns undo_fxns = {
+	.private = NULL,
+	.check_metalist = undo_check_metalist,
+	.check_data = undo_check_data,
 };
 
 static int leaf(struct gfs2_inode *ip, uint64_t block,
@@ -150,6 +160,62 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 	return 0;
 }
 
+static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
+			       struct gfs2_buffer_head **bh, void *private)
+{
+	struct duptree *d;
+	int found_dup = 0, iblk_type;
+	struct gfs2_buffer_head *nbh;
+	struct block_count *bc = (struct block_count *)private;
+
+	*bh = NULL;
+
+	if (gfs2_check_range(ip->i_sbd, block)){ /* blk outside of FS */
+		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
+				  _("itself"), gfs2_block_free);
+		return 1;
+	}
+	if (S_ISDIR(ip->i_di.di_mode))
+		iblk_type = GFS2_METATYPE_JD;
+	else
+		iblk_type = GFS2_METATYPE_IN;
+
+	d = dupfind(block);
+	if (d) {
+		log_err( _("Reversing duplicate status of block %llu (0x%llx) "
+			   "referenced as metadata in indirect block for "
+			   "dinode %llu (0x%llx)\n"),
+ 			 (unsigned long long)block,
+			 (unsigned long long)block,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr);
+		d->refs--; /* one less reference */
+		if (d->refs == 1)
+			dup_delete(d);
+		found_dup = 1;
+	}
+	nbh = bread(ip->i_sbd, block);
+
+	if (gfs2_check_meta(nbh, iblk_type)) {
+		if(!found_dup) {
+			fsck_blockmap_set(ip, block, _("bad indirect"),
+					  gfs2_block_free);
+			brelse(nbh);
+			return 1;
+		}
+		brelse(nbh);
+	} else /* blk check ok */
+		*bh = nbh;
+
+	bc->indir_count--;
+	if (found_dup)
+		return 1; /* don't process the metadata again */
+	else
+		fsck_blockmap_set(ip, block, _("bad indirect"),
+				  gfs2_block_free);
+	return 0;
+}
+
 static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 {
 	uint8_t q;
@@ -200,12 +266,87 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 	return error;
 }
 
-static int remove_inode_eattr(struct gfs2_inode *ip, struct block_count *bc,
-			      int duplicate)
+static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
+			   void *private)
 {
-	if (!duplicate)
-		fsck_blockmap_set(ip, ip->i_di.di_eattr, _("deleted eattr"),
+	struct duptree *d;
+	struct block_count *bc = (struct block_count *) private;
+
+	if (gfs2_check_range(ip->i_sbd, block)) {
+		/* Mark the owner of this block with the bad_block
+		 * designator so we know to check it for out of range
+		 * blocks later */
+		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
+				  _("bad (out of range) data"),
 				  gfs2_block_free);
+		return 1;
+	}
+	d = dupfind(block);
+	if (d) {
+		log_err( _("Reversing duplicate status of block %llu (0x%llx) "
+			   "referenced as data by dinode %llu (0x%llx)\n"),
+			 (unsigned long long)block,
+			 (unsigned long long)block,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr);
+		d->refs--; /* one less reference */
+		if (d->refs == 1)
+			dup_delete(d);
+		bc->data_count--;
+		return 1;
+	}
+	fsck_blockmap_set(ip, block, _("data"), gfs2_block_free);
+	bc->data_count--;
+	return 0;
+}
+
+static int remove_inode_eattr(struct gfs2_inode *ip, struct block_count *bc)
+{
+	struct duptree *dt;
+	struct inode_with_dups *id;
+	osi_list_t *ref;
+	int moved = 0;
+
+	/* If it's a duplicate reference to the block, we need to check
+	   if the reference is on the valid or invalid inodes list.
+	   If it's on the valid inode's list, move it to the invalid
+	   inodes list.  The reason is simple: This inode, although
+	   valid, has an now-invalid reference, so we should not give
+	   this reference preferential treatment over others. */
+	dt = dupfind(ip->i_di.di_eattr);
+	if (dt) {
+		osi_list_foreach(ref, &dt->ref_inode_list) {
+			id = osi_list_entry(ref, struct inode_with_dups, list);
+			if (id->block_no == ip->i_di.di_num.no_addr) {
+				log_debug( _("Moving inode %lld (0x%llx)'s "
+					     "duplicate reference to %lld "
+					     "(0x%llx) from the valid to the "
+					     "invalid reference list.\n"),
+					   (unsigned long long)
+					   ip->i_di.di_num.no_addr,
+					   (unsigned long long)
+					   ip->i_di.di_num.no_addr,
+					   (unsigned long long)
+					   ip->i_di.di_eattr,
+					   (unsigned long long)
+					   ip->i_di.di_eattr);
+				/* Move from the normal to the invalid list */
+				osi_list_del(&id->list);
+				osi_list_add_prev(&id->list,
+						  &dt->ref_invinode_list);
+				moved = 1;
+				break;
+			}
+		}
+		if (!moved)
+			log_debug( _("Duplicate reference to %lld "
+				     "(0x%llx) not moved.\n"),
+				   (unsigned long long)ip->i_di.di_eattr,
+				   (unsigned long long)ip->i_di.di_eattr);
+	} else {
+		delete_block(ip, ip->i_di.di_eattr, NULL,
+			     "extended attribute", NULL);
+	}
 	ip->i_di.di_eattr = 0;
 	bc->ea_count = 0;
 	ip->i_di.di_blocks = 1 + bc->indir_count + bc->data_count;
@@ -221,8 +362,7 @@ static int ask_remove_inode_eattr(struct gfs2_inode *ip,
 		   "errors.\n"), (unsigned long long)ip->i_di.di_num.no_addr,
 		 (unsigned long long)ip->i_di.di_num.no_addr);
 	if (query( _("Clear all Extended Attributes from the inode? (y/n) "))){
-		if (!remove_inode_eattr(ip, bc,
-					is_duplicate(ip->i_di.di_eattr)))
+		if (!remove_inode_eattr(ip, bc))
 			log_err( _("Extended attributes were removed.\n"));
 		else
 			log_err( _("Unable to remove inode eattr pointer; "
@@ -252,7 +392,7 @@ static int clear_eas(struct gfs2_inode *ip, struct block_count *bc,
 		 (unsigned long long)block, (unsigned long long)block);
 	if (query( _("Clear the bad Extended Attribute? (y/n) "))) {
 		if (block == ip->i_di.di_eattr) {
-			remove_inode_eattr(ip, bc, duplicate);
+			remove_inode_eattr(ip, bc);
 			log_err( _("The bad extended attribute was "
 				   "removed.\n"));
 		} else if (!duplicate) {
@@ -526,34 +666,6 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 	return 0;
 }
 
-static int clear_metalist(struct gfs2_inode *ip, uint64_t block,
-		   struct gfs2_buffer_head **bh, void *private)
-{
-	*bh = NULL;
-
-	if(!is_duplicate(block))
-		fsck_blockmap_set(ip, block, _("cleared metadata"),
-				  gfs2_block_free);
-	return 0;
-}
-
-static int clear_data(struct gfs2_inode *ip, uint64_t block, void *private)
-{
-	if(!is_duplicate(block))
-		fsck_blockmap_set(ip, block, _("cleared data"),
-				  gfs2_block_free);
-	return 0;
-}
-
-static int clear_leaf(struct gfs2_inode *ip, uint64_t block,
-	       struct gfs2_buffer_head *bh, void *private)
-{
-	if(!is_duplicate(block))
-		fsck_blockmap_set(ip, block, _("cleared directory leaf"),
-				  gfs2_block_free);
-	return 0;
-}
-
 /**
  * Check for massive amounts of pointer corruption.  If the block has
  * lots of out-of-range pointers, we can't trust any of the pointers.
@@ -652,7 +764,6 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 	struct gfs2_inode *ip;
 	int error;
 	struct block_count bc = {0};
-	struct metawalk_fxns invalidate_metatree = {0};
 	long bad_pointers;
 
 	q = block_type(block);
@@ -811,14 +922,14 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 			   "errors; invalidating.\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
-		invalidate_metatree.check_metalist = clear_metalist;
-		invalidate_metatree.check_data = clear_data;
-		invalidate_metatree.check_leaf = clear_leaf;
-
-		/* FIXME: Must set all leaves invalid as well */
-		check_metatree(ip, &invalidate_metatree);
+		undo_fxns.private = &bc;
+		check_metatree(ip, &undo_fxns);
+		/* If we undo the metadata accounting, including metadatas
+		   duplicate block status, we need to make sure later passes
+		   don't try to free up the metadata referenced by this inode.
+		   Therefore we mark the inode as free space. */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-				  _("corrupt"), gfs2_meta_inval);
+				  _("corrupt"), gfs2_block_free);
 		fsck_inode_put(&ip);
 		return 0;
 	}
