@@ -61,6 +61,19 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
 				     void *private);
 static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 			      int leaf_pointer_errors, void *private);
+static int invalidate_metadata(struct gfs2_inode *ip, uint64_t block,
+			       struct gfs2_buffer_head **bh, void *private);
+static int invalidate_leaf(struct gfs2_inode *ip, uint64_t block,
+			   struct gfs2_buffer_head *bh, void *private);
+static int invalidate_data(struct gfs2_inode *ip, uint64_t block,
+			   void *private);
+static int invalidate_eattr_indir(struct gfs2_inode *ip, uint64_t block,
+				  uint64_t parent,
+				  struct gfs2_buffer_head **bh,
+				  void *private);
+static int invalidate_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
+				 uint64_t parent, struct gfs2_buffer_head **bh,
+				 void *private);
 
 struct metawalk_fxns pass1_fxns = {
 	.private = NULL,
@@ -79,6 +92,15 @@ struct metawalk_fxns undo_fxns = {
 	.private = NULL,
 	.check_metalist = undo_check_metalist,
 	.check_data = undo_check_data,
+};
+
+struct metawalk_fxns invalidate_fxns = {
+	.private = NULL,
+	.check_metalist = invalidate_metadata,
+	.check_data = invalidate_data,
+	.check_leaf = invalidate_leaf,
+	.check_eattr_indir = invalidate_eattr_indir,
+	.check_eattr_leaf = invalidate_eattr_leaf,
 };
 
 static int leaf(struct gfs2_inode *ip, uint64_t block,
@@ -671,6 +693,72 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 }
 
 /**
+ * mark_block_invalid - mark blocks associated with an inode as invalid
+ *                      unless the block is a duplicate.
+ *
+ * An "invalid" block is now considered free in the bitmap, and pass2 will
+ * delete any invalid blocks.  This is nearly identical to function
+ * delete_block_if_notdup.
+ */
+static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
+			      enum dup_ref_type reftype, const char *btype)
+{
+	uint8_t q;
+
+	if (gfs2_check_range(ip->i_sbd, block) != 0)
+		return -EFAULT;
+
+	q = block_type(block);
+	if (q != gfs2_block_free) {
+		add_duplicate_ref(ip, block, reftype, 0, INODE_INVALID);
+		log_info( _("%s block %lld (0x%llx), part of inode "
+			    "%lld (0x%llx), was free so the invalid "
+			    "reference is ignored.\n"),
+			  btype, (unsigned long long)block,
+			  (unsigned long long)block,
+			  (unsigned long long)ip->i_di.di_num.no_addr,
+			  (unsigned long long)ip->i_di.di_num.no_addr);
+		return 0;
+	}
+	fsck_blockmap_set(ip, block, btype, gfs2_meta_inval);
+	return 0;
+}
+
+static int invalidate_metadata(struct gfs2_inode *ip, uint64_t block,
+			       struct gfs2_buffer_head **bh, void *private)
+{
+	return mark_block_invalid(ip, block, ref_as_meta, _("metadata"));
+}
+
+static int invalidate_leaf(struct gfs2_inode *ip, uint64_t block,
+			   struct gfs2_buffer_head *bh, void *private)
+{
+	return mark_block_invalid(ip, block, ref_as_meta, _("leaf"));
+}
+
+static int invalidate_data(struct gfs2_inode *ip, uint64_t block,
+			   void *private)
+{
+	return mark_block_invalid(ip, block, ref_as_data, _("data"));
+}
+
+static int invalidate_eattr_indir(struct gfs2_inode *ip, uint64_t block,
+				  uint64_t parent,
+				  struct gfs2_buffer_head **bh, void *private)
+{
+	return mark_block_invalid(ip, block, ref_as_ea,
+				  _("indirect extended attribute"));
+}
+
+static int invalidate_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
+				 uint64_t parent, struct gfs2_buffer_head **bh,
+				 void *private)
+{
+	return mark_block_invalid(ip, block, ref_as_ea,
+				  _("extended attribute"));
+}
+
+/**
  * Check for massive amounts of pointer corruption.  If the block has
  * lots of out-of-range pointers, we can't trust any of the pointers.
  * For example, a stray pointer with a value of 0x1d might be
@@ -880,6 +968,18 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 		}
 		break;
 	default:
+		/* We found a dinode that has an invalid mode, so we can't
+		   tell if it's a data file, directory or a socket.
+		   Regardless, we have to invalidate its metadata in case there
+		   are duplicate blocks referenced.  If we don't call
+		   check_metatree, the blocks it references will be deleted
+		   wholesale by pass2, and if any of those blocks are
+		   duplicates--referenced by another dinode for some reason--
+		   we will mark it free, even though it's in use.  In other
+		   words, we would introduce file system corruption. So we
+		   need to keep track of the fact that it's invalid and
+		   skip parts that we can't be sure of based on dinode type. */
+		check_metatree(ip, &invalidate_fxns);
 		if (fsck_blockmap_set(ip, block, _("invalid mode"),
 				      gfs2_inode_invalid)) {
 			stack;
