@@ -256,10 +256,8 @@ static int clear_eas(struct gfs2_inode *ip, struct block_count *bc,
 			log_err( _("The bad extended attribute was "
 				   "removed.\n"));
 		} else if (!duplicate) {
-			fsck_blockmap_set(ip, block, _("removed eattr"),
-					  gfs2_block_free);
-			log_err( _("The bad Extended Attribute was "
-				   "removed.\n"));
+			delete_block(ip, block, NULL,
+				     _("bad extended attribute"), NULL);
 		}
 		return 1;
 	} else {

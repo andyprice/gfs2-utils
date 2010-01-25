@@ -910,6 +910,63 @@ static int check_leaf_eattr(struct gfs2_inode *ip, uint64_t block,
 }
 
 /**
+ * delete_block - delete a block associated with an inode
+ */
+int delete_block(struct gfs2_inode *ip, uint64_t block,
+		 struct gfs2_buffer_head **bh, const char *btype,
+		 void *private)
+{
+	if (gfs2_check_range(ip->i_sbd, block) == 0) {
+		fsck_blockmap_set(ip, block, btype, gfs2_block_free);
+		return 0;
+	}
+	return -1;
+}
+
+/**
+ * delete_block_if_notdup - delete blocks associated with an inode
+ *
+ * Ignore blocks that are already marked free.
+ * If it has been identified as duplicate, remove the duplicate reference.
+ * If all duplicate references have been removed, delete the block.
+ */
+static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
+				  struct gfs2_buffer_head **bh,
+				  const char *btype, void *private)
+{
+	uint8_t q;
+	struct duptree *d;
+
+	if (gfs2_check_range(ip->i_sbd, block) != 0)
+		return -EFAULT;
+
+	q = block_type(block);
+	if (q == gfs2_block_free) {
+		log_info( _("%s block %lld (0x%llx), part of inode "
+			    "%lld (0x%llx), was already free.\n"),
+			  btype, (unsigned long long)block,
+			  (unsigned long long)block,
+			  (unsigned long long)ip->i_di.di_num.no_addr,
+			  (unsigned long long)ip->i_di.di_num.no_addr);
+		return 0;
+	}
+	d = dupfind(block);
+	if (d) {
+		log_info( _("Removing duplicate reference %d "
+			    "to block %lld (0x%llx).\n"), d->refs,
+			  (unsigned long long)block,
+			  (unsigned long long)block);
+		d->refs--; /* one less reference */
+		if (d->refs == 1) /* If down to the last reference */
+			dup_delete(d); /* not duplicate now */
+		return 1; /* but the original ref still exists
+			     so return (do not free it). */
+	}
+	fsck_blockmap_set(ip, block, btype, gfs2_block_free);
+	return 0;
+}
+
+/**
  * check_indirect_eattr
  * @ip: the inode the eattr comes from
  * @indirect_block
@@ -991,11 +1048,9 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 							 leaf_pointer_errors,
 							 pass->private);
 			}
-			if (leaf_pointer_errors == leaf_pointers) {
-				fsck_blockmap_set(ip, indirect,
-						  _("indirect extended "
-						    "attribute"),
-						  gfs2_block_free);
+			if (leaf_pointer_errors &&
+			    leaf_pointer_errors == leaf_pointers) {
+				delete_block(ip, indirect, NULL, "leaf", NULL);
 				error = 1;
 			}
 		}
@@ -1391,51 +1446,36 @@ int remove_dentry_from_dir(struct gfs2_sbd *sbp, uint64_t dir,
 	return error;
 }
 
-/**
- * delete_blocks - delete blocks associated with an inode
- */
-int delete_blocks(struct gfs2_inode *ip, uint64_t block,
-		  struct gfs2_buffer_head **bh, const char *btype,
-		  void *private)
-{
-	if (gfs2_check_range(ip->i_sbd, block) == 0) {
-		if(!is_duplicate(block)) {
-			log_info( _("Deleting %s block %lld (0x%llx) as part "
-				    "of inode %lld (0x%llx)\n"), btype,
-				  (unsigned long long)block,
-				  (unsigned long long)block,
-				  (unsigned long long)ip->i_di.di_num.no_addr,
-				  (unsigned long long)ip->i_di.di_num.no_addr);
-			fsck_blockmap_set(ip, block, btype, gfs2_block_free);
-			gfs2_free_block(ip->i_sbd, block);
-		}
-	}
-	return 0;
-}
-
 int delete_metadata(struct gfs2_inode *ip, uint64_t block,
 		    struct gfs2_buffer_head **bh, void *private)
 {
-	return delete_blocks(ip, block, bh, _("metadata"), private);
+	return delete_block_if_notdup(ip, block, bh, _("metadata"), private);
+}
+
+int delete_leaf(struct gfs2_inode *ip, uint64_t block,
+		struct gfs2_buffer_head *bh, void *private)
+{
+	return delete_block_if_notdup(ip, block, &bh, _("leaf"), private);
 }
 
 int delete_data(struct gfs2_inode *ip, uint64_t block, void *private)
 {
-	return delete_blocks(ip, block, NULL, _("data"), private);
+	return delete_block_if_notdup(ip, block, NULL, _("data"), private);
 }
 
 int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
 		       struct gfs2_buffer_head **bh, void *private)
 {
-	return delete_blocks(ip, block, NULL, _("indirect extended attribute"),
-			     private);
+	return delete_block_if_notdup(ip, block, NULL,
+				      _("indirect extended attribute"),
+				      private);
 }
 
 int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
 		      struct gfs2_buffer_head **bh, void *private)
 {
-	return delete_blocks(ip, block, NULL, _("extended attribute"),
-			     private);
+	return delete_block_if_notdup(ip, block, NULL, _("extended attribute"),
+				      private);
 }
 
 static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,

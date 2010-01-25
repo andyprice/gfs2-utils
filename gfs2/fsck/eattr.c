@@ -7,36 +7,8 @@
 
 #include "libgfs2.h"
 #include "fsck.h"
-#include "eattr.h"
 #include "metawalk.h"
-
-static int clear_blk_nodup(struct gfs2_inode *ip, uint64_t block)
-{
-	if(is_duplicate(block)) {
-		log_debug( _("Not clearing block with marked as a duplicate\n"));
-		return 1;
-	}
-
-	fsck_blockmap_set(ip, block, _("cleared eattr block"),
-			  gfs2_block_free);
-
-	return 0;
-
-}
-
-int clear_eattr_indir(struct gfs2_inode *ip, uint64_t block,
-		      uint64_t parent, struct gfs2_buffer_head **bh,
-		      void *private)
-{
-	return clear_blk_nodup(ip, block);
-}
-
-int clear_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
-		     uint64_t parent, struct gfs2_buffer_head **bh,
-		     void *private)
-{
-	return clear_blk_nodup(ip, block);
-}
+#include "eattr.h"
 
 int clear_eattr_entry (struct gfs2_inode *ip,
 		       struct gfs2_buffer_head *leaf_bh,
@@ -84,8 +56,7 @@ int clear_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 {
 	uint64_t block = be64_to_cpu(*ea_data_ptr);
 
-	return clear_blk_nodup(ip, block);
-
+	return delete_eattr_leaf(ip, block, 0, &leaf_bh, private);
 }
 
 

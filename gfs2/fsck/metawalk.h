@@ -14,19 +14,19 @@ extern int check_dir(struct gfs2_sbd *sbp, uint64_t block,
 extern int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			    struct metawalk_fxns *pass);
 extern int remove_dentry_from_dir(struct gfs2_sbd *sbp, uint64_t dir,
-				  uint64_t dentryblock);
-extern int delete_blocks(struct gfs2_inode *ip, uint64_t block,
-			 struct gfs2_buffer_head **bh, const char *btype,
-			 void *private);
+						   uint64_t dentryblock);
+extern int delete_block(struct gfs2_inode *ip, uint64_t block,
+		 struct gfs2_buffer_head **bh, const char *btype,
+		 void *private);
 extern int delete_metadata(struct gfs2_inode *ip, uint64_t block,
-			   struct gfs2_buffer_head **bh, void *private);
+		    struct gfs2_buffer_head **bh, void *private);
+extern int delete_leaf(struct gfs2_inode *ip, uint64_t block,
+		struct gfs2_buffer_head *bh, void *private);
 extern int delete_data(struct gfs2_inode *ip, uint64_t block, void *private);
-extern int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block,
-			      uint64_t parent, struct gfs2_buffer_head **bh,
-			      void *private);
-extern int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
-			     uint64_t parent, struct gfs2_buffer_head **bh,
-			     void *private);
+extern int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
+		       struct gfs2_buffer_head **bh, void *private);
+extern int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
+		      struct gfs2_buffer_head **bh, void *private);
 extern int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 		       const char *btype, enum gfs2_mark_block mark,
 		       const char *caller, int line);

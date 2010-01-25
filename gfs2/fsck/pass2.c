@@ -156,6 +156,7 @@ struct metawalk_fxns pass2_fxns_delete = {
 	.private = NULL,
 	.check_metalist = delete_metadata,
 	.check_data = delete_data,
+	.check_leaf = delete_leaf,
 	.check_eattr_indir = delete_eattr_indir,
 	.check_eattr_leaf = delete_eattr_leaf,
 };
@@ -182,8 +183,8 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	gfs2_dirent_in(&dentry, (char *)dent);
 	de = &dentry;
 
-	clear_eattrs.check_eattr_indir = clear_eattr_indir;
-	clear_eattrs.check_eattr_leaf = clear_eattr_leaf;
+	clear_eattrs.check_eattr_indir = delete_eattr_indir;
+	clear_eattrs.check_eattr_leaf = delete_eattr_leaf;
 	clear_eattrs.check_eattr_entry = clear_eattr_entry;
 	clear_eattrs.check_eattr_extentry = clear_eattr_extentry;
 
