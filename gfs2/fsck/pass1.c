@@ -496,6 +496,8 @@ static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 			      int leaf_pointer_errors, void *private)
 {
 	struct block_count *bc = (struct block_count *) private;
+	osi_list_t *head;
+	struct special_blocks *b = NULL;
 
 	if (leaf_pointer_errors == leaf_pointers) /* All eas were bad */
 		return ask_remove_inode_eattr(ip, bc);
@@ -504,8 +506,17 @@ static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 		   (unsigned long long)ip->i_di.di_num.no_addr,
 		   (unsigned long long)ip->i_di.di_num.no_addr);
 	/* Mark the inode as having an eattr in the block map
-	   so pass1c can check it. */
-	gfs2_special_add(&ip->i_sbd->eattr_blocks, ip->i_di.di_num.no_addr);
+	   so pass1c can check it. We may have previously added this inode
+	   to the eattr_blocks list and if we did, it would be the first
+	   one on the list.  So check that one only (to save time) and
+	   if that one matches, no need to add it again. */
+	if (!osi_list_empty(&ip->i_sbd->eattr_blocks.list)) {
+		head = &ip->i_sbd->eattr_blocks.list;
+		b = osi_list_entry(head->next, struct special_blocks, list);
+	}
+	if (!b || b->block != ip->i_di.di_num.no_addr)
+		gfs2_special_add(&ip->i_sbd->eattr_blocks,
+				 ip->i_di.di_num.no_addr);
 	if (!leaf_pointer_errors)
 		return 0;
 	log_err( _("Inode %lld (0x%llx) has recoverable indirect "
@@ -626,6 +637,8 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			    void *private)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
+	osi_list_t *head;
+	struct special_blocks *b = NULL;
 
 	/* This inode contains an eattr - it may be invalid, but the
 	 * eattr attributes points to a non-zero block.
@@ -636,8 +649,13 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 		     "block(s) attached.\n"),
 		   (unsigned long long)ip->i_di.di_num.no_addr,
 		   (unsigned long long)ip->i_di.di_num.no_addr);
-	gfs2_special_add(&sdp->eattr_blocks, ip->i_di.di_num.no_addr);
-	if(gfs2_check_range(sdp, block)) {
+	if (!osi_list_empty(&ip->i_sbd->eattr_blocks.list)) {
+		head = &ip->i_sbd->eattr_blocks.list;
+		b = osi_list_entry(head->next, struct special_blocks, list);
+	}
+	if (!b || b->block != ip->i_di.di_num.no_addr)
+		gfs2_special_add(&sdp->eattr_blocks, ip->i_di.di_num.no_addr);
+	if (gfs2_check_range(sdp, block)) {
 		log_warn( _("Inode #%llu (0x%llx): Extended Attribute leaf "
 			    "block #%llu (0x%llx) is out of range.\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
