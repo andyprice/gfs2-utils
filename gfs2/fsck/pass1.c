@@ -129,7 +129,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr, q,
 			 block_type_string(q));
-		gfs2_dup_set(block);
+		add_duplicate_ref(ip, block, ref_as_meta, 0, INODE_VALID);
 		found_dup = 1;
 	}
 	nbh = bread(ip->i_sbd, block);
@@ -152,10 +152,12 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 	} else /* blk check ok */
 		*bh = nbh;
 
-	if (!found_dup)
+	bc->indir_count++;
+	if (found_dup)
+		return 1; /* don't process the metadata again */
+	else
 		fsck_blockmap_set(ip, block, _("indirect"),
 				  gfs2_indir_blk);
-	bc->indir_count++;
 
 	return 0;
 }
@@ -220,7 +222,6 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 {
 	uint8_t q;
 	struct block_count *bc = (struct block_count *) private;
-	int error = 0;
 
 	if (gfs2_check_range(ip->i_sbd, block)) {
 		log_err( _("inode %lld (0x%llx) has a bad data block pointer "
@@ -238,32 +239,33 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 	}
 	q = block_type(block);
 	if (q != gfs2_block_free) {
-		log_err( _("Found duplicate block referenced as data at %"
-			   PRIu64 " (0x%"PRIx64 ")\n"), block, block);
+		log_err( _("Found duplicate %s block %llu (0x%llx) "
+			   "referenced as data by dinode %llu (0x%llx)\n"),
+			 block_type_string(q),
+			 (unsigned long long)block,
+			 (unsigned long long)block,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr);
 		if (q != gfs2_meta_inval) {
-			gfs2_dup_set(block);
+			log_info( _("Seems to be a normal duplicate; I'll "
+				    "sort it out in pass1b.\n"));
+			add_duplicate_ref(ip, block, ref_as_data, 0,
+					  INODE_VALID);
 			/* If the prev ref was as data, this is likely a data
 			   block, so keep the block count for both refs. */
 			if (q == gfs2_block_used)
 				bc->data_count++;
 			return 1;
 		}
-		/* An explanation is in order here.  At this point we found
-		   a duplicate block, a block that was already referenced
-		   somewhere else.  We'll resolve those duplicates in pass1b.
-		   However, if the block is marked "invalid" that's a special
-		   case.  It's likely that the block was discovered to be
-		   invalid metadata--i.e. doesn't have a metadata header.
-		   However, it still may be a valid data block, since they
-		   won't have metadata headers.  In that case, the block is
-		   marked as duplicate, but also as a data block. */
-		error = 1;
-		gfs2_block_unmark(ip->i_sbd, bl, block, gfs2_meta_inval);
-		gfs2_dup_set(block);
+		log_info( _("The block was invalid as metadata but might be "
+			    "okay as data.  I'll sort it out in pass1b.\n"));
+		add_duplicate_ref(ip, block, ref_as_data, 0, INODE_VALID);
+		bc->data_count++;
+		return 1;
 	}
 	fsck_blockmap_set(ip, block, _("data"), gfs2_block_used);
 	bc->data_count++;
-	return error;
+	return 0;
 }
 
 static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
@@ -435,12 +437,12 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 	*bh = bread(sdp, indirect);
 	if(gfs2_check_meta(*bh, GFS2_METATYPE_IN)) {
 		if(q != gfs2_block_free) { /* Duplicate? */
+			add_duplicate_ref(ip, indirect, ref_as_ea, 0,
+					  INODE_VALID);
 			if (!clear_eas(ip, bc, indirect, 1,
 				       _("Bad indirect Extended Attribute "
-					 "duplicate found"))) {
-				gfs2_dup_set(indirect);
+					 "duplicate found")))
 				bc->ea_count++;
-			}
 			return 1;
 		}
 		clear_eas(ip, bc, indirect, 0,
@@ -456,7 +458,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)indirect,
 			 (unsigned long long)indirect);
-		gfs2_dup_set(indirect);
+		add_duplicate_ref(ip, indirect, ref_as_ea, 0, INODE_VALID);
 		bc->ea_count++;
 		ret = 1;
 	} else {
@@ -514,6 +516,8 @@ static int check_leaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 	leaf_bh = bread(sdp, block);
 	if(gfs2_check_meta(leaf_bh, btype)) {
 		if(q != gfs2_block_free) { /* Duplicate? */
+			add_duplicate_ref(ip, block, ref_as_ea, 0,
+					  INODE_VALID);
 			clear_eas(ip, bc, block, 1,
 				  _("Bad Extended Attribute duplicate found"));
 		} else {
@@ -528,7 +532,7 @@ static int check_leaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 		log_debug( _("Duplicate block found at #%lld (0x%llx).\n"),
 			   (unsigned long long)block,
 			   (unsigned long long)block);
-		gfs2_dup_set(block);
+		add_duplicate_ref(ip, block, ref_as_data, 0, INODE_VALID);
 		bc->ea_count++;
 		brelse(leaf_bh);
 		return 1;
@@ -768,10 +772,10 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 
 	q = block_type(block);
 	if(q != gfs2_block_free) {
-		log_err( _("Found duplicate block referenced as an inode at "
-			   "#%" PRIu64 " (0x%" PRIx64 ")\n"), block, block);
-		gfs2_dup_set(block);
-		fsck_inode_put(&ip);
+		log_err( _("Found a duplicate inode block at #%" PRIu64
+			   " (0x%" PRIx64 ") previously marked as a %s\n"),
+			 block, block, block_type_string(q));
+		add_duplicate_ref(ip, block, ref_as_meta, 0, INODE_VALID);
 		return 0;
 	}
 

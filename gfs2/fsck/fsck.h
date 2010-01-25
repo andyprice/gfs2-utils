@@ -71,7 +71,7 @@ struct inode_with_dups {
 	osi_list_t list;
 	uint64_t block_no;
 	int dup_count;
-	int ea_only;
+	int reftypecount[ref_types];
 	uint64_t parent;
 	char *name;
 };
@@ -126,5 +126,7 @@ extern uint64_t first_data_block;
 extern struct osi_root dup_blocks;
 extern struct osi_root dirtree;
 extern struct osi_root inodetree;
-
+extern int dups_found; /* How many duplicate references have we found? */
+extern int dups_found_first; /* How many duplicates have we found the original
+				reference for? */
 #endif /* _FSCK_H */

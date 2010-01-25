@@ -34,6 +34,7 @@ int preen = 0, force_check = 0;
 struct osi_root dup_blocks = (struct osi_root) { NULL, };
 struct osi_root dirtree = (struct osi_root) { NULL, };
 struct osi_root inodetree = (struct osi_root) { NULL, };
+int dups_found = 0, dups_found_first = 0;
 
 /* This function is for libgfs2's sake.                                      */
 void print_it(const char *label, const char *fmt, const char *fmt2, ...)

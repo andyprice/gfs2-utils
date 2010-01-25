@@ -7,11 +7,15 @@
 #define fsck_lseek(fd, off) \
   ((lseek((fd), (off), SEEK_SET) == (off)) ? 0 : -1)
 
+#define INODE_VALID 1
+#define INODE_INVALID 0
+
 struct di_info *search_list(osi_list_t *list, uint64_t addr);
 void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked);
 void warm_fuzzy_stuff(uint64_t block);
-const char *block_type_string(uint8_t q);
-struct duptree *gfs2_dup_set(uint64_t dblock);
+int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
+		      enum dup_ref_type reftype, int first, int inode_valid);
+extern const char *reftypes[3];
 
 static inline uint8_t block_type(uint64_t bblock)
 {
