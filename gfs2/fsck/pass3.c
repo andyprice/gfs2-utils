@@ -205,47 +205,21 @@ int pass3(struct gfs2_sbd *sbp)
 				return FSCK_OK;
 			tdi = mark_and_return_parent(sbp, di);
 
-			/* FIXME: Factor this ? */
-			if(!tdi) {
-				q = block_type(di->dinode);
-				if(q == gfs2_bad_block) {
-					log_err( _("Found unlinked directory containing bad block\n"));
-					if(query(
-					   _("Clear unlinked directory with bad blocks? (y/n) "))) {
-						log_warn( _("inode %lld (0x%llx) is "
-						       "now marked as free\n"),
-							  (unsigned long long)
-							  di->dinode,
-							  (unsigned long long)
-							  di->dinode);
-						/* Can't use fsck_blockmap_set
-						   because we don't have ip */
-						gfs2_blockmap_set(bl,
-								  di->dinode,
-							  gfs2_block_free);
-						check_n_fix_bitmap(sbp,
-								   di->dinode,
-							   gfs2_block_free);
-						break;
-					} else
-						log_err( _("Unlinked directory with bad block remains\n"));
-				}
-				if(q != gfs2_inode_dir &&
-				   q != gfs2_inode_file &&
-				   q != gfs2_inode_lnk &&
-				   q != gfs2_inode_blk &&
-				   q != gfs2_inode_chr &&
-				   q != gfs2_inode_fifo &&
-				   q != gfs2_inode_sock) {
-					log_err( _("Unlinked block marked as inode not an inode\n"));
-					if(!query(_("Clear the unlinked block?"
-						    " (y/n) "))) {
-						log_err( _("The block was not "
-							   "cleared\n"));
-						break;
-					}
-					log_warn( _("inode %lld (0x%llx) is now "
-						    "marked as free\n"),
+			if (tdi) {
+				log_debug( _("Directory at block %" PRIu64
+					     " (0x%" PRIx64 ") connected\n"),
+					   di->dinode, di->dinode);
+				di = tdi;
+				continue;
+			}
+			q = block_type(di->dinode);
+			if(q == gfs2_bad_block) {
+				log_err( _("Found unlinked directory "
+					   "containing bad block\n"));
+				if(query(_("Clear unlinked directory "
+					   "with bad blocks? (y/n) "))) {
+					log_warn( _("inode %lld (0x%llx) is "
+						    "now marked as free\n"),
 						  (unsigned long long)
 						  di->dinode,
 						  (unsigned long long)
@@ -256,49 +230,69 @@ int pass3(struct gfs2_sbd *sbp)
 							  gfs2_block_free);
 					check_n_fix_bitmap(sbp, di->dinode,
 							   gfs2_block_free);
-					log_err( _("The block was cleared\n"));
+					break;
+				} else
+					log_err( _("Unlinked directory with bad block remains\n"));
+			}
+			if(q != gfs2_inode_dir && q != gfs2_inode_file &&
+			   q != gfs2_inode_lnk && q != gfs2_inode_blk &&
+			   q != gfs2_inode_chr && q != gfs2_inode_fifo &&
+			   q != gfs2_inode_sock) {
+				log_err( _("Unlinked block marked as an inode "
+					   "is not an inode\n"));
+				if(!query(_("Clear the unlinked block?"
+					    " (y/n) "))) {
+					log_err( _("The block was not "
+						   "cleared\n"));
 					break;
 				}
-
-				log_err( _("Found unlinked directory at block %" PRIu64
-						" (0x%" PRIx64 ")\n"), di->dinode, di->dinode);
-				ip = fsck_load_inode(sbp, di->dinode);
-				/* Don't skip zero size directories
-				 * with eattrs */
-				if(!ip->i_di.di_size && !ip->i_di.di_eattr){
-					log_err( _("Unlinked directory has zero size.\n"));
-					if(query( _("Remove zero-size unlinked directory? (y/n) "))) {
-						fsck_blockmap_set(ip,
-								  di->dinode,
-						_("zero-sized unlinked inode"),
-							  gfs2_block_free);
-						fsck_inode_put(&ip);
-						break;
-					} else {
-						log_err( _("Zero-size unlinked directory remains\n"));
-					}
-				}
-				if(query( _("Add unlinked directory to "
-					    "lost+found? (y/n) "))) {
-					if(add_inode_to_lf(ip)) {
-						fsck_inode_put(&ip);
-						stack;
-						return FSCK_ERROR;
-					}
-					log_warn( _("Directory relinked to lost+found\n"));
-					bmodified(ip->i_bh);
-					fsck_inode_put(&ip);
-				} else {
-					log_err( _("Unlinked directory remains unlinked\n"));
-					fsck_inode_put(&ip);
-				}
+				log_warn( _("inode %lld (0x%llx) is now "
+					    "marked as free\n"),
+					  (unsigned long long)di->dinode,
+					  (unsigned long long)di->dinode);
+				/* Can't use fsck_blockmap_set
+				   because we don't have ip */
+				gfs2_blockmap_set(bl, di->dinode,
+						  gfs2_block_free);
+				check_n_fix_bitmap(sbp, di->dinode,
+						   gfs2_block_free);
+				log_err( _("The block was cleared\n"));
 				break;
 			}
-			else {
-				log_debug( _("Directory at block %" PRIu64 " (0x%" 
-						  PRIx64 ") connected\n"), di->dinode, di->dinode);
+
+			log_err( _("Found unlinked directory at block %" PRIu64
+				   " (0x%" PRIx64 ")\n"), di->dinode,
+				 di->dinode);
+			ip = fsck_load_inode(sbp, di->dinode);
+			/* Don't skip zero size directories with eattrs */
+			if(!ip->i_di.di_size && !ip->i_di.di_eattr){
+				log_err( _("Unlinked directory has zero "
+					   "size.\n"));
+				if(query( _("Remove zero-size unlinked "
+					    "directory? (y/n) "))) {
+					fsck_blockmap_set(ip, di->dinode,
+						_("zero-sized unlinked inode"),
+							  gfs2_block_free);
+					fsck_inode_put(&ip);
+					break;
+				} else {
+					log_err( _("Zero-size unlinked "
+						   "directory remains\n"));
+				}
 			}
-			di = tdi;
+			if(query( _("Add unlinked directory to "
+				    "lost+found? (y/n) "))) {
+				if(add_inode_to_lf(ip)) {
+					fsck_inode_put(&ip);
+					stack;
+					return FSCK_ERROR;
+				}
+				log_warn( _("Directory relinked to lost+found\n"));
+			} else {
+				log_err( _("Unlinked directory remains unlinked\n"));
+			}
+			fsck_inode_put(&ip);
+			break;
 		}
 	}
 	if(lf_dip)
