@@ -229,7 +229,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		log_err( _("Bad directory entry deleted.\n"));
 		return 1;
 	}
-	
+
 	calculated_hash = gfs2_disk_hash(tmp_name, de->de_name_len);
 	if (de->de_hash != calculated_hash){
 	        log_err( _("Dir entry with bad hash or name length\n"

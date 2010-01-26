@@ -129,7 +129,7 @@ int fsck_query(const char *format, ...)
 			errors_corrected++;
                         ret = 1;
                         break;
- 		} else if (tolower(response) == 'n') {
+		} else if (tolower(response) == 'n') {
 			ret = 0;
 			break;
 		} else {

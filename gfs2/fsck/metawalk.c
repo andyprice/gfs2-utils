@@ -1221,8 +1221,8 @@ fail:
  *              This does not include "data" blocks that are really
  *              hash table blocks for directories.
  *
- * @ip: 
- * 
+ * @ip:
+ *
  * returns: +ENOENT if there are too many bad pointers
  *          -1 if a more serious error occurred.
  *          0 if no errors occurred

@@ -146,7 +146,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 		log_err( _("Found duplicate block %llu (0x%llx) referenced "
 			   "as metadata in indirect block for dinode "
 			   "%llu (0x%llx) - was marked %d (%s)\n"),
- 			 (unsigned long long)block,
+			 (unsigned long long)block,
 			 (unsigned long long)block,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr, q,
@@ -209,7 +209,7 @@ static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
 		log_err( _("Reversing duplicate status of block %llu (0x%llx) "
 			   "referenced as metadata in indirect block for "
 			   "dinode %llu (0x%llx)\n"),
- 			 (unsigned long long)block,
+			 (unsigned long long)block,
 			 (unsigned long long)block,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);

@@ -418,7 +418,7 @@ static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
 	int error = 0, di_height;
 	struct blocklist blocks, *blk, *newblk;
 	struct metapath gfs2mp;
-	struct gfs2_buffer_head *dibh = ip->i_bh;			   
+	struct gfs2_buffer_head *dibh = ip->i_bh;
 
 	/* if there are no indirect blocks to check */
 	if (ip->i_di.di_height <= 1)

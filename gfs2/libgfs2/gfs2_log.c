@@ -178,9 +178,9 @@ int gfs2_query(int *setonabort, struct gfs2_options *opts,
 			}
 			printf("Continuing.\n");
 		} else if(tolower(response) == 'y') {
-                        ret = 1;
-                        break;
- 		} else if (tolower(response) == 'n') {
+			ret = 1;
+			break;
+		} else if (tolower(response) == 'n') {
 			ret = 0;
 			break;
 		} else {

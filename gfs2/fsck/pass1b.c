@@ -535,7 +535,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
 		log_inode_reference(b, tmp, 1);
 	osi_list_foreach(tmp, &b->ref_inode_list)
 		log_inode_reference(b, tmp, 0);
-	
+
 	last_reference = clear_a_reference(sbp, b, &b->ref_invinode_list,
 					   &dh, 1);
 	if (!last_reference)
@@ -592,7 +592,6 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
 		log_debug( _("All duplicate references were resolved.\n"));
 	}
 	return 0;
-
 }
 
 /* Pass 1b handles finding the previous inode for a duplicate block

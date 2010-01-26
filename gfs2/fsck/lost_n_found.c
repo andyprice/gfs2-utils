@@ -175,7 +175,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 		reprocess_inode(lf_dip, "lost+found");
 
 	/* This inode is linked from lost+found */
-  	increment_link(ip->i_di.di_num.no_addr, lf_dip->i_di.di_num.no_addr,
+	increment_link(ip->i_di.di_num.no_addr, lf_dip->i_di.di_num.no_addr,
 		       _("from lost+found"));
 	/* If it's a directory, lost+found is back-linked to it via .. */
 	if(S_ISDIR(ip->i_di.di_mode))

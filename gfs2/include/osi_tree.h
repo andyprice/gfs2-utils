@@ -329,7 +329,7 @@ static inline struct osi_node *osi_next(struct osi_node *node)
 	/* If we have a right-hand child, go down and then left as far
 	   as we can. */
 	if (node->osi_right) {
-		node = node->osi_right; 
+		node = node->osi_right;
 		while (node->osi_left)
 			node=node->osi_left;
 		return node;
@@ -354,7 +354,7 @@ static inline struct osi_node *osi_prev(struct osi_node *node)
 	/* If we have a left-hand child, go down and then right as far
 	   as we can. */
 	if (node->osi_left) {
-		node = node->osi_left; 
+		node = node->osi_left;
 		while (node->osi_right)
 			node=node->osi_right;
 		return node;
