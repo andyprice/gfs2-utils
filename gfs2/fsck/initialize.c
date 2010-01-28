@@ -27,6 +27,8 @@
 		x = NULL; \
 	}
 
+static int was_mounted_ro = 0;
+
 /**
  * block_mounters
  *
@@ -455,27 +457,55 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 int initialize(struct gfs2_sbd *sbp, int force_check, int preen,
 	       int *all_clean)
 {
-	int clean_journals = 0;
+	int clean_journals = 0, open_flag;
 
 	*all_clean = 0;
 
-	if(opts.no) {
-		if ((sbp->device_fd = open(opts.device, O_RDONLY)) < 0) {
-			log_crit( _("Unable to open device: %s\n"), opts.device);
+	if(opts.no)
+		open_flag = O_RDONLY;
+	else
+		open_flag = O_RDWR | O_EXCL;
+
+	sbp->device_fd = open(opts.device, open_flag);
+	if (sbp->device_fd < 0) {
+		int is_mounted, ro;
+
+		if (open_flag == O_RDONLY || errno != EBUSY) {
+			log_crit( _("Unable to open device: %s\n"),
+				  opts.device);
 			return FSCK_USAGE;
 		}
-	} else {
-		/* read in sb from disk */
-		if ((sbp->device_fd = open(opts.device, O_RDWR | O_EXCL)) < 0){
-			if (errno == EBUSY)
-				log_crit( _("Device %s is busy.\n"),
-					 opts.device);
-			else
-				log_crit( _("Unable to open device: %s\n"),
-					  opts.device);
-			return FSCK_USAGE;
-		}
+		/* We can't open it EXCL.  It may be already open rw (in which
+		   case we want to deny them access) or it may be mounted as
+		   the root file system at boot time (in which case we need to
+		   allow it.)  We use is_pathname_mounted here even though
+		   we're specifying a device name, not a path name.  The
+		   function checks for device as well. */
+		strncpy(sbp->device_name, opts.device,
+			sizeof(sbp->device_name));
+		sbp->path_name = sbp->device_name; /* This gets overwritten */
+		is_mounted = is_pathname_mounted(sbp, &ro);
+		/* If the device is busy, but not because it's mounted, fail.
+		   This protects against cases where the file system is LVM
+		   and perhaps mounted on a different node. */
+		if (!is_mounted)
+			goto mount_fail;
+		/* If the device is mounted, but not mounted RO, fail.  This
+		   protects them against cases where the file system is
+		   mounted RW, but still allows us to check our own root
+		   file system. */
+		if (!ro)
+			goto mount_fail;
+		/* The device is mounted RO, so it's likely our own root
+		   file system.  We can only do so much to protect the users
+		   from themselves.  Try opening without O_EXCL. */
+		if ((sbp->device_fd = open(opts.device, O_RDWR)) < 0)
+			goto mount_fail;
+
+		was_mounted_ro = 1;
 	}
+
+	/* read in sb from disk */
 	if (fill_super_block(sbp)) {
 		stack;
 		return FSCK_ERROR;
@@ -511,6 +541,10 @@ int initialize(struct gfs2_sbd *sbp, int force_check, int preen,
 		return FSCK_ERROR;
 
 	return FSCK_OK;
+
+mount_fail:
+	log_crit( _("Device %s is busy.\n"), opts.device);
+	return FSCK_USAGE;
 }
 
 static void destroy_sbp(struct gfs2_sbd *sbp)
@@ -525,6 +559,15 @@ static void destroy_sbp(struct gfs2_sbd *sbp)
 	}
 	empty_super_block(sbp);
 	close(sbp->device_fd);
+	if (was_mounted_ro && errors_corrected) {
+		sbp->device_fd = open("/proc/sys/vm/drop_caches", O_WRONLY);
+		if (sbp->device_fd >= 0) {
+			write(sbp->device_fd, "2", 1);
+			close(sbp->device_fd);
+		} else
+			log_err( _("fsck.gfs2: Non-fatal error dropping "
+				   "caches.\n"));
+	}
 }
 
 void destroy(struct gfs2_sbd *sbp)

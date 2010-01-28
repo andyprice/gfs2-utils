@@ -598,6 +598,7 @@ extern int gfs2_query(int *setonabort, struct gfs2_options *opts,
 extern int compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
 		uint32_t *maxheight, uint32_t bsize1, int diptrs, int inptrs);
 extern int compute_constants(struct gfs2_sbd *sdp);
+extern int is_pathname_mounted(struct gfs2_sbd *sdp, int *ro_mount);
 extern int find_gfs2_meta(struct gfs2_sbd *sdp);
 extern int dir_exists(const char *dir);
 extern int check_for_gfs2(struct gfs2_sbd *sdp);

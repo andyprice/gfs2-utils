@@ -98,7 +98,7 @@ int compute_constants(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-int check_for_gfs2(struct gfs2_sbd *sdp)
+int is_pathname_mounted(struct gfs2_sbd *sdp, int *ro_mount)
 {
 	FILE *fp;
 	char buffer[PATH_MAX];
@@ -108,14 +108,14 @@ int check_for_gfs2(struct gfs2_sbd *sdp)
 	char fsoptions[PATH_MAX];
 	char *realname;
 
+	*ro_mount = 0;
 	realname = realpath(sdp->path_name, NULL);
-	if (!realname) {
-		return -1;
-	}
+	if (!realname)
+		return 0;
 	fp = fopen("/proc/mounts", "r");
 	if (fp == NULL) {
 		free(realname);
-		return -1;
+		return 0;
 	}
 	while ((fgets(buffer, PATH_MAX - 1, fp)) != NULL) {
 		buffer[PATH_MAX - 1] = 0;
@@ -137,19 +137,31 @@ int check_for_gfs2(struct gfs2_sbd *sdp)
 		else if (strcmp(fspath, realname) != 0)
 			continue;
 
+		if (strncmp(fsoptions, "ro,", 3) == 0 ||
+		    strcmp(fsoptions, "ro") == 0)
+			*ro_mount = 1;
 		fclose(fp);
 		free(realname);
 		if (strncmp(sdp->device_name, "/dev/loop", 9) == 0) {
 			errno = EINVAL;
-			return -1;
+			return 0;
 		}
 
-		return 0;
+		return 1;
 	}
 	free(realname);
 	fclose(fp);
 	errno = EINVAL;
-	return -1;
+	return 0;
+}
+
+int check_for_gfs2(struct gfs2_sbd *sdp)
+{
+	int ro;
+
+	if (!is_pathname_mounted(sdp, &ro))
+		return -1;
+	return 0;
 }
 
 static int lock_for_admin(struct gfs2_sbd *sdp)
