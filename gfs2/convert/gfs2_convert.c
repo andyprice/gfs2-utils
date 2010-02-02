@@ -1353,10 +1353,10 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 
 		rgd->ri.ri_data0 = jndx->ji_addr + rgd->ri.ri_length;
 		rgd->ri.ri_data = size - rgd->ri.ri_length;
-		sdp->blks_total += rgd->ri.ri_data; /* For statfs file update */
 		/* Round down to nearest multiple of GFS2_NBBY */
 		while (rgd->ri.ri_data & 0x03)
 			rgd->ri.ri_data--;
+		sdp->blks_total += rgd->ri.ri_data; /* For statfs file update */
 		rgd->rg.rg_free = rgd->ri.ri_data;
 		rgd->ri.ri_bitbytes = rgd->ri.ri_data / GFS2_NBBY;
 
@@ -1417,7 +1417,7 @@ static void write_statfs_file(struct gfs2_sbd *sdp)
 	struct gfs2_statfs_change sc;
 	char buf[sizeof(struct gfs2_statfs_change)];
 	int count;
-	
+
 	sc.sc_total = sdp->blks_total;
 	sc.sc_free = sdp->blks_total - sdp->blks_alloced;
 	sc.sc_dinodes = sdp->dinodes_alloced;
@@ -1588,6 +1588,9 @@ int main(int argc, char **argv)
 		build_quota(&sb2);
 
 		update_inode_file(&sb2);
+		/* Now delete the now-obsolete gfs1 files: */
+		remove_obsolete_gfs1(&sb2);
+
 		write_statfs_file(&sb2);
 
 		inode_put(&sb2.master_dir);
@@ -1596,8 +1599,6 @@ int main(int argc, char **argv)
 
 		fsync(sb2.device_fd); /* write the buffers to disk */
 
-		/* Now delete the now-obsolete gfs1 files: */
-		remove_obsolete_gfs1(&sb2);
 		/* Now free all the in memory */
 		gfs2_rgrp_free(&sb2.rglist);
 		log_notice("Committing changes to disk.\n");

@@ -1675,6 +1675,7 @@ void gfs2_free_block(struct gfs2_sbd *sdp, uint64_t block)
 		gfs2_set_bitmap(sdp, block, GFS2_BLKST_FREE);
 		rgd->rg.rg_free++; /* adjust the free count */
 		gfs2_rgrp_out(&rgd->rg, rgd->bh[0]); /* back to the buffer */
+		sdp->blks_alloced--;
 	}
 }
 
@@ -1730,10 +1731,14 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 	/* Set the bitmap type for inode to free space: */
 	gfs2_set_bitmap(sdp, ip->i_di.di_num.no_addr, GFS2_BLKST_FREE);
 	inode_put(&ip);
+	/* inode_put deallocated the extra block used by the dist inode, */
+	/* so adjust it in the superblock struct */
+	sdp->blks_alloced--;
 	/* Now we have to adjust the rg freespace count and inode count: */
 	rgd = gfs2_blk2rgrpd(sdp, diblock);
 	rgd->rg.rg_free++;
 	rgd->rg.rg_dinodes--; /* one less inode in use */
 	gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
+	sdp->dinodes_alloced--;
 	return 0;
 }
