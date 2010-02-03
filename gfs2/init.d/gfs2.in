@@ -18,14 +18,28 @@
 # set secure PATH
 PATH="/bin:/usr/bin:/sbin:/usr/sbin:@SBINDIR@"
 
+### generic wrapper functions
+
 success()
 {
-    echo -ne "[  OK  ]\r"
+	echo -ne "[  OK  ]\r"
 }
 
 failure()
 {
-    echo -ne "[FAILED]\r"
+	echo -ne "[FAILED]\r"
+}
+
+ok() {
+	success
+	echo
+}
+
+nok() {
+	echo -e "$errmsg"
+	failure
+	echo
+	exit 1
 }
 
 # rpm based distros
@@ -43,106 +57,75 @@ if [ -d /etc/default ]; then
 	[ -z "$LOCK_FILE" ] && LOCK_FILE="/var/lock/gfs2"
 fi
 
+# proc is required for both status and stop.
+# start could live without, but better be consistent with the behavior
+if [ ! -f /proc/mounts ]; then
+	echo "GFS2: /proc is not available, unable to proceed"
+	exit 1
+fi
+
 #
 # This script's behavior is modeled closely after the netfs script.  
 #
 GFS2FSTAB=$(LC_ALL=C awk '!/^#/ && $3 == "gfs2" && $4 !~ /noauto/ { print $2 }' /etc/fstab)
 GFS2MTAB=$(LC_ALL=C awk '!/^#/ && $3 == "gfs2" && $2 != "/" { print $2 }' /proc/mounts)
 
+if [ -z "$GFS2FSTAB" ]; then
+	echo "GFS2: no entries found in /etc/fstab"
+	exit 6
+fi
+
 # See how we were called.
 case "$1" in
-  start)
-        if [ -n "$GFS2FSTAB" ] 
-	then
-		echo -n "Mounting GFS2 filesystems: "
-		mount -a -t gfs2
-		rtrn=$?
-		if [ $rtrn = 0 ]; then
-			touch $LOCK_FILE
-			success
-			echo
-		else
-			failure
-			echo
-		fi
-	fi
-	;;
-
-  stop)
-  	if [ -n "$GFS2MTAB" ] 
-	then
-		sig=
-		retry=6
-		remaining=`LC_ALL=C awk '!/^#/ && $3 == "gfs2" && $2 != "/" {print $2}' /proc/mounts`
-		while [ -n "$remaining" -a "$retry" -gt 0 ]
-		do
-			echo -n "Unmounting GFS2 filesystems: "
-			umount -a -t gfs2
-			rtrn=$?
-			if [ $rtrn = 0 ]; then
-				success
-				echo
-			else
-				failure
-				echo
-			fi
-			
-			if [ $retry -eq 0 ] 
-			then
-				echo -n "Unmounting GFS2 filesystems (lazy): "
-				umount -l -a -t gfs2
-				rtrn=$?
-				if [ $rtrn = 0 ]; then
-					success
-					echo
-				else
-					failure
-					echo
-				fi
-				break
-			fi
-
-			sleep 2
-			remaining=`LC_ALL=C awk '!/^#/ && $3 == "gfs2" && $2 != "/" {print $2}' /proc/mounts`
-			[ -z "$remaining" ] && break
-			fuser -k -m $sig $remaining > /dev/null 2>&1
-			sleep 10
-			retry=$(($retry - 1))
-			sig=-9
-		done
-	fi
-
-	modprobe -r gfs2
+start)
+	[ -z "$GFS2FSTAB" ] && exit 0
+	echo -n "Mounting GFS2 filesystems: "
+	errmsg="$(mount -a -t gfs2 2>&1)" || nok
+	touch $LOCK_FILE
+	ok
+;;
+stop)
+	[ -z "$GFS2MTAB" ] && exit 0
+	echo -n "Unmounting GFS2 filesystems: "
+	errmsg="$(umount -a -t gfs2 2>&1)" || nok
+	modprobe -r gfs2 > /dev/null 2>&1 || true
 	rm -f $LOCK_FILE
+	ok
 	;;
 
-  status)
-	if [ -f /proc/mounts ]
-	then
-	        [ -n "$GFS2FSTAB" ] && {
-		     echo "Configured GFS2 mountpoints: "
-		     for fs in $GFS2FSTAB; do echo $fs ; done
-		}
-		[ -n "$GFS2MTAB" ] && {
-                      echo "Active GFS2 mountpoints: "
-		      for fs in $GFS2MTAB; do echo $fs ; done
-		}
-	else
-		echo "/proc filesystem unavailable"
+status)
+	if [ -z "$GFS2MTAB" ] && [ -f $LOCK_FILE ]; then
+		echo "GFS2: Found stale lock file $LOCK_FILE"
+		exit 2
 	fi
-	;;
 
-  restart)
+	if [ -n "$GFS2FSTAB" ] && [ -z "$GFS2MTAB" ]; then
+		echo "GFS2: service is not running"
+		exit 3
+	fi
+
+	echo "Configured GFS2 mountpoints: "
+	for fs in $GFS2FSTAB; do
+		echo $fs;
+	done
+
+	echo "Active GFS2 mountpoints: "
+	for fs in $GFS2MTAB; do
+		echo $fs;
+	done
+;;
+condrestart|try-restart)
+	$0 status >/dev/null 2>&1 || exit 0
+	$0 restart
+;;
+restart|reload|force-reload)
 	$0 stop
 	$0 start
-	;;
-
-  reload)
-        $0 start
-	;;
-  *)
-	echo $"Usage: $0 {start|stop|restart|reload|status}"
-	exit 1
+;;
+*)
+	echo "Usage: $0 {start|stop|restart|reload|force-reload|condrestart|try-restart|status}"
+	exit 2
+;;
 esac
 
 exit 0
