@@ -4,18 +4,17 @@
 mount.gfs2 - GFS2 mount options
 
 .SH SYNOPSIS
-.B mount
-[\fIStandardMountOptions\fR] \fB-t\fP gfs2 \fIDEVICE\fR \fIMOUNTPOINT\fR \fB-o\fP [GFS2Option1,GFS2Option2,GFS2OptionX...]
+.BI "mount \-a [\-fnrsvw] \-t " gfs2 " [\-O " options "]
+.br
+.BI "mount [\-fnrsvw] \-t " gfs2 " [\-o " options " ] " "device dir"
 
 .SH DESCRIPTION
-GFS2 may be used as a local (single computer) filesystem, but its real purpose
-is in clusters, where multiple computers (nodes) share a common storage device.
-
-Above is the format typically used to mount a GFS2 filesystem, using the
-\fBmount\fP(8) command.  The \fIdevice\fR may be any block device on which you
+For details on the common mount options, please see the
+\fBmount\fP(8) command man page.
+The \fIdevice\fR may be any block device on which you
 have created a GFS2 filesystem.  Examples include a
 single disk partition (e.g. /dev/sdb3), a loopback device, a device exported
-from another node (e.g. an iSCSI device or a \fBgnbd\fP(8) device), or a
+from another node (e.g. an iSCSI device), or a
 logical volume (typically comprised of a number of individual disks).
 
 \fIdevice\fR does not necessarily need to match the device name as seen on
@@ -31,8 +30,6 @@ different computers.  Each computer must see an entire filesystem.  You
 may, however, mount several GFS2 filesystems if you want to distribute your
 data storage in a controllable way.
 
-\fImountpoint\fR is the same as \fIdir\fR in the \fBmount\fP(8) man page.
-
 This man page describes GFS2-specific options that can be passed to the GFS2 
 file system at mount time, using the \fB-o\fP flag.  There are many other
 \fB-o\fP options handled by the generic mount command \fBmount\fP(8).
@@ -41,9 +38,9 @@ interpreted by the mount command nor by the kernel's Virtual File System.  GFS2
 and non-GFS2 options may be intermingled after the \fB-o\fP, separated by
 commas (but no spaces).
 
-The options debug, commit, discard, acl, quota, suiddir, and data can be
+The options commit, discard, errors, quota_quantum, statfs_quantum, statfs_percent, barrier, acl, quota, suiddir, and data can be
 changed after mount using the "mount -o remount,option /mountpoint" command.
-The options debug, quota, discard, acl, and suiddir support the "no"
+The options quota, discard, barrier, acl, and suiddir support the "no"
 prefix.  For example, "noacl" turns off what "acl" turns on.
 
 If you have trouble mounting GFS2, check the syslog (e.g. /var/log/messages)
@@ -51,15 +48,13 @@ for specific error messages.
 
 .SH OPTIONS
 .TP
-\fBlockproto=\fP\fILockModuleName\fR
+\fBlockproto=\fP\fILockProtoName\fR
 This specifies which inter-node lock protocol is used by the GFS2 filesystem
 for this mount, overriding the default lock protocol name stored in the
 filesystem's on-disk superblock.
 
-The \fILockModuleName\fR must be an exact match of the protocol name presented
-by the lock module when it registers with the lock harness.  Traditionally,
-this matches the .o filename of the lock module, e.g. \fIlock_dlm\fR,
-or \fIlock_nolock\fR.
+The \fILockProtoName\fR must be one of the supported locking protocols,
+currently these are \fIlock_nolock\fR and \fIlock_dlm\fR.
 
 The default lock protocol name is written to disk initially when creating the
 filesystem with \fBmkfs.gfs2\fP(8), -p option.  It can be changed on-disk by
@@ -67,7 +62,9 @@ using the \fBgfs2_tool\fP(8) utility's \fBsb proto\fP command.
 
 The \fBlockproto\fP mount option should be used only under special
 circumstances in which you want to temporarily use a different lock protocol
-without changing the on-disk default.
+without changing the on-disk default. Using the incorrect lock protocol
+on a cluster filesystem mounted from more than one node will almost
+certainly result in filesystem corruption.
 .TP
 \fBlocktable=\fP\fILockTableName\fR
 This specifies the identity of the cluster and of the filesystem for this
@@ -78,8 +75,8 @@ the inter-node locking system, enabling the mounting of multiple GFS2
 filesystems.
 
 The format of \fILockTableName\fR is lock-module-specific.  For
-lock_dlm, the format is \fIclustername:fsname\fR.  For
-lock_nolock, the field is ignored.
+\fIlock_dlm\fR, the format is \fIclustername:fsname\fR.  For
+\fIlock_nolock\fR, the field is ignored.
 
 The default cluster/filesystem name is written to disk initially when creating
 the filesystem with \fBmkfs.gfs2\fP(8), -t option.  It can be changed on-disk
@@ -108,10 +105,13 @@ is achieved by letting VFS handle the whole job.
 This is turned on automatically by the lock_nolock module,
 but can be overridden by using the \fBignore_local_fs\fP option.
 .TP
-\fBdebug\fP
-Causes GFS2 to oops when encountering an error that would cause the
-mount to withdraw or print an assertion warning.  This option should
-probably not be used in a production system. 
+\fBerrors=\fP\fI[panic|withdraw]\fR
+Setting errors=panic causes GFS2 to oops when encountering an error that
+would otherwise cause the
+mount to withdraw or print an assertion warning. The default setting
+is errors=withdraw. This option should not be used in a production system.
+It replaces the earlier \fBdebug\fP option on kernel versions 2.6.31 and
+above.
 .TP
 \fBignore_local_fs\fP
 By default, using the nolock lock module automatically turns on the
@@ -133,7 +133,8 @@ Enables POSIX Access Control List \fBacl\fP(5) support within GFS2.
 .TP
 \fBspectator\fP
 Mount this filesystem using a special form of read-only mount.  The mount
-does not use one of the filesystem's journals.
+does not use one of the filesystem's journals. The node is unable to
+recover journals for other nodes.
 .TP
 \fBsuiddir\fP
 Sets owner of any newly created file or directory to be that of parent
@@ -155,13 +156,21 @@ been freed. These can be used by suitable hardware to implement
 thin-provisioning and similar schemes. This feature is supported
 in kernel version 2.6.30 and above.
 .TP
+\fBbarrier\fP
+This option, which defaults to on, causes GFS2 to send I/O barriers
+when flushing the journal. The option is automatically turned off
+if the underlying device does not support I/O barriers. We highly
+recommend the use of I/O barriers with GFS2 at all times unless
+the block device is designed so that it cannot lose its write cache
+content (e.g. its on a UPS, or it doesn't have a write cache)
+.TP
 \fBcommit=\fP\fIsecs\fR
 This is similar to the ext3 \fBcommit=\fP option in that it sets
 the maximum number of seconds between journal commits if there is
 dirty data in the journal. The default is 60 seconds. This option
 is only provided in kernel versions 2.6.31 and above.
 .TP
-\fBdata=\fP\fI[ordered/writeback]\fR
+\fBdata=\fP\fI[ordered|writeback]\fR
 When data=ordered is set, the user data modified by a transaction is
 flushed to the disk before the transaction is committed to disk.  This
 should prevent the user from seeing uninitialized blocks in a file
@@ -169,14 +178,47 @@ after a crash.  Data=writeback mode writes the user data to the disk
 at any time after it's dirtied.  This doesn't provide the same
 consistency guarantee as ordered mode, but it should be slightly
 faster for some workloads.  The default is ordered mode.
-
-.SH LINKS
-.TP 30
-http://sources.redhat.com/cluster
--- home site of GFS2
 .TP
-http://www.suse.de/~agruen/acl/linux-acls/
--- good writeup on ACL support in Linux
+\fBmeta\fP
+This option results in selecting the meta filesystem root rather than
+the normal filesystem root. This option is normally only used by
+the GFS2 utility functions. Altering any file on the GFS2 meta filesystem
+may render the filesystem unusable, so only experts in the GFS2
+on-disk layout should use this option.
+.TP
+\fBquota_quantum=\fP\fIsecs\fR
+This sets the number of seconds for which a change in the quota
+information may sit on one node before being written to the quota
+file. This is the preferred way to set this parameter. The value
+is an integer number of seconds greater than zero. The default is
+60 seconds. Shorter settings result in faster updates of the lazy
+quota information and less likelihood of someone exceeding their
+quota. Longer settings make filesystem operations involving quotas
+faster and more efficient.
+.TP
+\fBstatfs_quantum=\fP\fIsecs\fR
+Setting statfs_quantum to 0 is the preferred way to set the slow version
+of statfs. The default value is 30 secs which sets the maximum time
+period before statfs changes will be syned to the master statfs file.
+This can be adjusted to allow for faster, less accurate statfs values
+or slower more accurate values. When set to 0, statfs will always
+report the true values.
+.TP
+\fBstatfs_percent=\fP\fIvalue\fR
+This setting provides a bound on the maximum percentage change in
+the statfs information on a local basis before it is synced back
+to the master statfs file, even if the time period has not
+expired. If the setting of statfs_quantum is 0, then this setting
+is ignored.
+
+.SH BUGS
+
+GFS2 doesn't support \fBerrors=\fP\fIremount-ro\fR or \fBdata=\fP\fIjournal\fR.
+It is not possible to switch support for user and group quotas on and
+off independently of each other. Some of the error messages are rather
+cryptic, if you encounter one of these messages check firstly that gfs_controld
+is running and secondly that you have enough journals on the filesystem
+for the number of nodes in use.
 
 .SH SEE ALSO
 

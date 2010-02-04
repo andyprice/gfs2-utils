@@ -16,7 +16,10 @@ as gfs_tool used to.
 .SH COMMANDS
 .TP
 \fBclearflag\fP \fIFlag\fR \fIFile1\fR \fIFile2\fR \fI...\fR 
-Clear an attribute flag on a file. See \fBsetflag\fP for available flags.
+Clear an attribute flag on a file. This is now obsolete and kept
+only for backward compatibility, chattr is the preferred way to
+clear attribute flags. See \fBsetflag\fP for available flags. This
+option will probably be removed at a future date.
 .TP
 \fBfreeze\fP \fIMountPoint\fR
 Freeze (quiesce) a GFS2 cluster.
@@ -35,7 +38,8 @@ Print out information about the journals in a mounted filesystem.
 \fBlockdump\fP \fIMountPoint\fR
 Print out information about the locks this machine holds for a given
 filesystem. This information is also available via the debugfs
-glock dump file.
+glock dump file, and accessing that file is the preferred method
+of obtaining a dump of the glock state.
 .\".TP
 .\"\fBrindex\fP \fIMountPoint\fR
 .\"Print out the resource group index of a mounted filesystem.
@@ -73,7 +77,7 @@ Print out the superblock.
 Set an attribute flag on a file.  The currently supported flags are 
 jdata, immutable, appendonly, noatime, and sync.  The 
 chattr command is the preferred way to set attributes on
-files.
+files. This option will probably be removed at a future date.
 
 The \fIjdata\fR flag causes all the data written to a file
 to be journaled.  If the \fIjdata\fR flag is set for a directory,
@@ -108,4 +112,6 @@ Print out the version of GFS2 that this program goes with.
 .TP
 \fBwithdraw\fP \fIMountPoint\fR
 Cause GFS2 to abnormally shutdown a given filesystem on this node.
+This feature is only useful for testing and should not be used
+during normal filesystem operation.
 
