@@ -212,6 +212,8 @@ int main(int argc, char **argv)
 
 		if (errno == EBUSY)
 			die("%s already mounted or %s busy\n", mo.dev, mo.dir);
+		else if (errno == EUSERS)
+			die("Too many nodes mounting filesystem, no free journals\n");
 		die("error mounting %s on %s: %s\n", mo.dev, mo.dir,
 		    strerror(errno));
 	}
