@@ -300,9 +300,7 @@ static void save_indirect_blocks(int out_fd, osi_list_t *cur_list,
 		}
 		if (height != hgt) { /* If not at max height */
 			nbh = bread(&sbd, indir_block);
-			osi_list_add_prev(&nbh->b_altlist,
-					  cur_list);
-			brelse(nbh);
+			osi_list_add_prev(&nbh->b_altlist, cur_list);
 		}
 	} /* for all data on the indirect block */
 }
