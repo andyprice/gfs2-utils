@@ -17,6 +17,7 @@
 #include <dirent.h>
 #include <linux/kdev_t.h>
 #include <sys/sysmacros.h>
+#include <mntent.h>
 
 #include "libgfs2.h"
 
@@ -101,58 +102,81 @@ int compute_constants(struct gfs2_sbd *sdp)
 int is_pathname_mounted(struct gfs2_sbd *sdp, int *ro_mount)
 {
 	FILE *fp;
-	char buffer[PATH_MAX];
-	char fstype[80];
-	int fsdump, fspass, ret;
-	char fspath[PATH_MAX];
-	char fsoptions[PATH_MAX];
-	char *realname;
+	struct mntent *mnt;
+	dev_t file_dev=0, file_rdev=0;
+	ino_t file_ino=0;
+	struct stat st_buf;
 
 	*ro_mount = 0;
-	realname = realpath(sdp->path_name, NULL);
-	if (!realname)
-		return 0;
-	fp = fopen("/proc/mounts", "r");
-	if (fp == NULL) {
-		free(realname);
+	if ((fp = setmntent("/proc/mounts", "r")) == NULL) {
+		perror("open: /proc/mounts");
 		return 0;
 	}
-	while ((fgets(buffer, PATH_MAX - 1, fp)) != NULL) {
-		buffer[PATH_MAX - 1] = 0;
-
-		if (strstr(buffer, "0") == 0)
-			continue;
-
-		ret = sscanf(buffer, "%s %s %s %s %d %d", sdp->device_name,
-				fspath, fstype, fsoptions, &fsdump, &fspass);
-		if (6 != ret)
-			continue;
-
-		if (strcmp(fstype, "gfs2") != 0)
-			continue;
-
-		/* Check if they specified the device instead of mnt point */
-		if (strcmp(sdp->device_name, realname) == 0)
-			strcpy(sdp->path_name, fspath); /* fix it */
-		else if (strcmp(fspath, realname) != 0)
-			continue;
-
-		if (strncmp(fsoptions, "ro,", 3) == 0 ||
-		    strcmp(fsoptions, "ro") == 0)
-			*ro_mount = 1;
-		fclose(fp);
-		free(realname);
-		if (strncmp(sdp->device_name, "/dev/loop", 9) == 0) {
-			errno = EINVAL;
-			return 0;
+	if (stat(sdp->path_name, &st_buf) == 0) {
+		if (S_ISBLK(st_buf.st_mode)) {
+#ifndef __GNU__ /* The GNU hurd is broken with respect to stat devices */
+			file_rdev = st_buf.st_rdev;
+#endif  /* __GNU__ */
+		} else {
+			file_dev = st_buf.st_dev;
+			file_ino = st_buf.st_ino;
 		}
-
-		return 1;
 	}
-	free(realname);
-	fclose(fp);
-	errno = EINVAL;
-	return 0;
+	while ((mnt = getmntent (fp)) != NULL) {
+		/* Check if they specified the device instead of mnt point */
+		if (strcmp(sdp->device_name, mnt->mnt_fsname) == 0) {
+			strcpy(sdp->path_name, mnt->mnt_dir); /* fix it */
+			break;
+		}
+		if (strcmp(sdp->path_name, mnt->mnt_dir) == 0) {
+			strcpy(sdp->device_name, mnt->mnt_fsname); /* fix it */
+			break;
+		}
+		if (stat(mnt->mnt_fsname, &st_buf) == 0) {
+			if (S_ISBLK(st_buf.st_mode)) {
+#ifndef __GNU__
+				if (file_rdev && (file_rdev == st_buf.st_rdev))
+					break;
+#endif  /* __GNU__ */
+			} else {
+				if (file_dev && ((file_dev == st_buf.st_dev) &&
+						 (file_ino == st_buf.st_ino)))
+					break;
+			}
+		}
+	}
+	endmntent (fp);
+	if (mnt == NULL)
+		return 0;
+	if (stat(mnt->mnt_dir, &st_buf) < 0) {
+		if (errno == ENOENT)
+			return 0;
+	}
+	/* Can't trust fstype because / has "rootfs". */
+	if (file_rdev && (st_buf.st_dev != file_rdev))
+		return 0;
+	if (hasmntopt(mnt, MNTOPT_RO))
+               *ro_mount = 1;
+	return 1; /* mounted */
+}
+
+int is_gfs2(struct gfs2_sbd *sdp)
+{
+	int fd, rc;
+	struct gfs2_sb sb;
+
+	fd = open(sdp->device_name, O_RDWR);
+	if (fd < 0)
+		return 0;
+
+	rc = 0;
+	if (lseek(fd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK, SEEK_SET) >= 0 &&
+	    read(fd, &sb, sizeof(sb)) == sizeof(sb) &&
+	    be32_to_cpu(sb.sb_header.mh_magic) == GFS2_MAGIC &&
+	    be32_to_cpu(sb.sb_header.mh_type) == GFS2_METATYPE_SB)
+		rc = 1;
+	close(fd);
+	return rc;
 }
 
 int check_for_gfs2(struct gfs2_sbd *sdp)
@@ -160,6 +184,8 @@ int check_for_gfs2(struct gfs2_sbd *sdp)
 	int ro;
 
 	if (!is_pathname_mounted(sdp, &ro))
+		return -1;
+	if (!is_gfs2(sdp))
 		return -1;
 	return 0;
 }
