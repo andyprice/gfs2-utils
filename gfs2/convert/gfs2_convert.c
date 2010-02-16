@@ -582,6 +582,282 @@ out:
 	return error;
 }
 
+static void jdata_mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,
+			   struct metapath *gfs1mp, struct metapath *gfs2mp,
+			   unsigned int *len, uint64_t dinode_size)
+{
+	uint64_t offset;
+	int h;
+	uint64_t gfs1factor[GFS2_MAX_META_HEIGHT];
+	uint64_t gfs2factor[GFS2_MAX_META_HEIGHT];
+
+	/* figure out multiplication factors for each height - gfs1 */
+	memset(&gfs1factor, 0, sizeof(gfs1factor));
+	gfs1factor[gfs1_h - 1] = sbp->bsize - sizeof(struct gfs2_meta_header);
+	for (h = gfs1_h - 1; h > 0; h--)
+		gfs1factor[h - 1] = gfs1factor[h] * sbp->sd_inptrs;
+
+	/* figure out multiplication factors for each height - gfs2 */
+	memset(&gfs2factor, 0, sizeof(gfs2factor));
+	gfs2factor[gfs2_h] = 1ull;
+	gfs2factor[gfs2_h - 1] = sbp->bsize;
+	for (h = gfs2_h - 1; h > 0; h--)
+		gfs2factor[h - 1] = gfs2factor[h] * gfs2_inptrs;
+
+	/* Convert from gfs1 to an offset */
+	offset = 0;
+	for (h = 0; h < gfs1_h; h++)
+		offset += (gfs1mp->mp_list[h] * gfs1factor[h]);
+
+	if (dinode_size - offset < *len)
+		*len = dinode_size - offset;
+
+	/* Convert from an offset back to gfs2 */
+	memset(gfs2mp, 0, sizeof(*gfs2mp));
+	for (h = 0; h <= gfs2_h; h++) {
+		/* Can't use do_div here because the factors are too large. */
+		gfs2mp->mp_list[h] = offset / gfs2factor[h];
+		offset %= gfs2factor[h];
+	}
+}
+
+static void fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
+		  struct blocklist *blk, char *srcptr,
+		  unsigned int size)
+{
+	uint64_t block;
+	struct gfs2_buffer_head *bh;
+	unsigned int amount, ptramt;
+	int h, copied = 0, new = 0;
+	struct gfs2_meta_header mh;
+
+	mh.mh_magic = GFS2_MAGIC;
+	mh.mh_type = GFS2_METATYPE_IN;
+	mh.mh_format = GFS2_FORMAT_IN;
+
+	/* This condition should never arise. 
+	   We're always dealing with unstuffed inodes */
+	if (!ip->i_di.di_height)
+		unstuff_dinode(ip);
+
+	ptramt = blk->mp.mp_list[blk->height];
+	amount = size;
+
+	while (copied < size) {
+		bh = ip->i_bh;
+		/* First, build up the metatree */
+		for (h = 0; h < blk->height; h++) {
+			lookup_block(ip, ip->i_bh, h, &blk->mp, 1, &new,
+				     &block);
+			if (bh != ip->i_bh)
+				brelse(bh);
+			if (!block)
+				break;
+
+			bh = bread(sbp, block);
+			if (new)
+				memset(bh->b_data, 0, sbp->bsize);
+			if (h < (blk->height - 1))
+				gfs2_meta_header_out(&mh, bh);
+		}
+
+		if (amount > sbp->bsize - ptramt)
+			amount = sbp->bsize - ptramt;
+
+		memcpy(bh->b_data + ptramt, (char *)srcptr, amount);
+		srcptr += amount;
+		bmodified(bh);
+		if (bh != ip->i_bh)
+			brelse(bh);
+
+		copied += amount;
+
+		if (ptramt + amount >= sbp->bsize) {
+			/* advance to the next metablock */
+			blk->mp.mp_list[blk->height] += amount;
+			for (h = blk->height; h > 0; h--) {
+				if (blk->mp.mp_list[h] >= gfs2_inptrs) {
+					blk->mp.mp_list[h] = 0;
+					blk->mp.mp_list[h - 1]++;
+					continue;
+				}
+				break;
+			}
+		}
+		amount = size - copied;
+		ptramt = 0;
+	}
+}
+
+static int adjust_jdata_inode(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
+{
+	uint32_t gfs2_hgt;
+	struct gfs2_buffer_head *bh;
+	osi_list_t *tmp, *x;
+	int h, header_size, bufsize, ptrnum;
+	uint64_t *ptr1, block;
+	uint64_t dinode_size;
+	int error = 0, di_height;
+	struct blocklist blocks, *blk, *newblk;
+	struct metapath gfs2mp;
+	struct gfs2_buffer_head *dibh = ip->i_bh;
+
+	/* Don't have to worry about things with stuffed inodes */
+	if (ip->i_di.di_height == 0)
+		return 0;
+
+	osi_list_init(&blocks.list);
+
+	/* Add the dinode block to the blocks list */
+	blk = malloc(sizeof(struct blocklist));
+	if (!blk) {
+		log_crit("Error: Can't allocate memory"
+			 " for indirect block fix.\n");
+		return -1;
+	}
+	memset(blk, 0, sizeof(*blk));
+	/* allocate a buffer to hold the pointers or data */
+	bufsize = sbp->bsize - sizeof(struct gfs2_meta_header);
+	blk->block = dibh->b_blocknr;
+	/* 
+	 * blk->ptrbuf either contains 
+	 * a) diptrs (for height=0)
+	 * b) inptrs (for height=1 to di_height - 1)
+	 * c) data for height = di_height
+	 */
+	blk->ptrbuf = malloc(bufsize);
+	if (!blk->ptrbuf) {
+		log_crit("Error: Can't allocate memory"
+			 " for file conversion.\n");
+		free(blk);
+		return -1;
+	}
+	memset(blk->ptrbuf, 0, bufsize);
+	/* Fill in the pointers from the dinode buffer */
+	memcpy(blk->ptrbuf, dibh->b_data + sizeof(struct gfs_dinode),
+	       sbp->bsize - sizeof(struct gfs_dinode));
+	/* Zero out the pointers so we can fill them in later. */
+	memset(dibh->b_data + sizeof(struct gfs_dinode), 0,
+	       sbp->bsize - sizeof(struct gfs_dinode));
+	osi_list_add_prev(&blk->list, &blocks.list);
+
+	/* Now run the metadata chain and build lists of all data/metadata blocks */
+	osi_list_foreach(tmp, &blocks.list) {
+		blk = osi_list_entry(tmp, struct blocklist, list);
+
+		if (blk->height >= ip->i_di.di_height)
+			continue;
+
+		header_size = (blk->height > 0 ? sizeof(struct gfs_indirect) :
+			       sizeof(struct gfs_dinode));
+
+		for (ptr1 = (uint64_t *)blk->ptrbuf, ptrnum = 0;
+		     ptrnum < sbp->sd_inptrs; ptr1++, ptrnum++) {
+			if (!*ptr1)
+				continue;
+
+			block = be64_to_cpu(*ptr1);
+
+			newblk = malloc(sizeof(struct blocklist));
+			if (!newblk) {
+				log_crit("Error: Can't allocate memory"
+					 " for indirect block fix.\n");
+				error = -1;
+				goto out;
+			}
+			memset(newblk, 0, sizeof(*newblk));
+			newblk->ptrbuf = malloc(bufsize);
+			if (!newblk->ptrbuf) {
+				log_crit("Error: Can't allocate memory"
+					 " for file conversion.\n");
+				free(newblk);
+				goto out;
+			}
+			memset(newblk->ptrbuf, 0, bufsize);
+			newblk->block = block;
+			newblk->height = blk->height + 1;
+			/* Build the metapointer list from our predecessors */
+			for (h = 0; h < blk->height; h++)
+				newblk->mp.mp_list[h] = blk->mp.mp_list[h];
+			newblk->mp.mp_list[h] = ptrnum;
+			/* Queue it to be processed later on in the loop. */
+			osi_list_add_prev(&newblk->list, &blocks.list);
+
+			bh = bread(sbp, block);
+			if (newblk->height == ip->i_di.di_height) {
+				/* read in the jdata block */
+				memcpy(newblk->ptrbuf, bh->b_data +
+				       sizeof(struct gfs2_meta_header), bufsize);
+				/* Zero the buffer so we can fill it in later */
+				memset(bh->b_data + sizeof(struct gfs2_meta_header), 0,
+				       bufsize);
+			} else {
+				/* read the new metadata block's pointers */
+				memcpy(newblk->ptrbuf, bh->b_data +
+				       sizeof(struct gfs_indirect),
+				       sbp->bsize - sizeof(struct gfs_indirect));
+				/* Zero the buffer so we can fill it in later */
+				memset(bh->b_data + sizeof(struct gfs_indirect), 0,
+				       sbp->bsize - sizeof(struct gfs_indirect));
+			}
+			bmodified(bh);
+			brelse(bh);
+			/* Free the block so we can reuse it. This allows us to
+			   convert a "full" file system. */
+			ip->i_di.di_blocks--;
+			gfs2_free_block(sbp, block);
+		}
+	}
+	/* The gfs2 height may be different.  We need to rebuild the
+	   metadata tree to the gfs2 height. */
+	gfs2_hgt = calc_gfs2_tree_height(ip, ip->i_di.di_size);
+	/* Save off the size because we're going to empty the contents
+	   and add the data blocks back in later. */
+	dinode_size = ip->i_di.di_size;
+	ip->i_di.di_size = 0ULL;
+	di_height = ip->i_di.di_height;
+	ip->i_di.di_height = 0;
+
+	/* Now run through the block list a second time.  If the block
+	   is a data block, rewrite the data to the gfs2 offset. */
+	osi_list_foreach_safe(tmp, &blocks.list, x) {
+		unsigned int len;
+
+		blk = osi_list_entry(tmp, struct blocklist, list);
+		/* If it's not a data block at the highest level */
+		if (blk->height != di_height) {
+			osi_list_del(tmp);
+			free(blk->ptrbuf);
+			free(blk);
+			continue;
+		}
+		len = bufsize;
+		jdata_mp_gfs1_to_gfs2(sbp, di_height, gfs2_hgt, &blk->mp, &gfs2mp, &len, dinode_size);
+		memcpy(&blk->mp, &gfs2mp, sizeof(struct metapath));
+		blk->height -= di_height - gfs2_hgt;
+		if (len)
+			fix_jdatatree(sbp, ip, blk, blk->ptrbuf, len);
+		osi_list_del(tmp);
+		free(blk->ptrbuf);
+		free(blk);
+	}
+	ip->i_di.di_size = dinode_size;
+
+	/* Set the new dinode height, which may or may not have changed.  */
+	/* The caller will take it from the ip and write it to the buffer */
+	ip->i_di.di_height = gfs2_hgt;
+	return 0;
+
+out:
+	while (!osi_list_empty(&blocks.list)) {
+		blk = osi_list_entry(tmp, struct blocklist, list);
+		osi_list_del(&blocks.list);
+		free(blk->ptrbuf);
+		free(blk);
+	}
+	return error;
+}
+
 /* ------------------------------------------------------------------------- */
 /* adjust_inode - change an inode from gfs1 to gfs2                          */
 /*                                                                           */
@@ -653,13 +929,19 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 	/* ----------------------------------------------------------- */
 	if (inode_was_gfs1) {
 		struct gfs_dinode *gfs1_dinode_struct;
+		int ret = 0;
 
 		gfs1_dinode_struct = (struct gfs_dinode *)&inode->i_di;
 		inode->i_di.di_goal_meta = inode->i_di.di_goal_data;
 		inode->i_di.di_goal_data = 0; /* make sure the upper 32b are 0 */
 		inode->i_di.di_goal_data = gfs1_dinode_struct->di_goal_dblk;
 		inode->i_di.di_generation = 0;
-		if (adjust_indirect_blocks(sbp, inode))
+		if (!(inode->i_di.di_mode & S_IFDIR) &&
+		    inode->i_di.di_flags & GFS2_DIF_JDATA)
+			ret = adjust_jdata_inode(sbp, inode);
+		else
+			ret = adjust_indirect_blocks(sbp, inode);
+		if (ret)
 			return -1;
 	}
 	
@@ -711,7 +993,7 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
 				fflush(stdout);
 			}
 			/* Get the next metadata block.  Break out if we reach the end. */
-            /* We have to check all metadata blocks because the bitmap may  */
+			/* We have to check all metadata blocks because the bitmap may  */
 			/* be "11" (used meta) for both inodes and indirect blocks.     */
 			/* We need to process the inodes and change the indirect blocks */
 			/* to have a bitmap type of "01" (data).                        */
@@ -723,9 +1005,9 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
 				sbp->sd_sb.sb_root_dir.no_formal_ino = sbp->md.next_inum;
 			}
 			bh = bread(sbp, block);
-			if (!gfs2_check_meta(bh, GFS_METATYPE_DI)) /* if it is an dinode */
+			if (!gfs2_check_meta(bh, GFS_METATYPE_DI)) {/* if it is an dinode */
 				error = adjust_inode(sbp, bh);
-			else { /* It's metadata, but not an inode, so fix the bitmap. */
+			} else { /* It's metadata, but not an inode, so fix the bitmap. */
 				int blk, buf_offset;
 				int bitmap_byte; /* byte within the bitmap to fix */
 				int byte_bit; /* bit within the byte */
@@ -736,7 +1018,7 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
 				byte_bit = (block - rgd->ri.ri_data0) % GFS2_NBBY;
 				/* Now figure out which bitmap block the byte is on */
 				for (blk = 0; blk < rgd->ri.ri_length; blk++) {
-                    /* figure out offset of first bitmap byte for this map: */
+					/* figure out offset of first bitmap byte for this map: */
 					buf_offset = (blk) ? sizeof(struct gfs2_meta_header) :
 						sizeof(struct gfs2_rgrp);
 					/* if it's on this page */
