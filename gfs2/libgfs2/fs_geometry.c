@@ -184,10 +184,8 @@ void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 	struct rgrp_list *rl;
 	uint32_t rgblocks, bitblocks;
 	struct gfs2_rindex *ri;
-	struct gfs2_rgrp rg;
 	struct gfs2_meta_header mh;
 	unsigned int x;
-	struct gfs2_buffer_head *bh;
 
 	mh.mh_magic = GFS2_MAGIC;
 	mh.mh_type = GFS2_METATYPE_RB;
@@ -208,20 +206,21 @@ void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 		ri->ri_data = rgblocks;
 		ri->ri_bitbytes = rgblocks / GFS2_NBBY;
 
-		memset(&rg, 0, sizeof(rg));
-		rg.rg_header.mh_magic = GFS2_MAGIC;
-		rg.rg_header.mh_type = GFS2_METATYPE_RG;
-		rg.rg_header.mh_format = GFS2_FORMAT_RG;
-		rg.rg_free = rgblocks;
+		memset(&rl->rg, 0, sizeof(rl->rg));
+		rl->rg.rg_header.mh_magic = GFS2_MAGIC;
+		rl->rg.rg_header.mh_type = GFS2_METATYPE_RG;
+		rl->rg.rg_header.mh_format = GFS2_FORMAT_RG;
+		rl->rg.rg_free = rgblocks;
+
+		gfs2_compute_bitstructs(sdp, rl);
 
 		if (do_write) {
 			for (x = 0; x < bitblocks; x++) {
-				bh = bget(sdp, rl->start + x);
+				rl->bh[x] = bget(sdp, rl->start + x);
 				if (x)
-					gfs2_meta_header_out(&mh, bh);
+					gfs2_meta_header_out(&mh, rl->bh[x]);
 				else
-					gfs2_rgrp_out(&rg, bh);
-				brelse(bh);
+					gfs2_rgrp_out(&rl->rg, rl->bh[x]);
 			}
 		}
 
