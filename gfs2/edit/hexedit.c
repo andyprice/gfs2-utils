@@ -2538,7 +2538,7 @@ static void process_field(const char *field, uint64_t *newval, int print_field)
 	struct gfs2_rgrp rg;
 
 	fblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
-	rbh = bread(&sbd, block);
+	rbh = bread(&sbd, fblock);
 	type = get_block_type(rbh);
 	switch (type) {
 	case GFS2_METATYPE_SB:

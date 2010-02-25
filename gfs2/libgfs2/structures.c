@@ -107,6 +107,7 @@ int write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
 		if (!bh)
 			return -1;
 
+		memset(bh->b_data, 0, sdp->bsize);
 		lh.lh_sequence = seq;
 		lh.lh_blkno = x;
 		gfs2_log_header_out(&lh, bh);
@@ -207,6 +208,8 @@ static int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 	struct gfs2_inode *ip;
 	unsigned int blocks = sdp->qcsize << (20 - sdp->sd_sb.sb_bsize_shift);
 	unsigned int x;
+	unsigned int hgt;
+	struct gfs2_buffer_head *bh;
 
 	memset(&mh, 0, sizeof(struct gfs2_meta_header));
 	mh.mh_magic = GFS2_MAGIC;
@@ -214,16 +217,18 @@ static int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 	mh.mh_format = GFS2_FORMAT_QC;
 
 	sprintf(name, "quota_change%u", j);
-	ip = createi(per_node, name, S_IFREG | 0600,
-		     GFS2_DIF_SYSTEM);
+	ip = createi(per_node, name, S_IFREG | 0600, GFS2_DIF_SYSTEM);
+
+	hgt = calc_tree_height(ip, (blocks + 1) * sdp->bsize);
+	build_height(ip, hgt);
 
 	for (x = 0; x < blocks; x++) {
-		struct gfs2_buffer_head *bh = get_file_buf(ip, ip->i_di.di_size >> sdp->sd_sb.sb_bsize_shift, FALSE);
+		bh = get_file_buf(ip, x, FALSE);
 		if (!bh)
 			return -1;
 
+		memset(bh->b_data, 0, sdp->bsize);
 		gfs2_meta_header_out(&mh, bh);
-
 		brelse(bh);
 	}
 
@@ -304,8 +309,7 @@ int build_rindex(struct gfs2_sbd *sdp)
 	ip->i_di.di_payload_format = GFS2_FORMAT_RI;
 	bmodified(ip->i_bh);
 
-	for (head = &sdp->rglist, tmp = head->next;
-	     tmp != head;
+	for (head = &sdp->rglist, tmp = head->next; tmp != head;
 	     tmp = tmp->next) {
 		rl = osi_list_entry(tmp, struct rgrp_list, list);
 

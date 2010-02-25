@@ -641,6 +641,7 @@ void main_mkfs(int argc, char *argv[])
 	inode_put(&sdp->md.inum);
 	inode_put(&sdp->md.statfs);
 
+	gfs2_rgrp_free(&sdp->rglist);
 	error = fsync(sdp->device_fd);
 	if (error)
 		die( _("can't fsync device (%d): %s\n"),

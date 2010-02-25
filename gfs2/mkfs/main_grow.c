@@ -208,6 +208,8 @@ static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 		gfs2_rindex_out(&rl->ri, bufptr);
 		bufptr += sizeof(struct gfs2_rindex);
 	}
+	gfs2_rgrp_free(&sdp->rglist);
+	fsync(sdp->device_fd);
 	if (!test) {
 		/* Now write the new RGs to the end of the rindex */
 		lseek(rindex_fd, 0, SEEK_END);
