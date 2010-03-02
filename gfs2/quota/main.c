@@ -369,8 +369,8 @@ do_reset(struct gfs2_sbd *sdp, commandline_t *comline)
 	if (!*comline->filesystem)
 		die("need a filesystem to work on\n");
 
-	printf("This operation will permanently erase all quota information. "
-	       "You will have to re-assign all quota limit/warn values. "
+	printf("This operation will permanently erase all quota information.\n"
+	       "You will have to re-assign all quota limit/warn values.\n"
 	       "Proceed [y/N]? ");
 	c = getchar();
 	if (c != 'y' && c != 'Y')
@@ -478,6 +478,7 @@ do_list(struct gfs2_sbd *sdp, commandline_t *comline)
 	}
 	quota_file_size = statbuf.st_size;
 	/* First find the number of extents in the quota file */
+	fmap.fm_flags = 0;
 	fmap.fm_start = 0;
 	fmap.fm_length = (~0ULL);
 	error = ioctl(fd, FS_IOC_FIEMAP, &fmap);
@@ -491,6 +492,7 @@ do_list(struct gfs2_sbd *sdp, commandline_t *comline)
 		fprintf(stderr, "malloc error (%d): %s\n", errno, strerror(errno));
 		goto out;
 	}
+	fmap2->fm_flags = 0;
 	fmap2->fm_start = 0;
 	fmap2->fm_length = (~0ULL);
 	fmap2->fm_extent_count = fmap.fm_mapped_extents;

@@ -222,6 +222,7 @@ read_quota_file(struct gfs2_sbd *sdp, commandline_t *comline,
         }
 	quota_file_size = statbuf.st_size;
 	/* First find the number of extents in the quota file */
+	fmap.fm_flags = 0;
 	fmap.fm_start = 0;
 	fmap.fm_length = (~0ULL);
 	error = ioctl(fd, FS_IOC_FIEMAP, &fmap);
@@ -235,6 +236,7 @@ read_quota_file(struct gfs2_sbd *sdp, commandline_t *comline,
 		fprintf(stderr, "malloc error (%d): %s\n", errno, strerror(errno));
 		goto out;
 	}
+	fmap2->fm_flags = 0;
 	fmap2->fm_start = 0;
 	fmap2->fm_length = (~0ULL);
 	fmap2->fm_extent_count = fmap.fm_mapped_extents;
