@@ -235,6 +235,15 @@ struct gfs2_sbd {
 	int metafs_fd;
 	char metafs_path[PATH_MAX]; /* where metafs is mounted */
 	struct special_blocks eattr_blocks;
+
+	/* device topology information: */
+	uint32_t logical_block_size;
+	uint32_t minimum_io_size;
+	uint32_t optimal_io_size;
+	uint32_t alignment_offset;
+	uint32_t physical_block_size;
+	uint64_t rg_one_length;
+	uint64_t rg_length;
 };
 
 struct metapath {
@@ -376,6 +385,7 @@ extern int brelse(struct gfs2_buffer_head *bh);
 #define bcommit(bl) do { __bcommit(bl, __LINE__, __FUNCTION__); } while(0)
 
 /* device_geometry.c */
+extern int device_topology(struct gfs2_sbd *sdp);
 extern int device_geometry(struct gfs2_sbd *sdp);
 extern int fix_device_geometry(struct gfs2_sbd *sdp);
 

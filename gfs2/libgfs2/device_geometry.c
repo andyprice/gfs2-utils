@@ -10,9 +10,45 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-
+#include <sys/ioctl.h>
 #include <linux/types.h>
+
 #include "libgfs2.h"
+
+#define BLKSSZGET _IO(0x12,104)   /* logical_block_size */
+#define BLKIOMIN _IO(0x12,120)    /* minimum_io_size */
+#define BLKIOOPT _IO(0x12,121)    /* optimal_io_size */
+#define BLKALIGNOFF _IO(0x12,122) /* alignment_offset */
+#define BLKPBSZGET _IO(0x12,123)  /* physical_block_size */
+
+/**
+ * device_topology - Get the device topology
+ * Values not fetched are returned as zero.
+ */
+int device_topology(struct gfs2_sbd *sdp)
+{
+	if (ioctl(sdp->device_fd, BLKSSZGET, &sdp->logical_block_size) < 0)
+		sdp->logical_block_size = 0;
+	if (ioctl(sdp->device_fd, BLKIOMIN, &sdp->minimum_io_size) < 0)
+		sdp->minimum_io_size = 0;
+	if (ioctl(sdp->device_fd, BLKALIGNOFF, &sdp->optimal_io_size) < 0)
+		sdp->optimal_io_size = 0;
+	if (ioctl(sdp->device_fd, BLKIOOPT, &sdp->alignment_offset) < 0)
+		sdp->alignment_offset = 0;
+	if (ioctl(sdp->device_fd, BLKPBSZGET, &sdp->physical_block_size) < 0)
+		sdp->physical_block_size = 0;
+	if (!sdp->debug)
+		return 0;
+
+	printf("\nDevice Topology:\n");
+	printf("  Logical block size: %u\n", sdp->logical_block_size);
+	printf("  Physical block size: %u\n", sdp->physical_block_size);
+	printf("  Minimum I/O size: %u\n", sdp->minimum_io_size);
+	printf("  Optimal I/O size: %u (0 means unknown)\n",
+	       sdp->optimal_io_size);
+	printf("  Alignment offset: %u\n", sdp->alignment_offset);
+	return 0;
+}
 
 /**
  * device_geometry - Get the size of a device

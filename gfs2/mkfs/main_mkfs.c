@@ -18,6 +18,7 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <libintl.h>
+
 #define _(String) gettext(String)
 
 #include <linux/types.h>
@@ -191,7 +192,8 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 
 	if (sdp->debug) {
 		printf( _("Command Line Arguments:\n"));
-		printf("  bsize = %u\n", sdp->bsize);
+		if (sdp->bsize != -1)
+			printf("  bsize = %u\n", sdp->bsize);
 		printf("  qcsize = %u\n", sdp->qcsize);
 		printf("  jsize = %u\n", sdp->jsize);
 		printf("  journals = %u\n", sdp->md.journals);
@@ -258,12 +260,10 @@ static void test_locking(char *lockproto, char *locktable)
 	}
 }
 
-static void verify_arguments(struct gfs2_sbd *sdp)
+static void verify_bsize(struct gfs2_sbd *sdp)
 {
 	unsigned int x;
-
-	if (!sdp->expert)
-		test_locking(sdp->lockproto, sdp->locktable);
+	char input[32];
 
 	/* Block sizes must be a power of two from 512 to 65536 */
 
@@ -271,9 +271,38 @@ static void verify_arguments(struct gfs2_sbd *sdp)
 		if (x == sdp->bsize)
 			break;
 
-	if (!x || sdp->bsize > 65536)
-		die( _("block size must be a power of two between 512 and 65536\n"));
+	if (!x || sdp->bsize > getpagesize())
+		die( _("block size must be a power of two between 512 and "
+		       "%d\n"), getpagesize());
 
+	if (sdp->bsize < sdp->logical_block_size) {
+		die( _("Error: Block size %d is less than minimum logical "
+		       "block size (%d).\n"), sdp->bsize,
+		     sdp->logical_block_size);
+	}
+
+	if (sdp->bsize < sdp->physical_block_size) {
+		printf( _("WARNING: Block size %d is inefficient because it "
+			  "is less than the physical block size (%d).\n"),
+			  sdp->bsize, sdp->physical_block_size);
+		if (sdp->override)
+			return;
+
+		printf( _("\nAre you sure you want to proceed? [y/n] "));
+		if(!fgets(input, 32, stdin))
+			die( _("unable to read from stdin\n"));
+
+		if (input[0] != 'y')
+			die( _("aborted\n"));
+		else
+			printf("\n");
+	}
+}
+
+static void verify_arguments(struct gfs2_sbd *sdp)
+{
+	if (!sdp->expert)
+		test_locking(sdp->lockproto, sdp->locktable);
 	/* Look at this!  Why can't we go bigger than 2GB? */
 	if (sdp->expert) {
 		if (1 > sdp->rgsize || sdp->rgsize > 2048)
@@ -553,7 +582,7 @@ void main_mkfs(int argc, char *argv[])
 	unsigned char uuid[16];
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
-	sdp->bsize = GFS2_DEFAULT_BSIZE;
+	sdp->bsize = -1;
 	sdp->jsize = GFS2_DEFAULT_JSIZE;
 	sdp->rgsize = -1;
 	sdp->utsize = GFS2_DEFAULT_UTSIZE;
@@ -579,6 +608,30 @@ void main_mkfs(int argc, char *argv[])
 
 	if (!sdp->override)
 		are_you_sure(sdp);
+
+	if (device_topology(sdp)) {
+		fprintf(stderr, _("Device topology error\n"));
+		exit(-1);
+	}
+
+	if (sdp->bsize == -1) {
+		/* See if optimal_io_size (the biggest I/O we can submit
+		   without incurring a penalty) is a suitable block size. */
+		if (sdp->optimal_io_size <= getpagesize() &&
+		    sdp->optimal_io_size >= sdp->minimum_io_size)
+			sdp->bsize = sdp->optimal_io_size;
+		/* See if physical_block_size (the smallest unit we can write
+		   without incurring read-modify-write penalty) is suitable. */
+		else if (sdp->physical_block_size <= getpagesize() &&
+			 sdp->physical_block_size >= GFS2_DEFAULT_BSIZE)
+			sdp->bsize = sdp->physical_block_size;
+		else
+			sdp->bsize = GFS2_DEFAULT_BSIZE;
+
+		if (sdp->debug)
+			printf("\nUsing block size: %u\n", sdp->bsize);
+	}
+	verify_bsize(sdp);
 
 	if (compute_constants(sdp)) {
 		fprintf(stderr, _("Bad constants (1)\n"));
