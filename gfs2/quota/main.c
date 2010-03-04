@@ -431,8 +431,9 @@ do_list(struct gfs2_sbd *sdp, commandline_t *comline)
 {
 	int fd;
 	struct gfs2_quota q;
-	uint32_t startid, endid;
-	int id_type;
+	char buf[sizeof(struct gfs2_quota)];
+	uint64_t offset;
+	uint32_t id, startid;
 	int pass = 0;
 	int error = 0;
 	char quota_file[BUF_SIZE];
@@ -511,19 +512,26 @@ do_list(struct gfs2_sbd *sdp, commandline_t *comline)
 
 			end = end > quota_file_size ? quota_file_size : end;
 			startid = DIV_RU(fe->fe_logical, sizeof(struct gfs2_quota));
-			endid = end /(2 * sizeof(struct gfs2_quota));
 			if (startid % 2 != pass)
 				startid++;
-
-			startid = DIV_RU(startid, 2);
-			id_type = pass == 0 ? GQ_ID_USER : GQ_ID_GROUP;
+			offset = startid * sizeof(struct gfs2_quota);
 			do {
-				read_quota_internal(fd, startid, id_type, &q);
+				memset(buf, 0, sizeof(struct gfs2_quota));
+				/* read hidden quota file here */
+				lseek(fd, offset, SEEK_SET);
+				error = read(fd, buf, sizeof(struct gfs2_quota));
+				if (error < 0) {
+					fprintf(stderr, "read error (%d): %s\n",
+						errno, strerror(errno));
+					goto fmap2_free;
+				}
+				gfs2_quota_in(&q, buf);
+				id = (offset / sizeof(struct gfs2_quota)) >> 1;
 				if (q.qu_limit || q.qu_warn || q.qu_value)
-					print_quota(comline, (pass) ? FALSE : TRUE, startid,
+					print_quota(comline, (pass) ? FALSE : TRUE, id,
 						    &q, &sdp->sd_sb);
-				startid++;
-			} while (startid < endid);
+				offset += 2 * sizeof(struct gfs2_quota);
+			} while (offset < end);
 		}
 		if (!pass) {
 			pass = 1;
@@ -719,10 +727,10 @@ do_set(struct gfs2_sbd *sdp, commandline_t *comline)
 	int fd;
 	uint64_t offset;
 	uint64_t new_value;
-	int error;
 	char quota_file[BUF_SIZE];
 	char id_str[16];
 	struct stat stat_buf;
+	struct gfs2_quota q;
 	char *fs;
 	
 	if (!*comline->filesystem)
@@ -749,7 +757,7 @@ do_set(struct gfs2_sbd *sdp, commandline_t *comline)
 	strcpy(quota_file, sdp->metafs_path);
 	strcat(quota_file, "/quota");
 
-	fd = open(quota_file, O_WRONLY);
+	fd = open(quota_file, O_RDWR);
 	if (fd < 0) {
 		close(sdp->metafs_fd);
 		cleanup_metafs(sdp);
@@ -799,76 +807,22 @@ do_set(struct gfs2_sbd *sdp, commandline_t *comline)
 		goto out;
 	}
 
-	new_value = cpu_to_be64(new_value);
-	/*
-	 * Hack to force writing the entire gfs2_quota structure to 
-	 * the quota file instead of just the limit or warn values.
-	 * This is because of a bug in gfs2 which doesn't extend 
-	 * the quotafile appropriately to write the usage value of a 
-	 * given id. For instance, if you write a limit value (8 bytes) 
-	 * for userid x at offset 2*x, gfs2 will not extend the file and write 
-	 * 8 bytes at offset (2*x + 16) when it has to update the usage 
-	 * value for id x. Therefore, we extend the quota file to 
-	 * a struct gfs2_quota boundary. i.e. The size of the quota file
-	 * will always be a multiple of sizeof(struct gfs2_quota)
-	 */
+	memset(&q, 0, sizeof(struct gfs2_quota));
 	if (fstat(fd, &stat_buf)) {
 		fprintf(stderr, "stat failed: %s\n", strerror(errno));
 		goto out;
 	}
-	if (stat_buf.st_size < (offset + sizeof(struct gfs2_quota))) {
-		struct gfs2_quota tmp;
-		memset((void*)(&tmp), 0, sizeof(struct gfs2_quota));
-		switch (comline->operation) {
-		case GQ_OP_LIMIT:
-			tmp.qu_limit = new_value; break;
-		case GQ_OP_WARN:
-			tmp.qu_warn = new_value; break;
-		}
-		
-		lseek(fd, offset, SEEK_SET);
-		error = write(fd, (void*)(&tmp), sizeof(struct gfs2_quota));
-		if (error != sizeof(struct gfs2_quota)) {
-			fprintf(stderr, "can't write quota file (%d): %s\n", 
-				error, strerror(errno));
-			goto out;
-		}
-		/* Also, if the id type is USER, append another empty 
-		 * struct gfs2_quota for the GROUP with the same id
-		 */
-		if (comline->id_type == GQ_ID_USER) {
-			memset((void*)(&tmp), 0, sizeof(struct gfs2_quota));
-			error = write(fd, (void*)(&tmp), sizeof(struct gfs2_quota));
-			if (error != sizeof(struct gfs2_quota)) {
-				fprintf(stderr, "can't write quota file (%d): %s\n", 
-					error, strerror(errno));
-				goto out;
-			}
-		}
-	} else {
-		switch (comline->operation) {
-		case GQ_OP_LIMIT:
-			offset += (unsigned long)(&((struct gfs2_quota *) NULL)->qu_limit);
-			break;
-			
-		case GQ_OP_WARN:
-			offset += (unsigned long)(&((struct gfs2_quota *) NULL)->qu_warn);
-			break;
-			
-		default:
-			fprintf(stderr, "invalid operation\n");
-			goto out;
-		};
+	if (stat_buf.st_size >= (offset + sizeof(struct gfs2_quota)))
+		read_quota_internal(fd, comline->id, comline->id_type, &q);
 
-		lseek(fd, offset, SEEK_SET);
-		error = write(fd, (char*)&new_value, sizeof(uint64_t));
-		if (error != sizeof(uint64_t)) {
-			fprintf(stderr, "can't write quota file (%d): %s\n",
-				error, strerror(errno));
-			goto out;
-		}
+	switch (comline->operation) {
+	case GQ_OP_LIMIT:
+		q.qu_limit = new_value; break;
+	case GQ_OP_WARN:
+		q.qu_warn = new_value; break;
 	}
 
+	write_quota_internal(fd, comline->id, comline->id_type, &q);
 	fs = mp2fsname(comline->filesystem);
 	if (!fs) {
 		fprintf(stderr, "Couldn't find GFS2 filesystem mounted at %s\n",
