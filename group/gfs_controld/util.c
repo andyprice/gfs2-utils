@@ -105,7 +105,8 @@ int run_dmsetup_suspend(struct mountgroup *mg, char *dev)
 		for (i = 0; i < 50; i++)
 			close(i);
 
-		execlp("dmsetup", "dmsetup", "suspend", buf, NULL);
+		execlp("dmsetup", "dmsetup", "suspend",  "--nolockfs",
+		       "--noflush", buf, NULL);
 		exit(EXIT_FAILURE);
 	}
 	return -1;
