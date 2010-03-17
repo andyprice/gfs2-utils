@@ -174,7 +174,7 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
  */
 int pass3(struct gfs2_sbd *sbp)
 {
-	struct osi_node *tmp;
+	struct osi_node *tmp, *next = NULL;
 	struct dir_info *di, *tdi;
 	struct gfs2_inode *ip;
 	uint8_t q;
@@ -195,7 +195,8 @@ int pass3(struct gfs2_sbd *sbp)
 	 * find a parent, put in lost+found.
 	 */
 	log_info( _("Checking directory linkage.\n"));
-	for (tmp = osi_first(&dirtree); tmp; tmp = osi_next(tmp)) {
+	for (tmp = osi_first(&dirtree); tmp; tmp = next) {
+		next = osi_next(tmp);
 		di = (struct dir_info *)tmp;
 		while(!di->checked) {
 			/* FIXME: Change this so it returns success or

@@ -42,7 +42,7 @@ static int fix_link_count(struct inode_info *ii, struct gfs2_inode *ip)
 }
 
 static int scan_inode_list(struct gfs2_sbd *sbp) {
-	struct osi_node *tmp;
+	struct osi_node *tmp, *next = NULL;
 	struct inode_info *ii;
 	struct gfs2_inode *ip;
 	int lf_addition = 0;
@@ -50,9 +50,10 @@ static int scan_inode_list(struct gfs2_sbd *sbp) {
 
 	/* FIXME: should probably factor this out into a generic
 	 * scanning fxn */
-	for (tmp = osi_first(&inodetree); tmp; tmp = osi_next(tmp)) {
+	for (tmp = osi_first(&inodetree); tmp; tmp = next) {
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return 0;
+		next = osi_next(tmp);
 		if(!(ii = (struct inode_info *)tmp)) {
 			log_crit( _("osi_tree broken in scan_info_list!!\n"));
 			exit(FSCK_ERROR);

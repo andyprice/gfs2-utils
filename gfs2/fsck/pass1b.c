@@ -170,12 +170,13 @@ static int find_dentry(struct gfs2_inode *ip, struct gfs2_dirent *de,
 		       struct gfs2_buffer_head *bh, char *filename,
 		       uint16_t *count, void *priv)
 {
-	struct osi_node *n;
+	struct osi_node *n, *next = NULL;
 	osi_list_t *tmp2;
 	struct duptree *b;
 	int found;
 
-	for (n = osi_first(&dup_blocks); n; n = osi_next(n)) {
+	for (n = osi_first(&dup_blocks); n; n = next) {
+		next = osi_next(n);
 		b = (struct duptree *)n;
 		found = 0;
 		osi_list_foreach(tmp2, &b->ref_invinode_list) {
@@ -602,7 +603,7 @@ int pass1b(struct gfs2_sbd *sbp)
 	struct duptree *b;
 	uint64_t i;
 	uint8_t q;
-	struct osi_node *n;
+	struct osi_node *n, *next = NULL;
 	int rc = FSCK_OK;
 
 	log_info( _("Looking for duplicate blocks...\n"));
@@ -652,7 +653,8 @@ int pass1b(struct gfs2_sbd *sbp)
 	 * it later */
 	log_info( _("Handling duplicate blocks\n"));
 out:
-        for (n = osi_first(&dup_blocks); n; n = osi_next(n)) {
+        for (n = osi_first(&dup_blocks); n; n = next) {
+		next = osi_next(n);
                 b = (struct duptree *)n;
 		if (!skip_this_pass && !rc) /* no error & not asked to skip the rest */
 			handle_dup_blk(sbp, b);

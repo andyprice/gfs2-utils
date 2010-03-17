@@ -69,8 +69,6 @@ int decrement_link(uint64_t inode_no, uint64_t referenced_from,
 	ii = inodetree_find(inode_no);
 	/* If the list has entries, look for one that matches
 	 * inode_no */
-	log_err( _("Decrementing %"PRIu64" (0x%" PRIx64 ") to %d\n"),
-		 inode_no, inode_no, ii->counted_links);
 	if(ii) {
 		ii->counted_links--;
 		log_debug( _("Directory %lld (0x%llx) decremented counted "
