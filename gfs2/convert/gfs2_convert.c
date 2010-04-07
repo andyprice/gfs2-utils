@@ -941,6 +941,45 @@ static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, s
 
 	return ret;
 }
+
+/*
+ * fix_xattr -
+ * Extended attributes can be either direct (in the ip->i_di.di_eattr block) or
+ * then can be at a maximum of 1 indirect level. Multiple levels of indirection
+ * are not supported. If the di_eattr block contains extended attribute data,
+ * i.e block type = GFS_METATYPE_EA, we ignore it.
+ * If the di_eattr block contains block pointers to extended attributes we need
+ * to fix the header. gfs1 uses gfs_indirect as the header which is 64 bytes
+ * bigger than gfs2_meta_header that gfs2 uses.
+ */
+static int fix_xattr(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, struct gfs2_inode *ip)
+{
+	int ret = 0, len, old_hdr_sz, new_hdr_sz;
+	struct gfs2_buffer_head *eabh;
+	char *buf;
+
+	/* Read in the i_di.di_eattr block */
+	eabh = bread(sbp, ip->i_di.di_eattr);
+        if (!gfs2_check_meta(eabh, GFS_METATYPE_IN)) {/* if it is an indirect block */
+		len = sbp->bsize - sizeof(struct gfs_indirect);
+		buf = malloc(len);
+		if (!buf) {
+			log_crit("Error: out of memory.\n");
+			return -1;
+		}
+		old_hdr_sz = sizeof(struct gfs_indirect);
+		new_hdr_sz = sizeof(struct gfs2_meta_header);
+		memcpy(buf, eabh->b_data + old_hdr_sz, sbp->bsize - old_hdr_sz);
+		memset(eabh->b_data + new_hdr_sz, 0, sbp->bsize - new_hdr_sz);
+		memcpy(eabh->b_data + new_hdr_sz, buf, len);
+		free(buf);
+		bmodified(eabh);
+	}
+        brelse(eabh);
+
+	return ret;
+}
+
 /* ------------------------------------------------------------------------- */
 /* adjust_inode - change an inode from gfs1 to gfs2                          */
 /*                                                                           */
@@ -1029,6 +1068,12 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 		/* Check for cdpns */
 		if (inode->i_di.di_mode & S_IFLNK) {
 			ret = fix_cdpn_symlink(sbp, bh, inode);
+			if (ret)
+				return -1;
+		}
+		/* Check for extended attributes */
+		if (inode->i_di.di_eattr) {
+			ret = fix_xattr(sbp, bh, inode);
 			if (ret)
 				return -1;
 		}
