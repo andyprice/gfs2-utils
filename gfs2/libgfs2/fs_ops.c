@@ -936,6 +936,7 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
 	dip->i_di.di_blocks++;
 	bmodified(dip->i_bh);
 
+	bmodified(obh); /* Need to do this in case nothing was moved */
 	brelse(obh);
 	bmodified(nbh);
 	brelse(nbh);
