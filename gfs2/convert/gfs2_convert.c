@@ -21,6 +21,7 @@
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
+#include <errno.h>
 
 #include <linux/types.h>
 #include <linux/gfs2_ondisk.h>
@@ -114,6 +115,12 @@ struct gfs1_sb {
 	char sb_reserved[96];
 };
 
+struct inode_dir_block {
+	osi_list_t list;
+	uint64_t di_addr;
+	uint64_t di_paddr; /* Parent dir inode addr */
+};
+
 struct inode_block {
 	osi_list_t list;
 	uint64_t di_addr;
@@ -131,9 +138,11 @@ struct gfs1_sb  raw_gfs1_ondisk_sb;
 struct gfs2_sbd sb2;
 char device[256];
 struct inode_block dirs_to_fix;  /* linked list of directories to fix */
+struct inode_dir_block cdpns_to_fix; /* linked list of cdpn symlinks */
 int seconds;
 struct timeval tv;
 uint64_t dirs_fixed;
+uint64_t cdpns_fixed;
 uint64_t dirents_fixed;
 struct gfs1_jindex *sd_jindex = NULL;    /* gfs1 journal index in memory */
 int gfs2_inptrs;
@@ -896,6 +905,42 @@ out:
 	return error;
 }
 
+const char *cdpn[14] = {"{hostname}", "{mach}", "{os}", "{uid}", "{gid}", "{sys}", "{jid}",
+			"@hostname", "@mach", "@os", "@uid", "@gid", "@sys", "@jid"};
+static int has_cdpn(const char *str)
+{
+	int i;
+	for (i=0; i<14; i++)
+		if (strstr(str, cdpn[i]) != NULL)
+			return 1;
+	return 0;
+}
+
+static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, struct gfs2_inode *ip)
+{
+	int ret = 0;
+	char *linkptr = NULL;
+
+	if (ip->i_di.di_height != 0)
+		return 0;
+
+	linkptr = bh->b_data + sizeof(struct gfs_dinode);
+	if (has_cdpn(linkptr)) {
+		struct inode_dir_block *fix;
+		/* Save the symlink di_addr. We'll find the parent di_addr later */
+		fix = malloc(sizeof(struct inode_dir_block));
+		if (!fix) {
+			log_crit("Error: out of memory.\n");
+			return -1;
+		}
+		memset(fix, 0, sizeof(struct inode_dir_block));
+		fix->di_addr = ip->i_di.di_num.no_addr;
+		osi_list_add_prev((osi_list_t *)&fix->list,
+				  (osi_list_t *)&cdpns_to_fix);
+	}
+
+	return ret;
+}
 /* ------------------------------------------------------------------------- */
 /* adjust_inode - change an inode from gfs1 to gfs2                          */
 /*                                                                           */
@@ -981,6 +1026,12 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 			ret = adjust_indirect_blocks(sbp, inode);
 		if (ret)
 			return -1;
+		/* Check for cdpns */
+		if (inode->i_di.di_mode & S_IFLNK) {
+			ret = fix_cdpn_symlink(sbp, bh, inode);
+			if (ret)
+				return -1;
+		}
 	}
 	
 	bmodified(inode->i_bh);
@@ -997,7 +1048,7 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 /*                                                                           */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
+static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_list_t *cdpn_to_fix)
 {
 	struct rgrp_list *rgd;
 	osi_list_t *tmp;
@@ -1085,13 +1136,16 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr)
 /* fetch_inum - fetch an inum entry from disk, given its block               */
 /* ------------------------------------------------------------------------- */
 static int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
-					   struct gfs2_inum *inum)
+		      struct gfs2_inum *inum, uint64_t *eablk)
 {
 	struct gfs2_inode *fix_inode;
 
 	fix_inode = inode_read(sbp, iblock);
 	inum->no_formal_ino = fix_inode->i_di.di_num.no_formal_ino;
 	inum->no_addr = fix_inode->i_di.di_num.no_addr;
+	if (eablk)
+		*eablk = fix_inode->i_di.di_eattr;
+
 	inode_put(&fix_inode);
 	return 0;
 }/* fetch_inum */
@@ -1102,12 +1156,12 @@ static int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
 /* We changed inode numbers, so we must update that number into the          */
 /* directory entries themselves.                                             */
 /*                                                                           */
-/* Returns: 0 on success, -1 on failure                                      */
+/* Returns: 0 on success, -1 on failure, -EISDIR when dentmod marked DT_DIR  */
 /* ------------------------------------------------------------------------- */
 static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
-			       struct gfs2_buffer_head *bh, int dir_entries)
+			       struct gfs2_buffer_head *bh, int dir_entries, uint64_t dentmod)
 {
-	int error;
+	int error = 0;
 	struct gfs2_dirent *dent;
 	int de; /* directory entry index */
 	
@@ -1116,12 +1170,23 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 		log_crit("Error retrieving directory.\n");
 		return -1;
 	}
+	error = 0;
 	/* Go through every dirent in the buffer and process it. */
 	/* Turns out you can't trust dir_entries is correct.     */
 	for (de = 0; ; de++) {
 		struct gfs2_inum inum;
 		int dent_was_gfs1;
-		
+
+		if (dentmod) {
+			if (dent->de_type == cpu_to_be16(DT_LNK)
+			    && cpu_to_be64(dent->de_inum.no_addr) == dentmod) {
+				dent->de_type = cpu_to_be16(DT_DIR);
+				error = -EISDIR;
+				break;
+			}
+			goto skip_next;
+		}
+
 		gettimeofday(&tv, NULL);
 		/* Do more warm fuzzy stuff for the customer. */
 		dirents_fixed++;
@@ -1135,7 +1200,7 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 		gfs2_inum_in(&inum, (char *)&dent->de_inum);
 		dent_was_gfs1 = (dent->de_inum.no_addr == dent->de_inum.no_formal_ino);
 		if (inum.no_formal_ino) { /* if not a sentinel (placeholder) */
-			error = fetch_inum(sbp, inum.no_addr, &inum);
+			error = fetch_inum(sbp, inum.no_addr, &inum, NULL);
 			if (error) {
 				log_crit("Error retrieving inode 0x%llx\n",
 					 (unsigned long long)inum.no_addr);
@@ -1179,11 +1244,30 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 				break;
 			}
 		}
+		/*
+		 * Compare this dirent address with every one in the
+		 * cdpns_to_fix list to find if this directory (dip) is
+		 * a cdpn symlink's parent. If so add it to the list element
+		 */
+		if (dent->de_type == cpu_to_be16(DT_LNK)) {
+			osi_list_t *tmp;
+			struct inode_dir_block *fix;
+			osi_list_foreach(tmp, &cdpns_to_fix.list) {
+				fix = osi_list_entry(tmp, struct inode_dir_block, list);
+				if (fix->di_addr == inum.no_addr)
+					fix->di_paddr = dip->i_di.di_num.no_addr;
+			}
+		}
+
+	skip_next:
 		error = gfs2_dirent_next(dip, bh, &dent);
-		if (error)
+		if (error) {
+			if (error == -ENOENT) /* beyond the end of this bh */
+				error = 0;
 			break;
+		}
 	} /* for every directory entry */
-	return 0;
+	return error;
 }/* process_dirent_info */
 
 /* ------------------------------------------------------------------------- */
@@ -1194,7 +1278,7 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 /*                                                                           */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip)
+static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip, uint64_t dentmod)
 {
 	struct gfs2_buffer_head *bh_leaf;
 	int error;
@@ -1230,13 +1314,40 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip
 			break;
 		}
 		gfs2_leaf_in(&leaf, bh_leaf); /* buffer to structure */
-		error = process_dirent_info(dip, sbp, bh_leaf, leaf.lf_entries);
+		error = process_dirent_info(dip, sbp, bh_leaf, leaf.lf_entries, dentmod);
 		bmodified(bh_leaf);
 		brelse(bh_leaf);
+		if (dentmod && error == -EISDIR) /* dentmod was marked DT_DIR, break out */
+			break;
 	} /* for leaf_num */
 	return 0;
 }/* fix_one_directory_exhash */
 
+static int process_directory(struct gfs2_sbd *sbp, uint64_t dirblock, uint64_t dentmod)
+{
+	struct gfs2_inode *dip;
+	int error = 0;
+	/* read in the directory inode */
+	dip = inode_read(sbp, dirblock);
+	/* fix the directory: either exhash (leaves) or linear (stuffed) */
+	if (dip->i_di.di_flags & GFS2_DIF_EXHASH) {
+		if (fix_one_directory_exhash(sbp, dip, dentmod)) {
+			log_crit("Error fixing exhash directory.\n");
+			inode_put(&dip);
+			return -1;
+		}
+	} else {
+		error = process_dirent_info(dip, sbp, dip->i_bh, dip->i_di.di_entries, dentmod);
+		if (error && error != -EISDIR) {
+			log_crit("Error fixing linear directory.\n");
+			inode_put(&dip);
+			return -1;
+		}
+	}
+	bmodified(dip->i_bh);
+	inode_put(&dip);
+	return 0;
+}
 /* ------------------------------------------------------------------------- */
 /* fix_directory_info - sync new inode numbers with directory info           */
 /* Returns: 0 on success, -1 on failure                                      */
@@ -1246,7 +1357,6 @@ static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 	osi_list_t *tmp, *fix;
 	struct inode_block *dir_iblk;
 	uint64_t offset, dirblock;
-	struct gfs2_inode *dip;
 
 	dirs_fixed = 0;
 	dirents_fixed = 0;
@@ -1267,25 +1377,10 @@ static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 		/* figure out the directory inode block and read it in */
 		dir_iblk = (struct inode_block *)fix;
 		dirblock = dir_iblk->di_addr; /* addr of dir inode */
-		/* read in the directory inode */
-		dip = inode_read(sbp, dirblock);
-		/* fix the directory: either exhash (leaves) or linear (stuffed) */
-		if (dip->i_di.di_flags & GFS2_DIF_EXHASH) {
-			if (fix_one_directory_exhash(sbp, dip)) {
-				log_crit("Error fixing exhash directory.\n");
-				inode_put(&dip);
-				return -1;
-			}
+		if (process_directory(sbp, dirblock, 0)) {
+			log_crit("Error processing directory\n");
+			return -1;
 		}
-		else {
-			if (process_dirent_info(dip, sbp, dip->i_bh,
-						dip->i_di.di_entries)) {
-				log_crit("Error fixing linear directory.\n");
-				inode_put(&dip);
-				return -1;
-			}
-		}
-		inode_put(&dip);
 	}
 	/* Free the last entry in memory: */
 	if (tmp) {
@@ -1294,6 +1389,60 @@ static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 	}
 	return 0;
 }/* fix_directory_info */
+
+/* ------------------------------------------------------------------------- */
+/* fix_cdpn_symlinks - convert cdpn symlinks to empty directories            */
+/* Returns: 0 on success, -1 on failure                                      */
+/* ------------------------------------------------------------------------- */
+static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
+{
+	osi_list_t *tmp, *x;
+	int error = 0;
+
+	cdpns_fixed = 0;
+	osi_list_foreach_safe(tmp, cdpn_to_fix, x) {
+		struct gfs2_inum fix, dir;
+		struct inode_dir_block *l_fix;
+		struct gfs2_buffer_head *bh;
+		struct gfs2_inode *fix_inode;
+		uint64_t eablk;
+
+		l_fix = osi_list_entry(tmp, struct inode_dir_block, list);
+		osi_list_del(tmp);
+
+		/* convert symlink to empty dir */
+		error = fetch_inum(sbp, l_fix->di_addr, &fix, &eablk);
+		if (error) {
+			log_crit("Error retrieving inode at block %llx\n", 
+				 (unsigned long long)l_fix->di_addr);
+			break;
+		}
+		error = fetch_inum(sbp, l_fix->di_paddr, &dir, NULL);
+		if (error) {
+			log_crit("Error retrieving inode at block %llx\n",
+				 (unsigned long long)l_fix->di_paddr);
+			break;
+		}
+
+		/* initialize the symlink inode to be a directory */
+		bh = init_dinode(sbp, &fix, S_IFDIR | 0755, 0, &dir);
+		fix_inode = inode_get(sbp, bh);
+		fix_inode->i_di.di_eattr = eablk; /*fix extended attribute */
+		inode_put(&fix_inode);
+		bmodified(bh);
+		brelse(bh);
+
+		/* fix the parent directory dirent entry for this inode */
+		error = process_directory(sbp, l_fix->di_paddr, l_fix->di_addr);
+		if (error) {
+			log_crit("Error trying to fix cdpn dentry\n");
+			break;
+		}
+		free(l_fix);
+		cdpns_fixed++;
+	}
+	return error;
+} /* fix_cdpn_symlinks */
 
 /* ------------------------------------------------------------------------- */
 /* Fetch gfs1 jindex structure from buffer                                   */
@@ -1393,6 +1542,7 @@ static int init(struct gfs2_sbd *sbp)
 	sbp->sd_sb.sb_header.mh_format = GFS2_FORMAT_SB;
 
 	osi_list_init((osi_list_t *)&dirs_to_fix);
+	osi_list_init((osi_list_t *)&cdpns_to_fix);
 	/* ---------------------------------------------- */
 	/* Initialize lists and read in the superblock.   */
 	/* ---------------------------------------------- */
@@ -1957,7 +2107,8 @@ int main(int argc, char **argv)
 	/* Renumber the inodes consecutively.             */
 	/* ---------------------------------------------- */
 	if (!error) {
-		error = inode_renumber(&sb2, sb2.sd_sb.sb_root_dir.no_addr);
+		error = inode_renumber(&sb2, sb2.sd_sb.sb_root_dir.no_addr,
+				       (osi_list_t *)&cdpns_to_fix);
 		if (error)
 			log_crit("\n%s: Error renumbering inodes.\n", device);
 		fsync(sb2.device_fd); /* write the buffers to disk */
@@ -1972,6 +2123,17 @@ int main(int argc, char **argv)
 		fflush(stdout);
 		if (error)
 			log_crit("\n%s: Error fixing directories.\n", device);
+	}
+	/* ---------------------------------------------- */
+	/* Convert cdpn symlinks to empty dirs            */
+	/* ---------------------------------------------- */
+	if (!error) {
+		error = fix_cdpn_symlinks(&sb2, (osi_list_t *)&cdpns_to_fix);
+		log_notice("\r%" PRIu64 " cdpn symlinks moved to empty directories.",
+			   cdpns_fixed);
+		fflush(stdout);
+		if (error)
+			log_crit("\n%s: Error fixing cdpn symlinks.\n", device);
 	}
 	/* ---------------------------------------------- */
 	/* Convert journal space to rg space              */
