@@ -1281,6 +1281,7 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 	char buf[sizeof(struct gfs1_jindex)];
 	unsigned int j;
 	int error=0;
+	unsigned int tmp_mode = 0;
 
 	if(ip->i_di.di_size % sizeof(struct gfs1_jindex) != 0){
 		log_crit("The size reported in the journal index"
@@ -1296,6 +1297,14 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 		log_crit("Unable to zero journal index\n");
 		return -1;
 	}
+	/* ugly hack
+	 * Faking the gfs1_jindex inode as a directory to gfs2_readi
+	 * so it skips the metaheader struct in the data blocks
+	 * in the inode. gfs2_jindex inode doesn't have metaheaders
+	 * in the data blocks */
+	tmp_mode = ip->i_di.di_mode;
+	ip->i_di.di_mode &= ~S_IFMT;
+	ip->i_di.di_mode |= S_IFDIR;
 	for (j = 0; ; j++) {
 		struct gfs1_jindex *journ;
 
@@ -1312,6 +1321,7 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 		gfs1_jindex_in(journ, buf);
 		sdp->jsize = (journ->ji_nsegment * 16 * sdp->bsize) >> 20;
 	}
+	ip->i_di.di_mode = tmp_mode;
 	if(j * sizeof(struct gfs1_jindex) != ip->i_di.di_size){
 		log_crit("journal inode size invalid\n");
 		goto fail;
