@@ -61,6 +61,8 @@
 #define GFS_FORMAT_FS           (1309) /* Filesystem (all-encompassing) */
 #define GFS_FORMAT_MULTI        (1401) /* Multi-Host */
 
+#define DIV_RU(x, y) (((x) + (y) - 1) / (y))
+
 struct gfs1_rgrp {
 	struct gfs2_meta_header rg_header; /* hasn't changed from gfs1 to 2 */
 	uint32_t rg_flags;
@@ -1770,6 +1772,100 @@ static void conv_build_jindex(struct gfs2_sbd *sdp)
 	inode_put(&sdp->md.jiinode);
 }
 
+static unsigned int total_file_blocks(struct gfs2_sbd *sdp, 
+				      uint64_t filesize, int journaled)
+{
+	unsigned int data_blks = 0, meta_blks = 0, total_blks;
+	unsigned int max, height, bsize;
+	uint64_t *arr;
+
+	/* Now find the total meta blocks required for data_blks */
+	if (filesize <= sdp->bsize - sizeof(struct gfs2_dinode)) {
+		total_blks = 1; /* stuffed inode */
+		goto out;
+	}
+
+	if (journaled) {
+		arr = sdp->sd_jheightsize;
+		max = sdp->sd_max_jheight;
+		bsize = sdp->sd_jbsize;
+	} else {
+		arr = sdp->sd_heightsize;
+		max = sdp->sd_max_height;
+		bsize = sdp->bsize;
+	}
+	data_blks = DIV_RU(filesize, bsize); /* total data blocks reqd */
+
+	for (height = 0; height < max; height++)
+		if (arr[height] >= filesize)
+			break;
+	if (height == 1) {
+		total_blks = data_blks + 1; /* dinode has direct ptrs to data blocks */
+		goto out;
+	}
+
+	meta_blks = DIV_RU(data_blks, sdp->sd_inptrs);
+	total_blks = data_blks + meta_blks;
+out:
+	return data_blks + meta_blks;
+}
+
+/* We check if the GFS2 filesystem files/structures created after the call to 
+ * check_fit() in main() will fit in the currently available free blocks
+ */
+static int check_fit(struct gfs2_sbd *sdp)
+{
+	unsigned int blks_need = 0, blks_avail = sdp->blks_total - sdp->blks_alloced;
+
+	/* build_master() */
+	blks_need++; /*creation of master dir inode - 1 block */
+
+	/* conv_build_jindex() */
+	{
+		blks_need++; /* creation of 'jindex' disk inode */
+		/* creation of journals */
+		blks_need += sdp->md.journals *
+			total_file_blocks(sdp, sdp->jsize << 20, 1);
+	}
+	/* build_per_node() */
+	{
+		blks_need++; /* creation of 'per_node' dir inode */
+		/* njourn x (inum_range + statfs_change + quota_change inodes) */
+		blks_need += sdp->md.journals * 3;
+		/* quota change inodes are prealloced */
+		blks_need += sdp->md.journals *
+			total_file_blocks(sdp, sdp->qcsize << 20, 1);
+	}
+	/* build_inum() */
+	blks_need++; /* creation of 'inum' disk inode */
+
+	/* build_statfs() */
+	blks_need++; /* creation of 'statfs' disk inode */
+
+	/* build_rindex() */
+	{
+		osi_list_t *tmp, *head;
+		unsigned int rg_count = 0;
+
+		blks_need++; /* creationg of 'rindex' disk inode */
+		/* find the total # of rindex entries, gives size of rindex inode */
+		for (head = &sdp->rglist, tmp = head->next; tmp != head;
+		     tmp = tmp->next)
+			rg_count++;
+		blks_need += 
+			total_file_blocks(sdp, rg_count * sizeof(struct gfs2_rindex), 1);
+	}
+	/* build_quota() */
+	blks_need++; /* quota inode block and uid=gid=0 quota - total 1 block */
+
+	/* Up until this point we require blks_need blocks. We don't 
+	 * include the blocks freed by the next step (remove_obsolete_gfs1)
+	 * because it's possible for us to exceed the available blocks
+	 * before this step */
+
+	return blks_avail > blks_need;
+}
+
 /* ------------------------------------------------------------------------- */
 /* main - mainline code                                                      */
 /* ------------------------------------------------------------------------- */
@@ -1845,12 +1941,22 @@ int main(int argc, char **argv)
 	/* Create our system files and directories.       */
 	/* ---------------------------------------------- */
 	if (!error) {
+		int jreduce = 0;
 		/* Now we've got to treat it as a gfs2 file system */
 		if (compute_constants(&sb2)) {
 			log_crit("Error: Bad constants (1)\n");
 			exit(-1);
 		}
 
+		/* Check if all the files we're about to create will 
+		 * fit into the space remaining on the device */
+		while (!check_fit(&sb2)) {
+			sb2.jsize--; /* reduce jsize by 1MB each time */
+			jreduce = 1;
+		}
+		if (jreduce)
+			log_notice("Reduced journal size to %u MB to accommodate "
+				   "GFS2 file system structures.\n", sb2.jsize);
 		/* Build the master subdirectory. */
 		build_master(&sb2); /* Does not do inode_put */
 		sb2.sd_sb.sb_master_dir = sb2.master_dir->i_di.di_num;
