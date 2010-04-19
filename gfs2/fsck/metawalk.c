@@ -174,8 +174,7 @@ struct duptree *dupfind(uint64_t block)
 	return NULL;
 }
 
-static struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
-					    uint64_t block)
+struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp, uint64_t block)
 {
 	if (lf_dip && lf_dip->i_di.di_num.no_addr == block)
 		return lf_dip;

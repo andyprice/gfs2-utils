@@ -135,8 +135,10 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
 			uint64_t error;
 
 			error = rgd->ri.ri_addr + x;
-			for (; x >= 0; x--)
+			for (; x >= 0; x--) {
 				brelse(rgd->bh[x]);
+				rgd->bh[x] = NULL;
+			}
 			return error;
 		}
 	}

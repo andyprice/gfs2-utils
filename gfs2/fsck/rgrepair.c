@@ -380,10 +380,11 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rg,
 {
 	int x = errblock - rg->ri.ri_addr;
 
-	log_err( _("Block #%"PRIu64" (0x%" PRIx64") (%d of %d) is neither"
+	log_err( _("Block #%lld (0x%llx) (%d of %d) is neither"
 		" GFS2_METATYPE_RB nor GFS2_METATYPE_RG.\n"),
-		rg->bh[x]->b_blocknr, rg->bh[x]->b_blocknr,
-		(int)x+1, (int)rg->ri.ri_length);
+		 (unsigned long long)rg->ri.ri_addr + x,
+		 (unsigned long long)rg->ri.ri_addr + x,
+		 (int)x+1, (int)rg->ri.ri_length);
 	if (query( _("Fix the Resource Group? (y/n)"))) {
 		log_err( _("Attempting to repair the RG.\n"));
 		rg->bh[x] = bread(sdp, rg->ri.ri_addr + x);
@@ -403,9 +404,43 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rg,
 			gfs2_rgrp_out(&rg->rg, rg->bh[x]);
 		}
 		brelse(rg->bh[x]);
+		rg->bh[x] = NULL;
 		return 0;
 	}
 	return 1;
+}
+
+/*
+ * expect_rindex_sanity - the rindex file seems trustworthy, so use those
+ *                        values as our expected values and assume the
+ *                        damage is only to the rgrps themselves.
+ */
+static int expect_rindex_sanity(struct gfs2_sbd *sdp, osi_list_t *ret_list,
+				int *num_rgs)
+{
+	osi_list_t *tmp;
+	struct rgrp_list *exp, *rgd; /* expected, actual */
+
+	*num_rgs = sdp->md.riinode->i_di.di_size / sizeof(struct gfs2_rindex);
+	osi_list_init(ret_list);
+	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
+		rgd = osi_list_entry(tmp, struct rgrp_list, list);
+
+		exp = calloc(1, sizeof(struct rgrp_list));
+		if (exp == NULL) {
+			fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
+			exit(-1);
+		}
+		exp->start = rgd->start;
+		exp->length = rgd->length;
+		memcpy(&exp->ri, &rgd->ri, sizeof(exp->ri));
+		memcpy(&exp->rg, &rgd->rg, sizeof(exp->rg));
+		exp->bits = NULL;
+		gfs2_compute_bitstructs(sdp, exp);
+		osi_list_add_prev(&exp->list, ret_list);
+	}
+	sdp->rgrps = *num_rgs;
+	return 0;
 }
 
 /*
@@ -416,7 +451,7 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rg,
  *             distrust means it's not to be trusted, so we should go to
  *             greater lengths to build it from scratch.
  */
-int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
+int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 {
 	int error, discrepancies;
 	osi_list_t expected_rglist;
@@ -426,10 +461,20 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 
 	if (trust_lvl == blind_faith)
 		return 0;
-	else if (trust_lvl == open_minded) { /* If we can't trust RG index */
+	else if (trust_lvl == ye_of_little_faith) { /* if rindex seems sane */
+		if (!(*sane)) {
+			log_err(_("The rindex file does not meet our "
+				  "expectations.\n"));
+			return -1;
+		}
+		error = expect_rindex_sanity(sdp, &expected_rglist,
+					     &calc_rg_count);
+		if (error)
+			return error;
+	} else if (trust_lvl == open_minded) { /* If we can't trust RG index */
 		/* Calculate our own RG index for comparison */
 		error = gfs2_rindex_calculate(sdp, &expected_rglist,
-					       &calc_rg_count);
+					      &calc_rg_count);
 		if (error) { /* If calculated RGs don't match the fs */
 			gfs2_rgrp_free(&expected_rglist);
 			return -1;
@@ -447,7 +492,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count)
 	}
 	/* Read in the rindex */
 	osi_list_init(&sdp->rglist); /* Just to be safe */
-	rindex_read(sdp, 0, &rgcount_from_index);
+	rindex_read(sdp, 0, &rgcount_from_index, sane);
 	if (sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex)) {
 		log_warn( _("WARNING: rindex file is corrupt.\n"));
 		gfs2_rgrp_free(&expected_rglist);

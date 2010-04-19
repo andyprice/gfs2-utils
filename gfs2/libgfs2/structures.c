@@ -128,6 +128,22 @@ int write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
 	return 0;
 }
 
+int build_journal(struct gfs2_sbd *sdp, int j, struct gfs2_inode *jindex)
+{
+	char name[256];
+	struct gfs2_inode *ip;
+	int ret;
+
+	sprintf(name, "journal%u", j);
+	ip = createi(jindex, name, S_IFREG | 0600, GFS2_DIF_SYSTEM);
+	ret = write_journal(sdp, ip, j,
+			    sdp->jsize << 20 >> sdp->sd_sb.sb_bsize_shift);
+	if (ret)
+		return ret;
+	inode_put(&ip);
+	return 0;
+}
+
 int build_jindex(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *jindex;
@@ -138,18 +154,10 @@ int build_jindex(struct gfs2_sbd *sdp)
 			 GFS2_DIF_SYSTEM);
 
 	for (j = 0; j < sdp->md.journals; j++) {
-		char name[256];
-		struct gfs2_inode *ip;
-
-		sprintf(name, "journal%u", j);
-		ip = createi(jindex, name, S_IFREG | 0600, GFS2_DIF_SYSTEM);
-		ret = write_journal(sdp, ip, j,
-			      sdp->jsize << 20 >> sdp->sd_sb.sb_bsize_shift);
+		ret = build_journal(sdp, j, jindex);
 		if (ret)
 			return ret;
-		inode_put(&ip);
 	}
-
 	if (sdp->debug) {
 		printf("\nJindex:\n");
 		gfs2_dinode_print(&jindex->i_di);

@@ -34,6 +34,8 @@ extern int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
 		       enum gfs2_mark_block new_blockmap_state);
 extern void reprocess_inode(struct gfs2_inode *ip, const char *desc);
 extern struct duptree *dupfind(uint64_t block);
+extern struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
+					    uint64_t block);
 
 #define is_duplicate(dblock) ((dupfind(dblock)) ? 1 : 0)
 

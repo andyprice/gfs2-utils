@@ -79,10 +79,12 @@ struct inode_with_dups {
 enum rgindex_trust_level { /* how far can we trust our RG index? */
 	blind_faith = 0, /* We'd like to trust the rgindex. We always used to
 			    before bz 179069. This should cover most cases. */
-	open_minded = 1, /* At least 1 RG is corrupt. Try to calculate what it
+	ye_of_little_faith = 1, /* The rindex seems trustworthy but there's
+				   rg damage that need to be fixed. */
+	open_minded = 2, /* At least 1 RG is corrupt. Try to calculate what it
 			    should be, in a perfect world where our RGs are all
 			    on even boundaries. Blue sky. Chirping birds. */
-	distrust = 2   /* The world isn't perfect, our RGs are not on nice neat
+	distrust = 3   /* The world isn't perfect, our RGs are not on nice neat
 			  boundaries.  The fs must have been messed with by
 			  gfs2_grow or something.  Count the RGs by hand. */
 };
@@ -102,7 +104,8 @@ extern int pass2(struct gfs2_sbd *sbp);
 extern int pass3(struct gfs2_sbd *sbp);
 extern int pass4(struct gfs2_sbd *sbp);
 extern int pass5(struct gfs2_sbd *sbp);
-extern int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count);
+extern int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count,
+		     int *sane);
 extern void gfs2_dup_free(void);
 extern int fsck_query(const char *format, ...)
 	__attribute__((format(printf,1,2)));

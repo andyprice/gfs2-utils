@@ -161,10 +161,11 @@ int ji_update(struct gfs2_sbd *sdp)
  * fd: optional file handle for rindex file (if meta_fs file system is mounted)
  *     (if fd is <= zero, it will read from raw device)
  * @count1: return count of the rgs.
+ * @sane: return whether rindex is consistent
  *
  * Returns: 0 on success, -1 on failure
  */
-int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1)
+int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 {
 	unsigned int rg;
 	int error;
@@ -172,8 +173,11 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1)
 	struct rgrp_list *rgd, *prev_rgd;
 	uint64_t prev_length = 0;
 
+	*sane = 1;
 	*count1 = 0;
 	prev_rgd = NULL;
+	if (!fd && sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex))
+		*sane = 0; /* rindex file size must be a multiple of 96 */
 	for (rg = 0; ; rg++) {
 		if (fd > 0)
 			error = read(fd, &buf, sizeof(struct gfs2_rindex));
@@ -198,12 +202,27 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1)
 
 		rgd->start = rgd->ri.ri_addr;
 		if (prev_rgd) {
+			/* If rg addresses go backwards, it's not sane
+			   (or it's converted from gfs1). */
+			if (prev_rgd->start >= rgd->start)
+				*sane = 0;
+			/* If rg lengths are not consistent, it's not sane
+			   (or it's converted from gfs1).  The first RG will
+			   be a different length due to space allocated for
+			   the superblock, so we can't detect this until
+			   we check rgrp 3, when we can compare the distance
+			   between rgrp 1 and rgrp 2. */
+			if (rg > 2 && prev_length &&
+			    prev_length != rgd->start - prev_rgd->start)
+				*sane = 0;
 			prev_length = rgd->start - prev_rgd->start;
 			prev_rgd->length = prev_length;
 		}
 
-		if(gfs2_compute_bitstructs(sdp, rgd))
+		if(gfs2_compute_bitstructs(sdp, rgd)) {
+			*sane = 0;
 			return -1;
+		}
 
 		(*count1)++;
 		prev_rgd = rgd;
@@ -224,7 +243,7 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1)
  *
  * Returns: 0 on success, -1 on failure.
  */
-int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount)
+int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane)
 {
 	struct rgrp_list *rgd;
 	struct gfs2_rindex *ri;
@@ -233,7 +252,7 @@ int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount)
 	uint64_t errblock = 0;
 	uint64_t rmax = 0;
 
-	if (rindex_read(sdp, fd, &count1))
+	if (rindex_read(sdp, fd, &count1, sane))
 	    goto fail;
 	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);

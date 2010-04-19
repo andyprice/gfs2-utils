@@ -1522,7 +1522,7 @@ static int dir_l_search(struct gfs2_inode *dip, const char *filename,
  *
  * Returns: 0 if found, -1 on failure, -ENOENT if not found.
  */
-static int dir_search(struct gfs2_inode *dip, const char *filename, int len,
+int dir_search(struct gfs2_inode *dip, const char *filename, int len,
 		      unsigned int *type, struct gfs2_inum *inum)
 {
 	int error;

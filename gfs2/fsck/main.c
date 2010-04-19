@@ -146,117 +146,6 @@ static void interrupt(int sig)
 	}
 }
 
-/* Check system inode and verify it's marked "in use" in the bitmap:       */
-/* Should work for all system inodes: root, master, jindex, per_node, etc. */
-static int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
-		       int builder(struct gfs2_sbd *sbp),
-		       enum gfs2_mark_block mark)
-{
-	uint64_t iblock = 0;
-	struct dir_status ds = {0};
-
-	log_info( _("Checking system inode '%s'\n"), filename);
-	if (sysinode) {
-		/* Read in the system inode, look at its dentries, and start
-		 * reading through them */
-		iblock = sysinode->i_di.di_num.no_addr;
-		log_info( _("System inode for '%s' is located at block %"
-			 PRIu64 " (0x%" PRIx64 ")\n"), filename,
-			 iblock, iblock);
-		
-		/* FIXME: check this block's validity */
-
-		ds.q = block_type(iblock);
-		/* If the inode exists but the block is marked      */
-		/* free, we might be recovering from a corrupt      */
-		/* bitmap.  In that case, don't rebuild the inode.  */
-		/* Just reuse the inode and fix the bitmap.         */
-		if (ds.q == gfs2_block_free) {
-			log_info( _("The inode exists but the block is not "
-				    "marked 'in use'; fixing it.\n"));
-			fsck_blockmap_set(sysinode,
-					  sysinode->i_di.di_num.no_addr,
-					  filename, mark);
-			ds.q = mark;
-			if (mark == gfs2_inode_dir)
-				dirtree_insert(sysinode->i_di.di_num.no_addr);
-		}
-	}
-	else
-		log_info( _("System inode for '%s' is missing.\n"), filename);
-	/* If there are errors with the inode here, we need to
-	 * create a new inode and get it all setup - of course,
-	 * everything will be in lost+found then, but we *need* our
-	 * system inodes before we can do any of that. */
-	if(!sysinode || ds.q != mark) {
-		log_err( _("Invalid or missing %s system inode.\n"), filename);
-		if (query(_("Create new %s system inode? (y/n) "), filename)) {
-			builder(sysinode->i_sbd);
-			fsck_blockmap_set(sysinode,
-					  sysinode->i_di.di_num.no_addr,
-					  filename, mark);
-			ds.q = mark;
-			if (mark == gfs2_inode_dir)
-				dirtree_insert(sysinode->i_di.di_num.no_addr);
-		}
-		else {
-			log_err( _("Cannot continue without valid %s inode\n"),
-				filename);
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
-static int check_system_inodes(struct gfs2_sbd *sdp)
-{
-	/*******************************************************************
-	 *******  Check the system inode integrity             *************
-	 *******************************************************************/
-	if (check_system_inode(sdp->master_dir, "master", build_master,
-			       gfs2_inode_dir)) {
-		stack;
-		return -1;
-	}
-	if (check_system_inode(sdp->md.rooti, "root", build_root,
-			       gfs2_inode_dir)) {
-		stack;
-		return -1;
-	}
-	if (check_system_inode(sdp->md.inum, "inum", build_inum,
-			       gfs2_inode_file)) {
-		stack;
-		return -1;
-	}
-	if (check_system_inode(sdp->md.statfs, "statfs", build_statfs,
-			       gfs2_inode_file)) {
-		stack;
-		return -1;
-	}
-	if (check_system_inode(sdp->md.jiinode, "jindex", build_jindex,
-			       gfs2_inode_dir)) {
-		stack;
-		return -1;
-	}
-	if (check_system_inode(sdp->md.riinode, "rindex", build_rindex,
-			       gfs2_inode_file)) {
-		stack;
-		return -1;
-	}
-	if (check_system_inode(sdp->md.qinode, "quota", build_quota,
-			       gfs2_inode_file)) {
-		stack;
-		return -1;
-	}
-	if (check_system_inode(sdp->md.pinode, "per_node", build_per_node,
-			       gfs2_inode_dir)) {
-		stack;
-		return -1;
-	}
-	return 0;
-}
-
 static void check_statfs(struct gfs2_sbd *sdp)
 {
 	osi_list_t *tmp;
@@ -364,9 +253,6 @@ int main(int argc, char **argv)
 	}
 	else
 		log_notice( _("Pass1 complete      \n"));
-
-	/* Make sure the system inodes are okay & represented in the bitmap. */
-	check_system_inodes(sbp);
 
 	if (!fsck_abort) {
 		last_reported_block = 0;

@@ -261,6 +261,8 @@ main_grow(int argc, char *argv[])
 	decode_arguments(argc, argv, sdp);
 	
 	while ((argc - optind) > 0) {
+		int sane;
+
 		sdp->path_name = argv[optind++];
 		sdp->path_fd = open(sdp->path_name, O_RDONLY | O_CLOEXEC);
 		if (sdp->path_fd < 0)
@@ -324,7 +326,7 @@ main_grow(int argc, char *argv[])
 		/* and therefore out of date.  It shouldn't matter because  */
 		/* we're only going to write out new RG information after   */
 		/* the existing RGs, and only write to the index at EOF.    */
-		ri_update(sdp, rindex_fd, &rgcount);
+		ri_update(sdp, rindex_fd, &rgcount, &sane);
 		fssize = filesystem_size(sdp);
 		figure_out_rgsize(sdp, &rgsize);
 		fsgrowth = ((sdp->device.length - fssize) * sdp->bsize);

@@ -446,6 +446,8 @@ extern struct gfs2_inode *createi(struct gfs2_inode *dip, const char *filename,
 				  unsigned int mode, uint32_t flags);
 extern void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 			struct gfs2_dirent *prev, struct gfs2_dirent *cur);
+extern int dir_search(struct gfs2_inode *dip, const char *filename, int len,
+		      unsigned int *type, struct gfs2_inum *inum);
 extern int gfs2_lookupi(struct gfs2_inode *dip, const char *filename, int len,
 			struct gfs2_inode **ipp);
 extern void dir_add(struct gfs2_inode *dip, const char *filename, int len,
@@ -621,6 +623,7 @@ extern char *get_sysfs(const char *fsname, const char *filename);
 extern int get_sysfs_uint(const char *fsname, const char *filename, unsigned int *val);
 extern int set_sysfs(const char *fsname, const char *filename, const char *val);
 extern int is_fsname(char *name);
+extern void get_random_bytes(void *buf, int nbytes);
 
 /* recovery.c */
 extern void gfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk);
@@ -648,6 +651,8 @@ extern void gfs2_rgrp_free(osi_list_t *rglist);
 /* structures.c */
 extern int build_master(struct gfs2_sbd *sdp);
 extern void build_sb(struct gfs2_sbd *sdp, const unsigned char *uuid);
+extern int build_journal(struct gfs2_sbd *sdp, int j,
+			 struct gfs2_inode *jindex);
 extern int build_jindex(struct gfs2_sbd *sdp);
 extern int build_per_node(struct gfs2_sbd *sdp);
 extern int build_inum(struct gfs2_sbd *sdp);
@@ -666,8 +671,8 @@ extern int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 extern int check_sb(struct gfs2_sb *sb);
 extern int read_sb(struct gfs2_sbd *sdp);
 extern int ji_update(struct gfs2_sbd *sdp);
-extern int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1);
-extern int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount);
+extern int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane);
+extern int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane);
 extern int write_sb(struct gfs2_sbd *sdp);
 
 /* ondisk.c */

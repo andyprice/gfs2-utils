@@ -480,50 +480,6 @@ static void check_mount(char *device)
 	return;
 }
 
-/*
- * get_random_bytes - Generate a series of random bytes using /dev/urandom.
- *
- * Modified from original code in gen_uuid.c in e2fsprogs/lib
- */
-static void get_random_bytes(void *buf, int nbytes)
-{
-	int i, n = nbytes, fd;
-	int lose_counter = 0;
-	unsigned char *cp = (unsigned char *) buf;
-	struct timeval	tv;
-
-	gettimeofday(&tv, 0);
-	fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
-	srand((getpid() << 16) ^ getuid() ^ tv.tv_sec ^ tv.tv_usec);
-	/* Crank the random number generator a few times */
-	gettimeofday(&tv, 0);
-	for (i = (tv.tv_sec ^ tv.tv_usec) & 0x1F; i > 0; i--)
-		rand();
-	if (fd >= 0) {
-		while (n > 0) {
-			i = read(fd, cp, n);
-			if (i <= 0) {
-				if (lose_counter++ > 16)
-					break;
-				continue;
-			}
-			n -= i;
-			cp += i;
-			lose_counter = 0;
-		}
-		close(fd);
-	}
-
-	/*
-	 * We do this all the time, but this is the only source of
-	 * randomness if /dev/random/urandom is out to lunch.
-	 */
-	for (cp = buf, i = 0; i < nbytes; i++)
-		*cp++ ^= (rand() >> 7) & 0xFF;
-
-	return;
-}
-
 /**
  * print_results - print out summary information
  * @sdp: the command line
