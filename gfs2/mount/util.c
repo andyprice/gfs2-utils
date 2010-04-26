@@ -203,6 +203,48 @@ void parse_opts(struct mount_options *mo)
 	log_debug("parse_opts: locktable = \"%s\"", mo->locktable);
 }
 
+/* Remove escape sequences from mount path.  Per getmntent(3), there are
+   only four escape sequences we need to handle.  Consequently, this does
+   not need to be a general-purpose unescape function */
+
+static int mnt_unescape(char *dest, size_t len, const char *src)
+{
+	unsigned i = 0, j = 0;
+	size_t srclen;
+	int ret = -1;
+
+	srclen = strlen(src);
+	while (i < srclen) {
+		if (src[i] != '\\') {
+			dest[j] = src[i];
+			++i; ++j;
+			continue;
+		}
+
+		++i;
+		if ((srclen - 3) < i)
+			return -1;
+
+		if (!strncmp(&src[i], "040", 3)) {
+			dest[j] = ' ';
+		} else if (!strncmp(&src[i], "011", 3)) {
+			dest[j] = '\t';
+		} else if (!strncmp(&src[i], "012", 3)) {
+			dest[j] = '\n';
+		} else if (!strncmp(&src[i], "134", 3)) {
+			dest[j] = '\\';
+		} else {
+			return -1;
+		}
+
+		i+=3;
+		j++;
+	}
+
+	return 0;
+}
+
+
 /* - when unmounting, we don't know the dev and need this function to set it;
    we also want to select the _last_ line with a matching dir since it will
    be the top-most fs that the umount(2) will unmount
@@ -214,6 +256,7 @@ void read_proc_mounts(struct mount_options *mo)
 	FILE *file;
 	char line[PATH_MAX];
 	char path[PATH_MAX];
+	char unescaped_path[PATH_MAX];
 	char type[PATH_MAX];
 	char opts[PATH_MAX];
 	char device[PATH_MAX];
@@ -236,8 +279,16 @@ void read_proc_mounts(struct mount_options *mo)
 	while (fgets(line, PATH_MAX, file)) {
 		if (sscanf(line, "%s %s %s %s", device, path, type, opts) != 4)
 			continue;
-		if (strcmp(path, mo->dir))
-			continue;
+		if (strcmp(path, mo->dir)) {
+			if (!strchr(path, '\\'))
+				continue;
+			/* /proc/mounts entry may have escaped spaces */
+			if (mnt_unescape(unescaped_path, sizeof(unescaped_path),
+					 path) < 0)
+				continue;
+			if (strcmp(unescaped_path, mo->dir))
+				continue;
+		}
 		if (mo->dev[0]) {
 			if (stat(device, &st_mounts_dev))
 				continue;
