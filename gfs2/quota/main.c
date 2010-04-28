@@ -338,7 +338,7 @@ read_quota_internal(int fd, uint32_t id, int id_type, struct gfs2_quota *q)
 static inline void
 write_quota_internal(int fd, uint32_t id, int id_type, struct gfs2_quota *q)
 {
-	/* seek to the appropriate offset in the quota file and read the
+	/* seek to the appropriate offset in the quota file and write the
 	   quota info */
 	uint64_t offset;
 	char buf[256];

@@ -177,10 +177,7 @@ read_quota_file(struct gfs2_sbd *sdp, commandline_t *comline,
 		osi_list_t *uid, osi_list_t *gid)
 {
 	int fd;
-	char buf[sizeof(struct gfs2_quota)];
-	struct gfs2_quota q;
-	uint64_t offset = 0;
-	uint32_t id, startid;
+	uint32_t id, startq;
 	int error = 0;
 	char quota_file[BUF_SIZE];
 	uint64_t quota_file_size = 0;
@@ -249,36 +246,51 @@ read_quota_file(struct gfs2_sbd *sdp, commandline_t *comline,
 		int i;
 		for (i=0; i<fmap2->fm_mapped_extents; i++) {
 			struct fiemap_extent *fe = &fmap2->fm_extents[i];
-			uint64_t end = fe->fe_logical + fe->fe_length;
+			uint64_t end = fe->fe_logical + fe->fe_length, val_off;
+			unsigned int v_off;
 
 			end = end > quota_file_size ? quota_file_size : end;
-			startid = DIV_RU(fe->fe_logical, sizeof(struct gfs2_quota));
-			offset = startid * sizeof(struct gfs2_quota);
-			do {
-				memset(buf, 0, sizeof(struct gfs2_quota));
+			/* we only need to get the value fields, not the whole quota 
+			 * This also works when struct gfs2_quota straddle page 
+			 * boundaries. Getting only the value field avoids the 
+			 * complexity of fetching two parts of the struct gfs2_quota
+			 * from two successive pages
+			 */
+			/* offset of the value field within struct gfs2_quota */
+			v_off = (unsigned long)(&((struct gfs2_quota *)NULL)->qu_value);
+			/* startq could be at the end of previous extent... */
+			startq = fe->fe_logical / sizeof(struct gfs2_quota);
+			/* but the value field could be in this extent */
+			if ((startq * sizeof(struct gfs2_quota) + v_off) >= fe->fe_logical)
+				val_off = startq * sizeof(struct gfs2_quota) + v_off;
+			else /* if the start of the extent doesn't have a split quota */
+				val_off = ++startq * sizeof(struct gfs2_quota) + v_off;
+
+			while ((val_off + sizeof(uint64_t)) <= end)
+			{
+				uint64_t value;
 				/* read hidden quota file here */
-				lseek(fd, offset, SEEK_SET);
-				error = read(fd, buf, sizeof(struct gfs2_quota));
+				lseek(fd, val_off, SEEK_SET);
+				error = read(fd, (unsigned char*)&value, sizeof(uint64_t));
 				if (error < 0) {
 					fprintf(stderr, "read error (%d): %s\n", 
 						errno, strerror(errno));
 					goto fmap2_free;
 				}
-				gfs2_quota_in(&q, buf);
-				id = (offset / sizeof(struct gfs2_quota)) >> 1;
+				value = be64_to_cpu(value);
+				id = startq >> 1;
 				/* We want value in 512 byte blocks (1 << 9 = 512) */
-				q.qu_value <<= sdp->sd_sb.sb_bsize_shift - 9;
-
-				if (q.qu_value) {
-					if (id * sizeof(struct gfs2_quota) * 2 == offset)
-						add_value(uid, id, q.qu_value);
+				value <<= sdp->sd_sb.sb_bsize_shift - 9;
+				if (value) {
+					/* if startq is even, it's a uid, else gid */
+					if (startq % 2)
+						add_value(gid, id, value);
 					else
-						add_value(gid, id, q.qu_value);
+						add_value(uid, id, value);
 				}
-
-				offset += sizeof(struct gfs2_quota);
-			} while ((offset + sizeof(struct gfs2_quota)) <= 
-				 end);
+				startq++;
+				val_off += sizeof(struct gfs2_quota);
+			}
 		}
 	}
 fmap2_free:
@@ -451,12 +463,13 @@ set_list(struct gfs2_sbd *sdp, commandline_t *comline, int user,
 	int fd;
 	osi_list_t *tmp;
 	values_t *v;
-	uint64_t offset;
+	uint64_t offset, max_off = 0;
 	int64_t value;
 	int error;
 	char quota_file[BUF_SIZE];
 	char id_str[16];
 	char *fs;
+	struct stat st;
 
 	strcpy(sdp->path_name, comline->filesystem);
 	if (check_for_gfs2(sdp)) {
@@ -490,6 +503,8 @@ set_list(struct gfs2_sbd *sdp, commandline_t *comline, int user,
 
 		offset = (2 * (uint64_t)v->v_id + ((user) ? 0 : 1)) *
 			sizeof(struct gfs2_quota);
+		if (offset > max_off)
+			max_off = offset;
 		offset += (unsigned long)(&((struct gfs2_quota *)NULL)->qu_value);
 
 		value = v->v_blocks * multiplier;
@@ -520,7 +535,21 @@ set_list(struct gfs2_sbd *sdp, commandline_t *comline, int user,
 			exit(-1);
 		}
 	}
-
+	/* If we wrote a value that extended the quota file size, 
+	 * round the size off to the nearest quota boundary
+	 */
+	error = fstat(fd, &st);
+	if (error) {
+		fprintf(stderr, "can't stat quota file (%d): %s\n",
+			error, strerror(errno));
+		goto out;
+	}
+	if (st.st_size < (max_off + sizeof(struct gfs2_quota))) {
+		error = ftruncate(fd, (max_off + sizeof(struct gfs2_quota)));
+		if (error)
+			fprintf(stderr, "can't truncate quota file(%d): %s\n",
+				error, strerror(errno));
+	}
 out:
 	close(fd);
 	close(sdp->metafs_fd);
@@ -568,6 +597,5 @@ do_quota_init(struct gfs2_sbd *sdp, commandline_t *comline)
 	set_list(sdp, comline, FALSE, &fs_gid, 1);
 	
 	do_sync(sdp, comline);
-
 	do_check(sdp, comline);
 }
