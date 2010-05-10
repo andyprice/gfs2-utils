@@ -326,6 +326,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 		bh = ip->i_bh;
 		/* First, build up the metatree */
 		for (h = 0; h < blk->height; h++) {
+			new = 0;
 			lookup_block(ip, bh, h, &blk->mp, 1, &new, &block);
 			if (bh != ip->i_bh)
 				brelse(bh);
@@ -645,8 +646,6 @@ static void fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 	mh.mh_type = GFS2_METATYPE_IN;
 	mh.mh_format = GFS2_FORMAT_IN;
 
-	/* This condition should never arise. 
-	   We're always dealing with unstuffed inodes */
 	if (!ip->i_di.di_height)
 		unstuff_dinode(ip);
 
@@ -657,6 +656,7 @@ static void fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 		bh = ip->i_bh;
 		/* First, build up the metatree */
 		for (h = 0; h < blk->height; h++) {
+			new = 0;
 			lookup_block(ip, bh, h, &blk->mp, 1, &new, &block);
 			if (bh != ip->i_bh)
 				brelse(bh);
@@ -821,7 +821,7 @@ static int adjust_jdata_inode(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
 		unsigned int len;
 
 		blk = osi_list_entry(tmp, struct blocklist, list);
-		/* If it's not a data block at the highest level */
+		/* If it's not a highest level indirect block */
 		if (blk->height != di_height - 1) {
 			osi_list_del(tmp);
 			free(blk->ptrbuf);
@@ -2107,6 +2107,40 @@ static int check_fit(struct gfs2_sbd *sdp)
 	return blks_avail > blks_need;
 }
 
+/* We fetch the old quota inode block and copy the contents of the block
+ * (minus the struct gfs2_dinode) into the new quota block. We update the 
+ * inode height/size of the new quota file to that of the old one and set the 
+ * old quota inode height/size to zero, so only the inode block gets freed.
+ */
+static void copy_quotas(struct gfs2_sbd *sdp)
+{
+	struct gfs2_inum inum;
+	struct gfs2_inode *oq_ip, *nq_ip;
+	int err;
+
+	err = gfs2_lookupi(sdp->master_dir, "quota", 5, &nq_ip);
+	if (err)
+		die("Couldn't lookup new quota file: %d\n", err);
+
+	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_quota_di);
+	oq_ip = inode_read(sdp, inum.no_addr);
+
+	nq_ip->i_di.di_height = oq_ip->i_di.di_height;
+	nq_ip->i_di.di_size = oq_ip->i_di.di_size;
+	memcpy(nq_ip->i_bh->b_data + sizeof(struct gfs2_dinode), 
+	       oq_ip->i_bh->b_data + sizeof(struct gfs2_dinode),
+	       sdp->bsize - sizeof(struct gfs2_dinode));
+
+	oq_ip->i_di.di_height = 0;
+	oq_ip->i_di.di_size = 0;
+
+	bmodified(nq_ip->i_bh);
+	inode_put(&nq_ip);
+
+	bmodified(oq_ip->i_bh);
+	inode_put(&oq_ip);
+}
+
 /* ------------------------------------------------------------------------- */
 /* main - mainline code                                                      */
 /* ------------------------------------------------------------------------- */
@@ -2227,6 +2261,15 @@ int main(int argc, char **argv)
 		build_rindex(&sb2);
 		/* Create the quota file */
 		build_quota(&sb2);
+
+		/* Copy out the master dinode */
+		{
+			struct gfs2_inode *ip = sb2.master_dir;
+			if (ip->i_bh->b_modified)
+				gfs2_dinode_out(&ip->i_di, ip->i_bh);
+		}
+		/* Copy old quotas */
+		copy_quotas(&sb2);
 
 		update_inode_file(&sb2);
 		/* Now delete the now-obsolete gfs1 files: */
