@@ -8,21 +8,13 @@ gfs2_convert - Convert a GFS1 filesystem to GFS2
 [\fIOPTION\fR]... \fIDEVICE\fR
 
 .SH DESCRIPTION
-gfs2_convert is used to convert a filesystem from GFS1 to GFS2. Do not
-attempt to convert a GFS1 filesystem which is not clean - the process
-of conversion will reinitialise the journals. We highly recommend that
-.B fsck.gfs
-is run successfully before attempting to convert a filesystem. Many
-of the on-disk structures are identical between GFS1 and GFS2, so
-the conversion process updates the journals, a few items of incompatible
-metadata (mostly indirect pointers and inodes) and adds the per-node
-directories required by the gfs2meta filesystem. The conversion process
-is performed in-place and does not require any extra disk space so that
-it is possible to successfully convert a GFS1 filesystem that is
-completely full.
-
-Always ensure you have a complete backup of the data on any filesystem
-before starting the conversion process.
+gfs2_convert is used to convert a filesystem from GFS1 to GFS2. It is
+required that the GFS1 filesystem be checked and fixed for errors using 
+\fBgfs_fsck\fP and that the filesystem be backed up before
+attempting to convert it. The convert process is irreversible and any
+error encountered during the conversion can result in the abrupt
+termination of the program and consequently an unusable filesystem.
+See \fBNOTES\fP section below for more information. 
 
 .SH OPTIONS
 .TP
@@ -58,3 +50,19 @@ changes.
 gfs2_convert /dev/vg0/lvol0
 This will convert the Global File System on the block device
 "/dev/vg0/lvol0" to gfs2 format.
+
+.SH NOTES
+If gfs2_convert is interrupted for some reason other than a conversion 
+failure, DO NOT run \fBgfs2_fsck\fP on this partially converted filesystem.
+When this occurs, reissue the gfs2_convert command on the partially converted
+filesystem to complete the conversion process.
+
+The GFS2 filesystem does not support Context-Dependent Path Names (CDPNs). 
+gfs2_convert identifies such CDPNs and replaces them with empty directories 
+with the same name. The administrator can use bind mounts on these 
+directories to get the same effect as CDPNs.
+
+When converting full or nearly full filesystems, it is possible that there
+won't be enough space available to fit all the GFS2 filesystem data 
+structures. In such cases, the size of all the journals is reduced uniformly
+such that everything fits in the available space.
