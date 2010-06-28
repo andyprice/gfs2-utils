@@ -14,15 +14,4 @@ struct fs_bitmap
 };
 typedef struct fs_bitmap fs_bitmap_t;
 
-/* functions with blk #'s that are buffer relative */
-uint32_t gfs2_bitcount(unsigned char *buffer, unsigned int buflen,
-		     unsigned char state);
-uint32_t gfs2_bitfit(unsigned char *buffer, unsigned int buflen,
-		   uint32_t goal, unsigned char old_state);
-
-/* functions with blk #'s that are rgrp relative */
-uint32_t gfs2_blkalloc_internal(struct rgrp_list *rgd, uint32_t goal,
-								unsigned char old_state,
-								unsigned char new_state, int do_it);
-
 #endif /* __FS_BITS_H__ */

@@ -20,6 +20,41 @@
 #define ALIGN(x,a) (((x)+(a)-1)&~((a)-1))
 
 /**
+ * gfs2_bit_search
+ * @ptr: Pointer to bitmap data
+ * @mask: Mask to use (normally 0x55555.... but adjusted for search start)
+ * @state: The state we are searching for
+ *
+ * We xor the bitmap data with a patter which is the bitwise opposite
+ * of what we are looking for, this gives rise to a pattern of ones
+ * wherever there is a match. Since we have two bits per entry, we
+ * take this pattern, shift it down by one place and then and it with
+ * the original. All the even bit positions (0,2,4, etc) then represent
+ * successful matches, so we mask with 0x55555..... to remove the unwanted
+ * odd bit positions.
+ *
+ * This allows searching of a whole u64 at once (32 blocks) with a
+ * single test (on 64 bit arches).
+ */
+
+static inline uint64_t gfs2_bit_search(const unsigned long long *ptr,
+				       unsigned long long mask,
+				       uint8_t state)
+{
+	unsigned long long tmp;
+	static const unsigned long long search[] = {
+		[0] = 0xffffffffffffffffULL,
+		[1] = 0xaaaaaaaaaaaaaaaaULL,
+		[2] = 0x5555555555555555ULL,
+		[3] = 0x0000000000000000ULL,
+	};
+	tmp = le64_to_cpu(*ptr) ^ search[state];
+	tmp &= (tmp >> 1);
+	tmp &= mask;
+	return tmp;
+}
+
+/**
  * gfs2_bitfit - Find a free block in the bitmaps
  * @buffer: the buffer that holds the bitmaps
  * @buflen: the length (in bytes) of the buffer
@@ -28,61 +63,39 @@
  *
  * Return: the block number that was allocated
  */
-
-uint32_t gfs2_bitfit(unsigned char *buffer, unsigned int buflen,
-		     uint32_t goal, unsigned char old_state)
+unsigned long gfs2_bitfit(const unsigned char *buf, const unsigned int len,
+			  unsigned long goal, unsigned char state)
 {
-	const uint8_t *byte, *start, *end;
-	int bit, startbit;
-	uint32_t g1, g2, misaligned;
-	unsigned long *plong;
-	unsigned long lskipval;
+	unsigned long spoint = (goal << 1) & ((8 * sizeof(unsigned long)) - 1);
+	const unsigned long long *ptr = ((unsigned long long *)buf) + (goal >> 5);
+	const unsigned long long *end = (unsigned long long *)
+		(buf + ALIGN(len, sizeof(unsigned long long)));
+	unsigned long long tmp;
+	unsigned long long mask = 0x5555555555555555ULL;
+	unsigned long bit;
 
-	lskipval = (old_state & GFS2_BLKST_USED) ? LBITSKIP00 : LBITSKIP55;
-	g1 = (goal / GFS2_NBBY);
-	start = buffer + g1;
-	byte = start;
-        end = buffer + buflen;
-	g2 = ALIGN(g1, sizeof(unsigned long));
-	plong = (unsigned long *)(buffer + g2);
-	startbit = bit = (goal % GFS2_NBBY) * GFS2_BIT_SIZE;
-	misaligned = g2 - g1;
-	if (!misaligned)
-		goto ulong_aligned;
-/* parse the bitmap a byte at a time */
-misaligned:
-	while (byte < end) {
-		if (((*byte >> bit) & GFS2_BIT_MASK) == old_state) {
-			return goal +
-				(((byte - start) * GFS2_NBBY) +
-				 ((bit - startbit) >> 1));
-		}
-		bit += GFS2_BIT_SIZE;
-		if (bit >= GFS2_NBBY * GFS2_BIT_SIZE) {
-			bit = 0;
-			byte++;
-			misaligned--;
-			if (!misaligned) {
-				plong = (unsigned long *)byte;
-				goto ulong_aligned;
-			}
-		}
-	}
-	return BFITNOENT;
+	if (state > 3)
+		return 0;
 
-/* parse the bitmap a unsigned long at a time */
-ulong_aligned:
-	while ((unsigned char *)plong < end) {
-		if (((*plong) & LBITMASK) != lskipval)
-			break;
-		plong++;
+	/* Mask off bits we don't care about at the start of the search */
+	mask <<= spoint;
+	tmp = gfs2_bit_search(ptr, mask, state);
+	ptr++;
+	while(tmp == 0 && ptr < end) {
+		tmp = gfs2_bit_search(ptr, 0x5555555555555555ULL, state);
+		ptr++;
 	}
-	if ((unsigned char *)plong < end) {
-		byte = (const uint8_t *)plong;
-		misaligned += sizeof(unsigned long) - 1;
-		goto misaligned;
-	}
-	return BFITNOENT;
+	/* Mask off any bits which are more than len bytes from the start */
+	if (ptr == end && (len & (sizeof(unsigned long long) - 1)))
+		tmp &= (((unsigned long long)~0) >>
+			(64 - 8 * (len & (sizeof(unsigned long long) - 1))));
+	/* Didn't find anything, so return */
+	if (tmp == 0)
+		return BFITNOENT;
+	ptr--;
+	bit = ffsll(tmp);
+	bit /= 2;	/* two bits per entry in the bitmap */
+	return (((const unsigned char *)ptr - buf) * GFS2_NBBY) + bit;
 }
 
 /**

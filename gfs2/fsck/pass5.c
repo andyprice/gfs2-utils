@@ -9,7 +9,6 @@
 
 #include "libgfs2.h"
 #include "fsck.h"
-#include "fs_bits.h"
 #include "util.h"
 
 static int convert_mark(uint8_t q, uint32_t *count)

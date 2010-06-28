@@ -395,8 +395,9 @@ extern int fix_device_geometry(struct gfs2_sbd *sdp);
 /* functions with blk #'s that are buffer relative */
 extern uint32_t gfs2_bitcount(unsigned char *buffer, unsigned int buflen,
 			      unsigned char state);
-extern uint32_t gfs2_bitfit(unsigned char *buffer, unsigned int buflen,
-			    uint32_t goal, unsigned char old_state);
+extern unsigned long gfs2_bitfit(const unsigned char *buffer,
+				 const unsigned int buflen,
+				 unsigned long goal, unsigned char old_state);
 
 /* functions with blk #'s that are rgrp relative */
 extern uint32_t gfs2_blkalloc_internal(struct rgrp_list *rgd, uint32_t goal,
