@@ -66,7 +66,7 @@ static inline uint64_t gfs2_bit_search(const unsigned long long *ptr,
 unsigned long gfs2_bitfit(const unsigned char *buf, const unsigned int len,
 			  unsigned long goal, unsigned char state)
 {
-	unsigned long spoint = (goal << 1) & ((8 * sizeof(unsigned long)) - 1);
+	unsigned long spoint = (goal << 1) & ((8 * sizeof(unsigned long long)) - 1);
 	const unsigned long long *ptr = ((unsigned long long *)buf) + (goal >> 5);
 	const unsigned long long *end = (unsigned long long *)
 		(buf + ALIGN(len, sizeof(unsigned long long)));
