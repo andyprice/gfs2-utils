@@ -499,7 +499,7 @@ int display_block_type(int from_restore)
 			break;
 		case GFS2_METATYPE_RB:   /* 3 */
 			print_gfs2("(rsrc grp bitblk)");
-			struct_len = 512;
+			struct_len = sizeof(struct gfs2_meta_header);
 			break;
 		case GFS2_METATYPE_DI:   /* 4 */
 			print_gfs2("(disk inode)");
@@ -568,8 +568,11 @@ int display_block_type(int from_restore)
 		rgd = gfs2_blk2rgrpd(&sbd, block);
 		if (rgd) {
 			gfs2_rgrp_read(&sbd, rgd);
-			type = gfs2_get_bitmap(&sbd, block, rgd);
-			gfs2_rgrp_relse(rgd);
+			if ((*(bh->b_data + 7) == GFS2_METATYPE_RG) ||
+			    (*(bh->b_data + 7) == GFS2_METATYPE_RB))
+				type = 4;
+			else
+				type = gfs2_get_bitmap(&sbd, block, rgd);
 		} else
 			type = 4;
 		screen_chunk_size = ((termlines - 4) * 16) >> 8 << 8;
@@ -596,6 +599,60 @@ int display_block_type(int from_restore)
 				print_gfs2(" pointer 0x%x", pnum);
 			}
 		}
+		else if ((*(bh->b_data + 7) == GFS2_METATYPE_RG)) {
+			int ptroffset = edit_row[dmode] * 16 + edit_col[dmode];
+
+			if (ptroffset >= struct_len || pgnum) {
+				int blknum, b, btype;
+
+				blknum = pgnum * screen_chunk_size;
+				blknum += (ptroffset - struct_len);
+				blknum *= 4;
+				blknum += rgd->ri.ri_data0;
+
+				print_gfs2(" blk ");
+				for (b = blknum; b < blknum + 4; b++) {
+					btype = gfs2_get_bitmap(&sbd, b, rgd);
+					print_gfs2("0x%x-%s  ", b,
+						   allocdesc[gfs1][btype]);
+				}
+			}
+		}
+		else if ((*(bh->b_data + 7) == GFS2_METATYPE_RB)) {
+			int ptroffset = edit_row[dmode] * 16 + edit_col[dmode];
+
+			if (ptroffset >= struct_len || pgnum) {
+				int blknum, b, btype, rb_number;
+
+				rb_number = block - rgd->ri.ri_addr;
+				blknum = 0;
+				/* count the number of bytes representing
+				   blocks prior to the displayed screen. */
+				for (b = 0; b < rb_number; b++) {
+					struct_len = (b ?
+					      sizeof(struct gfs2_meta_header) :
+					      sizeof(struct gfs2_rgrp));
+					blknum += (sbd.bsize - struct_len);
+				}
+				struct_len = sizeof(struct gfs2_meta_header);
+				/* add the number of bytes on this screen */
+				blknum += (ptroffset - struct_len);
+				/* factor in the page number */
+				blknum += pgnum * screen_chunk_size;
+				/* convert bytes to blocks */
+				blknum *= GFS2_NBBY;
+				/* add the starting offset for this rgrp */
+				blknum += rgd->ri.ri_data0;
+				print_gfs2(" blk ");
+				for (b = blknum; b < blknum + 4; b++) {
+					btype = gfs2_get_bitmap(&sbd, b, rgd);
+					print_gfs2("0x%x-%s  ", b,
+						   allocdesc[gfs1][btype]);
+				}
+			}
+		}
+		if (rgd)
+			gfs2_rgrp_relse(rgd);
 	}
 	if (block == sbd.sd_sb.sb_root_dir.no_addr)
 		print_gfs2("--------------- Root directory ------------------");

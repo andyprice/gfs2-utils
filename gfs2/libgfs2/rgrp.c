@@ -104,12 +104,18 @@ struct rgrp_list *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
 		ri = &prev_rgd->ri;
 		if (ri->ri_data0 <= blk && blk < ri->ri_data0 + ri->ri_data)
 			return prev_rgd;
+		if (blk >= ri->ri_addr && blk < ri->ri_addr + ri->ri_length)
+			return prev_rgd;
 	}
 
 	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
 		ri = &rgd->ri;
 
+		if (blk >= ri->ri_addr && blk < ri->ri_addr + ri->ri_length) {
+			prev_rgd = rgd;
+			return rgd;
+		}
 		if (ri->ri_data0 <= blk && blk < ri->ri_data0 + ri->ri_data) {
 			prev_rgd = rgd;
 			return rgd;
