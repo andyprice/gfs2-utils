@@ -7,6 +7,8 @@
 
 #include "libgfs2.h"
 
+#define RG_SYNC_TOLERANCE 1000
+
 /**
  * gfs2_compute_bitstructs - Compute the bitmap sizes
  * @rgd: The resource group descriptor
@@ -166,11 +168,21 @@ void gfs2_rgrp_relse(struct rgrp_list *rgd)
 void gfs2_rgrp_free(osi_list_t *rglist)
 {
 	struct rgrp_list *rgd;
+	int rgs_since_sync = 0;
+	struct gfs2_sbd *sdp = NULL;
 
 	while(!osi_list_empty(rglist->next)){
 		rgd = osi_list_entry(rglist->next, struct rgrp_list, list);
-		if (rgd->bh && rgd->bh[0]) /* if a buffer exists        */
+		if (rgd->bh && rgd->bh[0]) { /* if a buffer exists        */
+			rgs_since_sync++;
+			if (rgs_since_sync >= RG_SYNC_TOLERANCE) {
+				if (!sdp)
+					sdp = rgd->bh[0]->sdp;
+				fsync(sdp->device_fd);
+				rgs_since_sync = 0;
+			}
 			gfs2_rgrp_relse(rgd); /* free them all. */
+		}
 		if(rgd->bits)
 			free(rgd->bits);
 		if(rgd->bh) {
