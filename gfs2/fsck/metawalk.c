@@ -1127,7 +1127,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 	uint32_t height = ip->i_di.di_height;
 	struct gfs2_buffer_head *bh, *nbh, *metabh = ip->i_bh;
 	osi_list_t *prev_list, *cur_list, *tmp;
-	int i, head_size, iblk_type;
+	int h, head_size, iblk_type;
 	uint64_t *ptr, block;
 	int error = 0, err;
 
@@ -1138,35 +1138,34 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 	   because it checks everything through the hash table using
 	   "depth" field calculations. However, we still have to check the
 	   indirect blocks, even if the height == 1.  */
-	if (S_ISDIR(ip->i_di.di_mode)) {
+	if (S_ISDIR(ip->i_di.di_mode))
 		height++;
-		iblk_type = GFS2_METATYPE_JD;
-	} else {
-		iblk_type = GFS2_METATYPE_IN;
-	}
 
 	/* if(<there are no indirect blocks to check>) */
 	if (height < 2)
 		return 0;
-	for (i = 1; i < height; i++) {
-		prev_list = &mlp[i - 1];
-		cur_list = &mlp[i];
+	for (h = 1; h < height; h++) {
+		if (h > 1) {
+			if (S_ISDIR(ip->i_di.di_mode) &&
+			    h == ip->i_di.di_height + 1)
+				iblk_type = GFS2_METATYPE_JD;
+			else
+				iblk_type = GFS2_METATYPE_IN;
+			head_size = sizeof(struct gfs2_meta_header);
+		} else {
+			iblk_type = GFS2_METATYPE_DI;
+			head_size = sizeof(struct gfs2_dinode);
+		}
+		prev_list = &mlp[h - 1];
+		cur_list = &mlp[h];
 
 		for (tmp = prev_list->next; tmp != prev_list; tmp = tmp->next){
 			bh = osi_list_entry(tmp, struct gfs2_buffer_head,
 					    b_altlist);
 
-			if (i > 1) {
-				/* if this isn't really a block list skip it */
-				if (gfs2_check_meta(bh, iblk_type))
-					continue;
-				head_size = sizeof(struct gfs2_meta_header);
-			} else {
-				/* if this isn't really a dinode, skip it */
-				if (gfs2_check_meta(bh, GFS2_METATYPE_DI))
-					continue;
-				head_size = sizeof(struct gfs2_dinode);
-			}
+			if (gfs2_check_meta(bh, iblk_type))
+				continue;
+
 			/* Now check the metadata itself */
 			for (ptr = (uint64_t *)(bh->b_data + head_size);
 			     (char *)ptr < (bh->b_data + ip->i_sbd->bsize);
@@ -1179,7 +1178,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 					continue;
 
 				block = be64_to_cpu(*ptr);
-				err = pass->check_metalist(ip, block, &nbh,
+				err = pass->check_metalist(ip, block, &nbh, h,
 							   pass->private);
 				/* check_metalist should hold any buffers
 				   it gets with "bread". */
@@ -1461,7 +1460,7 @@ int remove_dentry_from_dir(struct gfs2_sbd *sbp, uint64_t dir,
 }
 
 int delete_metadata(struct gfs2_inode *ip, uint64_t block,
-		    struct gfs2_buffer_head **bh, void *private)
+		    struct gfs2_buffer_head **bh, int h, void *private)
 {
 	return delete_block_if_notdup(ip, block, bh, _("metadata"), private);
 }
@@ -1493,7 +1492,7 @@ int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
 }
 
 static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,
-			  struct gfs2_buffer_head **bh, void *private)
+			  struct gfs2_buffer_head **bh, int h, void *private)
 {
 	uint8_t q;
 	const char *desc = (const char *)private;

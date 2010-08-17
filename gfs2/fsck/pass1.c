@@ -37,9 +37,10 @@ struct block_count {
 static int leaf(struct gfs2_inode *ip, uint64_t block,
 		struct gfs2_buffer_head *bh, void *private);
 static int check_metalist(struct gfs2_inode *ip, uint64_t block,
-			  struct gfs2_buffer_head **bh, void *private);
+			  struct gfs2_buffer_head **bh, int h, void *private);
 static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
-			       struct gfs2_buffer_head **bh, void *private);
+			       struct gfs2_buffer_head **bh, int h,
+			       void *private);
 static int check_data(struct gfs2_inode *ip, uint64_t block, void *private);
 static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
 			   void *private);
@@ -62,7 +63,8 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
 static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 			      int leaf_pointer_errors, void *private);
 static int invalidate_metadata(struct gfs2_inode *ip, uint64_t block,
-			       struct gfs2_buffer_head **bh, void *private);
+			       struct gfs2_buffer_head **bh, int h,
+			       void *private);
 static int invalidate_leaf(struct gfs2_inode *ip, uint64_t block,
 			   struct gfs2_buffer_head *bh, void *private);
 static int invalidate_data(struct gfs2_inode *ip, uint64_t block,
@@ -113,7 +115,8 @@ struct metawalk_fxns invalidate_fxns = {
  * deleted, do you? Or worse, reused for lost+found.
  */
 static int resuscitate_metalist(struct gfs2_inode *ip, uint64_t block,
-				struct gfs2_buffer_head **bh, void *private)
+				struct gfs2_buffer_head **bh, int h,
+				void *private)
 {
 	struct block_count *bc = (struct block_count *)private;
 
@@ -207,7 +210,7 @@ static int leaf(struct gfs2_inode *ip, uint64_t block,
 }
 
 static int check_metalist(struct gfs2_inode *ip, uint64_t block,
-			  struct gfs2_buffer_head **bh, void *private)
+			  struct gfs2_buffer_head **bh, int h, void *private)
 {
 	uint8_t q;
 	int found_dup = 0, iblk_type;
@@ -227,7 +230,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 
 		return 1;
 	}
-	if (S_ISDIR(ip->i_di.di_mode)) {
+	if (S_ISDIR(ip->i_di.di_mode) && h == ip->i_di.di_height) {
 		iblk_type = GFS2_METATYPE_JD;
 		blktypedesc = _("a directory hash table block");
 	} else {
@@ -250,13 +253,13 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 	nbh = bread(ip->i_sbd, block);
 
 	if (gfs2_check_meta(nbh, iblk_type)){
-		log_debug( _("Inode %lld (0x%llx) has a bad indirect block "
-			     "pointer %lld (0x%llx) (points to something "
-			     "that is not %s).\n"),
-			   (unsigned long long)ip->i_di.di_num.no_addr,
-			   (unsigned long long)ip->i_di.di_num.no_addr,
-			   (unsigned long long)block,
-			   (unsigned long long)block, blktypedesc);
+		log_err( _("Inode %lld (0x%llx) has a bad indirect block "
+			   "pointer %lld (0x%llx) (points to something "
+			   "that is not %s).\n"),
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)block,
+			 (unsigned long long)block, blktypedesc);
 		if(!found_dup) {
 			fsck_blockmap_set(ip, block, _("bad indirect"),
 					  gfs2_meta_inval);
@@ -278,7 +281,8 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 }
 
 static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
-			       struct gfs2_buffer_head **bh, void *private)
+			       struct gfs2_buffer_head **bh, int h,
+			       void *private)
 {
 	struct duptree *d;
 	int found_dup = 0, iblk_type;
@@ -292,7 +296,7 @@ static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
 				  _("itself"), gfs2_block_free);
 		return 1;
 	}
-	if (S_ISDIR(ip->i_di.di_mode))
+	if (S_ISDIR(ip->i_di.di_mode) && h == ip->i_di.di_height)
 		iblk_type = GFS2_METATYPE_JD;
 	else
 		iblk_type = GFS2_METATYPE_IN;
@@ -836,7 +840,8 @@ static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
 }
 
 static int invalidate_metadata(struct gfs2_inode *ip, uint64_t block,
-			       struct gfs2_buffer_head **bh, void *private)
+			       struct gfs2_buffer_head **bh, int h,
+			       void *private)
 {
 	return mark_block_invalid(ip, block, ref_as_meta, _("metadata"));
 }
@@ -917,7 +922,8 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 }
 
 static int rangecheck_metadata(struct gfs2_inode *ip, uint64_t block,
-			       struct gfs2_buffer_head **bh, void *private)
+			       struct gfs2_buffer_head **bh, int h,
+			       void *private)
 {
 	return rangecheck_block(ip, block, bh, _("metadata"), private);
 }

@@ -29,7 +29,7 @@ struct dup_handler {
 };
 
 static int check_metalist(struct gfs2_inode *ip, uint64_t block,
-			  struct gfs2_buffer_head **bh, void *private);
+			  struct gfs2_buffer_head **bh, int h, void *private);
 static int check_data(struct gfs2_inode *ip, uint64_t block, void *private);
 static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 			     uint64_t parent, struct gfs2_buffer_head **bh,
@@ -76,7 +76,7 @@ struct metawalk_fxns find_dirents = {
 };
 
 static int check_metalist(struct gfs2_inode *ip, uint64_t block,
-			  struct gfs2_buffer_head **bh, void *private)
+			  struct gfs2_buffer_head **bh, int h, void *private)
 {
 	return add_duplicate_ref(ip, block, ref_as_meta, 1, INODE_VALID);
 }
@@ -199,7 +199,8 @@ static int find_dentry(struct gfs2_inode *ip, struct gfs2_dirent *de,
 }
 
 static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
-			      struct gfs2_buffer_head **bh, void *private)
+			      struct gfs2_buffer_head **bh, int h,
+			      void *private)
 {
 	struct dup_handler *dh = (struct dup_handler *) private;
 	struct duptree *d;
@@ -248,21 +249,21 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 
 static int clear_dup_data(struct gfs2_inode *ip, uint64_t block, void *private)
 {
-	return clear_dup_metalist(ip, block, NULL, private);
+	return clear_dup_metalist(ip, block, NULL, 0, private);
 }
 
 static int clear_dup_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 				 uint64_t parent, struct gfs2_buffer_head **bh,
 				 void *private)
 {
-	return clear_dup_metalist(ip, block, NULL, private);
+	return clear_dup_metalist(ip, block, NULL, 0, private);
 }
 
 static int clear_dup_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 				uint64_t parent, struct gfs2_buffer_head **bh,
 				void *private)
 {
-	return clear_dup_metalist(ip, block, NULL, private);
+	return clear_dup_metalist(ip, block, NULL, 0, private);
 }
 
 static int clear_eattr_entry (struct gfs2_inode *ip,
@@ -315,7 +316,7 @@ static int clear_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 {
 	uint64_t block = be64_to_cpu(*ea_data_ptr);
 
-	return clear_dup_metalist(ip, block, NULL, private);
+	return clear_dup_metalist(ip, block, NULL, 0, private);
 }
 
 /* Finds all references to duplicate blocks in the metadata */
