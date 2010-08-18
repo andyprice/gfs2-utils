@@ -1989,22 +1989,24 @@ static void conv_build_jindex(struct gfs2_sbd *sdp)
 	sdp->md.jiinode = createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
 				  GFS2_DIF_SYSTEM);
 
+	sdp->md.journal = malloc(sdp->md.journals *
+				 sizeof(struct gfs2_inode *));
 	for (j = 0; j < sdp->md.journals; j++) {
 		char name[256];
-		struct gfs2_inode *ip;
 
 		printf("Writing journal #%d...", j + 1);
 		fflush(stdout);
 		sprintf(name, "journal%u", j);
-		ip = createi(sdp->md.jiinode, name, S_IFREG | 0600,
-			     GFS2_DIF_SYSTEM);
-		write_journal(sdp, ip, j,
+		sdp->md.journal[j] = createi(sdp->md.jiinode, name, S_IFREG |
+					     0600, GFS2_DIF_SYSTEM);
+		write_journal(sdp, j,
 			      sdp->jsize << 20 >> sdp->sd_sb.sb_bsize_shift);
-		inode_put(&ip);
+		inode_put(&sdp->md.journal[j]);
 		printf("done.\n");
 		fflush(stdout);
 	}
 
+	free(sdp->md.journal);
 	if (sdp->debug) {
 		printf("\nJindex:\n");
 		gfs2_dinode_print(&sdp->md.jiinode->i_di);

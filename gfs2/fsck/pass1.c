@@ -1176,25 +1176,37 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 
 /* Check system inode and verify it's marked "in use" in the bitmap:       */
 /* Should work for all system inodes: root, master, jindex, per_node, etc. */
-static int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
-		       int builder(struct gfs2_sbd *sbp),
-		       enum gfs2_mark_block mark)
+/* We have to pass the sysinode as ** because the pointer may change out from
+   under the reference by way of the builder() function.  */
+static int check_system_inode(struct gfs2_sbd *sdp,
+			      struct gfs2_inode **sysinode,
+			      const char *filename,
+			      int builder(struct gfs2_sbd *sbp),
+			      enum gfs2_mark_block mark)
 {
 	uint64_t iblock = 0;
 	struct dir_status ds = {0};
 	int error;
 
 	log_info( _("Checking system inode '%s'\n"), filename);
-	if (sysinode) {
+	if (*sysinode) {
 		/* Read in the system inode, look at its dentries, and start
 		 * reading through them */
-		iblock = sysinode->i_di.di_num.no_addr;
+		iblock = (*sysinode)->i_di.di_num.no_addr;
 		log_info( _("System inode for '%s' is located at block %"
 			 PRIu64 " (0x%" PRIx64 ")\n"), filename,
 			 iblock, iblock);
-
-		/* FIXME: check this block's validity */
-
+		if (gfs2_check_meta((*sysinode)->i_bh, GFS2_METATYPE_DI)) {
+			log_err( _("Found invalid system dinode at block #"
+				   "%llu (0x%llx)\n"),
+				 (unsigned long long)iblock,
+				 (unsigned long long)iblock);
+			gfs2_blockmap_set(bl, iblock, gfs2_block_free);
+			check_n_fix_bitmap(sdp, iblock, gfs2_block_free);
+			inode_put(sysinode);
+		}
+	}
+	if (*sysinode) {
 		ds.q = block_type(iblock);
 		/* If the inode exists but the block is marked free, we might
 		   be recovering from a corrupt bitmap.  In that case, don't
@@ -1203,52 +1215,67 @@ static int check_system_inode(struct gfs2_inode *sysinode, const char *filename,
 		if (ds.q == gfs2_block_free) {
 			log_info( _("The inode exists but the block is not "
 				    "marked 'in use'; fixing it.\n"));
-			fsck_blockmap_set(sysinode,
-					  sysinode->i_di.di_num.no_addr,
+			fsck_blockmap_set(*sysinode,
+					  (*sysinode)->i_di.di_num.no_addr,
 					  filename, mark);
 			ds.q = mark;
 			if (mark == gfs2_inode_dir)
-				dirtree_insert(sysinode->i_di.di_num.no_addr);
+				dirtree_insert((*sysinode)->i_di.di_num.no_addr);
 		}
 	} else
-		log_info( _("System inode for '%s' is missing.\n"), filename);
+		log_info( _("System inode for '%s' is corrupt or missing.\n"),
+			  filename);
 	/* If there are errors with the inode here, we need to create a new
 	   inode and get it all setup - of course, everything will be in
 	   lost+found then, but we *need* our system inodes before we can
 	   do any of that. */
-	if(!sysinode || ds.q != mark) {
+	if(!(*sysinode) || ds.q != mark) {
 		log_err( _("Invalid or missing %s system inode (should be %d, "
 			   "is %d).\n"), filename, mark, ds.q);
 		if (query(_("Create new %s system inode? (y/n) "), filename)) {
-			builder(sysinode->i_sbd);
-			fsck_blockmap_set(sysinode,
-					  sysinode->i_di.di_num.no_addr,
+			log_err( _("Rebuilding system file \"%s\"\n"),
+				 filename);
+			error = builder(sdp);
+			if (error) {
+				log_err( _("Error trying to rebuild system "
+					   "file %s: Cannot continue\n"),
+					 filename);
+				return error;
+			}
+			fsck_blockmap_set(*sysinode,
+					  (*sysinode)->i_di.di_num.no_addr,
 					  filename, mark);
 			ds.q = mark;
 			if (mark == gfs2_inode_dir)
-				dirtree_insert(sysinode->i_di.di_num.no_addr);
+				dirtree_insert((*sysinode)->i_di.di_num.no_addr);
 		} else {
 			log_err( _("Cannot continue without valid %s inode\n"),
 				filename);
 			return -1;
 		}
 	}
-	if (S_ISDIR(sysinode->i_di.di_mode)) {
+	if (S_ISDIR((*sysinode)->i_di.di_mode)) {
 		struct block_count bc = {0};
 
 		sysdir_fxns.private = &bc;
-		if (sysinode->i_di.di_flags & GFS2_DIF_EXHASH)
-			check_metatree(sysinode, &sysdir_fxns);
+		if ((*sysinode)->i_di.di_flags & GFS2_DIF_EXHASH)
+			check_metatree(*sysinode, &sysdir_fxns);
 		else
-			check_linear_dir(sysinode, sysinode->i_bh,
+			check_linear_dir(*sysinode, (*sysinode)->i_bh,
 					 &sysdir_fxns);
 	}
-	error = handle_ip(sysinode->i_sbd, sysinode);
+	error = handle_ip(sdp, *sysinode);
 	return error;
 }
 
 static int build_a_journal(struct gfs2_sbd *sdp)
 {
+	char name[256];
+
+	/* First, try to delete the journal if it's in jindex */
+	sprintf(name, "journal%u", sdp->md.journals);
+	gfs2_dirent_del(sdp->md.jiinode, name, strlen(name));
+	/* Now rebuild it */
 	build_journal(sdp, sdp->md.journals, sdp->md.jiinode);
 	return 0;
 }
@@ -1260,43 +1287,43 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 	/*******************************************************************
 	 *******  Check the system inode integrity             *************
 	 *******************************************************************/
-	if (check_system_inode(sdp->master_dir, "master", build_master,
+	if (check_system_inode(sdp, &sdp->master_dir, "master", build_master,
 			       gfs2_inode_dir)) {
 		stack;
 		return -1;
 	}
-	if (check_system_inode(sdp->md.rooti, "root", build_root,
+	if (check_system_inode(sdp, &sdp->md.rooti, "root", build_root,
 			       gfs2_inode_dir)) {
 		stack;
 		return -1;
 	}
-	if (check_system_inode(sdp->md.inum, "inum", build_inum,
+	if (check_system_inode(sdp, &sdp->md.inum, "inum", build_inum,
 			       gfs2_inode_file)) {
 		stack;
 		return -1;
 	}
-	if (check_system_inode(sdp->md.statfs, "statfs", build_statfs,
+	if (check_system_inode(sdp, &sdp->md.statfs, "statfs", build_statfs,
 			       gfs2_inode_file)) {
 		stack;
 		return -1;
 	}
-	if (check_system_inode(sdp->md.jiinode, "jindex", build_jindex,
+	if (check_system_inode(sdp, &sdp->md.jiinode, "jindex", build_jindex,
 			       gfs2_inode_dir)) {
 		stack;
 		return -1;
 	}
-	if (check_system_inode(sdp->md.riinode, "rindex", build_rindex,
+	if (check_system_inode(sdp, &sdp->md.riinode, "rindex", build_rindex,
 			       gfs2_inode_file)) {
 		stack;
 		return -1;
 	}
-	if (check_system_inode(sdp->md.qinode, "quota", build_quota,
+	if (check_system_inode(sdp, &sdp->md.qinode, "quota", build_quota,
 			       gfs2_inode_file)) {
 		stack;
 		return -1;
 	}
-	if (check_system_inode(sdp->md.pinode, "per_node", build_per_node,
-			       gfs2_inode_dir)) {
+	if (check_system_inode(sdp, &sdp->md.pinode, "per_node",
+			       build_per_node, gfs2_inode_dir)) {
 		stack;
 		return -1;
 	}
@@ -1308,7 +1335,7 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 		char jname[16];
 
 		sprintf(jname, "journal%d", sdp->md.journals);
-		if (check_system_inode(sdp->md.journal[sdp->md.journals],
+		if (check_system_inode(sdp, &sdp->md.journal[sdp->md.journals],
 				       jname, build_a_journal,
 				       gfs2_inode_file)) {
 			stack;
@@ -1401,6 +1428,14 @@ int pass1(struct gfs2_sbd *sbp)
 				skip_this_pass = FALSE;
 				fflush(stdout);
 			}
+			if (fsck_system_inode(sbp, block)) {
+				log_debug(_("Already processed system inode "
+					    "%lld (0x%llx)\n"),
+					  (unsigned long long)block,
+					  (unsigned long long)block);
+				first = 0;
+				continue;
+			}
 			bh = bread(sbp, block);
 
 			/*log_debug( _("Checking metadata block #%" PRIu64
@@ -1419,11 +1454,6 @@ int pass1(struct gfs2_sbd *sbp)
 				}
 				check_n_fix_bitmap(sbp, block,
 						   gfs2_block_free);
-			} else if (fsck_system_inode(sbp, block)) {
-				log_debug(_("Already processed system inode "
-					    "%lld (0x%llx)\n"),
-					  (unsigned long long)block,
-					  (unsigned long long)block);
 			} else if (handle_di(sbp, bh) < 0) {
 				stack;
 				brelse(bh);

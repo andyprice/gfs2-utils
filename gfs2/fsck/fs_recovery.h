@@ -3,9 +3,10 @@
 
 #include "libgfs2.h"
 
-int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
-		    int *clean_journals);
-int preen_is_safe(struct gfs2_sbd *sdp, int preen, int force_check);
+extern int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
+			   int *clean_journals);
+extern int preen_is_safe(struct gfs2_sbd *sdp, int preen, int force_check);
 
+extern int ji_update(struct gfs2_sbd *sdp);
 #endif /* __FS_RECOVERY_H__ */
 

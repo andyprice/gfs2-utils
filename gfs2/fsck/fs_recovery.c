@@ -14,6 +14,8 @@
 #include "libgfs2.h"
 #include "util.h"
 
+#define JOURNAL_NAME_SIZE 16
+
 unsigned int sd_found_jblocks = 0, sd_replayed_jblocks = 0;
 unsigned int sd_found_metablocks = 0, sd_replayed_metablocks = 0;
 unsigned int sd_found_revokes = 0;
@@ -542,7 +544,7 @@ out:
 	log_info( _("jid=%u: Failed\n"), j);
 reinit:
 	if (query( _("Do you want to clear the journal instead? (y/n)")))
-		error = write_journal(sdp, sdp->md.journal[j], j,
+		error = write_journal(sdp, j,
 				      sdp->md.journal[j]->i_di.di_size /
 				      sdp->sd_sb.sb_bsize);
 	else
@@ -571,6 +573,7 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 
 	*clean_journals = 0;
 
+	sdp->jsize = GFS2_DEFAULT_JSIZE;
 	/* Get master dinode */
 	gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
 
@@ -581,7 +584,19 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 	}
 
 	for(i = 0; i < sdp->md.journals; i++) {
+		if (!sdp->md.journal[i]) {
+			log_err(_("File system journal \"journal%d\" is "
+				  "missing: pass1 will try to recreate it.\n"),
+				i);
+			continue;
+		}
 		if (!error) {
+			uint64_t jsize = sdp->md.journal[i]->i_di.di_size /
+				(1024 * 1024);
+
+			if (sdp->jsize == GFS2_DEFAULT_JSIZE && jsize &&
+			    jsize != sdp->jsize)
+				sdp->jsize = jsize;
 			error = gfs2_recover_journal(sdp->md.journal[i], i,
 						     preen, force_check,
 						     &clean);
@@ -601,4 +616,42 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 	/* Sync the buffers to disk so we get a fresh start. */
 	fsync(sdp->device_fd);
 	return error;
+}
+
+/*
+ * ji_update - fill in journal info
+ * sdp: the incore superblock pointer
+ *
+ * Given the inode for the journal index, read in all
+ * the journal inodes.
+ *
+ * Returns: 0 on success, -1 on failure
+ */
+int ji_update(struct gfs2_sbd *sdp)
+{
+	struct gfs2_inode *jip, *ip = sdp->md.jiinode;
+	char journal_name[JOURNAL_NAME_SIZE];
+	int i;
+
+	if(!ip) {
+		log_crit("Journal index inode not found.\n");
+		return -1;
+	}
+
+	if(!(sdp->md.journal = calloc(ip->i_di.di_entries - 2, sizeof(struct gfs2_inode *)))) {
+		log_err("Unable to allocate journal index\n");
+		return -1;
+	}
+	sdp->md.journals = 0;
+	memset(journal_name, 0, sizeof(*journal_name));
+	for(i = 0; i < ip->i_di.di_entries - 2; i++) {
+		/* FIXME check snprintf return code */
+		snprintf(journal_name, JOURNAL_NAME_SIZE, "journal%u", i);
+		gfs2_lookupi(sdp->md.jiinode, journal_name, strlen(journal_name),
+			     &jip);
+		sdp->md.journal[i] = jip;
+	}
+	sdp->md.journals = ip->i_di.di_entries - 2;
+	return 0;
+
 }

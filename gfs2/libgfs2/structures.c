@@ -75,8 +75,7 @@ void build_sb(struct gfs2_sbd *sdp, const unsigned char *uuid)
 	}
 }
 
-int write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
-		  unsigned int blocks)
+int write_journal(struct gfs2_sbd *sdp, unsigned int j, unsigned int blocks)
 {
 	struct gfs2_log_header lh;
 	unsigned int x;
@@ -86,8 +85,9 @@ int write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
 
 	/* Build the height up so our journal blocks will be contiguous and */
 	/* not broken up by indirect block pages.                           */
-	height = calc_tree_height(ip, (blocks + 1) * sdp->bsize);
-	build_height(ip, height);
+	height = calc_tree_height(sdp->md.journal[j],
+				  (blocks + 1) * sdp->bsize);
+	build_height(sdp->md.journal[j], height);
 
 	memset(&lh, 0, sizeof(struct gfs2_log_header));
 	lh.lh_header.mh_magic = GFS2_MAGIC;
@@ -96,14 +96,16 @@ int write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
 	lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
 
 	for (x = 0; x < blocks; x++) {
-		struct gfs2_buffer_head *bh = get_file_buf(ip, x, TRUE);
+		struct gfs2_buffer_head *bh = get_file_buf(sdp->md.journal[j],
+							   x, TRUE);
 		if (!bh)
 			return -1;
 		bmodified(bh);
 		brelse(bh);
 	}
 	for (x = 0; x < blocks; x++) {
-		struct gfs2_buffer_head *bh = get_file_buf(ip, x, FALSE);
+		struct gfs2_buffer_head *bh = get_file_buf(sdp->md.journal[j],
+							   x, FALSE);
 		if (!bh)
 			return -1;
 
@@ -123,7 +125,7 @@ int write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
 
 	if (sdp->debug) {
 		printf("\nJournal %u:\n", j);
-		gfs2_dinode_print(&ip->i_di);
+		gfs2_dinode_print(&sdp->md.journal[j]->i_di);
 	}
 	return 0;
 }
@@ -131,17 +133,14 @@ int write_journal(struct gfs2_sbd *sdp, struct gfs2_inode *ip, unsigned int j,
 int build_journal(struct gfs2_sbd *sdp, int j, struct gfs2_inode *jindex)
 {
 	char name[256];
-	struct gfs2_inode *ip;
 	int ret;
 
 	sprintf(name, "journal%u", j);
-	ip = createi(jindex, name, S_IFREG | 0600, GFS2_DIF_SYSTEM);
-	ret = write_journal(sdp, ip, j,
+	sdp->md.journal[j] = createi(jindex, name, S_IFREG | 0600,
+				     GFS2_DIF_SYSTEM);
+	ret = write_journal(sdp, j,
 			    sdp->jsize << 20 >> sdp->sd_sb.sb_bsize_shift);
-	if (ret)
-		return ret;
-	inode_put(&ip);
-	return 0;
+	return ret;
 }
 
 int build_jindex(struct gfs2_sbd *sdp)
@@ -152,17 +151,20 @@ int build_jindex(struct gfs2_sbd *sdp)
 
 	jindex = createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
 			 GFS2_DIF_SYSTEM);
-
+	sdp->md.journal = malloc(sdp->md.journals *
+				 sizeof(struct gfs2_inode *));
 	for (j = 0; j < sdp->md.journals; j++) {
 		ret = build_journal(sdp, j, jindex);
 		if (ret)
 			return ret;
+		inode_put(&sdp->md.journal[j]);
 	}
 	if (sdp->debug) {
 		printf("\nJindex:\n");
 		gfs2_dinode_print(&jindex->i_di);
 	}
 
+	free(sdp->md.journal);
 	inode_put(&jindex);
 	return 0;
 }

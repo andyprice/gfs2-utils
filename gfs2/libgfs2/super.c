@@ -77,6 +77,9 @@ int read_sb(struct gfs2_sbd *sdp)
 		(sdp->sd_sb.sb_bsize-sizeof(struct gfs2_meta_header)) /
 		sizeof(uint64_t);
 	sdp->sd_jbsize = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header);
+	sdp->sd_hash_bsize = sdp->bsize / 2;
+	sdp->sd_hash_bsize_shift = sdp->sd_sb.sb_bsize_shift - 1;
+	sdp->sd_hash_ptrs = sdp->sd_hash_bsize / sizeof(uint64_t);
 	sdp->sd_heightsize[0] = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_dinode);
 	sdp->sd_heightsize[1] = sdp->sd_sb.sb_bsize * sdp->sd_diptrs;
 	for (x = 2; ; x++){
@@ -113,46 +116,6 @@ int read_sb(struct gfs2_sbd *sdp)
  out:
 
 	return error;
-}
-
-#define JOURNAL_NAME_SIZE 16
-
-/*
- * ji_update - fill in journal info
- * sdp: the incore superblock pointer
- *
- * Given the inode for the journal index, read in all
- * the journal inodes.
- *
- * Returns: 0 on success, -1 on failure
- */
-int ji_update(struct gfs2_sbd *sdp)
-{
-	struct gfs2_inode *jip, *ip = sdp->md.jiinode;
-	char journal_name[JOURNAL_NAME_SIZE];
-	int i;
-
-	if(!ip) {
-		log_crit("Journal index inode not found.\n");
-		return -1;
-	}
-
-	if(!(sdp->md.journal = calloc(ip->i_di.di_entries - 2, sizeof(struct gfs2_inode *)))) {
-		log_err("Unable to allocate journal index\n");
-		return -1;
-	}
-	sdp->md.journals = 0;
-	memset(journal_name, 0, sizeof(*journal_name));
-	for(i = 0; i < ip->i_di.di_entries - 2; i++) {
-		/* FIXME check snprintf return code */
-		snprintf(journal_name, JOURNAL_NAME_SIZE, "journal%u", i);
-		gfs2_lookupi(sdp->md.jiinode, journal_name, strlen(journal_name), 
-					 &jip);
-		sdp->md.journal[i] = jip;
-	}
-	sdp->md.journals = ip->i_di.di_entries - 2;
-	return 0;
-
 }
 
 /**
