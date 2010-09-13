@@ -211,7 +211,6 @@ static int mnt_unescape(char *dest, size_t len, const char *src)
 {
 	unsigned i = 0, j = 0;
 	size_t srclen;
-	int ret = -1;
 
 	srclen = strlen(src);
 	while (i < srclen) {
@@ -318,7 +317,8 @@ void read_proc_mounts(struct mount_options *mo)
 		strncpy(mo->proc_entry, save_line, PATH_MAX);
 	}
 
-	log_debug("read_proc_mounts: device = \"%s\"", mo->dev);
+	log_debug("read_proc_mounts: device = \"%s\"", mo->specified_dev);
+	log_debug("read_proc_mounts: dm device = \"%s\"", mo->dev);
 	log_debug("read_proc_mounts: opts = \"%s\"", mo->opts);
 }
 

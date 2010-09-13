@@ -99,7 +99,7 @@ void add_mtab_entry(struct mount_options *mo)
 		return;
 	}
 
-	fprintf(file, "%s", mo->proc_entry);
+	fprintf(file, "%s%s", mo->specified_dev, strchr(mo->proc_entry, ' '));
 
 	fclose(file);
 

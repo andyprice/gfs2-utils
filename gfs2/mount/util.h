@@ -46,6 +46,7 @@ do { \
 } while (0)
 
 struct mount_options {
+	char specified_dev[PATH_MAX+1];
 	char dev[PATH_MAX+1];
 	char dir[PATH_MAX+1];
 	char opts[PATH_MAX+1];

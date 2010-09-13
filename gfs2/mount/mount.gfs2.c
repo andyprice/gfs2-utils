@@ -88,6 +88,7 @@ static void read_options(int argc, char **argv, struct mount_options *mo)
 		if (!real)
 			die("invalid device path \"%s\"\n", argv[optind]);
 		strncpy(mo->dev, real, PATH_MAX);
+		strncpy(mo->specified_dev, argv[optind], PATH_MAX);
 		free(real);
 	}
 
