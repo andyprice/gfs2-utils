@@ -146,7 +146,7 @@ const char *str_uuid(const unsigned char *uuid)
 	memset(str, 0, sizeof(str));
 	ch = str;
 	for (i = 0; i < 16; i++) {
-		sprintf(ch, "%02X", uuid[i]);
+		sprintf(ch, "%02x", uuid[i]);
 		ch += 2;
 		if ((i == 3) || (i == 5) || (i == 7) || (i == 9)) {
 			*ch = '-';
