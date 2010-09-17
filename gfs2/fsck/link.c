@@ -70,6 +70,14 @@ int decrement_link(uint64_t inode_no, uint64_t referenced_from,
 	/* If the list has entries, look for one that matches
 	 * inode_no */
 	if(ii) {
+		if (!ii->counted_links) {
+			log_debug( _("Directory %lld (0x%llx)'s link to "
+			     " %"PRIu64" (0x%" PRIx64 ") via %s is zero!\n"),
+			   (unsigned long long)referenced_from,
+			   (unsigned long long)referenced_from,
+			   inode_no, inode_no, why);
+			return 0;
+		}
 		ii->counted_links--;
 		log_debug( _("Directory %lld (0x%llx) decremented counted "
 			     "links to %u for %"PRIu64" (0x%" PRIx64 ") "

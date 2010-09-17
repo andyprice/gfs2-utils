@@ -792,6 +792,13 @@ void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 	uint16_t cur_rec_len, prev_rec_len;
 
 	bmodified(bh);
+	if (gfs2_check_meta(bh, GFS2_METATYPE_LF) == 0) {
+		struct gfs2_leaf *lf = (struct gfs2_leaf *)bh->b_data;
+
+		lf->lf_entries = be16_to_cpu(lf->lf_entries) - 1;
+		lf->lf_entries = cpu_to_be16(lf->lf_entries);
+	}
+
 	if (dip->i_di.di_entries) {
 		bmodified(dip->i_bh);
 		dip->i_di.di_entries--;
@@ -909,9 +916,6 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
 			nleaf->lf_entries = cpu_to_be16(nleaf->lf_entries);
 
 			dirent2_del(dip, obh, prev, dent);
-
-			oleaf->lf_entries = be16_to_cpu(oleaf->lf_entries) - 1;
-			oleaf->lf_entries = cpu_to_be16(oleaf->lf_entries);
 
 			if (!prev)
 				prev = dent;
@@ -1728,7 +1732,7 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 	/* Set the bitmap type for inode to free space: */
 	gfs2_set_bitmap(sdp, ip->i_di.di_num.no_addr, GFS2_BLKST_FREE);
 	inode_put(&ip);
-	/* inode_put deallocated the extra block used by the dist inode, */
+	/* inode_put deallocated the extra block used by the disk inode, */
 	/* so adjust it in the superblock struct */
 	sdp->blks_alloced--;
 	/* Now we have to adjust the rg freespace count and inode count: */

@@ -110,10 +110,20 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 				       ip->i_di.di_num.no_addr,
 				       _(".. unlinked, moving to lost+found"));
 			dip = fsck_load_inode(sdp, di->dotdot_parent);
-			dip->i_di.di_nlink--;
-			log_debug(_("Decrementing its links to %d\n"),
-				  dip->i_di.di_nlink);
-			bmodified(dip->i_bh);
+			if (dip->i_di.di_nlink > 0) {
+				dip->i_di.di_nlink--;
+				log_debug(_("Decrementing its links to %d\n"),
+					  dip->i_di.di_nlink);
+				bmodified(dip->i_bh);
+			} else if (!dip->i_di.di_nlink) {
+				log_debug(_("Its link count is zero.\n"));
+			} else {
+				log_debug(_("Its link count is %d!  "
+					    "Changing it to 0.\n"),
+					  dip->i_di.di_nlink);
+				dip->i_di.di_nlink = 0;
+				bmodified(dip->i_bh);
+			}
 			fsck_inode_put(&dip);
 			di = NULL;
 		} else
