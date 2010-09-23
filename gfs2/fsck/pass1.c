@@ -89,6 +89,7 @@ struct metawalk_fxns pass1_fxns = {
 	.check_eattr_entry = check_eattr_entries,
 	.check_eattr_extentry = check_extended_leaf_eattr,
 	.finish_eattr_indir = finish_eattr_indir,
+	.big_file_msg = big_file_comfort,
 };
 
 struct metawalk_fxns undo_fxns = {

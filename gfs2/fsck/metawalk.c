@@ -1347,14 +1347,14 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 
 		if (rc && (!error || rc < 0))
 			error = rc;
-		if (ip->i_di.di_blocks > COMFORTABLE_BLKS)
-			big_file_comfort(ip, blks_checked);
+		if (pass->big_file_msg && ip->i_di.di_blocks > COMFORTABLE_BLKS)
+			pass->big_file_msg(ip, blks_checked);
 		if (bh == ip->i_bh)
 			osi_list_del(&bh->b_altlist);
 		else
 			brelse(bh);
 	}
-	if (ip->i_di.di_blocks > COMFORTABLE_BLKS) {
+	if (pass->big_file_msg && ip->i_di.di_blocks > COMFORTABLE_BLKS) {
 		log_notice( _("\rLarge file at %lld (0x%llx) - 100 percent "
 			      "complete.                                   "
 			      "\n"),
