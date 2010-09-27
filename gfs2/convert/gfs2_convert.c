@@ -150,6 +150,7 @@ uint64_t gfs2_heightsize[GFS2_MAX_META_HEIGHT];
 uint64_t gfs2_jheightsize[GFS2_MAX_META_HEIGHT];
 uint32_t gfs2_max_height;
 uint32_t gfs2_max_jheight;
+uint64_t jindex_addr = 0, rindex_addr = 0;
 
 /* ------------------------------------------------------------------------- */
 /* This function is for libgfs's sake.                                       */
@@ -1140,7 +1141,9 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 			}
 			bh = bread(sbp, block);
 			if (!gfs2_check_meta(bh, GFS_METATYPE_DI)) {/* if it is an dinode */
-				error = adjust_inode(sbp, bh);
+				/* Skip the rindex and jindex inodes for now. */
+				if (block != rindex_addr && block != jindex_addr)
+					error = adjust_inode(sbp, bh);
 			} else { /* It's metadata, but not an inode, so fix the bitmap. */
 				int blk, buf_offset;
 				int bitmap_byte; /* byte within the bitmap to fix */
@@ -1611,6 +1614,10 @@ static int init(struct gfs2_sbd *sbp)
 	memcpy(&raw_gfs1_ondisk_sb, (struct gfs1_sb *)bh->b_data,
 		   sizeof(struct gfs1_sb));
 	gfs2_sb_in(&sbp->sd_sb, bh);
+
+	jindex_addr = be64_to_cpu(raw_gfs1_ondisk_sb.sb_jindex_di.no_addr);
+	rindex_addr = be64_to_cpu(raw_gfs1_ondisk_sb.sb_rindex_di.no_addr);
+
 	sbp->bsize = sbp->sd_sb.sb_bsize;
 	sbp->sd_inptrs = (sbp->bsize - sizeof(struct gfs_indirect)) /
 		sizeof(uint64_t);
