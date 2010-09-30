@@ -16,7 +16,7 @@
 ### END INIT INFO
 
 # set secure PATH
-PATH="/bin:/usr/bin:/sbin:/usr/sbin:@SBINDIR@"
+PATH="/bin:/sbin:/usr/sbin:/usr/bin"
 
 ### generic wrapper functions
 
@@ -44,7 +44,7 @@ nok() {
 
 # rpm based distros
 if [ -d /etc/sysconfig ]; then
-	[ -f @INITDDIR@/functions ] && . @INITDDIR@/functions
+	[ -f /etc/init.d/functions ] && . /etc/init.d/functions
 	[ -f /etc/sysconfig/cluster ] && . /etc/sysconfig/cluster
 	[ -f /etc/sysconfig/gfs2 ] && . /etc/sysconfig/gfs2
 	[ -z "$LOCK_FILE" ] && LOCK_FILE="/var/lock/subsys/gfs2"
