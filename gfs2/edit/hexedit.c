@@ -340,7 +340,7 @@ static int bobgets(char string[],int x,int y,int sz,int *ch)
 				break;
 			default:
 				move(0,70);
-				printw("%08X",*ch);
+				printw("%08x",*ch);
 				// ignore all other characters
 				break;
 			} // end switch on non-printable character
@@ -476,7 +476,7 @@ int display_block_type(int from_restore)
 	else
 		print_gfs2(" ");
 	if (!from_restore) {
-		print_gfs2("of %" PRIu64 " (0x%" PRIX64 ")", max_block,
+		print_gfs2("of %" PRIu64 " (0x%" PRIx64 ")", max_block,
 			   max_block);
 		if (termlines)
 			move(line, 55);
@@ -709,7 +709,7 @@ static int hexdump(uint64_t startaddr, int len)
 	uint64_t l;
 	const char *lpBuffer = bh->b_data;
 
-	strcpy(edit_fmt,"%02X");
+	strcpy(edit_fmt,"%02x");
 	pointer = (unsigned char *)lpBuffer + offset;
 	ptr2 = (unsigned char *)lpBuffer + offset;
 	l = offset;
@@ -726,9 +726,9 @@ static int hexdump(uint64_t startaddr, int len)
 			COLORS_OFFSETS; /* cyan for offsets */
 		}
 		if (startaddr < 0xffffffff)
-			print_gfs2("%.8"PRIX64, startaddr + l);
+			print_gfs2("%.8"PRIx64, startaddr + l);
 		else
-			print_gfs2("%.16"PRIX64, startaddr + l);
+			print_gfs2("%.16"PRIx64, startaddr + l);
 		if (termlines) {
 			if (l < struct_len)
 				COLORS_NORMAL; /* normal part of structure */
@@ -781,9 +781,9 @@ static int hexdump(uint64_t startaddr, int len)
 				i == edit_col[dmode]) {
 				COLORS_HIGHLIGHT; /* in the structure */
 				memset(estring,0,3);
-				sprintf(estring,"%02X",*pointer);
+				sprintf(estring,"%02x",*pointer);
 			}
-			print_gfs2("%02X",*pointer);
+			print_gfs2("%02x",*pointer);
 			if (termlines && line == edit_row[dmode] + 3 &&
 				i == edit_col[dmode]) {
 				if (l < struct_len + offset)
@@ -2937,7 +2937,7 @@ static void interactive_mode(void)
 			break;
 		default:
 			move(termlines - 1, 0);
-			printw("Keystroke not understood: 0x%03X",ch);
+			printw("Keystroke not understood: 0x%03x",ch);
 			refresh();
 			usleep(50000);
 			break;
@@ -2978,7 +2978,7 @@ void gfs_log_header_in(struct gfs_log_header *head,
 void gfs_log_header_print(struct gfs_log_header *lh)
 {
 	gfs2_meta_header_print(&lh->lh_header);
-	pv(lh, lh_flags, "%u", "0x%.8X");
+	pv(lh, lh_flags, "%u", "0x%.8x");
 	pv(lh, lh_pad, "%u", "%x");
 	pv((unsigned long long)lh, lh_first, "%llu", "%llx");
 	pv((unsigned long long)lh, lh_sequence, "%llu", "%llx");
