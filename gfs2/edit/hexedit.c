@@ -77,6 +77,9 @@ int display(int identify_only);
 		}						\
 	} while(0)
 
+static int display_indirect(struct iinfo *ind, int indblocks, int level,
+			    uint64_t startoff);
+
 static int gfs2_dinode_printval(struct gfs2_dinode *dip, const char *strfield)
 {
 	checkprint(strfield, dip, di_mode);
@@ -1306,7 +1309,11 @@ static int display_leaf(struct iinfo *ind)
 	if (gfs2_struct_type == GFS2_METATYPE_SB)
 		print_gfs2("The superblock has 2 directories");
 	else
-		print_gfs2("This directory block contains %d directory entries.",
+		print_gfs2("Directory block: lf_depth:%d, lf_entries:%d,"
+			   "fmt:%d next=0x%llx (%d dirents).",
+			   ind->ii[0].lf_depth, ind->ii[0].lf_entries,
+			   ind->ii[0].lf_dirent_format,
+			   ind->ii[0].lf_next,
 			   ind->ii[0].dirents);
 
 	start_line = line;
@@ -1315,7 +1322,7 @@ static int display_leaf(struct iinfo *ind)
 		    + start_row[dmode])
 			break;
 		total_dirents++;
-		if (ind->ii[0].dirents > 1) {
+		if (ind->ii[0].dirents >= 1) {
 			eol(5);
 			if (termlines) {
 				if (edit_row[dmode] >=0 &&
@@ -1409,9 +1416,76 @@ static int get_height(void)
 }
 
 /* ------------------------------------------------------------------------ */
+/* print_block_details                                                      */
+/* ------------------------------------------------------------------------ */
+static void print_block_details(struct iinfo *ind, int level, int cur_height,
+				int pndx, uint64_t file_offset)
+{
+	struct iinfo *more_indir;
+	int more_ind;
+	char *tmpbuf;
+	uint64_t thisblk;
+
+	thisblk = ind->ii[pndx].block;
+	more_indir = malloc(sizeof(struct iinfo));
+	if (!more_indir) {
+		fprintf(stderr, "Out of memory in function "
+			"display_indirect\n");
+		return;
+	}
+	tmpbuf = malloc(sbd.bsize);
+	if (!tmpbuf) {
+		fprintf(stderr, "Out of memory in function "
+			"display_indirect\n");
+		return;
+	}
+	while (thisblk) {
+		lseek(sbd.device_fd, thisblk * sbd.bsize, SEEK_SET);
+		/* read in the desired block */
+		if (read(sbd.device_fd, tmpbuf, sbd.bsize) != sbd.bsize) {
+			fprintf(stderr, "bad read: %s from %s:%d: block %lld "
+				"(0x%llx)\n", strerror(errno), __FUNCTION__,
+				__LINE__,
+				(unsigned long long)ind->ii[pndx].block,
+				(unsigned long long)ind->ii[pndx].block);
+			exit(-1);
+		}
+		thisblk = 0;
+		memset(more_indir, 0, sizeof(struct iinfo));
+		if (S_ISDIR(di.di_mode) && level == di.di_height) {
+			thisblk = do_leaf_extended(tmpbuf, more_indir);
+			display_leaf(more_indir);
+		} else {
+			int x;
+
+			for (x = 0; x < 512; x++) {
+				memcpy(&more_indir->ii[x].mp,
+				       &ind->ii[pndx].mp,
+				       sizeof(struct metapath));
+				more_indir->ii[x].mp.mp_list[cur_height+1] = x;
+			}
+			more_ind = do_indirect_extended(tmpbuf, more_indir,
+							cur_height + 1);
+			display_indirect(more_indir, more_ind, level + 1,
+					 file_offset);
+		}
+		if (thisblk) {
+			eol(0);
+			if (termlines)
+				move(line,9);
+			print_gfs2("Continuation block 0x%llx / %lld",
+				   thisblk, thisblk);
+		}
+	}
+	free(tmpbuf);
+	free(more_indir);
+}
+
+/* ------------------------------------------------------------------------ */
 /* display_indirect                                                         */
 /* ------------------------------------------------------------------------ */
-static int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_t startoff)
+static int display_indirect(struct iinfo *ind, int indblocks, int level,
+			    uint64_t startoff)
 {
 	int start_line, total_dirents;
 	int cur_height = -1, pndx;
@@ -1427,8 +1501,7 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_
 			else
 				print_gfs2("This inode contains %d indirect blocks",
 					   indblocks);
-		}
-		else
+		} else
 			print_gfs2("This indirect block contains %d indirect blocks",
 				   indblocks);
 	}
@@ -1456,6 +1529,8 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_
 		 pndx++) {
 		uint64_t file_offset;
 
+		if (pndx && ind->ii[pndx].block == ind->ii[pndx - 1].block)
+			continue;
 		print_entry_ndx = pndx;
 		if (termlines) {
 			if (edit_row[dmode] >= 0 &&
@@ -1509,53 +1584,9 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level, uint64_
 			file_offset = 0;
 		if (dinode_valid() && !termlines &&
 		    ((level + 1 < di.di_height) ||
-		     (S_ISDIR(di.di_mode) && !level))) {
-			struct iinfo *more_indir;
-			int more_ind;
-			char *tmpbuf;
-			
-			more_indir = malloc(sizeof(struct iinfo));
-			tmpbuf = malloc(sbd.bsize);
-			if (tmpbuf) {
-				lseek(sbd.device_fd,
-				      ind->ii[pndx].block * sbd.bsize,
-				      SEEK_SET);
-				/* read in the desired block */
-				if (read(sbd.device_fd, tmpbuf, sbd.bsize) !=
-				    sbd.bsize) {
-					fprintf(stderr, "bad read: %s from %s:"
-						"%d: block %lld (0x%llx)\n",
-						strerror(errno),
-						__FUNCTION__, __LINE__,
-						(unsigned long long)ind->ii[pndx].block,
-						(unsigned long long)ind->ii[pndx].block);
-					exit(-1);
-				}
-				memset(more_indir, 0, sizeof(struct iinfo));
-				if (S_ISDIR(di.di_mode)) {
-					do_leaf_extended(tmpbuf, more_indir);
-					display_leaf(more_indir);
-				} else {
-					int x;
-
-					for (x = 0; x < 512; x++) {
-						memcpy(&more_indir->ii[x].mp,
-						       &ind->ii[pndx].mp,
-						       sizeof(struct metapath));
-						more_indir->ii[x].
-							mp.mp_list[cur_height+1] =
-							x;
-					}
-					more_ind = do_indirect_extended(tmpbuf,
-							more_indir,
-							cur_height + 1);
-					display_indirect(more_indir,
-							 more_ind, level + 1,
-							 file_offset);
-				}
-				free(tmpbuf);
-			}
-			free(more_indir);
+		     (S_ISDIR(di.di_mode) && level <= di.di_height))) {
+			print_block_details(ind, level, cur_height, pndx,
+					    file_offset);
 		}
 		print_entry_ndx = pndx; /* restore after recursion */
 		eol(0);
