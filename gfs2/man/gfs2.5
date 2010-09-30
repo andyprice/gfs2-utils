@@ -1,52 +1,28 @@
-.TH mount.gfs2 8
+.TH gfs2 5
 
 .SH NAME
-mount.gfs2 - GFS2 mount options
+gfs2 \- GFS2 reference guide
 
 .SH SYNOPSIS
-.BI "mount \-a [\-fnrsvw] \-t " gfs2 " [\-O " options "]
-.br
-.BI "mount [\-fnrsvw] \-t " gfs2 " [\-o " options " ] " "device dir"
+Overview of the GFS2 filesystem
 
 .SH DESCRIPTION
-For details on the common mount options, please see the
-\fBmount\fP(8) command man page.
-The \fIdevice\fR may be any block device on which you
-have created a GFS2 filesystem.  Examples include a
-single disk partition (e.g. /dev/sdb3), a loopback device, a device exported
-from another node (e.g. an iSCSI device), or a
-logical volume (typically comprised of a number of individual disks).
 
-\fIdevice\fR does not necessarily need to match the device name as seen on
-another node in the cluster, nor does it need to be a logical volume.  However,
-the use of a cluster-aware volume manager such as CLVM2 (see \fBlvm\fP(8))
-will guarantee that the managed devices are named identically on each node in a
-cluster (for much easier management), and will allow you to configure a very
-large volume from multiple storage units (e.g. disk drives).
+GFS2 is a clustered filesystem, designed for sharing data between 
+multiple nodes
+connected to a common shared storage device. It can also be used as a
+local filesystem on a single node, however since the design is aimed
+at clusters, that will usually result in lower performance than using
+a filesystem designed specifically for single node use.
 
-\fIdevice\fR must make the entire filesystem storage area visible to the
-computer.  That is, you cannot mount different parts of a single filesystem on
-different computers.  Each computer must see an entire filesystem.  You
-may, however, mount several GFS2 filesystems if you want to distribute your
-data storage in a controllable way.
+GFS2 is a journaling filesystem and one journal is required for each node
+that will mount the filesystem. The one exception to that is spectator
+mounts which are equivalent to mounting a read-only block device and as
+such can neither recover a journal or write to the filesystem, so do not
+require a journal assigned to them.
 
-This man page describes GFS2-specific options that can be passed to the GFS2 
-file system at mount time, using the \fB-o\fP flag.  There are many other
-\fB-o\fP options handled by the generic mount command \fBmount\fP(8).
-However, the options described below are specifically for GFS2, and are not
-interpreted by the mount command nor by the kernel's Virtual File System.  GFS2
-and non-GFS2 options may be intermingled after the \fB-o\fP, separated by
-commas (but no spaces).
+.SH MOUNT OPTIONS
 
-The options commit, discard, errors, quota_quantum, statfs_quantum, statfs_percent, barrier, acl, quota, suiddir, and data can be
-changed after mount using the "mount -o remount,option /mountpoint" command.
-The options quota, discard, barrier, acl, and suiddir support the "no"
-prefix.  For example, "noacl" turns off what "acl" turns on.
-
-If you have trouble mounting GFS2, check the syslog (e.g. /var/log/messages)
-for specific error messages.
-
-.SH OPTIONS
 .TP
 \fBlockproto=\fP\fILockProtoName\fR
 This specifies which inter-node lock protocol is used by the GFS2 filesystem
@@ -87,14 +63,6 @@ circumstances in which you want to mount the filesystem in a different cluster,
 or mount it as a different filesystem name, without changing the on-disk
 default.
 .TP
-\fBlocalcaching\fP
-This flag tells GFS2 that it is running as a local (not clustered) filesystem,
-so it can turn on some block caching optimizations that can't be used when
-running in cluster mode.
-
-This is turned on automatically by the lock_nolock module,
-but can be overridden by using the \fBignore_local_fs\fP option.
-.TP
 \fBlocalflocks\fP
 This flag tells GFS2 that it is running as a local (not clustered) filesystem,
 so it can allow the kernel VFS layer to do all flock and fcntl file locking.
@@ -102,8 +70,7 @@ When running in cluster mode, these file locks require inter-node locks,
 and require the support of GFS2.  When running locally, better performance
 is achieved by letting VFS handle the whole job.
 
-This is turned on automatically by the lock_nolock module,
-but can be overridden by using the \fBignore_local_fs\fP option.
+This is turned on automatically by the lock_nolock module.
 .TP
 \fBerrors=\fP\fI[panic|withdraw]\fR
 Setting errors=panic causes GFS2 to oops when encountering an error that
@@ -113,21 +80,6 @@ is errors=withdraw. This option should not be used in a production system.
 It replaces the earlier \fBdebug\fP option on kernel versions 2.6.31 and
 above.
 .TP
-\fBignore_local_fs\fP
-By default, using the nolock lock module automatically turns on the
-\fBlocalcaching\fP and \fBlocalflocks\fP optimizations.  \fBignore_local_fs\fP
-forces GFS2 to treat the filesystem as if it were a multihost (clustered)
-filesystem, with \fBlocalcaching\fP and \fBlocalflocks\fP optimizations
-turned off.
-.TP
-\fBupgrade\fP
-This flag tells GFS2 to upgrade the filesystem's on-disk format to the version
-supported by the current GFS2 software installation on this computer.
-If you try to mount an old-version disk image, GFS2 will notify you via a syslog
-message that you need to upgrade.  Try mounting again, using the
-\fB-o upgrade\fP option.  When upgrading, only one node may mount the GFS2
-filesystem.
-.TP
 \fBacl\fP
 Enables POSIX Access Control List \fBacl\fP(5) support within GFS2.
 .TP
@@ -135,6 +87,9 @@ Enables POSIX Access Control List \fBacl\fP(5) support within GFS2.
 Mount this filesystem using a special form of read-only mount.  The mount
 does not use one of the filesystem's journals. The node is unable to
 recover journals for other nodes.
+.TP
+\fBnorecovery\fP
+A synonym for spectator
 .TP
 \fBsuiddir\fP
 Sets owner of any newly created file or directory to be that of parent
@@ -222,7 +177,6 @@ for the number of nodes in use.
 
 .SH SEE ALSO
 
-\fBgfs2\fP(5), 
 \fBmount\fP(8) for general mount options,
 \fBchmod\fP(1) and \fBchmod\fP(2) for access permission flags,
 \fBacl\fP(5) for access control lists,
@@ -230,4 +184,15 @@ for the number of nodes in use.
 \fBccs\fP(7) for cluster management,
 \fBumount\fP(8),
 \fBinitrd\fP(4).
+
+The GFS2 documentation has been split into a number of sections:
+
+\fBgfs2_edit\fP(8) A GFS2 debug tool (use with caution)
+\fBfsck.gfs2\fP(8) The GFS2 file system checker
+\fBgfs2_grow\fP(8) Growing a GFS2 file system
+\fBgfs2_jadd\fP(8) Adding a journal to a GFS2 file system
+\fBmkfs.gfs2\fP(8) Make a GFS2 file system
+\fBgfs2_quota\fP(8) Manipulate GFS2 disk quotas 
+\fBgfs2_tool\fP(8) Tool to manipulate a GFS2 file system (obsolete)
+\fBtunegfs2\fP(8) Tool to manipulate GFS2 superblocks
 
