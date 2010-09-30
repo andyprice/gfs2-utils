@@ -43,6 +43,24 @@ int journals_found = 0;
 
 extern void read_superblock(void);
 
+static int block_is_a_journal(void)
+{
+	int j;
+
+	for (j = 0; j < journals_found; j++)
+		if (block == journal_blocks[j])
+			return TRUE;
+	return FALSE;
+}
+
+static int block_is_systemfile(void)
+{
+	return block_is_jindex() || block_is_inum_file() ||
+		block_is_statfs_file() || block_is_quota_file() ||
+		block_is_rindex() || block_is_a_journal() ||
+		block_is_per_node() || block_is_in_per_node();
+}
+
 /*
  * get_gfs_struct_info - get block type and structure length
  *
@@ -56,6 +74,7 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, int *block_type,
 			       int *gstruct_len)
 {
 	struct gfs2_meta_header mh;
+	struct gfs2_inode *inode;
 
 	*block_type = 0;
 	*gstruct_len = sbd.bsize;
@@ -77,7 +96,19 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, int *block_type,
 		*gstruct_len = sbd.bsize;
 		break;
 	case GFS2_METATYPE_DI:   /* 4 (disk inode) */
-		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_dinode);*/
+		if (gfs1)
+			inode = inode_get(&sbd, lbh);
+		else
+			inode = gfs_inode_get(&sbd, lbh);
+		if (inode->i_di.di_flags & GFS2_DIF_EXHASH &&
+		    (S_ISDIR(inode->i_di.di_mode) ||
+		     (gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR)))
+			*gstruct_len = sbd.bsize;
+		else if (!inode->i_di.di_height && !block_is_systemfile() &&
+			 !S_ISDIR(inode->i_di.di_mode))
+			*gstruct_len = sizeof(struct gfs2_dinode);
+		else
+			*gstruct_len = sbd.bsize;
 		break;
 	case GFS2_METATYPE_IN:   /* 5 (indir inode blklst) */
 		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_indirect);*/
@@ -155,24 +186,6 @@ static void warm_fuzzy_stuff(uint64_t wfsblock, int force, int save)
 			fflush(stdout);
 		}
 	}
-}
-
-static int block_is_a_journal(void)
-{
-	int j;
-
-	for (j = 0; j < journals_found; j++)
-		if (block == journal_blocks[j])
-			return TRUE;
-	return FALSE;
-}
-
-static int block_is_systemfile(void)
-{
-	return block_is_jindex() || block_is_inum_file() ||
-		block_is_statfs_file() || block_is_quota_file() ||
-		block_is_rindex() || block_is_a_journal() ||
-		block_is_per_node() || block_is_in_per_node();
 }
 
 static int save_block(int fd, int out_fd, uint64_t blk)
