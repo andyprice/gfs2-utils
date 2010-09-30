@@ -2288,26 +2288,19 @@ uint64_t check_keywords(const char *kword)
 static uint64_t goto_block(void)
 {
 	char string[256];
-	int ch;
+	int ch, delta;
 
 	memset(string, 0, sizeof(string));
 	sprintf(string,"%"PRId64, block);
 	if (bobgets(string, 1, 7, 16, &ch)) {
 		if (isalnum(string[0]) || string[0] == '/')
 			temp_blk = check_keywords(string);
-		else if (string[0] == '+') {
+		else if (string[0] == '+' || string[0] == '-') {
 			if (string[1] == '0' && string[2] == 'x')
-				sscanf(string, "%"SCNx64, &temp_blk);
+				sscanf(string, "%x", &delta);
 			else
-				sscanf(string, "%" PRIu64, &temp_blk);
-			temp_blk += block;
-		}
-		else if (string[0] == '-') {
-			if (string[1] == '0' && string[2] == 'x')
-				sscanf(string, "%"SCNx64, &temp_blk);
-			else
-				sscanf(string, "%" PRIu64, &temp_blk);
-			temp_blk -= block;
+				sscanf(string, "%d", &delta);
+			temp_blk = block + delta;
 		}
 
 		if (temp_blk == RGLIST_DUMMY_BLOCK || temp_blk < max_block) {
