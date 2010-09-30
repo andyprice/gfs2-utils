@@ -61,6 +61,25 @@ static int block_is_systemfile(void)
 		block_is_per_node() || block_is_in_per_node();
 }
 
+/**
+ * anthropomorphize - make a uint64_t number more human
+ */
+static const char *anthropomorphize(unsigned long long inhuman_value)
+{
+	const char *symbols = " KMGTPE";
+	int i;
+	unsigned long long val = inhuman_value, remainder;
+	static char out_val[32];
+
+	memset(out_val, 0, sizeof(out_val));
+	for (i = 0; i < 6 && val > 1024; i++) {
+		remainder = val % 1024;
+		val /= 1024;
+	}
+	sprintf(out_val, "%llu.%llu%c", val, remainder, symbols[i]);
+	return out_val;
+}
+
 /*
  * get_gfs_struct_info - get block type and structure length
  *
@@ -150,7 +169,7 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, int *block_type,
 /* checking every block kills performance.  We only report    */
 /* every second because we don't need 100 extra messages in   */
 /* logs made from verbose mode.                               */
-static void warm_fuzzy_stuff(uint64_t wfsblock, int force, int save)
+static void warm_fuzzy_stuff(uint64_t wfsblock, int force)
 {
         static struct timeval tv;
         static uint32_t seconds = 0;
@@ -165,22 +184,10 @@ static void warm_fuzzy_stuff(uint64_t wfsblock, int force, int save)
 		seconds = tv.tv_sec;
 		if (last_fs_block) {
 			printf("\r");
-			if (save) {
-				percent = (wfsblock * 100) / last_fs_block;
-				printf("%" PRIu64 " metadata blocks (%"
-				       PRIu64 "%%) processed, ", wfsblock,
-				       percent);
-			}
-			if (total_out < 1024 * 1024)
-				printf("%" PRIu64 " metadata blocks (%"
-				       PRIu64 "KB) %s.    ",
-				       blks_saved, total_out / 1024,
-				       save?"saved":"restored");
-			else
-				printf("%" PRIu64 " metadata blocks (%"
-				       PRIu64 "MB) %s.    ",
-				       blks_saved, total_out / (1024*1024),
-				       save?"saved":"restored");
+			percent = (wfsblock * 100) / last_fs_block;
+			printf("%" PRIu64 " metadata blocks (%"
+			       PRIu64 "%%) processed, ", wfsblock,
+			       percent);
 			if (force)
 				printf("\n");
 			fflush(stdout);
@@ -515,6 +522,7 @@ void savemeta(char *out_fn, int saveoption)
 	int rgcount;
 	uint64_t jindex_block;
 	struct gfs2_buffer_head *lbh;
+	struct rgrp_list *last_rgd, *prev_rgd;
 
 	slow = (saveoption == 1);
 	sbd.md.journals = 1;
@@ -579,8 +587,8 @@ void savemeta(char *out_fn, int saveoption)
 		}
 	}
 	last_fs_block = lseek(sbd.device_fd, 0, SEEK_END) / sbd.bsize;
-	printf("There are %" PRIu64 " blocks of %u bytes.\n",
-	       last_fs_block, sbd.bsize);
+	printf("There are %" PRIu64 " blocks of %u bytes in the destination "
+	       "device.\n", last_fs_block, sbd.bsize);
 	if (!slow) {
 		if (gfs1) {
 			sbd.md.riinode = inode_read(&sbd,
@@ -603,6 +611,7 @@ void savemeta(char *out_fn, int saveoption)
 	}
 	if (!slow) {
 		int sane;
+		uint64_t fssize;
 
 		printf("Reading resource groups...");
 		fflush(stdout);
@@ -610,7 +619,16 @@ void savemeta(char *out_fn, int saveoption)
 			slow = gfs1_ri_update(&sbd, 0, &rgcount, 0);
 		else
 			slow = ri_update(&sbd, 0, &rgcount, &sane);
-		printf("Done.\n\n");
+		last_rgd = osi_list_entry(sbd.rglist.prev,
+					  struct rgrp_list, list);
+		prev_rgd = osi_list_entry(last_rgd->list.prev,
+					  struct rgrp_list, list);
+		fssize = last_rgd->ri.ri_addr +
+			(last_rgd->ri.ri_addr - prev_rgd->ri.ri_addr);
+		last_fs_block = fssize;
+		fssize *= sbd.bsize;
+		printf("Done. File system size: %s\n\n",
+		       anthropomorphize(fssize));
 		fflush(stdout);
 	}
 	get_journal_inode_blocks();
@@ -653,7 +671,7 @@ void savemeta(char *out_fn, int saveoption)
 			/* Save off the rg and bitmaps */
 			for (block = rgd->ri.ri_addr;
 			     block < rgd->ri.ri_data0; block++) {
-				warm_fuzzy_stuff(block, FALSE, TRUE);
+				warm_fuzzy_stuff(block, FALSE);
 				save_block(sbd.device_fd, out_fd, block);
 			}
 			/* Save off the other metadata: inodes, etc. */
@@ -661,7 +679,7 @@ void savemeta(char *out_fn, int saveoption)
 				int blktype;
 
 				while (!gfs2_next_rg_meta(rgd, &block, first)){
-					warm_fuzzy_stuff(block, FALSE, TRUE);
+					warm_fuzzy_stuff(block, FALSE);
 					blktype = save_block(sbd.device_fd,
 							     out_fd, block);
 					if (blktype == GFS2_METATYPE_DI)
@@ -690,7 +708,7 @@ void savemeta(char *out_fn, int saveoption)
 	/* There may be a gap between end of file system and end of device */
 	/* so we tell the user that we've processed everything. */
 	block = last_fs_block;
-	warm_fuzzy_stuff(block, TRUE, TRUE);
+	warm_fuzzy_stuff(block, TRUE);
 	printf("\nMetadata saved to file %s.\n", out_fn);
 	free(savedata);
 	close(out_fd);
@@ -698,24 +716,8 @@ void savemeta(char *out_fn, int saveoption)
 	exit(0);
 }
 
-/**
- * anthropomorphize - make a uint64_t number more human
- */
-static const char *anthropomorphize(unsigned long long inhuman_value)
-{
-	const char *symbols = " KMGTPE";
-	int i;
-	unsigned long long val = inhuman_value;
-	static char out_val[32];
-
-	memset(out_val, 0, sizeof(out_val));
-	for (i = 0; i < 6 && val > 1024; i++)
-		val /= 1024;
-	sprintf(out_val, "%llu%c", val, symbols[i]);
-	return out_val;
-}
-
-static int restore_data(int fd, int in_fd, int printblocksonly)
+static int restore_data(int fd, int in_fd, int printblocksonly,
+			int find_highblk)
 {
 	size_t rs;
 	uint64_t buf64, writes = 0, highest_valid_block = 0;
@@ -800,24 +802,23 @@ static int restore_data(int fd, int in_fd, int printblocksonly)
 			gfs2_sb_in(&sbd.sd_sb, &dummy_bh);
 			sbd1 = (struct gfs_sb *)&sbd.sd_sb;
 			if (sbd1->sb_fs_format == GFS_FORMAT_FS &&
-			    sbd1->sb_header.mh_type ==
-			    GFS_METATYPE_SB &&
-			    sbd1->sb_header.mh_format ==
-			    GFS_FORMAT_SB &&
-			    sbd1->sb_multihost_format ==
-			    GFS_FORMAT_MULTI) {
+			    sbd1->sb_header.mh_type == GFS_METATYPE_SB &&
+			    sbd1->sb_header.mh_format == GFS_FORMAT_SB &&
+			    sbd1->sb_multihost_format == GFS_FORMAT_MULTI) {
 				gfs1 = TRUE;
 			} else if (check_sb(&sbd.sd_sb)) {
 				fprintf(stderr,"Error: Invalid superblock data.\n");
 				return -1;
 			}
 			sbd.bsize = sbd.sd_sb.sb_bsize;
-			if (!printblocksonly) {
+			if (find_highblk)
+				;
+			else if (!printblocksonly) {
 				last_fs_block =
 					lseek(fd, 0, SEEK_END) / sbd.bsize;
 				printf("There are %" PRIu64 " blocks of " \
 				       "%u bytes in the destination"	\
-				       " file system.\n\n",
+				       " device.\n\n",
 				       last_fs_block, sbd.bsize);
 			} else {
 				printf("This is %s metadata\n", gfs1 ?
@@ -827,10 +828,12 @@ static int restore_data(int fd, int in_fd, int printblocksonly)
 		}
 		bh = &dummy_bh;
 		bh->b_data = savedata->buf;
-		if (printblocksonly) {
+		if (savedata->blk > highest_valid_block)
+			highest_valid_block = savedata->blk;
+		if (find_highblk)
+			;
+		else if (printblocksonly) {
 			block = savedata->blk;
-			if (block > highest_valid_block)
-				highest_valid_block = block;
 			if (printblocksonly > 1 && printblocksonly == block) {
 				block_in_mem = block;
 				display(0);
@@ -841,7 +844,7 @@ static int restore_data(int fd, int in_fd, int printblocksonly)
 				display_block_type(TRUE);
 			}
 		} else {
-			warm_fuzzy_stuff(savedata->blk, FALSE, FALSE);
+			warm_fuzzy_stuff(savedata->blk, FALSE);
 			if (savedata->blk >= last_fs_block) {
 				printf("\nOut of space on the destination "
 				       "device; quitting.\n");
@@ -870,13 +873,15 @@ static int restore_data(int fd, int in_fd, int printblocksonly)
 		}
 		blks_saved++;
 	}
-	if (!printblocksonly)
-		warm_fuzzy_stuff(savedata->blk, TRUE, FALSE);
-	else
+	if (!printblocksonly && !find_highblk)
+		warm_fuzzy_stuff(last_fs_block, TRUE);
+	if (find_highblk) {
 		printf("File system size: %lld (0x%llx) blocks, aka %sB\n",
 		       (unsigned long long)highest_valid_block,
 		       (unsigned long long)highest_valid_block,
 		       anthropomorphize(highest_valid_block * sbd.bsize));
+		last_fs_block = highest_valid_block;
+	}
 	return 0;
 }
 
@@ -915,7 +920,8 @@ void restoremeta(const char *in_fn, const char *out_device,
 		die("Can't allocate memory for the restore operation.\n");
 
 	blks_saved = 0;
-	error = restore_data(sbd.device_fd, in_fd, printblocksonly);
+	restore_data(sbd.device_fd, in_fd, printblocksonly, 1);
+	error = restore_data(sbd.device_fd, in_fd, printblocksonly, 0);
 	printf("File %s %s %s.\n", in_fn,
 	       (printblocksonly ? "print" : "restore"),
 	       (error ? "error" : "successful"));
