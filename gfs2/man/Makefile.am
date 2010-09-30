@@ -9,4 +9,5 @@ dist_man_MANS		= fsck.gfs2.8 \
 			  gfs2_quota.8 \
 			  gfs2_tool.8 \
 			  mkfs.gfs2.8 \
-			  mount.gfs2.8
+			  mount.gfs2.8 \
+			  tunegfs2.8
