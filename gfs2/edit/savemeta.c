@@ -35,7 +35,6 @@ struct saved_metablock {
 };
 
 struct saved_metablock *savedata;
-struct gfs2_buffer_head *savebh;
 uint64_t last_fs_block, last_reported_block, blks_saved, total_out, pct;
 uint64_t journal_blocks[MAX_JOURNALS_SAVED];
 uint64_t gfs1_journal_size = 0; /* in blocks */
@@ -200,6 +199,7 @@ static int save_block(int fd, int out_fd, uint64_t blk)
 	int blktype, blklen, outsz;
 	uint16_t trailing0;
 	char *p;
+	struct gfs2_buffer_head *savebh;
 
 	if (blk > last_fs_block) {
 		fprintf(stderr, "\nWarning: bad block pointer '0x%llx' "
@@ -218,8 +218,10 @@ static int save_block(int fd, int out_fd, uint64_t blk)
 	   inode, not the block within the inode "blk". They may or may not
 	   be the same thing. */
 	if (get_gfs_struct_info(savebh, &blktype, &blklen) &&
-	    !block_is_systemfile())
+	    !block_is_systemfile()) {
+		brelse(savebh);
 		return 0; /* Not metadata, and not system file, so skip it */
+	}
 	trailing0 = 0;
 	p = &savedata->buf[blklen - 1];
 	while (*p=='\0' && trailing0 < sbd.bsize) {
@@ -257,6 +259,7 @@ static int save_block(int fd, int out_fd, uint64_t blk)
 	}
 	total_out += sizeof(savedata->blk) + sizeof(savedata->siglen) + outsz;
 	blks_saved++;
+	brelse(savebh);
 	return blktype;
 }
 
