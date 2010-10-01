@@ -7,8 +7,8 @@
 
 ### BEGIN INIT INFO
 # Provides:		gfs2
-# Required-Start:	$network cman
-# Required-Stop:	$network cman
+# Required-Start:	$network cman gfs_controld
+# Required-Stop:	$network cman gfs_controld
 # Default-Start:
 # Default-Stop:
 # Short-Description:	mount/unmount gfs2 filesystems configured in /etc/fstab
