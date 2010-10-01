@@ -17,6 +17,7 @@
 #define WANT_GFS_CONVERSION_FUNCTIONS
 #include <linux/gfs2_ondisk.h>
 
+#include "extended.h"
 #include "gfs2hex.h"
 /* from libgfs2: */
 #include "libgfs2.h"
@@ -32,7 +33,7 @@
 struct gfs2_sb sb;
 struct gfs2_buffer_head *bh;
 struct gfs2_dinode di;
-int line, termlines;
+int line, termlines, modelines[DMODES];
 char edit_fmt[80];
 char estring[1024];
 char efield[64];
@@ -115,8 +116,7 @@ void eol(int col) /* end of line */
 	if (termlines) {
 		line++;
 		move(line, col);
-	}
-	else {
+	} else {
 		printf("\n");
 		for (; col > 0; col--)
 			printf(" ");
@@ -147,12 +147,10 @@ static void check_highlight(int highlight)
 			if (highlight) {
 				COLORS_HIGHLIGHT;
 				last_entry_onscreen[dmode] = print_entry_ndx;
-			}
-			else
+			} else
 				COLORS_NORMAL;
 		}
-	}
-	else {
+	} else {
 		if ((line * lines_per_row[dmode]) - 4 == 
 			(edit_row[dmode] - start_row[dmode]) * lines_per_row[dmode]) {
 			if (highlight) {
@@ -179,8 +177,7 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 			move(line,0);
 			printw("%s", label);
 			move(line,24);
-		}
-		else {
+		} else {
 			if (!strcmp(label, "  "))
 				printf("%-11s", label);
 			else
@@ -203,16 +200,14 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 			if (termlines) {
 				move(line, 50);
 				printw("%s", tmp_string);
-			}
-			else {
+			} else {
 				int i;
 				for (i=20 - decimalsize; i > 0; i--)
 					printf(" ");
 				printf("%s", tmp_string);
 			}
 			check_highlight(FALSE);
-		}
-		else {
+		} else {
 			if (strstr(fmt,"X") || strstr(fmt,"x"))
 				fmtstring="(hex)";
 			else if (strstr(fmt,"s"))
@@ -357,50 +352,6 @@ void do_dinode_extended(struct gfs2_dinode *dine, struct gfs2_buffer_head *lbh)
 		} /* for indirect pointers found */
 	} /* if exhash */
 }/* do_dinode_extended */
-
-/******************************************************************************
-*******************************************************************************
-**
-** do_indirect_extended()
-**
-** Description:
-**
-** Input(s):
-**
-** Output(s):
-**
-** Returns:
-**
-*******************************************************************************
-******************************************************************************/
-int do_indirect_extended(char *diebuf, struct iinfo *iinf, int hgt)
-{
-	unsigned int x, y;
-	uint64_t p;
-	int i_blocks;
-
-	i_blocks = 0;
-	for (x = 0; x < 512; x++) {
-		iinf->ii[x].is_dir = 0;
-		iinf->ii[x].height = 0;
-		iinf->ii[x].block = 0;
-		iinf->ii[x].dirents = 0;
-		memset(&iinf->ii[x].dirent, 0, sizeof(struct gfs2_dirents));
-	}
-	for (x = (gfs1 ? sizeof(struct gfs_indirect):
-			  sizeof(struct gfs2_meta_header)), y = 0;
-		 x < sbd.bsize;
-		 x += sizeof(uint64_t), y++) {
-		p = be64_to_cpu(*(uint64_t *)(diebuf + x));
-		if (p) {
-			iinf->ii[i_blocks].block = p;
-			iinf->ii[i_blocks].mp.mp_list[hgt] = i_blocks;
-			iinf->ii[i_blocks].is_dir = FALSE;
-			i_blocks++;
-		}
-	}
-	return i_blocks;
-}
 
 /******************************************************************************
 *******************************************************************************

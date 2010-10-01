@@ -42,6 +42,11 @@ enum dsp_mode { HEX_MODE = 0, GFS2_MODE = 1, EXTENDED_MODE = 2, INIT_MODE = 3 };
 #define GFS_LOG_DESC_Q          (402)    /* quota */
 #define GFS_LOG_DESC_LAST       (500)    /* final in a logged transaction */
 
+#define pv(struct, member, fmt, fmt2) do {				\
+		print_it("  "#member, fmt, fmt2, struct->member);	\
+	} while (FALSE);
+#define RGLIST_DUMMY_BLOCK -2
+
 extern uint64_t block;
 extern int blockhist;
 extern int edit_mode;
@@ -147,26 +152,6 @@ struct gfs_rgrp {
 	char rg_reserved[64];
 };
 
-extern int block_is_jindex(void);
-extern int block_is_rindex(void);
-extern int block_is_inum_file(void);
-extern int block_is_statfs_file(void);
-extern int block_is_quota_file(void);
-extern int block_is_per_node(void);
-extern int block_is_in_per_node(void);
-extern int display_block_type(int from_restore);
-extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
-extern void gfs_log_header_in(struct gfs_log_header *head,
-			      struct gfs2_buffer_head *bh);
-extern void gfs_log_header_print(struct gfs_log_header *lh);
-extern void gfs_dinode_in(struct gfs_dinode *di, struct gfs2_buffer_head *bh);
-extern void savemeta(char *out_fn, int saveoption);
-extern void restoremeta(const char *in_fn, const char *out_device,
-			uint64_t printblocksonly);
-extern int display(int identify_only);
-extern uint64_t check_keywords(const char *kword);
-extern uint64_t masterblock(const char *fn);
-
 struct gfs2_dirents {
 	uint64_t block;
 	struct gfs2_dirent dirent;
@@ -237,6 +222,29 @@ extern struct iinfo *indirect; /* more than the most indirect
 extern struct indirect_info masterdir; /* Master directory info */
 extern int indirect_blocks;  /* count of indirect blocks */
 extern enum dsp_mode dmode;
+
+/* ------------------------------------------------------------------------ */
+/* risize - size of one rindex entry, whether gfs1 or gfs2                  */
+/* ------------------------------------------------------------------------ */
+static inline int risize(void)
+{
+	if (gfs1)
+		return sizeof(struct gfs_rindex);
+	else
+		return sizeof(struct gfs2_rindex);
+}
+
+/* ------------------------------------------------------------------------ */
+/* block_is_rglist - there's no such block as the rglist.  This is a        */
+/*                   special case meant to parse the rindex and follow the  */
+/*                   blocks to the real rgs.                                */
+/* ------------------------------------------------------------------------ */
+static inline int block_is_rglist(void)
+{
+	if (block == RGLIST_DUMMY_BLOCK)
+		return TRUE;
+	return FALSE;
+}
 
 #define SCREEN_HEIGHT   (16)
 #define SCREEN_WIDTH    (16)
@@ -316,5 +324,29 @@ extern enum dsp_mode dmode;
 			attron(A_BOLD); \
 		} \
 	} while (0)
+
+extern int block_is_jindex(void);
+extern int block_is_rindex(void);
+extern int block_is_inum_file(void);
+extern int block_is_statfs_file(void);
+extern int block_is_quota_file(void);
+extern int block_is_per_node(void);
+extern int block_is_in_per_node(void);
+extern int display_block_type(int from_restore);
+extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
+extern void gfs_log_header_in(struct gfs_log_header *head,
+			      struct gfs2_buffer_head *bh);
+extern void gfs_log_header_print(struct gfs_log_header *lh);
+extern void gfs_dinode_in(struct gfs_dinode *di, struct gfs2_buffer_head *bh);
+extern void savemeta(char *out_fn, int saveoption);
+extern void restoremeta(const char *in_fn, const char *out_device,
+			uint64_t printblocksonly);
+extern int display(int identify_only);
+extern uint64_t check_keywords(const char *kword);
+extern uint64_t masterblock(const char *fn);
+extern void gfs_rgrp_print(struct gfs_rgrp *rg);
+extern void gfs_rgrp_in(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh);
+extern int has_indirect_blocks(void);
+extern int display_leaf(struct iinfo *ind);
 
 #endif /* __HEXVIEW_DOT_H__ */

@@ -3,12 +3,12 @@
 
 #include "hexedit.h"
 
-int display_gfs2(void);
-int edit_gfs2(void);
-void do_dinode_extended(struct gfs2_dinode *di, struct gfs2_buffer_head *lbh);
-void print_gfs2(const char *fmt, ...);
-int do_indirect_extended(char *diebuf, struct iinfo *iinf, int hgt);
-uint64_t do_leaf_extended(char *dlebuf, struct iinfo *indir);
-void eol(int col);
+extern int display_gfs2(void);
+extern int edit_gfs2(void);
+extern void do_dinode_extended(struct gfs2_dinode *di,
+			       struct gfs2_buffer_head *lbh);
+extern void print_gfs2(const char *fmt, ...);
+extern uint64_t do_leaf_extended(char *dlebuf, struct iinfo *indir);
+extern void eol(int col);
 
 #endif /*  __GFS2HEX_DOT_H__  */
