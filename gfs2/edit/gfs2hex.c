@@ -29,7 +29,6 @@
 		print_it("  ", fmt, fmt2, struct->member);		\
 	} while (FALSE);
 
-
 struct gfs2_sb sb;
 struct gfs2_buffer_head *bh;
 struct gfs2_dinode di;

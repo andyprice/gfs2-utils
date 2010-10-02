@@ -86,6 +86,8 @@ extern uint64_t temp_blk;
 extern uint64_t starting_blk;
 extern const char *block_type_str[15];
 extern int dsplines;
+extern int dsp_lines[DMODES];
+extern int combined_display;
 
 struct gfs_jindex {
         uint64_t ji_addr;       /* starting block of the journal */
@@ -347,6 +349,5 @@ extern uint64_t masterblock(const char *fn);
 extern void gfs_rgrp_print(struct gfs_rgrp *rg);
 extern void gfs_rgrp_in(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh);
 extern int has_indirect_blocks(void);
-extern int display_leaf(struct iinfo *ind);
 
 #endif /* __HEXVIEW_DOT_H__ */

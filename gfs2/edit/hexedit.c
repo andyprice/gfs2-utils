@@ -550,8 +550,7 @@ int display_block_type(int from_restore)
 			struct_len = sbd.bsize;
 			break;
 		}
-	}
-	else
+	} else
 		struct_len = sbd.bsize;
 	eol(0);
 	if (from_restore)
@@ -1004,134 +1003,6 @@ int has_indirect_blocks(void)
 	     (S_ISDIR(di.di_mode) || (gfs1 && di.__pad1 == GFS_FILE_DIR))))
 		return TRUE;
 	return FALSE;
-}
-
-/* ------------------------------------------------------------------------ */
-/* print_inode_type                                                         */
-/* ------------------------------------------------------------------------ */
-static void print_inode_type(__be16 de_type)
-{
-	if (gfs1) {
-		switch(de_type) {
-		case GFS_FILE_NON:
-			print_gfs2("Unknown");
-			break;
-		case GFS_FILE_REG:
-			print_gfs2("File   ");
-			break;
-		case GFS_FILE_DIR:
-			print_gfs2("Dir    ");
-			break;
-		case GFS_FILE_LNK:
-			print_gfs2("Symlink");
-			break;
-		case GFS_FILE_BLK:
-			print_gfs2("BlkDev ");
-			break;
-		case GFS_FILE_CHR:
-			print_gfs2("ChrDev ");
-			break;
-		case GFS_FILE_FIFO:
-			print_gfs2("Fifo   ");
-			break;
-		case GFS_FILE_SOCK:
-			print_gfs2("Socket ");
-			break;
-		default:
-			print_gfs2("%04x   ", de_type);
-			break;
-		}
-		return;
-	}
-	switch(de_type) {
-	case DT_UNKNOWN:
-		print_gfs2("Unknown");
-		break;
-	case DT_REG:
-		print_gfs2("File   ");
-		break;
-	case DT_DIR:
-		print_gfs2("Dir    ");
-		break;
-	case DT_LNK:
-		print_gfs2("Symlink");
-		break;
-	case DT_BLK:
-		print_gfs2("BlkDev ");
-		break;
-	case DT_CHR:
-		print_gfs2("ChrDev ");
-		break;
-	case DT_FIFO:
-		print_gfs2("Fifo   ");
-		break;
-	case DT_SOCK:
-		print_gfs2("Socket ");
-		break;
-	default:
-		print_gfs2("%04x   ", de_type);
-		break;
-	}
-}
-
-/* ------------------------------------------------------------------------ */
-/* display_leaf - display directory leaf                                    */
-/* ------------------------------------------------------------------------ */
-int display_leaf(struct iinfo *ind)
-{
-	int start_line, total_dirents = start_row[dmode];
-	int d;
-
-	eol(0);
-	if (gfs2_struct_type == GFS2_METATYPE_SB)
-		print_gfs2("The superblock has 2 directories");
-	else
-		print_gfs2("Directory block: lf_depth:%d, lf_entries:%d,"
-			   "fmt:%d next=0x%llx (%d dirents).",
-			   ind->ii[0].lf_depth, ind->ii[0].lf_entries,
-			   ind->ii[0].lf_dirent_format,
-			   ind->ii[0].lf_next,
-			   ind->ii[0].dirents);
-
-	start_line = line;
-	for (d = start_row[dmode]; d < ind->ii[0].dirents; d++) {
-		if (termlines && d >= termlines - start_line - 2
-		    + start_row[dmode])
-			break;
-		total_dirents++;
-		if (ind->ii[0].dirents >= 1) {
-			eol(5);
-			if (termlines) {
-				if (edit_row[dmode] >=0 &&
-				    line - start_line - 1 ==
-				    edit_row[dmode] - start_row[dmode]) {
-					COLORS_HIGHLIGHT;
-					sprintf(estring, "%"PRIx64,
-						ind->ii[0].dirent[d].block);
-					strcpy(edit_fmt, "%"PRIx64);
-				}
-			}
-			print_gfs2("%d. (%d). %lld (0x%llx): ",
-				   total_dirents, d + 1,
-				   ind->ii[0].dirent[d].block,
-				   ind->ii[0].dirent[d].block);
-		}
-		print_inode_type(ind->ii[0].dirent[d].dirent.de_type);
-		print_gfs2(" %s", ind->ii[0].dirent[d].filename);
-		if (termlines) {
-			if (edit_row[dmode] >= 0 &&
-			    line - start_line - 1 == edit_row[dmode] -
-			    start_row[dmode])
-				COLORS_NORMAL;
-		}
-	}
-	if (line >= 4)
-		last_entry_onscreen[dmode] = line - 4;
-	eol(0);
-	end_row[dmode] = ind->ii[0].dirents;
-	if (end_row[dmode] < last_entry_onscreen[dmode])
-		end_row[dmode] = last_entry_onscreen[dmode];
-	return 0;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -1883,8 +1754,7 @@ static void pageup(void)
 					sbd.bsize - screen_chunk_size;
 			else
 				offset = 0;
-		}
-		else
+		} else
 			offset -= screen_chunk_size;
 	}
 }
@@ -1912,8 +1782,7 @@ static void pagedn(void)
 		    offset + screen_chunk_size >= sbd.bsize) {
 			block++;
 			offset = 0;
-		}
-		else
+		} else
 			offset += screen_chunk_size;
 	}
 }
