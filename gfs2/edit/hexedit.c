@@ -46,7 +46,9 @@ int display(int identify_only);
 /* for assigning string fields: */
 #define checkassigns(strfield, struct, member, val) do {		\
 		if (strcmp(#member, strfield) == 0) {			\
-			memcpy(struct->member, val, sizeof(struct->member)); \
+			memset(struct->member, 0, sizeof(struct->member)); \
+			strncpy((char *)struct->member, (char *)val, \
+				sizeof(struct->member));		\
 			return 0;					\
 		}							\
 	} while(0)
@@ -71,6 +73,57 @@ int display(int identify_only);
 			return 0;				\
 		}						\
 	} while(0)
+
+static int gfs2_sb_printval(struct gfs2_sb *sb, const char *strfield)
+{
+	checkprint(strfield, sb, sb_fs_format);
+	checkprint(strfield, sb, sb_multihost_format);
+	checkprint(strfield, sb, __pad0);
+	checkprint(strfield, sb, sb_bsize);
+	checkprint(strfield, sb, sb_bsize_shift);
+	checkprint(strfield, sb, __pad1);
+	checkprint(strfield, sb, sb_master_dir.no_addr);
+	checkprint(strfield, sb, __pad2.no_addr);
+	checkprint(strfield, sb, sb_root_dir.no_addr);
+	checkprints(strfield, sb, sb_lockproto);
+	checkprints(strfield, sb, sb_locktable);
+	checkprint(strfield, sb, __pad3.no_addr);
+	checkprint(strfield, sb, __pad4.no_addr);
+	if (strcmp(strfield, "sb_uuid") == 0) {
+		printf("%s\n", str_uuid(sb->sb_uuid));
+		return 0;
+	}
+
+	return -1;
+}
+
+static int gfs2_sb_assignval(struct gfs2_sb *sb, const char *strfield,
+			     uint64_t value)
+{
+	checkassign(strfield, sb, sb_fs_format, value);
+	checkassign(strfield, sb, sb_multihost_format, value);
+	checkassign(strfield, sb, __pad0, value);
+	checkassign(strfield, sb, sb_bsize, value);
+	checkassign(strfield, sb, sb_bsize_shift, value);
+	checkassign(strfield, sb, __pad1, value);
+	checkassign(strfield, sb, sb_master_dir.no_addr, value);
+	checkassign(strfield, sb, __pad2.no_addr, value);
+	checkassign(strfield, sb, sb_root_dir.no_addr, value);
+	checkassign(strfield, sb, __pad3.no_addr, value);
+	checkassign(strfield, sb, __pad4.no_addr, value);
+
+	return -1;
+}
+
+static int gfs2_sb_assigns(struct gfs2_sb *sb, const char *strfield,
+			   const char *val)
+{
+	checkassigns(strfield, sb, sb_lockproto, val);
+	checkassigns(strfield, sb, sb_locktable, val);
+	checkassigns(strfield, sb, sb_uuid, val);
+
+	return -1;
+}
 
 static int gfs2_dinode_printval(struct gfs2_dinode *dip, const char *strfield)
 {
@@ -98,7 +151,7 @@ static int gfs2_dinode_printval(struct gfs2_dinode *dip, const char *strfield)
 }
 
 static int gfs2_dinode_assignval(struct gfs2_dinode *dia, const char *strfield,
-			  uint64_t value)
+				 uint64_t value)
 {
 	checkassign(strfield, dia, di_mode, value);
 	checkassign(strfield, dia, di_uid, value);
@@ -133,11 +186,115 @@ static int gfs2_rgrp_printval(struct gfs2_rgrp *rg, const char *strfield)
 }
 
 static int gfs2_rgrp_assignval(struct gfs2_rgrp *rg, const char *strfield,
-			uint64_t value)
+			       uint64_t value)
 {
 	checkassign(strfield, rg, rg_flags, value);
 	checkassign(strfield, rg, rg_free, value);
 	checkassign(strfield, rg, rg_dinodes, value);
+
+	return -1;
+}
+
+static int gfs2_leaf_printval(struct gfs2_leaf *lf, const char *strfield)
+{
+	checkprint(strfield, lf, lf_depth);
+	checkprint(strfield, lf, lf_entries);
+	checkprint(strfield, lf, lf_dirent_format);
+	checkprint(strfield, lf, lf_next);
+	checkprints(strfield, lf, lf_reserved);
+
+	return -1;
+}
+
+static int gfs2_leaf_assignval(struct gfs2_leaf *lf, const char *strfield,
+			uint64_t value)
+{
+	checkassign(strfield, lf, lf_depth, value);
+	checkassign(strfield, lf, lf_entries, value);
+	checkassign(strfield, lf, lf_dirent_format, value);
+	checkassign(strfield, lf, lf_next, value);
+
+	return -1;
+}
+
+static int gfs2_leaf_assigns(struct gfs2_leaf *lf, const char *strfield,
+			     const char *val)
+{
+	checkassigns(strfield, lf, lf_reserved, val);
+
+	return -1;
+}
+
+static int gfs2_lh_printval(struct gfs2_log_header *lh, const char *strfield)
+{
+	checkprint(strfield, lh, lh_sequence);
+	checkprint(strfield, lh, lh_flags);
+	checkprint(strfield, lh, lh_tail);
+	checkprint(strfield, lh, lh_blkno);
+	checkprint(strfield, lh, lh_hash);
+
+	return -1;
+}
+
+static int gfs2_lh_assignval(struct gfs2_log_header *lh, const char *strfield,
+			     uint64_t value)
+{
+	checkassign(strfield, lh, lh_sequence, value);
+	checkassign(strfield, lh, lh_flags, value);
+	checkassign(strfield, lh, lh_tail, value);
+	checkassign(strfield, lh, lh_blkno, value);
+	checkassign(strfield, lh, lh_hash, value);
+
+	return -1;
+}
+
+static int gfs2_ld_printval(struct gfs2_log_descriptor *ld,
+			    const char *strfield)
+{
+	checkprint(strfield, ld, ld_type);
+	checkprint(strfield, ld, ld_length);
+	checkprint(strfield, ld, ld_data1);
+	checkprint(strfield, ld, ld_data2);
+	checkprints(strfield, ld, ld_reserved);
+
+	return -1;
+}
+
+static int gfs2_ld_assignval(struct gfs2_log_descriptor *ld,
+			     const char *strfield, uint64_t value)
+{
+	checkassign(strfield, ld, ld_type, value);
+	checkassign(strfield, ld, ld_length, value);
+	checkassign(strfield, ld, ld_data1, value);
+	checkassign(strfield, ld, ld_data2, value);
+
+	return -1;
+}
+
+static int gfs2_ld_assigns(struct gfs2_log_descriptor *ld,
+			   const char *strfield, const char *val)
+{
+	checkassigns(strfield, ld, ld_reserved, val);
+
+	return -1;
+}
+
+static int gfs2_qc_printval(struct gfs2_quota_change *qc,
+			    const char *strfield)
+{
+	checkprint(strfield, qc, qc_change);
+	checkprint(strfield, qc, qc_flags);
+	checkprint(strfield, qc, qc_id);
+
+	return -1;
+}
+
+static int gfs2_qc_assignval(struct gfs2_quota_change *qc,
+			     const char *strfield, uint64_t value)
+{
+	checkassign(strfield, qc, qc_change, value);
+	checkassign(strfield, qc, qc_flags, value);
+	checkassign(strfield, qc, qc_id, value);
 
 	return -1;
 }
@@ -1178,7 +1335,8 @@ static void read_superblock(int fd)
 					    sbd.sd_sb.sb_master_dir.no_addr);
 		gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
 		sbd.fssize = sbd.device.length;
-		rindex_read(&sbd, 0, &count, &sane);
+		if (sbd.md.riinode) /* If we found the rindex */
+			rindex_read(&sbd, 0, &count, &sane);
 	}
 
 }
@@ -1945,68 +2103,151 @@ static void find_change_block_alloc(int *newval)
 /* ------------------------------------------------------------------------ */
 /* process request to print a certain field from a previously pushed block  */
 /* ------------------------------------------------------------------------ */
-static void process_field(const char *field, uint64_t *newval, int print_field)
+static void process_field(const char *field, const char *nstr)
 {
 	uint64_t fblock;
 	struct gfs2_buffer_head *rbh;
 	int type;
 	struct gfs2_rgrp rg;
+	struct gfs2_leaf leaf;
+	struct gfs2_sb sb;
+	struct gfs2_log_header lh;
+	struct gfs2_log_descriptor ld;
+	struct gfs2_quota_change qc;
+	int setval = 0, setstring = 0;
+	uint64_t newval = 0;
 
+	if (nstr[0] == '/') {
+		setval = 0;
+	} else if (nstr[0] == '0' && nstr[1] == 'x') {
+		sscanf(nstr, "%"SCNx64, &newval);
+		setval = 1;
+	} else {
+		newval = (uint64_t)atoll(nstr);
+		setval = 1;
+	}
+	if (setval && newval == 0 && nstr[0] != '0')
+		setstring = 1;
 	fblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
 	rbh = bread(&sbd, fblock);
 	type = get_block_type(rbh);
 	switch (type) {
 	case GFS2_METATYPE_SB:
-		if (print_field)
-			print_block_type(fblock, type,
-					 " which is not implemented");
+		gfs2_sb_in(&sb, rbh);
+		if (setval) {
+			if (setstring)
+				gfs2_sb_assigns(&sb, field, nstr);
+			else
+				gfs2_sb_assignval(&sb, field, newval);
+			gfs2_sb_out(&sb, rbh);
+			if (!termlines)
+				gfs2_sb_printval(&sb, field);
+		} else {
+			if (!termlines && gfs2_sb_printval(&sb, field))
+				printf("Field '%s' not found.\n", field);
+		}
 		break;
 	case GFS2_METATYPE_RG:
 		gfs2_rgrp_in(&rg, rbh);
-		if (newval) {
-			gfs2_rgrp_assignval(&rg, field, *newval);
+		if (setval) {
+			gfs2_rgrp_assignval(&rg, field, newval);
 			gfs2_rgrp_out(&rg, rbh);
-			if (print_field)
+			if (!termlines)
 				gfs2_rgrp_printval(&rg, field);
 		} else {
-			if (print_field && gfs2_rgrp_printval(&rg, field))
+			if (!termlines && gfs2_rgrp_printval(&rg, field))
 				printf("Field '%s' not found.\n", field);
 		}
 		break;
 	case GFS2_METATYPE_RB:
-		if (print_field)
+		if (!termlines)
 			print_block_type(fblock, type,
 					 " which is not implemented");
 		break;
 	case GFS2_METATYPE_DI:
 		gfs2_dinode_in(&di, rbh);
-		if (newval) {
-			gfs2_dinode_assignval(&di, field, *newval);
+		if (setval) {
+			gfs2_dinode_assignval(&di, field, newval);
 			gfs2_dinode_out(&di, rbh);
-			if (print_field)
+			if (!termlines)
 				gfs2_dinode_printval(&di, field);
 		} else {
-			if (print_field && gfs2_dinode_printval(&di, field))
+			if (!termlines && gfs2_dinode_printval(&di, field))
 				printf("Field '%s' not found.\n", field);
 		}
 		break;
 	case GFS2_METATYPE_IN:
+		if (!setval && !setstring)
+			print_block_type(fblock, type,
+					 " which is not implemented");
+		break;
 	case GFS2_METATYPE_LF:
-	case GFS2_METATYPE_JD:
+		gfs2_leaf_in(&leaf, rbh);
+		if (setval) {
+			if (setstring)
+				gfs2_leaf_assigns(&leaf, field, nstr);
+			else
+				gfs2_leaf_assignval(&leaf, field, newval);
+			gfs2_leaf_out(&leaf, rbh);
+			if (!termlines)
+				gfs2_leaf_printval(&leaf, field);
+		} else {
+			if (!termlines && gfs2_leaf_printval(&leaf, field))
+				printf("Field '%s' not found.\n", field);
+		}
+		break;
 	case GFS2_METATYPE_LH:
+		gfs2_log_header_in(&lh, rbh);
+		if (setval) {
+			gfs2_lh_assignval(&lh, field, newval);
+			gfs2_log_header_out(&lh, rbh);
+			if (!termlines)
+				gfs2_lh_printval(&lh, field);
+		} else {
+			if (!termlines && gfs2_lh_printval(&lh, field))
+				printf("Field '%s' not found.\n", field);
+		}
+		break;
 	case GFS2_METATYPE_LD:
-	case GFS2_METATYPE_EA:
-	case GFS2_METATYPE_ED:
-	case GFS2_METATYPE_LB:
+		gfs2_log_descriptor_in(&ld, rbh);
+		if (setval) {
+			if (setstring)
+				gfs2_ld_assigns(&ld, field, nstr);
+			else
+				gfs2_ld_assignval(&ld, field, newval);
+			gfs2_log_descriptor_out(&ld, rbh);
+			if (!termlines)
+				gfs2_ld_printval(&ld, field);
+		} else {
+			if (!termlines && gfs2_ld_printval(&ld, field))
+				printf("Field '%s' not found.\n", field);
+		}
+		break;
 	case GFS2_METATYPE_QC:
+		gfs2_quota_change_in(&qc, rbh);
+		if (setval) {
+			gfs2_qc_assignval(&qc, field, newval);
+			gfs2_quota_change_out(&qc, rbh);
+			if (!termlines)
+				gfs2_qc_printval(&qc, field);
+		} else {
+			if (!termlines && gfs2_qc_printval(&qc, field))
+				printf("Field '%s' not found.\n", field);
+		}
+		break;
+	case GFS2_METATYPE_JD: /* journaled data */
+	case GFS2_METATYPE_EA: /* extended attribute */
+	case GFS2_METATYPE_ED: /* extended attribute */
+	case GFS2_METATYPE_LB:
 	default:
-		if (print_field)
+		if (!termlines)
 			print_block_type(fblock, type,
 					 " which is not implemented");
 		break;
 	}
 	brelse(rbh);
 	fsync(sbd.device_fd);
+	exit(0);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -2044,17 +2285,9 @@ static void interactive_mode(void)
 				if (dmode == HEX_MODE)
 					hex_edit(&ch);
 				else if (dmode == GFS2_MODE) {
-					uint64_t val;
-
 					bobgets(estring, edit_row[dmode]+4, 24,
 						10, &ch);
-					if (estring[0] == '0' &&
-					    estring[1] == 'x')
-						sscanf(estring, "%"SCNx64,
-						       &val);
-					else
-						val = (uint64_t)atoll(estring);
-					process_field(efield, &val, 0);
+					process_field(efield, estring);
 					block_in_mem = -1;
 				} else
 					bobgets(estring, edit_row[dmode]+6, 14,
@@ -2739,8 +2972,6 @@ static void process_parameters(int argc, char *argv[], int pass)
 		} else if (!strcmp(argv[i], "rgcount"))
 			rgcount();
 		else if (!strcmp(argv[i], "field")) {
-			uint64_t newval;
-
 			i++;
 			if (i >= argc - 1) {
 				printf("Error: field not specified.\n");
@@ -2749,20 +2980,7 @@ static void process_parameters(int argc, char *argv[], int pass)
 				gfs2_rgrp_free(&sbd.rglist);
 				exit(EXIT_FAILURE);
 			}
-			if (isdigit(argv[i + 1][0])) {
-				if (argv[i + 1][0]=='0' && argv[i + 1][1]=='x')
-					sscanf(argv[i + 1], "%"SCNx64,
-					       &newval);
-				else
-					newval = (uint64_t)atoll(argv[i + 1]);
-				process_field(argv[i], &newval, 1);
-				gfs2_rgrp_free(&sbd.rglist);
-				exit(0);
-			} else {
-				process_field(argv[i], NULL, 1);
-				gfs2_rgrp_free(&sbd.rglist);
-				exit(0);
-			}
+			process_field(argv[i], argv[i + 1]);
 		} else if (!strcmp(argv[i], "blocktype")) {
 			find_print_block_type();
 		} else if (!strcmp(argv[i], "blockrg")) {
