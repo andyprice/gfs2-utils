@@ -167,7 +167,6 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 		eol(0);
 	}
 	start_line = line;
-	dsplines = termlines - line - 1;
 	for (pndx = start_row[dmode];
 		 (!termlines || pndx < termlines - start_line - 1
 		  + start_row[dmode]) && pndx < indblocks;
@@ -650,6 +649,7 @@ int display_extended(void)
 	struct gfs2_inode *tmp_inode;
 	struct gfs2_buffer_head *tmp_bh;
 
+	dsplines = termlines - line - 1;
 	/* Display any indirect pointers that we have. */
 	if (block_is_rindex()) {
 		tmp_bh = bread(&sbd, block);
