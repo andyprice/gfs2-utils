@@ -47,6 +47,7 @@ enum dsp_mode { HEX_MODE = 0, GFS2_MODE = 1, EXTENDED_MODE = 2, INIT_MODE = 3 };
 	} while (FALSE);
 #define RGLIST_DUMMY_BLOCK -2
 
+extern struct gfs2_sb sb;
 extern uint64_t block;
 extern int blockhist;
 extern int edit_mode;
