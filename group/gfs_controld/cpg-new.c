@@ -261,7 +261,6 @@ static int daemon_member_count;
 
 static void apply_changes_recovery(struct mountgroup *mg);
 static void send_withdraw_acks(struct mountgroup *mg);
-static void leave_mountgroup(struct mountgroup *mg, int mnterr);
 
 static void log_config(const struct cpg_name *group_name,
 		       const struct cpg_address *member_list,
@@ -1429,14 +1428,14 @@ static void send_recovery_result(struct mountgroup *mg, int jid, int result)
 	free(buf);
 }
 
-void send_remount(struct mountgroup *mg, struct gfsc_mount_args *ma)
+void send_remount(struct mountgroup *mg, int ro)
 {
 	struct gfs_header h;
 
 	memset(&h, 0, sizeof(h));
 
 	h.type = GFS_MSG_REMOUNT;
-	h.msgdata = strstr(ma->options, "ro") ? 1 : 0;
+	h.msgdata = ro;
 
 	gfs_send_message(mg, (char *)&h, sizeof(h));
 }
@@ -1654,7 +1653,7 @@ static void receive_withdraw(struct mountgroup *mg, struct gfs_header *hd,
 	node->withdraw = 1;
 
 	if (hd->nodeid == our_nodeid)
-		leave_mountgroup(mg, 0);
+		gfs_leave_mountgroup(mg, 0);
 }
 
 /* start message from all nodes shows zero started_count */
@@ -2769,7 +2768,7 @@ int gfs_join_mountgroup(struct mountgroup *mg)
    order.  We can just ignore the second.  The second would either not find
    the mg here, or would see mg->leaving of 1 from the first. */
 
-static void leave_mountgroup(struct mountgroup *mg, int mnterr)
+void gfs_leave_mountgroup(struct mountgroup *mg, int mnterr)
 {
 	cpg_error_t error;
 	struct cpg_name name;
@@ -2806,7 +2805,7 @@ void do_leave(struct mountgroup *mg, int mnterr)
 		return;
 	}
 
-	leave_mountgroup(mg, mnterr);
+	gfs_leave_mountgroup(mg, mnterr);
 }
 
 static void receive_withdraw_ack(struct gfs_header *hd, int len)

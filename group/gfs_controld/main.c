@@ -148,9 +148,14 @@ static void sigterm_handler(int sig)
 	daemon_quit = 1;
 }
 
-struct mountgroup *create_mg(char *name)
+struct mountgroup *create_mg(const char *name)
 {
 	struct mountgroup *mg;
+
+	if (strlen(name) > GFS_MOUNTGROUP_LEN) {
+		log_error("create_mg: name %s too long", name);
+		return NULL;
+	}
 
 	mg = malloc(sizeof(struct mountgroup));
 	if (!mg)
@@ -169,6 +174,11 @@ struct mountgroup *create_mg(char *name)
 struct mountgroup *find_mg(char *name)
 {
 	struct mountgroup *mg;
+
+	if (strlen(name) > GFS_MOUNTGROUP_LEN) {
+		log_error("find_mg: name %s too long", name);
+		return NULL;
+	}
 
 	list_for_each_entry(mg, &mountgroups, list) {
 		if ((strlen(mg->name) == strlen(name)) &&
@@ -198,6 +208,8 @@ enum {
 	Env_RECOVERY,
 	Env_FIRSTMOUNT,
 	Env_JID,
+	Env_SPECTATOR,
+	Env_RDONLY,
 	Env_Last, /* Flag for end of vars */
 };
 
@@ -210,6 +222,8 @@ static const char *uevent_vars[] = {
 	[Env_RECOVERY]		= "RECOVERY=",
 	[Env_FIRSTMOUNT]	= "FIRSTMOUNT=",
 	[Env_JID]		= "JID=",
+	[Env_SPECTATOR]		= "SPECTATOR=",
+	[Env_RDONLY]		= "RDONLY=",
 };
 
 /*
@@ -258,6 +272,101 @@ static char *uevent_fsname(const char *vals[])
 	return name;
 }
 
+/*
+ * This is called only if mount.gfs2 has not already set up the
+ * mount group. In that case we know that the mount helper doesn't
+ * exist and thus the no_mount_helper flag is set, to indicate that
+ * this mount will be administrated entirely via the uevent/sysfs
+ * interface.
+ */
+
+static void do_new_mount(const char *name, struct mountgroup *mg,
+			 const char *uevent_vals[])
+{
+	int rv;
+
+	if (!uevent_vars[Env_LOCKPROTO] ||
+	    !uevent_vars[Env_LOCKTABLE])
+		return;
+
+	/* We only care about lock_dlm mounts */
+	if (strcmp(uevent_vals[Env_LOCKPROTO], "lock_dlm") != 0)
+		return;
+
+	if (mg) {
+		/* Might have already been set up by mount.gfs2 */
+		if (mg->no_mount_helper == 0)
+			return;
+		log_error("do_new_mount: duplicate mount %s",
+			  uevent_vals[Env_LOCKTABLE]);
+		return;
+	}
+
+	mg = create_mg(name);
+	if (mg == NULL)
+		return;
+
+	mg->no_mount_helper = 1;
+
+	strncpy(mg->mount_args.type, uevent_vals[Env_SUBSYSTEM], PATH_MAX);
+	strncpy(mg->mount_args.proto, uevent_vals[Env_LOCKPROTO], PATH_MAX);
+	strncpy(mg->mount_args.table, uevent_vals[Env_LOCKTABLE], PATH_MAX);
+
+	if (uevent_vals[Env_SPECTATOR] &&
+	    strcmp(uevent_vals[Env_SPECTATOR], "1") == 0)
+		mg->spectator = 1;
+
+	if (uevent_vals[Env_RDONLY] &&
+	    strcmp(uevent_vals[Env_RDONLY], "1") == 0)
+		mg->ro = 1;
+
+	list_add(&mg->list, &mountgroups);
+	rv = gfs_join_mountgroup(mg);
+	if (rv) {
+		log_error("join: group join error %d", rv);
+		goto fail;
+	}
+	log_group(mg, "do_new_mount ci %d result %d first=%d:jid=%d",
+                  mg->mount_client, rv, mg->first_mounter, mg->our_jid);
+	return;
+
+fail:
+	list_del(&mg->list);
+	free(mg);
+	return;
+}
+
+/*
+ * This is called upon successful mount and also upon a successful
+ * remount operation. Unless the no_mount_helper flag is set on the
+ * mount group, this is a no-op.
+ */
+static void do_online(struct mountgroup *mg, const char *uevent_vals[])
+{
+	int ro = 0;
+
+	/* If using mount helper, ignore the message here */
+	if (mg->no_mount_helper == 0)
+		return;
+
+	/* Catch successful original mount */
+	if (!mg->kernel_mount_done) {
+		mg->mount_client = 0;
+		mg->kernel_mount_done = 1;
+		mg->kernel_mount_error = 0;
+		gfs_mount_done(mg);
+		return;
+	}
+
+	/* From here on, its remounts only */
+
+	if (uevent_vals[Env_RDONLY] &&
+	    strcmp(uevent_vals[Env_RDONLY], "1") == 0)
+		ro = 1;
+
+	send_remount(mg, ro);
+}
+
 static void process_uevent(int ci)
 {
 	struct mountgroup *mg;
@@ -302,6 +411,12 @@ static void process_uevent(int ci)
 	}
 
 	mg = find_mg(fsname);
+
+	if (!strcmp(uevent_vals[Env_ACTION], "add")) {
+		do_new_mount(fsname, mg, uevent_vals);
+		return;
+	}
+
 	if (!mg) {
 		log_error("mount group %s not found", fsname);
 		return;
@@ -314,6 +429,16 @@ static void process_uevent(int ci)
 
 		if (strcmp(uevent_vals[Env_SUBSYSTEM], "lock_dlm") == 0)
 			return;
+
+		/* Catch original mount failure */
+		if (mg->no_mount_helper && !mg->kernel_mount_done) {
+			mg->mount_client = 0;
+			mg->kernel_mount_done = 1;
+			mg->kernel_mount_error = -1;
+			gfs_mount_done(mg);
+			return;
+		}
+
 		do_leave(mg, 0);
 		return;
 	}
@@ -342,6 +467,9 @@ static void process_uevent(int ci)
 		}
 		return;
 	}
+
+	if (!strcmp(uevent_vals[Env_ACTION], "online"))
+		do_online(mg, uevent_vals);
 
 	if (!strcmp(uevent_vals[Env_ACTION], "offline"))
 		do_withdraw(mg);
@@ -546,7 +674,7 @@ static void query_mountgroup_nodes(int fd, char *name, int option, int max)
 		free(nodes);
 }
 
-void client_reply_join(int ci, struct gfsc_mount_args *ma, int result)
+static void client_reply_join(int ci, struct gfsc_mount_args *ma, int result)
 {
 	char *name = strstr(ma->table, ":") + 1;
 
@@ -554,6 +682,36 @@ void client_reply_join(int ci, struct gfsc_mount_args *ma, int result)
 
 	do_reply(client[ci].fd, GFSC_CMD_FS_JOIN,
 		 name, result, ma, sizeof(struct gfsc_mount_args));
+}
+
+static void client_sysfs_join(struct mountgroup *mg, int result)
+{
+	int rv;
+
+	if (result) {
+		rv = set_sysfs(mg, "jid", result);
+		if (rv) {
+			log_error("join: error %d returning result %d", rv, result);
+		}
+		return;
+	}
+
+	if (mg->spectator) {
+		rv = set_sysfs(mg, "jid", 0);
+		if (rv) {
+			log_error("join: error setting jid %d", rv);
+		}
+		return;
+	}
+
+	rv = set_sysfs(mg, "first", mg->first_mounter);
+	if (rv) {
+		log_error("join: error setting first %d", rv);
+	}
+	rv = set_sysfs(mg, "jid", mg->our_jid);
+	if (rv) {
+		log_error("join: error setting jid %d", rv);
+	}
 }
 
 void client_reply_join_full(struct mountgroup *mg, int result)
@@ -582,7 +740,10 @@ void client_reply_join_full(struct mountgroup *mg, int result)
 	log_group(mg, "client_reply_join_full ci %d result %d %s",
 		  mg->mount_client, result, mg->mount_args.hostdata);
 
-	client_reply_join(mg->mount_client, &mg->mount_args, result);
+	if (mg->no_mount_helper)
+		client_sysfs_join(mg, result);
+	else
+		client_reply_join(mg->mount_client, &mg->mount_args, result);
 }
 
 static void do_join(int ci, struct gfsc_mount_args *ma)
@@ -623,11 +784,6 @@ static void do_join(int ci, struct gfsc_mount_args *ma)
 	*name = '\0';
 	name++;
 	cluster = table2;
-
-	if (strlen(name) > GFS_MOUNTGROUP_LEN) {
-		rv = -ENAMETOOLONG;
-		goto fail;
-	}
 
 	mg = find_mg(name);
 	if (mg) {
@@ -678,9 +834,7 @@ static void do_join(int ci, struct gfsc_mount_args *ma)
 		}
 	}
 
-	if (!mg->spectator && strstr(ma->options, "rw"))
-		mg->rw = 1;
-	else if (strstr(ma->options, "ro")) {
+	if (strstr(ma->options, "ro")) {
 		if (mg->spectator) {
 			log_error("join: readonly invalid with spectator");
 			rv = -EROFS;
@@ -778,6 +932,7 @@ static void do_remount(int ci, struct gfsc_mount_args *ma)
 		goto out;
 	}
 
+	/* FIXME: Should allow remounts */
 	if (mg->spectator) {
 		log_error("remount of spectator not allowed");
 		result = -1;
@@ -787,11 +942,8 @@ static void do_remount(int ci, struct gfsc_mount_args *ma)
 	if (!strcmp(ma->options, "ro"))
 		ro = 1;
 
-	if ((mg->ro && ro) || (!mg->ro && !ro))
-		goto out;
-
-	send_remount(mg, ma);
- out:
+	send_remount(mg, ro);
+out:
 	client_reply_remount(mg, ci, result);
 }
 

@@ -68,27 +68,44 @@ int set_sysfs(struct mountgroup *mg, const char *field, int val)
 	sprintf(out, "%d", val);
 
 	rv = write(fd, out, strlen(out));
-
+	if (rv < 0)
+		log_group(mg, "set write %s error %d", fname, errno);
 	close(fd);
 
-	if (rv)
-		rv = 0;
-	return rv;
+	return 0;
 }
 
 int run_dmsetup_suspend(struct mountgroup *mg, char *dev)
 {
 	struct sched_param sched_param;
-	char buf[PATH_MAX];
+	char fname[PATH_MAX];
+	char smajor[16];
+	char sminor[16];
 	pid_t pid;
 	int i, rv;
+	int major, minor;
+	FILE *fp;
 
-	memset(buf, 0, sizeof(buf));
-	rv = readlink(dev, buf, PATH_MAX);
-	if (rv < 0)
-		strncpy(buf, dev, sizeof(buf));
+	snprintf(fname, PATH_MAX, "%s/%s/%s/device/dev",
+		 SYSFS_DIR, mg->mount_args.type, mg->mount_args.table);
 
-	log_group(mg, "run_dmsetup_suspend %s (orig %s)", buf, dev);
+	fp = fopen(fname, "r");
+	if (fp == NULL) {
+		log_group(mg, "set open %s error %d", fname, errno);
+		return -1;
+	}
+
+	if (fscanf(fp, "%d:%d", &major, &minor) != 2) {
+		log_group(mg, "cannot read device numbers %d", errno);
+		return -1;
+	}
+
+	fclose(fp);
+
+	log_group(mg, "run_dmsetup_suspend %d:%d", major, minor);
+
+	snprintf(smajor, 16, "%d", major);
+	snprintf(sminor, 16, "%d", minor);
 
 	pid = fork();
 	if (pid < 0)
@@ -106,7 +123,7 @@ int run_dmsetup_suspend(struct mountgroup *mg, char *dev)
 			close(i);
 
 		execlp("dmsetup", "dmsetup", "suspend",  "--nolockfs",
-		       "--noflush", buf, NULL);
+		       "--noflush", "-j", smajor, "-m", sminor, NULL);
 		exit(EXIT_FAILURE);
 	}
 	return -1;

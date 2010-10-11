@@ -126,12 +126,12 @@ struct mountgroup {
 	int			our_jid;
 	int			spectator;
 	int			ro;
-	int			rw;
 	int                     joining;
 	int                     leaving;
 	int			kernel_mount_error;
 	int			kernel_mount_done;
 	int			first_mounter;
+	int			no_mount_helper;
 
 	/* cpg-new stuff */
 
@@ -181,7 +181,7 @@ void process_mountgroups(void);
 int gfs_join_mountgroup(struct mountgroup *mg);
 void do_leave(struct mountgroup *mg, int mnterr);
 void gfs_mount_done(struct mountgroup *mg);
-void send_remount(struct mountgroup *mg, struct gfsc_mount_args *ma);
+void send_remount(struct mountgroup *mg, int ro);
 void send_withdraw(struct mountgroup *mg);
 int set_mountgroup_info(struct mountgroup *mg, struct gfsc_mountgroup *out);
 int set_node_info(struct mountgroup *mg, int nodeid, struct gfsc_node *node);
@@ -191,6 +191,7 @@ int set_mountgroup_nodes(struct mountgroup *mg, int option, int *node_count,
 void free_mg(struct mountgroup *mg);
 void node_history_cluster_add(int nodeid);
 void node_history_cluster_remove(int nodeid);
+void gfs_leave_mountgroup(struct mountgroup *mg, int mnterr);
 
 /* main.c */
 int do_read(int fd, void *buf, size_t count);
@@ -200,11 +201,10 @@ int client_add(int fd, void (*workfn)(int ci), void (*deadfn)(int ci));
 int client_fd(int ci);
 void client_ignore(int ci, int fd);
 void client_back(int ci, int fd);
-struct mountgroup *create_mg(char *name);
+struct mountgroup *create_mg(const char *name);
 struct mountgroup *find_mg(char *name);
 struct mountgroup *find_mg_id(uint32_t id);
 void client_reply_remount(struct mountgroup *mg, int ci, int result);
-void client_reply_join(int ci, struct gfsc_mount_args *ma, int result);
 void client_reply_join_full(struct mountgroup *mg, int result);
 void query_lock(void);
 void query_unlock(void);
