@@ -5,7 +5,7 @@
 
 #include <linux/netlink.h>
 
-#define LOCKFILE_NAME	CLUSTERVARRUN "/gfs_controld.pid"
+#define LOCKFILE_NAME	"/var/run/cluster/gfs_controld.pid"
 #define CLIENT_NALLOC   32
 #define UEVENT_BUF_SIZE 4096
 

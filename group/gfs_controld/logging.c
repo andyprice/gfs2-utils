@@ -1,3 +1,4 @@
+#include <syslog.h>
 #include "gfs_daemon.h"
 #include "config.h"
 #include "ccs.h"
@@ -6,10 +7,10 @@ extern int ccs_handle;
 
 #define DAEMON_NAME "gfs_controld"
 #define DEFAULT_LOG_MODE LOG_MODE_OUTPUT_FILE|LOG_MODE_OUTPUT_SYSLOG
-#define DEFAULT_SYSLOG_FACILITY		SYSLOGFACILITY
-#define DEFAULT_SYSLOG_PRIORITY		SYSLOGLEVEL
+#define DEFAULT_SYSLOG_FACILITY		LOG_LOCAL4 /* Is this really right? */
+#define DEFAULT_SYSLOG_PRIORITY		LOG_INFO
 #define DEFAULT_LOGFILE_PRIORITY	LOG_INFO /* ? */
-#define DEFAULT_LOGFILE			LOGDIR "/" DAEMON_NAME ".log"
+#define DEFAULT_LOGFILE			"/var/log/cluster/" DAEMON_NAME ".log"
 
 static int log_mode;
 static int syslog_facility;
