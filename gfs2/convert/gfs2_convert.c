@@ -419,180 +419,6 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 /*                                                                           */
 /* Adapted from gfs2_fsck metawalk.c's build_and_check_metalist              */
 /* ------------------------------------------------------------------------- */
-static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
-{
-	uint32_t gfs2_hgt;
-	struct gfs2_buffer_head *bh;
-	osi_list_t *tmp, *x;
-	int h, header_size, bufsize, ptrnum;
-	uint64_t *ptr1, block;
-	uint64_t dinode_size;
-	int error = 0, di_height;
-	struct blocklist blocks, *blk, *newblk;
-	struct metapath gfs2mp;
-	struct gfs2_buffer_head *dibh = ip->i_bh;
-
-	/* if there are no indirect blocks to check */
-	if (ip->i_di.di_height <= 1)
-		return 0;
-
-	osi_list_init(&blocks.list);
-
-	/* Add the dinode block to the blocks list */
-	blk = malloc(sizeof(struct blocklist));
-	if (!blk) {
-		log_crit("Error: Can't allocate memory"
-			 " for indirect block fix.\n");
-		return -1;
-	}
-	memset(blk, 0, sizeof(*blk));
-	/* allocate a buffer to hold the pointers */
-	bufsize = sbp->sd_inptrs * sizeof(uint64_t);
-	blk->block = dibh->b_blocknr;
-	blk->ptrbuf = malloc(bufsize);
-	if (!blk->ptrbuf) {
-		log_crit("Error: Can't allocate memory"
-			 " for file conversion.\n");
-		free(blk);
-		return -1;
-	}
-	memset(blk->ptrbuf, 0, bufsize);
-	/* Fill in the pointers from the dinode buffer */
-	memcpy(blk->ptrbuf, dibh->b_data + sizeof(struct gfs_dinode),
-	       sbp->bsize - sizeof(struct gfs_dinode));
-	/* Zero out the pointers so we can fill them in later. */
-	memset(dibh->b_data + sizeof(struct gfs_dinode), 0,
-	       sbp->bsize - sizeof(struct gfs_dinode));
-	osi_list_add_prev(&blk->list, &blocks.list);
-
-	/* Now run the metadata chain and build lists of all metadata blocks */
-	osi_list_foreach(tmp, &blocks.list) {
-		blk = osi_list_entry(tmp, struct blocklist, list);
-
-		if (blk->height >= ip->i_di.di_height - 1)
-			continue;
-		header_size = (blk->height > 0 ? sizeof(struct gfs_indirect) :
-			       sizeof(struct gfs_dinode));
-		for (ptr1 = (uint64_t *)blk->ptrbuf, ptrnum = 0;
-		     ptrnum < sbp->sd_inptrs; ptr1++, ptrnum++) {
-			if (!*ptr1)
-				continue;
-
-			block = be64_to_cpu(*ptr1);
-
-			newblk = malloc(sizeof(struct blocklist));
-			if (!newblk) {
-				log_crit("Error: Can't allocate memory"
-					 " for indirect block fix.\n");
-				error = -1;
-				goto out;
-			}
-			memset(newblk, 0, sizeof(*newblk));
-			newblk->ptrbuf = malloc(bufsize);
-			if (!newblk->ptrbuf) {
-				log_crit("Error: Can't allocate memory"
-					 " for file conversion.\n");
-				free(newblk);
-				goto out;
-			}
-			memset(newblk->ptrbuf, 0, bufsize);
-			newblk->block = block;
-			newblk->height = blk->height + 1;
-			/* Build the metapointer list from our predecessors */
-			for (h = 0; h < blk->height; h++)
-				newblk->mp.mp_list[h] = blk->mp.mp_list[h];
-			newblk->mp.mp_list[h] = ptrnum;
-			/* Queue it to be processed later on in the loop. */
-			osi_list_add_prev(&newblk->list, &blocks.list);
-
-			/* read the new metadata block's pointers */
-			bh = bread(sbp, block);
-			memcpy(newblk->ptrbuf, bh->b_data +
-			       sizeof(struct gfs_indirect), bufsize);
-			/* Zero the buffer so we can fill it in later */
-			memset(bh->b_data + sizeof(struct gfs_indirect), 0,
-			       bufsize);
-			bmodified(bh);
-			brelse(bh);
-			/* Free the metadata block so we can reuse it.
-			   This allows us to convert a "full" file system. */
-			ip->i_di.di_blocks--;
-			gfs2_free_block(sbp, block);
-		}
-	}
-
-	/* The gfs2 height may be different.  We need to rebuild the
-	   metadata tree to the gfs2 height. */
-	gfs2_hgt = calc_gfs2_tree_height(ip, ip->i_di.di_size);
-	/* Save off the size because we're going to empty the contents
-	   and add the data blocks back in later. */
-	dinode_size = ip->i_di.di_size;
-	ip->i_di.di_size = 0ULL;
-	di_height = ip->i_di.di_height;
-	ip->i_di.di_height = 0;
-
-	/* Now run through the block list a second time.  If the block
-	   is the highest for metadata, rewrite the data to the gfs2
-	   offset. */
-	osi_list_foreach_safe(tmp, &blocks.list, x) {
-		unsigned int len;
-		uint64_t *ptr2;
-
-		blk = osi_list_entry(tmp, struct blocklist, list);
-		/* If it's not metadata that holds data block pointers
-		   (i.e. metadata pointing to other metadata) */
-		if (blk->height != di_height - 1) {
-			osi_list_del(tmp);
-			free(blk->ptrbuf);
-			free(blk);
-			continue;
-		}
-		/* Skip zero pointers at the start of the buffer.  This may
-		   seem pointless, but the gfs1 blocks won't align with the
-		   gfs2 blocks.  That means that a single block write of
-		   gfs1's pointers is likely to span two blocks on gfs2.
-		   That's a problem if the file system is full.
-		   So I'm trying to truncate the data at the start and end
-		   of the buffers (i.e. write only what we need to). */
-		len = bufsize;
-		for (ptr1 = (uint64_t *)blk->ptrbuf, ptrnum = 0;
-		     ptrnum < sbp->sd_inptrs; ptr1++, ptrnum++) {
-			if (*ptr1 != 0x00)
-				break;
-			len -= sizeof(uint64_t);
-		}
-		/* Skip zero bytes at the end of the buffer */
-		ptr2 = (uint64_t *)(blk->ptrbuf + bufsize) - 1;
-		while (len > 0 && *ptr2 == 0) {
-			ptr2--;
-			len -= sizeof(uint64_t);
-		}
-		blk->mp.mp_list[di_height - 1] = ptrnum;
-		mp_gfs1_to_gfs2(sbp, di_height, gfs2_hgt, &blk->mp, &gfs2mp);
-		memcpy(&blk->mp, &gfs2mp, sizeof(struct metapath));
-		blk->height -= di_height - gfs2_hgt;
-		if (len)
-			fix_metatree(sbp, ip, blk, ptr1, len);
-		osi_list_del(tmp);
-		free(blk->ptrbuf);
-		free(blk);
-	}
-	ip->i_di.di_size = dinode_size;
-
-	/* Set the new dinode height, which may or may not have changed.  */
-	/* The caller will take it from the ip and write it to the buffer */
-	ip->i_di.di_height = gfs2_hgt;
-	return 0;
-
-out:
-	while (!osi_list_empty(&blocks.list)) {
-		blk = osi_list_entry(tmp, struct blocklist, list);
-		osi_list_del(&blocks.list);
-		free(blk->ptrbuf);
-		free(blk);
-	}
-	return error;
-}
 
 static void jdata_mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,
 			   struct metapath *gfs1mp, struct metapath *gfs2mp,
@@ -699,42 +525,23 @@ static void fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 	}
 }
 
-static int adjust_jdata_inode(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
+static int get_inode_metablocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip, struct blocklist *blocks)
 {
-	uint32_t gfs2_hgt;
-	struct gfs2_buffer_head *bh;
-	osi_list_t *tmp, *x;
-	int h, header_size, bufsize, ptrnum;
+	struct blocklist *blk, *newblk;
+	struct gfs2_buffer_head *bh, *dibh = ip->i_bh;
+	osi_list_t *tmp;
 	uint64_t *ptr1, block;
-	uint64_t dinode_size;
-	int error = 0, di_height;
-	struct blocklist blocks, *blk, *newblk;
-	struct metapath gfs2mp;
-	struct gfs2_buffer_head *dibh = ip->i_bh;
+	int h, header_size, ptrnum;
+	int bufsize = sbp->bsize - sizeof(struct gfs_indirect);
 
-	/* Don't have to worry about things with stuffed inodes */
-	if (ip->i_di.di_height == 0)
-		return 0;
-
-	osi_list_init(&blocks.list);
-
-	/* Add the dinode block to the blocks list */
+	/* Add dinode block to the list */
 	blk = malloc(sizeof(struct blocklist));
 	if (!blk) {
-		log_crit("Error: Can't allocate memory"
-			 " for indirect block fix.\n");
+		log_crit("Error: Can't allocate memory for indirect block fix\n");
 		return -1;
 	}
 	memset(blk, 0, sizeof(*blk));
-	/* allocate a buffer to hold the pointers or data */
-	bufsize = sbp->bsize - sizeof(struct gfs2_meta_header);
 	blk->block = dibh->b_blocknr;
-	/* 
-	 * blk->ptrbuf either contains 
-	 * a) diptrs (for height=0)
-	 * b) inptrs (for height=1 to di_height - 1)
-	 * c) data for height = di_height
-	 */
 	blk->ptrbuf = malloc(bufsize);
 	if (!blk->ptrbuf) {
 		log_crit("Error: Can't allocate memory"
@@ -749,10 +556,10 @@ static int adjust_jdata_inode(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
 	/* Zero out the pointers so we can fill them in later. */
 	memset(dibh->b_data + sizeof(struct gfs_dinode), 0,
 	       sbp->bsize - sizeof(struct gfs_dinode));
-	osi_list_add_prev(&blk->list, &blocks.list);
+	osi_list_add_prev(&blk->list, &blocks->list);
 
 	/* Now run the metadata chain and build lists of all metadata blocks */
-	osi_list_foreach(tmp, &blocks.list) {
+	osi_list_foreach(tmp, &blocks->list) {
 		blk = osi_list_entry(tmp, struct blocklist, list);
 
 		if (blk->height >= ip->i_di.di_height - 1)
@@ -763,23 +570,19 @@ static int adjust_jdata_inode(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
 		     ptrnum < sbp->sd_inptrs; ptr1++, ptrnum++) {
 			if (!*ptr1)
 				continue;
-
 			block = be64_to_cpu(*ptr1);
 
 			newblk = malloc(sizeof(struct blocklist));
 			if (!newblk) {
-				log_crit("Error: Can't allocate memory"
-					 " for indirect block fix.\n");
-				error = -1;
-				goto out;
+				log_crit("Error: Can't allocate memory for indirect block fix.\n");
+				return -1;
 			}
 			memset(newblk, 0, sizeof(*newblk));
 			newblk->ptrbuf = malloc(bufsize);
 			if (!newblk->ptrbuf) {
-				log_crit("Error: Can't allocate memory"
-					 " for file conversion.\n");
+				log_crit("Error: Can't allocate memory for file conversion.\n");
 				free(newblk);
-				goto out;
+				return -1;
 			}
 			memset(newblk->ptrbuf, 0, bufsize);
 			newblk->block = block;
@@ -789,15 +592,12 @@ static int adjust_jdata_inode(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
 				newblk->mp.mp_list[h] = blk->mp.mp_list[h];
 			newblk->mp.mp_list[h] = ptrnum;
 			/* Queue it to be processed later on in the loop. */
-			osi_list_add_prev(&newblk->list, &blocks.list);
-
+			osi_list_add_prev(&newblk->list, &blocks->list);
 			/* read the new metadata block's pointers */
 			bh = bread(sbp, block);
-			memcpy(newblk->ptrbuf, bh->b_data + sizeof(struct gfs_indirect),
-			       sbp->bsize - sizeof(struct gfs_indirect));
+			memcpy(newblk->ptrbuf, bh->b_data + sizeof(struct gfs_indirect), bufsize);
 			/* Zero the buffer so we can fill it in later */
-			memset(bh->b_data + sizeof(struct gfs_indirect), 0,
-			       sbp->bsize - sizeof(struct gfs_indirect));
+			memset(bh->b_data + sizeof(struct gfs_indirect), 0, bufsize);
 			bmodified(bh);
 			brelse(bh);
 			/* Free the block so we can reuse it. This allows us to
@@ -806,6 +606,140 @@ static int adjust_jdata_inode(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
 			gfs2_free_block(sbp, block);
 		}
 	}
+	return 0;
+}
+
+static int fix_ind_reg_or_dir(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint32_t di_height,
+		       uint32_t gfs2_hgt, struct blocklist *blk, struct blocklist *blocks)
+{
+	unsigned int len, bufsize;
+	uint64_t *ptr1, *ptr2;
+	int ptrnum;
+	struct metapath gfs2mp;
+
+	bufsize = sbp->bsize - sizeof(struct gfs_indirect);
+	len = bufsize;
+
+	/* Skip zero pointers at the start of the buffer.  This may 
+	   seem pointless, but the gfs1 blocks won't align with the 
+	   gfs2 blocks.  That means that a single block write of 
+	   gfs1's pointers is likely to span two blocks on gfs2. 
+	   That's a problem if the file system is full. 
+	   So I'm trying to truncate the data at the start and end 
+	   of the buffers (i.e. write only what we need to). */
+	for (ptr1 = (uint64_t *)blk->ptrbuf, ptrnum = 0;
+	     ptrnum < sbp->sd_inptrs; ptr1++, ptrnum++) {
+		if (*ptr1 != 0x00)
+			break;
+		len -= sizeof(uint64_t);
+	}
+	/* Skip zero bytes at the end of the buffer */
+	ptr2 = (uint64_t *)(blk->ptrbuf + bufsize) - 1;
+	while (len > 0 && *ptr2 == 0) {
+		ptr2--;
+		len -= sizeof(uint64_t);
+	}
+	blk->mp.mp_list[di_height - 1] = ptrnum;
+	mp_gfs1_to_gfs2(sbp, di_height, gfs2_hgt, &blk->mp, &gfs2mp);
+	memcpy(&blk->mp, &gfs2mp, sizeof(struct metapath));
+	blk->height -= di_height - gfs2_hgt;
+	if (len)
+		fix_metatree(sbp, ip, blk, ptr1, len);
+
+	return 0;
+}
+
+static int fix_ind_jdata(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint32_t di_height, 
+		  uint32_t gfs2_hgt, uint64_t dinode_size, struct blocklist *blk, 
+		  struct blocklist *blocks)
+{
+	struct blocklist *newblk;
+	unsigned int len, bufsize;
+	uint64_t *ptr1, block;
+	int ptrnum, h;
+	struct metapath gfs2mp;
+	struct gfs2_buffer_head *bh;
+
+	bufsize = sbp->bsize - sizeof(struct gfs2_meta_header);
+	/*
+	 * For each metadata block that holds jdata block pointers,
+	 * get the blk pointers and copy them block by block
+	 */
+	for (ptr1 = (uint64_t *) blk->ptrbuf, ptrnum = 0;
+	     ptrnum < sbp->sd_inptrs; ptr1++, ptrnum++) {
+		if (!*ptr1)
+			continue;
+		block = be64_to_cpu(*ptr1);
+
+		newblk = malloc(sizeof(struct blocklist));
+		if (!newblk) {
+			log_crit("Error: Can't allocate memory for indirect block fix.\n");
+			return -1;
+		}
+		memset(newblk, 0, sizeof(*newblk));
+		newblk->ptrbuf = malloc(bufsize); 
+		if (!newblk->ptrbuf) {
+			log_crit("Error: Can't allocate memory for file conversion.\n");
+			free(newblk);
+			return -1;
+		}
+		memset(newblk->ptrbuf, 0, bufsize);
+		newblk->block = block;
+		newblk->height = blk->height + 1;
+		/* Build the metapointer list from our predecessors */
+		for (h=0; h < blk->height; h++)
+			newblk->mp.mp_list[h] = blk->mp.mp_list[h];
+		newblk->mp.mp_list[h] = ptrnum;
+		bh = bread(sbp, block);
+		/* This is a data block. i.e newblk->height == ip->i_di.di_height */
+		/* read in the jdata block */
+		memcpy(newblk->ptrbuf, bh->b_data +
+		       sizeof(struct gfs2_meta_header), bufsize);
+		memset(bh->b_data + sizeof(struct gfs2_meta_header), 0, bufsize);
+		bmodified(bh);
+		brelse(bh);
+		/* Free the block so we can reuse it. This allows us to
+		   convert a "full" file system */
+		ip->i_di.di_blocks--;
+		gfs2_free_block(sbp, block);
+
+		len = bufsize;
+		jdata_mp_gfs1_to_gfs2(sbp, di_height, gfs2_hgt, &newblk->mp, &gfs2mp,
+				      &len, dinode_size);
+		memcpy(&newblk->mp, &gfs2mp, sizeof(struct metapath));
+		newblk->height -= di_height - gfs2_hgt;
+		if (len)
+			fix_jdatatree(sbp, ip, newblk, newblk->ptrbuf, len);
+		free(newblk->ptrbuf);
+		free(newblk);
+	}
+	return 0;
+}
+
+static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
+{
+	uint64_t dinode_size;
+	uint32_t gfs2_hgt, di_height;
+	osi_list_t *tmp=NULL, *x;
+	struct blocklist blocks, *blk;
+	int error = 0;
+
+	int isdir = S_ISDIR(ip->i_di.di_mode); /* is always jdata */
+	int isjdata = ((GFS2_DIF_JDATA & ip->i_di.di_flags) && !isdir);
+	int isreg = (!isjdata && !isdir);
+
+	/* regular files and dirs are same upto height=2
+	   jdata files (not dirs) are same only when height=0 */
+	if (((isreg||isdir) && ip->i_di.di_height <= 1) ||
+	    (isjdata && ip->i_di.di_height == 0))
+		return 0; /* nothing to do */
+
+	osi_list_init(&blocks.list);
+
+	error = get_inode_metablocks(sbp, ip, &blocks);
+	if (error)
+		goto out;
+
 	/* The gfs2 height may be different.  We need to rebuild the
 	   metadata tree to the gfs2 height. */
 	gfs2_hgt = calc_gfs2_tree_height(ip, ip->i_di.di_size);
@@ -819,82 +753,36 @@ static int adjust_jdata_inode(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
 	/* Now run through the block list a second time.  If the block
 	   is a data block, rewrite the data to the gfs2 offset. */
 	osi_list_foreach_safe(tmp, &blocks.list, x) {
-		unsigned int len;
 
 		blk = osi_list_entry(tmp, struct blocklist, list);
-		/* If it's not a highest level indirect block */
+		/* If it's not metadata that holds data block pointers
+		   (i.e. metadata pointing to other metadata) */
 		if (blk->height != di_height - 1) {
 			osi_list_del(tmp);
 			free(blk->ptrbuf);
 			free(blk);
 			continue;
 		}
-		/*
-		 * For each metadata block that holds jdata block pointers,
-		 * get the blk pointers and copy them block by block
-		 */
-		for (ptr1 = (uint64_t *) blk->ptrbuf, ptrnum = 0;
-		     ptrnum < sbp->sd_inptrs; ptr1++, ptrnum++) {
-			if (!*ptr1)
-				continue;
-			block = be64_to_cpu(*ptr1);
+		if (isreg || isdir) /* more or less same way to deal with either */
+			error = fix_ind_reg_or_dir(sbp, ip, di_height, 
+						   gfs2_hgt, blk, &blocks);
+		else if (isjdata)
+			error = fix_ind_jdata(sbp, ip, di_height, gfs2_hgt, 
+					      dinode_size, blk, &blocks);
+		if (error)
+			goto out;
 
-			newblk = malloc(sizeof(struct blocklist));
-			if (!newblk) {
-				log_crit("Error: Can't allocate memory"
-					 " for indirect block fix.\n");
-				error = -1;
-				goto out;
-			}
-			memset(newblk, 0, sizeof(*newblk));
-			newblk->ptrbuf = malloc(bufsize); 
-			if (!newblk->ptrbuf) {
-				log_crit("Error: Can't allocate memory"
-					 " for file conversion.\n");
-				free(newblk);
-				goto out;
-			}
-			memset(newblk->ptrbuf, 0, bufsize);
-			newblk->block = block;
-			newblk->height = blk->height + 1;
-			/* Build the metapointer list from our predecessors */
-			for (h=0; h < blk->height; h++)
-				newblk->mp.mp_list[h] = blk->mp.mp_list[h];
-			newblk->mp.mp_list[h] = ptrnum;
-			bh = bread(sbp, block);
-			/* This is a data block. i.e newblk->height == ip->i_di.di_height */
-			/* read in the jdata block */
-			memcpy(newblk->ptrbuf, bh->b_data +
-			       sizeof(struct gfs2_meta_header), bufsize);
-			memset(bh->b_data + sizeof(struct gfs2_meta_header), 0,
-			       bufsize);
-			bmodified(bh);
-			brelse(bh);
-			/* Free the block so we can reuse it. This allows us to
-			   convert a "full" file system */
-			ip->i_di.di_blocks--;
-			gfs2_free_block(sbp, block);
-
-			len = bufsize;
-			jdata_mp_gfs1_to_gfs2(sbp, di_height, gfs2_hgt, &newblk->mp, &gfs2mp,
-					      &len, dinode_size);
-			memcpy(&newblk->mp, &gfs2mp, sizeof(struct metapath));
-			newblk->height -= di_height - gfs2_hgt;
-			if (len)
-				fix_jdatatree(sbp, ip, newblk, newblk->ptrbuf, len);
-			free(newblk->ptrbuf);
-			free(newblk);
-		}
 		osi_list_del(tmp);
 		free(blk->ptrbuf);
 		free(blk);
 	}
+
 	ip->i_di.di_size = dinode_size;
 
 	/* Set the new dinode height, which may or may not have changed.  */
 	/* The caller will take it from the ip and write it to the buffer */
 	ip->i_di.di_height = gfs2_hgt;
-	return 0;
+	return error;
 
 out:
 	while (!osi_list_empty(&blocks.list)) {
@@ -1059,12 +947,8 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 		inode->i_di.di_goal_data = 0; /* make sure the upper 32b are 0 */
 		inode->i_di.di_goal_data = gfs1_dinode_struct->di_goal_dblk;
 		inode->i_di.di_generation = 0;
-		if (!(inode->i_di.di_mode & S_IFDIR) &&
-		    inode->i_di.di_flags & GFS2_DIF_JDATA)
-			ret = adjust_jdata_inode(sbp, inode);
-		else
-			ret = adjust_indirect_blocks(sbp, inode);
-		if (ret)
+		
+		if (adjust_indirect_blocks(sbp, inode))
 			return -1;
 		/* Check for cdpns */
 		if (inode->i_di.di_mode & S_IFLNK) {
@@ -1351,9 +1235,11 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip
 			leaf_block = be64_to_cpu(buf);
 			error = 0;
 		}
+	leaf_chain:
 		/* leaf blocks may be repeated, so skip the duplicates: */
 		if (leaf_block == prev_leaf_block) /* same block? */
 			continue;                      /* already converted */
+
 		prev_leaf_block = leaf_block;
 		/* read the leaf buffer in */
 		error = gfs2_get_leaf(dip, leaf_block, &bh_leaf);
@@ -1367,6 +1253,11 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip
 		brelse(bh_leaf);
 		if (dentmod && error == -EISDIR) /* dentmod was marked DT_DIR, break out */
 			break;
+		if (leaf.lf_next) { /* leaf has a leaf chain, process leaves in chain */
+			leaf_block = leaf.lf_next;
+			error = 0;
+			goto leaf_chain;
+		}
 	} /* for leaf_num */
 	return 0;
 }/* fix_one_directory_exhash */
@@ -1405,6 +1296,10 @@ static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 	osi_list_t *tmp, *fix;
 	struct inode_block *dir_iblk;
 	uint64_t offset, dirblock;
+	uint32_t gfs1_inptrs = sbp->sd_inptrs;
+	/* Directory inodes have been converted to gfs2, use gfs2 inptrs */
+	sbp->sd_inptrs = (sbp->bsize - sizeof(struct gfs2_meta_header))
+		/ sizeof(uint64_t);
 
 	dirs_fixed = 0;
 	dirents_fixed = 0;
@@ -1435,6 +1330,7 @@ static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 		osi_list_del(tmp);
 		free(tmp);
 	}
+	sbp->sd_inptrs = gfs1_inptrs;
 	return 0;
 }/* fix_directory_info */
 
