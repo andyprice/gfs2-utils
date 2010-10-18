@@ -10,7 +10,10 @@ extern int ccs_handle;
 #define DEFAULT_SYSLOG_FACILITY		LOG_LOCAL4 /* Is this really right? */
 #define DEFAULT_SYSLOG_PRIORITY		LOG_INFO
 #define DEFAULT_LOGFILE_PRIORITY	LOG_INFO /* ? */
-#define DEFAULT_LOGFILE			"/var/log/cluster/" DAEMON_NAME ".log"
+#ifndef LOGDIR
+#define LOGDIR "/var/log/cluster"
+#endif /* LOGDIR */
+#define DEFAULT_LOGFILE			LOGDIR "/" DAEMON_NAME ".log"
 
 static int log_mode;
 static int syslog_facility;

@@ -82,7 +82,7 @@ int run_dmsetup_suspend(struct mountgroup *mg, char *dev)
 	char smajor[16];
 	char sminor[16];
 	pid_t pid;
-	int i, rv;
+	int i;
 	int major, minor;
 	FILE *fp;
 

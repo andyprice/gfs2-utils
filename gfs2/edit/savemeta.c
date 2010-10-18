@@ -67,7 +67,7 @@ static const char *anthropomorphize(unsigned long long inhuman_value)
 {
 	const char *symbols = " KMGTPE";
 	int i;
-	unsigned long long val = inhuman_value, remainder;
+	unsigned long long val = inhuman_value, remainder = 0;
 	static char out_val[32];
 
 	memset(out_val, 0, sizeof(out_val));
