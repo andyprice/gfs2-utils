@@ -2564,23 +2564,23 @@ static void find_change_block_alloc(int *newval)
 	if (ablock == sbd.sb_addr)
 		printf("3 (the superblock is not in the bitmap)\n");
 	else {
-		if (newval) {
-			if (gfs2_set_bitmap(&sbd, ablock, *newval))
-				printf("-1 (block invalid or part of an rgrp).\n");
-			else
-				printf("%d\n", *newval);
-		} else {
-			rgd = gfs2_blk2rgrpd(&sbd, ablock);
-			if (rgd) {
-				gfs2_rgrp_read(&sbd, rgd);
-				type = gfs2_get_bitmap(&sbd, ablock, rgd);
-				gfs2_rgrp_relse(rgd);
-				printf("%d (%s)\n", type, allocdesc[gfs1][type]);
+		rgd = gfs2_blk2rgrpd(&sbd, ablock);
+		if (rgd) {
+			gfs2_rgrp_read(&sbd, rgd);
+			if (newval) {
+				if (gfs2_set_bitmap(&sbd, ablock, *newval))
+					printf("-1 (block invalid or part of an rgrp).\n");
+				else
+					printf("%d\n", *newval);
 			} else {
-				gfs2_rgrp_free(&sbd.rglist);
-				printf("-1 (block invalid or part of an rgrp).\n");
-				exit(-1);
+				type = gfs2_get_bitmap(&sbd, ablock, rgd);
+				printf("%d (%s)\n", type, allocdesc[gfs1][type]);
 			}
+			gfs2_rgrp_relse(rgd);
+		} else {
+			gfs2_rgrp_free(&sbd.rglist);
+			printf("-1 (block invalid or part of an rgrp).\n");
+			exit(-1);
 		}
 	}
 	gfs2_rgrp_free(&sbd.rglist);
