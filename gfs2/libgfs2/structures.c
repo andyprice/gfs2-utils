@@ -326,10 +326,15 @@ int build_rindex(struct gfs2_sbd *sdp)
 		gfs2_rindex_out(&rl->ri, buf);
 
 		count = gfs2_writei(ip, buf, ip->i_di.di_size,
-							sizeof(struct gfs2_rindex));
+				    sizeof(struct gfs2_rindex));
 		if (count != sizeof(struct gfs2_rindex))
 			return -1;
 	}
+	memset(buf, 0, sizeof(struct gfs2_rindex));
+	count = __gfs2_writei(ip, buf, ip->i_di.di_size,
+			      sizeof(struct gfs2_rindex), 0);
+	if (count != sizeof(struct gfs2_rindex))
+		return -1;
 
 	if (sdp->debug) {
 		printf("\nResource Index:\n");

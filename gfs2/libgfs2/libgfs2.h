@@ -435,8 +435,10 @@ extern uint64_t meta_alloc(struct gfs2_inode *ip);
 extern uint64_t dinode_alloc(struct gfs2_sbd *sdp);
 extern int gfs2_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
 		      unsigned int size);
-extern int gfs2_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
-		       unsigned int size);
+#define gfs2_writei(ip, buf, offset, size) \
+	__gfs2_writei(ip, buf, offset, size, 1)
+extern int __gfs2_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
+			 unsigned int size, int resize);
 extern struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip,
 					     uint64_t lbn, int prealloc);
 extern struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,

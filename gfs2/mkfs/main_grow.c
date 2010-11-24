@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <linux/types.h>
+#include <linux/falloc.h>
 #include <libintl.h>
 #define _(String) gettext(String)
 
@@ -186,6 +187,7 @@ static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 	char *buf, *bufptr;
 	osi_list_t *tmp;
 	ssize_t writelen;
+	struct stat statbuf;
 
 	/* Count the number of new RGs. */
 	rg = 0;
@@ -211,14 +213,42 @@ static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 	gfs2_rgrp_free(&sdp->rglist);
 	fsync(sdp->device_fd);
 	if (!test) {
+		if (fstat(rindex_fd, &statbuf) != 0) {
+			log_crit("Can't stat rindex : %s\n", strerror(errno));
+			goto out;
+		}
+		if (statbuf.st_size !=
+		    old_rg_count * sizeof(struct gfs2_rindex)) {
+			log_crit("Incorrect rindex size. want %ld(%d RGs), "
+				 "have %ld\n",
+				 old_rg_count * sizeof(struct gfs2_rindex),
+				 old_rg_count, statbuf.st_size);
+			goto out;
+		}
 		/* Now write the new RGs to the end of the rindex */
 		lseek(rindex_fd, 0, SEEK_END);
 		count = write(rindex_fd, buf, writelen);
-		if (count != writelen)
+		if (count != writelen) {
 			log_crit("Error writing new rindex entries;"
 				 "aborted.\n");
+			if (count > 0)
+				goto trunc;
+			else
+				goto out;
+		}
+		if (fallocate(rindex_fd, FALLOC_FL_KEEP_SIZE, statbuf.st_size + writelen, sizeof(struct gfs2_rindex)) != 0)
+			log_crit("Error fallocating extra space : %s\n",
+				 strerror(errno));
 		fsync(rindex_fd);
 	}
+out:
+	free(buf);
+	return;
+trunc:
+	count = (count / sizeof(struct gfs2_rindex)) + old_rg_count;
+	log_crit("truncating rindex to %ld\n",
+		 (off_t)count * sizeof(struct gfs2_rindex));
+	ftruncate(rindex_fd, (off_t)count * sizeof(struct gfs2_rindex));
 	free(buf);
 }
 

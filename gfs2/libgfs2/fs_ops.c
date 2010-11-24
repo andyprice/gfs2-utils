@@ -577,8 +577,8 @@ static void copy_from_mem(struct gfs2_buffer_head *bh, void **buf,
 	*p += size;
 }
 
-int gfs2_writei(struct gfs2_inode *ip, void *buf,
-				uint64_t offset, unsigned int size)
+int __gfs2_writei(struct gfs2_inode *ip, void *buf,
+		  uint64_t offset, unsigned int size, int resize)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct gfs2_buffer_head *bh;
@@ -649,7 +649,7 @@ int gfs2_writei(struct gfs2_inode *ip, void *buf,
 		o = (isdir) ? sizeof(struct gfs2_meta_header) : 0;
 	}
 
-	if (ip->i_di.di_size < start + copied) {
+	if (resize && ip->i_di.di_size < start + copied) {
 		bmodified(ip->i_bh);
 		ip->i_di.di_size = start + copied;
 	}
