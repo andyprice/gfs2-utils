@@ -9,8 +9,7 @@
 
 #include <libintl.h>
 #define _(String) gettext(String)
-//#include <libgfs2.h>
-//
+
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
@@ -58,10 +57,8 @@ static void usage(char *name)
 
 static void version(void)
 {
-	printf( _("GFS2 tunefs (built %s %s)\n"),
-	       __DATE__, __TIME__);
+	printf("tunegfs2 (%s %s)\n"), __DATE__, __TIME__);
 }
-
 
 int main(int argc, char **argv)
 {
@@ -146,8 +143,10 @@ int main(int argc, char **argv)
 			goto out;
 	}
 
-	if (tfs->opt_list)
+	if (tfs->opt_list) {
+		version();
 		print_super(tfs);
+	}
 
 	close(tfs->fd);
 out:

@@ -46,7 +46,7 @@ static const char *uuid2str(const unsigned char *uuid)
 	memset(str, 0, 64);
 	ch = str;
 	for (i = 0; i < 16; i++) {
-		sprintf(ch, "%02X", uuid[i]);
+		sprintf(ch, "%02x", uuid[i]);
 		ch += 2;
 		if ((i == 3) || (i == 5) || (i == 7) || (i == 9)) {
 			*ch = '-';
@@ -90,34 +90,33 @@ static int str2uuid(const char *newval, char *uuid)
 
 int read_super(struct tunegfs2 *tfs)
 {
-	char *block;
+	void *block;
 	int n;
        	tfs->sb_start = GFS2_SB_ADDR << GFS2_BASIC_BLOCK_SHIFT;
-	block = (char *)malloc(sizeof(char) * GFS2_DEFAULT_BSIZE);
+	block = malloc(sizeof(char) * GFS2_DEFAULT_BSIZE);
 	n = pread(tfs->fd, block, GFS2_DEFAULT_BSIZE, tfs->sb_start);
 	if (n < 0) {
 		fprintf(stderr, _("Error reading from device"));
 		return errno;
 	}
-	tfs->sb = (struct gfs2_sb *)(block);
-	if (be32_to_cpu(tfs->sb->sb_header.mh_magic != GFS_MAGIC) &&
-	(be32_to_cpu(tfs->sb->sb_header.mh_magic) != GFS2_MAGIC)) {
-		fprintf(stderr, _("Not a GFS2 device\n"));
+	tfs->sb = block;
+	if (be32_to_cpu(tfs->sb->sb_header.mh_magic) != GFS2_MAGIC) {
+		fprintf(stderr, _("Not a GFS/GFS2 device\n"));
 		return -EINVAL;
 	}
 	return 0;
 }
 
-int print_super(struct tunegfs2 *tfs)
+static int is_gfs2(const struct tunegfs2 *tfs)
+{
+	return be32_to_cpu(tfs->sb->sb_fs_format) == GFS2_FORMAT_FS;
+}
+
+int print_super(const struct tunegfs2 *tfs)
 {
 	char *fsname = NULL;
 	int table_len = 0, fsname_len = 0;
 
-	fprintf(stdout, _("Superblock Details\n"));
-	fprintf(stdout, _("Block size: %d\n"), be32_to_cpu(tfs->sb->sb_bsize));
-	fprintf(stdout, _("Block shift: %d\n"), be32_to_cpu(tfs->sb->sb_bsize_shift));
-	fprintf(stdout, _("Locking Protocol: %.*s\n"), GFS2_LOCKNAME_LEN,
-			tfs->sb->sb_lockproto);
 	fsname = strchr(tfs->sb->sb_locktable, ':');
 	if (fsname) {
 		table_len = fsname - tfs->sb->sb_locktable;
@@ -125,20 +124,26 @@ int print_super(struct tunegfs2 *tfs)
 		fsname++;
 	}
 
-	fprintf(stdout, _("lock table: %.*s\n"), table_len, 
-				tfs->sb->sb_locktable);
-	fprintf(stdout, _("fsname: %.*s\n"), fsname_len, fsname);
-	if (be32_to_cpu(tfs->sb->sb_header.mh_magic) == GFS2_MAGIC)
-		fprintf(stdout, _("Superblock UUID: %s\n"),
-			uuid2str(tfs->sb->sb_uuid));
+	printf(_("Filesystem volume name: %.*s\n"), fsname_len, fsname);
+	if (is_gfs2(tfs))
+		printf(_("Filesystem UUID: %s\n"), uuid2str(tfs->sb->sb_uuid));
+	printf( _("Filesystem magic number: 0x%X\n"), be32_to_cpu(tfs->sb->sb_header.mh_magic));
+	printf(_("Block size: %d\n"), be32_to_cpu(tfs->sb->sb_bsize));
+	printf(_("Block shift: %d\n"), be32_to_cpu(tfs->sb->sb_bsize_shift));
+	printf(_("Root inode: %llu\n"), (unsigned long long)be64_to_cpu(tfs->sb->sb_root_dir.no_addr));
+	if (is_gfs2(tfs))
+		printf(_("Master inode: %llu\n"), (unsigned long long)be64_to_cpu(tfs->sb->sb_master_dir.no_addr));
+	printf(_("Lock Protocol: %.*s\n"), GFS2_LOCKNAME_LEN,
+		tfs->sb->sb_lockproto);
+	printf(_("Lock table: %.*s\n"), table_len, tfs->sb->sb_locktable);
+
 	return 0;
 }
 
-int write_super(struct tunegfs2 *tfs)
+int write_super(const struct tunegfs2 *tfs)
 {
-	char *block = (char *)tfs->sb;
 	int n;
-	n = pwrite(tfs->fd, block, GFS2_DEFAULT_BSIZE, tfs->sb_start);
+	n = pwrite(tfs->fd, tfs->sb, GFS2_DEFAULT_BSIZE, tfs->sb_start);
 	if (n<0) {
 		fprintf(stderr, _("Unable to write super block\n"));
 		return -errno;
@@ -146,7 +151,7 @@ int write_super(struct tunegfs2 *tfs)
 	return 0;
 }
 
-int change_label(struct tunegfs2 *tfs, char *fsname)
+int change_label(struct tunegfs2 *tfs, const char *fsname)
 {
 	char *sb_fsname = NULL;
 	int l = strlen(fsname), table_len = 0, fsname_len = 0;
@@ -166,7 +171,7 @@ int change_label(struct tunegfs2 *tfs, char *fsname)
 	return 0;
 }
 
-int change_uuid(struct tunegfs2 *tfs, char *str)
+int change_uuid(struct tunegfs2 *tfs, const char *str)
 {
 	char uuid[16];
 	int status = 0;
@@ -176,20 +181,18 @@ int change_uuid(struct tunegfs2 *tfs, char *str)
 		return -EINVAL;
 	}
 	status = str2uuid(str, uuid);
-	if (!status) {
-		memset(tfs->sb->sb_uuid , '\0', 16);
-		strncpy((char *)tfs->sb->sb_uuid, uuid, 16);
-	}
+	if (!status)
+		memcpy(tfs->sb->sb_uuid, uuid, 16);
 	return status;
 }
 
 
-int change_lockproto(struct tunegfs2 *tfs, char *lockproto)
+int change_lockproto(struct tunegfs2 *tfs, const char *lockproto)
 {
 	int l = strlen(lockproto);
 	if (strncmp(lockproto, "lock_dlm", 8) 
 			&& strncmp(lockproto, "lock_nolock", 11)) {
-		fprintf(stderr, _("Incorrect lockproto specified\n"));
+		fprintf(stderr, _("Incorrect lock protocol specified\n"));
 		return -EINVAL;
 	}
 	memset(tfs->sb->sb_lockproto, '\0', GFS2_LOCKNAME_LEN);
@@ -197,7 +200,7 @@ int change_lockproto(struct tunegfs2 *tfs, char *lockproto)
 	return 0;
 }
 
-int change_locktable(struct tunegfs2 *tfs, char *locktable)
+int change_locktable(struct tunegfs2 *tfs, const char *locktable)
 {
 	char *sb_fsname = NULL;
 	char t_fsname[GFS2_LOCKNAME_LEN];

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2010-10-18 11:57+0100\n"
+"POT-Creation-Date: 2010-12-02 13:23+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,7 +21,7 @@ msgstr ""
 msgid "I don't know who I am!\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:51
+#: gfs2/mkfs/main_grow.c:52
 #, c-format
 msgid ""
 "Usage:\n"
@@ -36,98 +36,98 @@ msgid ""
 "  -v               Verbose, increase verbosity\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:76 gfs2/mkfs/main_jadd.c:124
+#: gfs2/mkfs/main_grow.c:77 gfs2/mkfs/main_jadd.c:124
 #: gfs2/mkfs/main_mkfs.c:145 gfs2/fsck/main.c:59
 #, c-format
 msgid "\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:85
+#: gfs2/mkfs/main_grow.c:86
 #, c-format
 msgid "(Test mode--File system will not be changed)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:95 gfs2/mkfs/main_jadd.c:132
+#: gfs2/mkfs/main_grow.c:96 gfs2/mkfs/main_jadd.c:132
 #: gfs2/mkfs/main_mkfs.c:155 gfs2/fsck/main.c:102 gfs2/fsck/main.c:114
 #, c-format
 msgid "Please use '-h' for usage.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:98 gfs2/fsck/main.c:105
+#: gfs2/mkfs/main_grow.c:99 gfs2/fsck/main.c:105
 #, c-format
 msgid "Bad programmer! You forgot to catch the %c flag\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:194
+#: gfs2/mkfs/main_grow.c:196
 #, c-format
 msgid "%d new rindex entries.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:198
+#: gfs2/mkfs/main_grow.c:200
 #, c-format
 msgid "Out of memory in %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:275 gfs2/mkfs/main_jadd.c:503
+#: gfs2/mkfs/main_grow.c:305 gfs2/mkfs/main_jadd.c:503
 #, c-format
 msgid "Not a valid GFS2 mount point: %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:284 gfs2/mkfs/main_mkfs.c:562
+#: gfs2/mkfs/main_grow.c:314 gfs2/mkfs/main_mkfs.c:562
 #, c-format
 msgid "can't open device %s: %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:287 gfs2/mkfs/main_mkfs.c:601
+#: gfs2/mkfs/main_grow.c:317 gfs2/mkfs/main_mkfs.c:601
 #: gfs2/fsck/rgrepair.c:342
 #, c-format
 msgid "Geometry error\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:290 gfs2/fsck/initialize.c:998
+#: gfs2/mkfs/main_grow.c:320 gfs2/fsck/initialize.c:998
 msgid "Initializing lists...\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:296 gfs2/mkfs/main_jadd.c:519
+#: gfs2/mkfs/main_grow.c:326 gfs2/mkfs/main_jadd.c:519
 #: gfs2/mkfs/main_mkfs.c:593 gfs2/fsck/initialize.c:1014
 #, c-format
 msgid "Bad constants (1)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:300
+#: gfs2/mkfs/main_grow.c:330
 msgid "gfs: Error reading superblock.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:303 gfs2/mkfs/main_mkfs.c:618
+#: gfs2/mkfs/main_grow.c:333 gfs2/mkfs/main_mkfs.c:618
 #: gfs2/fsck/rgrepair.c:346
 #, c-format
 msgid "Device is too small (%<PRIu64> bytes)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:309 gfs2/mkfs/main_jadd.c:513
+#: gfs2/mkfs/main_grow.c:339 gfs2/mkfs/main_jadd.c:513
 #, c-format
 msgid "Error mounting GFS2 metafs: %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:318
+#: gfs2/mkfs/main_grow.c:348
 msgid "GFS2 rindex not found.  Please run gfs2_fsck.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:334
+#: gfs2/mkfs/main_grow.c:364
 msgid "Error: The device has grown by less than one Resource Group (RG).\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:336
+#: gfs2/mkfs/main_grow.c:366
 #, c-format
 msgid "The device grew by %<PRIu64>MB.  "
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:338
+#: gfs2/mkfs/main_grow.c:368
 #, c-format
 msgid "One RG is %uMB for this file system.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:358
+#: gfs2/mkfs/main_grow.c:388
 msgid "gfs2_grow complete.\n"
 msgstr ""
 
@@ -509,17 +509,12 @@ msgstr ""
 msgid "error closing device (%d): %s\n"
 msgstr ""
 
-#: gfs2/tune/main.c:61
-#, c-format
-msgid "GFS2 tunefs (built %s %s)\n"
-msgstr ""
-
-#: gfs2/tune/main.c:94
+#: gfs2/tune/main.c:91
 #, c-format
 msgid "Invalid option.\n"
 msgstr ""
 
-#: gfs2/tune/main.c:105
+#: gfs2/tune/main.c:102
 #, c-format
 msgid "Unable to open device %s\n"
 msgstr ""
@@ -544,72 +539,82 @@ msgstr ""
 msgid "Error reading from device"
 msgstr ""
 
-#: gfs2/tune/super.c:105
+#: gfs2/tune/super.c:104
 #, c-format
-msgid "Not a GFS2 device\n"
+msgid "Not a GFS/GFS2 device\n"
 msgstr ""
 
-#: gfs2/tune/super.c:116
+#: gfs2/tune/super.c:127
 #, c-format
-msgid "Superblock Details\n"
+msgid "Filesystem volume name: %.*s\n"
 msgstr ""
 
-#: gfs2/tune/super.c:117
+#: gfs2/tune/super.c:129
 #, c-format
-msgid "Block size: %d\n"
-msgstr ""
-
-#: gfs2/tune/super.c:118
-#, c-format
-msgid "Block shift: %d\n"
-msgstr ""
-
-#: gfs2/tune/super.c:119
-#, c-format
-msgid "Locking Protocol: %.*s\n"
-msgstr ""
-
-#: gfs2/tune/super.c:128
-#, c-format
-msgid "lock table: %.*s\n"
+msgid "Filesystem UUID: %s\n"
 msgstr ""
 
 #: gfs2/tune/super.c:130
 #, c-format
-msgid "fsname: %.*s\n"
+msgid "Filesystem magic number: 0x%X\n"
+msgstr ""
+
+#: gfs2/tune/super.c:131
+#, c-format
+msgid "Block size: %d\n"
 msgstr ""
 
 #: gfs2/tune/super.c:132
 #, c-format
-msgid "Superblock UUID: %s\n"
+msgid "Block shift: %d\n"
 msgstr ""
 
-#: gfs2/tune/super.c:143
+#: gfs2/tune/super.c:133
+#, c-format
+msgid "Root inode: %llu\n"
+msgstr ""
+
+#: gfs2/tune/super.c:135
+#, c-format
+msgid "Master inode: %llu\n"
+msgstr ""
+
+#: gfs2/tune/super.c:136
+#, c-format
+msgid "Lock Protocol: %.*s\n"
+msgstr ""
+
+#: gfs2/tune/super.c:138
+#, c-format
+msgid "Lock table: %.*s\n"
+msgstr ""
+
+#: gfs2/tune/super.c:148
 #, c-format
 msgid "Unable to write super block\n"
 msgstr ""
 
-#: gfs2/tune/super.c:161
+#: gfs2/tune/super.c:166
 #, c-format
 msgid "Label too long\n"
 msgstr ""
 
-#: gfs2/tune/super.c:174
+#: gfs2/tune/super.c:179
 #, c-format
 msgid "UUID can be changed for a GFS2"
 msgstr ""
 
-#: gfs2/tune/super.c:175
+#: gfs2/tune/super.c:180
 #, c-format
 msgid " device only\n"
 msgstr ""
 
-#: gfs2/tune/super.c:192
+#: gfs2/tune/super.c:195
 #, c-format
-msgid "Incorrect lockproto specified\n"
+msgid "Incorrect lock protocol specified\n"
 msgstr ""
 
-#: gfs2/tune/super.c:219
+#: gfs2/tune/super.c:222
 #, c-format
 msgid "Lock table name too big\n"
 msgstr ""
