@@ -26,9 +26,10 @@ static int remove_eattr_entry(struct gfs2_sbd *sdp,
 		if (curr->ea_flags & GFS2_EAFLAG_LAST)
 			prev->ea_flags |= GFS2_EAFLAG_LAST;	
 	}
-	log_err( _("Bad Extended Attribute at block #%"PRIu64
-		   " (0x%" PRIx64 ") removed.\n"),
-		 leaf_bh->b_blocknr, leaf_bh->b_blocknr);
+	log_err( _("Bad Extended Attribute at block #%llu"
+		   " (0x%llx) removed.\n"),
+		 (unsigned long long)leaf_bh->b_blocknr,
+		 (unsigned long long)leaf_bh->b_blocknr);
 	bmodified(leaf_bh);
 	return 0;
 }
@@ -146,7 +147,7 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 	uint32_t max_size = sdp->sd_sb.sb_bsize;
 
 	if(!ea_hdr->ea_name_len){
-		log_err( _("EA has name length == 0\n"));
+		log_err( _("EA has name length of zero\n"));
 		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 1, 1);
 	}
@@ -162,7 +163,7 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 					      ea_hdr_prev, 0, 0);
 	}
 	if(!ea_hdr->ea_name_len){
-		log_err( _("EA has name length == 0\n"));
+		log_err( _("EA has name length of zero\n"));
 		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 0, 0);
 	}
@@ -247,8 +248,9 @@ int pass1c(struct gfs2_sbd *sbp)
 			return FSCK_OK;
 		bh = bread(sbp, block_no);
 		if (!gfs2_check_meta(bh, GFS2_METATYPE_DI)) { /* if a dinode */
-			log_info( _("EA in inode %"PRIu64" (0x%" PRIx64 ")\n"),
-				 block_no, block_no);
+			log_info( _("EA in inode %llu (0x%llx)\n"),
+				 (unsigned long long)block_no,
+				 (unsigned long long)block_no);
 			gfs2_special_clear(&sbp->eattr_blocks, block_no);
 			ip = fsck_inode_get(sbp, bh);
 			ip->bh_owned = 1;

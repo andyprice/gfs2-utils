@@ -142,7 +142,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 		case 'V':
 			printf("gfs2_mkfs %s (built %s %s)\n", VERSION,
 			       __DATE__, __TIME__);
-			printf( _(REDHAT_COPYRIGHT "\n"));
+			printf(REDHAT_COPYRIGHT "\n");
 			exit(EXIT_SUCCESS);
 			break;
 
@@ -173,7 +173,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			break;
 
 		default:
-			die( _("unknown option: %c\n"), optchar);
+			die( _("Unknown option: %c\n"), optchar);
 			break;
 		};
 	}
@@ -501,15 +501,15 @@ print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
 	printf( _("Device:                    %s\n"), sdp->device_name);
 
 	printf( _("Blocksize:                 %u\n"), sdp->bsize);
-	printf( _("Device Size                %.2f GB (%"PRIu64" blocks)\n"),
+	printf( _("Device Size                %.2f GB (%llu blocks)\n"),
 	       real_device_size / ((float)(1 << 30)),
-	       real_device_size / sdp->bsize);
-	printf( _("Filesystem Size:           %.2f GB (%"PRIu64" blocks)\n"),
-	       sdp->fssize / ((float)(1 << 30)) * sdp->bsize, sdp->fssize);
-
+	       (unsigned long long)real_device_size / sdp->bsize);
+	printf( _("Filesystem Size:           %.2f GB (%llu blocks)\n"),
+	       sdp->fssize / ((float)(1 << 30)) * sdp->bsize,
+	       (unsigned long long)sdp->fssize);
 	printf( _("Journals:                  %u\n"), sdp->md.journals);
-	printf( _("Resource Groups:           %"PRIu64"\n"), sdp->rgrps);
-
+	printf( _("Resource Groups:           %llu\n"),
+	       (unsigned long long)sdp->rgrps);
 	printf( _("Locking Protocol:          \"%s\"\n"), sdp->lockproto);
 	printf( _("Lock Table:                \"%s\"\n"), sdp->locktable);
 
@@ -608,15 +608,15 @@ void main_mkfs(int argc, char *argv[])
 		if (sdp->orig_fssize > sdp->device.length) {
 			fprintf(stderr, _("%s: Specified block count is bigger "
 				"than the actual device.\n"), argv[0]);
-			die( _("Device Size is %.2f GB (%"PRIu64" blocks)\n"),
+			die( _("Device Size is %.2f GB (%llu blocks)\n"),
 			       real_device_size / ((float)(1 << 30)),
-			       real_device_size / sdp->bsize);
+			       (unsigned long long)real_device_size / sdp->bsize);
 		}
 		sdp->device.length = sdp->orig_fssize;
 	}
 	if (fix_device_geometry(sdp)) {
-		fprintf(stderr, _("Device is too small (%"PRIu64" bytes)\n"),
-				sdp->device.length << GFS2_BASIC_BLOCK_SHIFT);
+		fprintf(stderr, _("Device is too small (%llu bytes)\n"),
+			(unsigned long long)sdp->device.length << GFS2_BASIC_BLOCK_SHIFT);
 		exit(-1);
 	}
 

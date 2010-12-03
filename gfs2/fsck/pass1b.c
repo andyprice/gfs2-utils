@@ -233,9 +233,10 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)block, (unsigned long long)block);
-		log_err( _("Inode %s is in directory %"PRIu64" (0x%" PRIx64 ")\n"),
-			 dh->id->name ? dh->id->name : "", dh->id->parent,
-			 dh->id->parent);
+		log_err( _("Inode %s is in directory %llu (0x%llx)\n"),
+			 dh->id->name ? dh->id->name : "",
+			 (unsigned long long)dh->id->parent,
+			 (unsigned long long)dh->id->parent);
 	}
 	/* We return 1 not 0 because we need build_and_check_metalist to
 	   bypass adding the metadata below it to the metalist.  If that
@@ -326,9 +327,6 @@ static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode)
 	int error = 0;
 
 	ip = fsck_load_inode(sbp, inode); /* bread, inode_get */
-	/*log_debug( _("Checking inode %" PRIu64 " (0x%" PRIx64 ")'s "
-		     "metatree for references to duplicate blocks)\n"),
-		     inode, inode);*/
 	/* double-check the meta header just to be sure it's metadata */
 	if (ip->i_di.di_header.mh_magic != GFS2_MAGIC ||
 	    ip->i_di.di_header.mh_type != GFS2_METATYPE_DI) {
@@ -618,8 +616,9 @@ int pass1b(struct gfs2_sbd *sbp)
 	/* Rescan the fs looking for pointers to blocks that are in
 	 * the duplicate block map */
 	log_info( _("Scanning filesystem for inodes containing duplicate blocks...\n"));
-	log_debug( _("Filesystem has %"PRIu64" (0x%" PRIx64 ") blocks total\n"),
-			  last_fs_block, last_fs_block);
+	log_debug( _("Filesystem has %llu (0x%llx) blocks total\n"),
+		  (unsigned long long)last_fs_block,
+		  (unsigned long long)last_fs_block);
 	for(i = 0; i < last_fs_block; i++) {
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			goto out;

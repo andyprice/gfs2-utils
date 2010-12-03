@@ -184,9 +184,9 @@ static void warm_fuzzy_stuff(uint64_t wfsblock, int force)
 		if (last_fs_block) {
 			printf("\r");
 			percent = (wfsblock * 100) / last_fs_block;
-			printf("%" PRIu64 " metadata blocks (%"
-			       PRIu64 "%%) processed, ", wfsblock,
-			       percent);
+			printf("%llu metadata blocks (%llu%%) processed, ",
+			       (unsigned long long)wfsblock,
+			       (unsigned long long)percent);
 			if (force)
 				printf("\n");
 			fflush(stdout);
@@ -557,8 +557,8 @@ void savemeta(char *out_fn, int saveoption)
 			exit(-1);
 		}
 		if (fix_device_geometry(&sbd)) {
-			fprintf(stderr, "Device is too small (%"PRIu64" bytes)\n",
-				sbd.device.length << GFS2_BASIC_BLOCK_SHIFT);
+			fprintf(stderr, "Device is too small (%llu bytes)\n",
+				(unsigned long long)sbd.device.length << GFS2_BASIC_BLOCK_SHIFT);
 			exit(-1);
 		}
 		osi_list_init(&sbd.rglist);
@@ -590,8 +590,8 @@ void savemeta(char *out_fn, int saveoption)
 		}
 	}
 	last_fs_block = lseek(sbd.device_fd, 0, SEEK_END) / sbd.bsize;
-	printf("There are %" PRIu64 " blocks of %u bytes in the destination "
-	       "device.\n", last_fs_block, sbd.bsize);
+	printf("There are %llu blocks of %u bytes in the destination "
+	       "device.\n", (unsigned long long)last_fs_block, sbd.bsize);
 	if (!slow) {
 		if (gfs1) {
 			sbd.md.riinode = inode_read(&sbd,
@@ -773,18 +773,19 @@ static int restore_data(int fd, int in_fd, int printblocksonly,
 		    last_fs_block && savedata->blk >= last_fs_block) {
 			fprintf(stderr, "Error: File system is too small to "
 				"restore this metadata.\n");
-			fprintf(stderr, "File system is %" PRIu64 " blocks, ",
-				last_fs_block);
-			fprintf(stderr, "Restore block = %" PRIu64 "\n",
-				savedata->blk);
+			fprintf(stderr, "File system is %llu blocks, ",
+				(unsigned long long)last_fs_block);
+			fprintf(stderr, "Restore block = %llu\n",
+				(unsigned long long)savedata->blk);
 			return -1;
 		}
 		rs = read(in_fd, &buf16, sizeof(uint16_t));
 		savedata->siglen = be16_to_cpu(buf16);
 		if (savedata->siglen > sizeof(savedata->buf)) {
-			fprintf(stderr, "\nBad record length: %d for block #%"
-				PRIu64 " (0x%" PRIx64").\n", savedata->siglen,
-				savedata->blk, savedata->blk);
+			fprintf(stderr, "\nBad record length: %d for block #%llu"
+				" (0x%llx).\n", savedata->siglen,
+				(unsigned long long)savedata->blk,
+				(unsigned long long)savedata->blk);
 			return -1;
 		}
 		if (savedata->siglen &&
@@ -819,10 +820,9 @@ static int restore_data(int fd, int in_fd, int printblocksonly,
 			else if (!printblocksonly) {
 				last_fs_block =
 					lseek(fd, 0, SEEK_END) / sbd.bsize;
-				printf("There are %" PRIu64 " blocks of " \
-				       "%u bytes in the destination"	\
-				       " device.\n\n",
-				       last_fs_block, sbd.bsize);
+				printf("There are %llu blocks of %u bytes in "
+				       "the destination device.\n\n",
+				       (unsigned long long)last_fs_block, sbd.bsize);
 			} else {
 				printf("This is %s metadata\n", gfs1 ?
 				       "gfs (not gfs2)" : "gfs2");

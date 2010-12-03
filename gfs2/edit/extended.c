@@ -200,9 +200,9 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 			if (edit_row[dmode] >= 0 &&
 			    line - start_line ==
 			    edit_row[dmode] - start_row[dmode]) { 
-				sprintf(estring, "%"PRIx64,
-					ind->ii[print_entry_ndx].block);
-				strcpy(edit_fmt, "%"PRIx64);
+				sprintf(estring, "%llx",
+					(unsigned long long)ind->ii[print_entry_ndx].block);
+				strcpy(edit_fmt, "%llx");
 				edit_size[dmode] = strlen(estring);
 				COLORS_NORMAL;
 			}
@@ -347,9 +347,9 @@ static int display_leaf(struct iinfo *ind)
 				    line - start_line - 1 ==
 				    edit_row[dmode] - start_row[dmode]) {
 					COLORS_HIGHLIGHT;
-					sprintf(estring, "%"PRIx64,
-						ind->ii[0].dirent[d].block);
-					strcpy(edit_fmt, "%"PRIx64);
+					sprintf(estring, "%llx",
+						(unsigned long long)ind->ii[0].dirent[d].block);
+					strcpy(edit_fmt, "%llx");
 				}
 			}
 			print_gfs2("%d. (%d). %lld (0x%llx): ",
@@ -480,7 +480,7 @@ static int print_jindex(struct gfs2_inode *dij)
 			if (edit_row[dmode] == print_entry_ndx) {
 				COLORS_HIGHLIGHT;
 				strcpy(efield, "ji_addr");
-				sprintf(estring, "%" PRIx64, ji.ji_addr);
+				sprintf(estring, "%llx", (unsigned long long)ji.ji_addr);
 			}
 			print_gfs2("Journal #%d", print_entry_ndx);
 			eol(0);

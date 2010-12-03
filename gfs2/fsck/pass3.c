@@ -82,12 +82,15 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 		return NULL;
 
 	if(di->dotdot_parent != di->treewalk_parent) {
-		log_warn( _("Directory '..' and treewalk connections disagree for inode %"
-				 PRIu64 " (0x%" PRIx64 ")\n"), di->dinode, di->dinode);
-		log_notice( _("'..' has %" PRIu64" (0x%" PRIx64 "), treewalk has %"
-				   PRIu64" (0x%" PRIx64 ")\n"), di->dotdot_parent,
-				   di->dotdot_parent, di->treewalk_parent,
-				   di->treewalk_parent);
+		log_warn( _("Directory '..' and treewalk connections disagree for inode %llu"
+				 " (0x%llx)\n"), (unsigned long long)di->dinode,
+			(unsigned long long)di->dinode);
+		log_notice( _("'..' has %llu (0x%llx), treewalk has %llu"
+			      " (0x%llx)\n"),
+			   (unsigned long long)di->dotdot_parent,
+			   (unsigned long long)di->dotdot_parent,
+			   (unsigned long long)di->treewalk_parent,
+			   (unsigned long long)di->treewalk_parent);
 		q_dotdot = block_type(di->dotdot_parent);
 		q_treewalk = block_type(di->treewalk_parent);
 		/* if the dotdot entry isn't a directory, but the
@@ -104,8 +107,9 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 			}
 			else {
 				log_warn( _("Treewalk parent is correct,"
-						 " fixing dotdot -> %"PRIu64" (0x%" PRIx64 ")\n"),
-						 di->treewalk_parent, di->treewalk_parent);
+					    " fixing dotdot -> %llu (0x%llx)\n"),
+					 (unsigned long long)di->treewalk_parent,
+					 (unsigned long long)di->treewalk_parent);
 				attach_dotdot_to(sbp, di->treewalk_parent,
 								 di->dotdot_parent, di->dinode);
 				di->dotdot_parent = di->treewalk_parent;
@@ -119,9 +123,12 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 				/* FIXME: add a dinode for this entry instead? */
 
 				if(query( _("Remove directory entry for bad"
-					    " inode %"PRIu64" (0x%" PRIx64 ") in %"PRIu64
-					    " (0x%" PRIx64 ")? (y/n)"), di->dinode, di->dinode,
-					  di->treewalk_parent, di->treewalk_parent)) {
+					    " inode %llu (0x%llx) in %llu"
+					    " (0x%llx)? (y/n)"),
+					(unsigned long long)di->dinode,
+					(unsigned long long)di->dinode,
+					(unsigned long long)di->treewalk_parent,
+					(unsigned long long)di->treewalk_parent)) {
 					error = remove_dentry_from_dir(sbp, di->treewalk_parent,
 												   di->dinode);
 					if(error < 0) {
@@ -129,10 +136,12 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 						return NULL;
 					}
 					if(error > 0) {
-						log_warn( _("Unable to find dentry for block %"
-								 PRIu64" (0x%" PRIx64 ") in %" PRIu64 " (0x%"
-								 PRIx64 ")\n"),di->dinode, di->dinode,
-								 di->treewalk_parent, di->treewalk_parent);
+						log_warn( _("Unable to find dentry for block %llu"
+							" (0x%llx) in %llu (0x%llx)\n"),
+							 (unsigned long long)di->dinode,
+							(unsigned long long)di->dinode,
+							(unsigned long long)di->treewalk_parent,
+							(unsigned long long)di->treewalk_parent);
 					}
 					log_warn( _("Directory entry removed\n"));
 				} else {
@@ -156,8 +165,9 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 	else {
 		q_dotdot = block_type(di->dotdot_parent);
 		if(q_dotdot != gfs2_inode_dir) {
-			log_err( _("Orphaned directory at block %" PRIu64 " (0x%" PRIx64
-					") moved to lost+found\n"), di->dinode, di->dinode);
+			log_err( _("Orphaned directory at block %llu (0x%llx) moved to lost+found\n"),
+				(unsigned long long)di->dinode,
+				(unsigned long long)di->dinode);
 			return NULL;
 		}
 	}
@@ -207,9 +217,9 @@ int pass3(struct gfs2_sbd *sbp)
 			tdi = mark_and_return_parent(sbp, di);
 
 			if (tdi) {
-				log_debug( _("Directory at block %" PRIu64
-					     " (0x%" PRIx64 ") connected\n"),
-					   di->dinode, di->dinode);
+				log_debug( _("Directory at block %llu (0x%llx) connected\n"),
+					   (unsigned long long)di->dinode,
+					   (unsigned long long)di->dinode);
 				di = tdi;
 				continue;
 			}
@@ -261,9 +271,9 @@ int pass3(struct gfs2_sbd *sbp)
 				break;
 			}
 
-			log_err( _("Found unlinked directory at block %" PRIu64
-				   " (0x%" PRIx64 ")\n"), di->dinode,
-				 di->dinode);
+			log_err( _("Found unlinked directory at block %llu"
+				   " (0x%llx)\n"), (unsigned long long)di->dinode,
+				 (unsigned long long)di->dinode);
 			ip = fsck_load_inode(sbp, di->dinode);
 			/* Don't skip zero size directories with eattrs */
 			if(!ip->i_di.di_size && !ip->i_di.di_eattr){

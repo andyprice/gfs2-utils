@@ -1057,7 +1057,7 @@ int display_block_type(int from_restore)
 	if (block == RGLIST_DUMMY_BLOCK)
 		print_gfs2("RG List       ");
 	else
-		print_gfs2("%lld    (0x%"PRIx64")", block, block);
+		print_gfs2("%lld    (0x%llx)", block, block);
 	if (termlines) {
 		if (edit_row[dmode] == -1)
 			COLORS_NORMAL;
@@ -1066,8 +1066,7 @@ int display_block_type(int from_restore)
 	else
 		print_gfs2(" ");
 	if (!from_restore) {
-		print_gfs2("of %" PRIu64 " (0x%" PRIx64 ")", max_block,
-			   max_block);
+		print_gfs2("of %llu (0x%llx)", max_block, max_block);
 		if (termlines)
 			move(line, 55);
 		else
@@ -1298,9 +1297,9 @@ static int hexdump(uint64_t startaddr, int len)
 			COLORS_OFFSETS; /* cyan for offsets */
 		}
 		if (startaddr < 0xffffffff)
-			print_gfs2("%.8"PRIx64, startaddr + l);
+			print_gfs2("%.8llx", startaddr + l);
 		else
-			print_gfs2("%.16"PRIx64, startaddr + l);
+			print_gfs2("%.16llx", startaddr + l);
 		if (termlines) {
 			if (l < struct_len)
 				COLORS_NORMAL; /* normal part of structure */
@@ -1801,8 +1800,8 @@ static void read_superblock(int fd)
 	block = 0x10 * (GFS2_DEFAULT_BSIZE / sbd.bsize);
 	device_geometry(&sbd);
 	if (fix_device_geometry(&sbd)) {
-		fprintf(stderr, "Device is too small (%"PRIu64" bytes)\n",
-				sbd.device.length << GFS2_BASIC_BLOCK_SHIFT);
+		fprintf(stderr, "Device is too small (%llu bytes)\n",
+			(unsigned long long)sbd.device.length << GFS2_BASIC_BLOCK_SHIFT);
 		exit(-1);
 	}
 	if(gfs1) {
@@ -2204,7 +2203,7 @@ static uint64_t find_metablockoftype(const char *strtype, int print)
 /* ------------------------------------------------------------------------ */
 uint64_t check_keywords(const char *kword)
 {
-	uint64_t blk = 0;
+	unsigned long long blk = 0;
 
 	if (!strcmp(kword, "sb") ||!strcmp(kword, "superblock"))
 		blk = 0x10 * (4096 / sbd.bsize); /* superblock */
@@ -2256,9 +2255,9 @@ uint64_t check_keywords(const char *kword)
 	} else if (kword[0]=='/') /* search */
 		blk = find_metablockoftype(&kword[1], 0);
 	else if (kword[0]=='0' && kword[1]=='x') /* hex addr */
-		sscanf(kword, "%"SCNx64, &blk);/* retrieve in hex */
+		sscanf(kword, "%llx", &blk);/* retrieve in hex */
 	else
-		sscanf(kword, "%" PRIu64, &blk); /* retrieve decimal */
+		sscanf(kword, "%llu", &blk); /* retrieve decimal */
 
 	return blk;
 }
@@ -2272,7 +2271,7 @@ static uint64_t goto_block(void)
 	int ch, delta;
 
 	memset(string, 0, sizeof(string));
-	sprintf(string,"%"PRId64, block);
+	sprintf(string,"%lld", (long long)block);
 	if (bobgets(string, 1, 7, 16, &ch)) {
 		if (isalnum(string[0]) || string[0] == '/')
 			temp_blk = check_keywords(string);
@@ -3455,8 +3454,9 @@ static void process_parameters(int argc, char *argv[], int pass)
 		else if (!strcmp(argv[i], "identify"))
 			identify = TRUE;
 		else if (!strcmp(argv[i], "size")) {
-			printf("Device size: %" PRIu64 " (0x%" PRIx64 ")\n",
-			       max_block, max_block);
+			printf("Device size: %llu (0x%llx)\n",
+			       (unsigned long long)max_block,
+			       (unsigned long long)max_block);
 			exit(EXIT_SUCCESS);
 		} else if (!strcmp(argv[i], "rgcount"))
 			rgcount();

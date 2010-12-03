@@ -548,9 +548,6 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 	/* This inode contains an eattr - it may be invalid, but the
 	 * eattr attributes points to a non-zero block */
 	if(gfs2_check_range(sdp, indirect)) {
-		/*log_warn("EA indirect block #%"PRIu64" is out of range.\n",
-			indirect);
-			fsck_blockmap_set(parent, "bad", bad_block);*/
 		/* Doesn't help to mark this here - this gets checked
 		 * in pass1c */
 		return 1;
@@ -1154,9 +1151,10 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 	ip = fsck_inode_get(sdp, bh);
 	q = block_type(block);
 	if(q != gfs2_block_free) {
-		log_err( _("Found a duplicate inode block at #%" PRIu64
-			   " (0x%" PRIx64 ") previously marked as a %s\n"),
-			 block, block, block_type_string(q));
+		log_err( _("Found a duplicate inode block at #%llu"
+			   " (0x%llx) previously marked as a %s\n"),
+			 (unsigned long long)block,
+			 (unsigned long long)block, block_type_string(q));
 		add_duplicate_ref(ip, block, ref_as_meta, 0, INODE_VALID);
 		fsck_inode_put(&ip);
 		return 0;
@@ -1168,14 +1166,16 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 			(unsigned long long)block,
 			(unsigned long long)ip->i_di.di_num.no_addr,
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		if(query( _("Fix address in inode at block #%"
-			    PRIu64 " (0x%" PRIx64 ")? (y/n) "),
-			  block, block)) {
+		if(query( _("Fix address in inode at block #%llu"
+			    " (0x%llx)? (y/n) "),
+			  (unsigned long long)block, (unsigned long long)block)) {
 			ip->i_di.di_num.no_addr = ip->i_di.di_num.no_formal_ino = block;
 			bmodified(ip->i_bh);
 		} else
-			log_err( _("Address in inode at block #%" PRIu64
-				 " (0x%" PRIx64 ") not fixed\n"), block, block);
+			log_err( _("Address in inode at block #%llu"
+				 " (0x%llx) not fixed\n"),
+				(unsigned long long)block,
+				(unsigned long long)block);
 	}
 	error = handle_ip(sdp, ip);
 	fsck_inode_put(&ip);
@@ -1201,9 +1201,10 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 		/* Read in the system inode, look at its dentries, and start
 		 * reading through them */
 		iblock = (*sysinode)->i_di.di_num.no_addr;
-		log_info( _("System inode for '%s' is located at block %"
-			 PRIu64 " (0x%" PRIx64 ")\n"), filename,
-			 iblock, iblock);
+		log_info( _("System inode for '%s' is located at block %llu"
+			 " (0x%llx)\n"), filename,
+			 (unsigned long long)iblock,
+			 (unsigned long long)iblock);
 		if (gfs2_check_meta((*sysinode)->i_bh, GFS2_METATYPE_DI)) {
 			log_err( _("Found invalid system dinode at block #"
 				   "%llu (0x%llx)\n"),
@@ -1399,8 +1400,8 @@ int pass1(struct gfs2_sbd *sbp)
 	 */
 	for (tmp = sbp->rglist.next; tmp != &sbp->rglist;
 	     tmp = tmp->next, rg_count++) {
-		log_debug( _("Checking metadata in Resource Group #%" PRIu64 "\n"),
-				 rg_count);
+		log_debug( _("Checking metadata in Resource Group #%llu\n"),
+				 (unsigned long long)rg_count);
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
 		for (i = 0; i < rgd->ri.ri_length; i++) {
 			log_debug( _("rgrp block %lld (0x%llx) "
@@ -1445,9 +1446,6 @@ int pass1(struct gfs2_sbd *sbp)
 				continue;
 			}
 			bh = bread(sbp, block);
-
-			/*log_debug( _("Checking metadata block #%" PRIu64
-			  " (0x%" PRIx64 ")\n"), block, block);*/
 
 			if (gfs2_check_meta(bh, GFS2_METATYPE_DI)) {
 				log_err( _("Found invalid inode at block #"

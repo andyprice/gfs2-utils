@@ -121,7 +121,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 		case 'V':
 			printf("gfs2_jadd %s (built %s %s)\n", VERSION,
 			       __DATE__, __TIME__);
-			printf( _(REDHAT_COPYRIGHT "\n"));
+			printf(REDHAT_COPYRIGHT "\n");
 			exit(0);
 			break;
 		case 'X':
@@ -136,7 +136,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			cont = FALSE;
 			break;
 		default:
-			die( _("unknown option: %c\n"), optchar);
+			die( _("Unknown option: %c\n"), optchar);
 			break;
 		};
 	}

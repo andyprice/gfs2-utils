@@ -329,9 +329,9 @@ do_compare(const char *type, osi_list_t *fs_list, osi_list_t *qf_list)
 				continue;
 
 			if (v1->v_blocks != v2->v_blocks) {
-				printf("mismatch: %s %u: scan = %"PRId64", quotafile = %"PRId64"\n",
+				printf("mismatch: %s %u: scan = %lld, quotafile = %lld\n",
 				       type, v1->v_id,
-				       v1->v_blocks, v2->v_blocks);
+				       (long long)v1->v_blocks, (long long)v2->v_blocks);
 				mismatch = TRUE;
 			}
 
@@ -343,9 +343,9 @@ do_compare(const char *type, osi_list_t *fs_list, osi_list_t *qf_list)
 		}
 
 		if (!found) {
-			printf("mismatch: %s %u: scan = %"PRId64", quotafile = %"PRId64"\n",
+			printf("mismatch: %s %u: scan = %lld, quotafile = %lld\n",
 			       type, v1->v_id,
-			       v1->v_blocks, (int64_t)0);
+			       (long long)v1->v_blocks, 0LL);
 			mismatch = TRUE;
 		}
 	}
@@ -353,9 +353,9 @@ do_compare(const char *type, osi_list_t *fs_list, osi_list_t *qf_list)
 	for (tmp2 = qf_list->next; tmp2 != qf_list; tmp2 = tmp2->next) {
 		v2 = osi_list_entry(tmp2, values_t, v_list);
 
-		printf("mismatch: %s %u: scan = %"PRId64", quotafile = %"PRId64"\n",
+		printf("mismatch: %s %u: scan = %lld, quotafile = %lld\n",
 		       type, v2->v_id,
-		       (int64_t)0, v2->v_blocks);
+		       0LL, (long long)v2->v_blocks);
 		mismatch = TRUE;
 	}
 

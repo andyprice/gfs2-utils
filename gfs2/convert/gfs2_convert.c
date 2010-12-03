@@ -1006,8 +1006,8 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 			/* doesn't think we hung.  (This may take a long time).       */
 			if (tv.tv_sec - seconds) {
 				seconds = tv.tv_sec;
-				log_notice("\r%" PRIu64" inodes from %d rgs "
-					   "converted.", sbp->md.next_inum,
+				log_notice("\r%llu inodes from %d rgs converted.",
+					   (unsigned long long)sbp->md.next_inum,
 					   rgs_processed);
 				fflush(stdout);
 			}
@@ -1058,8 +1058,8 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 			first = 0;
 		} /* while 1 */
 	} /* for all rgs */
-	log_notice("\r%" PRIu64" inodes from %d rgs converted.",
-		   sbp->md.next_inum, rgs_processed);
+	log_notice("\r%llu inodes from %d rgs converted.",
+		   (unsigned long long)sbp->md.next_inum, rgs_processed);
 	fflush(stdout);
 	return 0;
 }/* inode_renumber */
@@ -1124,8 +1124,9 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 		dirents_fixed++;
 		if (tv.tv_sec - seconds) {
 			seconds = tv.tv_sec;
-			log_notice("\r%" PRIu64 " directories, %" PRIu64 " dirents fixed.",
-					   dirs_fixed, dirents_fixed);
+			log_notice("\r%llu directories, %llu dirents fixed.",
+				   (unsigned long long)dirs_fixed,
+				   (unsigned long long)dirents_fixed);
 			fflush(stdout);
 		}
 		/* fix the dirent's inode number based on the inode */
@@ -1244,7 +1245,8 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip
 		/* read the leaf buffer in */
 		error = gfs2_get_leaf(dip, leaf_block, &bh_leaf);
 		if (error) {
-			log_crit("Error reading leaf %" PRIx64 "\n", leaf_block);
+			log_crit("Error reading leaf %llx\n",
+				 (unsigned long long)leaf_block);
 			break;
 		}
 		gfs2_leaf_in(&leaf, bh_leaf); /* buffer to structure */
@@ -1833,7 +1835,7 @@ static void update_inode_file(struct gfs2_sbd *sdp)
 	if (count != sizeof(uint64_t))
 		die("update_inode_file\n");
 	
-	log_debug("\nNext Inum: %"PRIu64"\n", sdp->md.next_inum);
+	log_debug("\nNext Inum: %llu\n", (unsigned long long)sdp->md.next_inum);
 }/* update_inode_file */
 
 /* ------------------------------------------------------------------------- */
@@ -2102,8 +2104,9 @@ int main(int argc, char **argv)
 	/* ---------------------------------------------- */
 	if (!error) {
 		error = fix_directory_info(&sb2, (osi_list_t *)&dirs_to_fix);
-		log_notice("\r%" PRIu64 " directories, %" PRIu64 " dirents fixed.",
-				   dirs_fixed, dirents_fixed);
+		log_notice("\r%llu directories, %llu dirents fixed.",
+			   (unsigned long long)dirs_fixed,
+			   (unsigned long long)dirents_fixed);
 		fflush(stdout);
 		if (error)
 			log_crit("\n%s: Error fixing directories.\n", device);
@@ -2113,8 +2116,8 @@ int main(int argc, char **argv)
 	/* ---------------------------------------------- */
 	if (!error) {
 		error = fix_cdpn_symlinks(&sb2, (osi_list_t *)&cdpns_to_fix);
-		log_notice("\r%" PRIu64 " cdpn symlinks moved to empty directories.",
-			   cdpns_fixed);
+		log_notice("\r%llu cdpn symlinks moved to empty directories.",
+			   (unsigned long long)cdpns_fixed);
 		fflush(stdout);
 		if (error)
 			log_crit("\n%s: Error fixing cdpn symlinks.\n", device);

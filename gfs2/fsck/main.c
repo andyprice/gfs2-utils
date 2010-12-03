@@ -56,7 +56,7 @@ static void version(void)
 {
 	printf( _("GFS2 fsck %s (built %s %s)\n"),
 	       VERSION, __DATE__, __TIME__);
-	printf( _(REDHAT_COPYRIGHT "\n"));
+	printf(REDHAT_COPYRIGHT "\n");
 }
 
 static int read_cmdline(int argc, char **argv, struct gfs2_options *gopts)
@@ -102,8 +102,7 @@ static int read_cmdline(int argc, char **argv, struct gfs2_options *gopts)
 			fprintf(stderr, _("Please use '-h' for usage.\n"));
 			return FSCK_USAGE;
 		default:
-			fprintf(stderr, _("Bad programmer! You forgot to catch"
-				" the %c flag\n"), c);
+			fprintf(stderr, _("Unknown option %c\n"), c);
 			return FSCK_USAGE;
 
 		}
@@ -129,8 +128,9 @@ static void interrupt(int sig)
 	if (!last_reported_block || last_reported_block == last_fs_block)
 		sprintf(progress, _("progress unknown.\n"));
 	else
-		sprintf(progress, _("processing block %" PRIu64 " out of %"
-			PRIu64 "\n"), last_reported_block, last_fs_block);
+		sprintf(progress, _("processing block %llu out of %llu\n"),
+			(unsigned long long)last_reported_block,
+			(unsigned long long)last_fs_block);
 	
 	response = generic_interrupt("gfs2_fsck", pass, progress,
 				     _("Do you want to abort gfs2_fsck, skip " \
@@ -356,7 +356,7 @@ int main(int argc, char **argv)
 		log_notice( _("Writing changes to disk\n"));
 	fsync(sbp->device_fd);
 	destroy(sbp);
-	log_notice( _("gfs2_fsck complete    \n"));
+	log_notice( _("gfs2_fsck complete\n"));
 
 	if (!error) {
 		if (!errors_found)

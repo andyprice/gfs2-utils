@@ -164,8 +164,9 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	first_data_block = rmin;
 
 	if(fsck_lseek(sdp->device_fd, (last_fs_block * sdp->sd_sb.sb_bsize))){
-		log_crit( _("Can't seek to last block in file system: %"
-				 PRIu64" (0x%" PRIx64 ")\n"), last_fs_block, last_fs_block);
+		log_crit( _("Can't seek to last block in file system: %llu"
+			 " (0x%llx)\n"), (unsigned long long)last_fs_block,
+			 (unsigned long long)last_fs_block);
 		goto fail;
 	}
 
@@ -173,8 +174,9 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	error = read(sdp->device_fd, buf, sdp->sd_sb.sb_bsize);
 	if (error != sdp->sd_sb.sb_bsize){
 		log_crit( _("Can't read last block in file system (error %u), "
-				 "last_fs_block: %"PRIu64" (0x%" PRIx64 ")\n"), error,
-				 last_fs_block, last_fs_block);
+			 "last_fs_block: %llu (0x%llx)\n"), error,
+			 (unsigned long long)last_fs_block,
+			 (unsigned long long)last_fs_block);
 		goto fail;
 	}
 
@@ -521,7 +523,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 
 	bl = gfs2_bmap_create(sdp, last_fs_block+1, &addl_mem_needed);
 	if (!bl) {
-		log_crit( _("This system doesn't have enough memory + swap space to fsck this file system.\n"));
+		log_crit( _("This system doesn't have enough memory and swap space to fsck this file system.\n"));
 		log_crit( _("Additional memory needed is approximately: %lluMB\n"),
 			 (unsigned long long)(addl_mem_needed / 1048576ULL));
 		log_crit( _("Please increase your swap space by that amount and run gfs2_fsck again.\n"));
@@ -1006,7 +1008,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 
 	if(sizeof(struct gfs2_sb) > sdp->sd_sb.sb_bsize){
 		log_crit( _("GFS superblock is larger than the blocksize!\n"));
-		log_debug( _("sizeof(struct gfs2_sb) > sdp->sd_sb.sb_bsize\n"));
+		log_debug("sizeof(struct gfs2_sb) > sdp->sd_sb.sb_bsize\n");
 		return -1;
 	}
 

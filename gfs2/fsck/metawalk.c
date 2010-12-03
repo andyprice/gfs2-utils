@@ -37,7 +37,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
 
 	old_bitmap_state = gfs2_get_bitmap(sdp, blk, rgd);
 	if (old_bitmap_state < 0) {
-		log_err( _("Block %lld (0x%llx) is not represented in the"
+		log_err( _("Block %llu (0x%llx) is not represented in the "
 			   "system bitmap; part of an rgrp or superblock.\n"),
 			 (unsigned long long)blk, (unsigned long long)blk);
 		return -1;
@@ -320,8 +320,9 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	else if (type == DIR_EXHASH) {
 		dent = (struct gfs2_dirent *)(bh->b_data + sizeof(struct gfs2_leaf));
 		leaf = (struct gfs2_leaf *)bh->b_data;
-		log_debug( _("Checking leaf %" PRIu64 " (0x%" PRIx64 ")\n"),
-				  bh->b_blocknr, bh->b_blocknr);
+		log_debug( _("Checking leaf %llu (0x%llu)\n"),
+			  (unsigned long long)bh->b_blocknr,
+			  (unsigned long long)bh->b_blocknr);
 	}
 	else {
 		log_err( _("Invalid directory type %d specified\n"), type);
@@ -700,7 +701,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			 * values and replace them with the correct value. */
 
 			if (leaf.lf_dirent_format == (GFS2_FORMAT_DE << 16)) {
-				log_debug( _("incorrect lf_dirent_format at leaf #%" PRIu64 "\n"), leaf_no);
+				log_debug( _("incorrect lf_dirent_format at leaf #%llu\n"), (unsigned long long)leaf_no);
 				leaf.lf_dirent_format = GFS2_FORMAT_DE;
 				gfs2_leaf_out(&leaf, lbh);
 				log_debug( _("Fixing lf_dirent_format.\n"));
@@ -875,8 +876,9 @@ static int check_leaf_eattr(struct gfs2_inode *ip, uint64_t block,
 	struct gfs2_buffer_head *bh = NULL;
 	int error = 0;
 
-	log_debug( _("Checking EA leaf block #%"PRIu64" (0x%" PRIx64 ").\n"),
-			  block, block);
+	log_debug( _("Checking EA leaf block #%llu (0x%llx).\n"),
+		  (unsigned long long)block,
+		  (unsigned long long)block);
 
 	if(pass->check_eattr_leaf) {
 		error = pass->check_eattr_leaf(ip, block, parent, &bh,
@@ -975,8 +977,9 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 	int first_ea_is_bad = 0;
 	uint64_t di_eattr_save = ip->i_di.di_eattr;
 
-	log_debug( _("Checking EA indirect block #%"PRIu64" (0x%" PRIx64 ").\n"),
-			  indirect, indirect);
+	log_debug( _("Checking EA indirect block #%llu (0x%llx).\n"),
+		  (unsigned long long)indirect,
+		  (unsigned long long)indirect);
 
 	if (!pass->check_eattr_indir)
 		return 0;
@@ -1182,9 +1185,9 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 				if(err > 0) {
 					if (!error)
 						error = err;
-					log_debug( _("Skipping block %" PRIu64
-						     " (0x%" PRIx64 ")\n"),
-						   block, block);
+					log_debug( _("Skipping block %llu (0x%llx)\n"),
+						   (unsigned long long)block,
+						   (unsigned long long)block);
 					continue;
 				}
 				if (gfs2_check_range(ip->i_sbd, block)) {
@@ -1430,8 +1433,10 @@ int remove_dentry_from_dir(struct gfs2_sbd *sbp, uint64_t dir,
 	uint8_t q;
 	int error;
 
-	log_debug( _("Removing dentry %" PRIu64 " (0x%" PRIx64 ") from directory %"
-			  PRIu64" (0x%" PRIx64 ")\n"), dentryblock, dentryblock, dir, dir);
+	log_debug( _("Removing dentry %llu (0x%llx) from directory %llu"
+		     " (0x%llx)\n"), (unsigned long long)dentryblock,
+		  (unsigned long long)dentryblock,
+		  (unsigned long long)dir, (unsigned long long)dir);
 	if(gfs2_check_range(sbp, dir)) {
 		log_err( _("Parent directory out of range\n"));
 		return 1;

@@ -59,8 +59,9 @@ static int scan_inode_list(struct gfs2_sbd *sbp) {
 			exit(FSCK_ERROR);
 		}
 		if(ii->counted_links == 0) {
-			log_err( _("Found unlinked inode at %" PRIu64 " (0x%" PRIx64 ")\n"),
-					ii->inode, ii->inode);
+			log_err( _("Found unlinked inode at %llu (0x%llx)\n"),
+				(unsigned long long)ii->inode,
+				(unsigned long long)ii->inode);
 			q = block_type(ii->inode);
 			if(q == gfs2_bad_block) {
 				log_err( _("Unlinked inode %llu (0x%llx) contains"
@@ -142,29 +143,35 @@ static int scan_inode_list(struct gfs2_sbd *sbp) {
 			fsck_inode_put(&ip);
 		} /* if(ii->counted_links == 0) */
 		else if(ii->link_count != ii->counted_links) {
-			log_err( _("Link count inconsistent for inode %" PRIu64
-					" (0x%" PRIx64 ") has %u but fsck found %u.\n"), ii->inode, 
-					ii->inode, ii->link_count, ii->counted_links);
+			log_err( _("Link count inconsistent for inode %llu"
+				" (0x%llx) has %u but fsck found %u.\n"),
+				(unsigned long long)ii->inode, 
+				(unsigned long long)ii->inode, ii->link_count,
+				ii->counted_links);
 			/* Read in the inode, adjust the link count,
 			 * and write it back out */
-			if(query( _("Update link count for inode %" PRIu64
-				    " (0x%" PRIx64 ") ? (y/n) "),
-				  ii->inode, ii->inode)) {
+			if(query( _("Update link count for inode %llu"
+				    " (0x%llx) ? (y/n) "),
+				  (unsigned long long)ii->inode,
+				  (unsigned long long)ii->inode)) {
 				ip = fsck_load_inode(sbp, ii->inode); /* bread, inode_get */
 				fix_link_count(ii, ip);
 				ii->link_count = ii->counted_links;
 				fsck_inode_put(&ip); /* out, brelse, free */
 				log_warn( _("Link count updated to %d for "
-					    "inode %" PRIu64 " (0x%"
-					    PRIx64 ") \n"), ii->link_count,
-					  ii->inode, ii->inode);
+					    "inode %llu (0x%llx)\n"),
+					ii->link_count,
+					(unsigned long long)ii->inode,
+					(unsigned long long)ii->inode);
 			} else {
-				log_err( _("Link count for inode %" PRIu64 " (0x%" PRIx64
-						") still incorrect\n"), ii->inode, ii->inode);
+				log_err( _("Link count for inode %llu (0x%llx) still incorrect\n"),
+					(unsigned long long)ii->inode,
+					(unsigned long long)ii->inode);
 			}
 		}
-		log_debug( _("block %" PRIu64 " (0x%" PRIx64 ") has link count %d\n"),
-				  ii->inode, ii->inode, ii->link_count);
+		log_debug( _("block %llu (0x%llx) has link count %d\n"),
+			 (unsigned long long)ii->inode,
+			 (unsigned long long)ii->inode, ii->link_count);
 	} /* osi_list_foreach(tmp, list) */
 
 	if (lf_addition) {

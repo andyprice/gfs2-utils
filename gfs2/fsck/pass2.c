@@ -27,21 +27,25 @@ static int set_parent_dir(struct gfs2_sbd *sbp, uint64_t childblock,
 
 	di = dirtree_find(childblock);
 	if(!di) {
-		log_err( _("Unable to find block %"PRIu64" (0x%" PRIx64
-			   ") in dir_info list\n"), childblock, childblock);
+		log_err( _("Unable to find block %llu (0x%llx"
+			   ") in dir_info list\n"),
+			(unsigned long long)childblock,
+			(unsigned long long)childblock);
 		return -1;
 	}
 
 	if(di->dinode == childblock) {
 		if (di->treewalk_parent) {
-			log_err( _("Another directory at block %" PRIu64
-				   " (0x%" PRIx64 ") already contains this "
-				   "child %lld (%llx) - checking parent %"
-				   PRIu64 " (0x%" PRIx64 ")\n"),
-				 di->treewalk_parent, di->treewalk_parent,
+			log_err( _("Another directory at block %llu"
+				   " (0x%llx) already contains this "
+				   "child %llu (%llx) - checking parent %llu"
+				   " (0x%llx)\n"),
+				 (unsigned long long)di->treewalk_parent,
+				 (unsigned long long)di->treewalk_parent,
 				 (unsigned long long)childblock,
 				 (unsigned long long)childblock,
-				 parentblock, parentblock);
+				 (unsigned long long)parentblock,
+				 (unsigned long long)parentblock);
 			return 1;
 		}
 		log_debug( _("Child %lld (0x%llx) has parent %lld (0x%llx)\n"),
@@ -70,16 +74,21 @@ static int set_dotdot_dir(struct gfs2_sbd *sbp, uint64_t childblock,
 			   != di->dinode) {
 				/* This should never happen */
 				log_crit( _("Dotdot parent already set for"
-						 " block %"PRIu64" (0x%" PRIx64 ") -> %" PRIu64
-						 " (0x%" PRIx64 ")\n"), childblock, childblock,
-						 di->dotdot_parent, di->dotdot_parent);
+					    " block %llu (0x%llx) -> %llu"
+					    " (0x%llx)\n"),
+					 (unsigned long long)childblock,
+					 (unsigned long long)childblock,
+					 (unsigned long long)di->dotdot_parent,
+					 (unsigned long long)di->dotdot_parent);
 				return -1;
 			}
 			di->dotdot_parent = parentblock;
 		}
 	} else {
-		log_err( _("Unable to find block %"PRIu64" (0x%" PRIx64
-				") in dir_info list\n"), childblock, childblock);
+		log_err( _("Unable to find block %llu (0x%llx"
+			   ") in dir_info list\n"),
+			(unsigned long long)childblock,
+			(unsigned long long)childblock);
 		return -1;
 	}
 
@@ -478,8 +487,10 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	/*log_debug( _("Found plain directory dentry\n"));*/
 	error = set_parent_dir(sbp, entryblock, ip->i_di.di_num.no_addr);
 	if(error > 0) {
-		log_err( _("%s: Hard link to block %" PRIu64" (0x%" PRIx64
-			   ") detected.\n"), tmp_name, entryblock, entryblock);
+		log_err( _("%s: Hard link to block %llu (0x%llx"
+			   ") detected.\n"), tmp_name,
+			(unsigned long long)entryblock,
+			(unsigned long long)entryblock);
 
 		if(query( _("Clear hard link to directory? (y/n) ")))
 			goto nuke_dentry;
@@ -684,8 +695,8 @@ int pass2(struct gfs2_sbd *sbp)
 		if(q != gfs2_inode_dir)
 			continue;
 
-		log_debug( _("Checking directory inode at block %"PRIu64" (0x%"
-				  PRIx64 ")\n"), dirblk, dirblk);
+		log_debug( _("Checking directory inode at block %llu (0x%llx)\n"),
+			  (unsigned long long)dirblk, (unsigned long long)dirblk);
 
 		memset(&ds, 0, sizeof(ds));
 		pass2_fxns.private = (void *) &ds;
@@ -714,10 +725,12 @@ int pass2(struct gfs2_sbd *sbp)
 				return FSCK_ERROR;
 			}
 			if(query( _("Remove directory entry for bad"
-				    " inode %"PRIu64" (0x%" PRIx64 ") in %"PRIu64
-				    " (0x%" PRIx64 ")? (y/n)"), dirblk,
-				  dirblk, di->treewalk_parent,
-				  di->treewalk_parent)) {
+				    " inode %llu (0x%llx) in %llu"
+				    " (0x%llx)? (y/n)"),
+				  (unsigned long long)dirblk,
+				  (unsigned long long)dirblk,
+				  (unsigned long long)di->treewalk_parent,
+				  (unsigned long long)di->treewalk_parent)) {
 				error = remove_dentry_from_dir(sbp, di->treewalk_parent,
 							       dirblk);
 				if(error < 0) {
@@ -725,12 +738,13 @@ int pass2(struct gfs2_sbd *sbp)
 					return FSCK_ERROR;
 				}
 				if(error > 0) {
-					log_warn( _("Unable to find dentry for %"
-						    PRIu64 " (0x%" PRIx64 ") in %" PRIu64
-						    " (0x%" PRIx64 ")\n"),
-						  dirblk, dirblk,
-						  di->treewalk_parent,
-						  di->treewalk_parent);
+					log_warn( _("Unable to find dentry for %llu"
+						    " (0x%llx) in %llu"
+						    " (0x%llx)\n"),
+						  (unsigned long long)dirblk,
+						  (unsigned long long)dirblk,
+						  (unsigned long long)di->treewalk_parent,
+						  (unsigned long long)di->treewalk_parent);
 				}
 				log_warn( _("Directory entry removed\n"));
 			} else
@@ -747,8 +761,9 @@ int pass2(struct gfs2_sbd *sbp)
 		ip = fsck_load_inode(sbp, dirblk);
 		if(!ds.dotdir) {
 			log_err(_("No '.' entry found for directory inode at "
-				  "block %"PRIu64" (0x%" PRIx64 ")\n"),
-				dirblk, dirblk);
+				  "block %llu (0x%llx)\n"),
+				(unsigned long long)dirblk,
+				(unsigned long long)dirblk);
 
 			if (query( _("Is it okay to add '.' entry? (y/n) "))) {
 				uint64_t cur_blks;

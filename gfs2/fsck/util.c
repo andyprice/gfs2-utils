@@ -75,7 +75,8 @@ void warm_fuzzy_stuff(uint64_t block)
 			seconds = tv.tv_sec;
 			if (last_fs_block) {
 				percent = (block * 100) / last_fs_block;
-				log_notice( _("\r%" PRIu64 " percent complete.\r"), percent);
+				log_notice( _("\r%llu percent complete.\r"),
+					   (unsigned long long)percent);
 				fflush(stdout);
 			}
 		}

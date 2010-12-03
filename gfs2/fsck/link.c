@@ -16,8 +16,6 @@
 int set_link_count(uint64_t inode_no, uint32_t count)
 {
 	struct inode_info *ii;
-	/*log_debug( _("Setting link count to %u for %" PRIu64
-	  " (0x%" PRIx64 ")\n"), count, inode_no, inode_no);*/
 	/* If the list has entries, look for one that matches inode_no */
 	ii = inodetree_find(inode_no);
 	if (!ii)
@@ -40,17 +38,19 @@ int increment_link(uint64_t inode_no, uint64_t referenced_from,
 	if (ii) {
 		ii->counted_links++;
 		log_debug( _("Directory %lld (0x%llx) incremented counted "
-			     "links to %u for %"PRIu64" (0x%" PRIx64 ") "
-			     "via %s\n"),
+			     "links to %u for %llu (0x%llx) via %s\n"),
 			   (unsigned long long)referenced_from,
 			   (unsigned long long)referenced_from,
-			   ii->counted_links, inode_no, inode_no, why);
+			   ii->counted_links, (unsigned long long)inode_no,
+			   (unsigned long long)inode_no, why);
 		return 0;
 	}
-	log_debug( _("Ref: %lld (0x%llx) No match found when incrementing "
-		     "link for %" PRIu64 " (0x%" PRIx64 ")!\n"),
+	log_debug( _("Ref: %llu (0x%llx) No match found when incrementing "
+		     "link for %llu (0x%llx)!\n"),
 		   (unsigned long long)referenced_from,
-		   (unsigned long long)referenced_from, inode_no, inode_no);
+		   (unsigned long long)referenced_from,
+		   (unsigned long long)inode_no,
+		   (unsigned long long)inode_no);
 	/* If no match was found, add a new entry and set its
 	 * counted links to 1 */
 	ii = inodetree_insert(inode_no);
@@ -71,24 +71,26 @@ int decrement_link(uint64_t inode_no, uint64_t referenced_from,
 	 * inode_no */
 	if(ii) {
 		if (!ii->counted_links) {
-			log_debug( _("Directory %lld (0x%llx)'s link to "
-			     " %"PRIu64" (0x%" PRIx64 ") via %s is zero!\n"),
+			log_debug( _("Directory %llu (0x%llx)'s link to "
+			     " %llu (0x%llx) via %s is zero!\n"),
 			   (unsigned long long)referenced_from,
 			   (unsigned long long)referenced_from,
-			   inode_no, inode_no, why);
+			   (unsigned long long)inode_no,
+			   (unsigned long long)inode_no, why);
 			return 0;
 		}
 		ii->counted_links--;
-		log_debug( _("Directory %lld (0x%llx) decremented counted "
-			     "links to %u for %"PRIu64" (0x%" PRIx64 ") "
-			     "via %s\n"),
+		log_debug( _("Directory %llu (0x%llx) decremented counted "
+			     "links to %u for %llu (0x%llx) via %s\n"),
 			   (unsigned long long)referenced_from,
 			   (unsigned long long)referenced_from,
-			   ii->counted_links, inode_no, inode_no, why);
+			   ii->counted_links, (unsigned long long)inode_no,
+			   (unsigned long long)inode_no, why);
 		return 0;
 	}
-	log_debug( _("No match found when decrementing link for %" PRIu64
-			  " (0x%" PRIx64 ")!\n"), inode_no, inode_no);
+	log_debug( _("No match found when decrementing link for %llu"
+		     " (0x%llx)!\n"), (unsigned long long)inode_no,
+		  (unsigned long long)inode_no);
 	return -1;
 
 }

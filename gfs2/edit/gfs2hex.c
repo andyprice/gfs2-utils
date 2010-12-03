@@ -451,10 +451,10 @@ static void gfs2_inum_print2(const char *title,struct gfs2_inum *no)
 	}
 	else
 		printf("  %s:",title);
-	pv2(no, no_formal_ino, "%lld", "0x%"PRIx64);
+	pv2(no, no_formal_ino, "%llu", "0x%llx");
 	if (!termlines)
 		printf("        addr:");
-	pv2(no, no_addr, "%lld", "0x%"PRIx64);
+	pv2(no, no_addr, "%llu", "0x%llx");
 }
 
 /**

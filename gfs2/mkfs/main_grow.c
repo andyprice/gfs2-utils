@@ -74,7 +74,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 		case 'V':
 			printf("%s %s (built %s %s)\n", argv[0],
 			       VERSION, __DATE__, __TIME__);
-			printf( _(REDHAT_COPYRIGHT "\n"));
+			printf(REDHAT_COPYRIGHT "\n");
 			exit(0);
 		case 'h':
 			usage();
@@ -96,8 +96,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			fprintf(stderr, _("Please use '-h' for usage.\n"));
 			exit(EXIT_FAILURE);
 		default:
-			fprintf(stderr, _("Bad programmer! You forgot"
-				" to catch the %c flag\n"), opt);
+			fprintf(stderr, _("Unknown option %c\n"), opt);
 			exit(EXIT_FAILURE);
 			break;
 		}
@@ -197,7 +196,7 @@ static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 	writelen = rg * sizeof(struct gfs2_rindex);
 	buf = calloc(1, writelen);
 	if (buf == NULL) {
-		fprintf(stderr, _("Out of memory in %s\n"), __FUNCTION__);
+		perror(__FUNCTION__);
 		exit(-1);
 	}
 	/* Now add the new rg entries to the rg index.  Here we     */
@@ -260,13 +259,14 @@ static void print_info(struct gfs2_sbd *sdp)
 {
 	log_notice("FS: Mount Point: %s\n", sdp->path_name);
 	log_notice("FS: Device:      %s\n", sdp->device_name);
-	log_notice("FS: Size:        %" PRIu64 " (0x%" PRIx64 ")\n",
-		   fssize, fssize);
+	log_notice("FS: Size:        %llu (0x%llx)\n",
+		   (unsigned long long)fssize, (unsigned long long)fssize);
 	log_notice("FS: RG size:     %u (0x%x)\n", rgsize, rgsize);
-	log_notice("DEV: Size:       %"PRIu64" (0x%" PRIx64")\n",
-		   sdp->device.length, sdp->device.length);
-	log_notice("The file system grew by %" PRIu64 "MB.\n",
-		   fsgrowth / MB);
+	log_notice("DEV: Size:       %llu (0x%llx)\n",
+		   (unsigned long long)sdp->device.length,
+		   (unsigned long long)sdp->device.length);
+	log_notice("The file system grew by %lluMB.\n",
+		   (unsigned long long)fsgrowth / MB);
 }
 
 /**
@@ -330,8 +330,8 @@ main_grow(int argc, char *argv[])
 			die( _("gfs: Error reading superblock.\n"));
 
 		if (fix_device_geometry(sdp)) {
-			fprintf(stderr, _("Device is too small (%"PRIu64" bytes)\n"),
-				sdp->device.length << GFS2_BASIC_BLOCK_SHIFT);
+			fprintf(stderr, _("Device is too small (%llu bytes)\n"),
+				(unsigned long long)sdp->device.length << GFS2_BASIC_BLOCK_SHIFT);
 			exit(-1);
 		}
 
@@ -363,8 +363,8 @@ main_grow(int argc, char *argv[])
 		if (fsgrowth < rgsize * sdp->bsize) {
 			log_err( _("Error: The device has grown by less than "
 				"one Resource Group (RG).\n"));
-			log_err( _("The device grew by %" PRIu64 "MB.  "),
-				fsgrowth / MB);
+			log_err( _("The device grew by %lluMB. "),
+				(unsigned long long)fsgrowth / MB);
 			log_err( _("One RG is %uMB for this file system.\n"),
 				(rgsize * sdp->bsize) / MB);
 		}

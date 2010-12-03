@@ -98,32 +98,36 @@ static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int b
 						(unsigned long long)block,
 						(unsigned long long)block);
 			} else {
-				log_info( _("Unlinked block found at block %"
-					    PRIu64" (0x%" PRIx64 "), left "
-					    "unchanged.\n"), block, block);
+				log_info( _("Unlinked block found at block %llu"
+					    " (0x%llx), left unchanged.\n"),
+					(unsigned long long)block,
+					(unsigned long long)block);
 			}
 		} else if (rg_status != block_status) {
 			const char *blockstatus[] = {"Free", "Data",
 						     "Unlinked", "inode"};
 
 			log_err( _("Ondisk and fsck bitmaps differ at"
-					" block %"PRIu64" (0x%" PRIx64 ") \n"), block, block);
+					" block %llu (0x%llx) \n"),
+				(unsigned long long)block,
+				(unsigned long long)block);
 			log_err( _("Ondisk status is %u (%s) but FSCK thinks it should be "),
 					rg_status, blockstatus[rg_status]);
 			log_err("%u (%s)\n", block_status, blockstatus[block_status]);
 			log_err( _("Metadata type is %u (%s)\n"), q,
 					block_type_string(q));
 
-			if(query(_("Fix bitmap for block %" PRIu64
-				   " (0x%" PRIx64 ") ? (y/n) "),
-				 block, block)) {
+			if(query(_("Fix bitmap for block %llu (0x%llx) ? (y/n) "),
+				 (unsigned long long)block,
+				 (unsigned long long)block)) {
 				if(gfs2_set_bitmap(sbp, block, block_status))
 					log_err( _("Failed.\n"));
 				else
 					log_err( _("Succeeded.\n"));
 			} else
-				log_err( _("Bitmap at block %"PRIu64" (0x%" PRIx64
-						") left inconsistent\n"), block, block);
+				log_err( _("Bitmap at block %llu (0x%llx) left inconsistent\n"),
+					(unsigned long long)block,
+					(unsigned long long)block);
 		}
 		(*rg_block)++;
 		bit += GFS2_BIT_SIZE;
@@ -204,7 +208,7 @@ int pass5(struct gfs2_sbd *sbp)
 	for(tmp = sbp->rglist.next; tmp != &sbp->rglist; tmp = tmp->next){
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
-		log_info( _("Verifying Resource Group #%" PRIu64 "\n"), rg_count);
+		log_info( _("Verifying Resource Group #%llu\n"), (unsigned long long)rg_count);
 		memset(count, 0, sizeof(count));
 		rgp = osi_list_entry(tmp, struct rgrp_list, list);
 

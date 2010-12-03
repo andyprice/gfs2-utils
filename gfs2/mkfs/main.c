@@ -48,7 +48,7 @@ main(int argc, char *argv[])
 	else if (!strcmp(whoami, "gfs2_grow"))
 		main_grow(argc, argv);
 	else
-		die( _("I don't know who I am!\n"));
+		die( _("Unknown mode\n"));
 
 	free(p);
 
