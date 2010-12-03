@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <ctype.h>
-#include <libintl.h>
 #include <sys/select.h>
 #include <signal.h>
 #include <string.h>
@@ -11,8 +10,6 @@
 #include <unistd.h>
 
 #include "libgfs2.h"
-
-#define _(String) gettext(String)
 
 int print_level = MSG_NOTICE;
 
@@ -55,11 +52,8 @@ void print_fsck_log(int priority, const char *file, int line,
 		    const char *format, ...)
 {
 	va_list args;
-	const char *transform;
-
 	va_start(args, format);
-	transform = _(format);
-	print_msg(priority, file, line, transform, args);
+	print_msg(priority, file, line, format, args);
 	va_end(args);
 }
 
@@ -142,7 +136,6 @@ int gfs2_query(int *setonabort, struct gfs2_options *opts,
 	       const char *format, ...)
 {
 	va_list args;
-	const char *transform;
 	char response;
 	int ret = 0;
 
@@ -155,8 +148,7 @@ int gfs2_query(int *setonabort, struct gfs2_options *opts,
 	opts->query = TRUE;
 	while (1) {
 		va_start(args, format);
-		transform = _(format);
-		vprintf(transform, args);
+		vprintf(format, args);
 		va_end(args);
 
 		/* Make sure query is printed out */
