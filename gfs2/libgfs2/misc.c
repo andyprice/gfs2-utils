@@ -284,20 +284,6 @@ char *get_sysfs(const char *fsname, const char *filename)
 	return sysfs_buf;
 }
 
-int get_sysfs_uint(const char *fsname, const char *filename, unsigned int *val)
-{
-	char *s = __get_sysfs(fsname, filename);
-	int ret;
-	if (!s)
-		return -1;
-	ret = sscanf(s, "%u", val);
-	if (1 != ret) {
-		errno = ENOMSG;
-		return -1;
-	}
-	return 0;
-}
-
 int set_sysfs(const char *fsname, const char *filename, const char *val)
 {
 	char path[PATH_MAX];
