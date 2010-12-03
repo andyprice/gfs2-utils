@@ -604,10 +604,6 @@ extern void print_fsck_log(int priority, const char *file, int line,
 extern char generic_interrupt(const char *caller, const char *where,
 			      const char *progress, const char *question,
 			      const char *answers);
-extern int gfs2_query(int *setonabort, struct gfs2_options *opts,
-		      const char *format, ...)
-	__attribute__((format(printf,3,4)));
-
 /* misc.c */
 
 extern int compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,

@@ -2048,6 +2048,59 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 	inode_put(&oq_ip);
 }
 
+static int gfs2_query(int *setonabort, struct gfs2_options *opts,
+		      const char *format, ...)
+{
+	va_list args;
+	char response;
+	int ret = 0;
+
+	*setonabort = 0;
+	if(opts->yes)
+		return 1;
+	if(opts->no)
+		return 0;
+
+	opts->query = TRUE;
+	while (1) {
+		va_start(args, format);
+		vprintf(format, args);
+		va_end(args);
+
+		/* Make sure query is printed out */
+		fflush(NULL);
+		response = gfs2_getch();
+
+		printf("\n");
+		fflush(NULL);
+		if (response == 0x3) { /* if interrupted, by ctrl-c */
+			response = generic_interrupt("Question", "response",
+						     NULL,
+						     "Do you want to abort " \
+						     "or continue (a/c)?",
+						     "ac");
+			if (response == 'a') {
+				ret = 0;
+				*setonabort = 1;
+				break;
+			}
+			printf("Continuing.\n");
+		} else if(tolower(response) == 'y') {
+			ret = 1;
+			break;
+		} else if (tolower(response) == 'n') {
+			ret = 0;
+			break;
+		} else {
+			printf("Bad response %d, please type 'y' or 'n'.\n",
+			       response);
+		}
+	}
+
+	opts->query = FALSE;
+	return ret;
+}
+
 /* ------------------------------------------------------------------------- */
 /* main - mainline code                                                      */
 /* ------------------------------------------------------------------------- */
