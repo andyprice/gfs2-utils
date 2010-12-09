@@ -39,6 +39,11 @@ The number of journals for gfs2_mkfs to create.  You need at least one
 journal per machine that will mount the filesystem.  If this option is
 not specified, one journal will be created.
 .TP
+\fB-K\fP
+Keep, do not attempt to discard blocks at mkfs time (discarding blocks
+initially is useful on solid state devices and  sparse  /  thin-provisioned
+storage).
+.TP
 \fB-O\fP
 This option prevents gfs2_mkfs from asking for confirmation before writing
 the filesystem.

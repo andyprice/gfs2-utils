@@ -18,12 +18,15 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <libintl.h>
+#include <sys/ioctl.h>
 
 #define _(String) gettext(String)
 
 #include <linux/types.h>
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
+
+int discard = 1;
 
 /**
  * This function is for libgfs2's sake.
@@ -55,6 +58,7 @@ print_usage(const char *prog_name)
 		"  -h               Print this help, then exit\n"
 		"  -J <MB>          Size of journals\n"
 		"  -j <num>         Number of journals\n"
+		"  -K               Don't try to discard unused blocks\n"
 		"  -O               Don't ask for confirmation\n"
 		"  -p <name>        Name of the locking protocol\n"
 		"  -q               Don't print anything\n"
@@ -62,6 +66,30 @@ print_usage(const char *prog_name)
 		"  -t <name>        Name of the lock table\n"
 		"  -u <MB>          Size of unlinked file\n"
 		"  -V               Print program version information, then exit\n"), prog_name);
+}
+
+#ifndef BLKDISCARD
+#define BLKDISCARD      _IO(0x12,119)
+#endif
+
+static int discard_blocks(struct gfs2_sbd *sdp)
+{
+        __uint64_t range[2];
+
+	range[0] = 0;
+	range[1] = sdp->device.length * sdp->bsize;
+	if (sdp->debug)
+		printf("Issuing discard ioctl: range: %llu - %llu...",
+		       (unsigned long long)range[0],
+		       (unsigned long long)range[1]);
+	if (ioctl(sdp->device_fd, BLKDISCARD, &range) < 0) {
+		if (sdp->debug)
+			printf("error = %d\n", errno);
+		return errno;
+	}
+	if (sdp->debug)
+		printf("Successful.\n");
+        return 0;
 }
 
 /**
@@ -108,6 +136,10 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 
 		case 'j':
 			sdp->md.journals = atoi(optarg);
+			break;
+
+		case 'K':
+			discard = 0;
 			break;
 
 		case 'O':
@@ -619,6 +651,9 @@ void main_mkfs(int argc, char *argv[])
 			(unsigned long long)sdp->device.length << GFS2_BASIC_BLOCK_SHIFT);
 		exit(-1);
 	}
+
+	if (discard)
+		discard_blocks(sdp);
 
 	/* Compute the resource group layouts */
 

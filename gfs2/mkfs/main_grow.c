@@ -36,6 +36,19 @@ static unsigned int rgsize = 0;
 extern int create_new_inode(struct gfs2_sbd *sdp);
 extern int rename2system(struct gfs2_sbd *sdp, char *new_dir, char *new_name);
 
+#ifndef BLKDISCARD
+#define BLKDISCARD      _IO(0x12,119)
+#endif
+
+static int discard_blocks(int fd, uint64_t start, uint64_t len)
+{
+	__uint64_t range[2] = { start, len };
+
+	if (ioctl(fd, BLKDISCARD, &range) < 0)
+		return errno;
+	return 0;
+}
+
 /**
  * usage - Print out the usage message
  *
@@ -158,6 +171,7 @@ static void initialize_new_portion(struct gfs2_sbd *sdp, int *old_rg_count)
 {
 	uint64_t rgrp = 0;
 	osi_list_t *head = &sdp->rglist;
+	struct rgrp_list *rl;
 
 	*old_rg_count = 0;
 	/* Delete the old RGs from the rglist */
@@ -166,6 +180,10 @@ static void initialize_new_portion(struct gfs2_sbd *sdp, int *old_rg_count)
 		(*old_rg_count)++;
 		osi_list_del(head->next);
 	}
+	/* Issue a discard ioctl for the new portion */
+	rl = osi_list_entry(&sdp->rglist.next, struct rgrp_list, list);
+	discard_blocks(sdp->device_fd, rl->start * sdp->bsize,
+		       (sdp->device.length - rl->start) * sdp->bsize);
 	/* Build the remaining resource groups */
 	build_rgrps(sdp, !test);
 
