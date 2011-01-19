@@ -27,21 +27,42 @@
 static uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgsize_specified)
 {
 	uint64_t nrgrp;
+	uint32_t rgblocks1, rgblocksn, bitblocks1, bitblocksn;
+	int bitmap_overflow = 0;
 
 	while (TRUE) {
 		nrgrp = DIV_RU(dev->length, (sdp->rgsize << 20) / sdp->bsize);
 
-		if (rgsize_specified || /* If user specified an rg size or */
-			nrgrp <= GFS2_EXCESSIVE_RGS || /* not an excessive # of rgs or  */
-			sdp->rgsize >= 2048)     /* we've reached the max rg size */
+		/* check to see if the rg length overflows max # bitblks */
+		rgblocksn = dev->length / nrgrp;
+		rgblocks2bitblocks(sdp->bsize, &rgblocksn, &bitblocksn);
+		/* calculate size of the first rgrp */
+		rgblocks1 = dev->length - (nrgrp - 1) * (dev->length / nrgrp);
+		rgblocks2bitblocks(sdp->bsize, &rgblocks1, &bitblocks1);
+		if (bitblocks1 > 2149 || bitblocksn > 2149) {
+			bitmap_overflow = 1;
+			if (sdp->rgsize <= GFS2_DEFAULT_RGSIZE) {
+				fprintf(stderr, "error: It is not possible "
+					"to use the entire device with "
+					"block size %u bytes.\n",
+					sdp->bsize);
+				exit(-1);
+			}
+			sdp->rgsize -= GFS2_DEFAULT_RGSIZE; /* smaller rgs */
+			continue;
+		}
+		if (bitmap_overflow ||
+		    rgsize_specified || /* If user specified an rg size or */
+		    nrgrp <= GFS2_EXCESSIVE_RGS || /* not an excessive # or  */
+		    sdp->rgsize >= 2048)   /* we reached the max rg size */
 			break;
 
-		sdp->rgsize += GFS2_DEFAULT_RGSIZE; /* Try again w/bigger rgs */
+		sdp->rgsize += GFS2_DEFAULT_RGSIZE; /* bigger rgs */
 	}
 
 	if (sdp->debug)
-		printf("  rg sz = %"PRIu32"\n  nrgrp = %"PRIu64"\n", sdp->rgsize,
-			   nrgrp);
+		printf("  rg sz = %"PRIu32"\n  nrgrp = %"PRIu64"\n",
+		       sdp->rgsize, nrgrp);
 
 	return nrgrp;
 }
@@ -212,7 +233,11 @@ void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 		rl->rg.rg_header.mh_format = GFS2_FORMAT_RG;
 		rl->rg.rg_free = rgblocks;
 
-		gfs2_compute_bitstructs(sdp, rl);
+		if (gfs2_compute_bitstructs(sdp, rl)) {
+			fprintf(stderr, "%s: Unable to build resource groups "
+				"with these characteristics.\n", __FUNCTION__);
+			exit(-1);
+		}
 
 		if (do_write) {
 			for (x = 0; x < bitblocks; x++) {
