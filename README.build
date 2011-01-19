@@ -15,10 +15,11 @@ Plus the following libraries:
    - liblogthread
    - libfenced
  - pthread (for gfs_controld)
- - corosynlib (for gfs_controld)
+ - corosynclib (for gfs_controld)
   - libquorum
   - libcpg
   - libcfg
+ - openaislib
 
 Run the following commands:
 
