@@ -1296,11 +1296,21 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 	/*******************************************************************
 	 *******  Check the system inode integrity             *************
 	 *******************************************************************/
+	/* Mark the master system dinode as a "dinode" in the block map.
+	   All other system dinodes in master will be taken care of by function
+	   resuscitate_metalist.  But master won't since it has no parent.*/
+	fsck_blockmap_set(sdp->master_dir,
+			  sdp->master_dir->i_di.di_num.no_addr,
+			  "master", gfs2_inode_dir);
 	if (check_system_inode(sdp, &sdp->master_dir, "master", build_master,
 			       gfs2_inode_dir)) {
 		stack;
 		return -1;
 	}
+	/* Mark the root dinode as a "dinode" in the block map as we did
+	   for master, since it has no parent. */
+	fsck_blockmap_set(sdp->md.rooti, sdp->md.rooti->i_di.di_num.no_addr,
+			  "root", gfs2_inode_dir);
 	if (check_system_inode(sdp, &sdp->md.rooti, "root", build_root,
 			       gfs2_inode_dir)) {
 		stack;
