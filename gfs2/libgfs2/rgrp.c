@@ -169,8 +169,9 @@ void gfs2_rgrp_relse(struct rgrp_list *rgd)
 	int x, length = rgd->ri.ri_length;
 
 	for (x = 0; x < length; x++) {
-		if (rgd->bh && rgd->bh[x]) {
-			brelse(rgd->bh[x]);
+		if (rgd->bh) {
+			if (rgd->bh[x])
+				brelse(rgd->bh[x]);
 			rgd->bh[x] = NULL;
 		}
 	}

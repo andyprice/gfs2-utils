@@ -232,6 +232,8 @@ int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
 
 	if (i >= rgd->ri.ri_length)
 		return -1;
+	if (!rgd->bh || !rgd->bh[i])
+		return 0;
 	byte = (unsigned char *)(rgd->bh[i]->b_data + bits->bi_offset) +
 		(rgrp_block/GFS2_NBBY - bits->bi_start);
 	bit = (rgrp_block % GFS2_NBBY) * GFS2_BIT_SIZE;

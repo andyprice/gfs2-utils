@@ -1793,11 +1793,13 @@ static void read_superblock(int fd)
 	sbd.bsize = sbd.sd_sb.sb_bsize;
 	if (!sbd.bsize)
 		sbd.bsize = GFS2_DEFAULT_BSIZE;
-	if (compute_constants(&sbd)) {
-		fprintf(stderr, "Bad constants (1)\n");
-		exit(-1);
+	compute_constants(&sbd);
+	if (gfs1 || (sbd.sd_sb.sb_header.mh_magic == GFS2_MAGIC &&
+		     sbd.sd_sb.sb_header.mh_type == GFS2_METATYPE_SB))
+		block = 0x10 * (GFS2_DEFAULT_BSIZE / sbd.bsize);
+	else {
+		block = starting_blk = 0;
 	}
-	block = 0x10 * (GFS2_DEFAULT_BSIZE / sbd.bsize);
 	device_geometry(&sbd);
 	if (fix_device_geometry(&sbd)) {
 		fprintf(stderr, "Device is too small (%llu bytes)\n",
