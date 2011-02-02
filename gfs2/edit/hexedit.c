@@ -1061,17 +1061,10 @@ int display_block_type(int from_restore)
 	if (termlines) {
 		if (edit_row[dmode] == -1)
 			COLORS_NORMAL;
-		move(line,30);
 	}
-	else
-		print_gfs2(" ");
-	if (!from_restore) {
-		print_gfs2("of %llu (0x%llx)", max_block, max_block);
-		if (termlines)
-			move(line, 55);
-		else
-			printf(" ");
-	}
+	print_gfs2(" ");
+	if (!from_restore)
+		print_gfs2("of %llu (0x%llx) ", max_block, max_block);
 	if (block == RGLIST_DUMMY_BLOCK) {
 		ret_type = GFS2_METATYPE_RG;
 		struct_len = gfs1 ? sizeof(struct gfs_rgrp) : sizeof(struct gfs2_rgrp);
