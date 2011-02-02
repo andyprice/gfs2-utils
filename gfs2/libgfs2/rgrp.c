@@ -134,7 +134,15 @@ struct rgrp_list *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
 uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
 {
 	int x, length = rgd->ri.ri_length;
+	uint64_t max_rgrp_bitbytes, max_rgrp_len;
 
+	/* Max size of an rgrp is 2GB.  Figure out how many blocks that is: */
+	max_rgrp_bitbytes = ((2147483648 / sdp->bsize) / GFS2_NBBY);
+	max_rgrp_len = max_rgrp_bitbytes / sdp->bsize;
+	if (!length && length > max_rgrp_len)
+		return -1;
+	if (gfs2_check_range(sdp, rgd->ri.ri_addr))
+		return -1;
 	for (x = 0; x < length; x++){
 		rgd->bh[x] = bread(sdp, rgd->ri.ri_addr + x);
 		if(gfs2_check_meta(rgd->bh[x],
@@ -151,7 +159,8 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
 		}
 	}
 
-	gfs2_rgrp_in(&rgd->rg, rgd->bh[0]);
+	if (rgd->bh && rgd->bh[0])
+		gfs2_rgrp_in(&rgd->rg, rgd->bh[0]);
 	return 0;
 }
 
@@ -160,8 +169,10 @@ void gfs2_rgrp_relse(struct rgrp_list *rgd)
 	int x, length = rgd->ri.ri_length;
 
 	for (x = 0; x < length; x++) {
-		brelse(rgd->bh[x]);
-		rgd->bh[x] = NULL;
+		if (rgd->bh && rgd->bh[x]) {
+			brelse(rgd->bh[x]);
+			rgd->bh[x] = NULL;
+		}
 	}
 }
 

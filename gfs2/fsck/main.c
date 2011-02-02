@@ -336,7 +336,8 @@ int main(int argc, char **argv)
 		error = FSCK_CANCELED;
 	}
 
-	check_statfs(sbp);
+	if (!fsck_abort)
+		check_statfs(sbp);
 
 	/* Free up our system inodes */
 	inode_put(&sbp->md.inum);

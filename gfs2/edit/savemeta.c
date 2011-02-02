@@ -203,7 +203,7 @@ static int save_block(int fd, int out_fd, uint64_t blk)
 
 	if (blk > last_fs_block) {
 		fprintf(stderr, "\nWarning: bad block pointer '0x%llx' "
-			"ignored in block (block %llu (%llx))",
+			"ignored in block (block %llu (0x%llx))",
 			(unsigned long long)blk,
 			(unsigned long long)block, (unsigned long long)block);
 		return 0;
@@ -324,7 +324,9 @@ static void save_indirect_blocks(int out_fd, osi_list_t *cur_list,
 		if (height != hgt) { /* If not at max height */
 			nbh = bread(&sbd, indir_block);
 			osi_list_add_prev(&nbh->b_altlist, cur_list);
-			brelse(nbh);
+			/* The buffer_head needs to be queued ahead, so
+			   don't release it!
+			   brelse(nbh);*/
 		}
 	} /* for all data on the indirect block */
 }
@@ -370,8 +372,8 @@ static void save_inode_data(int out_fd)
 	    (S_ISDIR(inode->i_di.di_mode) ||
 	     (gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR)))
 		height++;
-	else if (height && !block_is_systemfile() &&
-		 !S_ISDIR(inode->i_di.di_mode))
+	else if (height && !(inode->i_di.di_flags & GFS2_DIF_SYSTEM) &&
+		 !block_is_systemfile() && !S_ISDIR(inode->i_di.di_mode))
 		height--;
 	osi_list_add(&metabh->b_altlist, &metalist[0]);
         for (i = 1; i <= height; i++){

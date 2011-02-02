@@ -413,6 +413,8 @@ extern int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state);
 /* fs_geometry.c */
 extern void rgblocks2bitblocks(unsigned int bsize, uint32_t *rgblocks,
 			       uint32_t *bitblocks);
+extern uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev,
+			       int rgsize_specified);
 extern void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified);
 extern void build_rgrps(struct gfs2_sbd *sdp, int write);
 

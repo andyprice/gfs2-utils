@@ -182,10 +182,8 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 			prev_rgd->length = prev_length;
 		}
 
-		if(gfs2_compute_bitstructs(sdp, rgd)) {
+		if(gfs2_compute_bitstructs(sdp, rgd))
 			*sane = 0;
-			return -1;
-		}
 
 		(*count1)++;
 		prev_rgd = rgd;

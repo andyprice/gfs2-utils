@@ -24,7 +24,7 @@
  * Returns: the number of RGs
  */
 
-static uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgsize_specified)
+uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgsize_specified)
 {
 	uint64_t nrgrp;
 	uint32_t rgblocks1, rgblocksn, bitblocks1, bitblocksn;
@@ -119,7 +119,8 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified)
 		nrgrp = rgrp + sdp->new_rgrps;
 	}
 
-	log_info("\nNew resource groups:\n");
+	if (rgrp < nrgrp)
+		log_info("\nNew resource groups:\n");
 	for (; rgrp < nrgrp; rgrp++) {
 		rl = calloc(1, sizeof(struct rgrp_list));
 		if (rl == NULL) {

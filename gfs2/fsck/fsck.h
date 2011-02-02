@@ -84,9 +84,12 @@ enum rgindex_trust_level { /* how far can we trust our RG index? */
 	open_minded = 2, /* At least 1 RG is corrupt. Try to calculate what it
 			    should be, in a perfect world where our RGs are all
 			    on even boundaries. Blue sky. Chirping birds. */
-	distrust = 3   /* The world isn't perfect, our RGs are not on nice neat
+	distrust = 3,  /* The world isn't perfect, our RGs are not on nice neat
 			  boundaries.  The fs must have been messed with by
 			  gfs2_grow or something.  Count the RGs by hand. */
+	indignation = 4 /* Not only do we have corruption, but the rgrps
+			   aren't on even boundaries, so this file system
+			   must have been converted from gfs2_convert. */
 };
 
 extern struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sbp, uint64_t block);

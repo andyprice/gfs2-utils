@@ -729,6 +729,10 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			if (pass->check_dentry && S_ISDIR(ip->i_di.di_mode)) {
 				error = check_entries(ip, lbh, DIR_EXHASH,
 						      &count, pass);
+
+				if (skip_this_pass || fsck_abort)
+					return 0;
+
 				if(error < 0) {
 					stack;
 					brelse(lbh);

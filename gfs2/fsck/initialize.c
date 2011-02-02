@@ -145,7 +145,8 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	{
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
 		ri = &rgd->ri;
-		if (ri->ri_data0 + ri->ri_data - 1 > rmax)
+		if (ri->ri_data0 + ri->ri_data &&
+		    ri->ri_data0 + ri->ri_data - 1 > rmax)
 			rmax = ri->ri_data0 + ri->ri_data - 1;
 		if (!rmin || ri->ri_data0 < rmin)
 			rmin = ri->ri_data0;
@@ -406,6 +407,20 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	int rgcount, sane = 1;
 	enum rgindex_trust_level trust_lvl;
 	uint64_t addl_mem_needed;
+	const char *level_desc[] = {
+		_("Checking if all rgrp and rindex values are good"),
+		_("Checking if rindex values are ascending and evenly spaced"),
+		_("Calculating where the rgrps should be if evenly spaced"),
+		_("Trying to rebuild rindex assuming evenly spaced rgrps"),
+		_("Trying to rebuild rindex assuming unevenly spaced rgrps"),
+	};
+	const char *fail_desc[] = {
+		_("Some damage was found; we need to take remedial measures"),
+		_("rindex is unevenly spaced: converted from gfs1 or corrupt"),
+		_("rindex calculations don't match: uneven rgrp boundaries"),
+		_("Too many rgrp misses: rgrps must be unevenly spaced"),
+		_("Too much damage found: we cannot rebuild this rindex"),
+	};
 
 	/*******************************************************************
 	 ******************  Initialize important inodes  ******************
@@ -446,18 +461,23 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	 ********  Validate and read in resource group information  ********
 	 *******************************************************************/
 	log_warn( _("Validating Resource Group index.\n"));
-	for (trust_lvl = blind_faith; trust_lvl <= distrust; trust_lvl++) {
-		log_warn( _("Level %d RG check.\n"), trust_lvl + 1);
+	for (trust_lvl = blind_faith; trust_lvl <= indignation; trust_lvl++) {
+		log_warn( _("Level %d rgrp check: %s.\n"), trust_lvl + 1,
+			  level_desc[trust_lvl]);
 		if ((rg_repair(sdp, trust_lvl, &rgcount, &sane) == 0) &&
 		    (ri_update(sdp, 0, &rgcount, &sane) == 0)) {
 			log_warn( _("(level %d passed)\n"), trust_lvl + 1);
 			break;
 		}
 		else
-			log_err( _("(level %d failed)\n"), trust_lvl + 1);
+			log_err( _("(level %d failed: %s)\n"), trust_lvl + 1,
+				 fail_desc[trust_lvl]);
+		if (fsck_abort)
+			break;
 	}
-	if (trust_lvl > distrust) {
-		log_err( _("RG recovery impossible; I can't fix this file system.\n"));
+	if (trust_lvl > indignation) {
+		log_err( _("Resource Group recovery impossible; I can't fix "
+			   "this file system.\n"));
 		return -1;
 	}
 	log_info( _("%u resource groups found.\n"), rgcount);

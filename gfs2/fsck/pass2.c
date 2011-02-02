@@ -557,6 +557,8 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		}
 	}
 	error = check_dir(sysinode->i_sbd, iblock, &pass2_fxns);
+	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
+		return FSCK_OK;
 	if(error < 0) {
 		stack;
 		return -1;
@@ -667,18 +669,26 @@ int pass2(struct gfs2_sbd *sbp)
 		stack;
 		return FSCK_ERROR;
 	}
+	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
+		return FSCK_OK;
 	if (check_system_dir(sbp->md.pinode, "per_node", build_per_node)) {
 		stack;
 		return FSCK_ERROR;
 	}
+	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
+		return FSCK_OK;
 	if (check_system_dir(sbp->master_dir, "master", build_master)) {
 		stack;
 		return FSCK_ERROR;
 	}
+	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
+		return FSCK_OK;
 	if (check_system_dir(sbp->md.rooti, "root", build_root)) {
 		stack;
 		return FSCK_ERROR;
 	}
+	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
+		return FSCK_OK;
 	log_info( _("Checking directory inodes.\n"));
 	/* Grab each directory inode, and run checks on it */
 	for(dirblk = 0; dirblk < last_fs_block; dirblk++) {
@@ -712,6 +722,8 @@ int pass2(struct gfs2_sbd *sbp)
 			}
 		}
 		error = check_dir(sbp, dirblk, &pass2_fxns);
+		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
+			return FSCK_OK;
 		if(error < 0) {
 			stack;
 			return FSCK_ERROR;

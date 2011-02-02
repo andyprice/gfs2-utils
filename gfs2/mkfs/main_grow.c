@@ -181,7 +181,7 @@ static void initialize_new_portion(struct gfs2_sbd *sdp, int *old_rg_count)
 		osi_list_del(head->next);
 	}
 	/* Issue a discard ioctl for the new portion */
-	rl = osi_list_entry(&sdp->rglist.next, struct rgrp_list, list);
+	rl = osi_list_entry(sdp->rglist.next, struct rgrp_list, list);
 	discard_blocks(sdp->device_fd, rl->start * sdp->bsize,
 		       (sdp->device.length - rl->start) * sdp->bsize);
 	/* Build the remaining resource groups */
