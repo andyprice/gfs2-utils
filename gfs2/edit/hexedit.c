@@ -2569,6 +2569,11 @@ static void find_change_block_alloc(int *newval)
 					printf("%d\n", *newval);
 			} else {
 				type = gfs2_get_bitmap(&sbd, ablock, rgd);
+				if (type < 0) {
+					printf("-1 (block invalid or part of "
+					       "an rgrp).\n");
+					exit(-1);
+				}
 				printf("%d (%s)\n", type, allocdesc[gfs1][type]);
 			}
 			gfs2_rgrp_relse(rgd);
