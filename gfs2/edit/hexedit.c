@@ -3145,9 +3145,9 @@ static void check_journal_wrap(uint64_t seq, uint64_t *highest_seq)
 	*highest_seq = seq;
 }
 
-int is_meta(struct gfs2_buffer_head *bh)
+static int is_meta(struct gfs2_buffer_head *lbh)
 {
-	uint32_t check_magic = ((struct gfs2_meta_header *)(bh->b_data))->mh_magic;
+	uint32_t check_magic = ((struct gfs2_meta_header *)(lbh->b_data))->mh_magic;
 
 	check_magic = be32_to_cpu(check_magic);
 	if (check_magic == GFS2_MAGIC)
