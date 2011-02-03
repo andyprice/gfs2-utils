@@ -40,6 +40,7 @@ struct gfs2_leaf *lleaf;
 struct gfs2_log_header *llh;
 struct gfs2_log_descriptor *lld;
 int pgnum;
+int details = 0;
 
 int display(int identify_only);
 
@@ -3139,13 +3140,23 @@ static void check_journal_wrap(uint64_t seq, uint64_t *highest_seq)
 	*highest_seq = seq;
 }
 
+int is_meta(struct gfs2_buffer_head *bh)
+{
+	uint32_t check_magic = ((struct gfs2_meta_header *)(bh->b_data))->mh_magic;
+
+	check_magic = be32_to_cpu(check_magic);
+	if (check_magic == GFS2_MAGIC)
+		return 1;
+	return 0;
+}
+
 /* ------------------------------------------------------------------------ */
 /* dump_journal - dump a journal file's contents.                           */
 /* ------------------------------------------------------------------------ */
 static void dump_journal(const char *journal)
 {
 	struct gfs2_buffer_head *j_bh = NULL, dummy_bh;
-	uint64_t jblock, j_size, jb, abs_block;
+	uint64_t jblock, j_size, jb, abs_block, saveblk;
 	int error, start_line, journal_num;
 	struct gfs2_inode *j_inode = NULL;
 	int ld_blocks = 0;
@@ -3261,6 +3272,11 @@ static void dump_journal(const char *journal)
 			ld_blocks -= print_ld_blocks((uint64_t *)dummy_bh.b_data,
 						     (dummy_bh.b_data +
 						      sbd.bsize), start_line);
+		} else if (details && is_meta(&dummy_bh)) {
+			saveblk = block;
+			block = abs_block;
+			display(0);
+			block = saveblk;
 		}
 	}
 	brelse(j_bh);
@@ -3286,6 +3302,7 @@ static void usage(void)
 	fprintf(stderr,"rgflags rgnum [new flags] - print or modify flags for rg #rgnum (0 - X)\n");
 	fprintf(stderr,"-V   prints version number.\n");
 	fprintf(stderr,"-c 1 selects alternate color scheme 1\n");
+	fprintf(stderr,"-d   prints details (for printing journals)\n");
 	fprintf(stderr,"-p   prints GFS2 structures or blocks to stdout.\n");
 	fprintf(stderr,"     sb - prints the superblock.\n");
 	fprintf(stderr,"     size - prints the filesystem size.\n");
@@ -3370,6 +3387,9 @@ static void parameterpass1(int argc, char *argv[], int i)
 				  it out later */
 		dmode = GFS2_MODE;
 	}
+	else if (!strcasecmp(argv[i], "-d") ||
+		 !strcasecmp(argv[i], "-details"))
+		details = 1;
 	else if (!strcasecmp(argv[i], "savemeta"))
 		termlines = 0;
 	else if (!strcasecmp(argv[i], "savemetaslow"))
