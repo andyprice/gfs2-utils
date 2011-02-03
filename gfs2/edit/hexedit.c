@@ -2025,7 +2025,6 @@ static uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 
 	if (!gfs1)
 		do_dinode_extended(&di, jindex_bh); /* parse dir. */
-	brelse(jindex_bh);
 
 	if (gfs1) {
 		struct gfs2_inode *jiinode;
@@ -2050,6 +2049,7 @@ static uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 		*j_size = jdi.di_size;
 		brelse(j_bh);
 	}
+	brelse(jindex_bh);
 	return jblock;
 }
 
