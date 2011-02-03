@@ -170,7 +170,7 @@ int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state)
 
 	rgd = gfs2_blk2rgrpd(sdp, blkno);
 
-	if(!rgd)
+	if(!rgd || blkno < rgd->ri.ri_data0)
 		return -1;
 
 	rgrp_block = (uint32_t)(blkno - rgd->ri.ri_data0);
