@@ -542,7 +542,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
 		last_reference = clear_a_reference(sbp, b, &b->ref_inode_list,
 						   &dh, 0);
 
-	if (last_reference) {
+	if (last_reference && !osi_list_empty(&b->ref_inode_list)) {
 		uint8_t q;
 
 		/* If we're down to a single reference (and not all references
