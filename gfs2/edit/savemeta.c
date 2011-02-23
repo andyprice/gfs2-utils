@@ -398,10 +398,21 @@ static void save_inode_data(int out_fd)
 		}
 	}
 	/* Process directory exhash inodes */
-	if (S_ISDIR(inode->i_di.di_mode)) {
-		if (inode->i_di.di_flags & GFS2_DIF_EXHASH) {
-			save_indirect_blocks(out_fd, cur_list, metabh,
-					     height, 0);
+	if (S_ISDIR(inode->i_di.di_mode) &&
+	    inode->i_di.di_flags & GFS2_DIF_EXHASH) {
+		uint64_t  leaf_no, old_leaf = -1;
+		int li;
+
+		for (li = 0; li < (1 << inode->i_di.di_depth); li++) {
+			gfs2_get_leaf_nr(inode, li, &leaf_no);
+			if (leaf_no == old_leaf ||
+			    gfs2_check_range(&sbd, leaf_no) != 0)
+				continue;
+			old_leaf = leaf_no;
+			mybh = bread(&sbd, leaf_no);
+			if (gfs2_check_meta(mybh, GFS2_METATYPE_LF) == 0)
+				save_block(sbd.device_fd, out_fd, leaf_no);
+			brelse(mybh);
 		}
 	}
 	if (inode->i_di.di_eattr) { /* if this inode has extended attributes */
