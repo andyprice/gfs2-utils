@@ -118,9 +118,8 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, int *block_type,
 			inode = inode_get(&sbd, lbh);
 		else
 			inode = gfs_inode_get(&sbd, lbh);
-		if (inode->i_di.di_flags & GFS2_DIF_EXHASH &&
-		    (S_ISDIR(inode->i_di.di_mode) ||
-		     (gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR)))
+		if (S_ISDIR(inode->i_di.di_mode) ||
+		     (gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR))
 			*gstruct_len = sbd.bsize;
 		else if (!inode->i_di.di_height && !block_is_systemfile() &&
 			 !S_ISDIR(inode->i_di.di_mode))
