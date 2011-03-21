@@ -1502,7 +1502,6 @@ static int init(struct gfs2_sbd *sbp)
 	sbp->dinodes_alloced = 0; /* dinodes allocated - total them up later */
 	sbp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 	sbp->bsize = sbp->sd_sb.sb_bsize;
-	sbp->fssize = lseek(sbp->device_fd, 0, SEEK_END) / sbp->sd_sb.sb_bsize;
 	osi_list_init(&sbp->rglist);
 	if (compute_constants(sbp)) {
 		log_crit("Error: Bad constants (1)\n");
@@ -1518,6 +1517,7 @@ static int init(struct gfs2_sbd *sbp)
 	rindex_addr = be64_to_cpu(raw_gfs1_ondisk_sb.sb_rindex_di.no_addr);
 
 	sbp->bsize = sbp->sd_sb.sb_bsize;
+	sbp->fssize = lseek(sbp->device_fd, 0, SEEK_END) / sbp->sd_sb.sb_bsize;
 	sbp->sd_inptrs = (sbp->bsize - sizeof(struct gfs_indirect)) /
 		sizeof(uint64_t);
 	sbp->sd_diptrs = (sbp->bsize - sizeof(struct gfs_dinode)) /
