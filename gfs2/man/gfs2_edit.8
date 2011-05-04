@@ -138,7 +138,9 @@ Print program version information only.
 .TP
 \fB-x\fP
 Print in hex mode.
-
+.TP
+\fB-z <0-9>\fP
+Compress metadata with gzip compression level 1 to 9 (default 9). 0 means no compression at all.
 .TP
 \fBrg\fP \fI<rg>\fR \fI<device>\fR
 Print the contents of Resource Group \fI<rg>\fR on \fI<device>\fR.
@@ -169,35 +171,35 @@ that may be contained in the files.  This option works quickly by
 using the system bitmap blocks in the resource groups to determine the
 location of all the metadata.  If there is corruption
 in the bitmaps, resource groups or rindex file, this method may fail and
-you may need to use the savemetaslow option.
-The destination file is not compressed.  You may want to compress it
-with a program such as bzip2 before sending it for analysis.
+you may need to use the savemetaslow option.  The destination file is
+compressed using gzip unless -z 0 is specified.
 .TP
 \fBsavemetaslow\fP \fI<device>\fR \fI<filename>\fR
 Save off GFS2 metadata, as with the savemeta option, examining every
 block in the file system for metadata.  This option is less prone to failure
 due to file system corruption than the savemeta option, but it is 
-extremely slow.
+extremely slow.  The destination file is compressed using gzip unless
+-z 0 is specified.
 .TP
 \fBsavergs\fP \fI<device>\fR \fI<filename>\fR
 Save off only the GFS2 resource group metadata for the file system on the
-specified device to a file given by <filename>.
+specified device to a file given by <filename>.  The destination file is
+compressed using gzip unless -z 0 is specified.
 .TP
 \fBrestoremeta\fP \fI<filename>\fR \fI<dest device>\fR
-Take a file created with the savemeta option and restores its
-contents on top of the specified destination device.  \fBWARNING\fP:
-When you use this option, the file system and all data on the 
-destination device is destroyed.  Since only metadata (but no data) 
-is restored, every file in the resulting file system is likely to be
-corrupt.  The ONLY purpose of this option is to examine and debug file
-system problems by restoring and examining the state of the saved metadata.
-If the destination file system is the same size or larger than the source
-file system where the metadata was saved, the resulting file system
-will be the same size as the source.  If the destination device is
-smaller than the source file system, gfs2_edit will restore as much as
-it can, then quit, leaving you with a file system that probably will not
-mount, but from which you might still be able to figure out what is
-wrong with the source file system.
+Take a compressed or uncompressed file created with the savemeta option and
+restores its contents on top of the specified destination device.
+\fBWARNING\fP: When you use this option, the file system and all data on the
+destination device is destroyed.  Since only metadata (but no data) is
+restored, every file in the resulting file system is likely to be corrupt.  The
+ONLY purpose of this option is to examine and debug file system problems by
+restoring and examining the state of the saved metadata.  If the destination
+file system is the same size or larger than the source file system where the
+metadata was saved, the resulting file system will be the same size as the
+source.  If the destination device is smaller than the source file system,
+gfs2_edit will restore as much as it can, then quit, leaving you with a file
+system that probably will not mount, but from which you might still be able to
+figure out what is wrong with the source file system.
 
 .SH INTERACTIVE MODE
 If you specify a device on the gfs2_edit command line and you specify

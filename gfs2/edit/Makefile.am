@@ -10,8 +10,8 @@ gfs2_edit_CPPFLAGS	= -D_FILE_OFFSET_BITS=64 -DHELPER_PROGRAM \
 			  -I$(top_srcdir)/gfs2/include \
 			  -I$(top_srcdir)/gfs2/libgfs2
 
-gfs2_edit_CFLAGS	= $(ncurses_CFLAGS)
+gfs2_edit_CFLAGS	= $(ncurses_CFLAGS) $(zlib_CFLAGS)
 
-gfs2_edit_LDFLAGS	= $(ncurses_LIBS)
+gfs2_edit_LDFLAGS	= $(ncurses_LIBS) $(zlib_LIBS)
 
 gfs2_edit_LDADD		= $(top_builddir)/gfs2/libgfs2/libgfs2.la

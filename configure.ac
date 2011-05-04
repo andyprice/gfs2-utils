@@ -119,6 +119,7 @@ PKG_CHECK_MODULES([cfg],[libcfg])
 PKG_CHECK_MODULES([fenced],[libfenced])
 PKG_CHECK_MODULES([dlmcontrol],[libdlmcontrol])
 PKG_CHECK_MODULES([quorum],[libquorum])
+PKG_CHECK_MODULES([zlib],[zlib])
 
 # old versions of ncurses don't ship pkg-config files
 PKG_CHECK_MODULES([ncurses],[ncurses],,

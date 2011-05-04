@@ -341,7 +341,7 @@ extern void gfs_log_header_in(struct gfs_log_header *head,
 			      struct gfs2_buffer_head *bh);
 extern void gfs_log_header_print(struct gfs_log_header *lh);
 extern void gfs_dinode_in(struct gfs_dinode *di, struct gfs2_buffer_head *bh);
-extern void savemeta(char *out_fn, int saveoption);
+extern void savemeta(char *out_fn, int saveoption, int gziplevel);
 extern void restoremeta(const char *in_fn, const char *out_device,
 			uint64_t printblocksonly);
 extern int display(int identify_only);

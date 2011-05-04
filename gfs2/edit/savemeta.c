@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <sys/time.h>
 #include <linux/gfs2_ondisk.h>
+#include <zlib.h>
 
 #include "osi_list.h"
 #include "gfs2hex.h"
@@ -32,6 +33,13 @@ struct saved_metablock {
 	uint64_t blk;
 	uint16_t siglen; /* significant data length */
 	char buf[BUFSIZE];
+};
+
+struct metafd {
+	int fd;
+	gzFile gzfd;
+	const char *filename;
+	int gziplevel;
 };
 
 struct saved_metablock *savedata;
@@ -193,7 +201,98 @@ static void warm_fuzzy_stuff(uint64_t wfsblock, int force)
 	}
 }
 
-static int save_block(int fd, int out_fd, uint64_t blk)
+/**
+ * Open a file and prepare it for writing by savemeta()
+ * out_fn: the path to the file, which will be truncated if it exists
+ * gziplevel: 0   - do not compress the file,
+ *            1-9 - use gzip compression level 1-9
+ * Returns a struct metafd containing the opened file descriptor
+ */
+static struct metafd savemetaopen(char *out_fn, int gziplevel)
+{
+	struct metafd mfd;
+	char gzmode[5] = "rwb9";
+	char dft_fn[] = DFT_SAVE_FILE;
+
+	if (!out_fn) {
+		out_fn = dft_fn;
+		mfd.fd = mkstemp(out_fn);
+	} else {
+		mfd.fd = open(out_fn, O_RDWR | O_CREAT, 0644);
+	}
+	mfd.filename = out_fn;
+
+	if (mfd.fd < 0) {
+		fprintf(stderr, "Can't open %s: %s\n", out_fn, strerror(errno));
+		exit(1);
+	}
+
+	if (ftruncate(mfd.fd, 0)) {
+		fprintf(stderr, "Can't truncate %s: %s\n", out_fn, strerror(errno));
+		exit(1);
+	}
+
+	mfd.gziplevel = gziplevel;
+	if (gziplevel > 0) {
+		gzmode[3] = '0' + gziplevel;
+		mfd.gzfd = gzdopen(mfd.fd, gzmode);
+		if (!mfd.gzfd) {
+			fprintf(stderr, "gzdopen error: %s\n", strerror(errno));
+			exit(1);
+		}
+	}
+
+	return mfd;
+}
+
+/**
+ * Write nbyte bytes from buf to a file opened with savemetaopen()
+ * mfd: the file descriptor opened using savemetaopen()
+ * buf: the buffer to write data from
+ * nbyte: the number of bytes to write
+ * Returns the number of bytes written from buf or -1 on error
+ */
+static ssize_t savemetawrite(struct metafd *mfd, const void *buf, size_t nbyte)
+{
+	ssize_t ret;
+	int gzerr;
+	const char *gzerrmsg;
+
+	if (mfd->gziplevel == 0) {
+		return write(mfd->fd, buf, nbyte);
+	}
+
+	ret = gzwrite(mfd->gzfd, buf, nbyte);
+	if (ret != nbyte) {
+		gzerrmsg = gzerror(mfd->gzfd, &gzerr);
+		if (gzerr != Z_ERRNO) {
+			fprintf(stderr, "Error: zlib: %s\n", gzerrmsg);
+		}
+	}
+	return ret;
+}
+
+/**
+ * Closes a file descriptor previously opened using savemetaopen()
+ * mfd: the file descriptor previously opened using savemetaopen()
+ * Returns 0 on success or -1 on error
+ */
+static int savemetaclose(struct metafd *mfd)
+{
+	int gzret;
+	if (mfd->gziplevel > 0) {
+		gzret = gzclose(mfd->gzfd);
+		if (gzret == Z_STREAM_ERROR) {
+			fprintf(stderr, "gzclose: file is not valid\n");
+			return -1;
+		} else if (gzret == Z_ERRNO) {
+			return -1;
+		}
+	}
+	return close(mfd->fd);
+}
+
+static int save_block(int fd, struct metafd *mfd, uint64_t blk)
 {
 	int blktype, blklen, outsz;
 	uint16_t trailing0;
@@ -228,7 +327,7 @@ static int save_block(int fd, int out_fd, uint64_t blk)
 		p--;
 	}
 	savedata->blk = cpu_to_be64(blk);
-	if (write(out_fd, &savedata->blk, sizeof(savedata->blk)) !=
+	if (savemetawrite(mfd, &savedata->blk, sizeof(savedata->blk)) !=
 	    sizeof(savedata->blk)) {
 		fprintf(stderr, "write error: %s from %s:%d: "
 			"block %lld (0x%llx)\n", strerror(errno),
@@ -239,7 +338,7 @@ static int save_block(int fd, int out_fd, uint64_t blk)
 	}
 	outsz = blklen - trailing0;
 	savedata->siglen = cpu_to_be16(outsz);
-	if (write(out_fd, &savedata->siglen, sizeof(savedata->siglen)) !=
+	if (savemetawrite(mfd, &savedata->siglen, sizeof(savedata->siglen)) !=
 	    sizeof(savedata->siglen)) {
 		fprintf(stderr, "write error: %s from %s:%d: "
 			"block %lld (0x%llx)\n", strerror(errno),
@@ -248,7 +347,7 @@ static int save_block(int fd, int out_fd, uint64_t blk)
 			(unsigned long long)savedata->blk);
 		exit(-1);
 	}
-	if (write(out_fd, savedata->buf, outsz) != outsz) {
+	if (savemetawrite(mfd, savedata->buf, outsz) != outsz) {
 		fprintf(stderr, "write error: %s from %s:%d: "
 			"block %lld (0x%llx)\n", strerror(errno),
 			__FUNCTION__, __LINE__,
@@ -265,7 +364,7 @@ static int save_block(int fd, int out_fd, uint64_t blk)
 /*
  * save_ea_block - save off an extended attribute block
  */
-static void save_ea_block(int out_fd, struct gfs2_buffer_head *metabh)
+static void save_ea_block(struct metafd *mfd, struct gfs2_buffer_head *metabh)
 {
 	int i, e, ea_len = sbd.bsize;
 	struct gfs2_ea_header ea;
@@ -283,7 +382,7 @@ static void save_ea_block(int out_fd, struct gfs2_buffer_head *metabh)
 			b = (uint64_t *)(metabh->b_data);
 			b += charoff + i;
 			blk = be64_to_cpu(*b);
-			save_block(sbd.device_fd, out_fd, blk);
+			save_block(sbd.device_fd, mfd, blk);
 		}
 		if (!ea.ea_rec_len)
 			break;
@@ -294,7 +393,7 @@ static void save_ea_block(int out_fd, struct gfs2_buffer_head *metabh)
 /*
  * save_indirect_blocks - save all indirect blocks for the given buffer
  */
-static void save_indirect_blocks(int out_fd, osi_list_t *cur_list,
+static void save_indirect_blocks(struct metafd *mfd, osi_list_t *cur_list,
 			  struct gfs2_buffer_head *mybh, int height, int hgt)
 {
 	uint64_t old_block = 0, indir_block;
@@ -314,10 +413,10 @@ static void save_indirect_blocks(int out_fd, osi_list_t *cur_list,
 		if (indir_block == old_block)
 			continue;
 		old_block = indir_block;
-		blktype = save_block(sbd.device_fd, out_fd, indir_block);
+		blktype = save_block(sbd.device_fd, mfd, indir_block);
 		if (blktype == GFS2_METATYPE_EA) {
 			nbh = bread(&sbd, indir_block);
-			save_ea_block(out_fd, nbh);
+			save_ea_block(mfd, nbh);
 			brelse(nbh);
 		}
 		if (height != hgt) { /* If not at max height */
@@ -333,7 +432,7 @@ static void save_indirect_blocks(int out_fd, osi_list_t *cur_list,
 /*
  * save_inode_data - save off important data associated with an inode
  *
- * out_fd - destination file descriptor
+ * mfd - destination file descriptor
  * block - block number of the inode to save the data for
  * 
  * For user files, we don't want anything except all the indirect block
@@ -345,7 +444,7 @@ static void save_indirect_blocks(int out_fd, osi_list_t *cur_list,
  * For file system journals, the "data" is a mixture of metadata and
  * journaled data.  We want all the metadata and none of the user data.
  */
-static void save_inode_data(int out_fd)
+static void save_inode_data(struct metafd *mfd)
 {
 	uint32_t height;
 	struct gfs2_inode *inode;
@@ -382,7 +481,7 @@ static void save_inode_data(int out_fd)
 		for (tmp = prev_list->next; tmp != prev_list; tmp = tmp->next){
 			mybh = osi_list_entry(tmp, struct gfs2_buffer_head,
 					      b_altlist);
-			save_indirect_blocks(out_fd, cur_list, mybh,
+			save_indirect_blocks(mfd, cur_list, mybh,
 					     height, i);
 		} /* for blocks at that height */
 	} /* for height */
@@ -410,7 +509,7 @@ static void save_inode_data(int out_fd)
 			old_leaf = leaf_no;
 			mybh = bread(&sbd, leaf_no);
 			if (gfs2_check_meta(mybh, GFS2_METATYPE_LF) == 0)
-				save_block(sbd.device_fd, out_fd, leaf_no);
+				save_block(sbd.device_fd, mfd, leaf_no);
 			brelse(mybh);
 		}
 	}
@@ -419,17 +518,17 @@ static void save_inode_data(int out_fd)
 		struct gfs2_buffer_head *lbh;
 
 		lbh = bread(&sbd, inode->i_di.di_eattr);
-		save_block(sbd.device_fd, out_fd, inode->i_di.di_eattr);
+		save_block(sbd.device_fd, mfd, inode->i_di.di_eattr);
 		gfs2_meta_header_in(&mh, lbh);
 		if (mh.mh_magic == GFS2_MAGIC &&
 		    mh.mh_type == GFS2_METATYPE_EA)
-			save_ea_block(out_fd, lbh);
+			save_ea_block(mfd, lbh);
 		else if (mh.mh_magic == GFS2_MAGIC &&
 			 mh.mh_type == GFS2_METATYPE_IN)
-			save_indirect_blocks(out_fd, cur_list, lbh, 2, 2);
+			save_indirect_blocks(mfd, cur_list, lbh, 2, 2);
 		else {
 			if (mh.mh_magic == GFS2_MAGIC) /* if it's metadata */
-				save_block(sbd.device_fd, out_fd,
+				save_block(sbd.device_fd, mfd,
 					   inode->i_di.di_eattr);
 			fprintf(stderr,
 				"\nWarning: corrupt extended "
@@ -529,32 +628,21 @@ static int next_rg_freemeta(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 	return 0;
 }
 
-void savemeta(char *out_fn, int saveoption)
+void savemeta(char *out_fn, int saveoption, int gziplevel)
 {
-	int out_fd;
 	int slow;
 	osi_list_t *tmp;
 	int rgcount;
 	uint64_t jindex_block;
 	struct gfs2_buffer_head *lbh;
 	struct rgrp_list *last_rgd, *prev_rgd;
+	struct metafd mfd;
 
 	slow = (saveoption == 1);
 	sbd.md.journals = 1;
 
-	if (!out_fn) {
-		out_fn = strdup(DFT_SAVE_FILE);
-		if (!out_fn)
-			die("Can't allocate memory for the operation.\n");
-		out_fd = mkstemp(out_fn);
-	} else
-		out_fd = open(out_fn, O_RDWR | O_CREAT, 0644);
+	mfd = savemetaopen(out_fn, gziplevel);
 
-	if (out_fd < 0)
-		die("Can't open %s: %s\n", out_fn, strerror(errno));
-
-	if (ftruncate(out_fd, 0))
-		die("Can't truncate %s: %s\n", out_fn, strerror(errno));
 	savedata = malloc(sizeof(struct saved_metablock));
 	if (!savedata)
 		die("Can't allocate memory for the operation.\n");
@@ -649,15 +737,15 @@ void savemeta(char *out_fn, int saveoption)
 	get_journal_inode_blocks();
 	if (!slow) {
 		/* Save off the superblock */
-		save_block(sbd.device_fd, out_fd, 0x10 * (4096 / sbd.bsize));
+		save_block(sbd.device_fd, &mfd, 0x10 * (4096 / sbd.bsize));
 		/* If this is gfs1, save off the rindex because it's not
 		   part of the file system as it is in gfs2. */
 		if (gfs1) {
 			int j;
 
 			block = sbd1->sb_rindex_di.no_addr;
-			save_block(sbd.device_fd, out_fd, block);
-			save_inode_data(out_fd);
+			save_block(sbd.device_fd, &mfd, block);
+			save_inode_data(&mfd);
 			/* In GFS1, journals aren't part of the RG space */
 			for (j = 0; j < journals_found; j++) {
 				log_debug("Saving journal #%d\n", j + 1);
@@ -665,7 +753,7 @@ void savemeta(char *out_fn, int saveoption)
 				     block < journal_blocks[j] +
 					     gfs1_journal_size;
 				     block++)
-					save_block(sbd.device_fd, out_fd, block);
+					save_block(sbd.device_fd, &mfd, block);
 			}
 		}
 		/* Walk through the resource groups saving everything within */
@@ -687,7 +775,7 @@ void savemeta(char *out_fn, int saveoption)
 			for (block = rgd->ri.ri_addr;
 			     block < rgd->ri.ri_data0; block++) {
 				warm_fuzzy_stuff(block, FALSE);
-				save_block(sbd.device_fd, out_fd, block);
+				save_block(sbd.device_fd, &mfd, block);
 			}
 			/* Save off the other metadata: inodes, etc. */
 			if (saveoption != 2) {
@@ -696,9 +784,9 @@ void savemeta(char *out_fn, int saveoption)
 				while (!gfs2_next_rg_meta(rgd, &block, first)){
 					warm_fuzzy_stuff(block, FALSE);
 					blktype = save_block(sbd.device_fd,
-							     out_fd, block);
+							     &mfd, block);
 					if (blktype == GFS2_METATYPE_DI)
-						save_inode_data(out_fd);
+						save_inode_data(&mfd);
 					first = 0;
 				}
 				/* Save off the free/unlinked meta blocks too.
@@ -707,7 +795,7 @@ void savemeta(char *out_fn, int saveoption)
 				while (!next_rg_freemeta(&sbd, rgd, &block,
 							 first)) {
 					blktype = save_block(sbd.device_fd,
-							     out_fd, block);
+							     &mfd, block);
 					first = 0;
 				}
 			}
@@ -716,7 +804,7 @@ void savemeta(char *out_fn, int saveoption)
 	}
 	if (slow) {
 		for (block = 0; block < last_fs_block; block++) {
-			save_block(sbd.device_fd, out_fd, block);
+			save_block(sbd.device_fd, &mfd, block);
 		}
 	}
 	/* Clean up */
@@ -724,28 +812,33 @@ void savemeta(char *out_fn, int saveoption)
 	/* so we tell the user that we've processed everything. */
 	block = last_fs_block;
 	warm_fuzzy_stuff(block, TRUE);
-	printf("\nMetadata saved to file %s.\n", out_fn);
+	printf("\nMetadata saved to file %s ", mfd.filename);
+	if (mfd.gziplevel) {
+		printf("(gzipped, level %d).\n", mfd.gziplevel);
+	} else {
+		printf("(uncompressed).\n");
+	}
 	free(savedata);
-	close(out_fd);
+	savemetaclose(&mfd);
 	close(sbd.device_fd);
 	exit(0);
 }
 
-static int restore_data(int fd, int in_fd, int printblocksonly,
+static int restore_data(int fd, gzFile *gzin_fd, int printblocksonly,
 			int find_highblk)
 {
 	size_t rs;
 	uint64_t buf64, writes = 0, highest_valid_block = 0;
 	uint16_t buf16;
-	int first = 1, pos;
+	int first = 1, pos, gzerr;
 	char rdbuf[256];
 	char gfs_superblock_id[8] = {0x01, 0x16, 0x19, 0x70,
 				     0x00, 0x00, 0x00, 0x01};
 
 	if (!printblocksonly)
 		lseek(fd, 0, SEEK_SET);
-	lseek(in_fd, 0, SEEK_SET);
-	rs = read(in_fd, rdbuf, sizeof(rdbuf));
+	gzseek(gzin_fd, 0, SEEK_SET);
+	rs = gzread(gzin_fd, rdbuf, sizeof(rdbuf));
 	if (rs != sizeof(rdbuf)) {
 		fprintf(stderr, "Error: File is too small.\n");
 		return -1;
@@ -759,7 +852,7 @@ static int restore_data(int fd, int in_fd, int printblocksonly,
 	}
 	if (pos == sizeof(rdbuf) - sizeof(uint64_t) - sizeof(uint16_t))
 		pos = 0;
-	if (lseek(in_fd, pos, SEEK_SET) != pos) {
+	if (gzseek(gzin_fd, pos, SEEK_SET) != pos) {
 		fprintf(stderr, "bad seek: %s from %s:%d: "
 			"offset %lld (0x%llx)\n", strerror(errno),
 			__FUNCTION__, __LINE__, (unsigned long long)pos,
@@ -772,7 +865,7 @@ static int restore_data(int fd, int in_fd, int printblocksonly,
 		struct gfs2_buffer_head dummy_bh;
 
 		memset(savedata, 0, sizeof(struct saved_metablock));
-		rs = read(in_fd, &buf64, sizeof(uint64_t));
+		rs = gzread(gzin_fd, &buf64, sizeof(uint64_t));
 		if (!rs)
 			break;
 		if (rs != sizeof(uint64_t)) {
@@ -791,7 +884,15 @@ static int restore_data(int fd, int in_fd, int printblocksonly,
 				(unsigned long long)savedata->blk);
 			return -1;
 		}
-		rs = read(in_fd, &buf16, sizeof(uint16_t));
+		if (gzread(gzin_fd, &buf16, sizeof(uint16_t)) !=
+		    sizeof(uint16_t)) {
+			fprintf(stderr, "read error: %s from %s:%d: "
+				"block %lld (0x%llx)\n",
+				gzerror(gzin_fd, &gzerr), __FUNCTION__, __LINE__,
+				(unsigned long long)savedata->blk,
+				(unsigned long long)savedata->blk);
+			exit(-1);
+		}
 		savedata->siglen = be16_to_cpu(buf16);
 		if (savedata->siglen > sizeof(savedata->buf)) {
 			fprintf(stderr, "\nBad record length: %d for block #%llu"
@@ -801,11 +902,11 @@ static int restore_data(int fd, int in_fd, int printblocksonly,
 			return -1;
 		}
 		if (savedata->siglen &&
-		    read(in_fd, savedata->buf, savedata->siglen) !=
+		    gzread(gzin_fd, savedata->buf, savedata->siglen) !=
 		    savedata->siglen) {
 			fprintf(stderr, "read error: %s from %s:%d: "
 				"block %lld (0x%llx)\n",
-				strerror(errno), __FUNCTION__, __LINE__,
+				gzerror(gzin_fd, &gzerr), __FUNCTION__, __LINE__,
 				(unsigned long long)savedata->blk,
 				(unsigned long long)savedata->blk);
 			exit(-1);
@@ -910,15 +1011,16 @@ static void complain(const char *complaint)
 void restoremeta(const char *in_fn, const char *out_device,
 		 uint64_t printblocksonly)
 {
-	int in_fd, error;
+	int error;
+	gzFile gzfd;
 
 	termlines = 0;
 	if (!in_fn)
 		complain("No source file specified.");
 	if (!printblocksonly && !out_device)
 		complain("No destination file system specified.");
-	in_fd = open(in_fn, O_RDONLY);
-	if (in_fd < 0)
+	gzfd = gzopen(in_fn, "rb");
+	if (!gzfd)
 		die("Can't open source file %s: %s\n",
 		    in_fn, strerror(errno));
 
@@ -935,13 +1037,13 @@ void restoremeta(const char *in_fn, const char *out_device,
 		die("Can't allocate memory for the restore operation.\n");
 
 	blks_saved = 0;
-	restore_data(sbd.device_fd, in_fd, printblocksonly, 1);
-	error = restore_data(sbd.device_fd, in_fd, printblocksonly, 0);
+	restore_data(sbd.device_fd, gzfd, printblocksonly, 1);
+	error = restore_data(sbd.device_fd, gzfd, printblocksonly, 0);
 	printf("File %s %s %s.\n", in_fn,
 	       (printblocksonly ? "print" : "restore"),
 	       (error ? "error" : "successful"));
 	free(savedata);
-	close(in_fd);
+	gzclose(gzfd);
 	if (!printblocksonly)
 		close(sbd.device_fd);
 

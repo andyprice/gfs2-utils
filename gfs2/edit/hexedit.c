@@ -41,6 +41,7 @@ struct gfs2_log_header *llh;
 struct gfs2_log_descriptor *lld;
 int pgnum;
 int details = 0;
+long int gziplevel = 9;
 
 int display(int identify_only);
 
@@ -3294,7 +3295,7 @@ static void dump_journal(const char *journal)
 /* ------------------------------------------------------------------------ */
 static void usage(void)
 {
-	fprintf(stderr,"\nFormat is: gfs2_edit [-c 1] [-V] [-x] [-h] [identify] [-p structures|blocks][blocktype][blockalloc [val]][blockbits][blockrg][find sb|rg|rb|di|in|lf|jd|lh|ld|ea|ed|lb|13|qc][field <f>[val]] /dev/device\n\n");
+	fprintf(stderr,"\nFormat is: gfs2_edit [-c 1] [-V] [-x] [-h] [identify] [-z <0-9>] [-p structures|blocks][blocktype][blockalloc [val]][blockbits][blockrg][find sb|rg|rb|di|in|lf|jd|lh|ld|ea|ed|lb|13|qc][field <f>[val]] /dev/device\n\n");
 	fprintf(stderr,"If only the device is specified, it enters into hexedit mode.\n");
 	fprintf(stderr,"identify - prints out only the block type, not the details.\n");
 	fprintf(stderr,"printsavedmeta - prints out the saved metadata blocks from a savemeta file.\n");
@@ -3335,6 +3336,8 @@ static void usage(void)
 	fprintf(stderr,"-p   <b> find sb|rg|rb|di|in|lf|jd|lh|ld|ea|ed|lb|"
 		"13|qc - find block of given type after block <b>\n");
 	fprintf(stderr,"     <b> specifies the starting block for search\n");
+	fprintf(stderr,"-z 1 use gzip compression level 1 for savemeta (default 9)\n");
+	fprintf(stderr,"-z 0 do not use compression\n");
 	fprintf(stderr,"-s   specifies a starting block such as root, rindex, quota, inum.\n");
 	fprintf(stderr,"-x   print in hexmode.\n");
 	fprintf(stderr,"-h   prints this help.\n\n");
@@ -3361,9 +3364,32 @@ static void usage(void)
 	fprintf(stderr,"     gfs2_edit -p quota find di /dev/x/y\n");
 	fprintf(stderr,"   To set the Resource Group flags for rg #7 to 3.\n");
 	fprintf(stderr,"     gfs2_edit rgflags 7 3 /dev/sdc2\n");
-	fprintf(stderr,"   To save off all metadata for /dev/vg/lv:\n");
-	fprintf(stderr,"     gfs2_edit savemeta /dev/vg/lv /tmp/metasave\n");
+	fprintf(stderr,"   To save off all metadata for /dev/vg/lv without compression:\n");
+	fprintf(stderr,"     gfs2_edit savemeta -z 0 /dev/vg/lv /tmp/metasave\n");
 }/* usage */
+
+/**
+ * getgziplevel - Process the -z parameter to savemeta operations
+ * argv - argv
+ * i    - a pointer to the argv index at which to begin processing
+ * The index pointed to by i will be incremented past the -z option if found
+ */
+static void getgziplevel(char *argv[], int *i)
+{
+	char *endptr;
+	(*i)++;
+	if (!strcasecmp(argv[*i], "-z")) {
+		(*i)++;
+		errno = 0;
+		gziplevel = strtol(argv[*i], &endptr, 10);
+		if (errno || endptr == argv[*i] || gziplevel < 0 || gziplevel > 9) {
+			fprintf(stderr, "Compression level out of range: %s\n", argv[*i]);
+			exit(-1);
+		}
+	} else {
+		(*i)--;
+	}
+}
 
 /* ------------------------------------------------------------------------ */
 /* parameterpass1 - pre-processing for command-line parameters              */
@@ -3558,13 +3584,16 @@ static void process_parameters(int argc, char *argv[], int pass)
 				exit(EXIT_SUCCESS);
 			}
 		}
-		else if (!strcasecmp(argv[i], "savemeta"))
-			savemeta(argv[i+2], 0);
-		else if (!strcasecmp(argv[i], "savemetaslow"))
-			savemeta(argv[i+2], 1);
-		else if (!strcasecmp(argv[i], "savergs"))
-			savemeta(argv[i+2], 2);
-		else if (isdigit(argv[i][0])) { /* decimal addr */
+		else if (!strcasecmp(argv[i], "savemeta")) {
+			getgziplevel(argv, &i);
+			savemeta(argv[i+2], 0, gziplevel);
+		} else if (!strcasecmp(argv[i], "savemetaslow")) {
+			getgziplevel(argv, &i);
+			savemeta(argv[i+2], 1, gziplevel);
+		} else if (!strcasecmp(argv[i], "savergs")) {
+			getgziplevel(argv, &i);
+			savemeta(argv[i+2], 2, gziplevel);
+		} else if (isdigit(argv[i][0])) { /* decimal addr */
 			sscanf(argv[i], "%"SCNd64, &temp_blk);
 			push_block(temp_blk);
 		} else {
