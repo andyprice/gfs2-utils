@@ -455,7 +455,7 @@ extern int dir_search(struct gfs2_inode *dip, const char *filename, int len,
 		      unsigned int *type, struct gfs2_inum *inum);
 extern int gfs2_lookupi(struct gfs2_inode *dip, const char *filename, int len,
 			struct gfs2_inode **ipp);
-extern void dir_add(struct gfs2_inode *dip, const char *filename, int len,
+extern int dir_add(struct gfs2_inode *dip, const char *filename, int len,
 		    struct gfs2_inum *inum, unsigned int type);
 extern int gfs2_dirent_del(struct gfs2_inode *dip, const char *filename,
 			   int filename_len);

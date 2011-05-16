@@ -138,6 +138,9 @@ int build_journal(struct gfs2_sbd *sdp, int j, struct gfs2_inode *jindex)
 	sprintf(name, "journal%u", j);
 	sdp->md.journal[j] = createi(jindex, name, S_IFREG | 0600,
 				     GFS2_DIF_SYSTEM);
+	if (sdp->md.journal[j] == NULL) {
+		return errno;
+	}
 	ret = write_journal(sdp, j,
 			    sdp->jsize << 20 >> sdp->sd_sb.sb_bsize_shift);
 	return ret;
@@ -151,6 +154,9 @@ int build_jindex(struct gfs2_sbd *sdp)
 
 	jindex = createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
 			 GFS2_DIF_SYSTEM);
+	if (jindex == NULL) {
+		return errno;
+	}
 	sdp->md.journal = malloc(sdp->md.journals *
 				 sizeof(struct gfs2_inode *));
 	for (j = 0; j < sdp->md.journals; j++) {
@@ -178,6 +184,9 @@ static int build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 	sprintf(name, "inum_range%u", j);
 	ip = createi(per_node, name, S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
+	if (ip == NULL) {
+		return errno;
+	}
 	ip->i_di.di_size = sizeof(struct gfs2_inum_range);
 	gfs2_dinode_out(&ip->i_di, ip->i_bh);
 
@@ -190,7 +199,7 @@ static int build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 	return 0;
 }
 
-static void build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
+static int build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 {
 	struct gfs2_sbd *sdp = per_node->i_sbd;
 	char name[256];
@@ -199,6 +208,9 @@ static void build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 	sprintf(name, "statfs_change%u", j);
 	ip = createi(per_node, name, S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
+	if (ip == NULL) {
+		return errno;
+	}
 	ip->i_di.di_size = sizeof(struct gfs2_statfs_change);
 	gfs2_dinode_out(&ip->i_di, ip->i_bh);
 
@@ -208,6 +220,7 @@ static void build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 	}
 
 	inode_put(&ip);
+	return 0;
 }
 
 static int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
@@ -228,6 +241,9 @@ static int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 
 	sprintf(name, "quota_change%u", j);
 	ip = createi(per_node, name, S_IFREG | 0600, GFS2_DIF_SYSTEM);
+	if (ip == NULL) {
+		return errno;
+	}
 
 	hgt = calc_tree_height(ip, (blocks + 1) * sdp->bsize);
 	build_height(ip, hgt);
@@ -255,14 +271,27 @@ int build_per_node(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *per_node;
 	unsigned int j;
+	int err;
 
 	per_node = createi(sdp->master_dir, "per_node", S_IFDIR | 0700,
 			   GFS2_DIF_SYSTEM);
+	if (per_node == NULL) {
+		return errno;
+	}
 
 	for (j = 0; j < sdp->md.journals; j++) {
-		build_inum_range(per_node, j);
-		build_statfs_change(per_node, j);
-		build_quota_change(per_node, j);
+		err = build_inum_range(per_node, j);
+		if (err) {
+			return err;
+		}
+		err = build_statfs_change(per_node, j);
+		if (err) {
+			return err;
+		}
+		err = build_quota_change(per_node, j);
+		if (err) {
+			return err;
+		}
 	}
 
 	if (sdp->debug) {
@@ -280,6 +309,9 @@ int build_inum(struct gfs2_sbd *sdp)
 
 	ip = createi(sdp->master_dir, "inum", S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
+	if (ip == NULL) {
+		return errno;
+	}
 
 	if (sdp->debug) {
 		printf("\nInum Inode:\n");
@@ -296,6 +328,9 @@ int build_statfs(struct gfs2_sbd *sdp)
 
 	ip = createi(sdp->master_dir, "statfs", S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
+	if (ip == NULL) {
+		return errno;
+	}
 
 	if (sdp->debug) {
 		printf("\nStatFS Inode:\n");
@@ -316,6 +351,9 @@ int build_rindex(struct gfs2_sbd *sdp)
 
 	ip = createi(sdp->master_dir, "rindex", S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
+	if (ip == NULL) {
+		return errno;
+	}
 	ip->i_di.di_payload_format = GFS2_FORMAT_RI;
 	bmodified(ip->i_bh);
 
@@ -354,6 +392,9 @@ int build_quota(struct gfs2_sbd *sdp)
 
 	ip = createi(sdp->master_dir, "quota", S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
+	if (ip == NULL) {
+		return errno;
+	}
 	ip->i_di.di_payload_format = GFS2_FORMAT_QU;
 	bmodified(ip->i_bh);
 

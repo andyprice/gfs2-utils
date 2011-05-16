@@ -1280,12 +1280,17 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 static int build_a_journal(struct gfs2_sbd *sdp)
 {
 	char name[256];
+	int err = 0;
 
 	/* First, try to delete the journal if it's in jindex */
 	sprintf(name, "journal%u", sdp->md.journals);
 	gfs2_dirent_del(sdp->md.jiinode, name, strlen(name));
 	/* Now rebuild it */
-	build_journal(sdp, sdp->md.journals, sdp->md.jiinode);
+	err = build_journal(sdp, sdp->md.journals, sdp->md.jiinode);
+	if (err) {
+		log_crit(_("Error building journal: %s\n"), strerror(err));
+		exit(-1);
+	}
 	return 0;
 }
 

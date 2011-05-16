@@ -20,7 +20,7 @@ static int attach_dotdot_to(struct gfs2_sbd *sbp, uint64_t newdotdot,
 			    uint64_t olddotdot, uint64_t block)
 {
 	char *filename;
-	int filename_len;
+	int filename_len, err;
 	struct gfs2_inode *ip, *pip;
 	uint64_t cur_blks;
 
@@ -54,7 +54,12 @@ static int attach_dotdot_to(struct gfs2_sbd *sbp, uint64_t newdotdot,
 	else
 		decrement_link(olddotdot, block, _("old \"..\""));
 	cur_blks = ip->i_di.di_blocks;
-	dir_add(ip, filename, filename_len, &pip->i_di.di_num, DT_DIR);
+	err = dir_add(ip, filename, filename_len, &pip->i_di.di_num, DT_DIR);
+	if (err) {
+		log_err(_("Error adding directory %s: %s\n"),
+		        filename, strerror(err));
+		exit(-1);
+	}
 	if (cur_blks != ip->i_di.di_blocks) {
 		char dirname[80];
 

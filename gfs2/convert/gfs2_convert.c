@@ -1888,12 +1888,15 @@ static void remove_obsolete_gfs1(struct gfs2_sbd *sbp)
 /* ------------------------------------------------------------------------- */
 /* lifted from libgfs2/structures.c                                          */
 /* ------------------------------------------------------------------------- */
-static void conv_build_jindex(struct gfs2_sbd *sdp)
+static int conv_build_jindex(struct gfs2_sbd *sdp)
 {
 	unsigned int j;
 
 	sdp->md.jiinode = createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
 				  GFS2_DIF_SYSTEM);
+	if (sdp->md.jiinode == NULL) {
+		return errno;
+	}
 
 	sdp->md.journal = malloc(sdp->md.journals *
 				 sizeof(struct gfs2_inode *));
@@ -1919,6 +1922,7 @@ static void conv_build_jindex(struct gfs2_sbd *sdp)
 	}
 
 	inode_put(&sdp->md.jiinode);
+	return 0;
 }
 
 static unsigned int total_file_blocks(struct gfs2_sbd *sdp, 
@@ -2210,19 +2214,48 @@ int main(int argc, char **argv)
 		build_master(&sb2); /* Does not do inode_put */
 		sb2.sd_sb.sb_master_dir = sb2.master_dir->i_di.di_num;
 		/* Build empty journal index file. */
-		conv_build_jindex(&sb2);
+		error = conv_build_jindex(&sb2);
+		if (error) {
+			log_crit("Error: could not build jindex: %s\n", strerror(error));
+			exit(-1);
+		}
 		log_notice("Building GFS2 file system structures.\n");
 		/* Build the per-node directories */
-		build_per_node(&sb2);
+		error = build_per_node(&sb2);
+		if (error) {
+			log_crit("Error building per-node directories: %s\n",
+			         strerror(error));
+			exit(-1);
+		}
 		/* Create the empty inode number file */
-		build_inum(&sb2); /* Does not do inode_put */
+		error = build_inum(&sb2); /* Does not do inode_put */
+		if (error) {
+			log_crit("Error building inum inode: %s\n",
+			         strerror(error));
+			exit(-1);
+		}
 		/* Create the statfs file */
-		build_statfs(&sb2); /* Does not do inode_put */
+		error = build_statfs(&sb2); /* Does not do inode_put */
+		if (error) {
+			log_crit("Error building statfs inode: %s\n",
+			         strerror(error));
+			exit(-1);
+		}
 
 		/* Create the resource group index file */
-		build_rindex(&sb2);
+		error = build_rindex(&sb2);
+		if (error) {
+			log_crit("Error building rindex inode: %s\n",
+			         strerror(error));
+			exit(-1);
+		}
 		/* Create the quota file */
-		build_quota(&sb2);
+		error = build_quota(&sb2);
+		if (error) {
+			log_crit("Error building quota inode: %s\n",
+			         strerror(error));
+			exit(-1);
+		}
 
 		/* Copy out the master dinode */
 		{

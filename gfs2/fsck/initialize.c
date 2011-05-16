@@ -320,6 +320,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inum inum;
 	struct gfs2_buffer_head *bh;
+	int err = 0;
 
 	log_err(_("The system master directory seems to be destroyed.\n"));
 	if (!query(_("Okay to rebuild it? (y/n)"))) {
@@ -336,57 +337,110 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 	if (fix_md.jiinode) {
 		inum.no_formal_ino = sdp->md.next_inum++;
 		inum.no_addr = fix_md.jiinode->i_di.di_num.no_addr;
-		dir_add(sdp->master_dir, "jindex", 6, &inum,
-			IF2DT(S_IFDIR | 0700));
+		err = dir_add(sdp->master_dir, "jindex", 6, &inum,
+		              IF2DT(S_IFDIR | 0700));
+		if (err) {
+			log_crit(_("Error adding jindex directory: %s\n"), strerror(err));
+			exit(-1);
+		}
 		sdp->master_dir->i_di.di_nlink++;
 	} else {
-		build_jindex(sdp);
+		err = build_jindex(sdp);
+		if (err) {
+			log_crit(_("Error building jindex: %s\n"), strerror(err));
+			exit(-1);
+		}
 	}
 
 	if (fix_md.pinode) {
 		inum.no_formal_ino = sdp->md.next_inum++;
 		inum.no_addr = fix_md.pinode->i_di.di_num.no_addr;
-		dir_add(sdp->master_dir, "per_node", 8, &inum,
+		err = dir_add(sdp->master_dir, "per_node", 8, &inum,
 			IF2DT(S_IFDIR | 0700));
+		if (err) {
+			log_crit(_("Error adding per_node directory: %s\n"), strerror(err));
+			exit(-1);
+		}
 		sdp->master_dir->i_di.di_nlink++;
 	} else {
-		build_per_node(sdp);
+		err = build_per_node(sdp);
+		if (err) {
+			log_crit(_("Error building per_node directory: %s\n"),
+			         strerror(err));
+			exit(-1);
+		}
 	}
 
 	if (fix_md.inum) {
 		inum.no_formal_ino = sdp->md.next_inum++;
 		inum.no_addr = fix_md.inum->i_di.di_num.no_addr;
-		dir_add(sdp->master_dir, "inum", 4, &inum,
+		err = dir_add(sdp->master_dir, "inum", 4, &inum,
 			IF2DT(S_IFREG | 0600));
+		if (err) {
+			log_crit(_("Error adding inum inode: %s\n"), strerror(err));
+			exit(-1);
+		}
 	} else {
-		build_inum(sdp);
+		err = build_inum(sdp);
+		if (err) {
+			log_crit(_("Error building inum inode: %s\n"),
+			         strerror(err));
+			exit(-1);
+		}
 	}
 
 	if (fix_md.statfs) {
 		inum.no_formal_ino = sdp->md.next_inum++;
 		inum.no_addr = fix_md.statfs->i_di.di_num.no_addr;
-		dir_add(sdp->master_dir, "statfs", 6, &inum,
+		err = dir_add(sdp->master_dir, "statfs", 6, &inum,
 			IF2DT(S_IFREG | 0600));
+		if (err) {
+			log_crit(_("Error adding statfs inode: %s\n"), strerror(err));
+			exit(-1);
+		}
 	} else {
-		build_statfs(sdp);
+		err = build_statfs(sdp);
+		if (err) {
+			log_crit(_("Error building statfs inode: %s\n"),
+			         strerror(err));
+			exit(-1);
+		}
 	}
 
 	if (fix_md.riinode) {
 		inum.no_formal_ino = sdp->md.next_inum++;
 		inum.no_addr = fix_md.riinode->i_di.di_num.no_addr;
-		dir_add(sdp->master_dir, "rindex", 6, &inum,
+		err = dir_add(sdp->master_dir, "rindex", 6, &inum,
 			IF2DT(S_IFREG | 0600));
+		if (err) {
+			log_crit(_("Error adding rindex inode: %s\n"), strerror(err));
+			exit(-1);
+		}
 	} else {
-		build_rindex(sdp);
+		err = build_rindex(sdp);
+		if (err) {
+			log_crit(_("Error building rindex inode: %s\n"),
+			         strerror(err));
+			exit(-1);
+		}
 	}
 
 	if (fix_md.qinode) {
 		inum.no_formal_ino = sdp->md.next_inum++;
 		inum.no_addr = fix_md.qinode->i_di.di_num.no_addr;
-		dir_add(sdp->master_dir, "quota", 5, &inum,
+		err = dir_add(sdp->master_dir, "quota", 5, &inum,
 			IF2DT(S_IFREG | 0600));
+		if (err) {
+			log_crit(_("Error adding quota inode: %s\n"), strerror(err));
+			exit(-1);
+		}
 	} else {
-		build_quota(sdp);
+		err = build_quota(sdp);
+		if (err) {
+			log_crit(_("Error building quota inode: %s\n"),
+			         strerror(err));
+			exit(-1);
+		}
 	}
 
 	log_err(_("Master directory rebuilt.\n"));
@@ -404,7 +458,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	uint64_t inumbuf;
 	char *buf;
 	struct gfs2_statfs_change sc;
-	int rgcount, sane = 1;
+	int rgcount, sane = 1, err = 0;
 	enum rgindex_trust_level trust_lvl;
 	uint64_t addl_mem_needed;
 	const char *level_desc[] = {
@@ -434,8 +488,14 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	gfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
 	if (!sdp->md.riinode) {
 		if (query( _("The gfs2 system rindex inode is missing. "
-			     "Okay to rebuild it? (y/n) ")))
-			build_rindex(sdp);
+			     "Okay to rebuild it? (y/n) "))) {
+			err = build_rindex(sdp);
+			if (err) {
+				log_crit(_("Error rebuilding rindex: %s\n"),
+				         strerror(err));
+				exit(-1);
+			}
+		}
 	}
 
 	/*******************************************************************
@@ -447,8 +507,14 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
 	if (!sdp->md.jiinode) {
 		if (query( _("The gfs2 system jindex inode is missing. "
-			     "Okay to rebuild it? (y/n) ")))
-			build_jindex(sdp);
+			     "Okay to rebuild it? (y/n) "))) {
+			err = build_jindex(sdp);
+			if (err) {
+				log_crit(_("Error rebuilding jindex: %s\n"),
+				         strerror(err));
+				exit(-1);
+			}
+		}
 	}
 
 	/* read in the ji data */
@@ -491,8 +557,14 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	gfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);
 	if (!sdp->md.inum) {
 		if (query( _("The gfs2 system inum inode is missing. "
-			     "Okay to rebuild it? (y/n) ")))
-			build_inum(sdp);
+			     "Okay to rebuild it? (y/n) "))) {
+			err = build_inum(sdp);
+			if (err) {
+				log_crit(_("Error rebuilding inum inode: %s\n"),
+				         strerror(err));
+				exit(-1);
+			}
+		}
 	}
 	/* Read inum entry into buffer */
 	gfs2_readi(sdp->md.inum, &inumbuf, 0, sdp->md.inum->i_di.di_size);
@@ -502,9 +574,14 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
 	if (!sdp->md.statfs) {
 		if (query( _("The gfs2 system statfs inode is missing. "
-			     "Okay to rebuild it? (y/n) ")))
-			build_statfs(sdp);
-		else {
+			     "Okay to rebuild it? (y/n) "))) {
+			err = build_statfs(sdp);
+			if (err) {
+				log_crit(_("Error rebuilding statfs inode: %s\n"),
+				         strerror(err));
+				exit(-1);
+			}
+		} else {
 			log_err( _("fsck.gfs2 cannot continue without a "
 				   "valid statfs file; aborting.\n"));
 			return FSCK_ERROR;
@@ -520,15 +597,27 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	gfs2_lookupi(sdp->master_dir, "quota", 5, &sdp->md.qinode);
 	if (!sdp->md.qinode) {
 		if (query( _("The gfs2 system quota inode is missing. "
-			     "Okay to rebuild it? (y/n) ")))
-			build_quota(sdp);
+			     "Okay to rebuild it? (y/n) "))) {
+			err = build_quota(sdp);
+			if (err) {
+				log_crit(_("Error rebuilding quota inode: %s\n"),
+				         strerror(err));
+				exit(-1);
+			}
+		}
 	}
 
 	gfs2_lookupi(sdp->master_dir, "per_node", 8, &sdp->md.pinode);
 	if (!sdp->md.pinode) {
 		if (query( _("The gfs2 system per_node directory inode is "
-			     "missing. Okay to rebuild it? (y/n) ")))
-			build_per_node(sdp);
+			     "missing. Okay to rebuild it? (y/n) "))) {
+			err = build_per_node(sdp);
+			if (err) {
+				log_crit(_("Error rebuilding per_node directory: %s\n"),
+				         strerror(err));
+				exit(-1);
+			}
+		}
 	}
 
 	/* FIXME fill in per_node structure */

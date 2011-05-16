@@ -668,12 +668,36 @@ void main_mkfs(int argc, char *argv[])
 	build_root(sdp);
 	build_master(sdp);
 	build_sb(sdp, uuid);
-	build_jindex(sdp);
-	build_per_node(sdp);
-	build_inum(sdp);
-	build_statfs(sdp);
-	build_rindex(sdp);
-	build_quota(sdp);
+	error = build_jindex(sdp);
+	if (error) {
+		fprintf(stderr, _("Error building jindex: %s\n"), strerror(error));
+		exit(-1);
+	}
+	error = build_per_node(sdp);
+	if (error) {
+		fprintf(stderr, _("Error building per-node directory: %s\n"), strerror(error));
+		exit(-1);
+	}
+	error = build_inum(sdp);
+	if (error) {
+		fprintf(stderr, _("Error building inum inode: %s\n"), strerror(error));
+		exit(-1);
+	}
+	error = build_statfs(sdp);
+	if (error) {
+		fprintf(stderr, _("Error building statfs inode: %s\n"), strerror(error));
+		exit(-1);
+	}
+	error = build_rindex(sdp);
+	if (error) {
+		fprintf(stderr, _("Error building rindex inode: %s\n"), strerror(error));
+		exit(-1);
+	}
+	error = build_quota(sdp);
+	if (error) {
+		fprintf(stderr, _("Error building quota inode: %s\n"), strerror(error));
+		exit(-1);
+	}
 
 	do_init_inum(sdp);
 	do_init_statfs(sdp);

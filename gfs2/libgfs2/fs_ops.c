@@ -1053,7 +1053,7 @@ static int get_next_leaf(struct gfs2_inode *dip,struct gfs2_buffer_head *bh_in,
 	return 0;
 }
 
-static void dir_e_add(struct gfs2_inode *dip, const char *filename, int len,
+static int dir_e_add(struct gfs2_inode *dip, const char *filename, int len,
 		      struct gfs2_inum *inum, unsigned int type)
 {
 	struct gfs2_buffer_head *bh, *nbh;
@@ -1062,6 +1062,7 @@ static void dir_e_add(struct gfs2_inode *dip, const char *filename, int len,
 	uint32_t lindex;
 	uint32_t hash;
 	uint64_t leaf_no, bn;
+	int err = 0;
 
 	hash = gfs2_disk_hash(filename, len);
 restart:
@@ -1110,8 +1111,9 @@ restart:
 				nleaf->lf_depth = leaf->lf_depth;
 				nleaf->lf_dirent_format = cpu_to_be32(GFS2_FORMAT_DE);
 
-				if (dirent_alloc(dip, nbh, len, &dent))
-					die("dir_split_leaf (3)\n");
+				err = dirent_alloc(dip, nbh, len, &dent);
+				if (err)
+					return err;
 				dip->i_di.di_blocks++;
 				bmodified(dip->i_bh);
 				bmodified(bh);
@@ -1131,7 +1133,7 @@ restart:
 
 		bmodified(bh);
 		brelse(bh);
-		return;
+		return err;
 	}
 }
 
@@ -1199,15 +1201,16 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 	bwrite(dip->i_bh);
 }
 
-static void dir_l_add(struct gfs2_inode *dip, const char *filename, int len,
+static int dir_l_add(struct gfs2_inode *dip, const char *filename, int len,
 		      struct gfs2_inum *inum, unsigned int type)
 {
 	struct gfs2_dirent *dent;
+	int err = 0;
 
 	if (dirent_alloc(dip, dip->i_bh, len, &dent)) {
 		dir_make_exhash(dip);
-		dir_e_add(dip, filename, len, inum, type);
-		return;
+		err = dir_e_add(dip, filename, len, inum, type);
+		return err;
 	}
 
 	gfs2_inum_out(inum, (char *)&dent->de_inum);
@@ -1215,15 +1218,18 @@ static void dir_l_add(struct gfs2_inode *dip, const char *filename, int len,
 	dent->de_hash = cpu_to_be32(dent->de_hash);
 	dent->de_type = cpu_to_be16(type);
 	memcpy((char *)(dent + 1), filename, len);
+	return err;
 }
 
-void dir_add(struct gfs2_inode *dip, const char *filename, int len,
+int dir_add(struct gfs2_inode *dip, const char *filename, int len,
 	     struct gfs2_inum *inum, unsigned int type)
 {
+	int err = 0;
 	if (dip->i_di.di_flags & GFS2_DIF_EXHASH)
-		dir_e_add(dip, filename, len, inum, type);
+		err = dir_e_add(dip, filename, len, inum, type);
 	else
-		dir_l_add(dip, filename, len, inum, type);
+		err = dir_l_add(dip, filename, len, inum, type);
+	return err;
 }
 
 struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
@@ -1296,6 +1302,7 @@ struct gfs2_inode *createi(struct gfs2_inode *dip, const char *filename,
 	struct gfs2_inum inum;
 	struct gfs2_buffer_head *bh;
 	struct gfs2_inode *ip;
+	int err = 0;
 
 	gfs2_lookupi(dip, filename, strlen(filename), &ip);
 	if (!ip) {
@@ -1304,7 +1311,11 @@ struct gfs2_inode *createi(struct gfs2_inode *dip, const char *filename,
 		inum.no_formal_ino = sdp->md.next_inum++;
 		inum.no_addr = bn;
 
-		dir_add(dip, filename, strlen(filename), &inum, IF2DT(mode));
+		err = dir_add(dip, filename, strlen(filename), &inum, IF2DT(mode));
+		if (err) {
+			errno = -err;
+			return NULL;
+		}
 
 		if(S_ISDIR(mode)) {
 			bmodified(dip->i_bh);

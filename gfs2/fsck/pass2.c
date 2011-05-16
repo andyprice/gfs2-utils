@@ -591,8 +591,13 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 			}
 			memcpy(filename, tmp_name, filename_len);
 			log_warn( _("Adding '.' entry\n"));
-			dir_add(sysinode, filename, filename_len,
+			error = dir_add(sysinode, filename, filename_len,
 				&(sysinode->i_di.di_num), DT_DIR);
+			if (error) {
+				log_err(_("Error adding directory %s: %s\n"),
+				        filename, strerror(error));
+				return -error;
+			}
 			if (cur_blks != sysinode->i_di.di_blocks)
 				reprocess_inode(sysinode, dirname);
 			/* This system inode is linked to itself via '.' */
@@ -798,8 +803,13 @@ int pass2(struct gfs2_sbd *sbp)
 				memcpy(filename, tmp_name, filename_len);
 
 				cur_blks = ip->i_di.di_blocks;
-				dir_add(ip, filename, filename_len,
+				error = dir_add(ip, filename, filename_len,
 					&(ip->i_di.di_num), DT_DIR);
+				if (error) {
+					log_err(_("Error adding directory %s: %s\n"),
+					        filename, strerror(error));
+					return -error;
+				}
 				if (cur_blks != ip->i_di.di_blocks) {
 					char dirname[80];
 

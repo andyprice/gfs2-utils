@@ -32,6 +32,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	uint64_t lf_blocks;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct dir_info *di;
+	int err = 0;
 
 	if(!lf_dip) {
 		uint8_t q;
@@ -40,6 +41,12 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 
 		lf_dip = createi(sdp->md.rooti, "lost+found",
 				 S_IFDIR | 0700, 0);
+		if (lf_dip == NULL) {
+			log_crit(_("Error creating lost+found: %s\n"),
+			         strerror(errno));
+			exit(-1);
+		}
+
 		/* createi will have incremented the di_nlink link count for
 		   the root directory.  We must increment the nlink value
 		   in the hash table to keep them in sync so that pass4 can
@@ -135,7 +142,13 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 			log_warn( _("add_inode_to_lf:  Unable to remove "
 				    "\"..\" directory entry.\n"));
 
-		dir_add(ip, "..", 2, &(lf_dip->i_di.di_num), DT_DIR);
+		err = dir_add(ip, "..", 2, &(lf_dip->i_di.di_num), DT_DIR);
+		if (err) {
+			log_crit(_("Error adding .. directory: %s\n"),
+			         strerror(errno));
+			exit(-1);
+		}
+
 		sprintf(tmp_name, "lost_dir_%llu",
 			(unsigned long long)ip->i_di.di_num.no_addr);
 		inode_type = DT_DIR;
@@ -177,8 +190,13 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 		break;
 	}
 
-	dir_add(lf_dip, tmp_name, strlen(tmp_name), &(ip->i_di.di_num),
+	err = dir_add(lf_dip, tmp_name, strlen(tmp_name), &(ip->i_di.di_num),
 		inode_type);
+	if (err) {
+		log_crit(_("Error adding directory %s: %s\n"),
+			 tmp_name, strerror(errno));
+		exit(-1);
+	}
 	/* If the lf directory had new blocks added we have to mark them
 	   properly in the bitmap so they're not freed. */
 	if (lf_dip->i_di.di_blocks != lf_blocks)
