@@ -1764,7 +1764,6 @@ static void read_superblock(int fd)
 	bh = bread(&sbd, 0x10);
 	sbd.jsize = GFS2_DEFAULT_JSIZE;
 	sbd.rgsize = GFS2_DEFAULT_RGSIZE;
-	sbd.utsize = GFS2_DEFAULT_UTSIZE;
 	sbd.qcsize = GFS2_DEFAULT_QCSIZE;
 	sbd.time = time(NULL);
 	osi_list_init(&sbd.rglist);

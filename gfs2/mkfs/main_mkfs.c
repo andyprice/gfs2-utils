@@ -64,7 +64,6 @@ print_usage(const char *prog_name)
 		"  -q               Don't print anything\n"
 		"  -r <MB>          Resource Group Size\n"
 		"  -t <name>        Name of the lock table\n"
-		"  -u <MB>          Size of unlinked file\n"
 		"  -V               Print program version information, then exit\n"), prog_name);
 }
 
@@ -168,7 +167,6 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			break;
 
 		case 'u':
-			sdp->utsize = atoi(optarg);
 			break;
 
 		case 'V':
@@ -237,7 +235,6 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 		else
 			printf("  rgsize = %u\n", sdp->rgsize);
 		printf("  table = %s\n", sdp->locktable);
-		printf("  utsize = %u\n", sdp->utsize);
 		printf("  device = %s\n", sdp->device_name);
 		if (sdp->orig_fssize)
 			printf("  block-count = %llu\n",
@@ -349,9 +346,6 @@ static void verify_arguments(struct gfs2_sbd *sdp)
 
 	if (sdp->jsize < 8 || sdp->jsize > 1024)
 		die( _("bad journal size\n"));
-
-	if (!sdp->utsize || sdp->utsize > 64)
-		die( _("bad unlinked size\n"));
 
 	if (!sdp->qcsize || sdp->qcsize > 64)
 		die( _("bad quota change size\n"));
@@ -573,7 +567,6 @@ void main_mkfs(int argc, char *argv[])
 	sdp->bsize = -1;
 	sdp->jsize = GFS2_DEFAULT_JSIZE;
 	sdp->rgsize = -1;
-	sdp->utsize = GFS2_DEFAULT_UTSIZE;
 	sdp->qcsize = GFS2_DEFAULT_QCSIZE;
 	strcpy(sdp->lockproto, GFS2_DEFAULT_LOCKPROTO);
 	sdp->time = time(NULL);

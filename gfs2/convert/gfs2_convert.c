@@ -1494,7 +1494,6 @@ static int init(struct gfs2_sbd *sbp)
 	/* ---------------------------------------------- */
 	sbp->jsize = GFS2_DEFAULT_JSIZE;
 	sbp->rgsize = GFS2_DEFAULT_RGSIZE;
-	sbp->utsize = GFS2_DEFAULT_UTSIZE;
 	sbp->qcsize = GFS2_DEFAULT_QCSIZE;
 	sbp->time = time(NULL);
 	sbp->blks_total = 0;   /* total blocks         - total them up later */

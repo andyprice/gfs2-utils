@@ -176,7 +176,6 @@ struct gfs2_sbd {
 	unsigned int bsize;	     /* The block size of the FS (in bytes) */
 	unsigned int jsize;	     /* Size of journals (in MB) */
 	unsigned int rgsize;     /* Size of resource groups (in MB) */
-	unsigned int utsize;     /* Size of unlinked tag files (in MB) */
 	unsigned int qcsize;     /* Size of quota change files (in MB) */
 
 	int debug;
@@ -254,7 +253,6 @@ struct metapath {
 #define GFS2_DEFAULT_BSIZE          (4096)
 #define GFS2_DEFAULT_JSIZE          (128)
 #define GFS2_DEFAULT_RGSIZE         (256)
-#define GFS2_DEFAULT_UTSIZE         (1)
 #define GFS2_DEFAULT_QCSIZE         (1)
 #define GFS2_DEFAULT_LOCKPROTO      "lock_dlm"
 #define GFS2_MIN_GROW_SIZE          (10)
