@@ -244,8 +244,18 @@ static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 		}
 		/* Now write the new RGs to the end of the rindex */
 		lseek(rindex_fd, 0, SEEK_END);
-		count = write(rindex_fd, buf, writelen);
-		if (count != writelen) {
+		count = write(rindex_fd, buf, sizeof(struct gfs2_rindex));
+		if (count != sizeof(struct gfs2_rindex)) {
+			log_crit("Error writing first new rindex entry;"
+				 "aborted.\n");
+			if (count > 0)
+				goto trunc;
+			else
+				goto out;
+		}
+		count = write(rindex_fd, buf + sizeof(struct gfs2_rindex),
+			      writelen - sizeof(struct gfs2_rindex));
+		if (count != writelen - sizeof(struct gfs2_rindex)) {
 			log_crit("Error writing new rindex entries;"
 				 "aborted.\n");
 			if (count > 0)
