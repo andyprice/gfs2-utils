@@ -134,7 +134,7 @@ static uint64_t metapath_to_lblock(struct metapath *mp, int hgt)
 static int display_indirect(struct iinfo *ind, int indblocks, int level,
 			    uint64_t startoff)
 {
-	int start_line, total_dirents;
+	int start_line;
 	int cur_height = -1, pndx;
 
 	last_entry_onscreen[dmode] = 0;
@@ -152,7 +152,6 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 			print_gfs2("This indirect block contains %d indirect blocks",
 				   indblocks);
 	}
-	total_dirents = 0;
 	if (dinode_valid() && !S_ISDIR(di.di_mode)) {
 		/* See if we are on an inode or have one in history. */
 		if (level)

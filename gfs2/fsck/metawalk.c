@@ -277,13 +277,11 @@ static void dirblk_truncate(struct gfs2_inode *ip, struct gfs2_dirent *fixb,
 {
 	char *bh_end;
 	struct gfs2_dirent de;
-	uint16_t old_rec_len;
 
 	bh_end = bh->b_data + ip->i_sbd->sd_sb.sb_bsize;
 	/* truncate the block to save the most dentries.  To do this we
 	   have to patch the previous dent. */
 	gfs2_dirent_in(&de, (char *)fixb);
-	old_rec_len = de.de_rec_len;
 	de.de_rec_len = bh_end - (char *)fixb;
 	gfs2_dirent_out(&de, (char *)fixb);
 	bmodified(bh);
@@ -304,7 +302,6 @@ static void dirblk_truncate(struct gfs2_inode *ip, struct gfs2_dirent *fixb,
 static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		  int type, uint16_t *count, struct metawalk_fxns *pass)
 {
-	struct gfs2_leaf *leaf = NULL;
 	struct gfs2_dirent *dent;
 	struct gfs2_dirent de, *prev;
 	int error = 0;
@@ -319,7 +316,6 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	}
 	else if (type == DIR_EXHASH) {
 		dent = (struct gfs2_dirent *)(bh->b_data + sizeof(struct gfs2_leaf));
-		leaf = (struct gfs2_leaf *)bh->b_data;
 		log_debug( _("Checking leaf %llu (0x%llu)\n"),
 			  (unsigned long long)bh->b_blocknr,
 			  (unsigned long long)bh->b_blocknr);

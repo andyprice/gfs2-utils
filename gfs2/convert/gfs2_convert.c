@@ -22,6 +22,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include <linux/types.h>
 #include <linux/gfs2_ondisk.h>
@@ -531,7 +532,7 @@ static int get_inode_metablocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip, str
 	struct gfs2_buffer_head *bh, *dibh = ip->i_bh;
 	osi_list_t *tmp;
 	uint64_t *ptr1, block;
-	int h, header_size, ptrnum;
+	int h, ptrnum;
 	int bufsize = sbp->bsize - sizeof(struct gfs_indirect);
 
 	/* Add dinode block to the list */
@@ -564,8 +565,6 @@ static int get_inode_metablocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip, str
 
 		if (blk->height >= ip->i_di.di_height - 1)
 			continue;
-		header_size = (blk->height > 0 ? sizeof(struct gfs_indirect) :
-			       sizeof(struct gfs_dinode));
 		for (ptr1 = (uint64_t *)blk->ptrbuf, ptrnum = 0;
 		     ptrnum < sbp->sd_inptrs; ptr1++, ptrnum++) {
 			if (!*ptr1)
@@ -1028,6 +1027,9 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 				/* Skip the rindex and jindex inodes for now. */
 				if (block != rindex_addr && block != jindex_addr)
 					error = adjust_inode(sbp, bh);
+					if (error) {
+						return error;
+					}
 			} else { /* It's metadata, but not an inode, so fix the bitmap. */
 				int blk, buf_offset;
 				int bitmap_byte; /* byte within the bitmap to fix */
@@ -1297,7 +1299,7 @@ static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 {
 	osi_list_t *tmp, *fix;
 	struct inode_block *dir_iblk;
-	uint64_t offset, dirblock;
+	uint64_t dirblock;
 	uint32_t gfs1_inptrs = sbp->sd_inptrs;
 	/* Directory inodes have been converted to gfs2, use gfs2 inptrs */
 	sbp->sd_inptrs = (sbp->bsize - sizeof(struct gfs2_meta_header))
@@ -1309,7 +1311,6 @@ static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 	seconds = tv.tv_sec;
 	log_notice("\nFixing file and directory information.\n");
 	fflush(stdout);
-	offset = 0;
 	tmp = NULL;
 	/* for every directory in the list */
 	for (fix = dir_to_fix->next; fix != dir_to_fix; fix = fix->next) {
@@ -1927,13 +1928,12 @@ static int conv_build_jindex(struct gfs2_sbd *sdp)
 static unsigned int total_file_blocks(struct gfs2_sbd *sdp, 
 				      uint64_t filesize, int journaled)
 {
-	unsigned int data_blks = 0, meta_blks = 0, total_blks;
+	unsigned int data_blks = 0, meta_blks = 0;
 	unsigned int max, height, bsize;
 	uint64_t *arr;
 
 	/* Now find the total meta blocks required for data_blks */
 	if (filesize <= sdp->bsize - sizeof(struct gfs2_dinode)) {
-		total_blks = 1; /* stuffed inode */
 		goto out;
 	}
 
@@ -1952,12 +1952,10 @@ static unsigned int total_file_blocks(struct gfs2_sbd *sdp,
 		if (arr[height] >= filesize)
 			break;
 	if (height == 1) {
-		total_blks = data_blks + 1; /* dinode has direct ptrs to data blocks */
 		goto out;
 	}
 
 	meta_blks = DIV_RU(data_blks, sdp->sd_inptrs);
-	total_blks = data_blks + meta_blks;
 out:
 	return data_blks + meta_blks;
 }
@@ -2052,8 +2050,8 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 	inode_put(&oq_ip);
 }
 
-static int gfs2_query(int *setonabort, struct gfs2_options *opts,
-		      const char *format, ...)
+static int __attribute__((format(printf, 3, 4))) gfs2_query(int *setonabort,
+                           struct gfs2_options *opts, const char *format, ...)
 {
 	va_list args;
 	char response;

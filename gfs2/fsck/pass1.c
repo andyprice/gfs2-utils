@@ -1391,8 +1391,6 @@ int pass1(struct gfs2_sbd *sbp)
 	struct rgrp_list *rgd;
 	int first;
 	uint64_t i;
-	uint64_t blk_count;
-	uint64_t offset;
 	uint64_t rg_count = 0;
 
 	/* FIXME: In the gfs fsck, we had to mark things like the
@@ -1433,8 +1431,6 @@ int pass1(struct gfs2_sbd *sbp)
 			gfs2_meta_rgrp);*/
 		}
 
-		offset = sizeof(struct gfs2_rgrp);
-		blk_count = 1;
 		first = 1;
 
 		while (1) {

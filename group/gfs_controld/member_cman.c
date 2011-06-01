@@ -27,7 +27,7 @@ static int is_old_member(uint32_t nodeid)
 	return is_member(old_nodes, old_node_count, nodeid);
 }
 
-int is_cluster_member(uint32_t nodeid)
+static int is_cluster_member(uint32_t nodeid)
 {
 	return is_member(quorum_nodes, quorum_node_count, nodeid);
 }
