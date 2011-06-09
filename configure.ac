@@ -16,6 +16,10 @@ AC_PROG_LIBTOOL
 
 AC_LANG([C])
 
+#i18n support
+AM_GNU_GETTEXT([external])
+AM_GNU_GETTEXT_VERSION([0.18])
+
 # Sanitize path
 
 if test "$prefix" = "NONE"; then
@@ -282,6 +286,7 @@ AC_CONFIG_FILES([Makefile
 		 gfs2/tune/Makefile
 		 gfs2/man/Makefile
 		 doc/Makefile
+		 po/Makefile.in
 		 ])
 
 AC_OUTPUT

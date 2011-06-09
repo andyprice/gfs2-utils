@@ -1,4 +1,4 @@
-EXTRA_DIST		= autogen.sh
+EXTRA_DIST		= config.rpath m4/ChangeLog  autogen.sh
 
 AUTOMAKE_OPTIONS	= foreign
 
@@ -12,7 +12,7 @@ noinst_HEADERS		= make/copyright.cf
 
 ACLOCAL_AMFLAGS		= -I m4
 
-SUBDIRS			= group gfs2 doc
+SUBDIRS			= po group gfs2 doc
 
 install-exec-local:
 			$(INSTALL) -d $(DESTDIR)/$(LOGDIR)
