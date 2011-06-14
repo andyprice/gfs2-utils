@@ -1,1 +1,37 @@
 # List of source files which contain translatable strings.
+#
+#edit tool
+gfs2/edit/extended.c
+gfs2/edit/gfs2hex.c
+gfs2/edit/hexedit.c
+gfs2/edit/savemeta.c
+
+#fsck tool
+gfs2/fsck/eattr.c
+gfs2/fsck/fs_recovery.c
+gfs2/fsck/hash.c
+gfs2/fsck/initialize.c
+gfs2/fsck/inode_hash.c
+gfs2/fsck/link.c
+gfs2/fsck/lost_n_found.c
+gfs2/fsck/main.c
+gfs2/fsck/metawalk.c
+gfs2/fsck/pass1b.c
+gfs2/fsck/pass1.c
+gfs2/fsck/pass1c.c
+gfs2/fsck/pass2.c
+gfs2/fsck/pass3.c
+gfs2/fsck/pass4.c
+gfs2/fsck/pass5.c
+gfs2/fsck/rgrepair.c
+gfs2/fsck/util.c
+
+#mkfs tool
+gfs2/mkfs/main.c
+gfs2/mkfs/main_grow.c
+gfs2/mkfs/main_jadd.c
+gfs2/mkfs/main_mkfs.c
+
+#tune tool
+gfs2/tune/main.c
+gfs2/tune/super.c
