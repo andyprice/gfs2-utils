@@ -638,20 +638,28 @@ int ji_update(struct gfs2_sbd *sdp)
 		return -1;
 	}
 
-	if(!(sdp->md.journal = calloc(ip->i_di.di_entries - 2, sizeof(struct gfs2_inode *)))) {
+	/* The per_node directory will have 3 directory entries per node,
+	   plus two for "." and "..".  So we subtract the 2 and divide by 3.
+	   If per_node is missing or damaged, we have to trust jindex has
+	   the correct number of entries. */
+	if (sdp->md.pinode) /* if per_node was read in properly */
+		sdp->md.journals = (sdp->md.pinode->i_di.di_entries - 2) / 3;
+	else
+		sdp->md.journals = ip->i_di.di_entries - 2;
+
+	if(!(sdp->md.journal = calloc(sdp->md.journals,
+				      sizeof(struct gfs2_inode *)))) {
 		log_err("Unable to allocate journal index\n");
 		return -1;
 	}
-	sdp->md.journals = 0;
 	memset(journal_name, 0, sizeof(*journal_name));
-	for(i = 0; i < ip->i_di.di_entries - 2; i++) {
+	for (i = 0; i < sdp->md.journals; i++) {
 		/* FIXME check snprintf return code */
 		snprintf(journal_name, JOURNAL_NAME_SIZE, "journal%u", i);
 		gfs2_lookupi(sdp->md.jiinode, journal_name, strlen(journal_name),
 			     &jip);
 		sdp->md.journal[i] = jip;
 	}
-	sdp->md.journals = ip->i_di.di_entries - 2;
 	return 0;
 
 }

@@ -449,6 +449,52 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 }
 
 /**
+ * lookup_per_node - Make sure the per_node directory is read in
+ *
+ * This function is used to read in the per_node directory.  It is called
+ * twice.  The first call tries to read in the dinode early on.  That ensures
+ * that if any journals are missing, we can figure out the number of journals
+ * from per_node.  However, we unfortunately can't rebuild per_node at that
+ * point in time because our resource groups aren't read in yet.
+ * The second time it's called is much later when we can rebuild it.
+ *
+ * allow_rebuild: 0 if rebuilds are not allowed
+ *                1 if rebuilds are allowed
+ */
+static void lookup_per_node(struct gfs2_sbd *sdp, int allow_rebuild)
+{
+	if (sdp->md.pinode)
+		return;
+
+	gfs2_lookupi(sdp->master_dir, "per_node", 8, &sdp->md.pinode);
+	if (sdp->md.pinode)
+		return;
+	if (!allow_rebuild) {
+		log_err( _("The gfs2 system per_node directory "
+			   "inode is missing, so we might not be \nable to "
+			   "rebuild missing journals this run.\n"));
+		return;
+	}
+
+	if (query( _("The gfs2 system per_node directory "
+		     "inode is missing. Okay to rebuild it? (y/n) "))) {
+		int err;
+
+		err = build_per_node(sdp);
+		if (err) {
+			log_crit(_("Error rebuilding per_node directory: %s\n"),
+				 strerror(err));
+			exit(-1);
+		}
+	}
+	gfs2_lookupi(sdp->master_dir, "per_node", 8, &sdp->md.pinode);
+	if (!sdp->md.pinode) {
+		log_err( _("Unable to rebuild per_node; aborting.\n"));
+		exit(-1);
+	}
+}
+
+/**
  * init_system_inodes
  *
  * Returns: 0 on success, -1 on failure
@@ -607,20 +653,9 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 		}
 	}
 
-	gfs2_lookupi(sdp->master_dir, "per_node", 8, &sdp->md.pinode);
-	if (!sdp->md.pinode) {
-		if (query( _("The gfs2 system per_node directory inode is "
-			     "missing. Okay to rebuild it? (y/n) "))) {
-			err = build_per_node(sdp);
-			if (err) {
-				log_crit(_("Error rebuilding per_node directory: %s\n"),
-				         strerror(err));
-				exit(-1);
-			}
-		}
-	}
-
-	/* FIXME fill in per_node structure */
+	/* Try to lookup the per_node inode.  If it was missing, it is now
+	   safe to rebuild it. */
+	lookup_per_node(sdp, 1);
 	/*******************************************************************
 	 *******  Now, set boundary fields in the super block  *************
 	 *******************************************************************/
@@ -1218,6 +1253,11 @@ int initialize(struct gfs2_sbd *sbp, int force_check, int preen,
 		sbp->master_dir = inode_read(sbp,
 					     sbp->sd_sb.sb_master_dir.no_addr);
 	}
+
+	/* Look up the "per_node" inode.  If there are journals missing, we
+	   need to figure out what's missing from per_node. And we need all
+	   our journals to be there before we can replay them. */
+	lookup_per_node(sbp, 0);
 
 	/* verify various things */
 
