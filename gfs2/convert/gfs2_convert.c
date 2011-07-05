@@ -23,6 +23,9 @@
 #include <sys/time.h>
 #include <errno.h>
 #include <ctype.h>
+#include <libintl.h>
+#include <locale.h>
+#define _(String) gettext(String)
 
 #include <linux/types.h>
 #include <linux/gfs2_ondisk.h>
@@ -2111,6 +2114,10 @@ int main(int argc, char **argv)
 	int error;
 	struct gfs2_buffer_head *bh;
 	struct gfs2_options opts;
+
+	/* Set i18n support to gfs2_convert */
+	setlocale(LC_ALL, "");
+	textdomain("gfs2-utils");
 
 	version();
 	process_parameters(argc, argv, &opts);
