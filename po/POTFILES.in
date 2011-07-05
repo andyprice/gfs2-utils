@@ -35,3 +35,6 @@ gfs2/mkfs/main_mkfs.c
 #tune tool
 gfs2/tune/main.c
 gfs2/tune/super.c
+
+#convert tool
+gfs2/convert/gfs2_convert.c
