@@ -541,15 +541,15 @@ static int get_inode_metablocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip, str
 	/* Add dinode block to the list */
 	blk = malloc(sizeof(struct blocklist));
 	if (!blk) {
-		log_crit("Error: Can't allocate memory for indirect block fix\n");
+		log_crit(_("Error: Can't allocate memory for indirect block fix\n"));
 		return -1;
 	}
 	memset(blk, 0, sizeof(*blk));
 	blk->block = dibh->b_blocknr;
 	blk->ptrbuf = malloc(bufsize);
 	if (!blk->ptrbuf) {
-		log_crit("Error: Can't allocate memory"
-			 " for file conversion.\n");
+		log_crit(_("Error: Can't allocate memory"
+			 " for file conversion.\n"));
 		free(blk);
 		return -1;
 	}
@@ -576,13 +576,14 @@ static int get_inode_metablocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip, str
 
 			newblk = malloc(sizeof(struct blocklist));
 			if (!newblk) {
-				log_crit("Error: Can't allocate memory for indirect block fix.\n");
+				log_crit(_("Error: Can't allocate memory for indirect block fix.\n"));
 				return -1;
 			}
 			memset(newblk, 0, sizeof(*newblk));
 			newblk->ptrbuf = malloc(bufsize);
 			if (!newblk->ptrbuf) {
-				log_crit("Error: Can't allocate memory for file conversion.\n");
+				/* FIXME: This message should be different, to not conflit with the above file conversion */
+				log_crit(_("Error: Can't allocate memory for file conversion.\n"));
 				free(newblk);
 				return -1;
 			}
@@ -655,6 +656,7 @@ static int fix_ind_jdata(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint32_t d
 		  uint32_t gfs2_hgt, uint64_t dinode_size, struct blocklist *blk, 
 		  struct blocklist *blocks)
 {
+	/*FIXME: Messages here should be different, to not conflit with messages in get_inode_metablocks */
 	struct blocklist *newblk;
 	unsigned int len, bufsize;
 	uint64_t *ptr1, block;
@@ -675,13 +677,13 @@ static int fix_ind_jdata(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint32_t d
 
 		newblk = malloc(sizeof(struct blocklist));
 		if (!newblk) {
-			log_crit("Error: Can't allocate memory for indirect block fix.\n");
+			log_crit(_("Error: Can't allocate memory for indirect block fix.\n"));
 			return -1;
 		}
 		memset(newblk, 0, sizeof(*newblk));
 		newblk->ptrbuf = malloc(bufsize); 
 		if (!newblk->ptrbuf) {
-			log_crit("Error: Can't allocate memory for file conversion.\n");
+			log_crit(_("Error: Can't allocate memory for file conversion.\n"));
 			free(newblk);
 			return -1;
 		}
@@ -821,7 +823,7 @@ static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, s
 		/* Save the symlink di_addr. We'll find the parent di_addr later */
 		fix = malloc(sizeof(struct inode_dir_block));
 		if (!fix) {
-			log_crit("Error: out of memory.\n");
+			log_crit(_("Error: out of memory.\n"));
 			return -1;
 		}
 		memset(fix, 0, sizeof(struct inode_dir_block));
@@ -855,7 +857,8 @@ static int fix_xattr(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, struct g
 		len = sbp->bsize - sizeof(struct gfs_indirect);
 		buf = malloc(len);
 		if (!buf) {
-			log_crit("Error: out of memory.\n");
+			/*FIXME: Same message as fix_cdpn_symlink */
+			log_crit(_("Error: out of memory.\n"));
 			return -1;
 		}
 		old_hdr_sz = sizeof(struct gfs_indirect);
@@ -896,7 +899,8 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 		/* Add this directory to the list of dirs to fix later. */
 		fixdir = malloc(sizeof(struct inode_block));
 		if (!fixdir) {
-			log_crit("Error: out of memory.\n");
+			/*FIXME: Same message as fix_cdpn_symlink */
+			log_crit(_("Error: out of memory.\n"));
 			return -1;
 		}
 		memset(fixdir, 0, sizeof(struct inode_block));
@@ -990,7 +994,7 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 	int error = 0;
 	int rgs_processed = 0;
 
-	log_notice("Converting inodes.\n");
+	log_notice(_("Converting inodes.\n"));
 	sbp->md.next_inum = 1; /* starting inode numbering */
 	gettimeofday(&tv, NULL);
 	seconds = tv.tv_sec;
@@ -1008,7 +1012,7 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 			/* doesn't think we hung.  (This may take a long time).       */
 			if (tv.tv_sec - seconds) {
 				seconds = tv.tv_sec;
-				log_notice("\r%llu inodes from %d rgs converted.",
+				log_notice(_("\r%llu inodes from %d rgs converted."),
 					   (unsigned long long)sbp->md.next_inum,
 					   rgs_processed);
 				fflush(stdout);
@@ -1063,7 +1067,7 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 			first = 0;
 		} /* while 1 */
 	} /* for all rgs */
-	log_notice("\r%llu inodes from %d rgs converted.",
+	log_notice(_("\r%llu inodes from %d rgs converted."),
 		   (unsigned long long)sbp->md.next_inum, rgs_processed);
 	fflush(stdout);
 	return 0;
@@ -1104,7 +1108,7 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 	
 	error = gfs2_dirent_first(dip, bh, &dent);
 	if (error != IS_LEAF && error != IS_DINODE) {
-		log_crit("Error retrieving directory.\n");
+		log_crit(_("Error retrieving directory.\n"));
 		return -1;
 	}
 	error = 0;
@@ -1129,7 +1133,7 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 		dirents_fixed++;
 		if (tv.tv_sec - seconds) {
 			seconds = tv.tv_sec;
-			log_notice("\r%llu directories, %llu dirents fixed.",
+			log_notice(_("\r%llu directories, %llu dirents fixed."),
 				   (unsigned long long)dirs_fixed,
 				   (unsigned long long)dirents_fixed);
 			fflush(stdout);
@@ -1140,7 +1144,7 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 		if (inum.no_formal_ino) { /* if not a sentinel (placeholder) */
 			error = fetch_inum(sbp, inum.no_addr, &inum, NULL);
 			if (error) {
-				log_crit("Error retrieving inode 0x%llx\n",
+				log_crit(_("Error retrieving inode 0x%llx\n"),
 					 (unsigned long long)inum.no_addr);
 				break;
 			}
@@ -1234,7 +1238,7 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip
 		if (!error) /* end of file */
 			return 0; /* success */
 		else if (error != sizeof(uint64_t)) {
-			log_crit("fix_one_directory_exhash: error reading directory.\n");
+			log_crit(_("fix_one_directory_exhash: error reading directory.\n"));
 			return -1;
 		}
 		else {
@@ -1250,7 +1254,7 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip
 		/* read the leaf buffer in */
 		error = gfs2_get_leaf(dip, leaf_block, &bh_leaf);
 		if (error) {
-			log_crit("Error reading leaf %llx\n",
+			log_crit(_("Error reading leaf %llx\n"),
 				 (unsigned long long)leaf_block);
 			break;
 		}
@@ -1278,14 +1282,14 @@ static int process_directory(struct gfs2_sbd *sbp, uint64_t dirblock, uint64_t d
 	/* fix the directory: either exhash (leaves) or linear (stuffed) */
 	if (dip->i_di.di_flags & GFS2_DIF_EXHASH) {
 		if (fix_one_directory_exhash(sbp, dip, dentmod)) {
-			log_crit("Error fixing exhash directory.\n");
+			log_crit(_("Error fixing exhash directory.\n"));
 			inode_put(&dip);
 			return -1;
 		}
 	} else {
 		error = process_dirent_info(dip, sbp, dip->i_bh, dip->i_di.di_entries, dentmod);
 		if (error && error != -EISDIR) {
-			log_crit("Error fixing linear directory.\n");
+			log_crit(_("Error fixing linear directory.\n"));
 			inode_put(&dip);
 			return -1;
 		}
@@ -1312,7 +1316,7 @@ static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 	dirents_fixed = 0;
 	gettimeofday(&tv, NULL);
 	seconds = tv.tv_sec;
-	log_notice("\nFixing file and directory information.\n");
+	log_notice(_("\nFixing file and directory information.\n"));
 	fflush(stdout);
 	tmp = NULL;
 	/* for every directory in the list */
@@ -1327,7 +1331,7 @@ static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 		dir_iblk = (struct inode_block *)fix;
 		dirblock = dir_iblk->di_addr; /* addr of dir inode */
 		if (process_directory(sbp, dirblock, 0)) {
-			log_crit("Error processing directory\n");
+			log_crit(_("Error processing directory\n"));
 			return -1;
 		}
 	}
@@ -1363,13 +1367,13 @@ static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 		/* convert symlink to empty dir */
 		error = fetch_inum(sbp, l_fix->di_addr, &fix, &eablk);
 		if (error) {
-			log_crit("Error retrieving inode at block %llx\n", 
+			log_crit(_("Error retrieving inode at block %llx\n"), 
 				 (unsigned long long)l_fix->di_addr);
 			break;
 		}
 		error = fetch_inum(sbp, l_fix->di_paddr, &dir, NULL);
 		if (error) {
-			log_crit("Error retrieving inode at block %llx\n",
+			log_crit(_("Error retrieving inode at block %llx\n"),
 				 (unsigned long long)l_fix->di_paddr);
 			break;
 		}
@@ -1385,7 +1389,7 @@ static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 		/* fix the parent directory dirent entry for this inode */
 		error = process_directory(sbp, l_fix->di_paddr, l_fix->di_addr);
 		if (error) {
-			log_crit("Error trying to fix cdpn dentry\n");
+			log_crit(_("Error trying to fix cdpn dentry\n"));
 			break;
 		}
 		free(l_fix);
@@ -1419,17 +1423,17 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 	unsigned int tmp_mode = 0;
 
 	if(ip->i_di.di_size % sizeof(struct gfs1_jindex) != 0){
-		log_crit("The size reported in the journal index"
+		log_crit(_("The size reported in the journal index"
 				" inode is not a\n"
-				"\tmultiple of the size of a journal index.\n");
+				"\tmultiple of the size of a journal index.\n"));
 		return -1;
 	}
 	if(!(sd_jindex = (struct gfs1_jindex *)malloc(ip->i_di.di_size))) {
-		log_crit("Unable to allocate journal index\n");
+		log_crit(_("Unable to allocate journal index\n"));
 		return -1;
 	}
 	if(!memset(sd_jindex, 0, ip->i_di.di_size)) {
-		log_crit("Unable to zero journal index\n");
+		log_crit(_("Unable to zero journal index\n"));
 		return -1;
 	}
 	/* ugly hack
@@ -1448,8 +1452,8 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 		if(!error)
 			break;
 		if (error != sizeof(struct gfs1_jindex)){
-			log_crit("An error occurred while reading the"
-					" journal index file.\n");
+			log_crit(_("An error occurred while reading the"
+					" journal index file.\n"));
 			goto fail;
 		}
 		journ = sd_jindex + j;
@@ -1458,7 +1462,7 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 	}
 	ip->i_di.di_mode = tmp_mode;
 	if(j * sizeof(struct gfs1_jindex) != ip->i_di.di_size){
-		log_crit("journal inode size invalid\n");
+		log_crit(_("journal inode size invalid\n"));
 		goto fail;
 	}
 	sdp->md.journals = sdp->orig_journals = j;
@@ -1507,7 +1511,7 @@ static int init(struct gfs2_sbd *sbp)
 	sbp->bsize = sbp->sd_sb.sb_bsize;
 	osi_list_init(&sbp->rglist);
 	if (compute_constants(sbp)) {
-		log_crit("Error: Bad constants (1)\n");
+		log_crit(_("Error: Bad constants (1)\n"));
 		exit(-1);
 	}
 
@@ -1529,13 +1533,13 @@ static int init(struct gfs2_sbd *sbp)
 	brelse(bh);
 	if (compute_heightsize(sbp, sbp->sd_heightsize, &sbp->sd_max_height,
 				sbp->bsize, sbp->sd_diptrs, sbp->sd_inptrs)) {
-		log_crit("Error: Bad constants (1)\n");
+		log_crit(_("Error: Bad constants (1)\n"));
 		exit(-1);
 	}
 
 	if (compute_heightsize(sbp, sbp->sd_jheightsize, &sbp->sd_max_jheight,
 				sbp->sd_jbsize, sbp->sd_diptrs, sbp->sd_inptrs)) {
-		log_crit("Error: Bad constants (1)\n");
+		log_crit(_("Error: Bad constants (1)\n"));
 		exit(-1);
 	}
 	/* -------------------------------------------------------- */
@@ -1546,13 +1550,13 @@ static int init(struct gfs2_sbd *sbp)
 	memset(gfs2_heightsize, 0, sizeof(gfs2_heightsize));
 	if (compute_heightsize(sbp, gfs2_heightsize, &gfs2_max_height,
 				sbp->bsize, sbp->sd_diptrs, gfs2_inptrs)) {
-		log_crit("Error: Bad constants (1)\n");
+		log_crit(_("Error: Bad constants (1)\n"));
 		exit(-1);
 	}
 	memset(gfs2_jheightsize, 0, sizeof(gfs2_jheightsize));
 	if (compute_heightsize(sbp, gfs2_jheightsize, &gfs2_max_jheight,
 				sbp->sd_jbsize, sbp->sd_diptrs, gfs2_inptrs)) {
-		log_crit("Error: Bad constants (1)\n");
+		log_crit(_("Error: Bad constants (1)\n"));
 		exit(-1);
 	}
 
@@ -1563,7 +1567,7 @@ static int init(struct gfs2_sbd *sbp)
 		sbp->sd_sb.sb_header.mh_type != GFS_METATYPE_SB ||
 		sbp->sd_sb.sb_header.mh_format != GFS_FORMAT_SB ||
 		sbp->sd_sb.sb_multihost_format != GFS_FORMAT_MULTI) {
-		log_crit("Error: %s does not look like a gfs1 filesystem.\n",
+		log_crit(_("Error: %s does not look like a gfs1 filesystem.\n"),
 				device);
 		close(sbp->device_fd);
 		exit(-1);
@@ -1585,16 +1589,16 @@ static int init(struct gfs2_sbd *sbp)
 	/* look like a directory, temporarily.                               */
 	sbp->md.riinode->i_di.di_mode &= ~S_IFMT;
 	sbp->md.riinode->i_di.di_mode |= S_IFDIR;
-	printf("Examining file system");
+	printf(_("Examining file system"));
 	if (gfs1_ri_update(sbp, 0, &rgcount, 0)){
-		log_crit("Unable to fill in resource group information.\n");
+		log_crit(_("Unable to fill in resource group information.\n"));
 		return -1;
 	}
 	printf("\n");
 	fflush(stdout);
 	inode_put(&sbp->md.riinode);
 	inode_put(&sbp->md.jiinode);
-	log_debug("%d rgs found.\n", rgcount);
+	log_debug(_("%d rgs found.\n"), rgcount);
 	return 0;
 }/* fill_super_block */
 
@@ -1603,14 +1607,14 @@ static int init(struct gfs2_sbd *sbp)
 /* ------------------------------------------------------------------------- */
 static void give_warning(void)
 {
-	printf("This program will convert a gfs1 filesystem to a "	\
-		   "gfs2 filesystem.\n");
-	printf("WARNING: This can't be undone.  It is strongly advised "	\
-		   "that you:\n\n");
-	printf("   1. Back up your entire filesystem first.\n");
-	printf("   2. Run gfs_fsck first to ensure filesystem integrity.\n");
-	printf("   3. Make sure the filesystem is NOT mounted from any node.\n");
-	printf("   4. Make sure you have the latest software versions.\n");
+	printf(_("This program will convert a gfs1 filesystem to a "	\
+		   "gfs2 filesystem.\n"));
+	printf(_("WARNING: This can't be undone.  It is strongly advised "	\
+		   "that you:\n\n"));
+	printf(_("   1. Back up your entire filesystem first.\n"));
+	printf(_("   2. Run gfs_fsck first to ensure filesystem integrity.\n"));
+	printf(_("   3. Make sure the filesystem is NOT mounted from any node.\n"));
+	printf(_("   4. Make sure you have the latest software versions.\n"));
 }/* give_warning */
 
 /* ------------------------------------------------------------------------- */
@@ -1618,7 +1622,7 @@ static void give_warning(void)
 /* ------------------------------------------------------------------------- */
 static void version(void)
 {
-	log_notice("gfs2_convert version %s (built %s %s)\n", VERSION,
+	log_notice(_("gfs2_convert version %s (built %s %s)\n"), VERSION,
 			   __DATE__, __TIME__);
 	log_notice("%s\n\n", REDHAT_COPYRIGHT);
 }
@@ -1629,15 +1633,15 @@ static void version(void)
 static void usage(const char *name)
 {
 	give_warning();
-	printf("\nUsage:\n");
-	printf("%s [-hnqvVy] <device>\n\n", name);
+	printf(_("\nUsage:\n"));
+	printf(_("%s [-hnqvVy] <device>\n\n"), name);
 	printf("Flags:\n");
-	printf("\th - print this help message\n");
-	printf("\tn - assume 'no' to all questions\n");
-	printf("\tq - quieter output\n");
-	printf("\tv - more verbose output\n");
-	printf("\tV - print version information\n");
-	printf("\ty - assume 'yes' to all questions\n");
+	printf(_("\th - print this help message\n"));
+	printf(_("\tn - assume 'no' to all questions\n"));
+	printf(_("\tq - quieter output\n"));
+	printf(_("\tv - more verbose output\n"));
+	printf(_("\tV - print version information\n"));
+	printf(_("\ty - assume 'yes' to all questions\n"));
 }/* usage */
 
 /* ------------------------------------------------------------------------- */
@@ -1677,7 +1681,7 @@ static void process_parameters(int argc, char **argv, struct gfs2_options *opts)
 			opts->yes = 1;
 			break;
 		default:
-			fprintf(stderr,"Parameter not understood: %c\n", c);
+			fprintf(stderr,_("Parameter not understood: %c\n"), c);
 			usage(argv[0]);
 			exit(0);
 		}
@@ -1686,11 +1690,11 @@ static void process_parameters(int argc, char **argv, struct gfs2_options *opts)
 		strcpy(device, argv[optind]);
 		opts->device = device;
 		if(!opts->device) {
-			fprintf(stderr, "Please use '-h' for usage.\n");
+			fprintf(stderr, _("Please use '-h' for usage.\n"));
 			exit(1);
 		}
 	} else {
-		fprintf(stderr, "No device specified.  Use '-h' for usage.\n");
+		fprintf(stderr, _("No device specified.  Use '-h' for usage.\n"));
 		exit(1);
 	}
 } /* process_parameters */
@@ -1740,7 +1744,7 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 	mh.mh_magic = GFS2_MAGIC;
 	mh.mh_type = GFS2_METATYPE_RB;
 	mh.mh_format = GFS2_FORMAT_RB;
-	log_notice("Converting journal space to rg space.\n");
+	log_notice(_("Converting journal space to rg space.\n"));
 	/* Go through each journal, converting them one by one */
 	for (j = 0; j < sdp->orig_journals; j++) { /* for each journal */
 		uint64_t size;
@@ -1760,18 +1764,18 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 				 (rgd->ri.ri_addr > rgdhigh->ri.ri_addr)))
 				rgdhigh = rgd;
 		} /* for each rg */
-		log_info("Addr 0x%llx comes after rg at addr 0x%llx\n",
+		log_info(_("Addr 0x%llx comes after rg at addr 0x%llx\n"),
 			 (unsigned long long)jndx->ji_addr,
 			 (unsigned long long)rgdhigh->ri.ri_addr);
 		if (!rgdhigh) { /* if we somehow didn't find one. */
-			log_crit("Error: No suitable rg found for journal.\n");
+			log_crit(_("Error: No suitable rg found for journal.\n"));
 			return -1;
 		}
 		/* Allocate a new rgd entry which includes rg and ri. */
 		/* convert the gfs1 rgrp into a new gfs2 rgrp */
 		rgd = malloc(sizeof(struct rgrp_list));
 		if (!rgd) {
-			log_crit("Error: unable to allocate memory for rg conversion.\n");
+			log_crit(_("Error: unable to allocate memory for rg conversion.\n"));
 			return -1;
 		}
 		memset(rgd, 0, sizeof(struct rgrp_list));
@@ -1808,7 +1812,7 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 			memset(rgd->bh[x]->b_data, 0, sdp->bsize);
 		}
 		if (gfs2_compute_bitstructs(sdp, rgd)) {
-			log_crit("gfs2_convert: Error converting bitmaps.\n");
+			log_crit(_("gfs2_convert: Error converting bitmaps.\n"));
 			exit(-1);
 		}
 		convert_bitmaps(sdp, rgd);
@@ -1839,7 +1843,7 @@ static void update_inode_file(struct gfs2_sbd *sdp)
 	if (count != sizeof(uint64_t))
 		die("update_inode_file\n");
 	
-	log_debug("\nNext Inum: %llu\n", (unsigned long long)sdp->md.next_inum);
+	log_debug(_("\nNext Inum: %llu\n"), (unsigned long long)sdp->md.next_inum);
 }/* update_inode_file */
 
 /* ------------------------------------------------------------------------- */
@@ -1869,7 +1873,7 @@ static void remove_obsolete_gfs1(struct gfs2_sbd *sbp)
 {
 	struct gfs2_inum inum;
 
-	log_notice("Removing obsolete GFS1 file system structures.\n");
+	log_notice(_("Removing obsolete GFS1 file system structures.\n"));
 	fflush(stdout);
 	/* Delete the old gfs1 Journal index: */
 	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_jindex_di);
@@ -1906,7 +1910,7 @@ static int conv_build_jindex(struct gfs2_sbd *sdp)
 	for (j = 0; j < sdp->md.journals; j++) {
 		char name[256];
 
-		printf("Writing journal #%d...", j + 1);
+		printf(_("Writing journal #%d..."), j + 1);
 		fflush(stdout);
 		sprintf(name, "journal%u", j);
 		sdp->md.journal[j] = createi(sdp->md.jiinode, name, S_IFREG |
@@ -1914,7 +1918,7 @@ static int conv_build_jindex(struct gfs2_sbd *sdp)
 		write_journal(sdp, j,
 			      sdp->jsize << 20 >> sdp->sd_sb.sb_bsize_shift);
 		inode_put(&sdp->md.journal[j]);
-		printf("done.\n");
+		printf(_("done.\n"));
 		fflush(stdout);
 	}
 
@@ -2032,7 +2036,7 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 
 	err = gfs2_lookupi(sdp->master_dir, "quota", 5, &nq_ip);
 	if (err)
-		die("Couldn't lookup new quota file: %d\n", err);
+		die(_("Couldn't lookup new quota file: %d\n"), err);
 
 	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_quota_di);
 	oq_ip = inode_read(sdp, inum.no_addr);
@@ -2079,17 +2083,20 @@ static int __attribute__((format(printf, 3, 4))) gfs2_query(int *setonabort,
 		printf("\n");
 		fflush(NULL);
 		if (response == 0x3) { /* if interrupted, by ctrl-c */
-			response = generic_interrupt("Question", "response",
+
+			/*This is ok to translate if nobody changes the (a/c) option.
+ 			 * Should we proceed with this translation */
+			response = generic_interrupt(_("Question"), _("response"),
 						     NULL,
-						     "Do you want to abort " \
-						     "or continue (a/c)?",
+						     _("Do you want to abort " \
+						     "or continue (a/c)?"), 
 						     "ac");
 			if (response == 'a') {
 				ret = 0;
 				*setonabort = 1;
 				break;
 			}
-			printf("Continuing.\n");
+			printf(_("Continuing.\n"));
 		} else if(tolower(response) == 'y') {
 			ret = 1;
 			break;
@@ -2097,7 +2104,7 @@ static int __attribute__((format(printf, 3, 4))) gfs2_query(int *setonabort,
 			ret = 0;
 			break;
 		} else {
-			printf("Bad response %d, please type 'y' or 'n'.\n",
+			printf(_("Bad response %d, please type 'y' or 'n'.\n"),
 			       response);
 		}
 	}
@@ -2131,9 +2138,9 @@ int main(int argc, char **argv)
 
 		give_warning();
 		if (!gfs2_query(&do_abort, &opts,
-				"Convert %s from GFS1 to GFS2? (y/n)",
+				_("Convert %s from GFS1 to GFS2? (y/n)"),
 				device)) {
-			log_crit("%s not converted.\n", device);
+			log_crit(_("%s not converted.\n"), device);
 			close(sb2.device_fd);
 			exit(0);
 		}
@@ -2142,12 +2149,12 @@ int main(int argc, char **argv)
 	/* Convert incore gfs1 sb to gfs2 sb              */
 	/* ---------------------------------------------- */
 	if (!error) {
-		log_notice("Converting resource groups.");
+		log_notice(_("Converting resource groups."));
 		fflush(stdout);
 		error = convert_rgs(&sb2);
 		log_notice("\n");
 		if (error)
-			log_crit("%s: Unable to convert resource groups.\n",
+			log_crit(_("%s: Unable to convert resource groups.\n"),
 					device);
 		fsync(sb2.device_fd); /* write the buffers to disk */
 	}
@@ -2155,10 +2162,11 @@ int main(int argc, char **argv)
 	/* Renumber the inodes consecutively.             */
 	/* ---------------------------------------------- */
 	if (!error) {
+		/* Add a string notifying inode converstion start? */
 		error = inode_renumber(&sb2, sb2.sd_sb.sb_root_dir.no_addr,
 				       (osi_list_t *)&cdpns_to_fix);
 		if (error)
-			log_crit("\n%s: Error renumbering inodes.\n", device);
+			log_crit(_("\n%s: Error renumbering inodes.\n"), device);
 		fsync(sb2.device_fd); /* write the buffers to disk */
 	}
 	/* ---------------------------------------------- */
@@ -2166,32 +2174,32 @@ int main(int argc, char **argv)
 	/* ---------------------------------------------- */
 	if (!error) {
 		error = fix_directory_info(&sb2, (osi_list_t *)&dirs_to_fix);
-		log_notice("\r%llu directories, %llu dirents fixed.",
+		log_notice(_("\r%llu directories, %llu dirents fixed."),
 			   (unsigned long long)dirs_fixed,
 			   (unsigned long long)dirents_fixed);
 		fflush(stdout);
 		if (error)
-			log_crit("\n%s: Error fixing directories.\n", device);
+			log_crit(_("\n%s: Error fixing directories.\n"), device);
 	}
 	/* ---------------------------------------------- */
 	/* Convert cdpn symlinks to empty dirs            */
 	/* ---------------------------------------------- */
 	if (!error) {
 		error = fix_cdpn_symlinks(&sb2, (osi_list_t *)&cdpns_to_fix);
-		log_notice("\r%llu cdpn symlinks moved to empty directories.",
+		log_notice(_("\r%llu cdpn symlinks moved to empty directories."),
 			   (unsigned long long)cdpns_fixed);
 		fflush(stdout);
 		if (error)
-			log_crit("\n%s: Error fixing cdpn symlinks.\n", device);
+			log_crit(_("\n%s: Error fixing cdpn symlinks.\n"), device);
 	}
 	/* ---------------------------------------------- */
 	/* Convert journal space to rg space              */
 	/* ---------------------------------------------- */
 	if (!error) {
-		log_notice("\nConverting journals.\n");
+		log_notice(_("\nConverting journals.\n"));
 		error = journ_space_to_rg(&sb2);
 		if (error)
-			log_crit("%s: Error converting journal space.\n", device);
+			log_crit(_("%s: Error converting journal space.\n"), device);
 		fsync(sb2.device_fd); /* write the buffers to disk */
 	}
 	/* ---------------------------------------------- */
@@ -2201,7 +2209,7 @@ int main(int argc, char **argv)
 		int jreduce = 0;
 		/* Now we've got to treat it as a gfs2 file system */
 		if (compute_constants(&sb2)) {
-			log_crit("Error: Bad constants (1)\n");
+			log_crit(_("Error: Bad constants (1)\n"));
 			exit(-1);
 		}
 
@@ -2212,36 +2220,36 @@ int main(int argc, char **argv)
 			jreduce = 1;
 		}
 		if (jreduce)
-			log_notice("Reduced journal size to %u MB to accommodate "
-				   "GFS2 file system structures.\n", sb2.jsize);
+			log_notice(_("Reduced journal size to %u MB to accommodate "
+				   "GFS2 file system structures.\n"), sb2.jsize);
 		/* Build the master subdirectory. */
 		build_master(&sb2); /* Does not do inode_put */
 		sb2.sd_sb.sb_master_dir = sb2.master_dir->i_di.di_num;
 		/* Build empty journal index file. */
 		error = conv_build_jindex(&sb2);
 		if (error) {
-			log_crit("Error: could not build jindex: %s\n", strerror(error));
+			log_crit(_("Error: could not build jindex: %s\n"), strerror(error));
 			exit(-1);
 		}
-		log_notice("Building GFS2 file system structures.\n");
+		log_notice(_("Building GFS2 file system structures.\n"));
 		/* Build the per-node directories */
 		error = build_per_node(&sb2);
 		if (error) {
-			log_crit("Error building per-node directories: %s\n",
+			log_crit(_("Error building per-node directories: %s\n"),
 			         strerror(error));
 			exit(-1);
 		}
 		/* Create the empty inode number file */
 		error = build_inum(&sb2); /* Does not do inode_put */
 		if (error) {
-			log_crit("Error building inum inode: %s\n",
+			log_crit(_("Error building inum inode: %s\n"),
 			         strerror(error));
 			exit(-1);
 		}
 		/* Create the statfs file */
 		error = build_statfs(&sb2); /* Does not do inode_put */
 		if (error) {
-			log_crit("Error building statfs inode: %s\n",
+			log_crit(_("Error building statfs inode: %s\n"),
 			         strerror(error));
 			exit(-1);
 		}
@@ -2249,14 +2257,14 @@ int main(int argc, char **argv)
 		/* Create the resource group index file */
 		error = build_rindex(&sb2);
 		if (error) {
-			log_crit("Error building rindex inode: %s\n",
+			log_crit(_("Error building rindex inode: %s\n"),
 			         strerror(error));
 			exit(-1);
 		}
 		/* Create the quota file */
 		error = build_quota(&sb2);
 		if (error) {
-			log_crit("Error building quota inode: %s\n",
+			log_crit(_("Error building quota inode: %s\n"),
 			         strerror(error));
 			exit(-1);
 		}
@@ -2284,7 +2292,7 @@ int main(int argc, char **argv)
 
 		/* Now free all the in memory */
 		gfs2_rgrp_free(&sb2.rglist);
-		log_notice("Committing changes to disk.\n");
+		log_notice(_("Committing changes to disk.\n"));
 		fflush(stdout);
 		/* Set filesystem type in superblock to gfs2.  We do this at the */
 		/* end because if the tool is interrupted in the middle, we want */
@@ -2300,7 +2308,7 @@ int main(int argc, char **argv)
 		if (error)
 			perror(device);
 		else
-			log_notice("%s: filesystem converted successfully to gfs2.\n",
+			log_notice(_("%s: filesystem converted successfully to gfs2.\n"),
 					   device);
 	}
 	close(sb2.device_fd);
