@@ -1,7 +1,7 @@
 #!/bin/bash
 
 FILES=`git ls-files | sed -e's/^/gfs2-utils\//'`
-BRANCH=`git show-branch --current | sed -e's/.*\[//' -e's/\].*$//'`
+BRANCH=`git branch | grep '^\*' | cut -d' ' -f2`
 DESC=`git describe 2>/dev/null`
 
 if [ $? != 128 ]; then
