@@ -332,12 +332,11 @@ static void verify_arguments(struct gfs2_sbd *sdp)
 {
 	if (!sdp->expert)
 		test_locking(sdp->lockproto, sdp->locktable);
-	/* Look at this!  Why can't we go bigger than 2GB? */
 	if (sdp->expert) {
-		if (1 > sdp->rgsize || sdp->rgsize > 2048)
+		if (GFS2_EXP_MIN_RGSIZE > sdp->rgsize || sdp->rgsize > GFS2_MAX_RGSIZE)
 			die( _("bad resource group size\n"));
 	} else {
-		if (32 > sdp->rgsize || sdp->rgsize > 2048)
+		if (GFS2_MIN_RGSIZE > sdp->rgsize || sdp->rgsize > GFS2_MAX_RGSIZE)
 			die( _("bad resource group size\n"));
 	}
 
