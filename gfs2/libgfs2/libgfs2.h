@@ -258,6 +258,11 @@ struct metapath {
 #define GFS2_MIN_GROW_SIZE          (10)
 #define GFS2_EXCESSIVE_RGS          (10000)
 
+#define GFS2_EXP_MIN_RGSIZE         (1)
+#define GFS2_MIN_RGSIZE             (32)
+/* Look at this!  Why can't we go bigger than 2GB? */
+#define GFS2_MAX_RGSIZE             (2048)
+
 #define DATA (1)
 #define META (2)
 #define DINODE (3)
