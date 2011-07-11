@@ -476,36 +476,6 @@ static void are_you_sure(struct gfs2_sbd *sdp)
 }
 
 /**
- * check_mount - check to see if device is mounted/busy
- * @device: the device to create the filesystem on
- *
- */
-
-static void check_mount(char *device)
-{
-	struct stat st_buf;
-	int fd;
-
-	if (stat(device, &st_buf) < 0)
-		die( _("could not stat device %s\n"), device);
-	if (!S_ISBLK(st_buf.st_mode))
-		die( _("%s is not a block device\n"), device);
-
-	fd = open(device, O_RDONLY | O_NONBLOCK | O_EXCL | O_CLOEXEC);
-
-	if (fd < 0) {
-		if (errno == EBUSY) {
-			die( _("device %s is busy\n"), device);
-		}
-	}
-	else {
-		close(fd);
-	}
-
-	return;
-}
-
-/**
  * print_results - print out summary information
  * @sdp: the command line
  *
@@ -561,6 +531,7 @@ void main_mkfs(int argc, char *argv[])
 	int rgsize_specified = 0;
 	uint64_t real_device_size;
 	unsigned char uuid[16];
+	struct stat st_buf;
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	sdp->bsize = -1;
@@ -579,25 +550,31 @@ void main_mkfs(int argc, char *argv[])
 
 	verify_arguments(sdp);
 
-	check_mount(sdp->device_name);
-
 	sdp->device_fd = open(sdp->device_name, O_RDWR | O_CLOEXEC);
 	if (sdp->device_fd < 0)
 		die( _("can't open device %s: %s\n"),
 		    sdp->device_name, strerror(errno));
 
+	if (fstat(sdp->device_fd, &st_buf) < 0) {
+		fprintf(stderr, _("could not fstat fd %d: %s\n"),
+			sdp->device_fd, strerror(errno));
+		exit(-1);
+	}
+
 	if (!sdp->override)
 		are_you_sure(sdp);
 
-	if (device_topology(sdp)) {
+	if (!S_ISREG(st_buf.st_mode) && device_topology(sdp)) {
 		fprintf(stderr, _("Device topology error\n"));
 		exit(-1);
 	}
 
 	if (sdp->bsize == -1) {
+		if (S_ISREG(st_buf.st_mode))
+			sdp->bsize = GFS2_DEFAULT_BSIZE;
 		/* See if optimal_io_size (the biggest I/O we can submit
 		   without incurring a penalty) is a suitable block size. */
-		if (sdp->optimal_io_size <= getpagesize() &&
+		else if (sdp->optimal_io_size <= getpagesize() &&
 		    sdp->optimal_io_size >= sdp->minimum_io_size)
 			sdp->bsize = sdp->optimal_io_size;
 		/* See if physical_block_size (the smallest unit we can write
