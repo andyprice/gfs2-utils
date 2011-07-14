@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <sysexits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -63,7 +63,7 @@ static int str2uuid(const char *newval, char *uuid)
 
 	if (strlen(newval) != 36) {
 		fprintf(stderr, _("Invalid UUID specified.\n"));
-		return -EINVAL;
+		return EX_DATAERR;
 	}
 
 	cp = uuid;
@@ -74,13 +74,13 @@ static int str2uuid(const char *newval, char *uuid)
 				continue;
 			fprintf(stderr, _("uuid %s has an invalid format."),
 					newval);
-			return -EINVAL;
+			return EX_DATAERR;
 		}
 		if (!isxdigit(newval[i])) {
 			fprintf(stderr, _("uuid %s has an invalid hex "
 						"digit '%c' at offset %d.\n"),
 					newval, newval[i], i + 1);
-			return -EINVAL;
+			return EX_DATAERR;
 		}
 		*cp = str_to_hexchar(&newval[i++]);
 		cp++;
@@ -96,13 +96,13 @@ int read_super(struct tunegfs2 *tfs)
 	block = malloc(sizeof(char) * GFS2_DEFAULT_BSIZE);
 	n = pread(tfs->fd, block, GFS2_DEFAULT_BSIZE, tfs->sb_start);
 	if (n < 0) {
-		fprintf(stderr, _("Error reading from device"));
-		return errno;
+		perror("read_super: pread");
+		return EX_IOERR;
 	}
 	tfs->sb = block;
 	if (be32_to_cpu(tfs->sb->sb_header.mh_magic) != GFS2_MAGIC) {
 		fprintf(stderr, _("Not a GFS/GFS2 device\n"));
-		return -EINVAL;
+		return EX_IOERR;
 	}
 	return 0;
 }
@@ -144,9 +144,9 @@ int write_super(const struct tunegfs2 *tfs)
 {
 	int n;
 	n = pwrite(tfs->fd, tfs->sb, GFS2_DEFAULT_BSIZE, tfs->sb_start);
-	if (n<0) {
-		fprintf(stderr, _("Unable to write super block\n"));
-		return -errno;
+	if (n < 0) {
+		perror("write_super: pwrite");
+		return EX_IOERR;
 	}
 	return 0;
 }
@@ -164,7 +164,7 @@ int change_label(struct tunegfs2 *tfs, const char *fsname)
 	}
 	if (fsname_len < l) {
 		fprintf(stderr, _("Label too long\n"));
-		return -E2BIG;
+		return EX_DATAERR;
 	}
 	memset(sb_fsname, '\0', fsname_len);
 	memcpy(sb_fsname, fsname, l);
@@ -178,7 +178,7 @@ int change_uuid(struct tunegfs2 *tfs, const char *str)
 	if (be32_to_cpu(tfs->sb->sb_header.mh_magic) != GFS2_MAGIC) {
 		fprintf(stderr, _("UUID can be changed for a GFS2"));
 		fprintf(stderr, _(" device only\n"));
-		return -EINVAL;
+		return EX_IOERR;
 	}
 	status = str2uuid(str, uuid);
 	if (!status)
@@ -193,7 +193,7 @@ int change_lockproto(struct tunegfs2 *tfs, const char *lockproto)
 	if (strncmp(lockproto, "lock_dlm", 8) 
 			&& strncmp(lockproto, "lock_nolock", 11)) {
 		fprintf(stderr, _("Incorrect lock protocol specified\n"));
-		return -EINVAL;
+		return EX_DATAERR;
 	}
 	memset(tfs->sb->sb_lockproto, '\0', GFS2_LOCKNAME_LEN);
 	strncpy(tfs->sb->sb_lockproto, lockproto, l);
@@ -220,7 +220,7 @@ int change_locktable(struct tunegfs2 *tfs, const char *locktable)
 
 	if (l > GFS2_LOCKNAME_LEN - fsname_len - 1) {
 		fprintf(stderr, _("Lock table name too big\n"));
-		return -E2BIG;
+		return EX_DATAERR;
 	}
 	memset(t_fsname, '\0', GFS2_LOCKNAME_LEN);
 	strncpy(t_fsname, sb_fsname, fsname_len);

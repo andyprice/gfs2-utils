@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libgen.h>
+#include <sysexits.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -51,8 +52,8 @@ void parse_mount_options(char *arg)
 
 static void usage(char *name)
 {
-	printf("Usage: %s -L <volume label> -U <UUID> -l -o "
-		"<mount options> <device> \n", basename(name));
+	printf("Usage: %s [-hlV] [-L <volume_label>] [-U <UUID>]\n\t"
+		"[-o <mount_options>] <device> \n", basename(name));
 }
 
 static void version(void)
@@ -62,14 +63,14 @@ static void version(void)
 
 int main(int argc, char **argv)
 {
-	int c, status = 0;
+	int c, status;
 
 	memset(tfs, 0, sizeof(struct tunegfs2));
 	while((c = getopt(argc, argv, "hL:U:lo:V")) != -1) {
 		switch(c) {
 		case 'h':
 			usage(argv[0]);
-			break;
+			return 0;
 		case 'L':
 			tfs->opt_label = 1;
 			tfs->label = optarg;
@@ -86,13 +87,18 @@ int main(int argc, char **argv)
 			break;
 		case 'V':
 			version();
-			break;
+			return 0;
 		default:
 			fprintf(stderr, _("Invalid option.\n"));
 			usage(argv[0]);
-			status = -EINVAL;
-			goto out;
+			return EX_USAGE;
 		}
+	}
+
+	if ((argc - optind) != 1) {
+		fprintf(stderr, _("Incorrect number of arguments\n"));
+		usage(argv[0]);
+		return EX_USAGE;
 	}
 
 	tfs->devicename = argv[optind];
@@ -101,8 +107,7 @@ int main(int argc, char **argv)
 	if (tfs->fd < 0) {
 		fprintf(stderr, _("Unable to open device %s\n"),
 				tfs->devicename);
-		status = -EIO;
-		goto out;
+		return EX_IOERR;
 	}
 
 	status = read_super(tfs);
