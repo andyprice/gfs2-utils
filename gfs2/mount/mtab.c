@@ -120,6 +120,7 @@ void del_mtab_entry(struct mount_options *mo)
 	mode_t old_umask;
 	struct stat sbuf;
 	int found = 0;
+	char *abs_path, *abs_dev;
 
 	if (ignore_mtab())
 		return;
@@ -139,13 +140,19 @@ void del_mtab_entry(struct mount_options *mo)
 	while (fgets(line, PATH_MAX, mtab)) {
 		/* exclude the line matching the fs being unmounted
 		   from the next version of mtab */
-
-		if ((sscanf(line, "%s %s %s", device, path, type) == 3) &&
-		    (strncmp(type, "gfs", 3) == 0) &&
-		    (strcmp(path, mo->dir) == 0) &&
-		    (strcmp(device, mo->dev) == 0)) {
-			found = 1;
-			continue;
+		if (sscanf(line, "%s %s %s", device, path, type) == 3) {
+			abs_path = realpath(path, NULL);
+			abs_dev = realpath(device, NULL);
+			if ((strcmp(type, "gfs2") == 0) &&
+			    (strcmp(abs_path, mo->dir) == 0) &&
+			    (strcmp(abs_dev, mo->dev) == 0)) {
+				found = 1;
+				free(abs_path);
+				free(abs_dev);
+				continue;
+			}
+			free(abs_path);
+			free(abs_dev);
 		}
 
 		/* all other lines from mtab are included in
