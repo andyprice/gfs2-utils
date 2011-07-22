@@ -24,7 +24,6 @@ extern int print_super(const struct tunegfs2 *);
 extern int read_super(struct tunegfs2 *);
 extern int write_super(const struct tunegfs2 *);
 extern int change_uuid(struct tunegfs2 *, const char *uuid);
-extern int change_label(struct tunegfs2 *, const char *label);
 extern int change_lockproto(struct tunegfs2 *, const char *label);
 extern int change_locktable(struct tunegfs2 *, const char *label);
 

@@ -20,13 +20,13 @@ struct tunegfs2 tunegfs2_struct;
 struct tunegfs2 *tfs = &tunegfs2_struct;
 
 
-void parse_mount_options(char *arg)
+static void parse_mount_options(char *arg)
 {
 	struct opt_map *m;
 	char *s, *c;
 	int l;
 	struct opt_map {
-		char *tag;
+		const char *tag;
 		int *flag;
 		char **val;
 	} map[]= {
@@ -101,6 +101,12 @@ int main(int argc, char **argv)
 		return EX_USAGE;
 	}
 
+	if (tfs->opt_label && tfs->opt_table) {
+		fprintf(stderr, _("The -L and -o locktable= options are mutually exclusive\n"));
+		usage(argv[0]);
+		return EX_USAGE;
+	}
+
 	tfs->devicename = argv[optind];
 	tfs->fd = open(tfs->devicename, O_RDWR); 
 
@@ -120,11 +126,14 @@ int main(int argc, char **argv)
 			goto out;
 	}
 
-	/* Keep label and table together because they are the same field
-	 * in the superblock */
+	if (tfs->opt_proto) {
+		status = change_lockproto(tfs, tfs->proto);
+		if (status)
+			goto out;
+	}
 
 	if (tfs->opt_label) {
-		status = change_label(tfs, tfs->label);
+		status = change_locktable(tfs, tfs->label);
 		if (status)
 			goto out;
 	}
@@ -135,14 +144,8 @@ int main(int argc, char **argv)
 			goto out;
 	}
 
-	if (tfs->opt_proto) {
-		status = change_lockproto(tfs, tfs->proto);
-		if (status)
-			goto out;
-	}
-
-	if (tfs->opt_label || tfs->opt_uuid ||
-			tfs->opt_table || tfs->opt_proto) {
+	if (tfs->opt_label || tfs->opt_uuid || tfs->opt_table ||
+	    tfs->opt_proto) {
 		status = write_super(tfs);
 		if (status)
 			goto out;

@@ -104,6 +104,9 @@ int read_super(struct tunegfs2 *tfs)
 		fprintf(stderr, _("Not a GFS/GFS2 device\n"));
 		return EX_IOERR;
 	}
+	/* Ensure that table and proto are NULL terminated */
+	tfs->sb->sb_lockproto[GFS2_LOCKNAME_LEN - 1] = '\0';
+	tfs->sb->sb_locktable[GFS2_LOCKNAME_LEN - 1] = '\0';
 	return 0;
 }
 
@@ -114,17 +117,7 @@ static int is_gfs2(const struct tunegfs2 *tfs)
 
 int print_super(const struct tunegfs2 *tfs)
 {
-	char *fsname = NULL;
-	int table_len = 0, fsname_len = 0;
-
-	fsname = strchr(tfs->sb->sb_locktable, ':');
-	if (fsname) {
-		table_len = fsname - tfs->sb->sb_locktable;
-		fsname_len = GFS2_LOCKNAME_LEN - table_len - 1;
-		fsname++;
-	}
-
-	printf(_("Filesystem volume name: %.*s\n"), fsname_len, fsname);
+	printf(_("Filesystem volume name: %s\n"), tfs->sb->sb_locktable);
 	if (is_gfs2(tfs))
 		printf(_("Filesystem UUID: %s\n"), uuid2str(tfs->sb->sb_uuid));
 	printf( _("Filesystem magic number: 0x%X\n"), be32_to_cpu(tfs->sb->sb_header.mh_magic));
@@ -133,9 +126,8 @@ int print_super(const struct tunegfs2 *tfs)
 	printf(_("Root inode: %llu\n"), (unsigned long long)be64_to_cpu(tfs->sb->sb_root_dir.no_addr));
 	if (is_gfs2(tfs))
 		printf(_("Master inode: %llu\n"), (unsigned long long)be64_to_cpu(tfs->sb->sb_master_dir.no_addr));
-	printf(_("Lock Protocol: %.*s\n"), GFS2_LOCKNAME_LEN,
-		tfs->sb->sb_lockproto);
-	printf(_("Lock table: %.*s\n"), table_len, tfs->sb->sb_locktable);
+	printf(_("Lock Protocol: %s\n"), tfs->sb->sb_lockproto);
+	printf(_("Lock table: %s\n"), tfs->sb->sb_locktable);
 
 	return 0;
 }
@@ -148,26 +140,6 @@ int write_super(const struct tunegfs2 *tfs)
 		perror("write_super: pwrite");
 		return EX_IOERR;
 	}
-	return 0;
-}
-
-int change_label(struct tunegfs2 *tfs, const char *fsname)
-{
-	char *sb_fsname = NULL;
-	int l = strlen(fsname), table_len = 0, fsname_len = 0;
-
-	sb_fsname = strchr(tfs->sb->sb_locktable, ':');
-	if (sb_fsname) {
-		table_len = sb_fsname - tfs->sb->sb_locktable;
-		fsname_len = GFS2_LOCKNAME_LEN - table_len - 1;
-		sb_fsname++;
-	}
-	if (fsname_len < l) {
-		fprintf(stderr, _("Label too long\n"));
-		return EX_DATAERR;
-	}
-	memset(sb_fsname, '\0', fsname_len);
-	memcpy(sb_fsname, fsname, l);
 	return 0;
 }
 
@@ -186,12 +158,17 @@ int change_uuid(struct tunegfs2 *tfs, const char *str)
 	return status;
 }
 
-
 int change_lockproto(struct tunegfs2 *tfs, const char *lockproto)
 {
 	int l = strlen(lockproto);
-	if (strncmp(lockproto, "lock_dlm", 8) 
-			&& strncmp(lockproto, "lock_nolock", 11)) {
+
+	if (l >= GFS2_LOCKNAME_LEN) {
+		fprintf(stderr, _("Lock protocol name too long\n"));
+		return EX_DATAERR;
+	}
+
+	if (strncmp(lockproto, "lock_dlm", 8) &&
+	    strncmp(lockproto, "lock_nolock", 11)) {
 		fprintf(stderr, _("Incorrect lock protocol specified\n"));
 		return EX_DATAERR;
 	}
@@ -202,30 +179,28 @@ int change_lockproto(struct tunegfs2 *tfs, const char *lockproto)
 
 int change_locktable(struct tunegfs2 *tfs, const char *locktable)
 {
-	char *sb_fsname = NULL;
-	char t_fsname[GFS2_LOCKNAME_LEN];
-	int l = strlen(locktable), table_len = 0, fsname_len = 0;
-
-	sb_fsname = strchr(tfs->sb->sb_locktable, ':');
-	if (sb_fsname) {
-		table_len = sb_fsname - tfs->sb->sb_locktable;
-		fsname_len = GFS2_LOCKNAME_LEN - table_len - 1;
-		sb_fsname++;
-	}
-	/* Gotta check if the existing fsname will allow us to fit in
-	 * the new locktable name */
-	fsname_len = strlen(sb_fsname);
-	if (fsname_len > GFS2_LOCKNAME_LEN - table_len - 1)
-		fsname_len = GFS2_LOCKNAME_LEN - table_len - 1;
-
-	if (l > GFS2_LOCKNAME_LEN - fsname_len - 1) {
-		fprintf(stderr, _("Lock table name too big\n"));
+	if (strlen(locktable) >= GFS2_LOCKNAME_LEN) {
+		fprintf(stderr, _("Lock table name too long\n"));
 		return EX_DATAERR;
 	}
-	memset(t_fsname, '\0', GFS2_LOCKNAME_LEN);
-	strncpy(t_fsname, sb_fsname, fsname_len);
-	memset(tfs->sb->sb_locktable, '\0', GFS2_LOCKNAME_LEN);
-	sprintf(tfs->sb->sb_locktable, "%s:%s", locktable, t_fsname);
+
+	if (strcmp(tfs->sb->sb_lockproto, "lock_dlm") == 0) {
+		char *fsname = strchr(locktable, ':');
+		if (fsname == NULL) {
+			fprintf(stderr, _("locktable error: mising colon in the locktable\n"));
+			return EX_DATAERR;
+		}
+		if (strlen(++fsname) > 16) {
+			fprintf(stderr, _("locktable error: fsname too long\n"));
+			return EX_DATAERR;
+		}
+		if (strchr(fsname, ':')) {
+			fprintf(stderr, _("locktable error: more than one colon present\n"));
+			return EX_DATAERR;
+		}
+	}
+
+	strcpy(tfs->sb->sb_locktable, locktable);
 	return 0;
 }
 
