@@ -194,7 +194,7 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 			return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
 						      ea_hdr_prev, 0, 0);
 		} else {
-			log_debug( _("  Pointers Required: %d\n  Pointers Reported: %d\n"),
+			log_debug( _(" Pointers Required: %d\n  Pointers Reported: %d\n"),
 					  max_ptrs, ea_hdr->ea_num_ptrs);
 		}
 	}

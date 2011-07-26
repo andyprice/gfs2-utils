@@ -99,10 +99,10 @@ static int read_cmdline(int argc, char **argv, struct gfs2_options *gopts)
 			break;
 		case ':':
 		case '?':
-			fprintf(stderr, _("Please use '-h' for usage.\n"));
+			fprintf(stderr, _("Please use '-h' for help.\n"));
 			return FSCK_USAGE;
 		default:
-			fprintf(stderr, _("Unknown option %c\n"), c);
+			fprintf(stderr, _("Invalid option %c\n"), c);
 			return FSCK_USAGE;
 
 		}
@@ -110,11 +110,11 @@ static int read_cmdline(int argc, char **argv, struct gfs2_options *gopts)
 	if(argc > optind) {
 		gopts->device = (argv[optind]);
 		if(!gopts->device) {
-			fprintf(stderr, _("Please use '-h' for usage.\n"));
+			fprintf(stderr, _("Please use '-h' for help.\n"));
 			return FSCK_USAGE;
 		}
 	} else {
-		fprintf(stderr, _("No device specified.  Use '-h' for usage.\n"));
+		fprintf(stderr, _("No device specified (Please use '-h' for help)\n"));
 		return FSCK_USAGE;
 	}
 	return 0;

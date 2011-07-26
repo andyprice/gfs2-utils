@@ -762,7 +762,7 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 	if (di->di_num.no_formal_ino == 2) {
 		if (sdp->sd_sb.sb_master_dir.no_addr)
 			return;
-		log_warn(_("Found system master directory at: 0x%llx.\n"),
+		log_warn(_("Found system master directory at: 0x%llx\n"),
 			 di->di_num.no_addr);
 		sdp->sd_sb.sb_master_dir.no_addr = di->di_num.no_addr;
 		return;
@@ -887,7 +887,7 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 		gfs2_lookupi(ip, "..", 2, &parent_ip);
 		if (parent_ip && parent_ip->i_di.di_num.no_addr ==
 		    ip->i_di.di_num.no_addr) {
-			log_warn(_("fsck found the root inode at: 0x%llx\n"),
+			log_warn(_("Found the root directory at: 0x%llx\n"),
 				 ip->i_di.di_num.no_addr);
 			sdp->sd_sb.sb_root_dir.no_addr =
 				ip->i_di.di_num.no_addr;
@@ -1078,7 +1078,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 				  "be the root; using master - 1.\n"));
 			possible_root = sdp->sd_sb.sb_master_dir.no_addr - 1;
 		}
-		log_err(_("Found a root directory candidate at  0x%llx\n"),
+		log_err(_("Found a possible root at: 0x%llx\n"),
 			(unsigned long long)possible_root);
 		sdp->sd_sb.sb_root_dir.no_addr = possible_root;
 		sdp->md.rooti = inode_read(sdp, possible_root);
@@ -1106,13 +1106,13 @@ static int sb_repair(struct gfs2_sbd *sdp)
 	/* Step 3 - Rebuild the lock protocol and file system table name */
 	get_lockproto_table(sdp);
 	if (query(_("Okay to fix the GFS2 superblock? (y/n)"))) {
-		log_info(_("Master system directory found at: 0x%llx\n"),
+		log_info(_("Found system master directory at: 0x%llx\n"),
 			 sdp->sd_sb.sb_master_dir.no_addr);
 		sdp->master_dir = inode_read(sdp,
 					     sdp->sd_sb.sb_master_dir.no_addr);
 		sdp->master_dir->i_di.di_num.no_addr =
 			sdp->sd_sb.sb_master_dir.no_addr;
-		log_info(_("Root directory found at: 0x%llx\n"),
+		log_info(_("Found the root directory at: 0x%llx\n"),
 			 sdp->sd_sb.sb_root_dir.no_addr);
 		sdp->md.rooti = inode_read(sdp,
 					   sdp->sd_sb.sb_root_dir.no_addr);

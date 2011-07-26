@@ -106,10 +106,10 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 		case ':':
 		case '?':
 			/* Unknown flag */
-			fprintf(stderr, _("Please use '-h' for usage.\n"));
+			fprintf(stderr, _("Please use '-h' for help.\n"));
 			exit(EXIT_FAILURE);
 		default:
-			fprintf(stderr, _("Unknown option %c\n"), opt);
+			fprintf(stderr, _("Invalid option %c\n"), opt);
 			exit(EXIT_FAILURE);
 			break;
 		}

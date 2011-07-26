@@ -129,14 +129,14 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			break;
 		case ':':
 		case '?':
-			fprintf(stderr, _("Please use '-h' for usage.\n"));
+			fprintf(stderr, _("Please use '-h' for help.\n"));
 			exit(EXIT_FAILURE);
 			break;
 		case EOF:
 			cont = FALSE;
 			break;
 		default:
-			die( _("Unknown option: %c\n"), optchar);
+			die( _("Invalid option: %c\n"), optchar);
 			break;
 		};
 	}
@@ -148,7 +148,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 		die( _("no path specified (try -h for help)\n"));
 	
 	if (optind < argc)
-		die( _("Unrecognized option: %s\n"), argv[optind]);
+		die( _("Unrecognized argument: %s\n"), argv[optind]);
 
 	if (sdp->debug) {
 		printf( _("Command Line Arguments:\n"));

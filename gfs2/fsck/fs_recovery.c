@@ -473,8 +473,8 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 		log_info( _("jid=%u: Repairing journal...\n"), j);
 		error = fix_journal_seq_no(ip);
 		if (error) {
-			log_err( _("jid=%u: Unable to repair the bad "
-				   "journal.\n"), j);
+			log_err( _("jid=%u: Unable to fix the bad journal.\n"), 
+				 j);
 			goto out;
 		}
 		error = gfs2_find_jhead(ip, &head);

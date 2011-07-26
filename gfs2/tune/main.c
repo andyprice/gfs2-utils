@@ -89,7 +89,7 @@ int main(int argc, char **argv)
 			version();
 			return 0;
 		default:
-			fprintf(stderr, _("Invalid option.\n"));
+			fprintf(stderr, _("Invalid option: %c\n"), c);
 			usage(argv[0]);
 			return EX_USAGE;
 		}

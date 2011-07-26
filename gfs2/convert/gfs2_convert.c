@@ -1690,11 +1690,11 @@ static void process_parameters(int argc, char **argv, struct gfs2_options *opts)
 		strcpy(device, argv[optind]);
 		opts->device = device;
 		if(!opts->device) {
-			fprintf(stderr, _("Please use '-h' for usage.\n"));
+			fprintf(stderr, _("No device specified. Please use '-h' for help\n"));
 			exit(1);
 		}
 	} else {
-		fprintf(stderr, _("No device specified.  Use '-h' for usage.\n"));
+		fprintf(stderr, _("No device specified. Please use '-h' for help\n"));
 		exit(1);
 	}
 } /* process_parameters */

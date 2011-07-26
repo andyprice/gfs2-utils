@@ -182,7 +182,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 
 		case ':':
 		case '?':
-			fprintf(stderr, _("Please use '-h' for usage.\n"));
+			fprintf(stderr, _("Please use '-h' for help.\n"));
 			exit(EXIT_FAILURE);
 			break;
 
@@ -203,7 +203,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			break;
 
 		default:
-			die( _("Unknown option: %c\n"), optchar);
+			die( _("Invalid option: %c\n"), optchar);
 			break;
 		};
 	}
@@ -212,7 +212,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 		strcpy(sdp->device_name, argv[optind++]);
 
 	if (sdp->device_name[0] == '\0')
-		die( _("no device specified (try -h for help)\n"));
+		die( _("No device specified. Please use '-h' for help\n"));
 
 	if (optind < argc)
 		sdp->orig_fssize = atol(argv[optind++]);
