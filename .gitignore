@@ -37,3 +37,7 @@ gfs2/tool/gfs2_tool
 gfs2/tune/tunegfs2
 group/gfs_control/gfs_control
 group/gfs_controld/gfs_controld
+ABOUT-NLS
+po/Makevars.template
+po/POTFILES
+po/stamp-po
