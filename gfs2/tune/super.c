@@ -94,14 +94,21 @@ int read_super(struct tunegfs2 *tfs)
 	int n;
        	tfs->sb_start = GFS2_SB_ADDR << GFS2_BASIC_BLOCK_SHIFT;
 	block = malloc(sizeof(char) * GFS2_DEFAULT_BSIZE);
+	if (!block) {
+		perror("read_super: malloc");
+		return EX_UNAVAILABLE;
+	}
 	n = pread(tfs->fd, block, GFS2_DEFAULT_BSIZE, tfs->sb_start);
 	if (n < 0) {
 		perror("read_super: pread");
+		free(block);
 		return EX_IOERR;
 	}
 	tfs->sb = block;
 	if (be32_to_cpu(tfs->sb->sb_header.mh_magic) != GFS2_MAGIC) {
 		fprintf(stderr, _("Not a GFS/GFS2 device\n"));
+		tfs->sb = NULL;
+		free(block);
 		return EX_IOERR;
 	}
 	/* Ensure that table and proto are NULL terminated */
