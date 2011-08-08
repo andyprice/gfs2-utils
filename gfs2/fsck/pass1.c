@@ -827,8 +827,15 @@ static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
 {
 	uint8_t q;
 
-	if (!valid_block(ip->i_sbd, block) != 0)
-		return -EFAULT;
+	/* If the block isn't valid, we obviously can't invalidate it.
+	 * However, if we return an error, invalidating will stop, and
+	 * we want it to continue to invalidate the valid blocks.  If we
+	 * don't do this, block references that follow that are also
+	 * referenced elsewhere (duplicates) won't be flagged as such,
+	 * and as a result, they'll be freed when this dinode is deleted,
+	 * despite being used by another dinode as a valid block. */
+	if (!valid_block(ip->i_sbd, block))
+		return 0;
 
 	q = block_type(block);
 	if (q != gfs2_block_free) {
