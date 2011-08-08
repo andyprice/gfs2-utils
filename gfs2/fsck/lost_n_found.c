@@ -17,6 +17,75 @@
 #include "metawalk.h"
 #include "util.h"
 
+static void add_dotdot(struct gfs2_inode *ip)
+{
+	struct dir_info *di;
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	int err;
+
+	log_info( _("Adding .. entry to directory %llu (0x%llx) pointing back "
+		    "to lost+found\n"),
+		  (unsigned long long)ip->i_di.di_num.no_addr,
+		  (unsigned long long)ip->i_di.di_num.no_addr);
+
+	/* If there's a pre-existing .. directory entry, we have to
+	   back out the links. */
+	di = dirtree_find(ip->i_di.di_num.no_addr);
+	if (di && !valid_block(sdp, di->dotdot_parent) == 0) {
+		struct gfs2_inode *dip;
+
+		log_debug(_("Directory %lld (0x%llx) already had a "
+			    "\"..\" link to %lld (0x%llx).\n"),
+			  (unsigned long long)ip->i_di.di_num.no_addr,
+			  (unsigned long long)ip->i_di.di_num.no_addr,
+			  (unsigned long long)di->dotdot_parent,
+			  (unsigned long long)di->dotdot_parent);
+		decr_link_count(di->dotdot_parent, ip->i_di.di_num.no_addr,
+				_(".. unlinked, moving to lost+found"));
+		dip = fsck_load_inode(sdp, di->dotdot_parent);
+		if (dip->i_di.di_nlink > 0) {
+			dip->i_di.di_nlink--;
+			set_di_nlink(dip); /* keep inode tree in sync */
+			log_debug(_("Decrementing its links to %d\n"),
+				  dip->i_di.di_nlink);
+			bmodified(dip->i_bh);
+		} else if (!dip->i_di.di_nlink) {
+			log_debug(_("Its link count is zero.\n"));
+		} else {
+			log_debug(_("Its link count is %d!  Changing "
+				    "it to 0.\n"), dip->i_di.di_nlink);
+			dip->i_di.di_nlink = 0;
+			set_di_nlink(dip); /* keep inode tree in sync */
+			bmodified(dip->i_bh);
+		}
+		fsck_inode_put(&dip);
+		di = NULL;
+	} else {
+		if (di)
+			log_debug(_("Couldn't find a valid \"..\" entry "
+				    "for orphan directory %lld (0x%llx): "
+				    "'..' = 0x%llx\n"),
+				  (unsigned long long)ip->i_di.di_num.no_addr,
+				  (unsigned long long)ip->i_di.di_num.no_addr,
+				  (unsigned long long)di->dotdot_parent);
+		else
+			log_debug(_("Couldn't find a valid \"..\" entry "
+				    "for orphan directory %lld (0x%llx)\n"),
+				  (unsigned long long)ip->i_di.di_num.no_addr,
+				  (unsigned long long)ip->i_di.di_num.no_addr);
+	}
+	if (gfs2_dirent_del(ip, "..", 2))
+		log_warn( _("add_inode_to_lf:  Unable to remove "
+			    "\"..\" directory entry.\n"));
+
+	err = dir_add(ip, "..", 2, &(lf_dip->i_di.di_num), DT_DIR);
+	if (err) {
+		log_crit(_("Error adding .. directory: %s\n"),
+			 strerror(errno));
+		exit(-1);
+	}
+}
+
 /* add_inode_to_lf - Add dir entry to lost+found for the inode
  * @ip: inode to add to lost + found
  *
@@ -95,61 +164,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 
 	switch(ip->i_di.di_mode & S_IFMT){
 	case S_IFDIR:
-		log_info( _("Adding .. entry pointing to lost+found for "
-			    "directory %llu (0x%llx)\n"),
-			  (unsigned long long)ip->i_di.di_num.no_addr,
-			  (unsigned long long)ip->i_di.di_num.no_addr);
-
-		/* If there's a pre-existing .. directory entry, we have to
-		   back out the links. */
-		di = dirtree_find(ip->i_di.di_num.no_addr);
-		if (di && !valid_block(sdp, di->dotdot_parent) == 0) {
-			struct gfs2_inode *dip;
-
-			log_debug(_("Directory %lld (0x%llx) already had a "
-				    "\"..\" link to %lld (0x%llx).\n"),
-				  (unsigned long long)ip->i_di.di_num.no_addr,
-				  (unsigned long long)ip->i_di.di_num.no_addr,
-				  (unsigned long long)di->dotdot_parent,
-				  (unsigned long long)di->dotdot_parent);
-			decr_link_count(di->dotdot_parent,
-					ip->i_di.di_num.no_addr,
-					_(".. unlinked, moving to lost+found"));
-			dip = fsck_load_inode(sdp, di->dotdot_parent);
-			if (dip->i_di.di_nlink > 0) {
-				dip->i_di.di_nlink--;
-				set_di_nlink(dip); /* keep inode tree in sync */
-				log_debug(_("Decrementing its links to %d\n"),
-					  dip->i_di.di_nlink);
-				bmodified(dip->i_bh);
-			} else if (!dip->i_di.di_nlink) {
-				log_debug(_("Its link count is zero.\n"));
-			} else {
-				log_debug(_("Its link count is %d!  "
-					    "Changing it to 0.\n"),
-					  dip->i_di.di_nlink);
-				dip->i_di.di_nlink = 0;
-				set_di_nlink(dip); /* keep inode tree in sync */
-				bmodified(dip->i_bh);
-			}
-			fsck_inode_put(&dip);
-			di = NULL;
-		} else
-			log_debug(_("Couldn't find a valid \"..\" entry "
-				    "for orphan directory %lld (0x%llx)\n"),
-				  (unsigned long long)ip->i_di.di_num.no_addr,
-				  (unsigned long long)ip->i_di.di_num.no_addr);
-		if (gfs2_dirent_del(ip, "..", 2))
-			log_warn( _("add_inode_to_lf:  Unable to remove "
-				    "\"..\" directory entry.\n"));
-
-		err = dir_add(ip, "..", 2, &(lf_dip->i_di.di_num), DT_DIR);
-		if (err) {
-			log_crit(_("Error adding .. directory: %s\n"),
-			         strerror(errno));
-			exit(-1);
-		}
-
+		add_dotdot(ip);
 		sprintf(tmp_name, "lost_dir_%llu",
 			(unsigned long long)ip->i_di.di_num.no_addr);
 		inode_type = DT_DIR;
