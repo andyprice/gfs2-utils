@@ -78,10 +78,10 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 	uint8_t q;
 	struct gfs2_buffer_head *indir_bh = NULL;
 
-	if (gfs2_check_range(sdp, block)) {
+	if (!valid_block(sdp, block)) {
 		log_err( _("Extended attributes indirect block #%llu"
 			" (0x%llx) for inode #%llu"
-			" (0x%llx) out of range...removing\n"),
+			" (0x%llx) is invalid...removing\n"),
 			(unsigned long long)block,
 			(unsigned long long)block,
 			(unsigned long long)ip->i_di.di_num.no_addr,
@@ -92,7 +92,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 	if (q != gfs2_indir_blk) {
 		log_err( _("Extended attributes indirect block #%llu"
 			" (0x%llx) for inode #%llu"
-			" (0x%llx) invalid.\n"),
+			" (0x%llx) is invalid.\n"),
 			(unsigned long long)block,
 			(unsigned long long)block,
 			(unsigned long long)ip->i_di.di_num.no_addr,
@@ -113,9 +113,9 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint8_t q;
 
-	if (gfs2_check_range(sdp, block)) {
+	if (!valid_block(sdp, block)) {
 		log_err( _("Extended attributes block for inode #%llu"
-			" (0x%llx) out of range.\n"),
+			" (0x%llx) is invalid.\n"),
 			(unsigned long long)ip->i_di.di_num.no_addr,
 			(unsigned long long)ip->i_di.di_num.no_addr);
 		return ask_remove_eattr(ip);

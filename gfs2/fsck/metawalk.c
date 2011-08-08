@@ -455,7 +455,7 @@ static void warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no,
 	}
 	if (*leaf_no == *bad_leaf ||
 	    query( _("Attempt to patch around it? (y/n) "))) {
-		if (gfs2_check_range(ip->i_sbd, old_leaf) == 0)
+		if (!valid_block(ip->i_sbd, old_leaf) == 0)
 			gfs2_put_leaf_nr(ip, pindex, old_leaf);
 		else
 			gfs2_put_leaf_nr(ip, pindex, first_ok_leaf);
@@ -605,7 +605,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	first_ok_leaf = leaf_no = -1;
 	for(lindex = 0; lindex < (1 << ip->i_di.di_depth); lindex++) {
 		gfs2_get_leaf_nr(ip, lindex, &leaf_no);
-		if (gfs2_check_range(ip->i_sbd, leaf_no) == 0) {
+		if (!valid_block(ip->i_sbd, leaf_no) == 0) {
 			lbh = bread(sdp, leaf_no);
 			/* Make sure it's really a valid leaf block. */
 			if (gfs2_check_meta(lbh, GFS2_METATYPE_LF) == 0) {
@@ -644,7 +644,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		}
 
 		do {
-			if (gfs2_check_range(ip->i_sbd, old_leaf) == 0) {
+			if (!valid_block(ip->i_sbd, old_leaf) == 0) {
 				error = check_num_ptrs(ip, old_leaf,
 						       &ref_count, &exp_count,
 						       &lindex, &oldleaf);
@@ -656,7 +656,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			if (fsck_abort)
 				break;
 			/* Make sure the block number is in range. */
-			if (gfs2_check_range(ip->i_sbd, leaf_no)){
+			if (!valid_block(ip->i_sbd, leaf_no)){
 				log_err( _("Leaf block #%llu (0x%llx) is out "
 					"of range for directory #%llu (0x%llx"
 					").\n"), (unsigned long long)leaf_no,
@@ -909,7 +909,7 @@ int delete_block(struct gfs2_inode *ip, uint64_t block,
 		 struct gfs2_buffer_head **bh, const char *btype,
 		 void *private)
 {
-	if (gfs2_check_range(ip->i_sbd, block) == 0) {
+	if (!valid_block(ip->i_sbd, block) == 0) {
 		fsck_blockmap_set(ip, block, btype, gfs2_block_free);
 		return 0;
 	}
@@ -930,7 +930,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 	uint8_t q;
 	struct duptree *d;
 
-	if (gfs2_check_range(ip->i_sbd, block) != 0)
+	if (!valid_block(ip->i_sbd, block) != 0)
 		return -EFAULT;
 
 	q = block_type(block);
@@ -1190,7 +1190,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 						   (unsigned long long)block);
 					continue;
 				}
-				if (gfs2_check_range(ip->i_sbd, block)) {
+				if (!valid_block(ip->i_sbd, block)) {
 					log_debug( _("Skipping invalid block "
 						     "%lld (0x%llx)\n"),
 						   (unsigned long long)block,
@@ -1237,7 +1237,7 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		if (skip_this_pass || fsck_abort)
 			return error;
 		block =  be64_to_cpu(*ptr);
-		/* It's important that we don't call gfs2_check_range and
+		/* It's important that we don't call !valid_block and
 		   bypass calling check_data on invalid blocks because that
 		   would defeat the rangecheck_block related functions in
 		   pass1. Therefore the individual check_data functions
@@ -1437,8 +1437,8 @@ int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 		     " (0x%llx)\n"), (unsigned long long)dentryblock,
 		  (unsigned long long)dentryblock,
 		  (unsigned long long)dir, (unsigned long long)dir);
-	if (gfs2_check_range(sdp, dir)) {
-		log_err( _("Parent directory out of range\n"));
+	if (!valid_block(sdp, dir)) {
+		log_err( _("Parent directory is invalid\n"));
 		return 1;
 	}
 	remove_dentry_fxns.private = &dentryblock;

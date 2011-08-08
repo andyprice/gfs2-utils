@@ -710,7 +710,7 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 	osi_list_t *tmp;
 	struct rgrp_list *exp, *rgd; /* expected, actual */
 
-	*num_rgs = sdp->md.riinode->i_di.di_size / sizeof(struct gfs2_rindex);
+	*num_rgs = sdp->md.riinode->i_di.di_size / sizeof(struct gfs2_rindex) ;
 	osi_list_init(ret_list);
 	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);

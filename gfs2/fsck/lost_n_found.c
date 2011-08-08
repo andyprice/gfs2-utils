@@ -104,7 +104,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 		/* If there's a pre-existing .. directory entry, we have to
 		   back out the links. */
 		di = dirtree_find(ip->i_di.di_num.no_addr);
-		if (di && gfs2_check_range(sdp, di->dotdot_parent) == 0) {
+		if (di && !valid_block(sdp, di->dotdot_parent) == 0) {
 			struct gfs2_inode *dip;
 
 			log_debug(_("Directory %lld (0x%llx) already had a "

@@ -205,7 +205,7 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 	struct dup_handler *dh = (struct dup_handler *) private;
 	struct duptree *d;
 
-	if (gfs2_check_range(ip->i_sbd, block) != 0)
+	if (!valid_block(ip->i_sbd, block) != 0)
 		return 0;
 
 	/* This gets tricky. We're traversing a metadata tree trying to

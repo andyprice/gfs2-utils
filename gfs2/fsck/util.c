@@ -204,7 +204,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	struct inode_with_dups *id, *found_id;
 	struct duptree *dt;
 
-	if (gfs2_check_range(ip->i_sbd, block) != 0)
+	if (!valid_block(ip->i_sbd, block) != 0)
 		return 0;
 	/* If this is not the first reference (i.e. all calls from pass1) we
 	   need to create the duplicate reference. If this is pass1b, we want

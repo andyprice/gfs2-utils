@@ -206,9 +206,9 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	else
 		strncpy(tmp_name, filename, MAX_FILENAME - 1);
 
-	if (gfs2_check_range(ip->i_sbd, entryblock)) {
+	if (!valid_block(ip->i_sbd, entryblock)) {
 		log_err( _("Block # referenced by directory entry %s in inode "
-			   "%lld (0x%llx) is out of range\n"),
+			   "%lld (0x%llx) is invalid\n"),
 			 tmp_name, (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
 		if (query( _("Clear directory entry to out of range block? "
