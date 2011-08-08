@@ -63,7 +63,7 @@ static int read_cmdline(int argc, char **argv, struct gfs2_options *gopts)
 {
 	int c;
 
-	while((c = getopt(argc, argv, "afhnpqvyV")) != -1) {
+	while ((c = getopt(argc, argv, "afhnpqvyV")) != -1) {
 		switch(c) {
 
 		case 'a':
@@ -107,9 +107,9 @@ static int read_cmdline(int argc, char **argv, struct gfs2_options *gopts)
 
 		}
 	}
-	if(argc > optind) {
+	if (argc > optind) {
 		gopts->device = (argv[optind]);
-		if(!gopts->device) {
+		if (!gopts->device) {
 			fprintf(stderr, _("Please use '-h' for help.\n"));
 			return FSCK_USAGE;
 		}
@@ -136,7 +136,7 @@ static void interrupt(int sig)
 				     _("Do you want to abort gfs2_fsck, skip " \
 				     "the rest of this pass or continue " \
 				     "(a/s/c)?"), "asc");
-	if(tolower(response) == 's') {
+	if (tolower(response) == 's') {
 		skip_this_pass = TRUE;
 		return;
 	}
@@ -228,7 +228,7 @@ int main(int argc, char **argv)
 
 	memset(sdp, 0, sizeof(*sdp));
 
-	if((error = read_cmdline(argc, argv, &opts)))
+	if ((error = read_cmdline(argc, argv, &opts)))
 		exit(error);
 	setbuf(stdout, NULL);
 	log_notice( _("Initializing fsck\n"));
@@ -258,7 +258,7 @@ int main(int argc, char **argv)
 		last_reported_block = 0;
 		pass = "pass 1b";
 		log_notice( _("Starting pass1b\n"));
-		if((error = pass1b(sdp)))
+		if ((error = pass1b(sdp)))
 			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
@@ -271,7 +271,7 @@ int main(int argc, char **argv)
 		last_reported_block = 0;
 		pass = "pass 1c";
 		log_notice( _("Starting pass1c\n"));
-		if((error = pass1c(sdp)))
+		if ((error = pass1c(sdp)))
 			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;

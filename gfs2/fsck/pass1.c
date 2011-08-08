@@ -162,11 +162,11 @@ static int resuscitate_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	block = de->de_inum.no_addr;
 	/* Start of checks */
 	memset(tmp_name, 0, sizeof(tmp_name));
-	if(de->de_name_len < sizeof(tmp_name))
+	if (de->de_name_len < sizeof(tmp_name))
 		strncpy(tmp_name, filename, de->de_name_len);
 	else
 		strncpy(tmp_name, filename, sizeof(tmp_name) - 1);
-	if(gfs2_check_range(sdp, block)) {
+	if (gfs2_check_range(sdp, block)) {
 		log_err( _("Block # referenced by system directory entry %s "
 			   "in inode %lld (0x%llx) is out of range; "
 			   "ignored.\n"),
@@ -239,7 +239,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 		blktypedesc = _("a journaled data block");
 	}
 	q = block_type(block);
-	if(q != gfs2_block_free) {
+	if (q != gfs2_block_free) {
 		log_err( _("Found duplicate block %llu (0x%llx) referenced "
 			   "as metadata in indirect block for dinode "
 			   "%llu (0x%llx) - was marked %d (%s)\n"),
@@ -261,7 +261,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)block,
 			 (unsigned long long)block, blktypedesc);
-		if(!found_dup) {
+		if (!found_dup) {
 			fsck_blockmap_set(ip, block, _("bad indirect"),
 					  gfs2_meta_inval);
 			brelse(nbh);
@@ -322,7 +322,7 @@ static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
 	nbh = bread(ip->i_sbd, block);
 
 	if (gfs2_check_meta(nbh, iblk_type)) {
-		if(!found_dup) {
+		if (!found_dup) {
 			fsck_blockmap_set(ip, block, _("bad indirect"),
 					  gfs2_block_free);
 			brelse(nbh);
@@ -547,7 +547,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 
 	/* This inode contains an eattr - it may be invalid, but the
 	 * eattr attributes points to a non-zero block */
-	if(gfs2_check_range(sdp, indirect)) {
+	if (gfs2_check_range(sdp, indirect)) {
 		/* Doesn't help to mark this here - this gets checked
 		 * in pass1c */
 		return 1;
@@ -559,8 +559,8 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 	   handling sort it out.  If it isn't, clear it but don't
 	   count it as a duplicate. */
 	*bh = bread(sdp, indirect);
-	if(gfs2_check_meta(*bh, GFS2_METATYPE_IN)) {
-		if(q != gfs2_block_free) { /* Duplicate? */
+	if (gfs2_check_meta(*bh, GFS2_METATYPE_IN)) {
+		if (q != gfs2_block_free) { /* Duplicate? */
 			add_duplicate_ref(ip, indirect, ref_as_ea, 0,
 					  INODE_VALID);
 			if (!clear_eas(ip, bc, indirect, 1,
@@ -574,7 +574,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 			    "type"));
 		return 1;
 	}
-	if(q != gfs2_block_free) { /* Duplicate? */
+	if (q != gfs2_block_free) { /* Duplicate? */
 		log_err( _("Inode #%llu (0x%llx): Duplicate Extended "
 			   "Attribute indirect block found at #%llu "
 			   "(0x%llx).\n"),
@@ -649,8 +649,8 @@ static int check_leaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 	   really is an EA.  If it is, let duplicate handling sort it out.
 	   If it isn't, clear it but don't count it as a duplicate. */
 	leaf_bh = bread(sdp, block);
-	if(gfs2_check_meta(leaf_bh, btype)) {
-		if(q != gfs2_block_free) { /* Duplicate? */
+	if (gfs2_check_meta(leaf_bh, btype)) {
+		if (q != gfs2_block_free) { /* Duplicate? */
 			add_duplicate_ref(ip, block, ref_as_ea, 0,
 					  INODE_VALID);
 			clear_eas(ip, bc, block, 1,
@@ -663,7 +663,7 @@ static int check_leaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 		brelse(leaf_bh);
 		return 1;
 	}
-	if(q != gfs2_block_free) { /* Duplicate? */
+	if (q != gfs2_block_free) { /* Duplicate? */
 		log_debug( _("Duplicate block found at #%lld (0x%llx).\n"),
 			   (unsigned long long)block,
 			   (unsigned long long)block);
@@ -713,7 +713,7 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
 	struct gfs2_buffer_head *bh = NULL;
 	int error;
 
-	if(gfs2_check_range(sdp, el_blk)){
+	if (gfs2_check_range(sdp, el_blk)){
 		log_err( _("Inode #%llu (0x%llx): Extended Attribute block "
 			   "%llu (0x%llx) has an extended leaf block #%llu "
 			   "(0x%llx) that is out of range.\n"),
@@ -780,7 +780,7 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	char ea_name[256];
 
-	if(!ea_hdr->ea_name_len){
+	if (!ea_hdr->ea_name_len){
 		/* Skip this entry for now */
 		return 1;
 	}
@@ -789,20 +789,20 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 	strncpy(ea_name, (char *)ea_hdr + sizeof(struct gfs2_ea_header),
 		ea_hdr->ea_name_len);
 
-	if(!GFS2_EATYPE_VALID(ea_hdr->ea_type) &&
+	if (!GFS2_EATYPE_VALID(ea_hdr->ea_type) &&
 	   ((ea_hdr_prev) || (!ea_hdr_prev && ea_hdr->ea_type))){
 		/* Skip invalid entry */
 		return 1;
 	}
 
-	if(ea_hdr->ea_num_ptrs){
+	if (ea_hdr->ea_num_ptrs){
 		uint32_t avail_size;
 		int max_ptrs;
 
 		avail_size = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header);
 		max_ptrs = (be32_to_cpu(ea_hdr->ea_data_len)+avail_size-1)/avail_size;
 
-		if(max_ptrs > ea_hdr->ea_num_ptrs) {
+		if (max_ptrs > ea_hdr->ea_num_ptrs) {
 			return 1;
 		} else {
 			log_debug( _("  Pointers Required: %d\n  Pointers Reported: %d\n"),
@@ -1006,7 +1006,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		if (fsck_blockmap_set(ip, block, _("directory"),
 				      gfs2_inode_dir))
 			goto bad_dinode;
-		if(!dirtree_insert(block))
+		if (!dirtree_insert(block))
 			goto bad_dinode;
 		break;
 	case S_IFREG:
@@ -1057,7 +1057,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 			goto bad_dinode;
 		return 0;
 	}
-	if(set_link_count(ip->i_di.di_num.no_addr, ip->i_di.di_nlink))
+	if (set_link_count(ip->i_di.di_num.no_addr, ip->i_di.di_nlink))
 		goto bad_dinode;
 
 	if (S_ISDIR(ip->i_di.di_mode) &&
@@ -1069,7 +1069,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 				 (unsigned long long)ip->i_di.di_num.no_addr,
 				 ip->i_di.di_depth,
 				 (1 >> (ip->i_di.di_size/sizeof(uint64_t))));
-			if(fsck_blockmap_set(ip, block, _("bad depth"),
+			if (fsck_blockmap_set(ip, block, _("bad depth"),
 					     gfs2_block_free))
 				goto bad_dinode;
 			return 0;
@@ -1150,7 +1150,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 
 	ip = fsck_inode_get(sdp, bh);
 	q = block_type(block);
-	if(q != gfs2_block_free) {
+	if (q != gfs2_block_free) {
 		log_err( _("Found a duplicate inode block at #%llu"
 			   " (0x%llx) previously marked as a %s\n"),
 			 (unsigned long long)block,
@@ -1166,7 +1166,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 			(unsigned long long)block,
 			(unsigned long long)ip->i_di.di_num.no_addr,
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		if(query( _("Fix address in inode at block #%llu"
+		if (query( _("Fix address in inode at block #%llu"
 			    " (0x%llx)? (y/n) "),
 			  (unsigned long long)block, (unsigned long long)block)) {
 			ip->i_di.di_num.no_addr = ip->i_di.di_num.no_formal_ino = block;
@@ -1238,7 +1238,7 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 	   inode and get it all setup - of course, everything will be in
 	   lost+found then, but we *need* our system inodes before we can
 	   do any of that. */
-	if(!(*sysinode) || ds.q != mark) {
+	if (!(*sysinode) || ds.q != mark) {
 		log_err( _("Invalid or missing %s system inode (should be %d, "
 			   "is %d).\n"), filename, mark, ds.q);
 		if (query(_("Create new %s system inode? (y/n) "), filename)) {

@@ -52,7 +52,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
 			 (unsigned long long)blk, (unsigned long long)blk,
 			 allocdesc[new_bitmap_state],
 			 allocdesc[old_bitmap_state]);
-		if(query( _("Okay to fix the bitmap? (y/n)"))) {
+		if (query( _("Okay to fix the bitmap? (y/n)"))) {
 			/* If the new bitmap state is free (and therefore the
 			   old state was not) we have to add to the free
 			   space in the rgrp. If the old bitmap state was
@@ -311,7 +311,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 
 	bh_end = bh->b_data + ip->i_sbd->bsize;
 
-	if(type == DIR_LINEAR) {
+	if (type == DIR_LINEAR) {
 		dent = (struct gfs2_dirent *)(bh->b_data + sizeof(struct gfs2_dinode));
 	}
 	else if (type == DIR_EXHASH) {
@@ -326,10 +326,10 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	}
 
 	prev = NULL;
-	if(!pass->check_dentry)
+	if (!pass->check_dentry)
 		return 0;
 
-	while(1) {
+	while (1) {
 		if (skip_this_pass || fsck_abort)
 			return FSCK_OK;
 		memset(&de, 0, sizeof(struct gfs2_dirent));
@@ -372,7 +372,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			}
 		}
 		if (!de.de_inum.no_formal_ino){
-			if(first){
+			if (first){
 				log_debug( _("First dirent is a sentinel (place holder).\n"));
 				first = 0;
 			} else {
@@ -409,7 +409,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 				error = pass->check_dentry(ip, dent, prev, bh,
 							   filename, count,
 							   pass->private);
-				if(error < 0) {
+				if (error < 0) {
 					stack;
 					return -1;
 				}
@@ -428,7 +428,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 
 		/* If we didn't clear the dentry, or if we did, but it
 		 * was the first dentry, set prev  */
-		if(!error || first)
+		if (!error || first)
 			prev = dent;
 		first = 0;
 		dent = (struct gfs2_dirent *)((char *)dent + de.de_rec_len);
@@ -638,7 +638,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 								  leaf info */
 			ref_count++;
 			continue;
-		} else if(old_leaf == leaf_no) {
+		} else if (old_leaf == leaf_no) {
 			ref_count++;
 			continue;
 		}
@@ -656,7 +656,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			if (fsck_abort)
 				break;
 			/* Make sure the block number is in range. */
-			if(gfs2_check_range(ip->i_sbd, leaf_no)){
+			if (gfs2_check_range(ip->i_sbd, leaf_no)){
 				log_err( _("Leaf block #%llu (0x%llx) is out "
 					"of range for directory #%llu (0x%llx"
 					").\n"), (unsigned long long)leaf_no,
@@ -685,7 +685,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 				break;
 			}
 			gfs2_leaf_in(&leaf, lbh);
-			if(pass->check_leaf)
+			if (pass->check_leaf)
 				error = pass->check_leaf(ip, leaf_no, lbh,
 							 pass->private);
 
@@ -729,13 +729,13 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 				if (skip_this_pass || fsck_abort)
 					return 0;
 
-				if(error < 0) {
+				if (error < 0) {
 					stack;
 					brelse(lbh);
 					return -1;
 				}
 
-				if(count != leaf.lf_entries) {
+				if (count != leaf.lf_entries) {
 					brelse(lbh);
 					lbh = bread(sdp, leaf_no);
 					gfs2_leaf_in(&leaf, lbh);
@@ -752,7 +752,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 						(unsigned long long)
 						ip->i_di.di_num.no_addr,
 						leaf.lf_entries, count);
-					if(query( _("Update leaf entry count? (y/n) "))) {
+					if (query( _("Update leaf entry count? (y/n) "))) {
 						leaf.lf_entries = count;
 						gfs2_leaf_out(&leaf, lbh);
 						log_warn( _("Leaf entry count updated\n"));
@@ -768,7 +768,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			leaf_no = leaf.lf_next;
 			log_debug( _("Leaf chain 0x%llx detected.\n"),
 				   (unsigned long long)leaf_no);
-		} while(1); /* while we have chained leaf blocks */
+		} while (1); /* while we have chained leaf blocks */
 	} /* for every leaf block */
 	return 0;
 }
@@ -783,24 +783,24 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 	int error = 0;
 	uint32_t offset = (uint32_t)sizeof(struct gfs2_meta_header);
 
-	if(!pass->check_eattr_entry)
+	if (!pass->check_eattr_entry)
 		return 0;
 
 	ea_hdr = (struct gfs2_ea_header *)(bh->b_data +
 					  sizeof(struct gfs2_meta_header));
 
-	while(1){
+	while (1){
 		if (ea_hdr->ea_type == GFS2_EATYPE_UNUSED)
 			error = 0;
 		else
 			error = pass->check_eattr_entry(ip, bh, ea_hdr,
 							ea_hdr_prev,
 							pass->private);
-		if(error < 0) {
+		if (error < 0) {
 			stack;
 			return -1;
 		}
-		if(error == 0 && pass->check_eattr_extentry &&
+		if (error == 0 && pass->check_eattr_extentry &&
 		   ea_hdr->ea_num_ptrs) {
 			uint32_t tot_ealen = 0;
 			struct gfs2_sbd *sdp = ip->i_sbd;
@@ -817,7 +817,7 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 			** reuse...........  */
 
 			for(i = 0; i < ea_hdr->ea_num_ptrs; i++){
-				if(pass->check_eattr_extentry(ip,
+				if (pass->check_eattr_extentry(ip,
 							      ea_data_ptr,
 							      bh, ea_hdr,
 							      ea_hdr_prev,
@@ -850,7 +850,7 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 			}
 		}
 		offset += be32_to_cpu(ea_hdr->ea_rec_len);
-		if(ea_hdr->ea_flags & GFS2_EAFLAG_LAST ||
+		if (ea_hdr->ea_flags & GFS2_EAFLAG_LAST ||
 		   offset >= ip->i_sbd->sd_sb.sb_bsize || ea_hdr->ea_rec_len == 0){
 			break;
 		}
@@ -880,14 +880,14 @@ static int check_leaf_eattr(struct gfs2_inode *ip, uint64_t block,
 		  (unsigned long long)block,
 		  (unsigned long long)block);
 
-	if(pass->check_eattr_leaf) {
+	if (pass->check_eattr_leaf) {
 		error = pass->check_eattr_leaf(ip, block, parent, &bh,
 					       pass->private);
-		if(error < 0) {
+		if (error < 0) {
 			stack;
 			return -1;
 		}
-		if(error > 0) {
+		if (error > 0) {
 			if (bh)
 				brelse(bh);
 			return 1;
@@ -993,7 +993,7 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 		end = ea_leaf_ptr + ((sdp->sd_sb.sb_bsize
 				      - sizeof(struct gfs2_meta_header)) / 8);
 
-		while(*ea_leaf_ptr && (ea_leaf_ptr < end)){
+		while (*ea_leaf_ptr && (ea_leaf_ptr < end)){
 			block = be64_to_cpu(*ea_leaf_ptr);
 			leaf_pointers++;
 			error = check_leaf_eattr(ip, block, indirect, pass);
@@ -1065,15 +1065,15 @@ int check_inode_eattr(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	int error = 0;
 
-	if(!ip->i_di.di_eattr)
+	if (!ip->i_di.di_eattr)
 		return 0;
 
 	log_debug( _("Extended attributes exist for inode #%llu (0x%llx).\n"),
 		  (unsigned long long)ip->i_di.di_num.no_addr,
 		  (unsigned long long)ip->i_di.di_num.no_addr);
 
-	if(ip->i_di.di_flags & GFS2_DIF_EA_INDIRECT){
-		if((error = check_indirect_eattr(ip, ip->i_di.di_eattr, pass)))
+	if (ip->i_di.di_flags & GFS2_DIF_EA_INDIRECT){
+		if ((error = check_indirect_eattr(ip, ip->i_di.di_eattr, pass)))
 			stack;
 	} else {
 		error = check_leaf_eattr(ip, ip->i_di.di_eattr,
@@ -1136,7 +1136,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 	if (S_ISDIR(ip->i_di.di_mode))
 		height++;
 
-	/* if(<there are no indirect blocks to check>) */
+	/* if (<there are no indirect blocks to check>) */
 	if (height < 2)
 		return 0;
 	for (h = 1; h < height; h++) {
@@ -1177,12 +1177,12 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 							   pass->private);
 				/* check_metalist should hold any buffers
 				   it gets with "bread". */
-				if(err < 0) {
+				if (err < 0) {
 					stack;
 					error = err;
 					goto fail;
 				}
-				if(err > 0) {
+				if (err > 0) {
 					if (!error)
 						error = err;
 					log_debug( _("Skipping block %llu (0x%llx)\n"),
@@ -1197,7 +1197,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 						   (unsigned long long)block);
 					continue;
 				}
-				if(!nbh)
+				if (!nbh)
 					nbh = bread(ip->i_sbd, block);
 				osi_list_add(&nbh->b_altlist, cur_list);
 			} /* for all data on the indirect block */
@@ -1376,7 +1376,7 @@ int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	uint16_t count = 0;
 
 	error = check_entries(ip, bh, DIR_LINEAR, &count, pass);
-	if(error < 0) {
+	if (error < 0) {
 		stack;
 		return -1;
 	}
@@ -1391,12 +1391,12 @@ int check_dir(struct gfs2_sbd *sdp, uint64_t block, struct metawalk_fxns *pass)
 
 	ip = fsck_load_inode(sdp, block);
 
-	if(ip->i_di.di_flags & GFS2_DIF_EXHASH)
+	if (ip->i_di.di_flags & GFS2_DIF_EXHASH)
 		error = check_leaf_blks(ip, pass);
 	else
 		error = check_linear_dir(ip, ip->i_bh, pass);
 
-	if(error < 0)
+	if (error < 0)
 		stack;
 
 	fsck_inode_put(&ip); /* does a brelse */
@@ -1417,7 +1417,7 @@ static int remove_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	gfs2_dirent_in(&dentry, (char *)dent);
 	de = &dentry;
 
-	if(de->de_inum.no_addr == *dentryblock)
+	if (de->de_inum.no_addr == *dentryblock)
 		dirent2_del(ip, bh, prev_de, dent);
 	else
 		(*count)++;
@@ -1437,7 +1437,7 @@ int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 		     " (0x%llx)\n"), (unsigned long long)dentryblock,
 		  (unsigned long long)dentryblock,
 		  (unsigned long long)dir, (unsigned long long)dir);
-	if(gfs2_check_range(sdp, dir)) {
+	if (gfs2_check_range(sdp, dir)) {
 		log_err( _("Parent directory out of range\n"));
 		return 1;
 	}
@@ -1445,7 +1445,7 @@ int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 	remove_dentry_fxns.check_dentry = remove_dentry;
 
 	q = block_type(dir);
-	if(q != gfs2_inode_dir) {
+	if (q != gfs2_inode_dir) {
 		log_info( _("Parent block is not a directory...ignoring\n"));
 		return 1;
 	}

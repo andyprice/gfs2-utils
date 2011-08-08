@@ -34,14 +34,14 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 	 * this case? */
 
 	filename_len = strlen("..");
-	if(!(filename = malloc((sizeof(char) * filename_len) + 1))) {
+	if (!(filename = malloc((sizeof(char) * filename_len) + 1))) {
 		log_err( _("Unable to allocate name\n"));
 		fsck_inode_put(&ip);
 		fsck_inode_put(&pip);
 		stack;
 		return -1;
 	}
-	if(!memset(filename, 0, (sizeof(char) * filename_len) + 1)) {
+	if (!memset(filename, 0, (sizeof(char) * filename_len) + 1)) {
 		log_err( _("Unable to zero name\n"));
 		fsck_inode_put(&ip);
 		fsck_inode_put(&pip);
@@ -49,7 +49,7 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 		return -1;
 	}
 	memcpy(filename, "..", filename_len);
-	if(gfs2_dirent_del(ip, filename, filename_len))
+	if (gfs2_dirent_del(ip, filename, filename_len))
 		log_warn( _("Unable to remove \"..\" directory entry.\n"));
 	else
 		decrement_link(olddotdot, block, _("old \"..\""));
@@ -83,10 +83,10 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 
 	di->checked = 1;
 
-	if(!di->treewalk_parent)
+	if (!di->treewalk_parent)
 		return NULL;
 
-	if(di->dotdot_parent != di->treewalk_parent) {
+	if (di->dotdot_parent != di->treewalk_parent) {
 		log_warn( _("Directory '..' and treewalk connections disagree for inode %llu"
 				 " (0x%llx)\n"), (unsigned long long)di->dinode,
 			(unsigned long long)di->dinode);
@@ -105,8 +105,8 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 		 * choose? if neither are directories, we have a
 		 * problem - need to move this directory into lost+found
 		 */
-		if(q_dotdot != gfs2_inode_dir) {
-			if(q_treewalk != gfs2_inode_dir) {
+		if (q_dotdot != gfs2_inode_dir) {
+			if (q_treewalk != gfs2_inode_dir) {
 				log_err( _("Orphaned directory, move to lost+found\n"));
 				return NULL;
 			}
@@ -120,14 +120,14 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 				di->dotdot_parent = di->treewalk_parent;
 			}
 		} else {
-			if(q_treewalk != gfs2_inode_dir) {
+			if (q_treewalk != gfs2_inode_dir) {
 				int error = 0;
 				log_warn( _(".. parent is valid, but treewalk"
 						 "is bad - reattaching to lost+found"));
 
 				/* FIXME: add a dinode for this entry instead? */
 
-				if(query( _("Remove directory entry for bad"
+				if (query( _("Remove directory entry for bad"
 					    " inode %llu (0x%llx) in %llu"
 					    " (0x%llx)? (y/n)"),
 					(unsigned long long)di->dinode,
@@ -136,11 +136,11 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 					(unsigned long long)di->treewalk_parent)) {
 					error = remove_dentry_from_dir(sdp, di->treewalk_parent,
 												   di->dinode);
-					if(error < 0) {
+					if (error < 0) {
 						stack;
 						return NULL;
 					}
-					if(error > 0) {
+					if (error > 0) {
 						log_warn( _("Unable to find dentry for block %llu"
 							" (0x%llx) in %llu (0x%llx)\n"),
 							 (unsigned long long)di->dinode,
@@ -169,7 +169,7 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 	}
 	else {
 		q_dotdot = block_type(di->dotdot_parent);
-		if(q_dotdot != gfs2_inode_dir) {
+		if (q_dotdot != gfs2_inode_dir) {
 			log_err( _("Orphaned directory at block %llu (0x%llx) moved to lost+found\n"),
 				(unsigned long long)di->dinode,
 				(unsigned long long)di->dinode);
@@ -213,7 +213,7 @@ int pass3(struct gfs2_sbd *sdp)
 	for (tmp = osi_first(&dirtree); tmp; tmp = next) {
 		next = osi_next(tmp);
 		di = (struct dir_info *)tmp;
-		while(!di->checked) {
+		while (!di->checked) {
 			/* FIXME: Change this so it returns success or
 			 * failure and put the parent inode in a
 			 * param */
@@ -229,10 +229,10 @@ int pass3(struct gfs2_sbd *sdp)
 				continue;
 			}
 			q = block_type(di->dinode);
-			if(q == gfs2_bad_block) {
+			if (q == gfs2_bad_block) {
 				log_err( _("Found unlinked directory "
 					   "containing bad block\n"));
-				if(query(_("Clear unlinked directory "
+				if (query(_("Clear unlinked directory "
 					   "with bad blocks? (y/n) "))) {
 					log_warn( _("inode %lld (0x%llx) is "
 						    "now marked as free\n"),
@@ -250,13 +250,13 @@ int pass3(struct gfs2_sbd *sdp)
 				} else
 					log_err( _("Unlinked directory with bad block remains\n"));
 			}
-			if(q != gfs2_inode_dir && q != gfs2_inode_file &&
+			if (q != gfs2_inode_dir && q != gfs2_inode_file &&
 			   q != gfs2_inode_lnk && q != gfs2_inode_blk &&
 			   q != gfs2_inode_chr && q != gfs2_inode_fifo &&
 			   q != gfs2_inode_sock) {
 				log_err( _("Unlinked block marked as an inode "
 					   "is not an inode\n"));
-				if(!query(_("Clear the unlinked block?"
+				if (!query(_("Clear the unlinked block?"
 					    " (y/n) "))) {
 					log_err( _("The block was not "
 						   "cleared\n"));
@@ -281,10 +281,10 @@ int pass3(struct gfs2_sbd *sdp)
 				 (unsigned long long)di->dinode);
 			ip = fsck_load_inode(sdp, di->dinode);
 			/* Don't skip zero size directories with eattrs */
-			if(!ip->i_di.di_size && !ip->i_di.di_eattr){
+			if (!ip->i_di.di_size && !ip->i_di.di_eattr){
 				log_err( _("Unlinked directory has zero "
 					   "size.\n"));
-				if(query( _("Remove zero-size unlinked "
+				if (query( _("Remove zero-size unlinked "
 					    "directory? (y/n) "))) {
 					fsck_blockmap_set(ip, di->dinode,
 						_("zero-sized unlinked inode"),
@@ -296,9 +296,9 @@ int pass3(struct gfs2_sbd *sdp)
 						   "directory remains\n"));
 				}
 			}
-			if(query( _("Add unlinked directory to "
+			if (query( _("Add unlinked directory to "
 				    "lost+found? (y/n) "))) {
-				if(add_inode_to_lf(ip)) {
+				if (add_inode_to_lf(ip)) {
 					fsck_inode_put(&ip);
 					stack;
 					return FSCK_ERROR;
@@ -311,7 +311,7 @@ int pass3(struct gfs2_sbd *sdp)
 			break;
 		}
 	}
-	if(lf_dip)
+	if (lf_dip)
 		log_debug( _("At end of pass3, lost+found entries is %u\n"),
 				  lf_dip->i_di.di_entries);
 	return FSCK_OK;

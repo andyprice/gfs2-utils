@@ -64,7 +64,7 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer, unsigned int b
 	bit = 0;
 	end = (unsigned char *) buffer + buflen;
 
-	while(byte < end) {
+	while (byte < end) {
 		rg_status = ((*byte >> bit) & GFS2_BIT_MASK);
 		block = rg_data + *rg_block;
 		warm_fuzzy_stuff(block);
@@ -85,8 +85,8 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer, unsigned int b
 				   "block %llu (0x%llx).\n"),
 				 (unsigned long long)block,
 				 (unsigned long long)block);
-			if(query(_("Do you want to fix the bitmap? (y/n) "))) {
-				if(gfs2_set_bitmap(sdp, block, block_status))
+			if (query(_("Do you want to fix the bitmap? (y/n) "))) {
+				if (gfs2_set_bitmap(sdp, block, block_status))
 					log_err(_("Unlinked block %llu "
 						  "(0x%llx) bitmap not fixed."
 						  "\n"),
@@ -117,10 +117,10 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer, unsigned int b
 			log_err( _("Metadata type is %u (%s)\n"), q,
 					block_type_string(q));
 
-			if(query(_("Fix bitmap for block %llu (0x%llx) ? (y/n) "),
+			if (query(_("Fix bitmap for block %llu (0x%llx) ? (y/n) "),
 				 (unsigned long long)block,
 				 (unsigned long long)block)) {
-				if(gfs2_set_bitmap(sdp, block, block_status))
+				if (gfs2_set_bitmap(sdp, block, block_status))
 					log_err( _("Failed.\n"));
 				else
 					log_err( _("Succeeded.\n"));
@@ -159,7 +159,7 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_list *rgp,
 	}
 
 	/* actually adjust counters and write out to disk */
-	if(rgp->rg.rg_free != count[0]) {
+	if (rgp->rg.rg_free != count[0]) {
 		log_err( _("RG #%llu (0x%llx) free count inconsistent: "
 			"is %u should be %u\n"),
 			(unsigned long long)rgp->ri.ri_addr,
@@ -168,21 +168,21 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_list *rgp,
 		rgp->rg.rg_free = count[0];
 		update = 1;
 	}
-	if(rgp->rg.rg_dinodes != count[1]) {
+	if (rgp->rg.rg_dinodes != count[1]) {
 		log_err( _("Inode count inconsistent: is %u should be %u\n"),
 				rgp->rg.rg_dinodes, count[1]);
 		rgp->rg.rg_dinodes = count[1];
 		update = 1;
 	}
-	if((rgp->ri.ri_data - count[0] - count[1]) != count[2]) {
+	if ((rgp->ri.ri_data - count[0] - count[1]) != count[2]) {
 		/* FIXME not sure how to handle this case ATM - it
 		 * means that the total number of blocks we've counted
 		 * exceeds the blocks in the rg */
 		log_err( _("Internal fsck error - AAHHH!\n"));
 		exit(FSCK_ERROR);
 	}
-	if(update) {
-		if(query( _("Update resource group counts? (y/n) "))) {
+	if (update) {
+		if (query( _("Update resource group counts? (y/n) "))) {
 			log_warn( _("Resource group counts updated\n"));
 			/* write out the rgrp */
 			gfs2_rgrp_out(&rgp->rg, rgp->bh[0]);

@@ -143,11 +143,11 @@ static int check_dir_dup_ref(struct gfs2_inode *ip,  struct gfs2_dirent *de,
 	struct inode_with_dups *id;
 
 	id = osi_list_entry(tmp2, struct inode_with_dups, list);
-	if(id->name)
+	if (id->name)
 		/* We can only have one parent of inodes that contain duplicate
 		 * blocks...no need to keep looking for this one. */
 		return 1;
-	if(id->block_no == de->de_inum.no_addr) {
+	if (id->block_no == de->de_inum.no_addr) {
 		id->name = strdup(filename);
 		id->parent = ip->i_di.di_num.no_addr;
 		log_debug( _("Duplicate block %llu (0x%llx"
@@ -225,7 +225,7 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 		return 0;
 	}
 	/* This block, having failed the above test, is duplicated somewhere */
-	if(block == dh->b->block) {
+	if (block == dh->b->block) {
 		log_err( _("Not clearing duplicate reference in inode \"%s\" "
 			   "at block #%llu (0x%llx) to block #%llu (0x%llx) "
 			   "because it's valid for another inode.\n"),
@@ -276,7 +276,7 @@ static int clear_eattr_entry (struct gfs2_inode *ip,
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	char ea_name[256];
 
-	if(!ea_hdr->ea_name_len){
+	if (!ea_hdr->ea_name_len){
 		/* Skip this entry for now */
 		return 1;
 	}
@@ -285,13 +285,13 @@ static int clear_eattr_entry (struct gfs2_inode *ip,
 	strncpy(ea_name, (char *)ea_hdr + sizeof(struct gfs2_ea_header),
 		ea_hdr->ea_name_len);
 
-	if(!GFS2_EATYPE_VALID(ea_hdr->ea_type) &&
+	if (!GFS2_EATYPE_VALID(ea_hdr->ea_type) &&
 	   ((ea_hdr_prev) || (!ea_hdr_prev && ea_hdr->ea_type))){
 		/* Skip invalid entry */
 		return 1;
 	}
 
-	if(ea_hdr->ea_num_ptrs){
+	if (ea_hdr->ea_num_ptrs){
 		uint32_t avail_size;
 		int max_ptrs;
 
@@ -299,7 +299,7 @@ static int clear_eattr_entry (struct gfs2_inode *ip,
 		max_ptrs = (be32_to_cpu(ea_hdr->ea_data_len) + avail_size - 1) /
 			avail_size;
 
-		if(max_ptrs > ea_hdr->ea_num_ptrs)
+		if (max_ptrs > ea_hdr->ea_num_ptrs)
 			return 1;
 		else {
 			log_debug( _("  Pointers Required: %d\n  Pointers Reported: %d\n"),
@@ -345,11 +345,11 @@ static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
 	/* Exhash dir leafs will be checked by check_metatree (right after
 	   the "end:" label.)  But if this is a linear directory we need to
 	   check the dir with check_linear_dir. */
-	if(S_ISDIR(ip->i_di.di_mode) && !(ip->i_di.di_flags & GFS2_DIF_EXHASH))
+	if (S_ISDIR(ip->i_di.di_mode) && !(ip->i_di.di_flags & GFS2_DIF_EXHASH))
 		error = check_linear_dir(ip, ip->i_bh, &find_dirents);
 
 	/* Check for ea references in the inode */
-	if(!error)
+	if (!error)
 		error = check_inode_eattr(ip, &find_refs);
 
 	fsck_inode_put(&ip); /* out, brelse, free */
@@ -409,7 +409,7 @@ static int clear_a_reference(struct gfs2_sbd *sdp, struct duptree *b,
 		id = osi_list_entry(tmp, struct inode_with_dups, list);
 		dh->b = b;
 		dh->id = id;
-		if(dh->ref_inode_count == 1) /* down to the last reference */
+		if (dh->ref_inode_count == 1) /* down to the last reference */
 			return 1;
 		if (!(query( _("Okay to clear %s inode %lld (0x%llx)? (y/n) "),
 			     (inval ? _("invalidated") : ""),
@@ -439,7 +439,7 @@ static int clear_a_reference(struct gfs2_sbd *sdp, struct duptree *b,
 		 * block for each duplicate and point the metadata at
 		 * the cloned blocks */
 	}
-	if(dh->ref_inode_count == 1) /* down to the last reference */
+	if (dh->ref_inode_count == 1) /* down to the last reference */
 		return 1;
 	return 0;
 }

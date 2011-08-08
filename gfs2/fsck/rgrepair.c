@@ -746,7 +746,7 @@ static void sort_rgrp_list(osi_list_t *head)
 	osi_list_t *tmp, *x, *next;
 	int swaps;
 
-	while(1) {
+	while (1) {
 		swaps = 0;
 		osi_list_foreach_safe(tmp, head, x) {
 			next = tmp->next;

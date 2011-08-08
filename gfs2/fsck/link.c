@@ -69,7 +69,7 @@ int decrement_link(uint64_t inode_no, uint64_t referenced_from,
 	ii = inodetree_find(inode_no);
 	/* If the list has entries, look for one that matches
 	 * inode_no */
-	if(ii) {
+	if (ii) {
 		if (!ii->counted_links) {
 			log_debug( _("Directory %llu (0x%llx)'s link to "
 			     " %llu (0x%llx) via %s is zero!\n"),

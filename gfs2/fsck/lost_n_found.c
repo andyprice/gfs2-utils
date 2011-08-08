@@ -34,7 +34,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	struct dir_info *di;
 	int err = 0;
 
-	if(!lf_dip) {
+	if (!lf_dip) {
 		uint8_t q;
 
 		log_info( _("Locating/Creating lost+found directory\n"));
@@ -55,7 +55,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 			       sdp->md.rooti->i_di.di_nlink);
 
 		q = block_type(lf_dip->i_di.di_num.no_addr);
-		if(q != gfs2_inode_dir) {
+		if (q != gfs2_inode_dir) {
 			/* This is a new lost+found directory, so set its
 			 * block type and increment link counts for
 			 * the directories */
@@ -88,7 +88,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 			di = NULL;
 		}
 	}
-	if(ip->i_di.di_num.no_addr == lf_dip->i_di.di_num.no_addr) {
+	if (ip->i_di.di_num.no_addr == lf_dip->i_di.di_num.no_addr) {
 		log_err( _("Trying to add lost+found to itself...skipping"));
 		return 0;
 	}
@@ -138,7 +138,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 				    "for orphan directory %lld (0x%llx)\n"),
 				  (unsigned long long)ip->i_di.di_num.no_addr,
 				  (unsigned long long)ip->i_di.di_num.no_addr);
-		if(gfs2_dirent_del(ip, "..", 2))
+		if (gfs2_dirent_del(ip, "..", 2))
 			log_warn( _("add_inode_to_lf:  Unable to remove "
 				    "\"..\" directory entry.\n"));
 
@@ -206,7 +206,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	increment_link(ip->i_di.di_num.no_addr, lf_dip->i_di.di_num.no_addr,
 		       _("from lost+found"));
 	/* If it's a directory, lost+found is back-linked to it via .. */
-	if(S_ISDIR(ip->i_di.di_mode))
+	if (S_ISDIR(ip->i_di.di_mode))
 		increment_link(lf_dip->i_di.di_num.no_addr,
 			       ip->i_di.di_mode, _("to lost+found"));
 

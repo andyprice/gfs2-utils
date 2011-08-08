@@ -22,7 +22,7 @@
 #include "inode_hash.h"
 
 #define CLEAR_POINTER(x) \
-	if(x) { \
+	if (x) { \
 		free(x); \
 		x = NULL; \
 	}
@@ -40,9 +40,9 @@ static struct master_dir fix_md;
  */
 static int block_mounters(struct gfs2_sbd *sdp, int block_em)
 {
-	if(block_em) {
+	if (block_em) {
 		/* verify it starts with lock_ */
-		if(!strncmp(sdp->sd_sb.sb_lockproto, "lock_", 5)) {
+		if (!strncmp(sdp->sd_sb.sb_lockproto, "lock_", 5)) {
 			/* Change lock_ to fsck_ */
 			memcpy(sdp->sd_sb.sb_lockproto, "fsck_", 5);
 		}
@@ -51,13 +51,13 @@ static int block_mounters(struct gfs2_sbd *sdp, int block_em)
 	} else {
 		/* verify it starts with fsck_ */
 		/* verify it starts with lock_ */
-		if(!strncmp(sdp->sd_sb.sb_lockproto, "fsck_", 5)) {
+		if (!strncmp(sdp->sd_sb.sb_lockproto, "fsck_", 5)) {
 			/* Change fsck_ to lock_ */
 			memcpy(sdp->sd_sb.sb_lockproto, "lock_", 5);
 		}
 	}
 
-	if(write_sb(sdp)) {
+	if (write_sb(sdp)) {
 		stack;
 		return -1;
 	}
@@ -164,7 +164,7 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	last_data_block = rmax;
 	first_data_block = rmin;
 
-	if(fsck_lseek(sdp->device_fd, (last_fs_block * sdp->sd_sb.sb_bsize))){
+	if (fsck_lseek(sdp->device_fd, (last_fs_block * sdp->sd_sb.sb_bsize))){
 		log_crit( _("Can't seek to last block in file system: %llu"
 			 " (0x%llx)\n"), (unsigned long long)last_fs_block,
 			 (unsigned long long)last_fs_block);
@@ -659,7 +659,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	/*******************************************************************
 	 *******  Now, set boundary fields in the super block  *************
 	 *******************************************************************/
-	if(set_block_ranges(sdp)){
+	if (set_block_ranges(sdp)){
 		log_err( _("Unable to determine the boundaries of the"
 			" file system.\n"));
 		goto fail;
@@ -1150,7 +1150,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 	sdp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 	sdp->bsize = sdp->sd_sb.sb_bsize;
 
-	if(sizeof(struct gfs2_sb) > sdp->sd_sb.sb_bsize){
+	if (sizeof(struct gfs2_sb) > sdp->sd_sb.sb_bsize){
 		log_crit( _("GFS superblock is larger than the blocksize!\n"));
 		log_debug("sizeof(struct gfs2_sb) > sdp->sd_sb.sb_bsize\n");
 		return -1;
@@ -1187,7 +1187,7 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 
 	*all_clean = 0;
 
-	if(opts.no)
+	if (opts.no)
 		open_flag = O_RDONLY;
 	else
 		open_flag = O_RDWR | O_EXCL;
@@ -1236,8 +1236,8 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 		return FSCK_ERROR;
 
 	/* Change lock protocol to be fsck_* instead of lock_* */
-	if(!opts.no && preen_is_safe(sdp, preen, force_check)) {
-		if(block_mounters(sdp, 1)) {
+	if (!opts.no && preen_is_safe(sdp, preen, force_check)) {
+		if (block_mounters(sdp, 1)) {
 			log_err( _("Unable to block other mounters\n"));
 			return FSCK_USAGE;
 		}
@@ -1261,8 +1261,8 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 
 	/* verify various things */
 
-	if(replay_journals(sdp, preen, force_check, &clean_journals)) {
-		if(!opts.no && preen_is_safe(sdp, preen, force_check))
+	if (replay_journals(sdp, preen, force_check, &clean_journals)) {
+		if (!opts.no && preen_is_safe(sdp, preen, force_check))
 			block_mounters(sdp, 0);
 		stack;
 		return FSCK_ERROR;
@@ -1289,8 +1289,8 @@ mount_fail:
 
 static void destroy_sdp(struct gfs2_sbd *sdp)
 {
-	if(!opts.no) {
-		if(block_mounters(sdp, 0)) {
+	if (!opts.no) {
+		if (block_mounters(sdp, 0)) {
 			log_warn( _("Unable to unblock other mounters - manual intervention required\n"));
 			log_warn( _("Use 'gfs2_tool sb <device> proto' to fix\n"));
 		}

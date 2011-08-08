@@ -78,7 +78,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 	uint8_t q;
 	struct gfs2_buffer_head *indir_bh = NULL;
 
-	if(gfs2_check_range(sdp, block)) {
+	if (gfs2_check_range(sdp, block)) {
 		log_err( _("Extended attributes indirect block #%llu"
 			" (0x%llx) for inode #%llu"
 			" (0x%llx) out of range...removing\n"),
@@ -89,7 +89,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 		return ask_remove_eattr(ip);
 	}
 	q = block_type(block);
-	if(q != gfs2_indir_blk) {
+	if (q != gfs2_indir_blk) {
 		log_err( _("Extended attributes indirect block #%llu"
 			" (0x%llx) for inode #%llu"
 			" (0x%llx) invalid.\n"),
@@ -113,7 +113,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint8_t q;
 
-	if(gfs2_check_range(sdp, block)) {
+	if (gfs2_check_range(sdp, block)) {
 		log_err( _("Extended attributes block for inode #%llu"
 			" (0x%llx) out of range.\n"),
 			(unsigned long long)ip->i_di.di_num.no_addr,
@@ -121,7 +121,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 		return ask_remove_eattr(ip);
 	}
 	q = block_type(block);
-	if(q != gfs2_meta_eattr) {
+	if (q != gfs2_meta_eattr) {
 		log_err( _("Extended attributes block for inode #%llu"
 			   " (0x%llx) invalid.\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
@@ -146,23 +146,23 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 			                  ((unsigned long)leaf_bh->b_data));
 	uint32_t max_size = sdp->sd_sb.sb_bsize;
 
-	if(!ea_hdr->ea_name_len){
+	if (!ea_hdr->ea_name_len){
 		log_err( _("EA has name length of zero\n"));
 		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 1, 1);
 	}
-	if(offset + be32_to_cpu(ea_hdr->ea_rec_len) > max_size){
+	if (offset + be32_to_cpu(ea_hdr->ea_rec_len) > max_size){
 		log_err( _("EA rec length too long\n"));
 		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 1, 1);
 	}
-	if(offset + be32_to_cpu(ea_hdr->ea_rec_len) == max_size &&
+	if (offset + be32_to_cpu(ea_hdr->ea_rec_len) == max_size &&
 	   (ea_hdr->ea_flags & GFS2_EAFLAG_LAST) == 0){
 		log_err( _("last EA has no last entry flag\n"));
 		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 0, 0);
 	}
-	if(!ea_hdr->ea_name_len){
+	if (!ea_hdr->ea_name_len){
 		log_err( _("EA has name length of zero\n"));
 		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 0, 0);
@@ -172,7 +172,7 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 	strncpy(ea_name, (char *)ea_hdr + sizeof(struct gfs2_ea_header),
 		ea_hdr->ea_name_len);
 
-	if(!GFS2_EATYPE_VALID(ea_hdr->ea_type) &&
+	if (!GFS2_EATYPE_VALID(ea_hdr->ea_type) &&
 	   ((ea_hdr_prev) || (!ea_hdr_prev && ea_hdr->ea_type))){
 		log_err( _("EA (%s) type is invalid (%d > %d).\n"),
 			ea_name, ea_hdr->ea_type, GFS2_EATYPE_LAST);
@@ -180,14 +180,14 @@ static int check_eattr_entry(struct gfs2_inode *ip,
 					      ea_hdr_prev, 0, 0);
 	}
 
-	if(ea_hdr->ea_num_ptrs){
+	if (ea_hdr->ea_num_ptrs){
 		uint32_t avail_size;
 		int max_ptrs;
 
 		avail_size = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header);
 		max_ptrs = (be32_to_cpu(ea_hdr->ea_data_len)+avail_size-1)/avail_size;
 
-		if(max_ptrs > ea_hdr->ea_num_ptrs){
+		if (max_ptrs > ea_hdr->ea_num_ptrs){
 			log_err( _("EA (%s) has incorrect number of pointers.\n"), ea_name);
 			log_err( _("  Required:  %d\n  Reported:  %d\n"),
 				 max_ptrs, ea_hdr->ea_num_ptrs);
@@ -210,8 +210,8 @@ static int check_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_ptr,
 	struct gfs2_sbd *sdp = ip->i_sbd;
 
 	q = block_type(be64_to_cpu(*ea_ptr));
-	if(q != gfs2_meta_eattr) {
-		if(remove_eattr_entry(sdp, leaf_bh, ea_hdr, ea_hdr_prev)){
+	if (q != gfs2_meta_eattr) {
+		if (remove_eattr_entry(sdp, leaf_bh, ea_hdr, ea_hdr_prev)){
 			stack;
 			return -1;
 		}
@@ -260,7 +260,7 @@ int pass1c(struct gfs2_sbd *sdp)
 				  (unsigned long long)ip->i_di.di_eattr);
 			/* FIXME: Handle walking the eattr here */
 			error = check_inode_eattr(ip, &pass1c_fxns);
-			if(error < 0) {
+			if (error < 0) {
 				stack;
 				brelse(bh);
 				return FSCK_ERROR;

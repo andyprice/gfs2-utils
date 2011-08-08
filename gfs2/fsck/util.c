@@ -94,11 +94,11 @@ int fsck_query(const char *format, ...)
 
 	errors_found++;
 	fsck_abort = 0;
-	if(opts.yes) {
+	if (opts.yes) {
 		errors_corrected++;
 		return 1;
 	}
-	if(opts.no)
+	if (opts.no)
 		return 0;
 
 	opts.query = TRUE;
@@ -126,7 +126,7 @@ int fsck_query(const char *format, ...)
 				break;
 			}
 			printf("Continuing.\n");
-		} else if(tolower(response) == 'y') {
+		} else if (tolower(response) == 'y') {
 			errors_corrected++;
                         ret = 1;
                         break;
@@ -256,12 +256,12 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 		/* Check for the inode on the invalid inode reference list. */
 		uint8_t q;
 
-		if(!(found_id = malloc(sizeof(*found_id)))) {
+		if (!(found_id = malloc(sizeof(*found_id)))) {
 			log_crit( _("Unable to allocate "
 				    "inode_with_dups structure\n"));
 			return -1;
 		}
-		if(!(memset(found_id, 0, sizeof(*found_id)))) {
+		if (!(memset(found_id, 0, sizeof(*found_id)))) {
 			log_crit( _("Unable to zero inode_with_dups "
 				    "structure\n"));
 			return -1;

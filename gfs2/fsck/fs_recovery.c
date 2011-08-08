@@ -412,7 +412,7 @@ int preen_is_safe(struct gfs2_sbd *sdp, int preen, int force_check)
 		return 1; /* not called by rc.sysinit--we're okay to preen */
 	if (force_check)  /* If check was forced by the user? */
 		return 1; /* user's responsibility--we're okay to preen */
-	if(!memcmp(sdp->sd_sb.sb_lockproto + 5, "nolock", 6))
+	if (!memcmp(sdp->sd_sb.sb_lockproto + 5, "nolock", 6))
 		return 1; /* local file system--preen is okay */
 	return 0; /* might be mounted on another node--not guaranteed safe */
 }
@@ -633,7 +633,7 @@ int ji_update(struct gfs2_sbd *sdp)
 	char journal_name[JOURNAL_NAME_SIZE];
 	int i;
 
-	if(!ip) {
+	if (!ip) {
 		log_crit("Journal index inode not found.\n");
 		return -1;
 	}
@@ -647,7 +647,7 @@ int ji_update(struct gfs2_sbd *sdp)
 	else
 		sdp->md.journals = ip->i_di.di_entries - 2;
 
-	if(!(sdp->md.journal = calloc(sdp->md.journals,
+	if (!(sdp->md.journal = calloc(sdp->md.journals,
 				      sizeof(struct gfs2_inode *)))) {
 		log_err("Unable to allocate journal index\n");
 		return -1;

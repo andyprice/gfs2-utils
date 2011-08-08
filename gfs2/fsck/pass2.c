@@ -26,7 +26,7 @@ static int set_parent_dir(struct gfs2_sbd *sdp, uint64_t childblock,
 	struct dir_info *di;
 
 	di = dirtree_find(childblock);
-	if(!di) {
+	if (!di) {
 		log_err( _("Unable to find block %llu (0x%llx"
 			   ") in dir_info list\n"),
 			(unsigned long long)childblock,
@@ -34,7 +34,7 @@ static int set_parent_dir(struct gfs2_sbd *sdp, uint64_t childblock,
 		return -1;
 	}
 
-	if(di->dinode == childblock) {
+	if (di->dinode == childblock) {
 		if (di->treewalk_parent) {
 			log_err( _("Another directory at block %llu"
 				   " (0x%llx) already contains this "
@@ -66,11 +66,11 @@ static int set_dotdot_dir(struct gfs2_sbd *sdp, uint64_t childblock,
 	struct dir_info *di;
 
 	di = dirtree_find(childblock);
-	if(di) {
-		if(di->dinode == childblock) {
+	if (di) {
+		if (di->dinode == childblock) {
 			/* Special case for root inode because we set
 			 * it earlier */
-			if(di->dotdot_parent && sdp->md.rooti->i_di.di_num.no_addr
+			if (di->dotdot_parent && sdp->md.rooti->i_di.di_num.no_addr
 			   != di->dinode) {
 				/* This should never happen */
 				log_crit( _("Dotdot parent already set for"
@@ -126,31 +126,31 @@ static int check_file_type(uint8_t de_type, uint8_t blk_type)
 {
 	switch(blk_type) {
 	case gfs2_inode_dir:
-		if(de_type != DT_DIR)
+		if (de_type != DT_DIR)
 			return 1;
 		break;
 	case gfs2_inode_file:
-		if(de_type != DT_REG)
+		if (de_type != DT_REG)
 			return 1;
 		break;
 	case gfs2_inode_lnk:
-		if(de_type != DT_LNK)
+		if (de_type != DT_LNK)
 			return 1;
 		break;
 	case gfs2_inode_blk:
-		if(de_type != DT_BLK)
+		if (de_type != DT_BLK)
 			return 1;
 		break;
 	case gfs2_inode_chr:
-		if(de_type != DT_CHR)
+		if (de_type != DT_CHR)
 			return 1;
 		break;
 	case gfs2_inode_fifo:
-		if(de_type != DT_FIFO)
+		if (de_type != DT_FIFO)
 			return 1;
 		break;
 	case gfs2_inode_sock:
-		if(de_type != DT_SOCK)
+		if (de_type != DT_SOCK)
 			return 1;
 		break;
 	default:
@@ -201,17 +201,17 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 
 	/* Start of checks */
 	memset(tmp_name, 0, MAX_FILENAME);
-	if(de->de_name_len < MAX_FILENAME)
+	if (de->de_name_len < MAX_FILENAME)
 		strncpy(tmp_name, filename, de->de_name_len);
 	else
 		strncpy(tmp_name, filename, MAX_FILENAME - 1);
 
-	if(gfs2_check_range(ip->i_sbd, entryblock)) {
+	if (gfs2_check_range(ip->i_sbd, entryblock)) {
 		log_err( _("Block # referenced by directory entry %s in inode "
 			   "%lld (0x%llx) is out of range\n"),
 			 tmp_name, (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
-		if(query( _("Clear directory entry to out of range block? "
+		if (query( _("Clear directory entry to out of range block? "
 			    "(y/n) "))) {
 			goto nuke_dentry;
 		} else {
@@ -228,7 +228,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		log_err( _("Dir entry with bad record or name length\n"
 			"\tRecord length = %u\n\tName length = %u\n"),
 			de->de_rec_len, de->de_name_len);
-		if(!query( _("Clear the directory entry? (y/n) "))) {
+		if (!query( _("Clear the directory entry? (y/n) "))) {
 			log_err( _("Directory entry not fixed.\n"));
 			goto dentry_is_valid;
 		}
@@ -248,7 +248,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		log_err( _("\tName length found  = %u\n"
 			   "\tHash expected      = %u (0x%x)\n"),
 			 de->de_name_len, calculated_hash, calculated_hash);
-		if(!query( _("Fix directory hash for %s? (y/n) "),
+		if (!query( _("Fix directory hash for %s? (y/n) "),
 			   tmp_name)) {
 			log_err( _("Directory entry hash for %s not "
 				   "fixed.\n"), tmp_name);
@@ -263,13 +263,13 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 
 	q = block_type(entryblock);
 	/* Get the status of the directory inode */
-	if(q == gfs2_inode_invalid || q == gfs2_bad_block) {
+	if (q == gfs2_inode_invalid || q == gfs2_bad_block) {
 		/* This entry's inode has bad blocks in it */
 
 		/* Handle bad blocks */
 		log_err( _("Found a bad directory entry: %s\n"), tmp_name);
 
-		if(!query( _("Delete inode containing bad blocks? (y/n)"))) {
+		if (!query( _("Delete inode containing bad blocks? (y/n)"))) {
 			log_warn( _("Entry to inode containing bad blocks remains\n"));
 			goto dentry_is_valid;
 		}
@@ -286,7 +286,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				  _("bad directory entry"), gfs2_block_free);
 		goto nuke_dentry;
 	}
-	if(q < gfs2_inode_dir || q > gfs2_inode_sock) {
+	if (q < gfs2_inode_dir || q > gfs2_inode_sock) {
 		log_err( _("Directory entry '%s' referencing inode %llu "
 			   "(0x%llx) in dir inode %llu (0x%llx) block type "
 			   "%d: %s.\n"), tmp_name,
@@ -298,7 +298,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			 _("was previously marked invalid") :
 			 _("was deleted or is not an inode"));
 
-		if(!query( _("Clear directory entry to non-inode block? "
+		if (!query( _("Clear directory entry to non-inode block? "
 			     "(y/n) "))) {
 			log_err( _("Directory entry to non-inode block remains\n"));
 			goto dentry_is_valid;
@@ -324,7 +324,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	}
 
 	error = check_file_type(de->de_type, q);
-	if(error < 0) {
+	if (error < 0) {
 		log_err( _("Error: directory entry type is "
 			   "incompatible with block type at block %lld "
 			   "(0x%llx) in directory inode %llu (0x%llx).\n"),
@@ -337,14 +337,14 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		stack;
 		return -1;
 	}
-	if(error > 0) {
+	if (error > 0) {
 		log_err( _("Type '%s' in dir entry (%s, %llu/0x%llx) conflicts"
 			 " with type '%s' in dinode. (Dir entry is stale.)\n"),
 			 de_type_string(de->de_type), tmp_name,
 			 (unsigned long long)entryblock,
 			 (unsigned long long)entryblock,
 			 block_type_string(q));
-		if(!query( _("Clear stale directory entry? (y/n) "))) {
+		if (!query( _("Clear stale directory entry? (y/n) "))) {
 			log_err( _("Stale directory entry remains\n"));
 			goto dentry_is_valid;
 		}
@@ -358,15 +358,15 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		goto nuke_dentry;
 	}
 
-	if(!strcmp(".", tmp_name)) {
+	if (!strcmp(".", tmp_name)) {
 		log_debug( _("Found . dentry\n"));
 
-		if(ds->dotdir) {
+		if (ds->dotdir) {
 			log_err( _("Already found '.' entry in directory %llu"
 				" (0x%llx)\n"),
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			if(!query( _("Clear duplicate '.' entry? (y/n) "))) {
+			if (!query( _("Clear duplicate '.' entry? (y/n) "))) {
 				log_err( _("Duplicate '.' entry remains\n"));
 				/* FIXME: Should we continue on here
 				 * and check the rest of the '.' entry? */
@@ -386,7 +386,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		 * location */
 
 		/* check that '.' refers to this inode */
-		if(entryblock != ip->i_di.di_num.no_addr) {
+		if (entryblock != ip->i_di.di_num.no_addr) {
 			log_err( _("'.' entry's value incorrect in directory %llu"
 				" (0x%llx).  Points to %llu"
 				" (0x%llx) when it should point to %llu"
@@ -397,7 +397,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				(unsigned long long)entryblock,
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			if(!query( _("Remove '.' reference? (y/n) "))) {
+			if (!query( _("Remove '.' reference? (y/n) "))) {
 				log_err( _("Invalid '.' reference remains\n"));
 				/* Not setting ds->dotdir here since
 				 * this '.' entry is invalid */
@@ -416,14 +416,14 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		ds->dotdir = 1;
 		goto dentry_is_valid;
 	}
-	if(!strcmp("..", tmp_name)) {
+	if (!strcmp("..", tmp_name)) {
 		log_debug( _("Found .. dentry\n"));
-		if(ds->dotdotdir) {
+		if (ds->dotdotdir) {
 			log_err( _("Already found '..' entry in directory %llu"
 				"(0x%llx)\n"),
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			if(!query( _("Clear duplicate '..' entry? (y/n) "))) {
+			if (!query( _("Clear duplicate '..' entry? (y/n) "))) {
 				log_err( _("Duplicate '..' entry remains\n"));
 				/* FIXME: Should we continue on here
 				 * and check the rest of the '..'
@@ -442,12 +442,12 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			goto nuke_dentry;
 		}
 
-		if(q != gfs2_inode_dir) {
+		if (q != gfs2_inode_dir) {
 			log_err( _("Found '..' entry in directory %llu (0x%llx) "
 				"pointing to something that's not a directory"),
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);
-			if(!query( _("Clear bad '..' directory entry? (y/n) "))) {
+			if (!query( _("Clear bad '..' directory entry? (y/n) "))) {
 				log_err( _("Bad '..' directory entry remains\n"));
 				goto dentry_is_valid;
 			}
@@ -466,7 +466,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		/* Add the address this entry is pointing to
 		 * to this inode's dotdot_parent in
 		 * dir_info */
-		if(set_dotdot_dir(sdp, ip->i_di.di_num.no_addr, entryblock)) {
+		if (set_dotdot_dir(sdp, ip->i_di.di_num.no_addr, entryblock)) {
 			stack;
 			return -1;
 		}
@@ -476,7 +476,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	}
 
 	/* After this point we're only concerned with directories */
-	if(q != gfs2_inode_dir) {
+	if (q != gfs2_inode_dir) {
 		log_debug( _("Found non-dir inode dentry pointing to %lld "
 			     "(0x%llx)\n"),
 			   (unsigned long long)entryblock,
@@ -486,13 +486,13 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 
 	/*log_debug( _("Found plain directory dentry\n"));*/
 	error = set_parent_dir(sdp, entryblock, ip->i_di.di_num.no_addr);
-	if(error > 0) {
+	if (error > 0) {
 		log_err( _("%s: Hard link to block %llu (0x%llx"
 			   ") detected.\n"), tmp_name,
 			(unsigned long long)entryblock,
 			(unsigned long long)entryblock);
 
-		if(query( _("Clear hard link to directory? (y/n) ")))
+		if (query( _("Clear hard link to directory? (y/n) ")))
 			goto nuke_dentry;
 		else {
 			log_err( _("Hard link to directory remains\n"));
@@ -548,7 +548,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		ds.q = block_type(iblock);
 	}
 	pass2_fxns.private = (void *) &ds;
-	if(ds.q == gfs2_bad_block) {
+	if (ds.q == gfs2_bad_block) {
 		/* First check that the directory's metatree is valid */
 		error = check_metatree(sysinode, &pass2_fxns);
 		if (error < 0) {
@@ -559,7 +559,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 	error = check_dir(sysinode->i_sbd, iblock, &pass2_fxns);
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 		return FSCK_OK;
-	if(error < 0) {
+	if (error < 0) {
 		stack;
 		return -1;
 	}
@@ -567,23 +567,23 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		fsck_blockmap_set(sysinode, iblock, dirname,
 				  gfs2_inode_invalid);
 
-	if(check_inode_eattr(sysinode, &pass2_fxns)) {
+	if (check_inode_eattr(sysinode, &pass2_fxns)) {
 		stack;
 		return -1;
 	}
-	if(!ds.dotdir) {
+	if (!ds.dotdir) {
 		log_err( _("No '.' entry found for %s directory.\n"), dirname);
 		if (query( _("Is it okay to add '.' entry? (y/n) "))) {
 			uint64_t cur_blks = sysinode->i_di.di_blocks;
 
 			sprintf(tmp_name, ".");
 			filename_len = strlen(tmp_name); /* no trailing NULL */
-			if(!(filename = malloc(sizeof(char) * filename_len))) {
+			if (!(filename = malloc(sizeof(char) * filename_len))) {
 				log_err( _("Unable to allocate name string\n"));
 				stack;
 				return -1;
 			}
-			if(!(memset(filename, 0, sizeof(char) *
+			if (!(memset(filename, 0, sizeof(char) *
 				    filename_len))) {
 				log_err( _("Unable to zero name string\n"));
 				stack;
@@ -609,13 +609,13 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		} else
 			log_err( _("The directory was not fixed.\n"));
 	}
-	if(sysinode->i_di.di_entries != ds.entry_count) {
+	if (sysinode->i_di.di_entries != ds.entry_count) {
 		log_err( _("%s inode %llu (0x%llx"
 			"): Entries is %d - should be %d\n"), dirname,
 			(unsigned long long)sysinode->i_di.di_num.no_addr,
 			(unsigned long long)sysinode->i_di.di_num.no_addr,
 			sysinode->i_di.di_entries, ds.entry_count);
-		if(query( _("Fix entries for %s inode %llu (0x%llx)? (y/n) "),
+		if (query( _("Fix entries for %s inode %llu (0x%llx)? (y/n) "),
 			  dirname,
 			  (unsigned long long)sysinode->i_di.di_num.no_addr,
 			  (unsigned long long)sysinode->i_di.di_num.no_addr)) {
@@ -707,7 +707,7 @@ int pass2(struct gfs2_sbd *sdp)
 
 		q = block_type(dirblk);
 
-		if(q != gfs2_inode_dir)
+		if (q != gfs2_inode_dir)
 			continue;
 
 		log_debug( _("Checking directory inode at block %llu (0x%llx)\n"),
@@ -715,7 +715,7 @@ int pass2(struct gfs2_sbd *sdp)
 
 		memset(&ds, 0, sizeof(ds));
 		pass2_fxns.private = (void *) &ds;
-		if(ds.q == gfs2_bad_block) {
+		if (ds.q == gfs2_bad_block) {
 			/* First check that the directory's metatree
 			 * is valid */
 			ip = fsck_load_inode(sdp, dirblk);
@@ -729,7 +729,7 @@ int pass2(struct gfs2_sbd *sdp)
 		error = check_dir(sdp, dirblk, &pass2_fxns);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
-		if(error < 0) {
+		if (error < 0) {
 			stack;
 			return FSCK_ERROR;
 		}
@@ -737,11 +737,11 @@ int pass2(struct gfs2_sbd *sdp)
 			struct dir_info *di;
 
 			di = dirtree_find(dirblk);
-			if(!di) {
+			if (!di) {
 				stack;
 				return FSCK_ERROR;
 			}
-			if(query( _("Remove directory entry for bad"
+			if (query( _("Remove directory entry for bad"
 				    " inode %llu (0x%llx) in %llu"
 				    " (0x%llx)? (y/n)"),
 				  (unsigned long long)dirblk,
@@ -750,11 +750,11 @@ int pass2(struct gfs2_sbd *sdp)
 				  (unsigned long long)di->treewalk_parent)) {
 				error = remove_dentry_from_dir(sdp, di->treewalk_parent,
 							       dirblk);
-				if(error < 0) {
+				if (error < 0) {
 					stack;
 					return FSCK_ERROR;
 				}
-				if(error > 0) {
+				if (error > 0) {
 					log_warn( _("Unable to find dentry for %llu"
 						    " (0x%llx) in %llu"
 						    " (0x%llx)\n"),
@@ -776,7 +776,7 @@ int pass2(struct gfs2_sbd *sdp)
 			check_n_fix_bitmap(sdp, dirblk, gfs2_inode_invalid);
 		}
 		ip = fsck_load_inode(sdp, dirblk);
-		if(!ds.dotdir) {
+		if (!ds.dotdir) {
 			log_err(_("No '.' entry found for directory inode at "
 				  "block %llu (0x%llx)\n"),
 				(unsigned long long)dirblk,
@@ -788,13 +788,13 @@ int pass2(struct gfs2_sbd *sdp)
 				sprintf(tmp_name, ".");
 				filename_len = strlen(tmp_name); /* no trailing
 								    NULL */
-				if(!(filename = malloc(sizeof(char) *
+				if (!(filename = malloc(sizeof(char) *
 						       filename_len))) {
 					log_err(_("Unable to allocate name\n"));
 					stack;
 					return FSCK_ERROR;
 				}
-				if(!memset(filename, 0, sizeof(char) *
+				if (!memset(filename, 0, sizeof(char) *
 					   filename_len)) {
 					log_err( _("Unable to zero name\n"));
 					stack;
@@ -831,7 +831,7 @@ int pass2(struct gfs2_sbd *sdp)
 			}
 		}
 
-		if(!fsck_abort && ip->i_di.di_entries != ds.entry_count) {
+		if (!fsck_abort && ip->i_di.di_entries != ds.entry_count) {
 			log_err( _("Entries is %d - should be %d for inode "
 				"block %llu (0x%llx)\n"),
 				ip->i_di.di_entries, ds.entry_count,
