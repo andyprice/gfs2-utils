@@ -51,8 +51,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 		   the root directory.  We must increment the nlink value
 		   in the hash table to keep them in sync so that pass4 can
 		   detect and fix any descrepancies. */
-		set_link_count(sdp->sd_sb.sb_root_dir.no_addr,
-			       sdp->md.rooti->i_di.di_nlink);
+		set_di_nlink(sdp->md.rooti);
 
 		q = block_type(lf_dip->i_di.di_num.no_addr);
 		if (q != gfs2_inode_dir) {
@@ -68,15 +67,15 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 					  _("lost+found dinode"),
 					  gfs2_inode_dir);
 			/* root inode links to lost+found */
-			increment_link(sdp->md.rooti->i_di.di_num.no_addr,
+			incr_link_count(sdp->md.rooti->i_di.di_num.no_addr,
 				       lf_dip->i_di.di_num.no_addr, _("root"));
 			/* lost+found link for '.' from itself */
-			increment_link(lf_dip->i_di.di_num.no_addr,
-				       lf_dip->i_di.di_num.no_addr, "\".\"");
+			incr_link_count(lf_dip->i_di.di_num.no_addr,
+					lf_dip->i_di.di_num.no_addr, "\".\"");
 			/* lost+found link for '..' back to root */
-			increment_link(lf_dip->i_di.di_num.no_addr,
-				       sdp->md.rooti->i_di.di_num.no_addr,
-				       "\"..\"");
+			incr_link_count(lf_dip->i_di.di_num.no_addr,
+					sdp->md.rooti->i_di.di_num.no_addr,
+					"\"..\"");
 		}
 		log_info( _("lost+found directory is dinode %lld (0x%llx)\n"),
 			  (unsigned long long)lf_dip->i_di.di_num.no_addr,
@@ -113,9 +112,9 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 				  (unsigned long long)ip->i_di.di_num.no_addr,
 				  (unsigned long long)di->dotdot_parent,
 				  (unsigned long long)di->dotdot_parent);
-			decrement_link(di->dotdot_parent,
-				       ip->i_di.di_num.no_addr,
-				       _(".. unlinked, moving to lost+found"));
+			decr_link_count(di->dotdot_parent,
+					ip->i_di.di_num.no_addr,
+					_(".. unlinked, moving to lost+found"));
 			dip = fsck_load_inode(sdp, di->dotdot_parent);
 			if (dip->i_di.di_nlink > 0) {
 				dip->i_di.di_nlink--;
@@ -203,12 +202,12 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 		reprocess_inode(lf_dip, "lost+found");
 
 	/* This inode is linked from lost+found */
-	increment_link(ip->i_di.di_num.no_addr, lf_dip->i_di.di_num.no_addr,
-		       _("from lost+found"));
+	incr_link_count(ip->i_di.di_num.no_addr, lf_dip->i_di.di_num.no_addr,
+			_("from lost+found"));
 	/* If it's a directory, lost+found is back-linked to it via .. */
 	if (S_ISDIR(ip->i_di.di_mode))
-		increment_link(lf_dip->i_di.di_num.no_addr,
-			       ip->i_di.di_mode, _("to lost+found"));
+		incr_link_count(lf_dip->i_di.di_num.no_addr,
+				ip->i_di.di_mode, _("to lost+found"));
 
 	log_notice( _("Added inode #%llu (0x%llx) to lost+found dir\n"),
 		    (unsigned long long)ip->i_di.di_num.no_addr,

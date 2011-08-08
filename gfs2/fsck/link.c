@@ -13,22 +13,26 @@
 #include "inode_hash.h"
 #include "link.h"
 
-int set_link_count(uint64_t inode_no, uint32_t count)
+int set_di_nlink(struct gfs2_inode *ip)
 {
 	struct inode_info *ii;
+	uint64_t inode_no = ip->i_di.di_num.no_addr;
+
+	/*log_debug( _("Setting link count to %u for %" PRIu64
+	  " (0x%" PRIx64 ")\n"), count, inode_no, inode_no);*/
 	/* If the list has entries, look for one that matches inode_no */
 	ii = inodetree_find(inode_no);
 	if (!ii)
 		ii = inodetree_insert(inode_no);
 	if (ii)
-		ii->link_count = count;
+		ii->di_nlink = ip->i_di.di_nlink;
 	else
 		return -1;
 	return 0;
 }
 
-int increment_link(uint64_t inode_no, uint64_t referenced_from,
-		   const char *why)
+int incr_link_count(uint64_t inode_no, uint64_t referenced_from,
+		    const char *why)
 {
 	struct inode_info *ii = NULL;
 
@@ -61,8 +65,8 @@ int increment_link(uint64_t inode_no, uint64_t referenced_from,
 	return 0;
 }
 
-int decrement_link(uint64_t inode_no, uint64_t referenced_from,
-		   const char *why)
+int decr_link_count(uint64_t inode_no, uint64_t referenced_from,
+		    const char *why)
 {
 	struct inode_info *ii = NULL;
 

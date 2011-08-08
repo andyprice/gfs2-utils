@@ -1060,7 +1060,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 			goto bad_dinode;
 		return 0;
 	}
-	if (set_link_count(ip->i_di.di_num.no_addr, ip->i_di.di_nlink))
+	if (set_di_nlink(ip))
 		goto bad_dinode;
 
 	if (S_ISDIR(ip->i_di.di_mode) &&

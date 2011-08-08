@@ -219,7 +219,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			(*count)++;
 			ds->entry_count++;
 			/* can't do this because the block is out of range:
-			   increment_link(entryblock); */
+			   incr_link_count(entryblock); */
 			return 0;
 		}
 	}
@@ -306,7 +306,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 
 		/* Don't decrement the link here: Here in pass2, we increment
 		   only when we know it's okay.
-		   decrement_link(ip->i_di.di_num.no_addr); */
+		   decr_link_count(ip->i_di.di_num.no_addr); */
 		/* If it was previously marked invalid (i.e. known
 		   to be bad, not just a free block, etc.) then the temptation
 		   would be to delete any metadata it holds.  The trouble is:
@@ -504,8 +504,8 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	}
 dentry_is_valid:
 	/* This directory inode links to this inode via this dentry */
-	increment_link(entryblock, ip->i_di.di_num.no_addr,
-		       _("valid reference"));
+	incr_link_count(entryblock, ip->i_di.di_num.no_addr,
+			_("valid reference"));
 	(*count)++;
 	ds->entry_count++;
 	/* End of checks */
@@ -601,9 +601,9 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 			if (cur_blks != sysinode->i_di.di_blocks)
 				reprocess_inode(sysinode, dirname);
 			/* This system inode is linked to itself via '.' */
-			increment_link(sysinode->i_di.di_num.no_addr,
-				       sysinode->i_di.di_num.no_addr,
-				       "sysinode \".\"");
+			incr_link_count(sysinode->i_di.di_num.no_addr,
+					sysinode->i_di.di_num.no_addr,
+					"sysinode \".\"");
 			ds.entry_count++;
 			free(filename);
 		} else
@@ -820,9 +820,9 @@ int pass2(struct gfs2_sbd *sdp)
 					reprocess_inode(ip, dirname);
 				}
 				/* directory links to itself via '.' */
-				increment_link(ip->i_di.di_num.no_addr,
-					       ip->i_di.di_num.no_addr,
-					       _("\". (itself)\""));
+				incr_link_count(ip->i_di.di_num.no_addr,
+						ip->i_di.di_num.no_addr,
+						_("\". (itself)\""));
 				ds.entry_count++;
 				free(filename);
 				log_err( _("The directory was fixed.\n"));
