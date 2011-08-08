@@ -568,6 +568,100 @@ struct gfs_dinode {
 	char di_reserved[56];
 };
 
+struct gfs_sb {
+	/*  Order is important; need to be able to read old superblocks
+	    in order to support on-disk version upgrades */
+	struct gfs2_meta_header sb_header;
+
+	uint32_t sb_fs_format;         /* GFS_FORMAT_FS (on-disk version) */
+	uint32_t sb_multihost_format;  /* GFS_FORMAT_MULTI */
+	uint32_t sb_flags;             /* ?? */
+
+	uint32_t sb_bsize;             /* fundamental FS block size in bytes */
+	uint32_t sb_bsize_shift;       /* log2(sb_bsize) */
+	uint32_t sb_seg_size;          /* Journal segment size in FS blocks */
+
+	/* These special inodes do not appear in any on-disk directory. */
+	struct gfs2_inum sb_jindex_di;  /* journal index inode */
+	struct gfs2_inum sb_rindex_di;  /* resource group index inode */
+	struct gfs2_inum sb_root_di;    /* root directory inode */
+
+	/* Default inter-node locking protocol (lock module) and namespace */
+	char sb_lockproto[GFS2_LOCKNAME_LEN]; /* lock protocol name */
+	char sb_locktable[GFS2_LOCKNAME_LEN]; /* unique name for this FS */
+
+	/* More special inodes */
+	struct gfs2_inum sb_quota_di;   /* quota inode */
+	struct gfs2_inum sb_license_di; /* license inode */
+
+	char sb_reserved[96];
+};
+
+struct gfs_rgrp {
+	struct gfs2_meta_header rg_header;
+
+	uint32_t rg_flags;      /* ?? */
+
+	uint32_t rg_free;       /* Number (qty) of free data blocks */
+
+	/* Dinodes are USEDMETA, but are handled separately from other METAs */
+	uint32_t rg_useddi;     /* Number (qty) of dinodes (used or free) */
+	uint32_t rg_freedi;     /* Number (qty) of unused (free) dinodes */
+	struct gfs2_inum rg_freedi_list; /* 1st block in chain of free dinodes */
+
+	/* These META statistics do not include dinodes (used or free) */
+	uint32_t rg_usedmeta;   /* Number (qty) of used metadata blocks */
+	uint32_t rg_freemeta;   /* Number (qty) of unused metadata blocks */
+
+	char rg_reserved[64];
+};
+
+struct gfs_log_header {
+	struct gfs2_meta_header lh_header;
+
+	uint32_t lh_flags;      /* GFS_LOG_HEAD_... */
+	uint32_t lh_pad;
+
+	uint64_t lh_first;     /* Block number of first header in this trans */
+	uint64_t lh_sequence;   /* Sequence number of this transaction */
+
+	uint64_t lh_tail;       /* Block number of log tail */
+	uint64_t lh_last_dump;  /* Block number of last dump */
+
+	char lh_reserved[64];
+};
+
+struct gfs_rindex {
+	uint64_t ri_addr;     /* block # of 1st block (header) in rgrp */
+	uint32_t ri_length;   /* # fs blocks containing rgrp header & bitmap */
+	uint32_t ri_pad;
+
+	uint64_t ri_data1;    /* block # of first data/meta block in rgrp */
+	uint32_t ri_data;     /* number (qty) of data/meta blocks in rgrp */
+
+	uint32_t ri_bitbytes; /* total # bytes used by block alloc bitmap */
+
+	char ri_reserved[64];
+};
+
+struct gfs_jindex {
+        uint64_t ji_addr;       /* starting block of the journal */
+        uint32_t ji_nsegment;   /* number (quantity) of segments in journal */
+        uint32_t ji_pad;
+
+        char ji_reserved[64];
+};
+
+struct gfs_log_descriptor {
+	struct gfs2_meta_header ld_header;
+
+	uint32_t ld_type;       /* GFS_LOG_DESC_... Type of this log chunk */
+	uint32_t ld_length;     /* Number of buffers in this chunk */
+	uint32_t ld_data1;      /* descriptor-specific field */
+	uint32_t ld_data2;      /* descriptor-specific field */
+	char ld_reserved[64];
+};
+
 extern void gfs1_lookup_block(struct gfs2_inode *ip,
 			      struct gfs2_buffer_head *bh,
 			      unsigned int height, struct metapath *mp,

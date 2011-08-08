@@ -21,27 +21,6 @@
 enum dsp_mode { HEX_MODE = 0, GFS2_MODE = 1, EXTENDED_MODE = 2, INIT_MODE = 3 };
 #define BLOCK_STACK_SIZE 256
 
-#define GFS_FORMAT_SB           (100)  /* Super-Block */
-#define GFS_METATYPE_SB         (1)    /* Super-Block */
-#define GFS_FORMAT_FS           (1309) /* Filesystem (all-encompassing) */
-#define GFS_FORMAT_MULTI        (1401) /* Multi-Host */
-/* GFS1 Dinode types  */
-#define GFS_FILE_NON            (0)
-#define GFS_FILE_REG            (1)    /* regular file */
-#define GFS_FILE_DIR            (2)    /* directory */
-#define GFS_FILE_LNK            (5)    /* link */
-#define GFS_FILE_BLK            (7)    /* block device node */
-#define GFS_FILE_CHR            (8)    /* character device node */
-#define GFS_FILE_FIFO           (101)  /* fifo/pipe */
-#define GFS_FILE_SOCK           (102)  /* socket */
-
-/* GFS 1 journal block types: */
-#define GFS_LOG_DESC_METADATA   (300)    /* metadata */
-#define GFS_LOG_DESC_IUL        (400)    /* unlinked inode */
-#define GFS_LOG_DESC_IDA        (401)    /* de-allocated inode */
-#define GFS_LOG_DESC_Q          (402)    /* quota */
-#define GFS_LOG_DESC_LAST       (500)    /* final in a logged transaction */
-
 #define pv(struct, member, fmt, fmt2) do {				\
 		print_it("  "#member, fmt, fmt2, struct->member);	\
 	} while (FALSE);
@@ -89,71 +68,6 @@ extern int dsplines;
 extern int dsp_lines[DMODES];
 extern int combined_display;
 
-struct gfs_jindex {
-        uint64_t ji_addr;       /* starting block of the journal */
-        uint32_t ji_nsegment;   /* number (quantity) of segments in journal */
-        uint32_t ji_pad;
-
-        char ji_reserved[64];
-};
-
-struct gfs_log_descriptor {
-	struct gfs2_meta_header ld_header;
-
-	uint32_t ld_type;       /* GFS_LOG_DESC_... Type of this log chunk */
-	uint32_t ld_length;     /* Number of buffers in this chunk */
-	uint32_t ld_data1;      /* descriptor-specific field */
-	uint32_t ld_data2;      /* descriptor-specific field */
-	char ld_reserved[64];
-};
-
-struct gfs_log_header {
-	struct gfs2_meta_header lh_header;
-
-	uint32_t lh_flags;      /* GFS_LOG_HEAD_... */
-	uint32_t lh_pad;
-
-	uint64_t lh_first;     /* Block number of first header in this trans */
-	uint64_t lh_sequence;   /* Sequence number of this transaction */
-
-	uint64_t lh_tail;       /* Block number of log tail */
-	uint64_t lh_last_dump;  /* Block number of last dump */
-
-	char lh_reserved[64];
-};
-
-struct gfs_rindex {
-	uint64_t ri_addr;     /* block # of 1st block (header) in rgrp */
-	uint32_t ri_length;   /* # fs blocks containing rgrp header & bitmap */
-	uint32_t ri_pad;
-
-	uint64_t ri_data1;    /* block # of first data/meta block in rgrp */
-	uint32_t ri_data;     /* number (qty) of data/meta blocks in rgrp */
-
-	uint32_t ri_bitbytes; /* total # bytes used by block alloc bitmap */
-
-	char ri_reserved[64];
-};
-
-struct gfs_rgrp {
-	struct gfs2_meta_header rg_header;
-
-	uint32_t rg_flags;      /* ?? */
-
-	uint32_t rg_free;       /* Number (qty) of free data blocks */
-
-	/* Dinodes are USEDMETA, but are handled separately from other METAs */
-	uint32_t rg_useddi;     /* Number (qty) of dinodes (used or free) */
-	uint32_t rg_freedi;     /* Number (qty) of unused (free) dinodes */
-	struct gfs2_inum rg_freedi_list; /* 1st block in chain of free dinodes */
-
-	/* These META statistics do not include dinodes (used or free) */
-	uint32_t rg_usedmeta;   /* Number (qty) of used metadata blocks */
-	uint32_t rg_freemeta;   /* Number (qty) of unused metadata blocks */
-
-	char rg_reserved[64];
-};
-
 struct gfs2_dirents {
 	uint64_t block;
 	struct gfs2_dirent dirent;
@@ -189,52 +103,12 @@ struct blkstack_info {
 	struct metapath mp;
 };
 
-struct gfs_sb {
-	/*  Order is important; need to be able to read old superblocks
-	    in order to support on-disk version upgrades */
-	struct gfs2_meta_header sb_header;
-
-	uint32_t sb_fs_format;         /* GFS_FORMAT_FS (on-disk version) */
-	uint32_t sb_multihost_format;  /* GFS_FORMAT_MULTI */
-	uint32_t sb_flags;             /* ?? */
-
-	uint32_t sb_bsize;             /* fundamental FS block size in bytes */
-	uint32_t sb_bsize_shift;       /* log2(sb_bsize) */
-	uint32_t sb_seg_size;          /* Journal segment size in FS blocks */
-
-	/* These special inodes do not appear in any on-disk directory. */
-	struct gfs2_inum sb_jindex_di;  /* journal index inode */
-	struct gfs2_inum sb_rindex_di;  /* resource group index inode */
-	struct gfs2_inum sb_root_di;    /* root directory inode */
-
-	/* Default inter-node locking protocol (lock module) and namespace */
-	char sb_lockproto[GFS2_LOCKNAME_LEN]; /* lock protocol name */
-	char sb_locktable[GFS2_LOCKNAME_LEN]; /* unique name for this FS */
-
-	/* More special inodes */
-	struct gfs2_inum sb_quota_di;   /* quota inode */
-	struct gfs2_inum sb_license_di; /* license inode */
-
-	char sb_reserved[96];
-};
-
 extern struct blkstack_info blockstack[BLOCK_STACK_SIZE];
 extern struct iinfo *indirect; /* more than the most indirect
 			       pointers possible for any given 4K block */
 extern struct indirect_info masterdir; /* Master directory info */
 extern int indirect_blocks;  /* count of indirect blocks */
 extern enum dsp_mode dmode;
-
-/* ------------------------------------------------------------------------ */
-/* risize - size of one rindex entry, whether gfs1 or gfs2                  */
-/* ------------------------------------------------------------------------ */
-static inline int risize(void)
-{
-	if (sbd.gfs1)
-		return sizeof(struct gfs_rindex);
-	else
-		return sizeof(struct gfs2_rindex);
-}
 
 /* ------------------------------------------------------------------------ */
 /* block_is_rglist - there's no such block as the rglist.  This is a        */

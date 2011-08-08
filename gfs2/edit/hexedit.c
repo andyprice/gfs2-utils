@@ -1466,7 +1466,8 @@ uint64_t masterblock(const char *fn)
 static void rgcount(void)
 {
 	printf("%lld RGs in this file system.\n",
-	       (unsigned long long)sbd.md.riinode->i_di.di_size / risize());
+	       (unsigned long long)sbd.md.riinode->i_di.di_size /
+	       sizeof(struct gfs2_rindex));
 	inode_put(&sbd.md.riinode);
 	gfs2_rgrp_free(&sbd.rglist);
 	exit(EXIT_SUCCESS);
@@ -1481,7 +1482,7 @@ static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
 	struct gfs2_rindex fbuf, ri;
 	uint64_t foffset, gfs1_adj = 0;
 
-	foffset = rg * risize();
+	foffset = rg * sizeof(struct gfs2_rindex);
 	if (sbd.gfs1) {
 		uint64_t sd_jbsize =
 			(sbd.bsize - sizeof(struct gfs2_meta_header));
@@ -1490,7 +1491,8 @@ static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
 			sizeof(struct gfs2_meta_header);
 		gfs1_adj += sizeof(struct gfs2_meta_header);
 	}
-	amt = gfs2_readi(dif, (void *)&fbuf, foffset + gfs1_adj, risize());
+	amt = gfs2_readi(dif, (void *)&fbuf, foffset + gfs1_adj,
+			 sizeof(struct gfs2_rindex));
 	if (!amt) /* end of file */
 		return 0;
 	gfs2_rindex_in(&ri, (void *)&fbuf);
@@ -1559,11 +1561,12 @@ static uint64_t get_rg_addr(int rgnum)
 	else
 		gblock = masterblock("rindex");
 	riinode = inode_read(&sbd, gblock);
-	if (rgnum < riinode->i_di.di_size / risize())
+	if (rgnum < riinode->i_di.di_size / sizeof(struct gfs2_rindex))
 		rgblk = find_rgrp_block(riinode, rgnum);
 	else
 		fprintf(stderr, "Error: File system only has %lld RGs.\n",
-			(unsigned long long)riinode->i_di.di_size / risize());
+			(unsigned long long)riinode->i_di.di_size /
+			sizeof(struct gfs2_rindex));
 	inode_put(&riinode);
 	return rgblk;
 }

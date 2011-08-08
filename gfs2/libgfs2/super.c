@@ -145,7 +145,10 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 {
 	unsigned int rg;
 	int error;
-	struct gfs2_rindex buf;
+	union {
+		struct gfs_rindex bufgfs1;
+		struct gfs2_rindex bufgfs2;
+	} buf;
 	struct rgrp_list *rgd, *prev_rgd;
 	uint64_t prev_length = 0;
 
@@ -157,8 +160,14 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 	for (rg = 0; ; rg++) {
 		if (fd > 0)
 			error = read(fd, &buf, sizeof(struct gfs2_rindex));
+		else if (sdp->gfs1)
+			error = gfs1_readi(sdp->md.riinode,
+					   (char *)&buf.bufgfs1,
+					   rg * sizeof(struct gfs2_rindex),
+					   sizeof(struct gfs2_rindex));
 		else
-			error = gfs2_readi(sdp->md.riinode, (char *)&buf,
+			error = gfs2_readi(sdp->md.riinode,
+					   (char *)&buf.bufgfs2,
 					   rg * sizeof(struct gfs2_rindex),
 					   sizeof(struct gfs2_rindex));
 		if (!error)
@@ -174,23 +183,27 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 		memset(rgd, 0, sizeof(struct rgrp_list));
 		osi_list_add_prev(&rgd->list, &sdp->rglist);
 
-		gfs2_rindex_in(&rgd->ri, (char *)&buf);
+		gfs2_rindex_in(&rgd->ri, (char *)&buf.bufgfs2);
 
 		rgd->start = rgd->ri.ri_addr;
 		if (prev_rgd) {
 			/* If rg addresses go backwards, it's not sane
 			   (or it's converted from gfs1). */
-			if (prev_rgd->start >= rgd->start)
-				*sane = 0;
-			/* If rg lengths are not consistent, it's not sane
-			   (or it's converted from gfs1).  The first RG will
-			   be a different length due to space allocated for
-			   the superblock, so we can't detect this until
-			   we check rgrp 3, when we can compare the distance
-			   between rgrp 1 and rgrp 2. */
-			if (rg > 2 && prev_length &&
-			    prev_length != rgd->start - prev_rgd->start)
-				*sane = 0;
+			if (!sdp->gfs1) {
+				if (prev_rgd->start >= rgd->start)
+					*sane = 0;
+				/* If rg lengths are not consistent, it's not
+				   sane (or it's converted from gfs1).  The
+				   first RG will be a different length due to
+				   space allocated for the superblock, so we
+				   can't detect this until we check rgrp 3,
+				   when we can compare the distance between
+				   rgrp 1 and rgrp 2. */
+				if (rg > 2 && prev_length &&
+				    prev_length != rgd->start -
+				    prev_rgd->start)
+					*sane = 0;
+			}
 			prev_length = rgd->start - prev_rgd->start;
 			prev_rgd->length = prev_length;
 		}

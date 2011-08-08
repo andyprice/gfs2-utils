@@ -505,7 +505,8 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 
 	start_line = line;
 	error = 0;
-	print_gfs2("RG index entries found: %d.", dip->i_di.di_size / risize());
+	print_gfs2("RG index entries found: %d.", dip->i_di.di_size /
+		   sizeof(struct gfs2_rindex));
 	eol(0);
 	lines_per_row[dmode] = 6;
 	memset(highlighted_addr, 0, sizeof(highlighted_addr));
@@ -513,12 +514,14 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 	for (print_entry_ndx=0; ; print_entry_ndx++) {
 		uint64_t roff;
 
-		roff = print_entry_ndx * risize();
+		roff = print_entry_ndx * sizeof(struct gfs2_rindex);
 
 		if (sbd.gfs1)
-			error = gfs1_readi(dip, (void *)&rbuf, roff, risize());
+			error = gfs1_readi(dip, (void *)&rbuf, roff,
+					   sizeof(struct gfs2_rindex));
 		else
-			error = gfs2_readi(dip, (void *)&rbuf, roff, risize());
+			error = gfs2_readi(dip, (void *)&rbuf, roff,
+					   sizeof(struct gfs2_rindex));
 		if (!error) /* end of file */
 			break;
 		gfs2_rindex_in(&ri, rbuf);
