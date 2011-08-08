@@ -118,6 +118,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 			dip = fsck_load_inode(sdp, di->dotdot_parent);
 			if (dip->i_di.di_nlink > 0) {
 				dip->i_di.di_nlink--;
+				set_di_nlink(dip); /* keep inode tree in sync */
 				log_debug(_("Decrementing its links to %d\n"),
 					  dip->i_di.di_nlink);
 				bmodified(dip->i_bh);
@@ -128,6 +129,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 					    "Changing it to 0.\n"),
 					  dip->i_di.di_nlink);
 				dip->i_di.di_nlink = 0;
+				set_di_nlink(dip); /* keep inode tree in sync */
 				bmodified(dip->i_bh);
 			}
 			fsck_inode_put(&dip);
