@@ -636,8 +636,11 @@ static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 	return 1;
 }
 
-static int check_leaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
-			    struct gfs2_buffer_head **bh, void *private)
+/* check_ealeaf_block
+ *      checks an extended attribute (not directory) leaf block
+ */
+static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
+			      struct gfs2_buffer_head **bh, void *private)
 {
 	struct gfs2_buffer_head *leaf_bh = NULL;
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -728,7 +731,7 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
 				  gfs2_bad_block);
 		return 1;
 	}
-	error = check_leaf_block(ip, el_blk, GFS2_METATYPE_ED, &bh, private);
+	error = check_ealeaf_block(ip, el_blk, GFS2_METATYPE_ED, &bh, private);
 	if (bh)
 		brelse(bh);
 	return error;
@@ -769,7 +772,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 				    "Attribute leaf"), gfs2_bad_block);
 		return 1;
 	}
-	return check_leaf_block(ip, block, GFS2_METATYPE_EA, bh, private);
+	return check_ealeaf_block(ip, block, GFS2_METATYPE_EA, bh, private);
 }
 
 static int check_eattr_entries(struct gfs2_inode *ip,
