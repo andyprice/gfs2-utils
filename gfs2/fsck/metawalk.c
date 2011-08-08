@@ -930,7 +930,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 	uint8_t q;
 	struct duptree *d;
 
-	if (!valid_block(ip->i_sbd, block) != 0)
+	if (!valid_block(ip->i_sbd, block))
 		return -EFAULT;
 
 	q = block_type(block);
