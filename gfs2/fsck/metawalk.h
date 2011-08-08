@@ -39,7 +39,7 @@ extern struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
 #define is_duplicate(dblock) ((dupfind(dblock)) ? 1 : 0)
 
 #define fsck_blockmap_set(ip, b, bt, m) _fsck_blockmap_set(ip, b, bt, m, \
-							   __FILE__, __LINE__)
+							   __FUNCTION__, __LINE__)
 
 /* metawalk_fxns: function pointers to check various parts of the fs
  *

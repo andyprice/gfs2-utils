@@ -100,17 +100,10 @@ int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 	int error;
 
 	if (print_level >= MSG_DEBUG) {
-		const char *p;
-
-		p = strrchr(caller, '/');
-		if (p)
-			p++;
-		else
-			p = caller;
 		/* I'm circumventing the log levels here on purpose to make the
 		   output easier to debug. */
 		if (ip->i_di.di_num.no_addr == bblock) {
-			print_fsck_log(MSG_DEBUG, p, fline,
+			print_fsck_log(MSG_DEBUG, caller, fline,
 				       _("%s inode found at block %lld "
 					 "(0x%llx): marking as '%s'\n"),
 				       btype, (unsigned long long)
@@ -119,7 +112,7 @@ int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 				       ip->i_di.di_num.no_addr,
 				       block_type_string(mark));
 		} else if (mark == gfs2_bad_block || mark == gfs2_meta_inval) {
-			print_fsck_log(MSG_DEBUG, p, fline,
+			print_fsck_log(MSG_DEBUG, caller, fline,
 				       _("inode %lld (0x%llx) references "
 					 "%s block %lld (0x%llx): "
 					 "marking as '%s'\n"),
@@ -131,7 +124,7 @@ int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 				       (unsigned long long)bblock,
 				       block_type_string(mark));
 		} else {
-			print_fsck_log(MSG_DEBUG, p, fline,
+			print_fsck_log(MSG_DEBUG, caller, fline,
 				       _("inode %lld (0x%llx) references "
 					 "%s block %lld (0x%llx): "
 					 "marking as '%s'\n"),

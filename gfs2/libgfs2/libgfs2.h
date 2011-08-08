@@ -697,7 +697,7 @@ extern int print_level;
 #define MSG_NULL        1
 
 #define print_log(priority, format...) \
-	do { print_fsck_log(priority, __FILE__, __LINE__, ## format); } while(0)
+	do { print_fsck_log(priority, __FUNCTION__, __LINE__, ## format); } while(0)
 
 #define log_debug(format...) \
 	do { if(print_level >= MSG_DEBUG) print_log(MSG_DEBUG, format); } while(0)
