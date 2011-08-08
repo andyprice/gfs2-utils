@@ -195,7 +195,7 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 				 int *this_rg_bad)
 {
 	uint32_t rg_free, rg_reclaimed;
-	int rgb, x, y, off, bytes_to_check, total_bytes_to_check;
+	int rgb, x, y, off, bytes_to_check, total_bytes_to_check, asked = 0;
 	unsigned int state;
 
 	rg_free = rg_reclaimed = 0;
@@ -234,9 +234,17 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 				}
 				/* GFS2_BLKST_UNLINKED */
 				*this_rg_bad = 1;
-				if (!(*fixit)) {
-					if (query(_("Okay to reclaim unlinked "
-						    "inodes? (y/n)")))
+				if (!asked) {
+					char msg[256];
+
+					asked = 1;
+					sprintf(msg,
+						_("Okay to reclaim unlinked "
+						  "inodes in resource group "
+						  "%lld (0x%llx)? (y/n)"),
+						(unsigned long long)rgd->ri.ri_addr,
+						(unsigned long long)rgd->ri.ri_addr);
+					if (query("%s", msg))
 						*fixit = 1;
 				}
 				if (!(*fixit))
