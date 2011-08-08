@@ -74,11 +74,11 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 		      uint64_t parent, struct gfs2_buffer_head **bh,
 		      void *private)
 {
-	struct gfs2_sbd *sbp = ip->i_sbd;
+	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint8_t q;
 	struct gfs2_buffer_head *indir_bh = NULL;
 
-	if(gfs2_check_range(sbp, block)) {
+	if(gfs2_check_range(sdp, block)) {
 		log_err( _("Extended attributes indirect block #%llu"
 			" (0x%llx) for inode #%llu"
 			" (0x%llx) out of range...removing\n"),
@@ -100,7 +100,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 		return ask_remove_eattr(ip);
 	}
 	else
-		indir_bh = bread(sbp, block);
+		indir_bh = bread(sdp, block);
 
 	*bh = indir_bh;
 	return 0;
@@ -110,10 +110,10 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 		     uint64_t parent, struct gfs2_buffer_head **bh,
 		     void *private)
 {
-	struct gfs2_sbd *sbp = ip->i_sbd;
+	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint8_t q;
 
-	if(gfs2_check_range(sbp, block)) {
+	if(gfs2_check_range(sdp, block)) {
 		log_err( _("Extended attributes block for inode #%llu"
 			" (0x%llx) out of range.\n"),
 			(unsigned long long)ip->i_di.di_num.no_addr,
@@ -129,7 +129,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 		return ask_remove_eattr(ip);
 	}
 	else 
-		*bh = bread(sbp, block);
+		*bh = bread(sdp, block);
 
 	return 0;
 }
@@ -207,11 +207,11 @@ static int check_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_ptr,
 			 struct gfs2_ea_header *ea_hdr_prev, void *private)
 {
 	uint8_t q;
-	struct gfs2_sbd *sbp = ip->i_sbd;
+	struct gfs2_sbd *sdp = ip->i_sbd;
 
 	q = block_type(be64_to_cpu(*ea_ptr));
 	if(q != gfs2_meta_eattr) {
-		if(remove_eattr_entry(sbp, leaf_bh, ea_hdr, ea_hdr_prev)){
+		if(remove_eattr_entry(sdp, leaf_bh, ea_hdr, ea_hdr_prev)){
 			stack;
 			return -1;
 		}
@@ -222,7 +222,7 @@ static int check_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_ptr,
 
 /* Go over all inodes with extended attributes and verify the EAs are
  * valid */
-int pass1c(struct gfs2_sbd *sbp)
+int pass1c(struct gfs2_sbd *sdp)
 {
 	uint64_t block_no = 0;
 	struct gfs2_buffer_head *bh;
@@ -239,20 +239,20 @@ int pass1c(struct gfs2_sbd *sbp)
 	pass1c_fxns.private = NULL;
 
 	log_info( _("Looking for inodes containing ea blocks...\n"));
-	osi_list_foreach_safe(tmp, &sbp->eattr_blocks.list, x) {
+	osi_list_foreach_safe(tmp, &sdp->eattr_blocks.list, x) {
 		ea_block = osi_list_entry(tmp, struct special_blocks, list);
 		block_no = ea_block->block;
 		warm_fuzzy_stuff(block_no);
 
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
-		bh = bread(sbp, block_no);
+		bh = bread(sdp, block_no);
 		if (!gfs2_check_meta(bh, GFS2_METATYPE_DI)) { /* if a dinode */
 			log_info( _("EA in inode %llu (0x%llx)\n"),
 				 (unsigned long long)block_no,
 				 (unsigned long long)block_no);
-			gfs2_special_clear(&sbp->eattr_blocks, block_no);
-			ip = fsck_inode_get(sbp, bh);
+			gfs2_special_clear(&sdp->eattr_blocks, block_no);
+			ip = fsck_inode_get(sdp, bh);
 			ip->bh_owned = 1;
 
 			log_debug( _("Found eattr at %llu (0x%llx)\n"),

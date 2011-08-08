@@ -20,7 +20,7 @@
 
 /* Set children's parent inode in dir_info structure - ext2 does not set
  * dotdot inode here, but instead in pass3 - should we? */
-static int set_parent_dir(struct gfs2_sbd *sbp, uint64_t childblock,
+static int set_parent_dir(struct gfs2_sbd *sdp, uint64_t childblock,
 			  uint64_t parentblock)
 {
 	struct dir_info *di;
@@ -60,7 +60,7 @@ static int set_parent_dir(struct gfs2_sbd *sbp, uint64_t childblock,
 }
 
 /* Set's the child's '..' directory inode number in dir_info structure */
-static int set_dotdot_dir(struct gfs2_sbd *sbp, uint64_t childblock,
+static int set_dotdot_dir(struct gfs2_sbd *sdp, uint64_t childblock,
 				   uint64_t parentblock)
 {
 	struct dir_info *di;
@@ -70,7 +70,7 @@ static int set_dotdot_dir(struct gfs2_sbd *sbp, uint64_t childblock,
 		if(di->dinode == childblock) {
 			/* Special case for root inode because we set
 			 * it earlier */
-			if(di->dotdot_parent && sbp->md.rooti->i_di.di_num.no_addr
+			if(di->dotdot_parent && sdp->md.rooti->i_di.di_num.no_addr
 			   != di->dinode) {
 				/* This should never happen */
 				log_crit( _("Dotdot parent already set for"
@@ -177,7 +177,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		 struct gfs2_buffer_head *bh, char *filename,
 		 uint16_t *count, void *priv)
 {
-	struct gfs2_sbd *sbp = ip->i_sbd;
+	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint8_t q;
 	char tmp_name[MAX_FILENAME];
 	uint64_t entryblock;
@@ -277,7 +277,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		if (ip->i_di.di_num.no_addr == entryblock)
 			entry_ip = ip;
 		else
-			entry_ip = fsck_load_inode(sbp, entryblock);
+			entry_ip = fsck_load_inode(sdp, entryblock);
 		check_inode_eattr(entry_ip, &pass2_fxns_delete);
 		check_metatree(entry_ip, &pass2_fxns_delete);
 		if (entry_ip != ip)
@@ -351,7 +351,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		if (ip->i_di.di_num.no_addr == entryblock)
 			entry_ip = ip;
 		else
-			entry_ip = fsck_load_inode(sbp, entryblock);
+			entry_ip = fsck_load_inode(sdp, entryblock);
 		check_inode_eattr(entry_ip, &clear_eattrs);
 		if (entry_ip != ip)
 			fsck_inode_put(&entry_ip);
@@ -375,7 +375,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			if (ip->i_di.di_num.no_addr == entryblock)
 				entry_ip = ip;
 			else
-				entry_ip = fsck_load_inode(sbp, entryblock);
+				entry_ip = fsck_load_inode(sdp, entryblock);
 			check_inode_eattr(entry_ip, &clear_eattrs);
 			if (entry_ip != ip)
 				fsck_inode_put(&entry_ip);
@@ -406,7 +406,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			if (ip->i_di.di_num.no_addr == entryblock)
 				entry_ip = ip;
 			else
-				entry_ip = fsck_load_inode(sbp, entryblock);
+				entry_ip = fsck_load_inode(sdp, entryblock);
 			check_inode_eattr(entry_ip, &clear_eattrs);
 			if (entry_ip != ip)
 				fsck_inode_put(&entry_ip);
@@ -434,7 +434,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			if (ip->i_di.di_num.no_addr == entryblock)
 				entry_ip = ip;
 			else
-				entry_ip = fsck_load_inode(sbp, entryblock);
+				entry_ip = fsck_load_inode(sdp, entryblock);
 			check_inode_eattr(entry_ip, &clear_eattrs);
 			if (entry_ip != ip)
 				fsck_inode_put(&entry_ip);
@@ -454,7 +454,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			if (ip->i_di.di_num.no_addr == entryblock)
 				entry_ip = ip;
 			else
-				entry_ip = fsck_load_inode(sbp, entryblock);
+				entry_ip = fsck_load_inode(sdp, entryblock);
 			check_inode_eattr(entry_ip, &clear_eattrs);
 			if (entry_ip != ip)
 				fsck_inode_put(&entry_ip);
@@ -466,7 +466,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		/* Add the address this entry is pointing to
 		 * to this inode's dotdot_parent in
 		 * dir_info */
-		if(set_dotdot_dir(sbp, ip->i_di.di_num.no_addr, entryblock)) {
+		if(set_dotdot_dir(sdp, ip->i_di.di_num.no_addr, entryblock)) {
 			stack;
 			return -1;
 		}
@@ -485,7 +485,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	}
 
 	/*log_debug( _("Found plain directory dentry\n"));*/
-	error = set_parent_dir(sbp, entryblock, ip->i_di.di_num.no_addr);
+	error = set_parent_dir(sdp, entryblock, ip->i_di.di_num.no_addr);
 	if(error > 0) {
 		log_err( _("%s: Hard link to block %llu (0x%llx"
 			   ") detected.\n"), tmp_name,
@@ -532,7 +532,7 @@ struct metawalk_fxns pass2_fxns = {
 /* Check system directory inode                                           */
 /* Should work for all system directories: root, master, jindex, per_node */
 static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
-		     int builder(struct gfs2_sbd *sbp))
+		     int builder(struct gfs2_sbd *sdp))
 {
 	uint64_t iblock = 0;
 	struct dir_status ds = {0};
@@ -637,12 +637,12 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 /**
  * is_system_dir - determine if a given block is for a system directory.
  */
-static inline int is_system_dir(struct gfs2_sbd *sbp, uint64_t block)
+static inline int is_system_dir(struct gfs2_sbd *sdp, uint64_t block)
 {
-	if (block == sbp->md.rooti->i_di.di_num.no_addr ||
-	    block == sbp->md.jiinode->i_di.di_num.no_addr ||
-	    block == sbp->md.pinode->i_di.di_num.no_addr ||
-	    block == sbp->master_dir->i_di.di_num.no_addr)
+	if (block == sdp->md.rooti->i_di.di_num.no_addr ||
+	    block == sdp->md.jiinode->i_di.di_num.no_addr ||
+	    block == sdp->md.pinode->i_di.di_num.no_addr ||
+	    block == sdp->master_dir->i_di.di_num.no_addr)
 		return TRUE;
 	return FALSE;
 }
@@ -658,7 +658,7 @@ static inline int is_system_dir(struct gfs2_sbd *sbp, uint64_t block)
  * directory name length
  * entries in range
  */
-int pass2(struct gfs2_sbd *sbp)
+int pass2(struct gfs2_sbd *sdp)
 {
 	uint64_t dirblk;
 	uint8_t q;
@@ -670,25 +670,25 @@ int pass2(struct gfs2_sbd *sbp)
 	int error = 0;
 
 	/* Check all the system directory inodes. */
-	if (check_system_dir(sbp->md.jiinode, "jindex", build_jindex)) {
+	if (check_system_dir(sdp->md.jiinode, "jindex", build_jindex)) {
 		stack;
 		return FSCK_ERROR;
 	}
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 		return FSCK_OK;
-	if (check_system_dir(sbp->md.pinode, "per_node", build_per_node)) {
+	if (check_system_dir(sdp->md.pinode, "per_node", build_per_node)) {
 		stack;
 		return FSCK_ERROR;
 	}
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 		return FSCK_OK;
-	if (check_system_dir(sbp->master_dir, "master", build_master)) {
+	if (check_system_dir(sdp->master_dir, "master", build_master)) {
 		stack;
 		return FSCK_ERROR;
 	}
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 		return FSCK_OK;
-	if (check_system_dir(sbp->md.rooti, "root", build_root)) {
+	if (check_system_dir(sdp->md.rooti, "root", build_root)) {
 		stack;
 		return FSCK_ERROR;
 	}
@@ -702,7 +702,7 @@ int pass2(struct gfs2_sbd *sbp)
 			return FSCK_OK;
 
 		/* Skip the system inodes - they're checked above */
-		if (is_system_dir(sbp, dirblk))
+		if (is_system_dir(sdp, dirblk))
 			continue;
 
 		q = block_type(dirblk);
@@ -718,7 +718,7 @@ int pass2(struct gfs2_sbd *sbp)
 		if(ds.q == gfs2_bad_block) {
 			/* First check that the directory's metatree
 			 * is valid */
-			ip = fsck_load_inode(sbp, dirblk);
+			ip = fsck_load_inode(sdp, dirblk);
 			error = check_metatree(ip, &pass2_fxns);
 			fsck_inode_put(&ip);
 			if (error < 0) {
@@ -726,7 +726,7 @@ int pass2(struct gfs2_sbd *sbp)
 				return error;
 			}
 		}
-		error = check_dir(sbp, dirblk, &pass2_fxns);
+		error = check_dir(sdp, dirblk, &pass2_fxns);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
 		if(error < 0) {
@@ -748,7 +748,7 @@ int pass2(struct gfs2_sbd *sbp)
 				  (unsigned long long)dirblk,
 				  (unsigned long long)di->treewalk_parent,
 				  (unsigned long long)di->treewalk_parent)) {
-				error = remove_dentry_from_dir(sbp, di->treewalk_parent,
+				error = remove_dentry_from_dir(sdp, di->treewalk_parent,
 							       dirblk);
 				if(error < 0) {
 					stack;
@@ -773,9 +773,9 @@ int pass2(struct gfs2_sbd *sbp)
 			/* Can't use fsck_blockmap_set here because we don't
 			   have an inode in memory. */
 			gfs2_blockmap_set(bl, dirblk, gfs2_inode_invalid);
-			check_n_fix_bitmap(sbp, dirblk, gfs2_inode_invalid);
+			check_n_fix_bitmap(sdp, dirblk, gfs2_inode_invalid);
 		}
-		ip = fsck_load_inode(sbp, dirblk);
+		ip = fsck_load_inode(sdp, dirblk);
 		if(!ds.dotdir) {
 			log_err(_("No '.' entry found for directory inode at "
 				  "block %llu (0x%llx)\n"),

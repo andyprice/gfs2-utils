@@ -9,11 +9,11 @@ struct metawalk_fxns;
 extern int check_inode_eattr(struct gfs2_inode *ip,
 			     struct metawalk_fxns *pass);
 extern int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass);
-extern int check_dir(struct gfs2_sbd *sbp, uint64_t block,
+extern int check_dir(struct gfs2_sbd *sdp, uint64_t block,
 		     struct metawalk_fxns *pass);
 extern int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			    struct metawalk_fxns *pass);
-extern int remove_dentry_from_dir(struct gfs2_sbd *sbp, uint64_t dir,
+extern int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 						   uint64_t dentryblock);
 extern int delete_block(struct gfs2_inode *ip, uint64_t block,
 		 struct gfs2_buffer_head **bh, const char *btype,

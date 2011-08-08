@@ -92,21 +92,21 @@ enum rgindex_trust_level { /* how far can we trust our RG index? */
 			   must have been converted from gfs2_convert. */
 };
 
-extern struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sbp, uint64_t block);
+extern struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sdp, uint64_t block);
 extern struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp,
 				  struct gfs2_buffer_head *bh);
 extern void fsck_inode_put(struct gfs2_inode **ip);
 
-extern int initialize(struct gfs2_sbd *sbp, int force_check, int preen,
+extern int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 		      int *all_clean);
-extern void destroy(struct gfs2_sbd *sbp);
-extern int pass1(struct gfs2_sbd *sbp);
-extern int pass1b(struct gfs2_sbd *sbp);
-extern int pass1c(struct gfs2_sbd *sbp);
-extern int pass2(struct gfs2_sbd *sbp);
-extern int pass3(struct gfs2_sbd *sbp);
-extern int pass4(struct gfs2_sbd *sbp);
-extern int pass5(struct gfs2_sbd *sbp);
+extern void destroy(struct gfs2_sbd *sdp);
+extern int pass1(struct gfs2_sbd *sdp);
+extern int pass1b(struct gfs2_sbd *sdp);
+extern int pass1c(struct gfs2_sbd *sdp);
+extern int pass2(struct gfs2_sbd *sdp);
+extern int pass3(struct gfs2_sbd *sdp);
+extern int pass4(struct gfs2_sbd *sdp);
+extern int pass5(struct gfs2_sbd *sdp);
 extern int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count,
 		     int *sane);
 extern void gfs2_dup_free(void);

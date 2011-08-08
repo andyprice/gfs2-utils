@@ -16,7 +16,7 @@
 #include "metawalk.h"
 #include "util.h"
 
-static int attach_dotdot_to(struct gfs2_sbd *sbp, uint64_t newdotdot,
+static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 			    uint64_t olddotdot, uint64_t block)
 {
 	char *filename;
@@ -24,8 +24,8 @@ static int attach_dotdot_to(struct gfs2_sbd *sbp, uint64_t newdotdot,
 	struct gfs2_inode *ip, *pip;
 	uint64_t cur_blks;
 
-	ip = fsck_load_inode(sbp, block);
-	pip = fsck_load_inode(sbp, newdotdot);
+	ip = fsck_load_inode(sdp, block);
+	pip = fsck_load_inode(sdp, newdotdot);
 	/* FIXME: Need to add some interactive
 	 * options here and come up with a
 	 * good default for non-interactive */
@@ -75,7 +75,7 @@ static int attach_dotdot_to(struct gfs2_sbd *sbp, uint64_t newdotdot,
 	return 0;
 }
 
-static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
+static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 					       struct dir_info *di)
 {
 	struct dir_info *pdi;
@@ -115,7 +115,7 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 					    " fixing dotdot -> %llu (0x%llx)\n"),
 					 (unsigned long long)di->treewalk_parent,
 					 (unsigned long long)di->treewalk_parent);
-				attach_dotdot_to(sbp, di->treewalk_parent,
+				attach_dotdot_to(sdp, di->treewalk_parent,
 								 di->dotdot_parent, di->dinode);
 				di->dotdot_parent = di->treewalk_parent;
 			}
@@ -134,7 +134,7 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 					(unsigned long long)di->dinode,
 					(unsigned long long)di->treewalk_parent,
 					(unsigned long long)di->treewalk_parent)) {
-					error = remove_dentry_from_dir(sbp, di->treewalk_parent,
+					error = remove_dentry_from_dir(sdp, di->treewalk_parent,
 												   di->dinode);
 					if(error < 0) {
 						stack;
@@ -160,7 +160,7 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
 				log_err( _("Both .. and treewalk parents are "
 					   "directories, going with treewalk "
 					   "for now...\n"));
-				attach_dotdot_to(sbp, di->treewalk_parent,
+				attach_dotdot_to(sdp, di->treewalk_parent,
 						 di->dotdot_parent,
 						 di->dinode);
 				di->dotdot_parent = di->treewalk_parent;
@@ -187,19 +187,19 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sbp,
  * handle disconnected directories
  * handle lost+found directory errors (missing, not a directory, no space)
  */
-int pass3(struct gfs2_sbd *sbp)
+int pass3(struct gfs2_sbd *sdp)
 {
 	struct osi_node *tmp, *next = NULL;
 	struct dir_info *di, *tdi;
 	struct gfs2_inode *ip;
 	uint8_t q;
 
-	di = dirtree_find(sbp->md.rooti->i_di.di_num.no_addr);
+	di = dirtree_find(sdp->md.rooti->i_di.di_num.no_addr);
 	if (di) {
 		log_info( _("Marking root inode connected\n"));
 		di->checked = 1;
 	}
-	di = dirtree_find(sbp->master_dir->i_di.di_num.no_addr);
+	di = dirtree_find(sdp->master_dir->i_di.di_num.no_addr);
 	if (di) {
 		log_info( _("Marking master directory inode connected\n"));
 		di->checked = 1;
@@ -219,7 +219,7 @@ int pass3(struct gfs2_sbd *sbp)
 			 * param */
 			if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 				return FSCK_OK;
-			tdi = mark_and_return_parent(sbp, di);
+			tdi = mark_and_return_parent(sdp, di);
 
 			if (tdi) {
 				log_debug( _("Directory at block %llu (0x%llx) connected\n"),
@@ -244,7 +244,7 @@ int pass3(struct gfs2_sbd *sbp)
 					   because we don't have ip */
 					gfs2_blockmap_set(bl, di->dinode,
 							  gfs2_block_free);
-					check_n_fix_bitmap(sbp, di->dinode,
+					check_n_fix_bitmap(sdp, di->dinode,
 							   gfs2_block_free);
 					break;
 				} else
@@ -270,7 +270,7 @@ int pass3(struct gfs2_sbd *sbp)
 				   because we don't have ip */
 				gfs2_blockmap_set(bl, di->dinode,
 						  gfs2_block_free);
-				check_n_fix_bitmap(sbp, di->dinode,
+				check_n_fix_bitmap(sdp, di->dinode,
 						   gfs2_block_free);
 				log_err( _("The block was cleared\n"));
 				break;
@@ -279,7 +279,7 @@ int pass3(struct gfs2_sbd *sbp)
 			log_err( _("Found unlinked directory at block %llu"
 				   " (0x%llx)\n"), (unsigned long long)di->dinode,
 				 (unsigned long long)di->dinode);
-			ip = fsck_load_inode(sbp, di->dinode);
+			ip = fsck_load_inode(sdp, di->dinode);
 			/* Don't skip zero size directories with eattrs */
 			if(!ip->i_di.di_size && !ip->i_di.di_eattr){
 				log_err( _("Unlinked directory has zero "

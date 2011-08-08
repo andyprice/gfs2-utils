@@ -1189,7 +1189,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 static int check_system_inode(struct gfs2_sbd *sdp,
 			      struct gfs2_inode **sysinode,
 			      const char *filename,
-			      int builder(struct gfs2_sbd *sbp),
+			      int builder(struct gfs2_sbd *sdp),
 			      enum gfs2_mark_block mark)
 {
 	uint64_t iblock = 0;
@@ -1383,7 +1383,7 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
  * inodes size
  * dir info
  */
-int pass1(struct gfs2_sbd *sbp)
+int pass1(struct gfs2_sbd *sdp)
 {
 	struct gfs2_buffer_head *bh;
 	osi_list_t *tmp;
@@ -1400,7 +1400,7 @@ int pass1(struct gfs2_sbd *sbp)
 	 * the sweeps start that we won't find otherwise? */
 
 	/* Make sure the system inodes are okay & represented in the bitmap. */
-	check_system_inodes(sbp);
+	check_system_inodes(sdp);
 
 	/* So, do we do a depth first search starting at the root
 	 * inode, or use the rg bitmaps, or just read every fs block
@@ -1411,7 +1411,7 @@ int pass1(struct gfs2_sbd *sbp)
 	 * uses the rg bitmaps, so maybe that's the best way to start
 	 * things - we can change the method later if necessary.
 	 */
-	for (tmp = sbp->rglist.next; tmp != &sbp->rglist;
+	for (tmp = sdp->rglist.next; tmp != &sdp->rglist;
 	     tmp = tmp->next, rg_count++) {
 		log_debug( _("Checking metadata in Resource Group #%llu\n"),
 				 (unsigned long long)rg_count);
@@ -1427,7 +1427,7 @@ int pass1(struct gfs2_sbd *sbp)
 			}
 			/* rgrps and bitmaps don't have bits to represent
 			   their blocks, so don't do this:
-			check_n_fix_bitmap(sbp, rgd->ri.ri_addr + i,
+			check_n_fix_bitmap(sdp, rgd->ri.ri_addr + i,
 			gfs2_meta_rgrp);*/
 		}
 
@@ -1448,7 +1448,7 @@ int pass1(struct gfs2_sbd *sbp)
 				skip_this_pass = FALSE;
 				fflush(stdout);
 			}
-			if (fsck_system_inode(sbp, block)) {
+			if (fsck_system_inode(sdp, block)) {
 				log_debug(_("Already processed system inode "
 					    "%lld (0x%llx)\n"),
 					  (unsigned long long)block,
@@ -1456,7 +1456,7 @@ int pass1(struct gfs2_sbd *sbp)
 				first = 0;
 				continue;
 			}
-			bh = bread(sbp, block);
+			bh = bread(sdp, block);
 
 			if (gfs2_check_meta(bh, GFS2_METATYPE_DI)) {
 				log_err( _("Found invalid inode at block #"
@@ -1469,9 +1469,9 @@ int pass1(struct gfs2_sbd *sbp)
 					brelse(bh);
 					return FSCK_ERROR;
 				}
-				check_n_fix_bitmap(sbp, block,
+				check_n_fix_bitmap(sdp, block,
 						   gfs2_block_free);
-			} else if (handle_di(sbp, bh) < 0) {
+			} else if (handle_di(sdp, bh) < 0) {
 				stack;
 				brelse(bh);
 				return FSCK_ERROR;

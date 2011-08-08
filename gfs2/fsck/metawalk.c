@@ -183,14 +183,14 @@ struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp, uint64_t block)
 
 /* fsck_load_inode - same as gfs2_load_inode() in libgfs2 but system inodes
    get special treatment. */
-struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sbp, uint64_t block)
+struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sdp, uint64_t block)
 {
 	struct gfs2_inode *ip = NULL;
 
-	ip = fsck_system_inode(sbp, block);
+	ip = fsck_system_inode(sdp, block);
 	if (ip)
 		return ip;
-	return inode_read(sbp, block);
+	return inode_read(sdp, block);
 }
 
 /* fsck_inode_get - same as inode_get() in libgfs2 but system inodes
@@ -595,7 +595,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	uint64_t first_ok_leaf;
 	struct gfs2_buffer_head *lbh;
 	int lindex;
-	struct gfs2_sbd *sbp = ip->i_sbd;
+	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint16_t count;
 	int ref_count = 0, exp_count = 0;
 
@@ -606,7 +606,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	for(lindex = 0; lindex < (1 << ip->i_di.di_depth); lindex++) {
 		gfs2_get_leaf_nr(ip, lindex, &leaf_no);
 		if (gfs2_check_range(ip->i_sbd, leaf_no) == 0) {
-			lbh = bread(sbp, leaf_no);
+			lbh = bread(sdp, leaf_no);
 			/* Make sure it's really a valid leaf block. */
 			if (gfs2_check_meta(lbh, GFS2_METATYPE_LF) == 0) {
 				brelse(lbh);
@@ -673,7 +673,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			}
 
 			/* Try to read in the leaf block. */
-			lbh = bread(sbp, leaf_no);
+			lbh = bread(sdp, leaf_no);
 			/* Make sure it's really a valid leaf block. */
 			if (gfs2_check_meta(lbh, GFS2_METATYPE_LF)) {
 				warn_and_patch(ip, &leaf_no, &bad_leaf,
@@ -737,7 +737,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 
 				if(count != leaf.lf_entries) {
 					brelse(lbh);
-					lbh = bread(sbp, leaf_no);
+					lbh = bread(sdp, leaf_no);
 					gfs2_leaf_in(&leaf, lbh);
 
 					log_err( _("Leaf %llu (0x%llx) entry "
@@ -1384,12 +1384,12 @@ int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	return error;
 }
 
-int check_dir(struct gfs2_sbd *sbp, uint64_t block, struct metawalk_fxns *pass)
+int check_dir(struct gfs2_sbd *sdp, uint64_t block, struct metawalk_fxns *pass)
 {
 	struct gfs2_inode *ip;
 	int error = 0;
 
-	ip = fsck_load_inode(sbp, block);
+	ip = fsck_load_inode(sdp, block);
 
 	if(ip->i_di.di_flags & GFS2_DIF_EXHASH)
 		error = check_leaf_blks(ip, pass);
@@ -1426,7 +1426,7 @@ static int remove_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 
 }
 
-int remove_dentry_from_dir(struct gfs2_sbd *sbp, uint64_t dir,
+int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 			   uint64_t dentryblock)
 {
 	struct metawalk_fxns remove_dentry_fxns = {0};
@@ -1437,7 +1437,7 @@ int remove_dentry_from_dir(struct gfs2_sbd *sbp, uint64_t dir,
 		     " (0x%llx)\n"), (unsigned long long)dentryblock,
 		  (unsigned long long)dentryblock,
 		  (unsigned long long)dir, (unsigned long long)dir);
-	if(gfs2_check_range(sbp, dir)) {
+	if(gfs2_check_range(sdp, dir)) {
 		log_err( _("Parent directory out of range\n"));
 		return 1;
 	}
@@ -1451,7 +1451,7 @@ int remove_dentry_from_dir(struct gfs2_sbd *sbp, uint64_t dir,
 	}
 	/* Need to run check_dir with a private var of dentryblock,
 	 * and fxns that remove that dentry if found */
-	error = check_dir(sbp, dir, &remove_dentry_fxns);
+	error = check_dir(sdp, dir, &remove_dentry_fxns);
 
 	return error;
 }

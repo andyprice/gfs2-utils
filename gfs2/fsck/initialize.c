@@ -38,26 +38,26 @@ static struct master_dir fix_md;
  * Change the lock protocol so nobody can mount the fs
  *
  */
-static int block_mounters(struct gfs2_sbd *sbp, int block_em)
+static int block_mounters(struct gfs2_sbd *sdp, int block_em)
 {
 	if(block_em) {
 		/* verify it starts with lock_ */
-		if(!strncmp(sbp->sd_sb.sb_lockproto, "lock_", 5)) {
+		if(!strncmp(sdp->sd_sb.sb_lockproto, "lock_", 5)) {
 			/* Change lock_ to fsck_ */
-			memcpy(sbp->sd_sb.sb_lockproto, "fsck_", 5);
+			memcpy(sdp->sd_sb.sb_lockproto, "fsck_", 5);
 		}
 		/* FIXME: Need to do other verification in the else
 		 * case */
 	} else {
 		/* verify it starts with fsck_ */
 		/* verify it starts with lock_ */
-		if(!strncmp(sbp->sd_sb.sb_lockproto, "fsck_", 5)) {
+		if(!strncmp(sdp->sd_sb.sb_lockproto, "fsck_", 5)) {
 			/* Change fsck_ to lock_ */
-			memcpy(sbp->sd_sb.sb_lockproto, "lock_", 5);
+			memcpy(sdp->sd_sb.sb_lockproto, "lock_", 5);
 		}
 	}
 
-	if(write_sb(sbp)) {
+	if(write_sb(sdp)) {
 		stack;
 		return -1;
 	}
@@ -1180,7 +1180,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
  * initialize - initialize superblock pointer
  *
  */
-int initialize(struct gfs2_sbd *sbp, int force_check, int preen,
+int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 	       int *all_clean)
 {
 	int clean_journals = 0, open_flag;
@@ -1192,8 +1192,8 @@ int initialize(struct gfs2_sbd *sbp, int force_check, int preen,
 	else
 		open_flag = O_RDWR | O_EXCL;
 
-	sbp->device_fd = open(opts.device, open_flag);
-	if (sbp->device_fd < 0) {
+	sdp->device_fd = open(opts.device, open_flag);
+	if (sdp->device_fd < 0) {
 		int is_mounted, ro;
 
 		if (open_flag == O_RDONLY || errno != EBUSY) {
@@ -1207,10 +1207,10 @@ int initialize(struct gfs2_sbd *sbp, int force_check, int preen,
 		   allow it.)  We use is_pathname_mounted here even though
 		   we're specifying a device name, not a path name.  The
 		   function checks for device as well. */
-		strncpy(sbp->device_name, opts.device,
-			sizeof(sbp->device_name));
-		sbp->path_name = sbp->device_name; /* This gets overwritten */
-		is_mounted = is_pathname_mounted(sbp, &ro);
+		strncpy(sdp->device_name, opts.device,
+			sizeof(sdp->device_name));
+		sdp->path_name = sdp->device_name; /* This gets overwritten */
+		is_mounted = is_pathname_mounted(sdp, &ro);
 		/* If the device is busy, but not because it's mounted, fail.
 		   This protects against cases where the file system is LVM
 		   and perhaps mounted on a different node. */
@@ -1225,49 +1225,49 @@ int initialize(struct gfs2_sbd *sbp, int force_check, int preen,
 		/* The device is mounted RO, so it's likely our own root
 		   file system.  We can only do so much to protect the users
 		   from themselves.  Try opening without O_EXCL. */
-		if ((sbp->device_fd = open(opts.device, O_RDWR)) < 0)
+		if ((sdp->device_fd = open(opts.device, O_RDWR)) < 0)
 			goto mount_fail;
 
 		was_mounted_ro = 1;
 	}
 
 	/* read in sb from disk */
-	if (fill_super_block(sbp))
+	if (fill_super_block(sdp))
 		return FSCK_ERROR;
 
 	/* Change lock protocol to be fsck_* instead of lock_* */
-	if(!opts.no && preen_is_safe(sbp, preen, force_check)) {
-		if(block_mounters(sbp, 1)) {
+	if(!opts.no && preen_is_safe(sdp, preen, force_check)) {
+		if(block_mounters(sdp, 1)) {
 			log_err( _("Unable to block other mounters\n"));
 			return FSCK_USAGE;
 		}
 	}
 
 	/* Get master dinode */
-	sbp->master_dir = inode_read(sbp, sbp->sd_sb.sb_master_dir.no_addr);
-	if (sbp->master_dir->i_di.di_header.mh_magic != GFS2_MAGIC ||
-	    sbp->master_dir->i_di.di_header.mh_type != GFS2_METATYPE_DI ||
-	    !sbp->master_dir->i_di.di_size) {
-		inode_put(&sbp->master_dir);
-		rebuild_master(sbp);
-		sbp->master_dir = inode_read(sbp,
-					     sbp->sd_sb.sb_master_dir.no_addr);
+	sdp->master_dir = inode_read(sdp, sdp->sd_sb.sb_master_dir.no_addr);
+	if (sdp->master_dir->i_di.di_header.mh_magic != GFS2_MAGIC ||
+	    sdp->master_dir->i_di.di_header.mh_type != GFS2_METATYPE_DI ||
+	    !sdp->master_dir->i_di.di_size) {
+		inode_put(&sdp->master_dir);
+		rebuild_master(sdp);
+		sdp->master_dir = inode_read(sdp,
+					     sdp->sd_sb.sb_master_dir.no_addr);
 	}
 
 	/* Look up the "per_node" inode.  If there are journals missing, we
 	   need to figure out what's missing from per_node. And we need all
 	   our journals to be there before we can replay them. */
-	lookup_per_node(sbp, 0);
+	lookup_per_node(sdp, 0);
 
 	/* verify various things */
 
-	if(replay_journals(sbp, preen, force_check, &clean_journals)) {
-		if(!opts.no && preen_is_safe(sbp, preen, force_check))
-			block_mounters(sbp, 0);
+	if(replay_journals(sdp, preen, force_check, &clean_journals)) {
+		if(!opts.no && preen_is_safe(sdp, preen, force_check))
+			block_mounters(sdp, 0);
 		stack;
 		return FSCK_ERROR;
 	}
-	if (sbp->md.journals == clean_journals)
+	if (sdp->md.journals == clean_journals)
 		*all_clean = 1;
 	else {
 		if (force_check || !preen)
@@ -1277,7 +1277,7 @@ int initialize(struct gfs2_sbd *sbp, int force_check, int preen,
 	if (!force_check && *all_clean && preen)
 		return FSCK_OK;
 
-	if (init_system_inodes(sbp))
+	if (init_system_inodes(sdp))
 		return FSCK_ERROR;
 
 	return FSCK_OK;
@@ -1287,30 +1287,30 @@ mount_fail:
 	return FSCK_USAGE;
 }
 
-static void destroy_sbp(struct gfs2_sbd *sbp)
+static void destroy_sdp(struct gfs2_sbd *sdp)
 {
 	if(!opts.no) {
-		if(block_mounters(sbp, 0)) {
+		if(block_mounters(sdp, 0)) {
 			log_warn( _("Unable to unblock other mounters - manual intervention required\n"));
 			log_warn( _("Use 'gfs2_tool sb <device> proto' to fix\n"));
 		}
 		log_info( _("Syncing the device.\n"));
-		fsync(sbp->device_fd);
+		fsync(sdp->device_fd);
 	}
-	empty_super_block(sbp);
-	close(sbp->device_fd);
+	empty_super_block(sdp);
+	close(sdp->device_fd);
 	if (was_mounted_ro && errors_corrected) {
-		sbp->device_fd = open("/proc/sys/vm/drop_caches", O_WRONLY);
-		if (sbp->device_fd >= 0) {
-			write(sbp->device_fd, "2", 1);
-			close(sbp->device_fd);
+		sdp->device_fd = open("/proc/sys/vm/drop_caches", O_WRONLY);
+		if (sdp->device_fd >= 0) {
+			write(sdp->device_fd, "2", 1);
+			close(sdp->device_fd);
 		} else
 			log_err( _("fsck.gfs2: Non-fatal error dropping "
 				   "caches.\n"));
 	}
 }
 
-void destroy(struct gfs2_sbd *sbp)
+void destroy(struct gfs2_sbd *sdp)
 {
-	destroy_sbp(sbp);
+	destroy_sdp(sdp);
 }

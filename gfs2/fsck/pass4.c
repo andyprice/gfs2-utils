@@ -41,7 +41,7 @@ static int fix_link_count(struct inode_info *ii, struct gfs2_inode *ip)
 	return 0;
 }
 
-static int scan_inode_list(struct gfs2_sbd *sbp) {
+static int scan_inode_list(struct gfs2_sbd *sdp) {
 	struct osi_node *tmp, *next = NULL;
 	struct inode_info *ii;
 	struct gfs2_inode *ip;
@@ -70,7 +70,7 @@ static int scan_inode_list(struct gfs2_sbd *sbp) {
 					(unsigned long long)ii->inode);
 				if(query(  _("Delete unlinked inode with bad "
 					     "blocks? (y/n) "))) {
-					ip = fsck_load_inode(sbp, ii->inode);
+					ip = fsck_load_inode(sdp, ii->inode);
 					check_inode_eattr(ip,
 							  &pass4_fxns_delete);
 					check_metatree(ip, &pass4_fxns_delete);
@@ -94,7 +94,7 @@ static int scan_inode_list(struct gfs2_sbd *sbp) {
 					   "not an inode (%d)\n"),
 					 (unsigned long long)ii->inode,
 					 (unsigned long long)ii->inode, q);
-				ip = fsck_load_inode(sbp, ii->inode);
+				ip = fsck_load_inode(sdp, ii->inode);
 				if(query(_("Delete unlinked inode? (y/n) "))) {
 					check_inode_eattr(ip,
 							  &pass4_fxns_delete);
@@ -111,7 +111,7 @@ static int scan_inode_list(struct gfs2_sbd *sbp) {
 				}
 				continue;
 			}
-			ip = fsck_load_inode(sbp, ii->inode);
+			ip = fsck_load_inode(sdp, ii->inode);
 
 			/* We don't want to clear zero-size files with
 			 * eattrs - there might be relevent info in
@@ -154,7 +154,7 @@ static int scan_inode_list(struct gfs2_sbd *sbp) {
 				    " (0x%llx) ? (y/n) "),
 				  (unsigned long long)ii->inode,
 				  (unsigned long long)ii->inode)) {
-				ip = fsck_load_inode(sbp, ii->inode); /* bread, inode_get */
+				ip = fsck_load_inode(sdp, ii->inode); /* bread, inode_get */
 				fix_link_count(ii, ip);
 				ii->link_count = ii->counted_links;
 				fsck_inode_put(&ip); /* out, brelse, free */
@@ -195,13 +195,13 @@ static int scan_inode_list(struct gfs2_sbd *sbp) {
  * handle unreferenced inodes of other types
  * handle bad blocks
  */
-int pass4(struct gfs2_sbd *sbp)
+int pass4(struct gfs2_sbd *sdp)
 {
 	if(lf_dip)
 		log_debug( _("At beginning of pass4, lost+found entries is %u\n"),
 				  lf_dip->i_di.di_entries);
 	log_info( _("Checking inode reference counts.\n"));
-	if(scan_inode_list(sbp)) {
+	if(scan_inode_list(sdp)) {
 		stack;
 		return FSCK_ERROR;
 	}

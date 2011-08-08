@@ -218,7 +218,7 @@ static void check_statfs(struct gfs2_sbd *sdp)
 int main(int argc, char **argv)
 {
 	struct gfs2_sbd sb;
-	struct gfs2_sbd *sbp = &sb;
+	struct gfs2_sbd *sdp = &sb;
 	int j;
 	int error = 0;
 	int all_clean = 0;
@@ -226,18 +226,18 @@ int main(int argc, char **argv)
 	setlocale(LC_ALL, "");
 	textdomain("gfs2-utils");
 
-	memset(sbp, 0, sizeof(*sbp));
+	memset(sdp, 0, sizeof(*sdp));
 
 	if((error = read_cmdline(argc, argv, &opts)))
 		exit(error);
 	setbuf(stdout, NULL);
 	log_notice( _("Initializing fsck\n"));
-	if ((error = initialize(sbp, force_check, preen, &all_clean)))
+	if ((error = initialize(sdp, force_check, preen, &all_clean)))
 		exit(error);
 
 	if (!force_check && all_clean && preen) {
 		log_err( _("%s: clean.\n"), opts.device);
-		destroy(sbp);
+		destroy(sdp);
 		exit(FSCK_OK);
 	}
 
@@ -245,7 +245,7 @@ int main(int argc, char **argv)
 	log_notice( _("Starting pass1\n"));
 	pass = "pass 1";
 	last_reported_block = 0;
-	if ((error = pass1(sbp)))
+	if ((error = pass1(sdp)))
 		exit(error);
 	if (skip_this_pass || fsck_abort) {
 		skip_this_pass = FALSE;
@@ -258,7 +258,7 @@ int main(int argc, char **argv)
 		last_reported_block = 0;
 		pass = "pass 1b";
 		log_notice( _("Starting pass1b\n"));
-		if((error = pass1b(sbp)))
+		if((error = pass1b(sdp)))
 			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
@@ -271,7 +271,7 @@ int main(int argc, char **argv)
 		last_reported_block = 0;
 		pass = "pass 1c";
 		log_notice( _("Starting pass1c\n"));
-		if((error = pass1c(sbp)))
+		if((error = pass1c(sdp)))
 			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
@@ -284,7 +284,7 @@ int main(int argc, char **argv)
 		last_reported_block = 0;
 		pass = "pass 2";
 		log_notice( _("Starting pass2\n"));
-		if ((error = pass2(sbp)))
+		if ((error = pass2(sdp)))
 			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
@@ -297,7 +297,7 @@ int main(int argc, char **argv)
 		last_reported_block = 0;
 		pass = "pass 3";
 		log_notice( _("Starting pass3\n"));
-		if ((error = pass3(sbp)))
+		if ((error = pass3(sdp)))
 			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
@@ -310,7 +310,7 @@ int main(int argc, char **argv)
 		last_reported_block = 0;
 		pass = "pass 4";
 		log_notice( _("Starting pass4\n"));
-		if ((error = pass4(sbp)))
+		if ((error = pass4(sdp)))
 			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
@@ -323,7 +323,7 @@ int main(int argc, char **argv)
 		last_reported_block = 0;
 		pass = "pass 5";
 		log_notice( _("Starting pass5\n"));
-		if ((error = pass5(sbp)))
+		if ((error = pass5(sdp)))
 			exit(error);
 		if (skip_this_pass || fsck_abort) {
 			skip_this_pass = FALSE;
@@ -337,26 +337,26 @@ int main(int argc, char **argv)
 	}
 
 	if (!fsck_abort)
-		check_statfs(sbp);
+		check_statfs(sdp);
 
 	/* Free up our system inodes */
-	inode_put(&sbp->md.inum);
-	inode_put(&sbp->md.statfs);
-	for (j = 0; j < sbp->md.journals; j++)
-		inode_put(&sbp->md.journal[j]);
-	inode_put(&sbp->md.jiinode);
-	inode_put(&sbp->md.riinode);
-	inode_put(&sbp->md.qinode);
-	inode_put(&sbp->md.pinode);
-	inode_put(&sbp->md.rooti);
-	inode_put(&sbp->master_dir);
+	inode_put(&sdp->md.inum);
+	inode_put(&sdp->md.statfs);
+	for (j = 0; j < sdp->md.journals; j++)
+		inode_put(&sdp->md.journal[j]);
+	inode_put(&sdp->md.jiinode);
+	inode_put(&sdp->md.riinode);
+	inode_put(&sdp->md.qinode);
+	inode_put(&sdp->md.pinode);
+	inode_put(&sdp->md.rooti);
+	inode_put(&sdp->master_dir);
 	if (lf_dip)
 		inode_put(&lf_dip);
 
 	if (!opts.no && errors_corrected)
 		log_notice( _("Writing changes to disk\n"));
-	fsync(sbp->device_fd);
-	destroy(sbp);
+	fsync(sdp->device_fd);
+	destroy(sdp);
 	log_notice( _("gfs2_fsck complete\n"));
 
 	if (!error) {

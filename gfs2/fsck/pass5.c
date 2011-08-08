@@ -50,7 +50,7 @@ static int convert_mark(uint8_t q, uint32_t *count)
 	return -1;
 }
 
-static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int buflen,
+static int check_block_status(struct gfs2_sbd *sdp, char *buffer, unsigned int buflen,
 					   uint64_t *rg_block, uint64_t rg_data, uint32_t *count)
 {
 	unsigned char *byte, *end;
@@ -86,7 +86,7 @@ static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int b
 				 (unsigned long long)block,
 				 (unsigned long long)block);
 			if(query(_("Do you want to fix the bitmap? (y/n) "))) {
-				if(gfs2_set_bitmap(sbp, block, block_status))
+				if(gfs2_set_bitmap(sdp, block, block_status))
 					log_err(_("Unlinked block %llu "
 						  "(0x%llx) bitmap not fixed."
 						  "\n"),
@@ -120,7 +120,7 @@ static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int b
 			if(query(_("Fix bitmap for block %llu (0x%llx) ? (y/n) "),
 				 (unsigned long long)block,
 				 (unsigned long long)block)) {
-				if(gfs2_set_bitmap(sbp, block, block_status))
+				if(gfs2_set_bitmap(sdp, block, block_status))
 					log_err( _("Failed.\n"));
 				else
 					log_err( _("Succeeded.\n"));
@@ -140,7 +140,7 @@ static int check_block_status(struct gfs2_sbd *sbp, char *buffer, unsigned int b
 	return 0;
 }
 
-static void update_rgrp(struct gfs2_sbd *sbp, struct rgrp_list *rgp,
+static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_list *rgp,
 			uint32_t *count)
 {
 	uint32_t i;
@@ -152,7 +152,7 @@ static void update_rgrp(struct gfs2_sbd *sbp, struct rgrp_list *rgp,
 		bits = &rgp->bits[i];
 
 		/* update the bitmaps */
-		check_block_status(sbp, rgp->bh[i]->b_data + bits->bi_offset,
+		check_block_status(sdp, rgp->bh[i]->b_data + bits->bi_offset,
 						   bits->bi_len, &rg_block, rgp->ri.ri_data0, count);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return;
@@ -197,7 +197,7 @@ static void update_rgrp(struct gfs2_sbd *sbp, struct rgrp_list *rgp,
  * fix free block maps
  * fix used inode maps
  */
-int pass5(struct gfs2_sbd *sbp)
+int pass5(struct gfs2_sbd *sdp)
 {
 	osi_list_t *tmp;
 	struct rgrp_list *rgp = NULL;
@@ -205,7 +205,7 @@ int pass5(struct gfs2_sbd *sbp)
 	uint64_t rg_count = 0;
 
 	/* Reconcile RG bitmaps with fsck bitmap */
-	for(tmp = sbp->rglist.next; tmp != &sbp->rglist; tmp = tmp->next){
+	for(tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next){
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
 		log_info( _("Verifying Resource Group #%llu\n"), (unsigned long long)rg_count);
@@ -214,7 +214,7 @@ int pass5(struct gfs2_sbd *sbp)
 
 		rg_count++;
 		/* Compare the bitmaps and report the differences */
-		update_rgrp(sbp, rgp, count);
+		update_rgrp(sdp, rgp, count);
 	}
 	/* Fix up superblock info based on this - don't think there's
 	 * anything to do here... */

@@ -90,12 +90,12 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 			     uint64_t parent, struct gfs2_buffer_head **bh,
 			     void *private)
 {
-	struct gfs2_sbd *sbp = ip->i_sbd;
+	struct gfs2_sbd *sdp = ip->i_sbd;
 	int error;
 
 	error = add_duplicate_ref(ip, block, ref_as_ea, 1, INODE_VALID);
 	if (!error)
-		*bh = bread(sbp, block);
+		*bh = bread(sdp, block);
 
 	return error;
 }
@@ -104,12 +104,12 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			    uint64_t parent, struct gfs2_buffer_head **bh,
 			    void *private)
 {
-	struct gfs2_sbd *sbp = ip->i_sbd;
+	struct gfs2_sbd *sdp = ip->i_sbd;
 	int error;
 
 	error = add_duplicate_ref(ip, block, ref_as_ea, 1, INODE_VALID);
 	if (!error)
-		*bh = bread(sbp, block);
+		*bh = bread(sdp, block);
 	return error;
 }
 
@@ -321,12 +321,12 @@ static int clear_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 }
 
 /* Finds all references to duplicate blocks in the metadata */
-static int find_block_ref(struct gfs2_sbd *sbp, uint64_t inode)
+static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
 {
 	struct gfs2_inode *ip;
 	int error = 0;
 
-	ip = fsck_load_inode(sbp, inode); /* bread, inode_get */
+	ip = fsck_load_inode(sdp, inode); /* bread, inode_get */
 	/* double-check the meta header just to be sure it's metadata */
 	if (ip->i_di.di_header.mh_magic != GFS2_MAGIC ||
 	    ip->i_di.di_header.mh_type != GFS2_METATYPE_DI) {
@@ -386,7 +386,7 @@ static void log_inode_reference(struct duptree *b, osi_list_t *tmp, int inval)
 		  (unsigned long long)b->block, reftypestring);
 }
 
-static int clear_a_reference(struct gfs2_sbd *sbp, struct duptree *b,
+static int clear_a_reference(struct gfs2_sbd *sdp, struct duptree *b,
 			     osi_list_t *ref_list, struct dup_handler *dh,
 			     int inval)
 {
@@ -423,7 +423,7 @@ static int clear_a_reference(struct gfs2_sbd *sbp, struct duptree *b,
 			  (unsigned long long)id->block_no);
 		clear_dup_fxns.private = (void *) dh;
 		/* Clear the EAs for the inode first */
-		ip = fsck_load_inode(sbp, id->block_no);
+		ip = fsck_load_inode(sdp, id->block_no);
 		check_inode_eattr(ip, &clear_dup_fxns);
 		/* If the dup wasn't only in the EA, clear the inode */
 		if (id->reftypecount[ref_as_data] ||
@@ -444,7 +444,7 @@ static int clear_a_reference(struct gfs2_sbd *sbp, struct duptree *b,
 	return 0;
 }
 
-static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
+static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *b)
 {
 	struct gfs2_inode *ip;
 	osi_list_t *tmp;
@@ -480,7 +480,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
 		struct gfs2_buffer_head *bh;
 		uint32_t cmagic;
 
-		bh = bread(sbp, b->block);
+		bh = bread(sdp, b->block);
 		cmagic = ((struct gfs2_meta_header *)(bh->b_data))->mh_magic;
 		brelse(bh);
 		if (be32_to_cpu(cmagic) == GFS2_MAGIC) {
@@ -502,7 +502,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
 				log_warn( _("Clearing inode %lld (0x%llx)...\n"),
 					 (unsigned long long)id->block_no,
 					 (unsigned long long)id->block_no);
-				ip = fsck_load_inode(sbp, id->block_no);
+				ip = fsck_load_inode(sdp, id->block_no);
 				ii = inodetree_find(ip->i_di.di_num.no_addr);
 				if (ii)
 					inodetree_delete(ii);
@@ -536,10 +536,10 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
 	osi_list_foreach(tmp, &b->ref_inode_list)
 		log_inode_reference(b, tmp, 0);
 
-	last_reference = clear_a_reference(sbp, b, &b->ref_invinode_list,
+	last_reference = clear_a_reference(sdp, b, &b->ref_invinode_list,
 					   &dh, 1);
 	if (!last_reference)
-		last_reference = clear_a_reference(sbp, b, &b->ref_inode_list,
+		last_reference = clear_a_reference(sdp, b, &b->ref_inode_list,
 						   &dh, 0);
 
 	if (last_reference && !osi_list_empty(&b->ref_inode_list)) {
@@ -556,7 +556,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
 			     "reference in inode %lld (0x%llx).\n"),
 			   (unsigned long long)id->block_no,
 			   (unsigned long long)id->block_no);
-		ip = fsck_load_inode(sbp, id->block_no);
+		ip = fsck_load_inode(sdp, id->block_no);
 
 		q = block_type(id->block_no);
 		if (q == gfs2_inode_invalid) {
@@ -597,7 +597,7 @@ static int handle_dup_blk(struct gfs2_sbd *sbp, struct duptree *b)
 /* Pass 1b handles finding the previous inode for a duplicate block
  * When found, store the inodes pointing to the duplicate block for
  * use in pass2 */
-int pass1b(struct gfs2_sbd *sbp)
+int pass1b(struct gfs2_sbd *sdp)
 {
 	struct duptree *b;
 	uint64_t i;
@@ -642,7 +642,7 @@ int pass1b(struct gfs2_sbd *sbp)
 				   (unsigned long long)i);
 
 		warm_fuzzy_stuff(i);
-		if (find_block_ref(sbp, i) < 0) {
+		if (find_block_ref(sdp, i) < 0) {
 			stack;
 			rc = FSCK_ERROR;
 			goto out;
@@ -657,7 +657,7 @@ out:
 		next = osi_next(n);
                 b = (struct duptree *)n;
 		if (!skip_this_pass && !rc) /* no error & not asked to skip the rest */
-			handle_dup_blk(sbp, b);
+			handle_dup_blk(sdp, b);
 		/* Do not attempt to free the dup_blocks list or its parts
 		   here because any func that calls check_metatree needs
 		   to check duplicate status based on this linked list.
