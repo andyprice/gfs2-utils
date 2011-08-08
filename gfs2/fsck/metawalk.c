@@ -300,7 +300,7 @@ static void dirblk_truncate(struct gfs2_inode *ip, struct gfs2_dirent *fixb,
  *         -1 - error occurred
  */
 static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
-		  int type, uint16_t *count, struct metawalk_fxns *pass)
+		  int type, uint32_t *count, struct metawalk_fxns *pass)
 {
 	struct gfs2_dirent *dent;
 	struct gfs2_dirent de, *prev;
@@ -596,7 +596,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	struct gfs2_buffer_head *lbh;
 	int lindex;
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	uint16_t count;
+	uint32_t count;
 	int ref_count = 0, exp_count = 0;
 
 	/* Find the first valid leaf pointer in range and use it as our "old"
@@ -1373,7 +1373,7 @@ int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		     struct metawalk_fxns *pass)
 {
 	int error = 0;
-	uint16_t count = 0;
+	uint32_t count = 0;
 
 	error = check_entries(ip, bh, DIR_LINEAR, &count, pass);
 	if (error < 0) {
@@ -1406,7 +1406,7 @@ int check_dir(struct gfs2_sbd *sdp, uint64_t block, struct metawalk_fxns *pass)
 static int remove_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			 struct gfs2_dirent *prev_de,
 			 struct gfs2_buffer_head *bh,
-			 char *filename, uint16_t *count, void *private)
+			 char *filename, uint32_t *count, void *private)
 {
 	/* the metawalk_fxn's private field must be set to the dentry
 	 * block we want to clear */

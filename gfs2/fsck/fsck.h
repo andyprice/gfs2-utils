@@ -29,9 +29,9 @@ struct inode_info
 {
         struct osi_node node;
         uint64_t   inode;
-        uint16_t   di_nlink;   /* the number of links the inode
-				* thinks it has */
-        uint16_t   counted_links; /* the number of links we've found */
+        uint32_t   di_nlink;    /* the number of links the inode
+				 * thinks it has */
+        uint32_t   counted_links; /* the number of links we've found */
 };
 
 struct dir_info

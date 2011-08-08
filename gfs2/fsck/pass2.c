@@ -175,7 +175,7 @@ struct metawalk_fxns pass2_fxns_delete = {
 static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		 struct gfs2_dirent *prev_de,
 		 struct gfs2_buffer_head *bh, char *filename,
-		 uint16_t *count, void *priv)
+		 uint32_t *count, void *priv)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint8_t q;

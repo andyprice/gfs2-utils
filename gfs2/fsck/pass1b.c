@@ -49,7 +49,7 @@ static int check_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 				void *private);
 static int find_dentry(struct gfs2_inode *ip, struct gfs2_dirent *de,
 		       struct gfs2_dirent *prev, struct gfs2_buffer_head *bh,
-		       char *filename, uint16_t *count, void *priv);
+		       char *filename, uint32_t *count, void *priv);
 
 struct metawalk_fxns find_refs = {
 	.private = NULL,
@@ -168,7 +168,7 @@ static int check_dir_dup_ref(struct gfs2_inode *ip,  struct gfs2_dirent *de,
 static int find_dentry(struct gfs2_inode *ip, struct gfs2_dirent *de,
 		       struct gfs2_dirent *prev,
 		       struct gfs2_buffer_head *bh, char *filename,
-		       uint16_t *count, void *priv)
+		       uint32_t *count, void *priv)
 {
 	struct osi_node *n, *next = NULL;
 	osi_list_t *tmp2;
