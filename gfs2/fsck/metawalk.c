@@ -266,6 +266,7 @@ static int dirent_repair(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		de->de_rec_len = GFS2_DIRENT_SIZE(de->de_name_len);
 	}
 	gfs2_dirent_out(de, (char *)dent);
+	bmodified(bh);
 	return 0;
 }
 
