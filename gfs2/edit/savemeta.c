@@ -122,12 +122,12 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, int *block_type,
 		*gstruct_len = sbd.bsize;
 		break;
 	case GFS2_METATYPE_DI:   /* 4 (disk inode) */
-		if (gfs1)
+		if (sbd.gfs1)
 			inode = inode_get(&sbd, lbh);
 		else
 			inode = gfs_inode_get(&sbd, lbh);
 		if (S_ISDIR(inode->i_di.di_mode) ||
-		     (gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR))
+		     (sbd.gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR))
 			*gstruct_len = sbd.bsize;
 		else if (!inode->i_di.di_height && !block_is_systemfile() &&
 			 !S_ISDIR(inode->i_di.di_mode))
@@ -145,7 +145,7 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, int *block_type,
 		*gstruct_len = sbd.bsize;
 		break;
 	case GFS2_METATYPE_LH:   /* 8 (log header) */
-		if (gfs1)
+		if (sbd.gfs1)
 			*gstruct_len = 512; /* gfs copies the log header
 					       twice and compares the copy,
 					       so we need to save all 512
@@ -456,7 +456,7 @@ static void save_inode_data(struct metafd *mfd)
 	for (i = 0; i < GFS2_MAX_META_HEIGHT; i++)
 		osi_list_init(&metalist[i]);
 	metabh = bread(&sbd, block);
-	if (gfs1)
+	if (sbd.gfs1)
 		inode = inode_get(&sbd, metabh);
 	else
 		inode = gfs_inode_get(&sbd, metabh);
@@ -468,7 +468,7 @@ static void save_inode_data(struct metafd *mfd)
 	   the hash table exists, and we have to save the directory data. */
 	if (inode->i_di.di_flags & GFS2_DIF_EXHASH &&
 	    (S_ISDIR(inode->i_di.di_mode) ||
-	     (gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR)))
+	     (sbd.gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR)))
 		height++;
 	else if (height && !(inode->i_di.di_flags & GFS2_DIF_SYSTEM) &&
 		 !block_is_systemfile() && !S_ISDIR(inode->i_di.di_mode))
@@ -565,7 +565,7 @@ static void get_journal_inode_blocks(void)
 		int amt;
 		struct gfs2_inode *j_inode = NULL;
 
-		if (gfs1) {
+		if (sbd.gfs1) {
 			struct gfs_jindex ji;
 			char jbuf[sizeof(struct gfs_jindex)];
 
@@ -649,7 +649,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 
 	lseek(sbd.device_fd, 0, SEEK_SET);
 	blks_saved = total_out = last_reported_block = 0;
-	if (!gfs1)
+	if (!sbd.gfs1)
 		sbd.bsize = BUFSIZE;
 	if (!slow) {
 		if (device_geometry(&sbd)) {
@@ -662,13 +662,13 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 			exit(-1);
 		}
 		osi_list_init(&sbd.rglist);
-		if (!gfs1)
+		if (!sbd.gfs1)
 			sbd.sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 		if (compute_constants(&sbd)) {
 			fprintf(stderr, "Bad constants (1)\n");
 			exit(-1);
 		}
-		if(gfs1) {
+		if(sbd.gfs1) {
 			sbd.bsize = sbd.sd_sb.sb_bsize;
 			sbd.sd_inptrs = (sbd.bsize -
 					 sizeof(struct gfs_indirect)) /
@@ -693,7 +693,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	printf("There are %llu blocks of %u bytes in the destination "
 	       "device.\n", (unsigned long long)last_fs_block, sbd.bsize);
 	if (!slow) {
-		if (gfs1) {
+		if (sbd.gfs1) {
 			sbd.md.riinode = inode_read(&sbd,
 						sbd1->sb_rindex_di.no_addr);
 			jindex_block = sbd1->sb_jindex_di.no_addr;
@@ -708,7 +708,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		}
 		lbh = bread(&sbd, jindex_block);
 		gfs2_dinode_in(&di, lbh);
-		if (!gfs1)
+		if (!sbd.gfs1)
 			do_dinode_extended(&di, lbh);
 		brelse(lbh);
 	}
@@ -718,7 +718,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 
 		printf("Reading resource groups...");
 		fflush(stdout);
-		if (gfs1)
+		if (sbd.gfs1)
 			slow = gfs1_ri_update(&sbd, 0, &rgcount, 0);
 		else
 			slow = ri_update(&sbd, 0, &rgcount, &sane);
@@ -740,7 +740,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		save_block(sbd.device_fd, &mfd, 0x10 * (4096 / sbd.bsize));
 		/* If this is gfs1, save off the rindex because it's not
 		   part of the file system as it is in gfs2. */
-		if (gfs1) {
+		if (sbd.gfs1) {
 			int j;
 
 			block = sbd1->sb_rindex_di.no_addr;
@@ -922,7 +922,7 @@ static int restore_data(int fd, gzFile *gzin_fd, int printblocksonly,
 			    sbd1->sb_header.mh_type == GFS_METATYPE_SB &&
 			    sbd1->sb_header.mh_format == GFS_FORMAT_SB &&
 			    sbd1->sb_multihost_format == GFS_FORMAT_MULTI) {
-				gfs1 = TRUE;
+				sbd.gfs1 = TRUE;
 			} else if (check_sb(&sbd.sd_sb)) {
 				fprintf(stderr,"Error: Invalid superblock data.\n");
 				return -1;
@@ -937,7 +937,7 @@ static int restore_data(int fd, gzFile *gzin_fd, int printblocksonly,
 				       "the destination device.\n\n",
 				       (unsigned long long)last_fs_block, sbd.bsize);
 			} else {
-				printf("This is %s metadata\n", gfs1 ?
+				printf("This is %s metadata\n", sbd.gfs1 ?
 				       "gfs (not gfs2)" : "gfs2");
 			}
 			first = 0;

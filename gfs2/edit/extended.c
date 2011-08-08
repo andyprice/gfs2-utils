@@ -66,7 +66,7 @@ static int _do_indirect_extended(char *diebuf, struct iinfo *iinf, int hgt)
 		iinf->ii[x].dirents = 0;
 		memset(&iinf->ii[x].dirent, 0, sizeof(struct gfs2_dirents));
 	}
-	for (x = (gfs1 ? sizeof(struct gfs_indirect):
+	for (x = (sbd.gfs1 ? sizeof(struct gfs_indirect):
 			  sizeof(struct gfs2_meta_header)), y = 0;
 		 x < sbd.bsize;
 		 x += sizeof(uint64_t), y++) {
@@ -251,7 +251,7 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 /* ------------------------------------------------------------------------ */
 static void print_inode_type(__be16 de_type)
 {
-	if (gfs1) {
+	if (sbd.gfs1) {
 		switch(de_type) {
 		case GFS_FILE_NON:
 			print_gfs2("Unknown");
@@ -515,7 +515,7 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 
 		roff = print_entry_ndx * risize();
 
-		if (gfs1)
+		if (sbd.gfs1)
 			error = gfs1_readi(dip, (void *)&rbuf, roff, risize());
 		else
 			error = gfs2_readi(dip, (void *)&rbuf, roff, risize());
@@ -543,7 +543,7 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 				struct gfs2_buffer_head *tmp_bh;
 
 				tmp_bh = bread(&sbd, ri.ri_addr);
-				if (gfs1) {
+				if (sbd.gfs1) {
 					struct gfs_rgrp rg1;
 					gfs_rgrp_in(&rg1, tmp_bh);
 					gfs_rgrp_print(&rg1);
@@ -664,7 +664,7 @@ int display_extended(void)
 	else if (display_indirect(indirect, indirect_blocks, 0, 0) == 0)
 		return -1;
 	else if (block_is_rglist()) {
-		if (gfs1)
+		if (sbd.gfs1)
 			tmp_bh = bread(&sbd, sbd1->sb_rindex_di.no_addr);
 		else
 			tmp_bh = bread(&sbd, masterblock("rindex"));

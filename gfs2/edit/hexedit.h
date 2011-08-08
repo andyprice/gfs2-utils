@@ -81,7 +81,6 @@ extern char device[NAME_MAX];
 extern int identify;
 extern int color_scheme;
 extern WINDOW *wind;
-extern int gfs1;
 extern int editing;
 extern uint64_t temp_blk;
 extern uint64_t starting_blk;
@@ -231,7 +230,7 @@ extern enum dsp_mode dmode;
 /* ------------------------------------------------------------------------ */
 static inline int risize(void)
 {
-	if (gfs1)
+	if (sbd.gfs1)
 		return sizeof(struct gfs_rindex);
 	else
 		return sizeof(struct gfs2_rindex);

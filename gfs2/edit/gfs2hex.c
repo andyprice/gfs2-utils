@@ -45,7 +45,6 @@ uint64_t block = 0;
 int blockhist = 0;
 struct iinfo *indirect;
 int indirect_blocks;
-int gfs1  = 0;
 uint64_t block_in_mem = -1;
 struct gfs2_sbd sbd;
 uint64_t starting_blk;
@@ -277,7 +276,7 @@ void do_dinode_extended(struct gfs2_dinode *dine, struct gfs2_buffer_head *lbh)
 	unsigned int x, y, ptroff = 0;
 	uint64_t p, last;
 	int isdir = !!(S_ISDIR(dine->di_mode)) || 
-		(gfs1 && dine->__pad1 == GFS_FILE_DIR);
+		(sbd.gfs1 && dine->__pad1 == GFS_FILE_DIR);
 
 	indirect_blocks = 0;
 	memset(indirect, 0, sizeof(indirect));
@@ -468,11 +467,11 @@ static void gfs2_sb_print2(struct gfs2_sb *sbp2)
 	pv(sbp2, sb_fs_format, "%u", "0x%x");
 	pv(sbp2, sb_multihost_format, "%u", "0x%x");
 
-	if (gfs1)
+	if (sbd.gfs1)
 		pv(sbd1, sb_flags, "%u", "0x%x");
 	pv(sbp2, sb_bsize, "%u", "0x%x");
 	pv(sbp2, sb_bsize_shift, "%u", "0x%x");
-	if (gfs1) {
+	if (sbd.gfs1) {
 		pv(sbd1, sb_seg_size, "%u", "0x%x");
 		gfs2_inum_print2("jindex ino", &sbd1->sb_jindex_di);
 		gfs2_inum_print2("rindex ino", &sbd1->sb_rindex_di);
@@ -483,7 +482,7 @@ static void gfs2_sb_print2(struct gfs2_sb *sbp2)
 
 	pv(sbp2, sb_lockproto, "%s", NULL);
 	pv(sbp2, sb_locktable, "%s", NULL);
-	if (gfs1) {
+	if (sbd.gfs1) {
 		gfs2_inum_print2("quota ino ", &gfs1_quota_di);
 		gfs2_inum_print2("license   ", &gfs1_license_di);
 	}
@@ -575,7 +574,7 @@ int display_gfs2(void)
 			break;
 
 		case GFS2_METATYPE_RG:
-			if (gfs1) {
+			if (sbd.gfs1) {
 				struct gfs1_rgrp rg1;
 
 				gfs1_rgrp_in(&rg1, bh);
@@ -608,7 +607,7 @@ int display_gfs2(void)
 			break;
 
 		case GFS2_METATYPE_LH:
-			if (gfs1) {
+			if (sbd.gfs1) {
 				gfs_log_header_in(&lh1, bh);
 				gfs_log_header_print(&lh1);
 			} else {

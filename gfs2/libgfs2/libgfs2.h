@@ -243,6 +243,7 @@ struct gfs2_sbd {
 	uint32_t physical_block_size;
 	uint64_t rg_one_length;
 	uint64_t rg_length;
+	int gfs1;
 };
 
 struct metapath {

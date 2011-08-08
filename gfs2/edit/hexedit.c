@@ -1069,13 +1069,14 @@ int display_block_type(int from_restore)
 		print_gfs2("of %llu (0x%llx) ", max_block, max_block);
 	if (block == RGLIST_DUMMY_BLOCK) {
 		ret_type = GFS2_METATYPE_RG;
-		struct_len = gfs1 ? sizeof(struct gfs_rgrp) : sizeof(struct gfs2_rgrp);
+		struct_len = sbd.gfs1 ? sizeof(struct gfs_rgrp) :
+			sizeof(struct gfs2_rgrp);
 	}
 	else if ((ret_type = get_block_type(bh))) {
 		switch (*(bh->b_data + 7)) {
 		case GFS2_METATYPE_SB:   /* 1 */
 			print_gfs2("(superblock)");
-			if (gfs1)
+			if (sbd.gfs1)
 				struct_len = sizeof(struct gfs_sb);
 			else
 				struct_len = sizeof(struct gfs2_sb);
@@ -1094,7 +1095,7 @@ int display_block_type(int from_restore)
 			break;
 		case GFS2_METATYPE_IN:   /* 5 */
 			print_gfs2("(indir blklist)");
-			if (gfs1)
+			if (sbd.gfs1)
 				struct_len = sizeof(struct gfs_indirect);
 			else
 				struct_len = sizeof(struct gfs2_meta_header);
@@ -1113,7 +1114,7 @@ int display_block_type(int from_restore)
 			break;
 		case GFS2_METATYPE_LD:
 		 	print_gfs2("(log descriptor)");
-			if (gfs1)
+			if (sbd.gfs1)
 				struct_len = sizeof(struct gfs_log_descriptor);
 			else
 				struct_len =
@@ -1168,7 +1169,7 @@ int display_block_type(int from_restore)
 		print_gfs2("(p.%d of %d--%s)", pgnum + 1,
 			   (sbd.bsize % screen_chunk_size) > 0 ?
 			   sbd.bsize / screen_chunk_size + 1 : sbd.bsize /
-			   screen_chunk_size, allocdesc[gfs1][type]);
+			   screen_chunk_size, allocdesc[sbd.gfs1][type]);
 		/*eol(9);*/
 		if ((*(bh->b_data + 7) == GFS2_METATYPE_RG)) {
 			int ptroffset = edit_row[dmode] * 16 + edit_col[dmode];
@@ -1185,7 +1186,7 @@ int display_block_type(int from_restore)
 				for (b = blknum; b < blknum + 4; b++) {
 					btype = gfs2_get_bitmap(&sbd, b, rgd);
 					print_gfs2("0x%x-%s  ", b,
-						   allocdesc[gfs1][btype]);
+						   allocdesc[sbd.gfs1][btype]);
 				}
 			}
 		} else if ((*(bh->b_data + 7) == GFS2_METATYPE_RB)) {
@@ -1217,7 +1218,7 @@ int display_block_type(int from_restore)
 				for (b = blknum; b < blknum + 4; b++) {
 					btype = gfs2_get_bitmap(&sbd, b, rgd);
 					print_gfs2("0x%x-%s  ", b,
-						   allocdesc[gfs1][btype]);
+						   allocdesc[sbd.gfs1][btype]);
 				}
 			}
 		}
@@ -1226,12 +1227,12 @@ int display_block_type(int from_restore)
  	}
 	if (block == sbd.sd_sb.sb_root_dir.no_addr)
 		print_gfs2("--------------- Root directory ------------------");
-	else if (!gfs1 && block == sbd.sd_sb.sb_master_dir.no_addr)
+	else if (!sbd.gfs1 && block == sbd.sd_sb.sb_master_dir.no_addr)
 		print_gfs2("-------------- Master directory -----------------");
-	else if (!gfs1 && block == RGLIST_DUMMY_BLOCK)
+	else if (!sbd.gfs1 && block == RGLIST_DUMMY_BLOCK)
 		print_gfs2("------------------ RG List ----------------------");
 	else {
-		if (gfs1) {
+		if (sbd.gfs1) {
 			if (block == sbd1->sb_rindex_di.no_addr)
 				print_gfs2("---------------- rindex file -------------------");
 			else if (block == gfs1_quota_di.no_addr)
@@ -1437,7 +1438,7 @@ static int hexdump(uint64_t startaddr, int len)
 		l+=16;
 		print_entry_ndx++;
 	} /* while */
-	if (gfs1) {
+	if (sbd.gfs1) {
 		COLORS_NORMAL;
 		print_gfs2("         *** This seems to be a GFS-1 file system ***");
 		eol(0);
@@ -1481,7 +1482,7 @@ static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
 	uint64_t foffset, gfs1_adj = 0;
 
 	foffset = rg * risize();
-	if (gfs1) {
+	if (sbd.gfs1) {
 		uint64_t sd_jbsize =
 			(sbd.bsize - sizeof(struct gfs2_meta_header));
 
@@ -1553,7 +1554,7 @@ static uint64_t get_rg_addr(int rgnum)
 	uint64_t rgblk = 0, gblock;
 	struct gfs2_inode *riinode;
 
-	if (gfs1)
+	if (sbd.gfs1)
 		gblock = sbd1->sb_rindex_di.no_addr;
 	else
 		gblock = masterblock("rindex");
@@ -1585,7 +1586,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 
 	rgblk = get_rg_addr(rgnum);
 	rbh = bread(&sbd, rgblk);
-	if (gfs1)
+	if (sbd.gfs1)
 		gfs_rgrp_in(&rg.rg1, rbh);
 	else
 		gfs2_rgrp_in(&rg.rg2, rbh);
@@ -1594,7 +1595,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 		       rgnum, (unsigned long long)rgblk,
 		       (unsigned long long)rgblk, rg.rg2.rg_flags, new_flags);
 		rg.rg2.rg_flags = new_flags;
-		if (gfs1)
+		if (sbd.gfs1)
 			gfs_rgrp_out(&rg.rg1, rbh);
 		else
 			gfs2_rgrp_out(&rg.rg2, rbh);
@@ -1604,7 +1605,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 			print_gfs2("RG #%d", rgnum);
 			print_gfs2(" located at: %llu (0x%llx)", rgblk, rgblk);
                         eol(0);
-			if (gfs1)
+			if (sbd.gfs1)
 				gfs_rgrp_print(&rg.rg1);
 			else
 				gfs2_rgrp_print(&rg.rg2);
@@ -1640,7 +1641,7 @@ int has_indirect_blocks(void)
 	if (indirect_blocks || gfs2_struct_type == GFS2_METATYPE_SB ||
 	    gfs2_struct_type == GFS2_METATYPE_LF ||
 	    (gfs2_struct_type == GFS2_METATYPE_DI &&
-	     (S_ISDIR(di.di_mode) || (gfs1 && di.__pad1 == GFS_FILE_DIR))))
+	     (S_ISDIR(di.di_mode) || (sbd.gfs1 && di.__pad1 == GFS_FILE_DIR))))
 		return TRUE;
 	return FALSE;
 }
@@ -1650,7 +1651,7 @@ int has_indirect_blocks(void)
 /* ------------------------------------------------------------------------ */
 int block_is_rindex(void)
 {
-	if ((gfs1 && block == sbd1->sb_rindex_di.no_addr) ||
+	if ((sbd.gfs1 && block == sbd1->sb_rindex_di.no_addr) ||
 	    (block == masterblock("rindex")))
 		return TRUE;
 	return FALSE;
@@ -1661,7 +1662,7 @@ int block_is_rindex(void)
 /* ------------------------------------------------------------------------ */
 int block_is_jindex(void)
 {
-	if ((gfs1 && block == sbd1->sb_jindex_di.no_addr))
+	if ((sbd.gfs1 && block == sbd1->sb_jindex_di.no_addr))
 		return TRUE;
 	return FALSE;
 }
@@ -1671,7 +1672,7 @@ int block_is_jindex(void)
 /* ------------------------------------------------------------------------ */
 int block_is_inum_file(void)
 {
-	if (!gfs1 && block == masterblock("inum"))
+	if (!sbd.gfs1 && block == masterblock("inum"))
 		return TRUE;
 	return FALSE;
 }
@@ -1681,9 +1682,9 @@ int block_is_inum_file(void)
 /* ------------------------------------------------------------------------ */
 int block_is_statfs_file(void)
 {
-	if (gfs1 && block == gfs1_license_di.no_addr)
+	if (sbd.gfs1 && block == gfs1_license_di.no_addr)
 		return TRUE;
-	if (!gfs1 && block == masterblock("statfs"))
+	if (!sbd.gfs1 && block == masterblock("statfs"))
 		return TRUE;
 	return FALSE;
 }
@@ -1693,9 +1694,9 @@ int block_is_statfs_file(void)
 /* ------------------------------------------------------------------------ */
 int block_is_quota_file(void)
 {
-	if (gfs1 && block == gfs1_quota_di.no_addr)
+	if (sbd.gfs1 && block == gfs1_quota_di.no_addr)
 		return TRUE;
-	if (!gfs1 && block == masterblock("quota"))
+	if (!sbd.gfs1 && block == masterblock("quota"))
 		return TRUE;
 	return FALSE;
 }
@@ -1705,7 +1706,7 @@ int block_is_quota_file(void)
 /* ------------------------------------------------------------------------ */
 int block_is_per_node(void)
 {
-	if (!gfs1 && block == masterblock("per_node"))
+	if (!sbd.gfs1 && block == masterblock("per_node"))
 		return TRUE;
 	return FALSE;
 }
@@ -1718,7 +1719,7 @@ int block_is_in_per_node(void)
 	int d;
 	struct gfs2_inode *per_node_di;
 
-	if (gfs1)
+	if (sbd.gfs1)
 		return FALSE;
 
 	per_node_di = inode_read(&sbd, masterblock("per_node"));
@@ -1775,7 +1776,7 @@ static void read_superblock(int fd)
 		sbd1->sb_multihost_format == GFS_FORMAT_MULTI) {
 		struct gfs_sb *sbbuf = (struct gfs_sb *)bh->b_data;
 
-		gfs1 = TRUE;
+		sbd.gfs1 = TRUE;
 		sbd1->sb_flags = be32_to_cpu(sbbuf->sb_flags);
 		sbd1->sb_seg_size = be32_to_cpu(sbbuf->sb_seg_size);
 		gfs2_inum_in(&sbd1->sb_rindex_di, (void *)&sbbuf->sb_rindex_di);
@@ -1783,12 +1784,12 @@ static void read_superblock(int fd)
 		gfs2_inum_in(&gfs1_license_di, (void *)&sbbuf->sb_license_di);
 	}
 	else
-		gfs1 = FALSE;
+		sbd.gfs1 = FALSE;
 	sbd.bsize = sbd.sd_sb.sb_bsize;
 	if (!sbd.bsize)
 		sbd.bsize = GFS2_DEFAULT_BSIZE;
 	compute_constants(&sbd);
-	if (gfs1 || (sbd.sd_sb.sb_header.mh_magic == GFS2_MAGIC &&
+	if (sbd.gfs1 || (sbd.sd_sb.sb_header.mh_magic == GFS2_MAGIC &&
 		     sbd.sd_sb.sb_header.mh_type == GFS2_METATYPE_SB))
 		block = 0x10 * (GFS2_DEFAULT_BSIZE / sbd.bsize);
 	else {
@@ -1800,7 +1801,7 @@ static void read_superblock(int fd)
 			(unsigned long long)sbd.device.length << GFS2_BASIC_BLOCK_SHIFT);
 		exit(-1);
 	}
-	if(gfs1) {
+	if(sbd.gfs1) {
 		sbd.sd_inptrs = (sbd.bsize - sizeof(struct gfs_indirect)) /
 			sizeof(uint64_t);
 		sbd.sd_diptrs = (sbd.bsize - sizeof(struct gfs_dinode)) /
@@ -1855,7 +1856,7 @@ int display(int identify_only)
 	uint64_t blk;
 
 	if (block == RGLIST_DUMMY_BLOCK) {
-		if (gfs1)
+		if (sbd.gfs1)
 			blk = sbd1->sb_rindex_di.no_addr;
 		else
 			blk = masterblock("rindex");
@@ -2015,7 +2016,7 @@ static uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 
 	journal_num = atoi(journal + 7);
 	/* Figure out the block of the jindex file */
-	if (gfs1)
+	if (sbd.gfs1)
 		jindex_block = sbd1->sb_jindex_di.no_addr;
 	else
 		jindex_block = masterblock("jindex");
@@ -2024,10 +2025,10 @@ static uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 	/* get the dinode data from it. */
 	gfs2_dinode_in(&di, jindex_bh); /* parse disk inode to struct*/
 
-	if (!gfs1)
+	if (!sbd.gfs1)
 		do_dinode_extended(&di, jindex_bh); /* parse dir. */
 
-	if (gfs1) {
+	if (sbd.gfs1) {
 		struct gfs2_inode *jiinode;
 		struct gfs_jindex ji;
 
@@ -2206,36 +2207,36 @@ uint64_t check_keywords(const char *kword)
 	else if (!strcmp(kword, "root") || !strcmp(kword, "rootdir"))
 		blk = sbd.sd_sb.sb_root_dir.no_addr;
 	else if (!strcmp(kword, "master")) {
-		if (!gfs1)
+		if (!sbd.gfs1)
 			blk = sbd.sd_sb.sb_master_dir.no_addr;
 		else
 			fprintf(stderr, "This is GFS1; there's no master directory.\n");
 	}
 	else if (!strcmp(kword, "jindex")) {
-		if (gfs1)
+		if (sbd.gfs1)
 			blk = sbd1->sb_jindex_di.no_addr;
 		else
 			blk = masterblock("jindex"); /* journal index */
 	}
-	else if (!gfs1 && !strcmp(kword, "per_node"))
+	else if (!sbd.gfs1 && !strcmp(kword, "per_node"))
 		blk = masterblock("per_node");
-	else if (!gfs1 && !strcmp(kword, "inum"))
+	else if (!sbd.gfs1 && !strcmp(kword, "inum"))
 		blk = masterblock("inum");
 	else if (!strcmp(kword, "statfs")) {
-		if (gfs1)
+		if (sbd.gfs1)
 			blk = gfs1_license_di.no_addr;
 		else
 			blk = masterblock("statfs");
 	}
 	else if (!strcmp(kword, "rindex") || !strcmp(kword, "rgindex")) {
-		if (gfs1)
+		if (sbd.gfs1)
 			blk = sbd1->sb_rindex_di.no_addr;
 		else
 			blk = masterblock("rindex");
 	} else if (!strcmp(kword, "rgs")) {
 		blk = RGLIST_DUMMY_BLOCK;
 	} else if (!strcmp(kword, "quota")) {
-		if (gfs1)
+		if (sbd.gfs1)
 			blk = gfs1_quota_di.no_addr;
 		else
 			blk = masterblock("quota");
@@ -2551,7 +2552,7 @@ static void find_change_block_alloc(int *newval)
 		printf("Error: value %d is not valid.\nValid values are:\n",
 		       *newval);
 		for (i = GFS2_BLKST_FREE; i <= GFS2_BLKST_DINODE; i++)
-			printf("%d - %s\n", i, allocdesc[gfs1][i]);
+			printf("%d - %s\n", i, allocdesc[sbd.gfs1][i]);
 		gfs2_rgrp_free(&sbd.rglist);
 		exit(-1);
 	}
@@ -2574,7 +2575,7 @@ static void find_change_block_alloc(int *newval)
 					       "an rgrp).\n");
 					exit(-1);
 				}
-				printf("%d (%s)\n", type, allocdesc[gfs1][type]);
+				printf("%d (%s)\n", type, allocdesc[sbd.gfs1][type]);
 			}
 			gfs2_rgrp_relse(rgd);
 		} else {
@@ -3058,7 +3059,7 @@ static int print_ld_blocks(const uint64_t *b, const char *end, int start_line)
 			bcount++;
 		}
 		b++;
-		if (gfs1)
+		if (sbd.gfs1)
 			b++;
 	}
 	eol(0);
@@ -3177,14 +3178,14 @@ static void dump_journal(const char *journal)
 	jblock = find_journal_block(journal, &j_size);
 	if (!jblock)
 		return;
-	if (!gfs1) {
+	if (!sbd.gfs1) {
 		j_bh = bread(&sbd, jblock);
 		j_inode = inode_get(&sbd, j_bh);
 		jbuf = malloc(sbd.bsize);
 	}
 
-	for (jb = 0; jb < j_size; jb += (gfs1 ? 1:sbd.bsize)) {
-		if (gfs1) {
+	for (jb = 0; jb < j_size; jb += (sbd.gfs1 ? 1:sbd.bsize)) {
+		if (sbd.gfs1) {
 			if (j_bh)
 				brelse(j_bh);
 			j_bh = bread(&sbd, jblock + jb);
@@ -3219,21 +3220,21 @@ static void dump_journal(const char *journal)
 				 "Quota", "Final Entry", "Unknown"}};
 
 			print_gfs2("0x%llx (j+%4llx): Log descriptor, ",
-				   abs_block, jb / (gfs1 ? 1 : sbd.bsize));
+				   abs_block, jb / (sbd.gfs1 ? 1 : sbd.bsize));
 			gfs2_log_descriptor_in(&ld, &dummy_bh);
 			print_gfs2("type %d ", ld.ld_type);
 
 			for (ltndx = 0;; ltndx++) {
-				if (ld.ld_type == logtypes[gfs1][ltndx] ||
-				    logtypes[gfs1][ltndx] == 0)
+				if (ld.ld_type == logtypes[sbd.gfs1][ltndx] ||
+				    logtypes[sbd.gfs1][ltndx] == 0)
 					break;
 			}
-			print_gfs2("(%s) ", logtypestr[gfs1][ltndx]);
+			print_gfs2("(%s) ", logtypestr[sbd.gfs1][ltndx]);
 			print_gfs2("len:%u, data1: %u",
 				   ld.ld_length, ld.ld_data1);
 			eol(0);
 			print_gfs2("                    ");
-			if (gfs1)
+			if (sbd.gfs1)
 				b = (uint64_t *)(dummy_bh.b_data +
 					sizeof(struct gfs_log_descriptor));
 			else
@@ -3247,7 +3248,7 @@ static void dump_journal(const char *journal)
 			struct gfs2_log_header lh;
 			struct gfs_log_header lh1;
 
-			if (gfs1) {
+			if (sbd.gfs1) {
 				gfs_log_header_in(&lh1, &dummy_bh);
 				check_journal_wrap(lh1.lh_sequence,
 						   &highest_seq);
@@ -3269,7 +3270,7 @@ static void dump_journal(const char *journal)
 					   lh.lh_tail, lh.lh_blkno);
 			}
 			eol(0);
-		} else if (gfs1 && ld_blocks > 0) {
+		} else if (sbd.gfs1 && ld_blocks > 0) {
 			print_gfs2("0x%llx (j+%4llx): GFS log descriptor"
 				   " continuation block", abs_block, jb);
 			eol(0);
@@ -3660,7 +3661,7 @@ int main(int argc, char *argv[])
 	read_superblock(fd);
 	max_block = lseek(fd, 0, SEEK_END) / sbd.bsize;
 	strcpy(sbd.device_name, device);
-	if (gfs1)
+	if (sbd.gfs1)
 		edit_row[GFS2_MODE]++;
 	else
 		read_master_dir();
