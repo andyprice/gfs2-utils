@@ -686,7 +686,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			}
 			gfs2_leaf_in(&leaf, lbh);
 			if (pass->check_leaf)
-				error = pass->check_leaf(ip, leaf_no, lbh,
+				error = pass->check_leaf(ip, leaf_no,
 							 pass->private);
 
 			/*
@@ -1462,10 +1462,9 @@ int delete_metadata(struct gfs2_inode *ip, uint64_t block,
 	return delete_block_if_notdup(ip, block, bh, _("metadata"), private);
 }
 
-int delete_leaf(struct gfs2_inode *ip, uint64_t block,
-		struct gfs2_buffer_head *bh, void *private)
+int delete_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 {
-	return delete_block_if_notdup(ip, block, &bh, _("leaf"), private);
+	return delete_block_if_notdup(ip, block, NULL, _("leaf"), private);
 }
 
 int delete_data(struct gfs2_inode *ip, uint64_t block, void *private)
@@ -1528,8 +1527,7 @@ static int alloc_data(struct gfs2_inode *ip, uint64_t block, void *private)
 	return 0;
 }
 
-static int alloc_leaf(struct gfs2_inode *ip, uint64_t block,
-		      struct gfs2_buffer_head *bh, void *private)
+static int alloc_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 {
 	uint8_t q;
 

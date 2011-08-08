@@ -34,8 +34,7 @@ struct block_count {
 	uint64_t ea_count;
 };
 
-static int leaf(struct gfs2_inode *ip, uint64_t block,
-		struct gfs2_buffer_head *bh, void *private);
+static int leaf(struct gfs2_inode *ip, uint64_t block, void *private);
 static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			  struct gfs2_buffer_head **bh, int h, void *private);
 static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
@@ -66,7 +65,7 @@ static int invalidate_metadata(struct gfs2_inode *ip, uint64_t block,
 			       struct gfs2_buffer_head **bh, int h,
 			       void *private);
 static int invalidate_leaf(struct gfs2_inode *ip, uint64_t block,
-			   struct gfs2_buffer_head *bh, void *private);
+			   void *private);
 static int invalidate_data(struct gfs2_inode *ip, uint64_t block,
 			   void *private);
 static int invalidate_eattr_indir(struct gfs2_inode *ip, uint64_t block,
@@ -200,8 +199,7 @@ struct metawalk_fxns sysdir_fxns = {
 	.check_dentry = resuscitate_dentry,
 };
 
-static int leaf(struct gfs2_inode *ip, uint64_t block,
-		struct gfs2_buffer_head *bh, void *private)
+static int leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 {
 	struct block_count *bc = (struct block_count *) private;
 
@@ -856,7 +854,7 @@ static int invalidate_metadata(struct gfs2_inode *ip, uint64_t block,
 }
 
 static int invalidate_leaf(struct gfs2_inode *ip, uint64_t block,
-			   struct gfs2_buffer_head *bh, void *private)
+			   void *private)
 {
 	return mark_block_invalid(ip, block, ref_as_meta, _("leaf"));
 }
@@ -939,9 +937,9 @@ static int rangecheck_metadata(struct gfs2_inode *ip, uint64_t block,
 }
 
 static int rangecheck_leaf(struct gfs2_inode *ip, uint64_t block,
-			   struct gfs2_buffer_head *bh, void *private)
+			   void *private)
 {
-	return rangecheck_block(ip, block, &bh, _("leaf"), private);
+	return rangecheck_block(ip, block, NULL, _("leaf"), private);
 }
 
 static int rangecheck_data(struct gfs2_inode *ip, uint64_t block,
