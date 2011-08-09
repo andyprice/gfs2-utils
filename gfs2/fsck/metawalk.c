@@ -435,10 +435,12 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 /* so that they replace the bad ones.  We have to hack up the old    */
 /* leaf a bit, but it's better than deleting the whole directory,    */
 /* which is what used to happen before.                              */
-static void warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no, 
-			   uint64_t *bad_leaf, uint64_t old_leaf,
-			   uint64_t first_ok_leaf, int pindex, const char *msg)
+static int warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no,
+			  uint64_t *bad_leaf, uint64_t old_leaf,
+			  uint64_t first_ok_leaf, int pindex, const char *msg)
 {
+	int okay_to_fix = 0;
+
 	if (*bad_leaf != *leaf_no) {
 		log_err( _("Directory Inode %llu (0x%llx) points to leaf %llu"
 			" (0x%llx) %s.\n"),
@@ -448,7 +450,7 @@ static void warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no,
 			(unsigned long long)*leaf_no, msg);
 	}
 	if (*leaf_no == *bad_leaf ||
-	    query( _("Attempt to patch around it? (y/n) "))) {
+	    (okay_to_fix = query( _("Attempt to patch around it? (y/n) ")))) {
 		if (!valid_block(ip->i_sbd, old_leaf) == 0)
 			gfs2_put_leaf_nr(ip, pindex, old_leaf);
 		else
@@ -461,6 +463,133 @@ static void warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no,
 		log_err( _("Bad leaf left in place.\n"));
 	*bad_leaf = *leaf_no;
 	*leaf_no = old_leaf;
+	return okay_to_fix;
+}
+
+/**
+ * check_leaf - check a leaf block for errors
+ */
+static int check_leaf(struct gfs2_inode *ip, int lindex,
+		      struct metawalk_fxns *pass, int *ref_count,
+		      uint64_t *leaf_no, uint64_t old_leaf, uint64_t *bad_leaf,
+		      uint64_t first_ok_leaf, struct gfs2_leaf *leaf,
+		      struct gfs2_leaf *oldleaf)
+{
+	int error = 0, fix;
+	struct gfs2_buffer_head *lbh = NULL;
+	uint32_t count = 0;
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	const char *msg;
+
+	*ref_count = 1;
+	/* Make sure the block number is in range. */
+	if (!valid_block(ip->i_sbd, *leaf_no)) {
+		log_err( _("Leaf block #%llu (0x%llx) is out of range for "
+			   "directory #%llu (0x%llx).\n"),
+			 (unsigned long long)*leaf_no,
+			 (unsigned long long)*leaf_no,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr);
+		msg = _("that is out of range");
+		goto out_copy_old_leaf;
+	}
+
+	/* Try to read in the leaf block. */
+	lbh = bread(sdp, *leaf_no);
+	/* Make sure it's really a valid leaf block. */
+	if (gfs2_check_meta(lbh, GFS2_METATYPE_LF)) {
+		msg = _("that is not really a leaf");
+		goto out_copy_old_leaf;
+	}
+	if (pass->check_leaf) {
+		error = pass->check_leaf(ip, *leaf_no, pass->private);
+		if (error) {
+			log_info(_("Previous reference to leaf %lld (0x%llx) "
+				   "has already checked it; skipping.\n"),
+				 (unsigned long long)*leaf_no,
+				 (unsigned long long)*leaf_no);
+			brelse(lbh);
+			return error;
+		}
+	}
+	/* Early versions of GFS2 had an endianess bug in the kernel that set
+	   lf_dirent_format to cpu_to_be16(GFS2_FORMAT_DE).  This was fixed
+	   to use cpu_to_be32(), but we should check for incorrect values and
+	   replace them with the correct value. */
+
+	gfs2_leaf_in(leaf, lbh);
+	if (leaf->lf_dirent_format == (GFS2_FORMAT_DE << 16)) {
+		log_debug( _("incorrect lf_dirent_format at leaf #%" PRIu64
+			     "\n"), *leaf_no);
+		leaf->lf_dirent_format = GFS2_FORMAT_DE;
+		gfs2_leaf_out(leaf, lbh);
+		log_debug( _("Fixing lf_dirent_format.\n"));
+	}
+
+	/* Make sure it's really a leaf. */
+	if (leaf->lf_header.mh_type != GFS2_METATYPE_LF) {
+		log_err( _("Inode %llu (0x%llx) points to bad leaf %llu"
+			   " (0x%llx).\n"),
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)*leaf_no,
+			 (unsigned long long)*leaf_no);
+		msg = _("that is not a leaf");
+		goto out_copy_old_leaf;
+	}
+
+	if (pass->check_dentry && S_ISDIR(ip->i_di.di_mode)) {
+		error = check_entries(ip, lbh, DIR_EXHASH, &count, pass);
+
+		if (skip_this_pass || fsck_abort)
+			goto out;
+
+		if (error < 0) {
+			stack;
+			goto out;
+		}
+
+		if (count != leaf->lf_entries) {
+			/* release and re-read the leaf in case check_entries
+			   changed it. */
+			brelse(lbh);
+			lbh = bread(sdp, *leaf_no);
+			gfs2_leaf_in(leaf, lbh);
+
+			log_err( _("Leaf %llu (0x%llx) entry count in "
+				   "directory %llu (0x%llx) does not match "
+				   "number of entries found - is %u, found %u\n"),
+				 (unsigned long long)*leaf_no,
+				 (unsigned long long)*leaf_no,
+				 (unsigned long long)ip->i_di.di_num.no_addr,
+				 (unsigned long long)ip->i_di.di_num.no_addr,
+				 leaf->lf_entries, count);
+			if (query( _("Update leaf entry count? (y/n) "))) {
+				leaf->lf_entries = count;
+				gfs2_leaf_out(leaf, lbh);
+				log_warn( _("Leaf entry count updated\n"));
+			} else
+				log_err( _("Leaf entry count left in "
+					   "inconsistant state\n"));
+		}
+	}
+out:
+	brelse(lbh);
+	return 0;
+
+out_copy_old_leaf:
+	/* The leaf we read in is bad.  So we'll copy the old leaf into the
+	 * new one.  However, that will make us shift our ref count. */
+	fix = warn_and_patch(ip, leaf_no, bad_leaf, old_leaf,
+			     first_ok_leaf, lindex, msg);
+	(*ref_count)++;
+	memcpy(leaf, oldleaf, sizeof(struct gfs2_leaf));
+	if (lbh) {
+		if (fix)
+			bmodified(lbh);
+		brelse(lbh);
+	}
+	return 1;
 }
 
 /* Checks exhash directory entries */
@@ -473,8 +602,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	struct gfs2_buffer_head *lbh;
 	int lindex;
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	uint32_t count;
-	int ref_count = 0, exp_count = 0;
+	int ref_count = 0;
 
 	/* Find the first valid leaf pointer in range and use it as our "old"
 	   leaf. That way, bad blocks at the beginning will be overwritten
@@ -532,119 +660,12 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 				if (error)
 					return error;
 			}
-			ref_count = 1;
-			count = 0;
-			if (fsck_abort)
-				break;
-			/* Make sure the block number is in range. */
-			if (!valid_block(ip->i_sbd, leaf_no)){
-				log_err( _("Leaf block #%llu (0x%llx) is out "
-					"of range for directory #%llu (0x%llx"
-					").\n"), (unsigned long long)leaf_no,
-					(unsigned long long)leaf_no,
-					(unsigned long long)
-					ip->i_di.di_num.no_addr,
-					(unsigned long long)
-					ip->i_di.di_num.no_addr);
-				warn_and_patch(ip, &leaf_no, &bad_leaf,
-					       old_leaf, first_ok_leaf, lindex,
-					       _("that is out of range"));
-				memcpy(&leaf, &oldleaf, sizeof(oldleaf));
-				break;
-			}
-
-			/* Try to read in the leaf block. */
-			lbh = bread(sdp, leaf_no);
-			/* Make sure it's really a valid leaf block. */
-			if (gfs2_check_meta(lbh, GFS2_METATYPE_LF)) {
-				warn_and_patch(ip, &leaf_no, &bad_leaf,
-					       old_leaf, first_ok_leaf, lindex,
-					       _("that is not really a leaf"));
-				memcpy(&leaf, &oldleaf, sizeof(oldleaf));
-				bmodified(lbh);
-				brelse(lbh);
-				break;
-			}
-			gfs2_leaf_in(&leaf, lbh);
-			if (pass->check_leaf)
-				error = pass->check_leaf(ip, leaf_no,
-							 pass->private);
-
-			/*
-			 * Early versions of GFS2 had an endianess bug in the
-			 * kernel that set lf_dirent_format to
-			 * cpu_to_be16(GFS2_FORMAT_DE).  This was fixed to use
-			 * cpu_to_be32(), but we should check for incorrect 
-			 * values and replace them with the correct value. */
-
-			if (leaf.lf_dirent_format == (GFS2_FORMAT_DE << 16)) {
-				log_debug( _("incorrect lf_dirent_format at leaf #%llu\n"), (unsigned long long)leaf_no);
-				leaf.lf_dirent_format = GFS2_FORMAT_DE;
-				gfs2_leaf_out(&leaf, lbh);
-				log_debug( _("Fixing lf_dirent_format.\n"));
-			}
-
-			/* Make sure it's really a leaf. */
-			if (leaf.lf_header.mh_type != GFS2_METATYPE_LF) {
-				log_err( _("Inode %llu (0x%llx"
-					") points to bad leaf %llu"
-					" (0x%llx).\n"),
-					(unsigned long long)
-					ip->i_di.di_num.no_addr,
-					(unsigned long long)
-					ip->i_di.di_num.no_addr,
-					(unsigned long long)leaf_no,
-					(unsigned long long)leaf_no);
-				brelse(lbh);
-				break;
-			}
-			exp_count = (1 << (ip->i_di.di_depth - leaf.lf_depth));
-			/*log_debug( _("expected count %u - di_depth %u,
-			  leaf depth %u\n"),
-			  exp_count, ip->i_di.di_depth, leaf.lf_depth);*/
-
-			if (pass->check_dentry && S_ISDIR(ip->i_di.di_mode)) {
-				error = check_entries(ip, lbh, DIR_EXHASH,
-						      &count, pass);
-
-				if (skip_this_pass || fsck_abort)
-					return 0;
-
-				if (error < 0) {
-					stack;
-					brelse(lbh);
-					return -1;
-				}
-
-				if (count != leaf.lf_entries) {
-					brelse(lbh);
-					lbh = bread(sdp, leaf_no);
-					gfs2_leaf_in(&leaf, lbh);
-
-					log_err( _("Leaf %llu (0x%llx) entry "
-						"count in directory %llu"
-						" (0x%llx) doesn't match "
-						"number of entries found "
-						"- is %u, found %u\n"),
-						(unsigned long long)leaf_no,
-						(unsigned long long)leaf_no,
-						(unsigned long long)
-						ip->i_di.di_num.no_addr,
-						(unsigned long long)
-						ip->i_di.di_num.no_addr,
-						leaf.lf_entries, count);
-					if (query( _("Update leaf entry count? (y/n) "))) {
-						leaf.lf_entries = count;
-						gfs2_leaf_out(&leaf, lbh);
-						log_warn( _("Leaf entry count updated\n"));
-					} else
-						log_err( _("Leaf entry count left in inconsistant state\n"));
-				}
-			}
-			brelse(lbh);
+			error = check_leaf(ip, lindex, pass, &ref_count,
+					   &leaf_no, old_leaf, &bad_leaf,
+					   first_ok_leaf, &leaf, &oldleaf);
 			old_leaf = leaf_no;
 			memcpy(&oldleaf, &leaf, sizeof(oldleaf));
-			if (!leaf.lf_next)
+			if (!leaf.lf_next || error)
 				break;
 			leaf_no = leaf.lf_next;
 			log_debug( _("Leaf chain 0x%llx detected.\n"),
