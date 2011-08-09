@@ -1215,6 +1215,10 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		   words, we would introduce file system corruption. So we
 		   need to keep track of the fact that it's invalid and
 		   skip parts that we can't be sure of based on dinode type. */
+		log_debug("Invalid mode dinode found at block %lld (0x%llx): "
+			  "Invalidating all its metadata.\n",
+			  (unsigned long long)ip->i_di.di_num.no_addr,
+			  (unsigned long long)ip->i_di.di_num.no_addr);
 		check_metatree(ip, &invalidate_fxns);
 		if (fsck_blockmap_set(ip, block, _("invalid mode"),
 				      gfs2_inode_invalid))

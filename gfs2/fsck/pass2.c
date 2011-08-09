@@ -267,7 +267,10 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		/* This entry's inode has bad blocks in it */
 
 		/* Handle bad blocks */
-		log_err( _("Found a bad directory entry: %s\n"), tmp_name);
+		log_err( _("Found directory entry '%s' pointing to invalid "
+			   "block %lld (0x%llx)\n"), tmp_name,
+			 (unsigned long long)entryblock,
+			 (unsigned long long)entryblock);
 
 		if (!query( _("Delete inode containing bad blocks? (y/n)"))) {
 			log_warn( _("Entry to inode containing bad blocks remains\n"));
@@ -284,6 +287,9 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			fsck_inode_put(&entry_ip);
 		fsck_blockmap_set(ip, entryblock,
 				  _("bad directory entry"), gfs2_block_free);
+		log_err( _("Inode %lld (0x%llx) was deleted.\n"),
+			 (unsigned long long)entryblock,
+			 (unsigned long long)entryblock);
 		goto nuke_dentry;
 	}
 	if (q < gfs2_inode_dir || q > gfs2_inode_sock) {
@@ -359,7 +365,9 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	}
 
 	if (!strcmp(".", tmp_name)) {
-		log_debug( _("Found . dentry\n"));
+		log_debug( _("Found . dentry in directory %lld (0x%llx)\n"),
+			     (unsigned long long)ip->i_di.di_num.no_addr,
+			     (unsigned long long)ip->i_di.di_num.no_addr);
 
 		if (ds->dotdir) {
 			log_err( _("Already found '.' entry in directory %llu"
@@ -417,9 +425,11 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		goto dentry_is_valid;
 	}
 	if (!strcmp("..", tmp_name)) {
-		log_debug( _("Found .. dentry\n"));
+		log_debug( _("Found '..' dentry in directory %lld (0x%llx)\n"),
+			     (unsigned long long)ip->i_di.di_num.no_addr,
+			     (unsigned long long)ip->i_di.di_num.no_addr);
 		if (ds->dotdotdir) {
-			log_err( _("Already found '..' entry in directory %llu"
+			log_err( _("Already had a '..' entry in directory %llu"
 				"(0x%llx)\n"),
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr);

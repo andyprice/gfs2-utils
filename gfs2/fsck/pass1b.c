@@ -429,7 +429,7 @@ static int clear_a_reference(struct gfs2_sbd *sdp, struct duptree *b,
 			log_warn( _("The bad inode was not cleared...\n"));
 			continue;
 		}
-		log_warn( _("Clearing inode %lld (0x%llx)....\n"),
+		log_warn( _("Clearing inode %lld (0x%llx)...\n"),
 			  (unsigned long long)id->block_no,
 			  (unsigned long long)id->block_no);
 		clear_dup_fxns.private = (void *) dh;
@@ -600,7 +600,8 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *b)
 					  gfs2_meta_eattr);
 		fsck_inode_put(&ip); /* out, brelse, free */
 	} else {
-		log_debug( _("All duplicate references were resolved.\n"));
+		/* They may have answered no and not fixed all references. */
+		log_debug( _("All duplicate references were processed.\n"));
 	}
 	return 0;
 }

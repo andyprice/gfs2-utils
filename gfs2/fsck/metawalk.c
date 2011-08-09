@@ -335,7 +335,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		    de.de_name_len ||
 		    (de.de_inum.no_formal_ino && !de.de_name_len && !first)) {
 			log_err( _("Directory block %llu (0x%llx"
-				"), entry %d of directory %llu"
+				"), entry %d of directory %llu "
 				"(0x%llx) is corrupt.\n"),
 				(unsigned long long)bh->b_blocknr,
 				(unsigned long long)bh->b_blocknr,

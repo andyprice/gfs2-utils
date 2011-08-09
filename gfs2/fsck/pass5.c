@@ -85,7 +85,8 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer, unsigned int b
 				   "(0x%llx).\n"),
 				 (unsigned long long)block,
 				 (unsigned long long)block);
-			if (query(_("Do you want to fix the bitmap? (y/n) "))) {
+			if (query(_("Do you want to reclaim the block? "
+				   "(y/n) "))) {
 				if (gfs2_set_bitmap(sdp, block, block_status))
 					log_err(_("Unlinked block %llu "
 						  "(0x%llx) bitmap not fixed."
@@ -107,13 +108,12 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer, unsigned int b
 			const char *blockstatus[] = {"Free", "Data",
 						     "Unlinked", "inode"};
 
-			log_err( _("Ondisk and fsck bitmaps differ at"
-					" block %llu (0x%llx) \n"),
-				(unsigned long long)block,
-				(unsigned long long)block);
-			log_err( _("Ondisk status is %u (%s) but FSCK thinks it should be "),
-					rg_status, blockstatus[rg_status]);
-			log_err("%u (%s)\n", block_status, blockstatus[block_status]);
+			log_err( _("Block %llu (0x%llx) bitmap says %u (%s) "
+				   "but FSCK saw %u (%s)\n"),
+				 (unsigned long long)block,
+				 (unsigned long long)block, rg_status,
+				 blockstatus[rg_status], block_status,
+				 blockstatus[block_status]);
 			if (q) /* Don't print redundant "free" */
 				log_err( _("Metadata type is %u (%s)\n"), q,
 					 block_type_string(q));
@@ -170,8 +170,11 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_list *rgp,
 		update = 1;
 	}
 	if (rgp->rg.rg_dinodes != count[1]) {
-		log_err( _("Inode count inconsistent: is %u should be %u\n"),
-				rgp->rg.rg_dinodes, count[1]);
+		log_err( _("RG #%llu (0x%llx) Inode count inconsistent: is "
+			   "%u should be %u\n"),
+			 (unsigned long long)rgp->ri.ri_addr,
+			 (unsigned long long)rgp->ri.ri_addr,
+			 rgp->rg.rg_dinodes, count[1]);
 		rgp->rg.rg_dinodes = count[1];
 		update = 1;
 	}

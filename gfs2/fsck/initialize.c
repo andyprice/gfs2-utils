@@ -517,14 +517,14 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	uint64_t addl_mem_needed;
 	const char *level_desc[] = {
 		_("Checking if all rgrp and rindex values are good"),
-		_("Checking if rindex values are ascending and evenly spaced"),
+		_("Checking if rindex values may be easily repaired"),
 		_("Calculating where the rgrps should be if evenly spaced"),
 		_("Trying to rebuild rindex assuming evenly spaced rgrps"),
 		_("Trying to rebuild rindex assuming unevenly spaced rgrps"),
 	};
 	const char *fail_desc[] = {
 		_("Some damage was found; we need to take remedial measures"),
-		_("rindex is unevenly spaced: converted from gfs1 or corrupt"),
+		_("rindex is unevenly spaced: either gfs1-style or corrupt"),
 		_("rindex calculations don't match: uneven rgrp boundaries"),
 		_("Too many rgrp misses: rgrps must be unevenly spaced"),
 		_("Too much damage found: we cannot rebuild this rindex"),
@@ -582,16 +582,25 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	 *******************************************************************/
 	log_warn( _("Validating Resource Group index.\n"));
 	for (trust_lvl = blind_faith; trust_lvl <= indignation; trust_lvl++) {
+		int ret;
+
 		log_warn( _("Level %d rgrp check: %s.\n"), trust_lvl + 1,
 			  level_desc[trust_lvl]);
 		if ((rg_repair(sdp, trust_lvl, &rgcount, &sane) == 0) &&
-		    (ri_update(sdp, 0, &rgcount, &sane) == 0)) {
+		    ((ret = ri_update(sdp, 0, &rgcount, &sane)) == 0)) {
 			log_warn( _("(level %d passed)\n"), trust_lvl + 1);
 			break;
+		} else {
+			if (ret < 0)
+				log_err( _("(level %d failed: %s)\n"),
+					 trust_lvl + 1, fail_desc[trust_lvl]);
+			else
+				log_err( _("(level %d failed at block %lld "
+					   "(0x%llx): %s)\n"), trust_lvl + 1,
+					 (unsigned long long)ret,
+					 (unsigned long long)ret,
+					 fail_desc[trust_lvl]);
 		}
-		else
-			log_err( _("(level %d failed: %s)\n"), trust_lvl + 1,
-				 fail_desc[trust_lvl]);
 		if (fsck_abort)
 			break;
 	}
@@ -770,7 +779,7 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 	if (di->di_num.no_formal_ino == 2) {
 		if (sdp->sd_sb.sb_master_dir.no_addr)
 			return;
-		log_warn(_("Found system master directory at: 0x%llx\n"),
+		log_warn(_("Found system master directory at: 0x%llx.\n"),
 			 di->di_num.no_addr);
 		sdp->sd_sb.sb_master_dir.no_addr = di->di_num.no_addr;
 		return;
