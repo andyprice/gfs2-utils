@@ -373,7 +373,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 
 	*bh = NULL;
 
-	if (!valid_block(ip->i_sbd, block)){ /* blk outside of FS */
+	if (!valid_block(ip->i_sbd, block)) { /* blk outside of FS */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
 				  _("itself"), gfs2_bad_block);
 		log_debug( _("Bad indirect block (invalid/out of range) "
@@ -447,7 +447,7 @@ static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
 
 	*bh = NULL;
 
-	if (!valid_block(ip->i_sbd, block)){ /* blk outside of FS */
+	if (!valid_block(ip->i_sbd, block)) { /* blk outside of FS */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
 				  _("itself"), gfs2_block_free);
 		return 1;
@@ -868,7 +868,7 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
 	struct gfs2_buffer_head *bh = NULL;
 	int error;
 
-	if (!valid_block(sdp, el_blk)){
+	if (!valid_block(sdp, el_blk)) {
 		log_err( _("Inode #%llu (0x%llx): Extended Attribute block "
 			   "%llu (0x%llx) has an extended leaf block #%llu "
 			   "(0x%llx) that is invalid or out of range.\n"),
@@ -1060,7 +1060,7 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 	long *bad_pointers = (long *)private;
 	uint8_t q;
 
-	if (!valid_block(ip->i_sbd, block) != 0) {
+	if (!valid_block(ip->i_sbd, block)) {
 		(*bad_pointers)++;
 		log_info( _("Bad %s block pointer (invalid or out of range "
 			    "#%ld) found in inode %lld (0x%llx).\n"),

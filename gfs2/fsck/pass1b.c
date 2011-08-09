@@ -211,7 +211,7 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 	struct dup_handler *dh = (struct dup_handler *) private;
 	struct duptree *d;
 
-	if (!valid_block(ip->i_sbd, block) != 0)
+	if (!valid_block(ip->i_sbd, block))
 		return 0;
 
 	/* This gets tricky. We're traversing a metadata tree trying to
@@ -631,7 +631,7 @@ int pass1b(struct gfs2_sbd *sdp)
 	log_debug( _("Filesystem has %llu (0x%llx) blocks total\n"),
 		  (unsigned long long)last_fs_block,
 		  (unsigned long long)last_fs_block);
-	for(i = 0; i < last_fs_block; i++) {
+	for (i = 0; i < last_fs_block; i++) {
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			goto out;
 

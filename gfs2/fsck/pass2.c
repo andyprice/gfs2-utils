@@ -776,7 +776,7 @@ int pass2(struct gfs2_sbd *sdp)
 		return FSCK_OK;
 	log_info( _("Checking directory inodes.\n"));
 	/* Grab each directory inode, and run checks on it */
-	for(dirblk = 0; dirblk < last_fs_block; dirblk++) {
+	for (dirblk = 0; dirblk < last_fs_block; dirblk++) {
 		warm_fuzzy_stuff(dirblk);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;

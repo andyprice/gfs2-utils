@@ -45,13 +45,14 @@ static int convert_mark(uint8_t q, uint32_t *count)
 
 	default:
 		log_err( _("Invalid block type %d found\n"), q);
-		return -1;
 	}
 	return -1;
 }
 
-static int check_block_status(struct gfs2_sbd *sdp, char *buffer, unsigned int buflen,
-					   uint64_t *rg_block, uint64_t rg_data, uint32_t *count)
+
+static int check_block_status(struct gfs2_sbd *sdp, char *buffer,
+			      unsigned int buflen, uint64_t *rg_block,
+			      uint64_t rg_data, uint32_t *count)
 {
 	unsigned char *byte, *end;
 	unsigned int bit;
@@ -154,7 +155,8 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_list *rgp,
 
 		/* update the bitmaps */
 		check_block_status(sdp, rgp->bh[i]->b_data + bits->bi_offset,
-						   bits->bi_len, &rg_block, rgp->ri.ri_data0, count);
+				   bits->bi_len, &rg_block, rgp->ri.ri_data0,
+				   count);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return;
 	}

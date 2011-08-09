@@ -452,15 +452,14 @@ static int warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no,
 	}
 	if (*leaf_no == *bad_leaf ||
 	    (okay_to_fix = query( _("Attempt to patch around it? (y/n) ")))) {
-		if (!valid_block(ip->i_sbd, old_leaf) == 0)
+		if (valid_block(ip->i_sbd, old_leaf))
 			gfs2_put_leaf_nr(ip, pindex, old_leaf);
 		else
 			gfs2_put_leaf_nr(ip, pindex, first_ok_leaf);
 		log_err( _("Directory Inode %llu (0x%llx) repaired.\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
-	}
-	else
+	} else
 		log_err( _("Bad leaf left in place.\n"));
 	*bad_leaf = *leaf_no;
 	*leaf_no = old_leaf;
@@ -609,9 +608,9 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	   leaf. That way, bad blocks at the beginning will be overwritten
 	   with the first valid leaf. */
 	first_ok_leaf = leaf_no = -1;
-	for(lindex = 0; lindex < (1 << ip->i_di.di_depth); lindex++) {
+	for (lindex = 0; lindex < (1 << ip->i_di.di_depth); lindex++) {
 		gfs2_get_leaf_nr(ip, lindex, &leaf_no);
-		if (!valid_block(ip->i_sbd, leaf_no) == 0) {
+		if (valid_block(ip->i_sbd, leaf_no)) {
 			lbh = bread(sdp, leaf_no);
 			/* Make sure it's really a valid leaf block. */
 			if (gfs2_check_meta(lbh, GFS2_METATYPE_LF) == 0) {
@@ -637,11 +636,9 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		gfs2_get_leaf_nr(ip, lindex, &leaf_no);
 
 		/* GFS has multiple indirect pointers to the same leaf
-		 * until those extra pointers are needed, so skip the
-		 * dups */
+		 * until those extra pointers are needed, so skip the dups */
 		if (leaf_no == bad_leaf) {
-			gfs2_put_leaf_nr(ip, lindex, old_leaf); /* fill w/old
-								  leaf info */
+			gfs2_put_leaf_nr(ip, lindex, old_leaf);
 			ref_count++;
 			continue;
 		} else if (old_leaf == leaf_no) {
@@ -812,7 +809,7 @@ int delete_block(struct gfs2_inode *ip, uint64_t block,
 		 struct gfs2_buffer_head **bh, const char *btype,
 		 void *private)
 {
-	if (!valid_block(ip->i_sbd, block) == 0) {
+	if (valid_block(ip->i_sbd, block)) {
 		fsck_blockmap_set(ip, block, btype, gfs2_block_free);
 		return 0;
 	}
