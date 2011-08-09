@@ -336,7 +336,27 @@ static int check_num_ptrs(struct gfs2_inode *ip, uint64_t leafno,
 static int check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 {
 	struct block_count *bc = (struct block_count *) private;
+	uint8_t q;
 
+	/* Note if we've gotten this far, the block has already passed the
+	   check in metawalk: gfs2_check_meta(lbh, GFS2_METATYPE_LF).
+	   So we know it's a leaf block. */
+	q = block_type(block);
+	if (q != gfs2_block_free) {
+		log_err( _("Found duplicate block %llu (0x%llx) referenced "
+			   "as a directory leaf in dinode "
+			   "%llu (0x%llx) - was marked %d (%s)\n"),
+			 (unsigned long long)block,
+			 (unsigned long long)block,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr, q,
+			 block_type_string(q));
+		add_duplicate_ref(ip, block, ref_as_meta, 0, INODE_VALID);
+		if (q == gfs2_leaf_blk) /* If the previous reference also saw
+					   this as a leaf, it was already
+					   checked, so don't check again. */
+			return -EEXIST;
+	}
 	fsck_blockmap_set(ip, block, _("directory leaf"), gfs2_leaf_blk);
 	bc->indir_count++;
 	return 0;
