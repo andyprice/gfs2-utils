@@ -784,12 +784,12 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 	osi_list_t *exp, *act; /* expected, actual */
 	struct gfs2_rindex buf;
 
-	/* Free previous incarnations in memory, if any. */
-	gfs2_rgrp_free(&sdp->rglist);
-
 	if (trust_lvl == blind_faith)
 		return 0;
-	else if (trust_lvl == ye_of_little_faith) { /* if rindex seems sane */
+	if (trust_lvl == ye_of_little_faith) { /* if rindex seems sane */
+		/* Don't free previous incarnations in memory, if any.
+		 * We need them to copy in the next function:
+		 * gfs2_rgrp_free(&sdp->rglist); */
 		if (!(*sane)) {
 			log_err(_("The rindex file does not meet our "
 				  "expectations.\n"));
@@ -802,6 +802,9 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 			return error;
 		}
 	} else if (trust_lvl == open_minded) { /* If we can't trust RG index */
+		/* Free previous incarnations in memory, if any. */
+		gfs2_rgrp_free(&sdp->rglist);
+
 		/* Calculate our own RG index for comparison */
 		error = gfs2_rindex_calculate(sdp, &expected_rglist,
 					      &calc_rg_count);
@@ -811,6 +814,9 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 		}
 	}
 	else if (trust_lvl == distrust) { /* If we can't trust RG index */
+		/* Free previous incarnations in memory, if any. */
+		gfs2_rgrp_free(&sdp->rglist);
+
 		error = gfs2_rindex_rebuild(sdp, &expected_rglist,
 					    &calc_rg_count, 0);
 		if (error) {
@@ -821,6 +827,9 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 		sdp->rgrps = calc_rg_count;
 	}
 	else if (trust_lvl == indignation) { /* If we can't trust anything */
+		/* Free previous incarnations in memory, if any. */
+		gfs2_rgrp_free(&sdp->rglist);
+
 		error = gfs2_rindex_rebuild(sdp, &expected_rglist,
 					    &calc_rg_count, 1);
 		if (error) {
