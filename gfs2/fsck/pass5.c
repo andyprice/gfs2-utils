@@ -81,8 +81,8 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer, unsigned int b
 		   So we ignore it. */
 		if (rg_status == GFS2_BLKST_UNLINKED &&
 		    block_status == GFS2_BLKST_FREE) {
-			log_err( _("Unlinked inode block found at "
-				   "block %llu (0x%llx).\n"),
+			log_err( _("Unlinked inode found at block %llu "
+				   "(0x%llx).\n"),
 				 (unsigned long long)block,
 				 (unsigned long long)block);
 			if (query(_("Do you want to fix the bitmap? (y/n) "))) {
@@ -114,16 +114,17 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer, unsigned int b
 			log_err( _("Ondisk status is %u (%s) but FSCK thinks it should be "),
 					rg_status, blockstatus[rg_status]);
 			log_err("%u (%s)\n", block_status, blockstatus[block_status]);
-			log_err( _("Metadata type is %u (%s)\n"), q,
-					block_type_string(q));
+			if (q) /* Don't print redundant "free" */
+				log_err( _("Metadata type is %u (%s)\n"), q,
+					 block_type_string(q));
 
 			if (query(_("Fix bitmap for block %llu (0x%llx) ? (y/n) "),
 				 (unsigned long long)block,
 				 (unsigned long long)block)) {
 				if (gfs2_set_bitmap(sdp, block, block_status))
-					log_err( _("Failed.\n"));
+					log_err( _("Repair failed.\n"));
 				else
-					log_err( _("Succeeded.\n"));
+					log_err( _("Fixed.\n"));
 			} else
 				log_err( _("Bitmap at block %llu (0x%llx) left inconsistent\n"),
 					(unsigned long long)block,

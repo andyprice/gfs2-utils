@@ -47,12 +47,13 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
 		const char *allocdesc[] = {"free space", "data", "unlinked",
 					   "inode", "reserved"};
 
-		log_err( _("Block %llu (0x%llx) seems to be %s, but is "
-			   "marked as %s in the bitmap.\n"),
+		/* Keep these messages as short as possible, or the output
+		   gets to be huge and unmanageable. */
+		log_err( _("Block %llu (0x%llx) was '%s', should be %s.\n"),
 			 (unsigned long long)blk, (unsigned long long)blk,
 			 allocdesc[new_bitmap_state],
 			 allocdesc[old_bitmap_state]);
-		if (query( _("Okay to fix the bitmap? (y/n)"))) {
+		if (query( _("Fix the bitmap? (y/n)"))) {
 			/* If the new bitmap state is free (and therefore the
 			   old state was not) we have to add to the free
 			   space in the rgrp. If the old bitmap state was

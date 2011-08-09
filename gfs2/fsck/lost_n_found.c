@@ -69,8 +69,8 @@ static void add_dotdot(struct gfs2_inode *ip)
 				  (unsigned long long)ip->i_di.di_num.no_addr,
 				  (unsigned long long)di->dotdot_parent);
 		else
-			log_debug(_("Couldn't find a valid \"..\" entry "
-				    "for orphan directory %lld (0x%llx)\n"),
+			log_debug(_("Couldn't find directory %lld (0x%llx) "
+				    "in directory tree.\n"),
 				  (unsigned long long)ip->i_di.di_num.no_addr,
 				  (unsigned long long)ip->i_di.di_num.no_addr);
 	}
@@ -226,7 +226,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 		incr_link_count(lf_dip->i_di.di_num.no_addr,
 				ip->i_di.di_mode, _("to lost+found"));
 
-	log_notice( _("Added inode #%llu (0x%llx) to lost+found dir\n"),
+	log_notice( _("Added inode #%llu (0x%llx) to lost+found\n"),
 		    (unsigned long long)ip->i_di.di_num.no_addr,
 		    (unsigned long long)ip->i_di.di_num.no_addr);
 	gfs2_dinode_out(&lf_dip->i_di, lf_dip->i_bh);
