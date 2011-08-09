@@ -602,7 +602,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	struct gfs2_buffer_head *lbh;
 	int lindex;
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	int ref_count = 0;
+	int ref_count = 0, old_was_dup;
 
 	/* Find the first valid leaf pointer in range and use it as our "old"
 	   leaf. That way, bad blocks at the beginning will be overwritten
@@ -630,7 +630,8 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	}
 	old_leaf = -1;
 	memset(&oldleaf, 0, sizeof(oldleaf));
-	for(lindex = 0; lindex < (1 << ip->i_di.di_depth); lindex++) {
+	old_was_dup = 0;
+	for (lindex = 0; lindex < (1 << ip->i_di.di_depth); lindex++) {
 		if (fsck_abort)
 			break;
 		gfs2_get_leaf_nr(ip, lindex, &leaf_no);
@@ -649,7 +650,11 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		do {
 			if (fsck_abort)
 				return 0;
-			if (pass->check_num_ptrs &&
+			/* If the old leaf was a duplicate referenced by a
+			   previous dinode, we can't check the number of
+			   pointers because the number of pointers may be for
+			   that other dinode's reference, not this one. */
+			if (pass->check_num_ptrs && !old_was_dup &&
 			    valid_block(ip->i_sbd, old_leaf)) {
 				error = pass->check_num_ptrs(ip, old_leaf,
 							     &ref_count,
@@ -661,6 +666,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			error = check_leaf(ip, lindex, pass, &ref_count,
 					   &leaf_no, old_leaf, &bad_leaf,
 					   first_ok_leaf, &leaf, &oldleaf);
+			old_was_dup = (error == -EEXIST);
 			old_leaf = leaf_no;
 			memcpy(&oldleaf, &leaf, sizeof(oldleaf));
 			if (!leaf.lf_next || error)
