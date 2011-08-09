@@ -61,39 +61,40 @@ static int set_parent_dir(struct gfs2_sbd *sdp, uint64_t childblock,
 
 /* Set's the child's '..' directory inode number in dir_info structure */
 static int set_dotdot_dir(struct gfs2_sbd *sdp, uint64_t childblock,
-				   uint64_t parentblock)
+			  uint64_t parentblock)
 {
 	struct dir_info *di;
 
 	di = dirtree_find(childblock);
-	if (di) {
-		if (di->dinode == childblock) {
-			/* Special case for root inode because we set
-			 * it earlier */
-			if (di->dotdot_parent && sdp->md.rooti->i_di.di_num.no_addr
-			   != di->dinode) {
-				/* This should never happen */
-				log_crit( _("Dotdot parent already set for"
-					    " block %llu (0x%llx) -> %llu"
-					    " (0x%llx)\n"),
-					 (unsigned long long)childblock,
-					 (unsigned long long)childblock,
-					 (unsigned long long)di->dotdot_parent,
-					 (unsigned long long)di->dotdot_parent);
-				return -1;
-			}
-			di->dotdot_parent = parentblock;
-		}
-	} else {
-		log_err( _("Unable to find block %llu (0x%llx"
-			   ") in dir_info list\n"),
-			(unsigned long long)childblock,
-			(unsigned long long)childblock);
+	if (!di) {
+		log_err( _("Unable to find block %"PRIu64" (0x%" PRIx64
+			   ") in dir_info tree\n"), childblock, childblock);
 		return -1;
 	}
-
+	if (di->dinode != childblock) {
+		log_debug("'..' doesn't point to what we found: childblock "
+			  "0x%llx != dinode 0x%llx\n",
+			  (unsigned long long)childblock,
+			  (unsigned long long)di->dinode);
+		return -1;
+	}
+	/* Special case for root inode because we set it earlier */
+	if (di->dotdot_parent &&
+	    sdp->md.rooti->i_di.di_num.no_addr != di->dinode) {
+		/* This should never happen */
+		log_crit( _("Dotdot parent already set for block %llu (0x%llx)"
+			    "-> %llu (0x%llx)\n"),
+			  (unsigned long long)childblock,
+			  (unsigned long long)childblock,
+			  (unsigned long long)di->dotdot_parent,
+			  (unsigned long long)di->dotdot_parent);
+		return -1;
+	}
+	log_debug("Setting '..' for directory block 0x%llx to parent 0x%llx\n",
+		  (unsigned long long)childblock,
+		  (unsigned long long)parentblock);
+	di->dotdot_parent = parentblock;
 	return 0;
-
 }
 
 static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
