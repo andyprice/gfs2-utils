@@ -35,6 +35,10 @@ extern void reprocess_inode(struct gfs2_inode *ip, const char *desc);
 extern struct duptree *dupfind(uint64_t block);
 extern struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
 					    uint64_t block);
+extern int find_remove_dup(struct gfs2_inode *ip, uint64_t block,
+			   const char *btype);
+extern int free_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
+				const char *btype);
 
 #define is_duplicate(dblock) ((dupfind(dblock)) ? 1 : 0)
 

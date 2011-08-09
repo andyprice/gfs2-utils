@@ -188,6 +188,30 @@ static struct duptree *gfs2_dup_set(uint64_t dblock, int create)
 	return data;
 }
 
+/**
+ * find_dup_ref_inode - find a duplicate reference inode entry for an inode
+ */
+struct inode_with_dups *find_dup_ref_inode(struct duptree *dt,
+					   struct gfs2_inode *ip)
+{
+	osi_list_t *ref;
+	struct inode_with_dups *id;
+
+	osi_list_foreach(ref, &dt->ref_invinode_list) {
+		id = osi_list_entry(ref, struct inode_with_dups, list);
+
+		if (id->block_no == ip->i_di.di_num.no_addr)
+			return id;
+	}
+	osi_list_foreach(ref, &dt->ref_inode_list) {
+		id = osi_list_entry(ref, struct inode_with_dups, list);
+
+		if (id->block_no == ip->i_di.di_num.no_addr)
+			return id;
+	}
+	return NULL;
+}
+
 /*
  * add_duplicate_ref - Add a duplicate reference to the duplicates tree list
  * A new element of the tree will be created as needed
@@ -196,15 +220,19 @@ static struct duptree *gfs2_dup_set(uint64_t dblock, int create)
  * So we need to recreate the duplicate reference structure if it's not there.
  * Later, in pass1b, it has to go back through the file system
  * and figure out those original references in order to resolve them.
+ *
+ * first - if 1, we're being called from pass1b, in which case we're trying
+ *         to find the first reference to this block.  If 0, we're being
+ *         called from pass1, which is the second reference, which determined
+ *         it was a duplicate..
  */
 int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 		      enum dup_ref_type reftype, int first, int inode_valid)
 {
-	osi_list_t *ref;
-	struct inode_with_dups *id, *found_id;
+	struct inode_with_dups *id;
 	struct duptree *dt;
 
-	if (!valid_block(ip->i_sbd, block) != 0)
+	if (!valid_block(ip->i_sbd, block))
 		return 0;
 	/* If this is not the first reference (i.e. all calls from pass1) we
 	   need to create the duplicate reference. If this is pass1b, we want
@@ -224,65 +252,42 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	   reference, we don't want to increment the reference count because
 	   it's already accounted for. */
 	if (first) {
-		if (!dt->first_ref_found) {
-			dt->first_ref_found = 1;
-			dups_found_first++; /* We found another first ref. */
-		}
+		dt->first_ref_found = 1;
+		dups_found_first++; /* We found another first ref. */
 	} else {
 		dt->refs++;
 	}
 
-	/* Check for a previous reference to this duplicate on the "invalid
-	   inode" reference list. */
-	found_id = NULL;
-	osi_list_foreach(ref, &dt->ref_invinode_list) {
-		id = osi_list_entry(ref, struct inode_with_dups, list);
-
-		if (id->block_no == ip->i_di.di_num.no_addr) {
-			found_id = id;
-			break;
-		}
-	}
-	if (found_id == NULL) {
-		osi_list_foreach(ref, &dt->ref_inode_list) {
-			id = osi_list_entry(ref, struct inode_with_dups, list);
-
-			if (id->block_no == ip->i_di.di_num.no_addr) {
-				found_id = id;
-				break;
-			}
-		}
-	}
-	if (found_id == NULL) {
+	/* Check for a previous reference to this duplicate */
+	id = find_dup_ref_inode(dt, ip);
+	if (id == NULL) {
 		/* Check for the inode on the invalid inode reference list. */
 		uint8_t q;
 
-		if (!(found_id = malloc(sizeof(*found_id)))) {
+		if (!(id = malloc(sizeof(*id)))) {
 			log_crit( _("Unable to allocate "
 				    "inode_with_dups structure\n"));
 			return -1;
 		}
-		if (!(memset(found_id, 0, sizeof(*found_id)))) {
+		if (!(memset(id, 0, sizeof(*id)))) {
 			log_crit( _("Unable to zero inode_with_dups "
 				    "structure\n"));
 			return -1;
 		}
-		found_id->block_no = ip->i_di.di_num.no_addr;
+		id->block_no = ip->i_di.di_num.no_addr;
 		q = block_type(ip->i_di.di_num.no_addr);
 		/* If it's an invalid dinode, put it first on the invalid
 		   inode reference list otherwise put it on the normal list. */
 		if (!inode_valid || q == gfs2_inode_invalid)
-			osi_list_add_prev(&found_id->list,
-					  &dt->ref_invinode_list);
+			osi_list_add_prev(&id->list, &dt->ref_invinode_list);
 		else
-			osi_list_add_prev(&found_id->list,
-					  &dt->ref_inode_list);
+			osi_list_add_prev(&id->list, &dt->ref_inode_list);
 	}
-	found_id->reftypecount[reftype]++;
-	found_id->dup_count++;
+	id->reftypecount[reftype]++;
+	id->dup_count++;
 	log_info( _("Found %d reference(s) to block %llu"
 		    " (0x%llx) as %s in inode #%llu (0x%llx)\n"),
-		  found_id->dup_count, (unsigned long long)block,
+		  id->dup_count, (unsigned long long)block,
 		  (unsigned long long)block, reftypes[reftype],
 		  (unsigned long long)ip->i_di.di_num.no_addr,
 		  (unsigned long long)ip->i_di.di_num.no_addr);
@@ -346,6 +351,14 @@ struct dir_info *dirtree_find(uint64_t block)
 	return NULL;
 }
 
+void dup_listent_delete(struct inode_with_dups *id)
+{
+	if (id->name)
+		free(id->name);
+	osi_list_del(&id->list);
+	free(id);
+}
+
 void dup_delete(struct duptree *b)
 {
 	struct inode_with_dups *id;
@@ -354,18 +367,12 @@ void dup_delete(struct duptree *b)
 	while (!osi_list_empty(&b->ref_invinode_list)) {
 		tmp = (&b->ref_invinode_list)->next;
 		id = osi_list_entry(tmp, struct inode_with_dups, list);
-		if (id->name)
-			free(id->name);
-		osi_list_del(&id->list);
-		free(id);
+		dup_listent_delete(id);
 	}
 	while (!osi_list_empty(&b->ref_inode_list)) {
 		tmp = (&b->ref_inode_list)->next;
 		id = osi_list_entry(tmp, struct inode_with_dups, list);
-		if (id->name)
-			free(id->name);
-		osi_list_del(&id->list);
-		free(id);
+		dup_listent_delete(id);
 	}
 	osi_erase(&b->node, &dup_blocks);
 	free(b);

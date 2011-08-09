@@ -440,7 +440,6 @@ static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
 			       struct gfs2_buffer_head **bh, int h,
 			       void *private)
 {
-	struct duptree *d;
 	int found_dup = 0, iblk_type;
 	struct gfs2_buffer_head *nbh;
 	struct block_count *bc = (struct block_count *)private;
@@ -457,20 +456,7 @@ static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
 	else
 		iblk_type = GFS2_METATYPE_IN;
 
-	d = dupfind(block);
-	if (d) {
-		log_err( _("Reversing duplicate status of block %llu (0x%llx) "
-			   "referenced as metadata in indirect block for "
-			   "dinode %llu (0x%llx)\n"),
-			 (unsigned long long)block,
-			 (unsigned long long)block,
-			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)ip->i_di.di_num.no_addr);
-		d->refs--; /* one less reference */
-		if (d->refs == 1)
-			dup_delete(d);
-		found_dup = 1;
-	}
+	found_dup = find_remove_dup(ip, block, _("Metadata"));
 	nbh = bread(ip->i_sbd, block);
 
 	if (gfs2_check_meta(nbh, iblk_type)) {
@@ -550,7 +536,6 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
 			   void *private)
 {
-	struct duptree *d;
 	struct block_count *bc = (struct block_count *) private;
 
 	if (!valid_block(ip->i_sbd, block)) {
@@ -562,23 +547,8 @@ static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
 				  gfs2_block_free);
 		return 1;
 	}
-	d = dupfind(block);
-	if (d) {
-		log_err( _("Reversing duplicate status of block %llu (0x%llx) "
-			   "referenced as data by dinode %llu (0x%llx)\n"),
-			 (unsigned long long)block,
-			 (unsigned long long)block,
-			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)ip->i_di.di_num.no_addr);
-		d->refs--; /* one less reference */
-		if (d->refs == 1)
-			dup_delete(d);
-		bc->data_count--;
-		return 1;
-	}
-	fsck_blockmap_set(ip, block, _("data"), gfs2_block_free);
 	bc->data_count--;
-	return 0;
+	return free_block_if_notdup(ip, block, _("data"));
 }
 
 static int remove_inode_eattr(struct gfs2_inode *ip, struct block_count *bc)

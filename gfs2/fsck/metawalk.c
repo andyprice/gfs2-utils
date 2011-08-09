@@ -823,6 +823,54 @@ int delete_block(struct gfs2_inode *ip, uint64_t block,
 }
 
 /**
+ * find_remove_dup - find out if this is a duplicate ref.  If so, remove it.
+ * Returns: 0 if not a duplicate reference, 1 if it is.
+ */
+int find_remove_dup(struct gfs2_inode *ip, uint64_t block, const char *btype)
+{
+	struct duptree *d;
+	struct inode_with_dups *id;
+
+	d = dupfind(block);
+	if (!d)
+		return 0;
+
+	/* remove the inode reference id structure for this reference. */
+	id = find_dup_ref_inode(d, ip);
+	if (!id)
+		return 0;
+
+	dup_listent_delete(id);
+	log_err( _("Removing duplicate status of block %llu (0x%llx) "
+		   "referenced as %s by dinode %llu (0x%llx)\n"),
+		 (unsigned long long)block, (unsigned long long)block,
+		 btype, (unsigned long long)ip->i_di.di_num.no_addr,
+		 (unsigned long long)ip->i_di.di_num.no_addr);
+	d->refs--; /* one less reference */
+	if (d->refs == 1) {
+		log_info( _("This leaves only one reference: it's "
+			    "no longer a duplicate.\n"));
+		dup_delete(d); /* not duplicate now */
+	} else
+		log_info( _("%d block reference(s) remain.\n"),
+			  d->refs);
+	return 1; /* but the original ref still exists so do not free it. */
+}
+
+/**
+ * free_block_if_notdup - free blocks associated with an inode, but if it's a
+ *                        duplicate, just remove that designation instead.
+ * Returns: 0 if the block was freed, 1 if a duplicate reference was removed
+ */
+int free_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
+			 const char *btype)
+{
+	if (!find_remove_dup(ip, block, btype))
+		fsck_blockmap_set(ip, block, btype, gfs2_block_free);
+	return 0;
+}
+
+/**
  * delete_block_if_notdup - delete blocks associated with an inode
  *
  * Ignore blocks that are already marked free.
@@ -834,7 +882,6 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 				  const char *btype, void *private)
 {
 	uint8_t q;
-	struct duptree *d;
 
 	if (!valid_block(ip->i_sbd, block))
 		return -EFAULT;
@@ -849,20 +896,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
 		return 0;
 	}
-	d = dupfind(block);
-	if (d) {
-		log_info( _("Removing duplicate reference %d "
-			    "to block %lld (0x%llx).\n"), d->refs,
-			  (unsigned long long)block,
-			  (unsigned long long)block);
-		d->refs--; /* one less reference */
-		if (d->refs == 1) /* If down to the last reference */
-			dup_delete(d); /* not duplicate now */
-		return 1; /* but the original ref still exists
-			     so return (do not free it). */
-	}
-	fsck_blockmap_set(ip, block, btype, gfs2_block_free);
-	return 0;
+	return free_block_if_notdup(ip, block, btype);
 }
 
 /**

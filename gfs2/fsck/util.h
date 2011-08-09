@@ -15,6 +15,10 @@ void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked);
 void warm_fuzzy_stuff(uint64_t block);
 int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 		      enum dup_ref_type reftype, int first, int inode_valid);
+extern struct inode_with_dups *find_dup_ref_inode(struct duptree *dt,
+						  struct gfs2_inode *ip);
+extern void dup_listent_delete(struct inode_with_dups *id);
+
 extern const char *reftypes[3];
 
 static inline uint8_t block_type(uint64_t bblock)
