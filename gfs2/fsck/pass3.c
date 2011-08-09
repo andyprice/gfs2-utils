@@ -80,102 +80,98 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 {
 	struct dir_info *pdi;
 	uint8_t q_dotdot, q_treewalk;
+	int error = 0;
 
 	di->checked = 1;
 
 	if (!di->treewalk_parent)
 		return NULL;
 
-	if (di->dotdot_parent != di->treewalk_parent) {
-		log_warn( _("Directory '..' and treewalk connections disagree for inode %llu"
-				 " (0x%llx)\n"), (unsigned long long)di->dinode,
-			(unsigned long long)di->dinode);
-		log_notice( _("'..' has %llu (0x%llx), treewalk has %llu"
-			      " (0x%llx)\n"),
-			   (unsigned long long)di->dotdot_parent,
-			   (unsigned long long)di->dotdot_parent,
-			   (unsigned long long)di->treewalk_parent,
-			   (unsigned long long)di->treewalk_parent);
-		q_dotdot = block_type(di->dotdot_parent);
-		q_treewalk = block_type(di->treewalk_parent);
-		/* if the dotdot entry isn't a directory, but the
-		 * treewalk is, treewalk is correct - if the treewalk
-		 * entry isn't a directory, but the dotdot is, dotdot
-		 * is correct - if both are directories, which do we
-		 * choose? if neither are directories, we have a
-		 * problem - need to move this directory into lost+found
-		 */
-		if (q_dotdot != gfs2_inode_dir) {
-			if (q_treewalk != gfs2_inode_dir) {
-				log_err( _("Orphaned directory, move to lost+found\n"));
-				return NULL;
-			}
-			else {
-				log_warn( _("Treewalk parent is correct,"
-					    " fixing dotdot -> %llu (0x%llx)\n"),
-					 (unsigned long long)di->treewalk_parent,
-					 (unsigned long long)di->treewalk_parent);
-				attach_dotdot_to(sdp, di->treewalk_parent,
-								 di->dotdot_parent, di->dinode);
-				di->dotdot_parent = di->treewalk_parent;
-			}
-		} else {
-			if (q_treewalk != gfs2_inode_dir) {
-				int error = 0;
-				log_warn( _(".. parent is valid, but treewalk"
-						 "is bad - reattaching to lost+found"));
-
-				/* FIXME: add a dinode for this entry instead? */
-
-				if (query( _("Remove directory entry for bad"
-					    " inode %llu (0x%llx) in %llu"
-					    " (0x%llx)? (y/n)"),
-					(unsigned long long)di->dinode,
-					(unsigned long long)di->dinode,
-					(unsigned long long)di->treewalk_parent,
-					(unsigned long long)di->treewalk_parent)) {
-					error = remove_dentry_from_dir(sdp, di->treewalk_parent,
-												   di->dinode);
-					if (error < 0) {
-						stack;
-						return NULL;
-					}
-					if (error > 0) {
-						log_warn( _("Unable to find dentry for block %llu"
-							" (0x%llx) in %llu (0x%llx)\n"),
-							 (unsigned long long)di->dinode,
-							(unsigned long long)di->dinode,
-							(unsigned long long)di->treewalk_parent,
-							(unsigned long long)di->treewalk_parent);
-					}
-					log_warn( _("Directory entry removed\n"));
-				} else {
-					log_err( _("Directory entry to invalid inode remains\n"));
-				}
-				log_info( _("Marking directory unlinked\n"));
-
-				return NULL;
-			}
-			else {
-				log_err( _("Both .. and treewalk parents are "
-					   "directories, going with treewalk "
-					   "for now...\n"));
-				attach_dotdot_to(sdp, di->treewalk_parent,
-						 di->dotdot_parent,
-						 di->dinode);
-				di->dotdot_parent = di->treewalk_parent;
-			}
-		}
-	}
-	else {
+	if (di->dotdot_parent == di->treewalk_parent) {
 		q_dotdot = block_type(di->dotdot_parent);
 		if (q_dotdot != gfs2_inode_dir) {
-			log_err( _("Orphaned directory at block %llu (0x%llx) moved to lost+found\n"),
-				(unsigned long long)di->dinode,
-				(unsigned long long)di->dinode);
+			log_err( _("Orphaned directory at block %llu (0x%llx) "
+				   "moved to lost+found\n"),
+				 (unsigned long long)di->dinode,
+				 (unsigned long long)di->dinode);
 			return NULL;
 		}
+		goto out;
 	}
+
+	log_warn( _("Directory '..' and treewalk connections disagree for "
+		    "inode %llu (0x%llx)\n"), (unsigned long long)di->dinode,
+		  (unsigned long long)di->dinode);
+	log_notice( _("'..' has %llu (0x%llx), treewalk has %llu (0x%llx)\n"),
+		    (unsigned long long)di->dotdot_parent,
+		    (unsigned long long)di->dotdot_parent,
+		    (unsigned long long)di->treewalk_parent,
+		    (unsigned long long)di->treewalk_parent);
+	q_dotdot = block_type(di->dotdot_parent);
+	q_treewalk = block_type(di->treewalk_parent);
+	/* if the dotdot entry isn't a directory, but the
+	 * treewalk is, treewalk is correct - if the treewalk
+	 * entry isn't a directory, but the dotdot is, dotdot
+	 * is correct - if both are directories, which do we
+	 * choose? if neither are directories, we have a
+	 * problem - need to move this directory into lost+found
+	 */
+	if (q_dotdot != gfs2_inode_dir) {
+		if (q_treewalk != gfs2_inode_dir) {
+			log_err( _("Orphaned directory, move to "
+				   "lost+found\n"));
+			return NULL;
+		} else {
+			log_warn( _("Treewalk parent is correct, fixing "
+				    "dotdot -> %llu (0x%llx)\n"),
+				  (unsigned long long)di->treewalk_parent,
+				  (unsigned long long)di->treewalk_parent);
+			attach_dotdot_to(sdp, di->treewalk_parent,
+					 di->dotdot_parent, di->dinode);
+			di->dotdot_parent = di->treewalk_parent;
+		}
+		goto out;
+	}
+	if (q_treewalk == gfs2_inode_dir) {
+		log_err( _("Both .. and treewalk parents are directories, "
+			   "going with treewalk...\n"));
+		attach_dotdot_to(sdp, di->treewalk_parent,
+				 di->dotdot_parent, di->dinode);
+		di->dotdot_parent = di->treewalk_parent;
+		goto out;
+	}
+	log_warn( _(".. parent is valid, but treewalk is bad - reattaching to "
+		    "lost+found"));
+
+	/* FIXME: add a dinode for this entry instead? */
+
+	if (!query( _("Remove directory entry for bad inode %llu (0x%llx) in "
+		      "%llu (0x%llx)? (y/n)"),
+		    (unsigned long long)di->dinode,
+		    (unsigned long long)di->dinode,
+		    (unsigned long long)di->treewalk_parent,
+		    (unsigned long long)di->treewalk_parent)) {
+		log_err( _("Directory entry to invalid inode remains\n"));
+		return NULL;
+	}
+	error = remove_dentry_from_dir(sdp, di->treewalk_parent, di->dinode);
+	if (error < 0) {
+		stack;
+		return NULL;
+	}
+	if (error > 0)
+		log_warn( _("Unable to find dentry for block %llu"
+			    " (0x%llx) in %llu (0x%llx)\n"),
+			  (unsigned long long)di->dinode,
+			  (unsigned long long)di->dinode,
+			  (unsigned long long)di->treewalk_parent,
+			  (unsigned long long)di->treewalk_parent);
+	log_warn( _("Directory entry removed\n"));
+	log_info( _("Marking directory unlinked\n"));
+
+	return NULL;
+
+out:
 	pdi = dirtree_find(di->dotdot_parent);
 
 	return pdi;
