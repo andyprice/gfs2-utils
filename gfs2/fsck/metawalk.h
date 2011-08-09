@@ -89,6 +89,9 @@ struct metawalk_fxns {
 	int (*finish_eattr_indir) (struct gfs2_inode *ip, int leaf_pointers,
 				   int leaf_pointer_errors, void *private);
 	void (*big_file_msg) (struct gfs2_inode *ip, uint64_t blks_checked);
+	int (*check_num_ptrs) (struct gfs2_inode *ip, uint64_t leafno,
+			       int *ref_count, int *lindex,
+			       struct gfs2_leaf *leaf);
 };
 
 #endif /* _METAWALK_H */
