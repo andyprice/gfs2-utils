@@ -1758,7 +1758,7 @@ static int block_has_extended_info(void)
 /* ------------------------------------------------------------------------ */
 static void read_superblock(int fd)
 {
-	int count;
+	int count, sane;
 
 	sbd1 = (struct gfs_sb *)&sbd.sd_sb;
 	ioctl(fd, BLKFLSBUF, 0);
@@ -1810,11 +1810,7 @@ static void read_superblock(int fd)
 		sbd.sd_diptrs = (sbd.bsize - sizeof(struct gfs_dinode)) /
 			sizeof(uint64_t);
 		sbd.md.riinode = inode_read(&sbd, sbd1->sb_rindex_di.no_addr);
-		sbd.fssize = sbd.device.length;
-		gfs1_rindex_read(&sbd, 0, &count);
 	} else {
-		int sane;
-
 		sbd.sd_inptrs = (sbd.bsize - sizeof(struct gfs2_meta_header)) /
 			sizeof(uint64_t);
 		sbd.sd_diptrs = (sbd.bsize - sizeof(struct gfs2_dinode)) /
@@ -1822,11 +1818,10 @@ static void read_superblock(int fd)
 		sbd.master_dir = inode_read(&sbd,
 					    sbd.sd_sb.sb_master_dir.no_addr);
 		gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
-		sbd.fssize = sbd.device.length;
-		if (sbd.md.riinode) /* If we found the rindex */
-			rindex_read(&sbd, 0, &count, &sane);
 	}
-
+	sbd.fssize = sbd.device.length;
+	if (sbd.md.riinode) /* If we found the rindex */
+		rindex_read(&sbd, 0, &count, &sane);
 }
 
 /* ------------------------------------------------------------------------ */

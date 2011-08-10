@@ -162,65 +162,6 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 }
 
 /**
- * gfs1_rindex_read - read in the rg index file
- *                  Stolen from libgfs2/super.c, but modified to handle gfs1.
- * @sdp: the incore superblock pointer
- * fd: optional file handle for rindex file (if meta_fs file system is mounted)
- *     (if fd is <= zero, it will read from raw device)
- * @count1: return count of the rgs.
- *
- * Returns: 0 on success, -1 on failure
- */
-int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1)
-{
-	unsigned int rg;
-	int error;
-	struct gfs2_rindex buf;
-	struct rgrp_list *rgd, *prev_rgd;
-	uint64_t prev_length = 0;
-
-	*count1 = 0;
-	prev_rgd = NULL;
-	for (rg = 0; ; rg++) {
-		if (fd > 0)
-			error = read(fd, &buf, sizeof(struct gfs2_rindex));
-		else
-			error = gfs2_readi(sdp->md.riinode, (char *)&buf,
-					   (rg * sizeof(struct gfs2_rindex)),
-					   sizeof(struct gfs2_rindex));
-		if (!error)
-			break;
-		if (error != sizeof(struct gfs2_rindex))
-			return -1;
-
-		rgd = (struct rgrp_list *)malloc(sizeof(struct rgrp_list));
-		if (!rgd) {
-			log_crit("Cannot allocate memory for rindex.\n");
-			exit(-1);
-		}
-		memset(rgd, 0, sizeof(struct rgrp_list));
-		osi_list_add_prev(&rgd->list, &sdp->rglist);
-
-		gfs2_rindex_in(&rgd->ri, (char *)&buf);
-
-		rgd->start = rgd->ri.ri_addr;
-		if (prev_rgd) {
-			prev_length = rgd->start - prev_rgd->start;
-			prev_rgd->length = prev_length;
-		}
-
-		if(gfs2_compute_bitstructs(sdp, rgd))
-			return -1;
-
-		(*count1)++;
-		prev_rgd = rgd;
-	}
-	if (prev_rgd)
-		prev_rgd->length = prev_length;
-	return 0;
-}
-
-/**
  * gfs1_ri_update - attach rgrps to the super block
  *                  Stolen from libgfs2/super.c, but modified to handle gfs1.
  * @sdp:
@@ -238,8 +179,9 @@ int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet)
 	int count1 = 0, count2 = 0;
 	uint64_t errblock = 0;
 	uint64_t rmax = 0;
+	int sane;
 
-	if (gfs1_rindex_read(sdp, fd, &count1))
+	if (rindex_read(sdp, fd, &count1, &sane))
 	    goto fail;
 	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
 		rgd = osi_list_entry(tmp, struct rgrp_list, list);
