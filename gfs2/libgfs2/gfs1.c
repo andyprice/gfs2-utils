@@ -161,55 +161,6 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 	free(mp);
 }
 
-/**
- * gfs1_ri_update - attach rgrps to the super block
- *                  Stolen from libgfs2/super.c, but modified to handle gfs1.
- * @sdp:
- *
- * Given the rgrp index inode, link in all rgrps into the super block
- * and be sure that they can be read.
- *
- * Returns: 0 on success, -1 on failure.
- */
-int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet)
-{
-	struct rgrp_list *rgd;
-	struct gfs2_rindex *ri;
-	osi_list_t *tmp;
-	int count1 = 0, count2 = 0;
-	uint64_t errblock = 0;
-	uint64_t rmax = 0;
-	int sane;
-
-	if (rindex_read(sdp, fd, &count1, &sane))
-	    goto fail;
-	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
-		rgd = osi_list_entry(tmp, struct rgrp_list, list);
-		errblock = gfs2_rgrp_read(sdp, rgd);
-		if (errblock)
-			return errblock;
-		count2++;
-		if (!quiet && count2 % 100 == 0) {
-			printf(".");
-			fflush(stdout);
-		}
-		ri = &rgd->ri;
-		if (ri->ri_data0 + ri->ri_data - 1 > rmax)
-			rmax = ri->ri_data0 + ri->ri_data - 1;
-	}
-
-	sdp->fssize = rmax;
-	*rgcount = count1;
-	if (count1 != count2)
-		goto fail;
-
-	return 0;
-
- fail:
-	gfs2_rgrp_free(&sdp->rglist);
-	return -1;
-}
-
 /* ------------------------------------------------------------------------ */
 /* gfs_dinode_in */
 /* ------------------------------------------------------------------------ */
