@@ -160,11 +160,6 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 	for (rg = 0; ; rg++) {
 		if (fd > 0)
 			error = read(fd, &buf, sizeof(struct gfs2_rindex));
-		else if (sdp->gfs1)
-			error = gfs1_readi(sdp->md.riinode,
-					   (char *)&buf.bufgfs1,
-					   rg * sizeof(struct gfs2_rindex),
-					   sizeof(struct gfs2_rindex));
 		else
 			error = gfs2_readi(sdp->md.riinode,
 					   (char *)&buf.bufgfs2,

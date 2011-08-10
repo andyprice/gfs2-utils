@@ -156,72 +156,6 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 	free(mp);
 }
 
-int gfs1_readi(struct gfs2_inode *ip, void *bufin,
-	       uint64_t offset, unsigned int size)
-{
-	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_buffer_head *bh;
-	uint64_t lblock, dblock = 0;
-	uint32_t extlen = 0;
-	unsigned int amount;
-	int not_new = 0;
-	int journaled = fs_is_jdata(ip);
-	int copied = 0;
-	char *buf = bufin;
-
-	if (offset >= ip->i_di.di_size)
-		return 0;
-
-	if ((offset + size) > ip->i_di.di_size)
-		size = ip->i_di.di_size - offset;
-
-	if (!size)
-		return 0;
-
-	if (journaled) {
-		lblock = offset / sdp->sd_jbsize;
-		offset %= sdp->sd_jbsize;
-	} else {
-		lblock = offset >> sdp->sd_sb.sb_bsize_shift;
-		offset &= sdp->sd_sb.sb_bsize - 1;
-	}
-
-	if (!ip->i_di.di_height) /* stuffed */
-		offset += sizeof(struct gfs_dinode);
-	else if (journaled)
-		offset += sizeof(struct gfs2_meta_header);
-
-	while (copied < size) {
-		amount = size - copied;
-		if (amount > sdp->bsize - offset)
-			amount = sdp->bsize - offset;
-
-		if (!extlen)
-			gfs1_block_map(ip, lblock, &not_new, &dblock,
-				       &extlen, FALSE);
-
-		if (dblock) {
-			bh = bread(sdp, dblock);
-			dblock++;
-			extlen--;
-		} else
-			bh = NULL;
-
-
-		if (bh) {
-			memcpy(buf+copied, bh->b_data + offset, amount);
-			brelse(bh);
-		} else
-			memset(buf+copied, 0, amount);
-		copied += amount;
-		lblock++;
-
-		offset = (journaled) ? sizeof(struct gfs2_meta_header) : 0;
-	}
-
-	return copied;
-}
-
 /**
  * gfs1_rindex_read - read in the rg index file
  *                  Stolen from libgfs2/super.c, but modified to handle gfs1.
@@ -246,7 +180,7 @@ int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1)
 		if (fd > 0)
 			error = read(fd, &buf, sizeof(struct gfs2_rindex));
 		else
-			error = gfs1_readi(sdp->md.riinode, (char *)&buf,
+			error = gfs2_readi(sdp->md.riinode, (char *)&buf,
 					   (rg * sizeof(struct gfs2_rindex)),
 					   sizeof(struct gfs2_rindex));
 		if (!error)

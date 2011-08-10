@@ -516,12 +516,8 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 
 		roff = print_entry_ndx * sizeof(struct gfs2_rindex);
 
-		if (sbd.gfs1)
-			error = gfs1_readi(dip, (void *)&rbuf, roff,
-					   sizeof(struct gfs2_rindex));
-		else
-			error = gfs2_readi(dip, (void *)&rbuf, roff,
-					   sizeof(struct gfs2_rindex));
+		error = gfs2_readi(dip, (void *)&rbuf, roff,
+				   sizeof(struct gfs2_rindex));
 		if (!error) /* end of file */
 			break;
 		gfs2_rindex_in(&ri, rbuf);

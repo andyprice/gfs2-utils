@@ -510,6 +510,7 @@ int gfs2_readi(struct gfs2_inode *ip, void *buf,
 	unsigned int amount;
 	int not_new = 0;
 	int isdir = !!(S_ISDIR(ip->i_di.di_mode));
+	int journaled = ip->i_di.di_flags & GFS2_DIF_JDATA;
 	int copied = 0;
 
 	if (offset >= ip->i_di.di_size)
@@ -521,7 +522,7 @@ int gfs2_readi(struct gfs2_inode *ip, void *buf,
 	if (!size)
 		return 0;
 
-	if (isdir) {
+	if ((sdp->gfs1 && journaled) || (!sdp->gfs1 && isdir)) {
 		lblock = offset;
 		o = lblock % sdp->sd_jbsize;
 		lblock /= sdp->sd_jbsize;
@@ -532,7 +533,7 @@ int gfs2_readi(struct gfs2_inode *ip, void *buf,
 
 	if (inode_is_stuffed(ip))
 		o += sizeof(struct gfs2_dinode);
-	else if (isdir)
+	else if ((sdp->gfs1 && journaled) || (!sdp->gfs1 && isdir))
 		o += sizeof(struct gfs2_meta_header);
 
 	while (copied < size) {
@@ -540,9 +541,14 @@ int gfs2_readi(struct gfs2_inode *ip, void *buf,
 		if (amount > sdp->bsize - o)
 			amount = sdp->bsize - o;
 
-		if (!extlen)
-			block_map(ip, lblock, &not_new, &dblock, &extlen,
-				  FALSE);
+		if (!extlen) {
+			if (sdp->gfs1)
+				gfs1_block_map(ip, lblock, &not_new, &dblock,
+					       &extlen, FALSE);
+			else
+				block_map(ip, lblock, &not_new, &dblock,
+					  &extlen, FALSE);
+		}
 
 		if (dblock) {
 			if (dblock == ip->i_di.di_num.no_addr)
@@ -561,7 +567,10 @@ int gfs2_readi(struct gfs2_inode *ip, void *buf,
 		copied += amount;
 		lblock++;
 
-		o = (isdir) ? sizeof(struct gfs2_meta_header) : 0;
+		if (sdp->gfs1)
+			o = (journaled) ? sizeof(struct gfs2_meta_header) : 0;
+		else
+			o = (isdir) ? sizeof(struct gfs2_meta_header) : 0;
 	}
 
 	return copied;
