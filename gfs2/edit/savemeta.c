@@ -123,9 +123,9 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, int *block_type,
 		break;
 	case GFS2_METATYPE_DI:   /* 4 (disk inode) */
 		if (sbd.gfs1)
-			inode = inode_get(&sbd, lbh);
-		else
 			inode = gfs_inode_get(&sbd, lbh);
+		else
+			inode = inode_get(&sbd, lbh);
 		if (S_ISDIR(inode->i_di.di_mode) ||
 		     (sbd.gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR))
 			*gstruct_len = sbd.bsize;
@@ -457,9 +457,9 @@ static void save_inode_data(struct metafd *mfd)
 		osi_list_init(&metalist[i]);
 	metabh = bread(&sbd, block);
 	if (sbd.gfs1)
-		inode = inode_get(&sbd, metabh);
-	else
 		inode = gfs_inode_get(&sbd, metabh);
+	else
+		inode = inode_get(&sbd, metabh);
 	height = inode->i_di.di_height;
 	/* If this is a user inode, we don't follow to the file height.
 	   We stop one level less.  That way we save off the indirect
