@@ -1500,40 +1500,6 @@ static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
 }
 
 /* ------------------------------------------------------------------------ */
-/* gfs_rgrp_in - Read in a resource group header                            */
-/* ------------------------------------------------------------------------ */
-void gfs_rgrp_in(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh)
-{
-	struct gfs_rgrp *str = (struct gfs_rgrp *)rbh->b_data;
-
-	gfs2_meta_header_in(&rgrp->rg_header, rbh);
-	rgrp->rg_flags = be32_to_cpu(str->rg_flags);
-	rgrp->rg_free = be32_to_cpu(str->rg_free);
-	rgrp->rg_useddi = be32_to_cpu(str->rg_useddi);
-	rgrp->rg_freedi = be32_to_cpu(str->rg_freedi);
-	gfs2_inum_in(&rgrp->rg_freedi_list, (char *)&str->rg_freedi_list);
-	rgrp->rg_usedmeta = be32_to_cpu(str->rg_usedmeta);
-	rgrp->rg_freemeta = be32_to_cpu(str->rg_freemeta);
-}
-
-/* ------------------------------------------------------------------------ */
-/* gfs_rgrp_out */
-/* ------------------------------------------------------------------------ */
-static void gfs_rgrp_out(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh)
-{
-	struct gfs_rgrp *str = (struct gfs_rgrp *)rbh->b_data;
-
-	gfs2_meta_header_out(&rgrp->rg_header, rbh);
-	str->rg_flags = cpu_to_be32(rgrp->rg_flags);
-	str->rg_free = cpu_to_be32(rgrp->rg_free);
-	str->rg_useddi = cpu_to_be32(rgrp->rg_useddi);
-	str->rg_freedi = cpu_to_be32(rgrp->rg_freedi);
-	gfs2_inum_out(&rgrp->rg_freedi_list, (char *)&str->rg_freedi_list);
-	str->rg_usedmeta = cpu_to_be32(rgrp->rg_usedmeta);
-	str->rg_freemeta = cpu_to_be32(rgrp->rg_freemeta);
-}
-
-/* ------------------------------------------------------------------------ */
 /* gfs_rgrp_print - print a gfs1 resource group                             */
 /* ------------------------------------------------------------------------ */
 void gfs_rgrp_print(struct gfs_rgrp *rg)
@@ -1621,19 +1587,6 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 	}
 	if (modify)
 		fsync(sbd.device_fd);
-}
-
-/* ------------------------------------------------------------------------ */
-/* gfs_jindex_in - read in a gfs1 jindex structure.                         */
-/* ------------------------------------------------------------------------ */
-void gfs_jindex_in(struct gfs_jindex *jindex, char *jbuf)
-{
-        struct gfs_jindex *str = (struct gfs_jindex *) jbuf;
-
-        jindex->ji_addr = be64_to_cpu(str->ji_addr);
-        jindex->ji_nsegment = be32_to_cpu(str->ji_nsegment);
-        jindex->ji_pad = be32_to_cpu(str->ji_pad);
-        memcpy(jindex->ji_reserved, str->ji_reserved, 64);
 }
 
 /* ------------------------------------------------------------------------ */

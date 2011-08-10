@@ -221,7 +221,6 @@ extern int display(int identify_only);
 extern uint64_t check_keywords(const char *kword);
 extern uint64_t masterblock(const char *fn);
 extern void gfs_rgrp_print(struct gfs_rgrp *rg);
-extern void gfs_rgrp_in(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh);
 extern int has_indirect_blocks(void);
 
 #endif /* __HEXVIEW_DOT_H__ */

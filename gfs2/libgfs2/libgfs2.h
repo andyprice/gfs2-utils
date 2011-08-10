@@ -593,6 +593,9 @@ extern struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
 					struct gfs2_buffer_head *bh);
 extern struct gfs2_inode *gfs_inode_read(struct gfs2_sbd *sdp,
 					 uint64_t di_addr);
+extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
+extern void gfs_rgrp_in(struct gfs_rgrp *rg, struct gfs2_buffer_head *bh);
+extern void gfs_rgrp_out(struct gfs_rgrp *rg, struct gfs2_buffer_head *bh);
 
 /* gfs2_log.c */
 struct gfs2_options {
