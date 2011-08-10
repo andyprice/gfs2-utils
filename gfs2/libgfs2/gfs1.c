@@ -56,7 +56,9 @@ void gfs1_lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		*block = meta_alloc(ip);
 
 	*ptr = cpu_to_be64(*block);
+	bmodified(bh);
 	ip->i_di.di_blocks++;
+	bmodified(ip->i_bh);
 
 	*new = 1;
 }
