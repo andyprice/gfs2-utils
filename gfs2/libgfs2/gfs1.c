@@ -120,7 +120,10 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			mh.mh_format = GFS2_FORMAT_IN;
 			gfs2_meta_header_out(&mh, bh);
 		} else {
-			bh = bread(sdp, *dblock);
+			if (*dblock == ip->i_di.di_num.no_addr)
+				bh = ip->i_bh;
+			else
+				bh = bread(sdp, *dblock);
 		}
 	}
 
