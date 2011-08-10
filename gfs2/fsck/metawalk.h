@@ -4,6 +4,8 @@
 #define DIR_LINEAR 1
 #define DIR_EXHASH 2
 
+#include "util.h"
+
 struct metawalk_fxns;
 
 extern int check_inode_eattr(struct gfs2_inode *ip,

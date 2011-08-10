@@ -277,94 +277,12 @@ struct gfs2_bmap {
 
 /* block_list.c */
 
-enum gfs2_mark_block {
-	gfs2_block_free    = (0x0),
-	gfs2_block_used    = (0x1),
-	gfs2_indir_blk     = (0x2),
-	gfs2_inode_dir     = (0x3),
-	gfs2_inode_file    = (0x4),
-
-	gfs2_inode_lnk     = (0x5),
-	gfs2_inode_blk     = (0x6),
-	gfs2_inode_chr     = (0x7),
-	gfs2_inode_fifo    = (0x8),
-	gfs2_inode_sock    = (0x9),
-
-	gfs2_inode_invalid = (0xa),
-	gfs2_meta_inval    = (0xb),
-	gfs2_leaf_blk      = (0xc),
-	gfs2_meta_rgrp     = (0xd),
-	gfs2_meta_eattr    = (0xe),
-
-	gfs2_bad_block     = (0xf), /* Contains at least one bad block */
-};
-
-static const inline char *block_type_string(uint8_t q)
-{
-	const char *blktyp[] = {
-		"free",
-		"data",
-		"indirect data",
-		"directory",
-		"file",
-
-		"symlink",
-		"block device",
-		"char device",
-		"fifo",
-		"socket",
-
-		"invalid inode",
-		"invalid meta",
-		"dir leaf",
-		"rgrp meta",
-		"eattribute",
-
-		"bad"};
-	if (q < 16)
-		return (blktyp[q]);
-	return blktyp[15];
-}
-
-/* Must be kept in sync with gfs2_mark_block enum above. Blocks marked as
-   invalid or bad are considered metadata until actually freed. */
-static inline int blockmap_to_bitmap(enum gfs2_mark_block m)
-{
-	static int bitmap_states[16] = {
-		GFS2_BLKST_FREE,
-		GFS2_BLKST_USED,
-		GFS2_BLKST_USED,
-		GFS2_BLKST_DINODE,
-		GFS2_BLKST_DINODE,
-
-		GFS2_BLKST_DINODE,
-		GFS2_BLKST_DINODE,
-		GFS2_BLKST_DINODE,
-		GFS2_BLKST_DINODE,
-		GFS2_BLKST_DINODE,
-
-		GFS2_BLKST_FREE,
-		GFS2_BLKST_FREE,
-		GFS2_BLKST_USED,
-		GFS2_BLKST_USED,
-		GFS2_BLKST_USED,
-
-		GFS2_BLKST_USED
-	};
-	return bitmap_states[m];
-}
-
-extern struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
-					  uint64_t *addl_mem_needed);
 extern struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num);
 extern void gfs2_special_add(struct special_blocks *blocklist, uint64_t block);
 extern void gfs2_special_set(struct special_blocks *blocklist, uint64_t block);
 extern void gfs2_special_free(struct special_blocks *blist);
-extern int gfs2_blockmap_set(struct gfs2_bmap *il, uint64_t block,
-			     enum gfs2_mark_block mark);
 extern void gfs2_special_clear(struct special_blocks *blocklist,
 			       uint64_t block);
-extern void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il);
 
 /* buf.c */
 extern struct gfs2_buffer_head *__bget_generic(struct gfs2_sbd *sdp,

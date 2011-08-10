@@ -383,3 +383,75 @@ void dirtree_delete(struct dir_info *b)
 	osi_erase(&b->node, &dirtree);
 	free(b);
 }
+
+static int gfs2_blockmap_create(struct gfs2_bmap *bmap, uint64_t size)
+{
+	bmap->size = size;
+
+	/* Have to add 1 to BLOCKMAP_SIZE since it's 0-based and mallocs
+	 * must be 1-based */
+	bmap->mapsize = BLOCKMAP_SIZE4(size);
+
+	if (!(bmap->map = malloc(sizeof(char) * bmap->mapsize)))
+		return -ENOMEM;
+	if (!memset(bmap->map, 0, sizeof(char) * bmap->mapsize)) {
+		free(bmap->map);
+		bmap->map = NULL;
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+static void gfs2_blockmap_destroy(struct gfs2_bmap *bmap)
+{
+	if (bmap->map)
+		free(bmap->map);
+	bmap->size = 0;
+	bmap->mapsize = 0;
+}
+
+struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
+				   uint64_t *addl_mem_needed)
+{
+	struct gfs2_bmap *il;
+
+	*addl_mem_needed = 0L;
+	il = malloc(sizeof(*il));
+	if (!il || !memset(il, 0, sizeof(*il)))
+		return NULL;
+
+	if (gfs2_blockmap_create(il, size)) {
+		*addl_mem_needed = il->mapsize;
+		free(il);
+		il = NULL;
+	}
+	osi_list_init(&sdp->eattr_blocks.list);
+	return il;
+}
+
+int gfs2_blockmap_set(struct gfs2_bmap *bmap, uint64_t bblock,
+		      enum gfs2_mark_block mark)
+{
+	static unsigned char *byte;
+	static uint64_t b;
+
+	if (bblock > bmap->size)
+		return -1;
+
+	byte = bmap->map + BLOCKMAP_SIZE4(bblock);
+	b = BLOCKMAP_BYTE_OFFSET4(bblock);
+	*byte &= ~(BLOCKMAP_MASK4 << b);
+	*byte |= (mark & BLOCKMAP_MASK4) << b;
+	return 0;
+}
+
+void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il)
+{
+	if (il) {
+		gfs2_blockmap_destroy(il);
+		free(il);
+		il = NULL;
+	}
+	gfs2_special_free(&sdp->eattr_blocks);
+	return il;
+}
