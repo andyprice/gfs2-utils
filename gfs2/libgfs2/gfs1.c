@@ -193,8 +193,9 @@ static void gfs_dinode_in(struct gfs_dinode *di, struct gfs2_buffer_head *bh)
 	di->di_eattr = be64_to_cpu(str->di_eattr);
 }
 
-struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
-				 struct gfs2_buffer_head *bh)
+static struct gfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp,
+					  struct gfs2_buffer_head *bh,
+					  uint64_t di_addr)
 {
 	struct gfs_dinode gfs1_dinode;
 	struct gfs2_inode *ip;
@@ -205,6 +206,11 @@ struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
 		exit(-1);
 	}
 
+	ip->bh_owned = 0;
+	if (!bh) {
+		bh = bread(sdp, di_addr);
+		ip->bh_owned = 1;
+	}
 	gfs_dinode_in(&gfs1_dinode, bh);
 	memcpy(&ip->i_di.di_header, &gfs1_dinode.di_header,
 	       sizeof(struct gfs2_meta_header));
@@ -232,49 +238,16 @@ struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
 	ip->i_di.di_eattr = gfs1_dinode.di_eattr;
 	ip->i_bh = bh;
 	ip->i_sbd = sdp;
-	ip->bh_owned = 0;
 	return ip;
+}
+
+struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
+				 struct gfs2_buffer_head *bh)
+{
+	return __gfs_inode_get(sdp, bh, 0);
 }
 
 struct gfs2_inode *gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 {
-	struct gfs_dinode gfs1_dinode;
-	struct gfs2_inode *ip;
-
-	ip = calloc(1, sizeof(struct gfs2_inode));
-	if (ip == NULL) {
-		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
-		exit(-1);
-	}
-
-	ip->i_bh = bread(sdp, di_addr);
-	gfs_dinode_in(&gfs1_dinode, ip->i_bh);
-	memcpy(&ip->i_di.di_header, &gfs1_dinode.di_header,
-	       sizeof(struct gfs2_meta_header));
-	memcpy(&ip->i_di.di_num, &gfs1_dinode.di_num,
-	       sizeof(struct gfs2_inum));
-	ip->i_di.di_mode = gfs1_dinode.di_mode;
-	ip->i_di.di_uid = gfs1_dinode.di_uid;
-	ip->i_di.di_gid = gfs1_dinode.di_gid;
-	ip->i_di.di_nlink = gfs1_dinode.di_nlink;
-	ip->i_di.di_size = gfs1_dinode.di_size;
-	ip->i_di.di_blocks = gfs1_dinode.di_blocks;
-	ip->i_di.di_atime = gfs1_dinode.di_atime;
-	ip->i_di.di_mtime = gfs1_dinode.di_mtime;
-	ip->i_di.di_ctime = gfs1_dinode.di_ctime;
-	ip->i_di.di_major = gfs1_dinode.di_major;
-	ip->i_di.di_minor = gfs1_dinode.di_minor;
-	ip->i_di.di_goal_data = gfs1_dinode.di_goal_dblk;
-	ip->i_di.di_goal_meta = gfs1_dinode.di_goal_mblk;
-	ip->i_di.di_flags = gfs1_dinode.di_flags;
-	ip->i_di.di_payload_format = gfs1_dinode.di_payload_format;
-	ip->i_di.__pad1 = gfs1_dinode.di_type;
-	ip->i_di.di_height = gfs1_dinode.di_height;
-	ip->i_di.di_depth = gfs1_dinode.di_depth;
-	ip->i_di.di_entries = gfs1_dinode.di_entries;
-	ip->i_di.di_eattr = gfs1_dinode.di_eattr;
-	ip->i_sbd = sdp;
-	ip->bh_owned = 1;
-	return ip;
+	return __gfs_inode_get(sdp, NULL, di_addr);
 }
-
