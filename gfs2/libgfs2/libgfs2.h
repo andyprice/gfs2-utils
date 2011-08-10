@@ -176,6 +176,7 @@ struct gfs2_sbd {
 	unsigned int bsize;	     /* The block size of the FS (in bytes) */
 	unsigned int jsize;	     /* Size of journals (in MB) */
 	unsigned int rgsize;     /* Size of resource groups (in MB) */
+	unsigned int utsize;     /* Size of unlinked tag files (in MB) */
 	unsigned int qcsize;     /* Size of quota change files (in MB) */
 
 	int debug;
@@ -254,6 +255,7 @@ struct metapath {
 #define GFS2_DEFAULT_BSIZE          (4096)
 #define GFS2_DEFAULT_JSIZE          (128)
 #define GFS2_DEFAULT_RGSIZE         (256)
+#define GFS2_DEFAULT_UTSIZE         (1)
 #define GFS2_DEFAULT_QCSIZE         (1)
 #define GFS2_DEFAULT_LOCKPROTO      "lock_dlm"
 #define GFS2_MIN_GROW_SIZE          (10)
@@ -370,8 +372,16 @@ extern struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
 					    struct gfs2_inum *inum,
 					    unsigned int mode, uint32_t flags,
 					    struct gfs2_inum *parent);
+extern struct gfs2_buffer_head *init_gfs_dinode(struct gfs2_sbd *sdp,
+						struct gfs2_inum *inum,
+						unsigned int mode,
+						uint32_t flags,
+						struct gfs2_inum *parent);
 extern struct gfs2_inode *createi(struct gfs2_inode *dip, const char *filename,
 				  unsigned int mode, uint32_t flags);
+extern struct gfs2_inode *gfs_createi(struct gfs2_inode *dip,
+				      const char *filename, unsigned int mode,
+				      uint32_t flags);
 extern void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 			struct gfs2_dirent *prev, struct gfs2_dirent *cur);
 extern int dir_search(struct gfs2_inode *dip, const char *filename, int len,
@@ -581,13 +591,15 @@ struct gfs_log_descriptor {
 	char ld_reserved[64];
 };
 
+extern int is_gfs_dir(struct gfs2_dinode *dinode);
 extern void gfs1_lookup_block(struct gfs2_inode *ip,
 			      struct gfs2_buffer_head *bh,
 			      unsigned int height, struct metapath *mp,
 			      int create, int *new, uint64_t *block);
 extern void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			   uint64_t *dblock, uint32_t *extlen, int prealloc);
-extern int gfs1_rindex_read(struct gfs2_sbd *sdp, int fd, int *count1);
+extern int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
+		       unsigned int size);
 extern int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet);
 extern struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
 					struct gfs2_buffer_head *bh);
@@ -596,6 +608,10 @@ extern struct gfs2_inode *gfs_inode_read(struct gfs2_sbd *sdp,
 extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
 extern void gfs_rgrp_in(struct gfs_rgrp *rg, struct gfs2_buffer_head *bh);
 extern void gfs_rgrp_out(struct gfs_rgrp *rg, struct gfs2_buffer_head *bh);
+extern void gfs_get_leaf_nr(struct gfs2_inode *dip, uint32_t lindex,
+			    uint64_t *leaf_out);
+extern void gfs_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx,
+			    uint64_t leaf_out);
 
 /* gfs2_log.c */
 struct gfs2_options {
@@ -684,6 +700,7 @@ extern int clean_journal(struct gfs2_inode *ip, struct gfs2_log_header *head);
 /* rgrp.c */
 extern int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_list *rgd);
 extern struct rgrp_list *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk);
+extern uint64_t __gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd);
 extern uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd);
 extern void gfs2_rgrp_relse(struct rgrp_list *rgd);
 extern void gfs2_rgrp_free(osi_list_t *rglist);

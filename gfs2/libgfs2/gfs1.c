@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -31,6 +32,13 @@ gfs1_metapointer(struct gfs2_buffer_head *bh, unsigned int height,
 		sizeof(struct gfs_indirect) : sizeof(struct gfs_dinode);
 
 	return ((uint64_t *)(bh->b_data + head_size)) + mp->mp_list[height];
+}
+
+int is_gfs_dir(struct gfs2_dinode *dinode)
+{
+	if (dinode->__pad1 == GFS_FILE_DIR)
+		return 1;
+	return 0;
 }
 
 void gfs1_lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
@@ -159,6 +167,98 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 
  out:
 	free(mp);
+}
+
+int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
+		unsigned int size)
+{
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct gfs2_buffer_head *bh;
+	uint64_t lblock, dblock;
+	uint32_t extlen = 0;
+	unsigned int amount;
+	int new;
+	int journaled = fs_is_jdata(ip);
+	const uint64_t start = offset;
+	int copied = 0;
+	int error = 0;
+
+	if (!size)
+		goto fail;  /*  Not really an error  */
+
+
+	if (!ip->i_di.di_height && /* stuffed */
+	    ((start + size) > (sdp->bsize - sizeof(struct gfs_dinode))))
+		unstuff_dinode(ip);
+
+	if (journaled) {
+		lblock = offset / sdp->sd_jbsize;
+		offset %= sdp->sd_jbsize;
+	} else {
+		lblock = offset >> sdp->sd_sb.sb_bsize_shift;
+		offset &= sdp->bsize - 1;
+	}
+
+	if (!ip->i_di.di_height) /* stuffed */
+		offset += sizeof(struct gfs_dinode);
+	else if (journaled)
+		offset += sizeof(struct gfs2_meta_header);
+
+	while (copied < size) {
+		amount = size - copied;
+		if (amount > sdp->bsize - offset)
+			amount = sdp->bsize - offset;
+
+		if (!extlen){
+			new = TRUE;
+			gfs1_block_map(ip, lblock, &new, &dblock, &extlen, 0);
+			if (!dblock)
+				return -1;
+		}
+
+		if (dblock == ip->i_di.di_num.no_addr)
+			bh = ip->i_bh;
+		else
+			bh = bread(sdp, dblock);
+
+		if (journaled && dblock != ip->i_di.di_num.no_addr ) {
+			struct gfs2_meta_header mh;
+
+			mh.mh_magic = GFS2_MAGIC;
+			mh.mh_type = GFS2_METATYPE_JD;
+			mh.mh_format = GFS2_FORMAT_JD;
+			gfs2_meta_header_out(&mh, bh);
+		}
+
+		memcpy(bh->b_data + offset, buf + copied, amount);
+		bmodified(bh);
+		if (bh != ip->i_bh)
+			brelse(bh);
+
+		copied += amount;
+		lblock++;
+		dblock++;
+		extlen--;
+
+		offset = (journaled) ? sizeof(struct gfs2_meta_header) : 0;
+	}
+
+ out:
+	if (ip->i_di.di_size < start + copied) {
+		bmodified(ip->i_bh);
+		ip->i_di.di_size = start + copied;
+	}
+	ip->i_di.di_mtime = ip->i_di.di_ctime = time(NULL);
+
+	gfs2_dinode_out(&ip->i_di, ip->i_bh);
+
+	return copied;
+
+ fail:
+	if (copied)
+		goto out;
+
+	return error;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -302,4 +402,30 @@ void gfs_rgrp_out(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh)
 
 	memcpy(str->rg_reserved, rgrp->rg_reserved, 64);
 	bmodified(rbh);
+}
+
+void gfs_get_leaf_nr(struct gfs2_inode *dip, uint32_t lindex,
+		     uint64_t *leaf_out)
+{
+	uint64_t leaf_no;
+	int count;
+
+	count = gfs2_readi(dip, (char *)&leaf_no, lindex * sizeof(uint64_t),
+			   sizeof(uint64_t));
+	if (count != sizeof(uint64_t))
+		die("gfs_get_leaf_nr:  Bad internal read.\n");
+
+	*leaf_out = be64_to_cpu(leaf_no);
+}
+
+void gfs_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out)
+{
+	uint64_t leaf_no;
+	int count;
+
+	leaf_no = cpu_to_be64(leaf_out);
+	count = gfs1_writei(dip, (char *)&leaf_no, inx * sizeof(uint64_t),
+			   sizeof(uint64_t));
+	if (count != sizeof(uint64_t))
+		die("gfs_put_leaf_nr:  Bad internal write.\n");
 }

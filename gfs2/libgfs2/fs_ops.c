@@ -179,7 +179,10 @@ found:
 	rg->rg_free--;
 
 	bmodified(bh);
-	gfs2_rgrp_out(rg, rl->bh[0]);
+	if (sdp->gfs1)
+		gfs_rgrp_out((struct gfs_rgrp *)rg, rl->bh[0]);
+	else
+		gfs2_rgrp_out(rg, rl->bh[0]);
 
 	sdp->blks_alloced++;
 	return ri->ri_data0 + bn;
@@ -233,7 +236,7 @@ void unstuff_dinode(struct gfs2_inode *ip)
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct gfs2_buffer_head *bh;
 	uint64_t block = 0;
-	int isdir = !!(S_ISDIR(ip->i_di.di_mode));
+	int isdir = S_ISDIR(ip->i_di.di_mode) || is_gfs_dir(&ip->i_di);
 
 	if (ip->i_di.di_size) {
 		if (isdir) {
@@ -830,6 +833,8 @@ void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t lindex,
 	uint64_t leaf_no;
 	int count;
 
+	if (dip->i_sbd->gfs1)
+		return gfs_get_leaf_nr(dip, lindex, leaf_out);
 	count = gfs2_readi(dip, (char *)&leaf_no, lindex * sizeof(uint64_t),
 			   sizeof(uint64_t));
 	if (count != sizeof(uint64_t))
@@ -843,6 +848,10 @@ void gfs2_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out)
 	uint64_t leaf_no;
 	int count;
 
+	if (dip->i_sbd->gfs1) {
+		gfs_put_leaf_nr(dip, inx, leaf_out);
+		return;
+	}
 	leaf_no = cpu_to_be64(leaf_out);
 	count = gfs2_writei(dip, (char *)&leaf_no, inx * sizeof(uint64_t),
 			    sizeof(uint64_t));
@@ -893,8 +902,12 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
 	for (x = 0; x < half_len; x++)
 		lp[x] = cpu_to_be64(bn);
 
-	count = gfs2_writei(dip, (char *)lp, start * sizeof(uint64_t),
-			    half_len * sizeof(uint64_t));
+	if (dip->i_sbd->gfs1)
+		count = gfs1_writei(dip, (char *)lp, start * sizeof(uint64_t),
+				    half_len * sizeof(uint64_t));
+	else
+		count = gfs2_writei(dip, (char *)lp, start * sizeof(uint64_t),
+				    half_len * sizeof(uint64_t));
 	if (count != half_len * sizeof(uint64_t))
 		die("dir_split_leaf (2)\n");
 
@@ -985,8 +998,14 @@ static void dir_double_exhash(struct gfs2_inode *dip)
 			*to++ = *from;
 		}
 
-		count = gfs2_writei(dip, (char *)buf + sdp->sd_hash_bsize,
-				    block * sdp->bsize, sdp->bsize);
+		if (sdp->gfs1)
+			count = gfs1_writei(dip, (char *)buf +
+					    sdp->sd_hash_bsize,
+					    block * sdp->bsize, sdp->bsize);
+		else
+			count = gfs2_writei(dip, (char *)buf +
+					    sdp->sd_hash_bsize,
+					    block * sdp->bsize, sdp->bsize);
 		if (count != sdp->bsize)
 			die("dir_double_exhash (2)\n");
 
@@ -1241,13 +1260,21 @@ int dir_add(struct gfs2_inode *dip, const char *filename, int len,
 	return err;
 }
 
-struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
-				     struct gfs2_inum *inum, unsigned int mode,
-				     uint32_t flags, struct gfs2_inum *parent)
+static struct gfs2_buffer_head *__init_dinode(struct gfs2_sbd *sdp,
+					      struct gfs2_inum *inum,
+					      unsigned int mode,
+					      uint32_t flags,
+					      struct gfs2_inum *parent,
+					      int gfs1)
 {
 	struct gfs2_buffer_head *bh;
 	struct gfs2_dinode di;
+	int is_dir;
 
+	if (gfs1)
+		is_dir = (IF2DT(mode) == GFS_FILE_DIR);
+	else
+		is_dir = S_ISDIR(mode);
 	bh = bget(sdp, inum->no_addr);
 
 	memset(&di, 0, sizeof(struct gfs2_dinode));
@@ -1262,7 +1289,7 @@ struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
 	di.di_goal_meta = di.di_goal_data = bh->b_blocknr;
 	di.di_flags = flags;
 
-	if (S_ISDIR(mode)) {
+	if (is_dir) {
 		struct gfs2_dirent de1, de2;
 
 		memset(&de1, 0, sizeof(struct gfs2_dirent));
@@ -1270,14 +1297,14 @@ struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
 		de1.de_hash = gfs2_disk_hash(".", 1);
 		de1.de_rec_len = GFS2_DIRENT_SIZE(1);
 		de1.de_name_len = 1;
-		de1.de_type = IF2DT(S_IFDIR);
+		de1.de_type = (gfs1 ? GFS_FILE_DIR : IF2DT(S_IFDIR));
 
 		memset(&de2, 0, sizeof(struct gfs2_dirent));
 		de2.de_inum = *parent;
 		de2.de_hash = gfs2_disk_hash("..", 2);
 		de2.de_rec_len = sdp->bsize - sizeof(struct gfs2_dinode) - de1.de_rec_len;
 		de2.de_name_len = 2;
-		de2.de_type = IF2DT(S_IFDIR);
+		de2.de_type = (gfs1 ? GFS_FILE_DIR : IF2DT(S_IFDIR));
 
 		gfs2_dirent_out(&de1, bh->b_data + sizeof(struct gfs2_dinode));
 		memcpy(bh->b_data +
@@ -1303,8 +1330,25 @@ struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
 	return bh;
 }
 
-struct gfs2_inode *createi(struct gfs2_inode *dip, const char *filename,
-			   unsigned int mode, uint32_t flags)
+struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
+				     struct gfs2_inum *inum,
+				     unsigned int mode, uint32_t flags,
+				     struct gfs2_inum *parent)
+{
+	return __init_dinode(sdp, inum, mode, flags, parent, 0);
+}
+
+struct gfs2_buffer_head *init_gfs_dinode(struct gfs2_sbd *sdp,
+					 struct gfs2_inum *inum,
+					 unsigned int mode, uint32_t flags,
+					 struct gfs2_inum *parent)
+{
+	return __init_dinode(sdp, inum, mode, flags, parent, 1);
+}
+
+static struct gfs2_inode *__createi(struct gfs2_inode *dip,
+				    const char *filename, unsigned int mode,
+				    uint32_t flags, int if_gfs1)
 {
 	struct gfs2_sbd *sdp = dip->i_sbd;
 	uint64_t bn;
@@ -1312,12 +1356,16 @@ struct gfs2_inode *createi(struct gfs2_inode *dip, const char *filename,
 	struct gfs2_buffer_head *bh;
 	struct gfs2_inode *ip;
 	int err = 0;
+	int is_dir;
 
 	gfs2_lookupi(dip, filename, strlen(filename), &ip);
 	if (!ip) {
 		bn = dinode_alloc(sdp);
 
-		inum.no_formal_ino = sdp->md.next_inum++;
+		if (if_gfs1)
+			inum.no_formal_ino = bn;
+		else
+			inum.no_formal_ino = sdp->md.next_inum++;
 		inum.no_addr = bn;
 
 		err = dir_add(dip, filename, strlen(filename), &inum, IF2DT(mode));
@@ -1326,17 +1374,34 @@ struct gfs2_inode *createi(struct gfs2_inode *dip, const char *filename,
 			return NULL;
 		}
 
-		if(S_ISDIR(mode)) {
+		if (if_gfs1)
+			is_dir = (IF2DT(mode) == GFS_FILE_DIR);
+		else
+			is_dir = S_ISDIR(mode);
+		if (is_dir) {
 			bmodified(dip->i_bh);
 			dip->i_di.di_nlink++;
 		}
 
-		bh = init_dinode(sdp, &inum, mode, flags, &dip->i_di.di_num);
+		bh = __init_dinode(sdp, &inum, mode, flags, &dip->i_di.di_num,
+				   if_gfs1);
 		ip = inode_get(sdp, bh);
 		bmodified(bh);
 	}
 	ip->bh_owned = 1;
 	return ip;
+}
+
+struct gfs2_inode *createi(struct gfs2_inode *dip, const char *filename,
+			   unsigned int mode, uint32_t flags)
+{
+	return __createi(dip, filename, mode, flags, 0);
+}
+
+struct gfs2_inode *gfs_createi(struct gfs2_inode *dip, const char *filename,
+			   unsigned int mode, uint32_t flags)
+{
+	return __createi(dip, filename, mode, flags, 1);
 }
 
 /**
@@ -1552,7 +1617,7 @@ int dir_search(struct gfs2_inode *dip, const char *filename, int len,
 {
 	int error;
 
-	if(!S_ISDIR(dip->i_di.di_mode))
+	if(!S_ISDIR(dip->i_di.di_mode) && !is_gfs_dir(&dip->i_di))
 		return -1;
 
 	if (dip->i_di.di_flags & GFS2_DIF_EXHASH)
@@ -1638,7 +1703,7 @@ int gfs2_dirent_del(struct gfs2_inode *dip, const char *filename, int len)
 {
 	int error;
 
-	if(!S_ISDIR(dip->i_di.di_mode))
+	if(!S_ISDIR(dip->i_di.di_mode) && !is_gfs_dir(&dip->i_di))
 		return -1;
 
 	if (dip->i_di.di_flags & GFS2_DIF_EXHASH)
@@ -1695,7 +1760,10 @@ void gfs2_free_block(struct gfs2_sbd *sdp, uint64_t block)
 	if (rgd) {
 		gfs2_set_bitmap(sdp, block, GFS2_BLKST_FREE);
 		rgd->rg.rg_free++; /* adjust the free count */
-		gfs2_rgrp_out(&rgd->rg, rgd->bh[0]); /* back to the buffer */
+		if (sdp->gfs1)
+			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bh[0]);
+		else
+			gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
 		sdp->blks_alloced--;
 	}
 }
@@ -1759,7 +1827,10 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 	rgd = gfs2_blk2rgrpd(sdp, diblock);
 	rgd->rg.rg_free++;
 	rgd->rg.rg_dinodes--; /* one less inode in use */
-	gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
+	if (sdp->gfs1)
+		gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bh[0]);
+	else
+		gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
 	sdp->dinodes_alloced--;
 	return 0;
 }

@@ -100,15 +100,20 @@ void gfs2_sb_in(struct gfs2_sb *sb, struct gfs2_buffer_head *bh)
 
 	CPIN_32(sb, str, sb_fs_format);
 	CPIN_32(sb, str, sb_multihost_format);
+	CPIN_32(sb, str, __pad0);                        /* gfs sb_flags */
 
 	CPIN_32(sb, str, sb_bsize);
 	CPIN_32(sb, str, sb_bsize_shift);
+	CPIN_32(sb, str, __pad1);                        /* gfs sb_seg_size */
 
 	gfs2_inum_in(&sb->sb_master_dir, (char *)&str->sb_master_dir);
 	gfs2_inum_in(&sb->sb_root_dir, (char *)&str->sb_root_dir);
 
 	CPIN_08(sb, str, sb_lockproto, GFS2_LOCKNAME_LEN);
 	CPIN_08(sb, str, sb_locktable, GFS2_LOCKNAME_LEN);
+	gfs2_inum_in(&sb->__pad2, (char *)&str->__pad2); /* gfs rindex */
+	gfs2_inum_in(&sb->__pad3, (char *)&str->__pad3); /* gfs quota */
+	gfs2_inum_in(&sb->__pad4, (char *)&str->__pad4); /* gfs license */
 #ifdef GFS2_HAS_UUID
 	CPIN_08(sb, str, sb_uuid, sizeof(sb->sb_uuid));
 #endif
@@ -235,7 +240,7 @@ void gfs2_rgrp_in(struct gfs2_rgrp *rg, struct gfs2_buffer_head *bh)
 	CPIN_32(rg, str, rg_free);
 	CPIN_32(rg, str, rg_dinodes);
 
-	CPIN_08(rg, str, rg_reserved, 36);
+	CPIN_08(rg, str, rg_reserved, 80);
 }
 
 void gfs2_rgrp_out(struct gfs2_rgrp *rg, struct gfs2_buffer_head *bh)
@@ -247,7 +252,7 @@ void gfs2_rgrp_out(struct gfs2_rgrp *rg, struct gfs2_buffer_head *bh)
 	CPOUT_32(rg, str, rg_free);
 	CPOUT_32(rg, str, rg_dinodes);
 
-	CPOUT_08(rg, str, rg_reserved, 36);
+	CPOUT_08(rg, str, rg_reserved, 80);
 	bmodified(bh);
 }
 
@@ -345,6 +350,7 @@ void gfs2_dinode_out(struct gfs2_dinode *di, struct gfs2_buffer_head *bh)
 
 	CPOUT_32(di, str, di_flags);
 	CPOUT_32(di, str, di_payload_format);
+	CPOUT_16(di, str, __pad1);
 	CPOUT_16(di, str, di_height);
 
 	CPOUT_16(di, str, di_depth);

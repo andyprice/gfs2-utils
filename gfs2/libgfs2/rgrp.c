@@ -158,9 +158,12 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
 			return error;
 		}
 	}
-
-	if (rgd->bh && rgd->bh[0])
-		gfs2_rgrp_in(&rgd->rg, rgd->bh[0]);
+	if (rgd->bh && rgd->bh[0]) {
+		if (sdp->gfs1)
+			gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bh[0]);
+		else
+			gfs2_rgrp_in(&rgd->rg, rgd->bh[0]);
+	}
 	return 0;
 }
 
