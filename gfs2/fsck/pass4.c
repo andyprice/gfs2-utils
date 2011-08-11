@@ -85,8 +85,7 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 			if (q != gfs2_inode_dir &&
 			   q != gfs2_inode_file &&
 			   q != gfs2_inode_lnk &&
-			   q != gfs2_inode_blk &&
-			   q != gfs2_inode_chr &&
+			   q != gfs2_inode_device &&
 			   q != gfs2_inode_fifo &&
 			   q != gfs2_inode_sock) {
 				log_err( _("Unlinked block %lld (0x%llx) "

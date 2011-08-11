@@ -42,15 +42,15 @@ enum gfs2_mark_block {
 	gfs2_inode_file    = (0x4),
 
 	gfs2_inode_lnk     = (0x5),
-	gfs2_inode_blk     = (0x6),
-	gfs2_inode_chr     = (0x7),
+	gfs2_inode_device  = (0x6),
+
 	gfs2_inode_fifo    = (0x8),
 	gfs2_inode_sock    = (0x9),
 
 	gfs2_inode_invalid = (0xa),
 	gfs2_meta_inval    = (0xb),
 	gfs2_leaf_blk      = (0xc),
-	gfs2_meta_rgrp     = (0xd),
+
 	gfs2_meta_eattr    = (0xe),
 
 	gfs2_bad_block     = (0xf), /* Contains at least one bad block */
@@ -66,15 +66,15 @@ static const inline char *block_type_string(uint8_t q)
 		"file",
 
 		"symlink",
-		"block device",
-		"char device",
+		"device",
+		"",
 		"fifo",
 		"socket",
 
 		"invalid inode",
 		"invalid meta",
 		"dir leaf",
-		"rgrp meta",
+		"",
 		"eattribute",
 
 		"bad"};
@@ -88,25 +88,25 @@ static const inline char *block_type_string(uint8_t q)
 static inline int blockmap_to_bitmap(enum gfs2_mark_block m)
 {
 	static int bitmap_states[16] = {
-		GFS2_BLKST_FREE,
-		GFS2_BLKST_USED,
-		GFS2_BLKST_USED,
-		GFS2_BLKST_DINODE,
-		GFS2_BLKST_DINODE,
+		GFS2_BLKST_FREE,  /* free */
+		GFS2_BLKST_USED,  /* data */
+		GFS2_BLKST_USED,  /* indirect data or rgrp meta*/
+		GFS2_BLKST_DINODE,  /* directory */
+		GFS2_BLKST_DINODE,  /* file */
 
-		GFS2_BLKST_DINODE,
-		GFS2_BLKST_DINODE,
-		GFS2_BLKST_DINODE,
-		GFS2_BLKST_DINODE,
-		GFS2_BLKST_DINODE,
+		GFS2_BLKST_DINODE,  /* symlink */
+		GFS2_BLKST_DINODE,  /* block or char device */
+		GFS2_BLKST_USED,    /* reserved */
+		GFS2_BLKST_DINODE,  /* fifo */
+		GFS2_BLKST_DINODE,  /* socket */
 
-		GFS2_BLKST_FREE,
-		GFS2_BLKST_FREE,
-		GFS2_BLKST_USED,
-		GFS2_BLKST_USED,
-		GFS2_BLKST_USED,
+		GFS2_BLKST_FREE,  /* invalid inode */
+		GFS2_BLKST_FREE,  /* invalid meta */
+		GFS2_BLKST_USED,  /* dir leaf */
+		GFS2_BLKST_UNLINKED,  /* unused */
+		GFS2_BLKST_USED,  /* eattribute */
 
-		GFS2_BLKST_USED
+		GFS2_BLKST_USED,  /* bad */
 	};
 	return bitmap_states[m];
 }

@@ -247,9 +247,8 @@ int pass3(struct gfs2_sbd *sdp)
 					log_err( _("Unlinked directory with bad block remains\n"));
 			}
 			if (q != gfs2_inode_dir && q != gfs2_inode_file &&
-			   q != gfs2_inode_lnk && q != gfs2_inode_blk &&
-			   q != gfs2_inode_chr && q != gfs2_inode_fifo &&
-			   q != gfs2_inode_sock) {
+			   q != gfs2_inode_lnk && q != gfs2_inode_device &&
+			   q != gfs2_inode_fifo && q != gfs2_inode_sock) {
 				log_err( _("Unlinked block marked as an inode "
 					   "is not an inode\n"));
 				if (!query(_("Clear the unlinked block?"

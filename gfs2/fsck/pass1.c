@@ -1155,12 +1155,12 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		break;
 	case S_IFBLK:
 		if (fsck_blockmap_set(ip, block, _("block device"),
-				      gfs2_inode_blk))
+				      gfs2_inode_device))
 			goto bad_dinode;
 		break;
 	case S_IFCHR:
 		if (fsck_blockmap_set(ip, block, _("character device"),
-				      gfs2_inode_chr))
+				      gfs2_inode_device))
 			goto bad_dinode;
 		break;
 	case S_IFIFO:
@@ -1559,7 +1559,7 @@ int pass1(struct gfs2_sbd *sdp)
 				     "is now marked as 'rgrp data'\n"),
 				   rgd->ri.ri_addr + i, rgd->ri.ri_addr + i);
 			if (gfs2_blockmap_set(bl, rgd->ri.ri_addr + i,
-					      gfs2_meta_rgrp)) {
+					      gfs2_indir_blk)) {
 				stack;
 				return FSCK_ERROR;
 			}

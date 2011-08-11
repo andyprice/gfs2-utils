@@ -138,12 +138,8 @@ static int check_file_type(uint8_t de_type, uint8_t blk_type)
 		if (de_type != DT_LNK)
 			return 1;
 		break;
-	case gfs2_inode_blk:
-		if (de_type != DT_BLK)
-			return 1;
-		break;
-	case gfs2_inode_chr:
-		if (de_type != DT_CHR)
+	case gfs2_inode_device:
+		if (de_type != DT_BLK && de_type != DT_CHR)
 			return 1;
 		break;
 	case gfs2_inode_fifo:
