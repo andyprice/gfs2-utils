@@ -42,17 +42,19 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
 			 (unsigned long long)blk, (unsigned long long)blk);
 		return -1;
 	}
-	new_bitmap_state = blockmap_to_bitmap(new_blockmap_state);
+	new_bitmap_state = blockmap_to_bitmap(new_blockmap_state, sdp->gfs1);
 	if (old_bitmap_state != new_bitmap_state) {
-		const char *allocdesc[] = {"free space", "data", "unlinked",
-					   "inode", "reserved"};
+		const char *allocdesc[2][5] = { /* gfs2 descriptions */
+			{"free", "data", "unlinked", "inode", "reserved"},
+			/* gfs1 descriptions: */
+			{"free", "data", "free meta", "metadata", "reserved"}};
 
 		/* Keep these messages as short as possible, or the output
 		   gets to be huge and unmanageable. */
 		log_err( _("Block %llu (0x%llx) was '%s', should be %s.\n"),
 			 (unsigned long long)blk, (unsigned long long)blk,
-			 allocdesc[new_bitmap_state],
-			 allocdesc[old_bitmap_state]);
+			 allocdesc[sdp->gfs1][old_bitmap_state],
+			 allocdesc[sdp->gfs1][new_bitmap_state]);
 		if (query( _("Fix the bitmap? (y/n)"))) {
 			/* If the new bitmap state is free (and therefore the
 			   old state was not) we have to add to the free
@@ -77,10 +79,18 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
 						inodetree_delete(ii);
 				}
 				rgd->rg.rg_free++;
-				gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
+				if (sdp->gfs1)
+					gfs_rgrp_out((struct gfs_rgrp *)
+						     &rgd->rg, rgd->bh[0]);
+				else
+					gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
 			} else if (old_bitmap_state == GFS2_BLKST_FREE) {
 				rgd->rg.rg_free--;
-				gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
+				if (sdp->gfs1)
+					gfs_rgrp_out((struct gfs_rgrp *)
+						     &rgd->rg, rgd->bh[0]);
+				else
+					gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
 			}
 			log_err( _("The bitmap was fixed.\n"));
 		} else {
@@ -170,9 +180,28 @@ struct duptree *dupfind(uint64_t block)
 
 struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp, uint64_t block)
 {
+	int j;
+
 	if (lf_dip && lf_dip->i_di.di_num.no_addr == block)
 		return lf_dip;
-	return is_system_inode(sdp, block);
+	if (!sdp->gfs1)
+		return is_system_inode(sdp, block);
+
+	if (sdp->md.statfs && block == sdp->md.statfs->i_di.di_num.no_addr)
+		return sdp->md.statfs;
+	if (sdp->md.jiinode && block == sdp->md.jiinode->i_di.di_num.no_addr)
+		return sdp->md.jiinode;
+	if (sdp->md.riinode && block == sdp->md.riinode->i_di.di_num.no_addr)
+		return sdp->md.riinode;
+	if (sdp->md.qinode && block == sdp->md.qinode->i_di.di_num.no_addr)
+		return sdp->md.qinode;
+	if (sdp->md.rooti && block == sdp->md.rooti->i_di.di_num.no_addr)
+		return sdp->md.rooti;
+	for (j = 0; j < sdp->md.journals; j++)
+		if (sdp->md.journal && sdp->md.journal[j] &&
+		    block == sdp->md.journal[j]->i_di.di_num.no_addr)
+			return sdp->md.journal[j];
+	return NULL;
 }
 
 /* fsck_load_inode - same as gfs2_load_inode() in libgfs2 but system inodes
@@ -184,6 +213,8 @@ struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sdp, uint64_t block)
 	ip = fsck_system_inode(sdp, block);
 	if (ip)
 		return ip;
+	if (sdp->gfs1)
+		return gfs_inode_read(sdp, block);
 	return inode_read(sdp, block);
 }
 
@@ -198,6 +229,8 @@ struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp,
 	if (sysip)
 		return sysip;
 
+	if (sdp->gfs1)
+		return gfs_inode_get(sdp, bh);
 	return inode_get(sdp, bh);
 }
 
@@ -431,12 +464,13 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	return 0;
 }
 
-/* Process a bad leaf pointer and ask to repair the first time.      */
-/* The repair process involves extending the previous leaf's entries */
-/* so that they replace the bad ones.  We have to hack up the old    */
-/* leaf a bit, but it's better than deleting the whole directory,    */
-/* which is what used to happen before.                              */
-static int warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no,
+/* warn_and_patch - Warn the user of an error and ask permission to fix it
+ * Process a bad leaf pointer and ask to repair the first time.
+ * The repair process involves extending the previous leaf's entries
+ * so that they replace the bad ones.  We have to hack up the old
+ * leaf a bit, but it's better than deleting the whole directory,
+ * which is what used to happen before. */
+static int warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no, 
 			  uint64_t *bad_leaf, uint64_t old_leaf,
 			  uint64_t first_ok_leaf, int pindex, const char *msg)
 {
@@ -538,7 +572,7 @@ static int check_leaf(struct gfs2_inode *ip, int lindex,
 		goto out_copy_old_leaf;
 	}
 
-	if (pass->check_dentry && S_ISDIR(ip->i_di.di_mode)) {
+	if (pass->check_dentry && is_dir(&ip->i_di, sdp->gfs1)) {
 		error = check_entries(ip, lbh, DIR_EXHASH, &count, pass);
 
 		if (skip_this_pass || fsck_abort)
@@ -1073,7 +1107,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 	   because it checks everything through the hash table using
 	   "depth" field calculations. However, we still have to check the
 	   indirect blocks, even if the height == 1.  */
-	if (S_ISDIR(ip->i_di.di_mode))
+	if (is_dir(&ip->i_di, ip->i_sbd->gfs1))
 		height++;
 
 	/* if (<there are no indirect blocks to check>) */
@@ -1081,12 +1115,15 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 		return 0;
 	for (h = 1; h < height; h++) {
 		if (h > 1) {
-			if (S_ISDIR(ip->i_di.di_mode) &&
+			if (is_dir(&ip->i_di, ip->i_sbd->gfs1) &&
 			    h == ip->i_di.di_height + 1)
 				iblk_type = GFS2_METATYPE_JD;
 			else
 				iblk_type = GFS2_METATYPE_IN;
-			head_size = sizeof(struct gfs2_meta_header);
+			if (ip->i_sbd->gfs1)
+				head_size = sizeof(struct gfs_indirect);
+			else
+				head_size = sizeof(struct gfs2_meta_header);
 		} else {
 			iblk_type = GFS2_METATYPE_DI;
 			head_size = sizeof(struct gfs2_dinode);
@@ -1177,7 +1214,7 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		if (skip_this_pass || fsck_abort)
 			return error;
 		block =  be64_to_cpu(*ptr);
-		/* It's important that we don't call !valid_block and
+		/* It's important that we don't call valid_block() and
 		   bypass calling check_data on invalid blocks because that
 		   would defeat the rangecheck_block related functions in
 		   pass1. Therefore the individual check_data functions
@@ -1208,7 +1245,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	uint64_t blks_checked = 0;
 	int error, rc;
 
-	if (!height && !S_ISDIR(ip->i_di.di_mode))
+	if (!height && !is_dir(&ip->i_di, ip->i_sbd->gfs1))
 		return 0;
 
 	for (i = 0; i < GFS2_MAX_META_HEIGHT; i++)
@@ -1224,7 +1261,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	/* For directories, we've already checked the "data" blocks which
 	 * comprise the directory hash table, so we perform the directory
 	 * checks and exit. */
-        if (S_ISDIR(ip->i_di.di_mode)) {
+        if (is_dir(&ip->i_di, ip->i_sbd->gfs1)) {
 		free_metalist(ip, &metalist[0]);
 		if (!(ip->i_di.di_flags & GFS2_DIF_EXHASH))
 			return 0;
@@ -1267,7 +1304,10 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 					brelse(bh);
 				continue;
 			}
-			head_size = sizeof(struct gfs2_meta_header);
+			if (ip->i_sbd->gfs1)
+				head_size = sizeof(struct gfs_indirect);
+			else
+				head_size = sizeof(struct gfs2_meta_header);
 		} else {
 			/* if this isn't really a dinode, skip it */
 			if (gfs2_check_meta(bh, GFS2_METATYPE_DI)) {
@@ -1438,7 +1478,7 @@ static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,
 	   after the bitmap has been set but before the blockmap has. */
 	*bh = bread(ip->i_sbd, block);
 	q = block_type(block);
-	if (blockmap_to_bitmap(q) == GFS2_BLKST_FREE) { /* If not marked yet */
+	if (blockmap_to_bitmap(q, ip->i_sbd->gfs1) == GFS2_BLKST_FREE) {
 		log_debug(_("%s reference to new metadata block "
 			    "%lld (0x%llx) is now marked as indirect.\n"),
 			  desc, (unsigned long long)block,
@@ -1457,7 +1497,7 @@ static int alloc_data(struct gfs2_inode *ip, uint64_t block, void *private)
 	/* We can't check the bitmap here because this function is called
 	   after the bitmap has been set but before the blockmap has. */
 	q = block_type(block);
-	if (blockmap_to_bitmap(q) == GFS2_BLKST_FREE) { /* If not marked yet */
+	if (blockmap_to_bitmap(q, ip->i_sbd->gfs1) == GFS2_BLKST_FREE) {
 		log_debug(_("%s reference to new data block "
 			    "%lld (0x%llx) is now marked as data.\n"),
 			  desc, (unsigned long long)block,
@@ -1475,7 +1515,7 @@ static int alloc_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	/* We can't check the bitmap here because this function is called
 	   after the bitmap has been set but before the blockmap has. */
 	q = block_type(block);
-	if (blockmap_to_bitmap(q) == GFS2_BLKST_FREE) /* If not marked yet */
+	if (blockmap_to_bitmap(q, ip->i_sbd->gfs1) == GFS2_BLKST_FREE)
 		fsck_blockmap_set(ip, block, _("newly allocated leaf"),
 				  gfs2_leaf_blk);
 	return 0;

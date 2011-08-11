@@ -35,6 +35,7 @@ struct osi_root dup_blocks = (struct osi_root) { NULL, };
 struct osi_root dirtree = (struct osi_root) { NULL, };
 struct osi_root inodetree = (struct osi_root) { NULL, };
 int dups_found = 0, dups_found_first = 0;
+struct gfs_sb *sbd1 = NULL;
 
 /* This function is for libgfs2's sake.                                      */
 void print_it(const char *label, const char *fmt, const char *fmt2, ...)
@@ -155,6 +156,10 @@ static void check_statfs(struct gfs2_sbd *sdp)
 	char buf[sizeof(struct gfs2_statfs_change)];
 	int count;
 
+	if (sdp->gfs1 && !sdp->md.statfs->i_di.di_size) {
+		log_info("This GFS1 file system is not using fast_statfs.\n");
+		return;
+	}
 	/* Read the current statfs values */
 	count = gfs2_readi(sdp->md.statfs, buf, 0,
 			   sdp->md.statfs->i_di.di_size);
@@ -340,16 +345,19 @@ int main(int argc, char **argv)
 		check_statfs(sdp);
 
 	/* Free up our system inodes */
-	inode_put(&sdp->md.inum);
+	if (!sdp->gfs1)
+		inode_put(&sdp->md.inum);
 	inode_put(&sdp->md.statfs);
 	for (j = 0; j < sdp->md.journals; j++)
 		inode_put(&sdp->md.journal[j]);
 	inode_put(&sdp->md.jiinode);
 	inode_put(&sdp->md.riinode);
 	inode_put(&sdp->md.qinode);
-	inode_put(&sdp->md.pinode);
+	if (!sdp->gfs1)
+		inode_put(&sdp->md.pinode);
 	inode_put(&sdp->md.rooti);
-	inode_put(&sdp->master_dir);
+	if (!sdp->gfs1)
+		inode_put(&sdp->master_dir);
 	if (lf_dip)
 		inode_put(&lf_dip);
 

@@ -58,6 +58,13 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 			log_crit( _("osi_tree broken in scan_info_list!!\n"));
 			exit(FSCK_ERROR);
 		}
+		/* Don't check reference counts on the special gfs files */
+		if (sdp->gfs1 &&
+		    ((ii->inode == sdp->md.riinode->i_di.di_num.no_addr) ||
+		     (ii->inode == sdp->md.jiinode->i_di.di_num.no_addr) ||
+		     (ii->inode == sdp->md.qinode->i_di.di_num.no_addr) ||
+		     (ii->inode == sdp->md.statfs->i_di.di_num.no_addr)))
+			continue;
 		if (ii->counted_links == 0) {
 			log_err( _("Found unlinked inode at %llu (0x%llx)\n"),
 				(unsigned long long)ii->inode,

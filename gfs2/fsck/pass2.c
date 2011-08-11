@@ -123,31 +123,32 @@ static const char *de_type_string(uint8_t de_type)
 	return de_types[3]; /* invalid */
 }
 
-static int check_file_type(uint8_t de_type, uint8_t blk_type)
+static int check_file_type(uint8_t de_type, uint8_t blk_type, int gfs1)
 {
 	switch(blk_type) {
 	case gfs2_inode_dir:
-		if (de_type != DT_DIR)
+		if (de_type != (gfs1 ? GFS_FILE_DIR : DT_DIR))
 			return 1;
 		break;
 	case gfs2_inode_file:
-		if (de_type != DT_REG)
+		if (de_type != (gfs1 ? GFS_FILE_REG : DT_REG))
 			return 1;
 		break;
 	case gfs2_inode_lnk:
-		if (de_type != DT_LNK)
+		if (de_type != (gfs1 ? GFS_FILE_LNK : DT_LNK))
 			return 1;
 		break;
 	case gfs2_inode_device:
-		if (de_type != DT_BLK && de_type != DT_CHR)
+		if ((de_type != (gfs1 ? GFS_FILE_BLK : DT_BLK)) &&
+		    (de_type != (gfs1 ? GFS_FILE_CHR : DT_CHR)))
 			return 1;
 		break;
 	case gfs2_inode_fifo:
-		if (de_type != DT_FIFO)
+		if (de_type != (gfs1 ? GFS_FILE_FIFO : DT_FIFO))
 			return 1;
 		break;
 	case gfs2_inode_sock:
-		if (de_type != DT_SOCK)
+		if (de_type != (gfs1 ? GFS_FILE_SOCK : DT_SOCK))
 			return 1;
 		break;
 	default:
@@ -395,7 +396,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		goto nuke_dentry;
 	}
 
-	error = check_file_type(de->de_type, q);
+	error = check_file_type(de->de_type, q, sdp->gfs1);
 	if (error < 0) {
 		log_err( _("Error: directory entry type is "
 			   "incompatible with block type at block %lld "
@@ -668,7 +669,9 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 			memcpy(filename, tmp_name, filename_len);
 			log_warn( _("Adding '.' entry\n"));
 			error = dir_add(sysinode, filename, filename_len,
-				&(sysinode->i_di.di_num), DT_DIR);
+					&(sysinode->i_di.di_num),
+					(sysinode->i_sbd->gfs1 ?
+					 GFS_FILE_DIR : DT_DIR));
 			if (error) {
 				log_err(_("Error adding directory %s: %s\n"),
 				        filename, strerror(error));
@@ -715,8 +718,11 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
  */
 static inline int is_system_dir(struct gfs2_sbd *sdp, uint64_t block)
 {
-	if (block == sdp->md.rooti->i_di.di_num.no_addr ||
-	    block == sdp->md.jiinode->i_di.di_num.no_addr ||
+	if (block == sdp->md.rooti->i_di.di_num.no_addr)
+		return TRUE;
+	if (sdp->gfs1)
+		return FALSE;
+	if (block == sdp->md.jiinode->i_di.di_num.no_addr ||
 	    block == sdp->md.pinode->i_di.di_num.no_addr ||
 	    block == sdp->master_dir->i_di.di_num.no_addr)
 		return TRUE;
@@ -746,19 +752,22 @@ int pass2(struct gfs2_sbd *sdp)
 	int error = 0;
 
 	/* Check all the system directory inodes. */
-	if (check_system_dir(sdp->md.jiinode, "jindex", build_jindex)) {
+	if (!sdp->gfs1 &&
+	    check_system_dir(sdp->md.jiinode, "jindex", build_jindex)) {
 		stack;
 		return FSCK_ERROR;
 	}
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 		return FSCK_OK;
-	if (check_system_dir(sdp->md.pinode, "per_node", build_per_node)) {
+	if (!sdp->gfs1 &&
+	    check_system_dir(sdp->md.pinode, "per_node", build_per_node)) {
 		stack;
 		return FSCK_ERROR;
 	}
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 		return FSCK_OK;
-	if (check_system_dir(sdp->master_dir, "master", build_master)) {
+	if (!sdp->gfs1 &&
+	    check_system_dir(sdp->master_dir, "master", build_master)) {
 		stack;
 		return FSCK_ERROR;
 	}
@@ -880,7 +889,9 @@ int pass2(struct gfs2_sbd *sdp)
 
 				cur_blks = ip->i_di.di_blocks;
 				error = dir_add(ip, filename, filename_len,
-					&(ip->i_di.di_num), DT_DIR);
+						&(ip->i_di.di_num),
+						(sdp->gfs1 ? GFS_FILE_DIR :
+						 DT_DIR));
 				if (error) {
 					log_err(_("Error adding directory %s: %s\n"),
 					        filename, strerror(error));

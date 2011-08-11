@@ -113,6 +113,7 @@ extern void gfs2_dup_free(void);
 extern int fsck_query(const char *format, ...)
 	__attribute__((format(printf,1,2)));
 extern struct dir_info *dirtree_find(uint64_t block);
+extern void dup_listent_delete(struct inode_with_dups *id);
 extern void dup_delete(struct duptree *b);
 extern void dirtree_delete(struct dir_info *b);
 
@@ -135,4 +136,6 @@ extern struct osi_root inodetree;
 extern int dups_found; /* How many duplicate references have we found? */
 extern int dups_found_first; /* How many duplicates have we found the original
 				reference for? */
+extern struct gfs_sb *sbd1;
+
 #endif /* _FSCK_H */

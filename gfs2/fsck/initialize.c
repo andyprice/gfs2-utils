@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <libintl.h>
 #include <errno.h>
+#include <time.h>
 
 #define _(String) gettext(String)
 
@@ -194,12 +195,14 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 				 int *fixit, int *this_rg_fixed,
 				 int *this_rg_bad)
 {
-	uint32_t rg_free, rg_reclaimed;
+	uint32_t rg_free, rg_reclaimed, rg_unlinked;
 	int rgb, x, y, off, bytes_to_check, total_bytes_to_check, asked = 0;
 	unsigned int state;
+	struct gfs_rgrp *gfs1rg = (struct gfs_rgrp *)&rgd->rg;
 
-	rg_free = rg_reclaimed = 0;
+	rg_free = rg_reclaimed = rg_unlinked = 0;
 	total_bytes_to_check = rgd->ri.ri_bitbytes;
+
 	*this_rg_fixed = *this_rg_bad = 0;
 
 	for (rgb = 0; rgb < rgd->ri.ri_length; rgb++){
@@ -247,8 +250,10 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 					if (query("%s", msg))
 						*fixit = 1;
 				}
-				if (!(*fixit))
+				if (!(*fixit)) {
+					rg_unlinked++;
 					continue;
+				}
 				*byte &= ~(GFS2_BIT_MASK <<
 					   (GFS2_BIT_SIZE * y));
 				bmodified(rgd->bh[rgb]);
@@ -270,7 +275,29 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 				 rg_reclaimed);
 		if (query( _("Fix the rgrp free blocks count? (y/n)"))) {
 			rgd->rg.rg_free = rg_free;
-			gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
+			if (sdp->gfs1)
+				gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg,
+					     rgd->bh[0]);
+			else
+				gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
+			*this_rg_fixed = 1;
+			log_err( _("The rgrp was fixed.\n"));
+		} else
+			log_err( _("The rgrp was not fixed.\n"));
+	}
+	if (sdp->gfs1 && gfs1rg->rg_freemeta != rg_unlinked) {
+		*this_rg_bad = 1;
+		log_err( _("Error: resource group %lld (0x%llx): "
+			   "free meta  (%d) does not match bitmap (%d)\n"),
+			 (unsigned long long)rgd->ri.ri_addr,
+			 (unsigned long long)rgd->ri.ri_addr,
+			 gfs1rg->rg_freemeta, rg_unlinked);
+		if (rg_reclaimed)
+			log_err( _("(%d blocks were reclaimed)\n"),
+				 rg_reclaimed);
+		if (query( _("Fix the rgrp free meta blocks count? (y/n)"))) {
+			gfs1rg->rg_freemeta = rg_unlinked;
+			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bh[0]);
 			*this_rg_fixed = 1;
 			log_err( _("The rgrp was fixed.\n"));
 		} else
@@ -539,7 +566,10 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	/* Get root dinode */
 	sdp->md.rooti = inode_read(sdp, sdp->sd_sb.sb_root_dir.no_addr);
 
-	gfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
+	if (sdp->gfs1)
+		sdp->md.riinode = inode_read(sdp, sbd1->sb_rindex_di.no_addr);
+	else
+		gfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
 	if (!sdp->md.riinode) {
 		if (query( _("The gfs2 system rindex inode is missing. "
 			     "Okay to rebuild it? (y/n) "))) {
@@ -558,7 +588,10 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 
 	/* rgrepair requires the journals be read in in order to distinguish
 	   "real" rgrps from rgrps that are just copies left in journals. */
-	gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
+	if (sdp->gfs1)
+		sdp->md.jiinode = inode_read(sdp, sbd1->sb_jindex_di.no_addr);
+	else
+		gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
 	if (!sdp->md.jiinode) {
 		if (query( _("The gfs2 system jindex inode is missing. "
 			     "Okay to rebuild it? (y/n) "))) {
@@ -582,7 +615,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	 *******************************************************************/
 	log_warn( _("Validating Resource Group index.\n"));
 	for (trust_lvl = blind_faith; trust_lvl <= indignation; trust_lvl++) {
-		int ret;
+		int ret = 0;
 
 		log_warn( _("Level %d rgrp check: %s.\n"), trust_lvl + 1,
 			  level_desc[trust_lvl]);
@@ -616,38 +649,60 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	/*******************************************************************
 	 *****************  Initialize more system inodes  *****************
 	 *******************************************************************/
-	/* Look for "inum" entry in master dinode */
-	gfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);
-	if (!sdp->md.inum) {
-		if (query( _("The gfs2 system inum inode is missing. "
-			     "Okay to rebuild it? (y/n) "))) {
+	if (!sdp->gfs1) {
+		/* Look for "inum" entry in master dinode */
+		gfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);
+		if (!sdp->md.inum) {
+			if (!query( _("The gfs2 system inum inode is missing. "
+				      "Okay to rebuild it? (y/n) "))) {
+				log_err( _("fsck.gfs2 cannot continue without "
+					   "a valid inum file; aborting.\n"));
+				goto fail;
+			}
 			err = build_inum(sdp);
 			if (err) {
 				log_crit(_("Error rebuilding inum inode: %s\n"),
-				         strerror(err));
+					 strerror(err));
 				exit(-1);
+			}
+			gfs2_lookupi(sdp->master_dir, "inum", 4,
+				     &sdp->md.inum);
+			if (!sdp->md.inum) {
+				log_crit("System inum inode was not rebuilt.  "
+					 "Aborting.\n");
+				goto fail;
 			}
 		}
+		/* Read inum entry into buffer */
+		gfs2_readi(sdp->md.inum, &inumbuf, 0,
+			   sdp->md.inum->i_di.di_size);
+		/* call gfs2_inum_range_in() to retrieve range */
+		sdp->md.next_inum = be64_to_cpu(inumbuf);
 	}
-	/* Read inum entry into buffer */
-	gfs2_readi(sdp->md.inum, &inumbuf, 0, sdp->md.inum->i_di.di_size);
-	/* call gfs2_inum_range_in() to retrieve range */
-	sdp->md.next_inum = be64_to_cpu(inumbuf);
 
-	gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
-	if (!sdp->md.statfs) {
-		if (query( _("The gfs2 system statfs inode is missing. "
-			     "Okay to rebuild it? (y/n) "))) {
-			err = build_statfs(sdp);
-			if (err) {
-				log_crit(_("Error rebuilding statfs inode: %s\n"),
-				         strerror(err));
-				exit(-1);
-			}
-		} else {
-			log_err( _("fsck.gfs2 cannot continue without a "
-				   "valid statfs file; aborting.\n"));
-			return FSCK_ERROR;
+	if (sdp->gfs1)
+		sdp->md.statfs = inode_read(sdp, sbd1->sb_license_di.no_addr);
+	else
+		gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
+	if (!sdp->gfs1 && !sdp->md.statfs) {
+		if (!query( _("The gfs2 system statfs inode is missing. "
+			      "Okay to rebuild it? (y/n) "))) {
+			log_err( _("fsck.gfs2 cannot continue without a valid "
+				   "statfs file; aborting.\n"));
+			goto fail;
+		}
+		err = build_statfs(sdp);
+		if (err) {
+			log_crit(_("Error rebuilding statfs inode: %s\n"),
+				 strerror(err));
+			exit(-1);
+		}
+		gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
+		if (!sdp->md.statfs) {
+			log_err( _("Rebuild of statfs system file failed."));
+			log_err( _("fsck.gfs2 cannot continue without "
+				   "a valid statfs file; aborting.\n"));
+			goto fail;
 		}
 	}
 	buf = malloc(sdp->md.statfs->i_di.di_size);
@@ -657,22 +712,36 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	gfs2_statfs_change_in(&sc, buf);
 	free(buf);
 
-	gfs2_lookupi(sdp->master_dir, "quota", 5, &sdp->md.qinode);
-	if (!sdp->md.qinode) {
-		if (query( _("The gfs2 system quota inode is missing. "
-			     "Okay to rebuild it? (y/n) "))) {
-			err = build_quota(sdp);
-			if (err) {
-				log_crit(_("Error rebuilding quota inode: %s\n"),
-				         strerror(err));
-				exit(-1);
-			}
+	if (sdp->gfs1)
+		sdp->md.qinode = inode_read(sdp, sbd1->sb_quota_di.no_addr);
+	else
+		gfs2_lookupi(sdp->master_dir, "quota", 5, &sdp->md.qinode);
+	if (!sdp->gfs1 && !sdp->md.qinode) {
+		if (!query( _("The gfs2 system quota inode is missing. "
+			      "Okay to rebuild it? (y/n) "))) {
+			log_crit("System quota inode was not "
+				 "rebuilt.  Aborting.\n");
+			goto fail;
+		}
+		err = build_quota(sdp);
+		if (err) {
+			log_crit(_("Error rebuilding quota inode: %s\n"),
+				 strerror(err));
+			exit(-1);
+		}
+		gfs2_lookupi(sdp->master_dir, "quota", 5, &sdp->md.qinode);
+		if (!sdp->md.qinode) {
+			log_crit("Unable to rebuild system quota file "
+				 "inode.  Aborting.\n");
+			goto fail;
 		}
 	}
 
 	/* Try to lookup the per_node inode.  If it was missing, it is now
 	   safe to rebuild it. */
-	lookup_per_node(sdp, 1);
+	if (!sdp->gfs1)
+		lookup_per_node(sdp, 1);
+
 	/*******************************************************************
 	 *******  Now, set boundary fields in the super block  *************
 	 *******************************************************************/
@@ -785,13 +854,15 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 		return;
 	}
 	ip = inode_read(sdp, di->di_num.no_addr);
-	if (di->di_num.no_formal_ino == 3) {
+	if ((!sdp->gfs1 && di->di_num.no_formal_ino == 3) ||
+	    (sdp->gfs1 && (di->di_flags & GFS2_DIF_JDATA) &&
+	     (di->di_size % sizeof(struct gfs_jindex) == 0))) {
 		if (fix_md.jiinode || is_journal_copy(ip, bh))
 			return;
 		log_warn(_("Found system jindex file at: 0x%llx\n"),
 			 di->di_num.no_addr);
 		fix_md.jiinode = ip;
-	} else if (S_ISDIR(di->di_mode)) {
+	} else if (!sdp->gfs1 && is_dir(di, sdp->gfs1)) {
 		/* Check for a jindex dir entry. Only one system dir has a
 		   jindex: master */
 		gfs2_lookupi(ip, "jindex", 6, &child_ip);
@@ -827,7 +898,7 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 		log_debug(_("Unknown system directory at block 0x%llx\n"),
 			  di->di_num.no_addr);
 		inode_put(&ip);
-	} else if (di->di_size == 8) {
+	} else if (!sdp->gfs1 && di->di_size == 8) {
 		if (fix_md.inum || is_journal_copy(ip, bh))
 			return;
 		fix_md.inum = ip;
@@ -869,7 +940,7 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 
 	if (sdp->sd_sb.sb_root_dir.no_addr) /* if we know the root dinode */
 		return;             /* we don't need to find the root */
-	if (!S_ISDIR(di->di_mode))  /* if this isn't a directory */
+	if (!is_dir(di, sdp->gfs1))  /* if this isn't a directory */
 		return;             /* it can't lead us to the root anyway */
 
 	if (di->di_num.no_formal_ino == 1) {
@@ -1004,7 +1075,6 @@ static int peruse_metadata(struct gfs2_sbd *sdp, uint64_t startblock)
 	uint64_t blk, max_rg_size;
 	struct gfs2_buffer_head *bh;
 	struct gfs2_dinode di;
-	int found_gfs2_dinodes = 0, possible_gfs1_dinodes = 0;
 
 	max_rg_size = 2147483648ull / sdp->bsize;
 	/* Max RG size is 2GB. 2G / bsize. */
@@ -1015,18 +1085,6 @@ static int peruse_metadata(struct gfs2_sbd *sdp, uint64_t startblock)
 			continue;
 		}
 		gfs2_dinode_in(&di, bh);
-		if (!found_gfs2_dinodes &&
-		    di.di_num.no_addr == di.di_num.no_formal_ino) {
-			possible_gfs1_dinodes++;
-			if (possible_gfs1_dinodes > 5) {
-				log_err(_("Found several gfs (version 1) "
-					  "dinodes; aborting.\n"));
-				brelse(bh);
-				return -1;
-			}
-		} else {
-			found_gfs2_dinodes++;
-		}
 		if (di.di_flags & GFS2_DIF_SYSTEM)
 			peruse_system_dinode(sdp, &di, bh);
 		else
@@ -1153,6 +1211,8 @@ static int sb_repair(struct gfs2_sbd *sdp)
  */
 static int fill_super_block(struct gfs2_sbd *sdp)
 {
+	int ret;
+
 	sync();
 
 	/********************************************************************
@@ -1177,19 +1237,109 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 		log_crit(_("Bad constants (1)\n"));
 		exit(-1);
 	}
-	if (read_sb(sdp, 0) < 0) {
-		/* First, check for a gfs1 (not gfs2) file system */
-		if (sdp->sd_sb.sb_header.mh_magic == GFS2_MAGIC &&
-		    sdp->sd_sb.sb_header.mh_type == GFS2_METATYPE_SB)
-			return -1; /* This is gfs1, don't try to repair */
-		/* It's not a "sane" gfs1 fs so try to repair it */
+	ret = read_sb(sdp, 1);
+	if (ret < 0) {
 		if (sb_repair(sdp) != 0)
 			return -1; /* unrepairable, so exit */
 		/* Now that we've tried to repair it, re-read it. */
-		if (read_sb(sdp, 0) < 0)
+		ret = read_sb(sdp, 1);
+		if (ret < 0)
 			return -1;
 	}
+	if (sdp->gfs1)
+		sbd1 = (struct gfs_sb *)&sdp->sd_sb;
+	return 0;
+}
 
+static void gfs_log_header_out(struct gfs_log_header *head, char *buf)
+{
+        struct gfs_log_header *str = (struct gfs_log_header *) buf;
+
+	str->lh_header.mh_magic = cpu_to_be32(head->lh_header.mh_magic);
+	str->lh_header.mh_type = cpu_to_be32(head->lh_header.mh_type);
+	str->lh_header.mh_format = cpu_to_be32(head->lh_header.mh_format);
+	str->lh_header.__pad0 = cpu_to_be32(head->lh_header.__pad0);
+
+	str->lh_flags = cpu_to_be32(head->lh_flags);
+	str->lh_pad = cpu_to_be32(head->lh_pad);
+	str->lh_first = cpu_to_be64(head->lh_first);
+	str->lh_sequence = cpu_to_be64(head->lh_sequence);
+	str->lh_tail = cpu_to_be64(head->lh_tail);
+	str->lh_last_dump = cpu_to_be64(head->lh_last_dump);
+}
+
+/*
+ * reconstruct_single_journal - write a fresh GFS1 journal
+ * @sdp: superblock
+ * @jnum: journal number
+ *
+ * This function will write a fresh journal over the top of
+ * the previous journal.  All journal information is lost.  This
+ * process is basically stolen from write_journals() in the mkfs code.
+ *
+ * Returns: -1 on error, 0 otherwise
+ */
+static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
+				      uint32_t ji_nsegment)
+{
+	struct gfs_log_header lh;
+	uint32_t seg, sequence;
+	struct gfs2_buffer_head *bh;
+
+	srandom(time(NULL));
+	sequence = ji_nsegment / (RAND_MAX + 1.0) * random();
+
+	log_info("Clearing journal %d\n", jnum);
+
+	for (seg = 0; seg < ji_nsegment; seg++){
+		bh = bget(sdp, lh.lh_first * sdp->bsize);
+		memset(bh->b_data, 0, sdp->bsize);
+		memset(&lh, 0, sizeof(struct gfs_log_header));
+
+		lh.lh_header.mh_magic = GFS2_MAGIC;
+		lh.lh_header.mh_type = GFS2_METATYPE_LH;
+		lh.lh_header.mh_format = GFS2_FORMAT_LH;
+		lh.lh_header.__pad0 = 0x101674; /* mh_generation */
+		lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
+		lh.lh_first = sdp->md.journal[jnum]->i_di.di_num.no_addr +
+			(seg * sbd1->sb_seg_size);
+		lh.lh_sequence = sequence;
+
+		gfs_log_header_out(&lh, bh->b_data);
+		gfs_log_header_out(&lh, bh->b_data + GFS2_BASIC_BLOCK -
+				   sizeof(struct gfs_log_header));
+		brelse(bh);
+
+		if (++sequence == ji_nsegment)
+			sequence = 0;
+	}
+	return 0;
+}
+
+
+/*
+ * reconstruct_journals - write fresh journals for GFS1 only
+ * sdp: the super block
+ *
+ * Returns: 0 on success, -1 on failure
+ */
+static int reconstruct_journals(struct gfs2_sbd *sdp)
+{
+	int i;
+	struct gfs_jindex ji;
+	char buf[sizeof(struct gfs_jindex)];
+
+	log_err("Clearing GFS journals (this may take a while)");
+	for (i = 0; i < sdp->md.journals; i++) {
+		gfs2_readi(sdp->md.jiinode, buf, i * sizeof(struct gfs_jindex),
+			   sizeof(struct gfs_jindex));
+		gfs_jindex_in(&ji, buf);
+		if ((i % 2) == 0)
+			log_err(".");
+		if (reconstruct_single_journal(sdp, i, ji.ji_nsegment))
+			return -1;
+	}
+	log_err("\nJournals cleared.\n");
 	return 0;
 }
 
@@ -1261,10 +1411,15 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 	}
 
 	/* Get master dinode */
-	sdp->master_dir = inode_read(sdp, sdp->sd_sb.sb_master_dir.no_addr);
-	if (sdp->master_dir->i_di.di_header.mh_magic != GFS2_MAGIC ||
-	    sdp->master_dir->i_di.di_header.mh_type != GFS2_METATYPE_DI ||
-	    !sdp->master_dir->i_di.di_size) {
+	if (sdp->gfs1)
+		sdp->master_dir = NULL;
+	else
+		sdp->master_dir = inode_read(sdp,
+					     sdp->sd_sb.sb_master_dir.no_addr);
+	if (!sdp->gfs1 &&
+	    (sdp->master_dir->i_di.di_header.mh_magic != GFS2_MAGIC ||
+	     sdp->master_dir->i_di.di_header.mh_type != GFS2_METATYPE_DI ||
+	     !sdp->master_dir->i_di.di_size)) {
 		inode_put(&sdp->master_dir);
 		rebuild_master(sdp);
 		sdp->master_dir = inode_read(sdp,
@@ -1274,11 +1429,15 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 	/* Look up the "per_node" inode.  If there are journals missing, we
 	   need to figure out what's missing from per_node. And we need all
 	   our journals to be there before we can replay them. */
-	lookup_per_node(sdp, 0);
+	if (!sdp->gfs1)
+		lookup_per_node(sdp, 0);
 
 	/* verify various things */
 
-	if (replay_journals(sdp, preen, force_check, &clean_journals)) {
+	if (sdp->gfs1) {
+		if (reconstruct_journals(sdp))
+			return FSCK_ERROR;
+	} else if (replay_journals(sdp, preen, force_check, &clean_journals)) {
 		if (!opts.no && preen_is_safe(sdp, preen, force_check))
 			block_mounters(sdp, 0);
 		stack;

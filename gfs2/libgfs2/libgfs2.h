@@ -724,6 +724,9 @@ extern int gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block,
 			     int first);
 extern int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 				 uint64_t *block, uint32_t type, int first);
+extern int gfs2_next_rg_freemeta(struct rgrp_list *rgd, uint64_t *block,
+				 int first);
+
 /* super.c */
 extern int check_sb(struct gfs2_sb *sb, int allow_gfs);
 extern int read_sb(struct gfs2_sbd *sdp, int allow_gfs);

@@ -502,37 +502,48 @@ int gfs2_check_meta(struct gfs2_buffer_head *bh, int type)
  *
  * Returns: 0 on success, -1 when finished
  */
-int gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block, int first)
+static int __gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block,
+			       int first, unsigned char state)
 {
 	struct gfs2_bitmap *bits = NULL;
 	uint32_t length = rgd->ri.ri_length;
-	uint32_t blk = (first)? 0: (uint32_t)((*block+1)-rgd->ri.ri_data0);
+	uint32_t blk = (first)? 0: (uint32_t)((*block + 1) - rgd->ri.ri_data0);
 	int i;
 
 	if(!first && (*block < rgd->ri.ri_data0)) {
 		log_err("next_rg_meta:  Start block is outside rgrp bounds.\n");
 		exit(1);
 	}
-	for(i=0; i < length; i++){
+	for(i = 0; i < length; i++){
 		bits = &rgd->bits[i];
-		if(blk < bits->bi_len*GFS2_NBBY)
+		if (blk < bits->bi_len * GFS2_NBBY)
 			break;
-		blk -= bits->bi_len*GFS2_NBBY;
+		blk -= bits->bi_len * GFS2_NBBY;
 	}
 	for(; i < length; i++){
 		bits = &rgd->bits[i];
 		blk = gfs2_bitfit((unsigned char *)rgd->bh[i]->b_data +
-				  bits->bi_offset, bits->bi_len, blk,
-				  GFS2_BLKST_DINODE);
+				  bits->bi_offset, bits->bi_len, blk, state);
 		if(blk != BFITNOENT){
-			*block = blk + (bits->bi_start * GFS2_NBBY) + rgd->ri.ri_data0;
+			*block = blk + (bits->bi_start * GFS2_NBBY) +
+				rgd->ri.ri_data0;
 			break;
 		}
-		blk=0;
+		blk = 0;
 	}
 	if(i == length)
 		return -1;
 	return 0;
+}
+
+int gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block, int first)
+{
+	return __gfs2_next_rg_meta(rgd, block, first, GFS2_BLKST_DINODE);
+}
+
+int gfs2_next_rg_freemeta(struct rgrp_list *rgd, uint64_t *block, int first)
+{
+	return __gfs2_next_rg_meta(rgd, block, first, GFS2_BLKST_UNLINKED);
 }
 
 /**

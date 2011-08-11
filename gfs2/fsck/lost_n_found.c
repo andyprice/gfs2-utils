@@ -31,7 +31,7 @@ static void add_dotdot(struct gfs2_inode *ip)
 	/* If there's a pre-existing .. directory entry, we have to
 	   back out the links. */
 	di = dirtree_find(ip->i_di.di_num.no_addr);
-	if (di && !valid_block(sdp, di->dotdot_parent) == 0) {
+	if (di && valid_block(sdp, di->dotdot_parent)) {
 		struct gfs2_inode *dip;
 
 		log_debug(_("Directory %lld (0x%llx) already had a "
@@ -78,12 +78,52 @@ static void add_dotdot(struct gfs2_inode *ip)
 		log_warn( _("add_inode_to_lf:  Unable to remove "
 			    "\"..\" directory entry.\n"));
 
-	err = dir_add(ip, "..", 2, &(lf_dip->i_di.di_num), DT_DIR);
+	err = dir_add(ip, "..", 2, &(lf_dip->i_di.di_num),
+		      (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 	if (err) {
 		log_crit(_("Error adding .. directory: %s\n"),
 			 strerror(errno));
-		exit(-1);
+		exit(FSCK_ERROR);
 	}
+}
+
+static uint64_t find_free_blk(struct gfs2_sbd *sdp)
+{
+	osi_list_t *tmp, *head;
+	struct rgrp_list *rl = NULL;
+	struct gfs2_rindex *ri;
+	struct gfs2_rgrp *rg;
+	unsigned int block, bn = 0, x = 0, y = 0;
+	unsigned int state;
+	struct gfs2_buffer_head *bh;
+
+	memset(&rg, 0, sizeof(rg));
+	for (head = &sdp->rglist, tmp = head->next; tmp != head;
+	     tmp = tmp->next) {
+		rl = osi_list_entry(tmp, struct rgrp_list, list);
+		if (rl->rg.rg_free)
+			break;
+	}
+
+	if (tmp == head)
+		return 0;
+
+	ri = &rl->ri;
+	rg = &rl->rg;
+
+	for (block = 0; block < ri->ri_length; block++) {
+		bh = rl->bh[block];
+		x = (block) ? sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_rgrp);
+
+		for (; x < sdp->bsize; x++)
+			for (y = 0; y < GFS2_NBBY; y++) {
+				state = (bh->b_data[x] >> (GFS2_BIT_SIZE * y)) & 0x03;
+				if (state == GFS2_BLKST_FREE)
+					return ri->ri_data0 + bn;
+				bn++;
+			}
+	}
+	return 0;
 }
 
 /* add_inode_to_lf - Add dir entry to lost+found for the inode
@@ -102,22 +142,33 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct dir_info *di;
 	int err = 0;
+	uint32_t mode;
 
 	if (!lf_dip) {
 		uint8_t q;
 
 		log_info( _("Locating/Creating lost+found directory\n"));
 
-		lf_dip = createi(sdp->md.rooti, "lost+found",
-				 S_IFDIR | 0700, 0);
+		/* if this is gfs1, we have to trick createi into using
+		   no_formal_ino = no_addr, so we set next_inum to the
+		   free block we're about to allocate. */
+		if (sdp->gfs1)
+			sdp->md.next_inum = find_free_blk(sdp);
+		mode = (sdp->gfs1 ? DT2IF(GFS_FILE_DIR) : S_IFDIR) | 0700;
+		if (sdp->gfs1)
+			lf_dip = gfs_createi(sdp->md.rooti, "lost+found",
+					     mode, 0);
+		else
+			lf_dip = createi(sdp->md.rooti, "lost+found",
+					 S_IFDIR | 0700, 0);
 		if (lf_dip == NULL) {
 			log_crit(_("Error creating lost+found: %s\n"),
 			         strerror(errno));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 
 		/* createi will have incremented the di_nlink link count for
-		   the root directory.  We must increment the nlink value
+		   the root directory.  We must set the nlink value
 		   in the hash table to keep them in sync so that pass4 can
 		   detect and fix any descrepancies. */
 		set_di_nlink(sdp->md.rooti);
@@ -144,7 +195,9 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 			/* lost+found link for '..' back to root */
 			incr_link_count(lf_dip->i_di.di_num.no_addr,
 					sdp->md.rooti->i_di.di_num.no_addr,
-					"\"..\"");
+				       "\"..\"");
+			if (sdp->gfs1)
+				lf_dip->i_di.__pad1 = GFS_FILE_DIR;
 		}
 		log_info( _("lost+found directory is dinode %lld (0x%llx)\n"),
 			  (unsigned long long)lf_dip->i_di.di_num.no_addr,
@@ -162,47 +215,52 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	}
 	lf_blocks = lf_dip->i_di.di_blocks;
 
-	switch(ip->i_di.di_mode & S_IFMT){
+	if (sdp->gfs1)
+		mode = gfs_to_gfs2_mode(ip->i_di.__pad1);
+	else
+		mode = ip->i_di.di_mode & S_IFMT;
+
+	switch (mode) {
 	case S_IFDIR:
 		add_dotdot(ip);
 		sprintf(tmp_name, "lost_dir_%llu",
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		inode_type = DT_DIR;
+		inode_type = (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR);
 		break;
 	case S_IFREG:
 		sprintf(tmp_name, "lost_file_%llu",
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		inode_type = DT_REG;
+		inode_type = (sdp->gfs1 ? GFS_FILE_REG : DT_REG);
 		break;
 	case S_IFLNK:
 		sprintf(tmp_name, "lost_link_%llu",
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		inode_type = DT_LNK;
+		inode_type = (sdp->gfs1 ? GFS_FILE_LNK : DT_LNK);
 		break;
 	case S_IFBLK:
 		sprintf(tmp_name, "lost_blkdev_%llu",
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		inode_type = DT_BLK;
+		inode_type = (sdp->gfs1 ? GFS_FILE_BLK : DT_BLK);
 		break;
 	case S_IFCHR:
 		sprintf(tmp_name, "lost_chrdev_%llu",
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		inode_type = DT_CHR;
+		inode_type = (sdp->gfs1 ? GFS_FILE_CHR : DT_CHR);
 		break;
 	case S_IFIFO:
 		sprintf(tmp_name, "lost_fifo_%llu",
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		inode_type = DT_FIFO;
+		inode_type = (sdp->gfs1 ? GFS_FILE_FIFO : DT_FIFO);
 		break;
 	case S_IFSOCK:
 		sprintf(tmp_name, "lost_socket_%llu",
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		inode_type = DT_SOCK;
+		inode_type = (sdp->gfs1 ? GFS_FILE_SOCK : DT_SOCK);
 		break;
 	default:
 		sprintf(tmp_name, "lost_%llu",
 			(unsigned long long)ip->i_di.di_num.no_addr);
-		inode_type = DT_REG;
+		inode_type = (sdp->gfs1 ? GFS_FILE_REG : DT_REG);
 		break;
 	}
 
@@ -211,7 +269,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	if (err) {
 		log_crit(_("Error adding directory %s: %s\n"),
 			 tmp_name, strerror(errno));
-		exit(-1);
+		exit(FSCK_ERROR);
 	}
 	/* If the lf directory had new blocks added we have to mark them
 	   properly in the bitmap so they're not freed. */
@@ -222,7 +280,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	incr_link_count(ip->i_di.di_num.no_addr, lf_dip->i_di.di_num.no_addr,
 			_("from lost+found"));
 	/* If it's a directory, lost+found is back-linked to it via .. */
-	if (S_ISDIR(ip->i_di.di_mode))
+	if (is_dir(&ip->i_di, sdp->gfs1))
 		incr_link_count(lf_dip->i_di.di_num.no_addr,
 				ip->i_di.di_mode, _("to lost+found"));
 

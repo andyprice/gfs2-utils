@@ -631,7 +631,9 @@ int ji_update(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *jip, *ip = sdp->md.jiinode;
 	char journal_name[JOURNAL_NAME_SIZE];
-	int i;
+	int i, error;
+	char buf[sizeof(struct gfs_jindex)];
+	struct gfs_jindex ji;
 
 	if (!ip) {
 		log_crit("Journal index inode not found.\n");
@@ -642,24 +644,41 @@ int ji_update(struct gfs2_sbd *sdp)
 	   plus two for "." and "..".  So we subtract the 2 and divide by 3.
 	   If per_node is missing or damaged, we have to trust jindex has
 	   the correct number of entries. */
-	if (sdp->md.pinode) /* if per_node was read in properly */
+	if (sdp->gfs1)
+		sdp->md.journals = ip->i_di.di_size / sizeof(struct gfs_jindex);
+	else if (sdp->md.pinode) /* if per_node was read in properly */
 		sdp->md.journals = (sdp->md.pinode->i_di.di_entries - 2) / 3;
 	else
 		sdp->md.journals = ip->i_di.di_entries - 2;
 
 	if (!(sdp->md.journal = calloc(sdp->md.journals,
-				      sizeof(struct gfs2_inode *)))) {
+				       sizeof(struct gfs2_inode *)))) {
 		log_err("Unable to allocate journal index\n");
 		return -1;
 	}
 	memset(journal_name, 0, sizeof(*journal_name));
 	for (i = 0; i < sdp->md.journals; i++) {
-		/* FIXME check snprintf return code */
-		snprintf(journal_name, JOURNAL_NAME_SIZE, "journal%u", i);
-		gfs2_lookupi(sdp->md.jiinode, journal_name, strlen(journal_name),
-			     &jip);
-		sdp->md.journal[i] = jip;
+		if (sdp->gfs1) {
+			error = gfs2_readi(ip,
+					   buf, i * sizeof(struct gfs_jindex),
+					   sizeof(struct gfs_jindex));
+			if (!error)
+				break;
+			if (error != sizeof(struct gfs_jindex)){
+				log_err("An error occurred while reading the"
+					" journal index file.\n");
+				return -1;
+			}
+			gfs_jindex_in(&ji, buf);
+			sdp->md.journal[i] = inode_read(sdp, ji.ji_addr);
+		} else {
+			/* FIXME check snprintf return code */
+			snprintf(journal_name, JOURNAL_NAME_SIZE,
+				 "journal%u", i);
+			gfs2_lookupi(sdp->md.jiinode, journal_name,
+				     strlen(journal_name), &jip);
+			sdp->md.journal[i] = jip;
+		}
 	}
 	return 0;
-
 }

@@ -187,8 +187,13 @@ static uint64_t count_usedspace(struct gfs2_sbd *sdp, int first,
 	unsigned int state;
 
 	/* Count up the free blocks in the bitmap */
-	off = (first) ? sizeof(struct gfs2_rgrp) :
-		sizeof(struct gfs2_meta_header);
+	if (first) {
+		if (sdp->gfs1)
+			off = sizeof(struct gfs_rgrp);
+		else
+			off = sizeof(struct gfs2_rgrp);
+	} else
+		off = sizeof(struct gfs2_meta_header);
 	bytes_to_check = sdp->bsize - off;
 	for (x = 0; x < bytes_to_check; x++) {
 		unsigned char *byte;
@@ -685,12 +690,19 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rg,
 			mh.mh_format = GFS2_FORMAT_RB;
 			gfs2_meta_header_out(&mh, rg->bh[x]);
 		} else {
-			memset(&rg->rg, 0, sizeof(struct gfs2_rgrp));
+			if (sdp->gfs1)
+				memset(&rg->rg, 0, sizeof(struct gfs_rgrp));
+			else
+				memset(&rg->rg, 0, sizeof(struct gfs2_rgrp));
 			rg->rg.rg_header.mh_magic = GFS2_MAGIC;
 			rg->rg.rg_header.mh_type = GFS2_METATYPE_RG;
 			rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
 			rg->rg.rg_free = rg->ri.ri_data;
-			gfs2_rgrp_out(&rg->rg, rg->bh[x]);
+			if (sdp->gfs1)
+				gfs_rgrp_out((struct gfs_rgrp *)&rg->rg,
+					     rg->bh[x]);
+			else
+				gfs2_rgrp_out(&rg->rg, rg->bh[x]);
 		}
 		brelse(rg->bh[x]);
 		rg->bh[x] = NULL;

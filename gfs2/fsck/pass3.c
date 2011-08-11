@@ -54,11 +54,12 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 	else
 		decr_link_count(olddotdot, block, _("old \"..\""));
 	cur_blks = ip->i_di.di_blocks;
-	err = dir_add(ip, filename, filename_len, &pip->i_di.di_num, DT_DIR);
+	err = dir_add(ip, filename, filename_len, &pip->i_di.di_num,
+		      (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 	if (err) {
 		log_err(_("Error adding directory %s: %s\n"),
 		        filename, strerror(err));
-		exit(-1);
+		exit(FSCK_ERROR);
 	}
 	if (cur_blks != ip->i_di.di_blocks) {
 		char dirname[80];
@@ -195,10 +196,38 @@ int pass3(struct gfs2_sbd *sdp)
 		log_info( _("Marking root inode connected\n"));
 		di->checked = 1;
 	}
-	di = dirtree_find(sdp->master_dir->i_di.di_num.no_addr);
-	if (di) {
-		log_info( _("Marking master directory inode connected\n"));
-		di->checked = 1;
+	if (sdp->gfs1) {
+		di = dirtree_find(sdp->md.statfs->i_di.di_num.no_addr);
+		if (di) {
+			log_info( _("Marking GFS1 statfs file inode "
+				    "connected\n"));
+			di->checked = 1;
+		}
+		di = dirtree_find(sdp->md.jiinode->i_di.di_num.no_addr);
+		if (di) {
+			log_info( _("Marking GFS1 jindex file inode "
+				    "connected\n"));
+			di->checked = 1;
+		}
+		di = dirtree_find(sdp->md.riinode->i_di.di_num.no_addr);
+		if (di) {
+			log_info( _("Marking GFS1 rindex file inode "
+				    "connected\n"));
+			di->checked = 1;
+		}
+		di = dirtree_find(sdp->md.qinode->i_di.di_num.no_addr);
+		if (di) {
+			log_info( _("Marking GFS1 quota file inode "
+				    "connected\n"));
+			di->checked = 1;
+		}
+	} else {
+		di = dirtree_find(sdp->master_dir->i_di.di_num.no_addr);
+		if (di) {
+			log_info( _("Marking master directory inode "
+				    "connected\n"));
+			di->checked = 1;
+		}
 	}
 
 	/* Go through the directory list, working up through the parents

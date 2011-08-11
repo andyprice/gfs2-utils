@@ -360,7 +360,8 @@ static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
 	/* Exhash dir leafs will be checked by check_metatree (right after
 	   the "end:" label.)  But if this is a linear directory we need to
 	   check the dir with check_linear_dir. */
-	if (S_ISDIR(ip->i_di.di_mode) && !(ip->i_di.di_flags & GFS2_DIF_EXHASH))
+	if (is_dir(&ip->i_di, sdp->gfs1) &&
+	   !(ip->i_di.di_flags & GFS2_DIF_EXHASH))
 		error = check_linear_dir(ip, ip->i_bh, &find_dirents);
 
 	/* Check for ea references in the inode */
@@ -696,7 +697,7 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *b)
 					  _("reference-repaired data"),
 					  gfs2_block_used);
 		} else if (id->reftypecount[ref_as_meta]) {
-			if (S_ISDIR(ip->i_di.di_mode))
+			if (is_dir(&ip->i_di, sdp->gfs1))
 				fsck_blockmap_set(ip, b->block,
 						  _("reference-repaired leaf"),
 						  gfs2_leaf_blk);

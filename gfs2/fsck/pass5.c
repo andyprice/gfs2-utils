@@ -11,7 +11,7 @@
 #include "fsck.h"
 #include "util.h"
 
-static int convert_mark(uint8_t q, uint32_t *count)
+static int gfs1_convert_mark(uint8_t q, uint32_t *count)
 {
 	switch(q) {
 
@@ -37,9 +37,61 @@ static int convert_mark(uint8_t q, uint32_t *count)
 
 	case gfs2_indir_blk:
 	case gfs2_leaf_blk:
+	/*case gfs2_meta_rgrp:*/
+	case gfs2_jdata: /* gfs1 jdata blocks count as "metadata" and gfs1
+			    metadata is marked the same as gfs2 inode in the
+			    bitmap. */
+	case gfs2_meta_eattr:
+		count[3]++;
+		return GFS2_BLKST_DINODE;
+
+	case gfs2_freemeta:
+		count[4]++;
+		return GFS2_BLKST_UNLINKED;
+
+	default:
+		log_err( _("Invalid block type %d found\n"), q);
+	}
+	return -1;
+}
+
+static int gfs2_convert_mark(uint8_t q, uint32_t *count)
+{
+	switch(q) {
+
+	case gfs2_meta_inval:
+	case gfs2_inode_invalid:
+		/* Convert invalid metadata to free blocks */
+	case gfs2_block_free:
+		count[0]++;
+		return GFS2_BLKST_FREE;
+
+	case gfs2_block_used:
+		count[2]++;
+		return GFS2_BLKST_USED;
+
+	case gfs2_inode_dir:
+	case gfs2_inode_file:
+	case gfs2_inode_lnk:
+	case gfs2_inode_device:
+	case gfs2_jdata: /* gfs1 jdata blocks count as "metadata" and gfs1
+			    metadata is marked the same as gfs2 inode in the
+			    bitmap. */
+	case gfs2_inode_fifo:
+	case gfs2_inode_sock:
+		count[1]++;
+		return GFS2_BLKST_DINODE;
+
+	case gfs2_indir_blk:
+	case gfs2_leaf_blk:
 	case gfs2_meta_eattr:
 		count[2]++;
 		return GFS2_BLKST_USED;
+
+	case gfs2_freemeta:
+		log_err( _("Invalid freemeta type %d found\n"), q);
+		count[4]++;
+		return -1;
 
 	default:
 		log_err( _("Invalid block type %d found\n"), q);
@@ -71,7 +123,10 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer,
 			return 0;
 		q = block_type(block);
 
-		block_status = convert_mark(q, count);
+		if (sdp->gfs1)
+			block_status = gfs1_convert_mark(q, count);
+		else
+			block_status = gfs2_convert_mark(q, count);
 
 		/* If one node opens a file and another node deletes it, we
 		   may be left with a block that appears to be "unlinked" in
@@ -147,6 +202,7 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_list *rgp,
 	struct gfs2_bitmap *bits;
 	uint64_t rg_block = 0;
 	int update = 0;
+	struct gfs_rgrp *gfs1rg = (struct gfs_rgrp *)&rgp->rg;
 
 	for(i = 0; i < rgp->ri.ri_length; i++) {
 		bits = &rgp->bits[i];
@@ -178,7 +234,25 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_list *rgp,
 		rgp->rg.rg_dinodes = count[1];
 		update = 1;
 	}
-	if ((rgp->ri.ri_data - count[0] - count[1]) != count[2]) {
+	if (sdp->gfs1 && gfs1rg->rg_usedmeta != count[3]) {
+		log_err( _("RG #%llu (0x%llx) Used metadata count "
+			   "inconsistent: is %u should be %u\n"),
+			 (unsigned long long)rgp->ri.ri_addr,
+			 (unsigned long long)rgp->ri.ri_addr,
+			 gfs1rg->rg_usedmeta, count[3]);
+		gfs1rg->rg_usedmeta = count[3];
+		update = 1;
+	}
+	if (sdp->gfs1 && gfs1rg->rg_freemeta != count[4]) {
+		log_err( _("RG #%llu (0x%llx) Free metadata count "
+			   "inconsistent: is %u should be %u\n"),
+			 (unsigned long long)rgp->ri.ri_addr,
+			 (unsigned long long)rgp->ri.ri_addr,
+			 gfs1rg->rg_freemeta, count[4]);
+		gfs1rg->rg_freemeta = count[4];
+		update = 1;
+	}
+	if (!sdp->gfs1 && (rgp->ri.ri_data - count[0] - count[1]) != count[2]) {
 		/* FIXME not sure how to handle this case ATM - it
 		 * means that the total number of blocks we've counted
 		 * exceeds the blocks in the rg */
@@ -189,7 +263,10 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_list *rgp,
 		if (query( _("Update resource group counts? (y/n) "))) {
 			log_warn( _("Resource group counts updated\n"));
 			/* write out the rgrp */
-			gfs2_rgrp_out(&rgp->rg, rgp->bh[0]);
+			if (sdp->gfs1)
+				gfs_rgrp_out(gfs1rg, rgp->bh[0]);
+			else
+				gfs2_rgrp_out(&rgp->rg, rgp->bh[0]);
 		} else
 			log_err( _("Resource group counts left inconsistent\n"));
 	}
@@ -205,7 +282,7 @@ int pass5(struct gfs2_sbd *sdp)
 {
 	osi_list_t *tmp;
 	struct rgrp_list *rgp = NULL;
-	uint32_t count[3];
+	uint32_t count[5];
 	uint64_t rg_count = 0;
 
 	/* Reconcile RG bitmaps with fsck bitmap */
