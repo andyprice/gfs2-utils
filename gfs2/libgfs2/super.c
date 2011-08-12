@@ -20,9 +20,9 @@
  * read and that the sizes of the various on-disk structures have not
  * changed.
  *
- * Returns: 0 on success, -1 on failure
+ * Returns: -1 on failure, 1 if this is gfs (gfs1), 2 if this is gfs2
  */
-int check_sb(struct gfs2_sb *sb)
+int check_sb(struct gfs2_sb *sb, int allow_gfs)
 {
 	if (sb->sb_header.mh_magic != GFS2_MAGIC ||
 	    sb->sb_header.mh_type != GFS2_METATYPE_SB) {
@@ -33,13 +33,16 @@ int check_sb(struct gfs2_sb *sb)
 				  sb->sb_header.mh_type);
 		return -EINVAL;
 	}
-	/*  If format numbers match exactly, we're done.  */
-	if (sb->sb_fs_format != GFS2_FORMAT_FS ||
-	    sb->sb_multihost_format != GFS2_FORMAT_MULTI) {
+	if (sb->sb_fs_format == GFS_FORMAT_FS &&
+	    sb->sb_header.mh_format == GFS_FORMAT_SB &&
+	    sb->sb_multihost_format == GFS_FORMAT_MULTI) {
+		if (allow_gfs)
+			return 1;
+
 		log_crit("Old gfs1 file system detected.\n");
 		return -EINVAL;
 	}
-	return 0;
+	return 2;
 }
 
 
@@ -51,31 +54,44 @@ int check_sb(struct gfs2_sb *sb)
  * initializes various constants maintained in the super
  * block
  *
- * Returns: 0 on success, -1 on failure.
+ * allow_gfs - passed in as 1 if we're allowed to accept gfs1 file systems
+ *
+ * Returns: 0 on success, -1 on failure
+ * sdp->gfs1 will be set if this is gfs (gfs1)
  */
-int read_sb(struct gfs2_sbd *sdp)
+int read_sb(struct gfs2_sbd *sdp, int allow_gfs)
 {
 	struct gfs2_buffer_head *bh;
 	uint64_t space = 0;
 	unsigned int x;
-	int error;
+	int ret;
 
 	bh = bread(sdp, GFS2_SB_ADDR >> sdp->sd_fsb2bb_shift);
 	gfs2_sb_in(&sdp->sd_sb, bh);
 	brelse(bh);
 
-	error = check_sb(&sdp->sd_sb);
-	if (error)
-		goto out;
-
+	ret = check_sb(&sdp->sd_sb, allow_gfs);
+	if (ret < 0)
+		return ret;
+	if (ret == 1)
+		sdp->gfs1 = 1;
 	sdp->sd_fsb2bb_shift = sdp->sd_sb.sb_bsize_shift - GFS2_BASIC_BLOCK_SHIFT;
 	sdp->bsize = sdp->sd_sb.sb_bsize;
-	sdp->sd_diptrs =
-		(sdp->sd_sb.sb_bsize-sizeof(struct gfs2_dinode)) /
-		sizeof(uint64_t);
-	sdp->sd_inptrs =
-		(sdp->sd_sb.sb_bsize-sizeof(struct gfs2_meta_header)) /
-		sizeof(uint64_t);
+	if (sdp->gfs1) {
+		sdp->sd_diptrs = (sdp->sd_sb.sb_bsize -
+				  sizeof(struct gfs_dinode)) /
+			sizeof(uint64_t);
+		sdp->sd_inptrs = (sdp->sd_sb.sb_bsize -
+				  sizeof(struct gfs_indirect)) /
+			sizeof(uint64_t);
+	} else {
+		sdp->sd_diptrs = (sdp->sd_sb.sb_bsize -
+				  sizeof(struct gfs2_dinode)) /
+			sizeof(uint64_t);
+		sdp->sd_inptrs = (sdp->sd_sb.sb_bsize -
+				  sizeof(struct gfs2_meta_header)) /
+			sizeof(uint64_t);
+	}
 	sdp->sd_jbsize = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header);
 	sdp->sd_hash_bsize = sdp->bsize / 2;
 	sdp->sd_hash_bsize_shift = sdp->sd_sb.sb_bsize_shift - 1;
@@ -92,8 +108,7 @@ int read_sb(struct gfs2_sbd *sdp)
 	}
 	if (x > GFS2_MAX_META_HEIGHT){
 		log_err("Bad max metadata height.\n");
-		error = -1;
-		goto out;
+		return -1;
 	}
 
 	sdp->sd_jheightsize[0] = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_dinode);
@@ -108,14 +123,12 @@ int read_sb(struct gfs2_sbd *sdp)
 	sdp->sd_max_jheight = x;
 	if(sdp->sd_max_jheight > GFS2_MAX_META_HEIGHT) {
 		log_err("Bad max jheight.\n");
-		error = -1;
+		return -1;
 	}
 	sdp->fssize = lseek(sdp->device_fd, 0, SEEK_END) / sdp->sd_sb.sb_bsize;
 	sdp->sb_addr = GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sdp->bsize;
 
- out:
-
-	return error;
+	return 0;
 }
 
 /**

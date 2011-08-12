@@ -630,7 +630,7 @@ static int next_rg_freemeta(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 
 void savemeta(char *out_fn, int saveoption, int gziplevel)
 {
-	int slow;
+	int slow, ret;
 	osi_list_t *tmp;
 	int rgcount;
 	uint64_t jindex_block;
@@ -668,26 +668,13 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 			fprintf(stderr, "Bad constants (1)\n");
 			exit(-1);
 		}
-		if(sbd.gfs1) {
-			sbd.bsize = sbd.sd_sb.sb_bsize;
-			sbd.sd_inptrs = (sbd.bsize -
-					 sizeof(struct gfs_indirect)) /
-				sizeof(uint64_t);
-			sbd.sd_diptrs = (sbd.bsize -
-					  sizeof(struct gfs_dinode)) /
-				sizeof(uint64_t);
-		} else {
-			if (read_sb(&sbd) < 0)
-				slow = TRUE;
-			else {
-				sbd.sd_inptrs = (sbd.bsize -
-					 sizeof(struct gfs2_meta_header)) /
-					sizeof(uint64_t);
-				sbd.sd_diptrs = (sbd.bsize -
-					  sizeof(struct gfs2_dinode)) /
-					sizeof(uint64_t);
-			}
+		ret = read_sb(&sbd, 1);
+		if (ret < 0) {
+			slow = TRUE;
+			sbd.gfs1 = 0;
 		}
+		if (sbd.gfs1)
+			sbd.bsize = sbd.sd_sb.sb_bsize;
 	}
 	last_fs_block = lseek(sbd.device_fd, 0, SEEK_END) / sbd.bsize;
 	printf("There are %llu blocks of %u bytes in the destination "
@@ -913,20 +900,19 @@ static int restore_data(int fd, gzFile *gzin_fd, int printblocksonly,
 		}
 		if (first) {
 			struct gfs2_sb bufsb;
+			int ret;
 
 			dummy_bh.b_data = (char *)&bufsb;
 			memcpy(&bufsb, savedata->buf, sizeof(bufsb));
 			gfs2_sb_in(&sbd.sd_sb, &dummy_bh);
 			sbd1 = (struct gfs_sb *)&sbd.sd_sb;
-			if (sbd1->sb_fs_format == GFS_FORMAT_FS &&
-			    sbd1->sb_header.mh_type == GFS_METATYPE_SB &&
-			    sbd1->sb_header.mh_format == GFS_FORMAT_SB &&
-			    sbd1->sb_multihost_format == GFS_FORMAT_MULTI) {
-				sbd.gfs1 = TRUE;
-			} else if (check_sb(&sbd.sd_sb)) {
+			ret = check_sb(&sbd.sd_sb, 1);
+			if (ret < 0) {
 				fprintf(stderr,"Error: Invalid superblock data.\n");
 				return -1;
 			}
+			if (ret == 1)
+				sbd.gfs1 = TRUE;
 			sbd.bsize = sbd.sd_sb.sb_bsize;
 			if (find_highblk)
 				;

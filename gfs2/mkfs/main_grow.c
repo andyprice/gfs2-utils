@@ -354,7 +354,7 @@ main_grow(int argc, char *argv[])
 			log_crit(_("Bad constants (1)\n"));
 			exit(-1);
 		}
-		if(read_sb(sdp) < 0)
+		if (read_sb(sdp, 0) < 0)
 			die( _("gfs: Error reading superblock.\n"));
 
 		if (fix_device_geometry(sdp)) {

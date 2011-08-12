@@ -493,7 +493,29 @@ extern int write_journal(struct gfs2_sbd *sdp, unsigned int j,
 
 extern int device_size(int fd, uint64_t *bytes);
 
-/* gfs1.c - GFS1 backward compatibility functions */
+/* gfs1.c - GFS1 backward compatibility structures and functions */
+
+#define GFS_FORMAT_SB           (100)  /* Super-Block */
+#define GFS_METATYPE_SB         (1)    /* Super-Block */
+#define GFS_FORMAT_FS           (1309) /* Filesystem (all-encompassing) */
+#define GFS_FORMAT_MULTI        (1401) /* Multi-Host */
+/* GFS1 Dinode types  */
+#define GFS_FILE_NON            (0)
+#define GFS_FILE_REG            (1)    /* regular file */
+#define GFS_FILE_DIR            (2)    /* directory */
+#define GFS_FILE_LNK            (5)    /* link */
+#define GFS_FILE_BLK            (7)    /* block device node */
+#define GFS_FILE_CHR            (8)    /* character device node */
+#define GFS_FILE_FIFO           (101)  /* fifo/pipe */
+#define GFS_FILE_SOCK           (102)  /* socket */
+
+/* GFS 1 journal block types: */
+#define GFS_LOG_DESC_METADATA   (300)    /* metadata */
+#define GFS_LOG_DESC_IUL        (400)    /* unlinked inode */
+#define GFS_LOG_DESC_IDA        (401)    /* de-allocated inode */
+#define GFS_LOG_DESC_Q          (402)    /* quota */
+#define GFS_LOG_DESC_LAST       (500)    /* final in a logged transaction */
+
 struct gfs_indirect {
 	struct gfs2_meta_header in_header;
 
@@ -672,8 +694,8 @@ extern int gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block,
 extern int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 				 uint64_t *block, uint32_t type, int first);
 /* super.c */
-extern int check_sb(struct gfs2_sb *sb);
-extern int read_sb(struct gfs2_sbd *sdp);
+extern int check_sb(struct gfs2_sb *sb, int allow_gfs);
+extern int read_sb(struct gfs2_sbd *sdp, int allow_gfs);
 extern int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane);
 extern int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane);
 extern int write_sb(struct gfs2_sbd *sdp);

@@ -29,7 +29,7 @@ void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked)
 	if (blks_checked - last_reported_fblock < one_percent)
 		return;
 
-	last_reported_block = blks_checked;
+	last_reported_fblock = blks_checked;
 	gettimeofday(&tv, NULL);
 	if (!seconds)
 		seconds = tv.tv_sec;
@@ -64,7 +64,8 @@ void warm_fuzzy_stuff(uint64_t block)
 
 	if (!one_percent)
 		one_percent = last_fs_block / 100;
-	if (block - last_reported_block >= one_percent) {
+	if (!last_reported_block ||
+	    block - last_reported_block >= one_percent) {
 		last_reported_block = block;
 		gettimeofday(&tv, NULL);
 		if (!seconds)

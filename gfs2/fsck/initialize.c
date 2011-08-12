@@ -1160,7 +1160,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 		log_crit(_("Bad constants (1)\n"));
 		exit(-1);
 	}
-	if (read_sb(sdp) < 0) {
+	if (read_sb(sdp, 0) < 0) {
 		/* First, check for a gfs1 (not gfs2) file system */
 		if (sdp->sd_sb.sb_header.mh_magic == GFS2_MAGIC &&
 		    sdp->sd_sb.sb_header.mh_type == GFS2_METATYPE_SB)
@@ -1169,7 +1169,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 		if (sb_repair(sdp) != 0)
 			return -1; /* unrepairable, so exit */
 		/* Now that we've tried to repair it, re-read it. */
-		if (read_sb(sdp) < 0)
+		if (read_sb(sdp, 0) < 0)
 			return -1;
 	}
 
