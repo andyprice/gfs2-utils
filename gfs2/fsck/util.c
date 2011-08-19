@@ -12,9 +12,12 @@
 
 #include "libgfs2.h"
 #include "fs_bits.h"
+#include "metawalk.h"
 #include "util.h"
 
-const char *reftypes[3] = {"data", "metadata", "extended attribute"};
+const char *reftypes[ref_types + 1] = {"data", "metadata",
+				       "extended attribute", "itself",
+				       "unimportant"};
 
 void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked)
 {
@@ -454,4 +457,70 @@ void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il)
 	}
 	gfs2_special_free(&sdp->eattr_blocks);
 	return il;
+}
+
+/* set_ip_blockmap - set the blockmap for a dinode
+ *
+ * instree: Set to 1 if directories should be inserted into the directory tree
+ *          otherwise 0.
+ * returns: 0 if no error, -EINVAL if dinode has a bad mode, -EPERM on error
+ */
+int set_ip_blockmap(struct gfs2_inode *ip, int instree)
+{
+	uint64_t block = ip->i_bh->b_blocknr;
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	uint32_t mode;
+
+	if (sdp->gfs1)
+		mode = gfs_to_gfs2_mode(ip->i_di.__pad1);
+	else
+		mode = ip->i_di.di_mode & S_IFMT;
+
+	switch (mode) {
+	case S_IFDIR:
+		if (fsck_blockmap_set(ip, block, _("directory"),
+				      gfs2_inode_dir))
+			goto bad_dinode;
+		if (instree && !dirtree_insert(block))
+			goto bad_dinode;
+		break;
+	case S_IFREG:
+		if (fsck_blockmap_set(ip, block, _("file"), gfs2_inode_file))
+			goto bad_dinode;
+		break;
+	case S_IFLNK:
+		if (fsck_blockmap_set(ip, block, _("symlink"),
+				      gfs2_inode_lnk))
+			goto bad_dinode;
+		break;
+	case S_IFBLK:
+		if (fsck_blockmap_set(ip, block, _("block device"),
+				      gfs2_inode_device))
+			goto bad_dinode;
+		break;
+	case S_IFCHR:
+		if (fsck_blockmap_set(ip, block, _("character device"),
+				      gfs2_inode_device))
+			goto bad_dinode;
+		break;
+	case S_IFIFO:
+		if (fsck_blockmap_set(ip, block, _("fifo"),
+				      gfs2_inode_fifo))
+			goto bad_dinode;
+		break;
+	case S_IFSOCK:
+		if (fsck_blockmap_set(ip, block, _("socket"),
+				      gfs2_inode_sock))
+			goto bad_dinode;
+		break;
+	default:
+		fsck_blockmap_set(ip, block, _("invalid mode"),
+				  gfs2_inode_invalid);
+		return -EINVAL;
+	}
+	return 0;
+
+bad_dinode:
+	stack;
+	return -EPERM;
 }

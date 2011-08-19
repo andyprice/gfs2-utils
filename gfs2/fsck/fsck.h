@@ -61,10 +61,13 @@ struct duptree {
 };
 
 enum dup_ref_type {
-	ref_as_data = 0,
-	ref_as_meta = 1,
-	ref_as_ea   = 2,
-	ref_types   = 3
+	ref_as_data = 0, /* dinode references this block as a data block */
+	ref_as_meta = 1, /* dinode references this block as a metadata block */
+	ref_as_ea   = 2, /* dinode references this block as an extended attr */
+	ref_is_inode= 3, /* The reference is itself a dinode.  In other words,
+			    it's a dinode, not pointed to as data or
+			    metadata */
+	ref_types   = 4,
 };
 
 struct inode_with_dups {

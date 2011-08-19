@@ -21,7 +21,7 @@ extern struct inode_with_dups *find_dup_ref_inode(struct duptree *dt,
 						  struct gfs2_inode *ip);
 extern void dup_listent_delete(struct inode_with_dups *id);
 
-extern const char *reftypes[3];
+extern const char *reftypes[ref_types + 1];
 
 static inline uint8_t block_type(uint64_t bblock)
 {
@@ -170,4 +170,5 @@ extern struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
 extern void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il);
 extern int gfs2_blockmap_set(struct gfs2_bmap *il, uint64_t block,
 			     enum gfs2_mark_block mark);
+extern int set_ip_blockmap(struct gfs2_inode *ip, int instree);
 #endif /* __UTIL_H__ */

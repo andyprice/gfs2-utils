@@ -15,10 +15,6 @@
 #include "metawalk.h"
 #include "inode_hash.h"
 
-const char *reftype_str[ref_types + 1] = {"data", "metadata",
-					  "extended attribute",
-					  "unimportant"};
-
 struct fxn_info {
 	uint64_t block;
 	int found;
@@ -350,6 +346,10 @@ static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
 			     (unsigned long long)inode);
 		return 1;
 	}
+	/* Check to see if this inode was referenced by another by mistake */
+	add_duplicate_ref(ip, inode, ref_is_inode, 1, INODE_VALID);
+
+	/* Check this dinode's metadata for references to known duplicates */
 	error = check_metatree(ip, &find_refs);
 	if (error < 0) {
 		stack;
@@ -377,19 +377,25 @@ static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
    are the same type, and if so, return the type. */
 static enum dup_ref_type get_ref_type(struct inode_with_dups *id)
 {
-	if (id->reftypecount[ref_as_ea] &&
-	    !id->reftypecount[ref_as_data] &&
-	    !id->reftypecount[ref_as_meta])
-		return ref_as_ea;
-	if (!id->reftypecount[ref_as_ea] &&
-	    id->reftypecount[ref_as_data] &&
-	    !id->reftypecount[ref_as_meta])
-		return ref_as_data;
-	if (!id->reftypecount[ref_as_ea] &&
-	    !id->reftypecount[ref_as_data] &&
-	    id->reftypecount[ref_as_meta])
-		return ref_as_meta;
-	return ref_types; /* multiple references */
+	enum dup_ref_type t, i;
+	int found_type_with_ref;
+	int found_other_types;
+
+	for (t = ref_as_data; t < ref_types; t++) {
+		found_type_with_ref = 0;
+		found_other_types = 0;
+		for (i = ref_as_data; i < ref_types; i++) {
+			if (id->reftypecount[i]) {
+				if (t == i)
+					found_type_with_ref = 1;
+				else
+					found_other_types = 1;
+			}
+		}
+		if (found_type_with_ref)
+			return found_other_types ? ref_types : t;
+	}
+	return ref_types;
 }
 
 static void log_inode_reference(struct duptree *b, osi_list_t *tmp, int inval)
@@ -399,9 +405,10 @@ static void log_inode_reference(struct duptree *b, osi_list_t *tmp, int inval)
 
 	id = osi_list_entry(tmp, struct inode_with_dups, list);
 	if (id->dup_count == 1)
-		sprintf(reftypestring, "as %s", reftype_str[get_ref_type(id)]);
+		sprintf(reftypestring, "as %s", reftypes[get_ref_type(id)]);
 	else
-		sprintf(reftypestring, "%d/%d/%d",
+		sprintf(reftypestring, "%d/%d/%d/%d",
+			id->reftypecount[ref_is_inode],
 			id->reftypecount[ref_as_data],
 			id->reftypecount[ref_as_meta],
 			id->reftypecount[ref_as_ea]);
@@ -487,8 +494,7 @@ static int resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *b,
 			  (unsigned long long)id->block_no,
 			  (unsigned long long)b->block,
 			  (unsigned long long)b->block,
-			  reftype_str[this_ref],
-			  reftype_str[acceptable_ref]);
+			  reftypes[this_ref], reftypes[acceptable_ref]);
 		if (!(query( _("Okay to delete %s inode %lld (0x%llx)? "
 			       "(y/n) "),
 			     (inval ? _("invalidated") : ""),
@@ -514,7 +520,7 @@ static int resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *b,
 		clear_dup_fxns.private = (void *) dh;
 		/* Clear the EAs for the inode first */
 		check_inode_eattr(ip, &clear_dup_fxns);
-		/* If the dup wasn't only in the EA, clear the inode */
+		/* If the dup was in data or metadata, clear the dinode */
 		if (id->reftypecount[ref_as_data] ||
 		    id->reftypecount[ref_as_meta])
 			check_metatree(ip, &clear_dup_fxns);
@@ -580,7 +586,12 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *b)
 	ctype = ((struct gfs2_meta_header *)(bh->b_data))->mh_type;
 	brelse(bh);
 
+	/* If this is a dinode, any references to it (except in directory
+	   entries) are invalid and should be deleted. */
 	if (be32_to_cpu(cmagic) == GFS2_MAGIC &&
+	    be32_to_cpu(ctype) == GFS2_METATYPE_DI)
+		acceptable_ref = ref_is_inode;
+	else if (be32_to_cpu(cmagic) == GFS2_MAGIC &&
 	    (be32_to_cpu(ctype) == GFS2_METATYPE_EA ||
 	     be32_to_cpu(ctype) == GFS2_METATYPE_ED))
 		acceptable_ref = ref_as_ea;
@@ -692,6 +703,8 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *b)
 			fsck_blockmap_set(ip, b->block,
 					  _("reference-repaired leaf"),
 					  gfs2_block_free);
+		} else if (id->reftypecount[ref_is_inode]) {
+			set_ip_blockmap(ip, 0); /* 0=do not add to dirtree */
 		} else if (id->reftypecount[ref_as_data]) {
 			fsck_blockmap_set(ip, b->block,
 					  _("reference-repaired data"),

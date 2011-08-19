@@ -1143,7 +1143,6 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	struct block_count bc = {0};
 	long bad_pointers;
 	uint64_t block = ip->i_bh->b_blocknr;
-	uint32_t mode;
 
 	bad_pointers = 0L;
 
@@ -1164,49 +1163,8 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		return 0;
 	}
 
-	if (sdp->gfs1)
-		mode = gfs_to_gfs2_mode(ip->i_di.__pad1);
-	else
-		mode = ip->i_di.di_mode & S_IFMT;
-
-	switch (mode) {
-	case S_IFDIR:
-		if (fsck_blockmap_set(ip, block, _("directory"),
-				      gfs2_inode_dir))
-			goto bad_dinode;
-		if (!dirtree_insert(block))
-			goto bad_dinode;
-		break;
-	case S_IFREG:
-		if (fsck_blockmap_set(ip, block, _("file"), gfs2_inode_file))
-			goto bad_dinode;
-		break;
-	case S_IFLNK:
-		if (fsck_blockmap_set(ip, block, _("symlink"),
-				      gfs2_inode_lnk))
-			goto bad_dinode;
-		break;
-	case S_IFBLK:
-		if (fsck_blockmap_set(ip, block, _("block device"),
-				      gfs2_inode_device))
-			goto bad_dinode;
-		break;
-	case S_IFCHR:
-		if (fsck_blockmap_set(ip, block, _("character device"),
-				      gfs2_inode_device))
-			goto bad_dinode;
-		break;
-	case S_IFIFO:
-		if (fsck_blockmap_set(ip, block, _("fifo"),
-				      gfs2_inode_fifo))
-			goto bad_dinode;
-		break;
-	case S_IFSOCK:
-		if (fsck_blockmap_set(ip, block, _("socket"),
-				      gfs2_inode_sock))
-			goto bad_dinode;
-		break;
-	default:
+	error = set_ip_blockmap(ip, 1);
+	if (error == -EINVAL) {
 		/* We found a dinode that has an invalid mode, so we can't
 		   tell if it's a data file, directory or a socket.
 		   Regardless, we have to invalidate its metadata in case there
@@ -1227,7 +1185,9 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 				      gfs2_inode_invalid))
 			goto bad_dinode;
 		return 0;
-	}
+	} else if (error)
+		goto bad_dinode;
+
 	if (set_di_nlink(ip))
 		goto bad_dinode;
 
