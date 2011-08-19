@@ -115,35 +115,27 @@ int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 		   output easier to debug. */
 		if (ip->i_di.di_num.no_addr == bblock) {
 			print_fsck_log(MSG_DEBUG, caller, fline,
-				       _("%s inode found at block %lld "
-					 "(0x%llx): marking as '%s'\n"),
+				       _("%s inode found at block "
+					 "0x%llx: marking as '%s'\n"),
 				       btype, (unsigned long long)
-				       ip->i_di.di_num.no_addr,
-				       (unsigned long long)
 				       ip->i_di.di_num.no_addr,
 				       block_type_string(mark));
 		} else if (mark == gfs2_bad_block || mark == gfs2_meta_inval) {
 			print_fsck_log(MSG_DEBUG, caller, fline,
-				       _("inode %lld (0x%llx) references "
-					 "%s block %lld (0x%llx): "
+				       _("inode 0x%llx references "
+					 "%s block 0x%llx: "
 					 "marking as '%s'\n"),
-				       (unsigned long long)
-				       ip->i_di.di_num.no_addr,
 				       (unsigned long long)
 				       ip->i_di.di_num.no_addr,
 				       btype, (unsigned long long)bblock,
-				       (unsigned long long)bblock,
 				       block_type_string(mark));
 		} else {
 			print_fsck_log(MSG_DEBUG, caller, fline,
-				       _("inode %lld (0x%llx) references "
-					 "%s block %lld (0x%llx): "
+				       _("inode 0x%llx references "
+					 "%s block 0x%llx: "
 					 "marking as '%s'\n"),
 				       (unsigned long long)
-				       ip->i_di.di_num.no_addr,
-				       (unsigned long long)
 				       ip->i_di.di_num.no_addr, btype,
-				       (unsigned long long)bblock,
 				       (unsigned long long)bblock,
 				       block_type_string(mark));
 		}

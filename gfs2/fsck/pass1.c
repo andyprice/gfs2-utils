@@ -383,8 +383,12 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 	*bh = NULL;
 
 	if (!valid_block(ip->i_sbd, block)) { /* blk outside of FS */
+		/* The bad dinode should be invalidated later due to
+		   "unrecoverable" errors.  The inode itself should be
+		   set "free" and removed from the inodetree by
+		   undo_check_metalist. */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-				  _("itself"), gfs2_bad_block);
+				  _("bad block referencing"), gfs2_bad_block);
 		log_debug( _("Bad indirect block (invalid/out of range) "
 			     "found in inode %lld (0x%llx).\n"),
 			   (unsigned long long)ip->i_di.di_num.no_addr,
@@ -457,7 +461,7 @@ static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
 
 	if (!valid_block(ip->i_sbd, block)) { /* blk outside of FS */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-				  _("itself"), gfs2_block_free);
+				  _("bad block referencing"), gfs2_block_free);
 		return 1;
 	}
 	if (is_dir(&ip->i_di, ip->i_sbd->gfs1) && h == ip->i_di.di_height)

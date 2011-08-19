@@ -109,7 +109,7 @@ static inline int blockmap_to_bitmap(enum gfs2_mark_block m, int gfs1)
 		 GFS2_BLKST_UNLINKED,  /* GFS unlinked metadata */
 		 GFS2_BLKST_USED,  /* eattribute */
 
-		 GFS2_BLKST_USED},  /* bad */
+		 GFS2_BLKST_DINODE}, /* bad */
 		/* ---------------------- gfs1 ----------------------------- */
 		{GFS2_BLKST_FREE,  /* free */
 		 GFS2_BLKST_USED,  /* data */
@@ -129,7 +129,7 @@ static inline int blockmap_to_bitmap(enum gfs2_mark_block m, int gfs1)
 		 GFS2_BLKST_UNLINKED, /* GFS unlinked metadata */
 		 GFS2_BLKST_DINODE,  /* eattribute */
 
-		 GFS2_BLKST_USED}};  /* bad */
+		 GFS2_BLKST_DINODE}}; /* bad */
 	return bitmap_states[gfs1][m];
 }
 
