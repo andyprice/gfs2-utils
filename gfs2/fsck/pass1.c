@@ -1181,9 +1181,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 			  (unsigned long long)ip->i_di.di_num.no_addr,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
 		check_metatree(ip, &invalidate_fxns);
-		if (fsck_blockmap_set(ip, block, _("invalid mode"),
-				      gfs2_inode_invalid))
-			goto bad_dinode;
+		check_inode_eattr(ip, &invalidate_fxns);
 		return 0;
 	} else if (error)
 		goto bad_dinode;

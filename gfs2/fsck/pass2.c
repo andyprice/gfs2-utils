@@ -207,9 +207,9 @@ static int delete_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 				 struct gfs2_ea_header *ea_hdr_prev,
 				 void *private)
 {
-        uint64_t block = be64_to_cpu(*ea_data_ptr);
+	uint64_t block = be64_to_cpu(*ea_data_ptr);
 
-        return delete_metadata(ip, block, NULL, 0, private);
+	return delete_metadata(ip, block, NULL, 0, private);
 }
 
 struct metawalk_fxns pass2_fxns_delete = {
@@ -347,7 +347,10 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				entry_ip = ip;
 			else
 				entry_ip = fsck_load_inode(sdp, entryblock);
-			check_inode_eattr(entry_ip, &pass2_fxns_delete);
+			if (ip->i_di.di_eattr) {
+				check_inode_eattr(entry_ip,
+						  &pass2_fxns_delete);
+			}
 			check_metatree(entry_ip, &pass2_fxns_delete);
 			if (entry_ip != ip)
 				fsck_inode_put(&entry_ip);

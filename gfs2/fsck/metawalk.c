@@ -754,6 +754,13 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 							      bh, ea_hdr,
 							      ea_hdr_prev,
 							      pass->private)) {
+					log_err(_("Bad extended attribute "
+						  "found at block %lld "
+						  "(0x%llx)"),
+						(unsigned long long)
+						be64_to_cpu(*ea_data_ptr),
+						(unsigned long long)
+						be64_to_cpu(*ea_data_ptr));
 					if (query( _("Repair the bad Extended "
 						     "Attribute? (y/n) "))) {
 						ea_hdr->ea_num_ptrs = i;
@@ -806,13 +813,14 @@ static int check_leaf_eattr(struct gfs2_inode *ip, uint64_t block,
 			    uint64_t parent, struct metawalk_fxns *pass)
 {
 	struct gfs2_buffer_head *bh = NULL;
-	int error = 0;
-
-	log_debug( _("Checking EA leaf block #%llu (0x%llx).\n"),
-		  (unsigned long long)block,
-		  (unsigned long long)block);
 
 	if (pass->check_eattr_leaf) {
+		int error = 0;
+
+		log_debug( _("Checking EA leaf block #%llu (0x%llx).\n"),
+			   (unsigned long long)block,
+			   (unsigned long long)block);
+
 		error = pass->check_eattr_leaf(ip, block, parent, &bh,
 					       pass->private);
 		if (error < 0) {
@@ -886,13 +894,18 @@ int find_remove_dup(struct gfs2_inode *ip, uint64_t block, const char *btype)
 /**
  * free_block_if_notdup - free blocks associated with an inode, but if it's a
  *                        duplicate, just remove that designation instead.
- * Returns: 0 if the block was freed, 1 if a duplicate reference was removed
+ * Returns: 1 if the block was freed, 0 if a duplicate reference was removed
+ * Note: The return code is handled this way because there are places in
+ *       metawalk.c that assume "1" means "change was made" and "0" means
+ *       change was not made.
  */
 int free_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 			 const char *btype)
 {
-	if (!find_remove_dup(ip, block, btype))
+	if (!find_remove_dup(ip, block, btype)) { /* not a dup */
 		fsck_blockmap_set(ip, block, btype, gfs2_block_free);
+		return 1;
+	}
 	return 0;
 }
 
@@ -1447,16 +1460,36 @@ int delete_data(struct gfs2_inode *ip, uint64_t block, void *private)
 int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
 		       struct gfs2_buffer_head **bh, void *private)
 {
-	return delete_block_if_notdup(ip, block, NULL,
-				      _("indirect extended attribute"),
-				      private);
+	int ret;
+
+	ret = delete_block_if_notdup(ip, block, NULL,
+				     _("indirect extended attribute"),
+				     private);
+	/* Even if it's a duplicate reference, we want to eliminate the
+	   reference itself, and adjust di_blocks accordingly. */
+	if (ip->i_di.di_eattr) {
+		ip->i_di.di_blocks--;
+		if (block == ip->i_di.di_eattr)
+			ip->i_di.di_eattr = 0;
+		bmodified(ip->i_bh);
+	}
+	return ret;
 }
 
 int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
 		      struct gfs2_buffer_head **bh, void *private)
 {
-	return delete_block_if_notdup(ip, block, NULL, _("extended attribute"),
-				      private);
+	int ret;
+
+	ret = delete_block_if_notdup(ip, block, NULL, _("extended attribute"),
+				     private);
+	if (ip->i_di.di_eattr) {
+		ip->i_di.di_blocks--;
+		if (block == ip->i_di.di_eattr)
+			ip->i_di.di_eattr = 0;
+		bmodified(ip->i_bh);
+	}
+	return ret;
 }
 
 static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,

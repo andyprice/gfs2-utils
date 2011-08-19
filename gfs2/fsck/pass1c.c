@@ -65,9 +65,10 @@ static int ask_remove_eattr(struct gfs2_inode *ip)
 		ip->i_di.di_eattr = 0;
 		bmodified(ip->i_bh);
 		log_err( _("Bad Extended Attribute removed.\n"));
-	} else
-		log_err( _("Bad Extended Attribute not removed.\n"));
-	return 1;
+		return 1;
+	}
+	log_err( _("Bad Extended Attribute not removed.\n"));
+	return 0;
 }
 
 static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
