@@ -422,13 +422,14 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			         strerror(err));
 			exit(-1);
 		}
+		gfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);
 	}
 
 	if (fix_md.statfs) {
 		inum.no_formal_ino = sdp->md.next_inum++;
 		inum.no_addr = fix_md.statfs->i_di.di_num.no_addr;
 		err = dir_add(sdp->master_dir, "statfs", 6, &inum,
-			IF2DT(S_IFREG | 0600));
+			      IF2DT(S_IFREG | 0600));
 		if (err) {
 			log_crit(_("Error adding statfs inode: %s\n"), strerror(err));
 			exit(-1);
@@ -440,6 +441,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			         strerror(err));
 			exit(-1);
 		}
+		gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
 	}
 
 	if (fix_md.riinode) {
@@ -479,6 +481,8 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 	}
 
 	log_err(_("Master directory rebuilt.\n"));
+	inode_put(&sdp->md.inum);
+	inode_put(&sdp->md.statfs);
 	inode_put(&sdp->master_dir);
 	return 0;
 }
@@ -704,6 +708,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 				   "a valid statfs file; aborting.\n"));
 			goto fail;
 		}
+		do_init_statfs(sdp);
 	}
 	buf = malloc(sdp->md.statfs->i_di.di_size);
 	// FIXME: handle failed malloc

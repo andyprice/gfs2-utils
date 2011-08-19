@@ -652,11 +652,13 @@ void main_mkfs(int argc, char *argv[])
 		fprintf(stderr, _("Error building inum inode: %s\n"), strerror(error));
 		exit(-1);
 	}
+	gfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);
 	error = build_statfs(sdp);
 	if (error) {
 		fprintf(stderr, _("Error building statfs inode: %s\n"), strerror(error));
 		exit(-1);
 	}
+	gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
 	error = build_rindex(sdp);
 	if (error) {
 		fprintf(stderr, _("Error building rindex inode: %s\n"), strerror(error));

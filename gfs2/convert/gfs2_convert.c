@@ -2246,6 +2246,7 @@ int main(int argc, char **argv)
 			         strerror(error));
 			exit(-1);
 		}
+		gfs2_lookupi(sb2.master_dir, "inum", 4, &sb2.md.inum);
 		/* Create the statfs file */
 		error = build_statfs(&sb2); /* Does not do inode_put */
 		if (error) {
@@ -2253,6 +2254,8 @@ int main(int argc, char **argv)
 			         strerror(error));
 			exit(-1);
 		}
+		gfs2_lookupi(sb2.master_dir, "statfs", 6, &sb2.md.statfs);
+		do_init_statfs(&sb2);
 
 		/* Create the resource group index file */
 		error = build_rindex(&sb2);

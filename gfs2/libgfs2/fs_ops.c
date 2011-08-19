@@ -1246,6 +1246,7 @@ static int dir_l_add(struct gfs2_inode *dip, const char *filename, int len,
 	dent->de_hash = cpu_to_be32(dent->de_hash);
 	dent->de_type = cpu_to_be16(type);
 	memcpy((char *)(dent + 1), filename, len);
+	bmodified(dip->i_bh);
 	return err;
 }
 
@@ -1448,10 +1449,9 @@ static int leaf_search(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 	if (type == IS_LEAF){
 		struct gfs2_leaf *leaf = (struct gfs2_leaf *)bh->b_data;
 		entries = be16_to_cpu(leaf->lf_entries);
-	} else if (type == IS_DINODE) {
-		struct gfs2_dinode *dinode = (struct gfs2_dinode *)bh->b_data;
-		entries = be32_to_cpu(dinode->di_entries);
-	} else
+	} else if (type == IS_DINODE)
+		entries = dip->i_di.di_entries;
+	else
 		return -1;
 
 	hash = gfs2_disk_hash(filename, len);
@@ -1464,7 +1464,7 @@ static int leaf_search(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 		
 		if (be32_to_cpu(dent->de_hash) == hash &&
 			gfs2_filecmp(filename, (char *)(dent + 1),
-						 be16_to_cpu(dent->de_name_len))){
+				     be16_to_cpu(dent->de_name_len))) {
 			*dent_out = dent;
 			if (dent_prev)
 				*dent_prev = prev;

@@ -318,7 +318,7 @@ int build_inum(struct gfs2_sbd *sdp)
 		gfs2_dinode_print(&ip->i_di);
 	}
 
-	sdp->md.inum = ip;
+	inode_put(&ip);
 	return 0;
 }
 
@@ -337,7 +337,7 @@ int build_statfs(struct gfs2_sbd *sdp)
 		gfs2_dinode_print(&ip->i_di);
 	}
 
-	sdp->md.statfs = ip;
+	inode_put(&ip);
 	return 0;
 }
 
