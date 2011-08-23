@@ -645,15 +645,15 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *b)
 	 *          directory inode referencing a data block as a leaf block.
 	 */
 	if (!last_reference) {
-		last_reference = resolve_dup_references(sdp, b,
-							&b->ref_inode_list,
-							&dh, 0,
-							acceptable_ref);
 		log_debug( _("----------------------------------------------\n"
 			     "Step 2: Eliminate references to block %llu "
 			     "(0x%llx) that need the wrong block type.\n"),
 			   (unsigned long long)b->block,
 			   (unsigned long long)b->block);
+		last_reference = resolve_dup_references(sdp, b,
+							&b->ref_inode_list,
+							&dh, 0,
+							acceptable_ref);
 	}
 	/* Step 3 - We have multiple dinodes referencing it as the correct
 	 *          type.  Just blast one of them.
