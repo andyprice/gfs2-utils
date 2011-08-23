@@ -143,8 +143,10 @@ static inline int is_dir(struct gfs2_dinode *dinode, int gfs1)
 	return 0;
 }
 
-static inline uint32_t gfs_to_gfs2_mode(uint32_t gfs1mode)
+static inline uint32_t gfs_to_gfs2_mode(struct gfs2_inode *ip)
 {
+	uint16_t gfs1mode = ip->i_di.__pad1;
+
 	switch (gfs1mode) {
 	case GFS_FILE_DIR:
 		return S_IFDIR;
@@ -161,7 +163,12 @@ static inline uint32_t gfs_to_gfs2_mode(uint32_t gfs1mode)
 	case GFS_FILE_SOCK:
 		return S_IFSOCK;
 	default:
-		return S_IFREG;
+		/* This could be an aborted gfs2_convert so look for both. */
+		if (ip->i_di.di_entries ||
+		    (ip->i_di.di_mode & S_IFMT) == S_IFDIR)
+			return S_IFDIR;
+		else
+			return S_IFREG;
 	}
 }
 

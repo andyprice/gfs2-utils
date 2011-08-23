@@ -216,7 +216,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	lf_blocks = lf_dip->i_di.di_blocks;
 
 	if (sdp->gfs1)
-		mode = gfs_to_gfs2_mode(ip->i_di.__pad1);
+		mode = gfs_to_gfs2_mode(ip);
 	else
 		mode = ip->i_di.di_mode & S_IFMT;
 
@@ -280,7 +280,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	incr_link_count(ip->i_di.di_num.no_addr, lf_dip->i_di.di_num.no_addr,
 			_("from lost+found"));
 	/* If it's a directory, lost+found is back-linked to it via .. */
-	if (is_dir(&ip->i_di, sdp->gfs1))
+	if (mode == S_IFDIR)
 		incr_link_count(lf_dip->i_di.di_num.no_addr,
 				ip->i_di.di_num.no_addr, _("to lost+found"));
 

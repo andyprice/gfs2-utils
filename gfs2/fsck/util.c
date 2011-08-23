@@ -482,7 +482,7 @@ int set_ip_blockmap(struct gfs2_inode *ip, int instree)
 	uint32_t mode;
 
 	if (sdp->gfs1)
-		mode = gfs_to_gfs2_mode(ip->i_di.__pad1);
+		mode = gfs_to_gfs2_mode(ip);
 	else
 		mode = ip->i_di.di_mode & S_IFMT;
 
