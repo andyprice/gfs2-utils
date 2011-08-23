@@ -73,7 +73,7 @@ static int set_dotdot_dir(struct gfs2_sbd *sdp, uint64_t childblock,
 	}
 	if (di->dinode != childblock) {
 		log_debug("'..' doesn't point to what we found: childblock "
-			  "0x%llx != dinode 0x%llx\n",
+			  "(0x%llx) != dinode (0x%llx)\n",
 			  (unsigned long long)childblock,
 			  (unsigned long long)di->dinode);
 		return -1;
@@ -90,8 +90,8 @@ static int set_dotdot_dir(struct gfs2_sbd *sdp, uint64_t childblock,
 			  (unsigned long long)di->dotdot_parent);
 		return -1;
 	}
-	log_debug("Setting '..' for directory block 0x%llx to parent 0x%llx\n",
-		  (unsigned long long)childblock,
+	log_debug("Setting '..' for directory block (0x%llx) to parent "
+		  "(0x%llx)\n", (unsigned long long)childblock,
 		  (unsigned long long)parentblock);
 	di->dotdot_parent = parentblock;
 	return 0;

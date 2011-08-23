@@ -109,36 +109,61 @@ int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 		       const char *caller, int fline)
 {
 	int error;
+	static int prev_ino_addr = 0;
+	static enum gfs2_mark_block prev_mark = 0;
+	static int prevcount = 0;
 
 	if (print_level >= MSG_DEBUG) {
+		if ((ip->i_di.di_num.no_addr == prev_ino_addr) &&
+		    (mark == prev_mark)) {
+			log_info("(0x%llx) ", (unsigned long long)bblock);
+			prevcount++;
+			if (prevcount > 10) {
+				log_info("\n");
+				prevcount = 0;
+			}
 		/* I'm circumventing the log levels here on purpose to make the
 		   output easier to debug. */
-		if (ip->i_di.di_num.no_addr == bblock) {
+		} else if (ip->i_di.di_num.no_addr == bblock) {
+			if (prevcount) {
+				log_info("\n");
+				prevcount = 0;
+			}
 			print_fsck_log(MSG_DEBUG, caller, fline,
 				       _("%s inode found at block "
-					 "0x%llx: marking as '%s'\n"),
+					 "(0x%llx): marking as '%s'\n"),
 				       btype, (unsigned long long)
 				       ip->i_di.di_num.no_addr,
 				       block_type_string(mark));
 		} else if (mark == gfs2_bad_block || mark == gfs2_meta_inval) {
+			if (prevcount) {
+				log_info("\n");
+				prevcount = 0;
+			}
 			print_fsck_log(MSG_DEBUG, caller, fline,
-				       _("inode 0x%llx references "
-					 "%s block 0x%llx: "
+				       _("inode (0x%llx) references "
+					 "%s block (0x%llx): "
 					 "marking as '%s'\n"),
 				       (unsigned long long)
 				       ip->i_di.di_num.no_addr,
 				       btype, (unsigned long long)bblock,
 				       block_type_string(mark));
 		} else {
+			if (prevcount) {
+				log_info("\n");
+				prevcount = 0;
+			}
 			print_fsck_log(MSG_DEBUG, caller, fline,
-				       _("inode 0x%llx references "
-					 "%s block 0x%llx: "
+				       _("inode (0x%llx) references "
+					 "%s block (0x%llx): "
 					 "marking as '%s'\n"),
 				       (unsigned long long)
 				       ip->i_di.di_num.no_addr, btype,
 				       (unsigned long long)bblock,
 				       block_type_string(mark));
 		}
+		prev_ino_addr = ip->i_di.di_num.no_addr;
+		prev_mark = mark;
 	}
 
 	/* First, check the rgrp bitmap against what we think it should be.
@@ -698,7 +723,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			if (!leaf.lf_next || error)
 				break;
 			leaf_no = leaf.lf_next;
-			log_debug( _("Leaf chain 0x%llx detected.\n"),
+			log_debug( _("Leaf chain (0x%llx) detected.\n"),
 				   (unsigned long long)leaf_no);
 		} while (1); /* while we have chained leaf blocks */
 	} /* for every leaf block */
