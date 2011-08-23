@@ -283,8 +283,18 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 		   inode reference list otherwise put it on the normal list. */
 		if (!inode_valid || q == gfs2_inode_invalid)
 			osi_list_add_prev(&id->list, &dt->ref_invinode_list);
-		else
-			osi_list_add_prev(&id->list, &dt->ref_inode_list);
+		else {
+			/* If this is a system dinode, we want the duplicate
+			   processing to find it first. That way references
+			   from inside journals, et al, will take priority.
+			   We don't want to delete journals in favor of dinodes
+			   that reference a block inside a journal. */
+			if (fsck_system_inode(ip->i_sbd, id->block_no))
+				osi_list_add(&id->list, &dt->ref_inode_list);
+			else
+				osi_list_add_prev(&id->list,
+						  &dt->ref_inode_list);
+		}
 	}
 	id->reftypecount[reftype]++;
 	id->dup_count++;

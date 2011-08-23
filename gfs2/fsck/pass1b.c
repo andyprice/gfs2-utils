@@ -486,7 +486,14 @@ static int resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *b,
 				continue; /* don't delete the dinode */
 			}
 		}
-
+		/* If this reference is from a system inode, for example, if
+		   it's data or metadata inside a journal, the reference
+		   should take priority over user dinodes that reference the
+		   block. */
+		if (!found_good_ref && fsck_system_inode(sdp, id->block_no)) {
+			found_good_ref = 1;
+			continue; /* don't delete the dinode */
+		}
 		log_warn( _("Inode %s (%lld/0x%llx) references block "
 			    "%llu (0x%llx) as '%s', but the block is "
 			    "really %s.\n"),
