@@ -44,7 +44,7 @@ void gfs2_special_add(struct special_blocks *blocklist, uint64_t block)
 	if (b) {
 		memset(b, 0, sizeof(*b));
 		b->block = block;
-		osi_list_add(&b->list, &blocklist->list);
+		osi_list_add_prev(&b->list, &blocklist->list);
 	}
 }
 
