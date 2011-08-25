@@ -177,7 +177,7 @@ int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state)
 	int           buf;
 	uint32_t        rgrp_block;
 	struct gfs2_bitmap *bits = NULL;
-	struct rgrp_list *rgd;
+	struct rgrp_tree *rgd;
 	unsigned char *byte, cur_state;
 	unsigned int bit;
 
@@ -225,7 +225,7 @@ int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state)
  * Returns: state on success, -1 on error
  */
 int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
-		    struct rgrp_list *rgd)
+		    struct rgrp_tree *rgd)
 {
 	int           i, val;
 	uint32_t        rgrp_block;

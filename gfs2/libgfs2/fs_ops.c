@@ -116,8 +116,8 @@ void inode_put(struct gfs2_inode **ip_in)
 
 static uint64_t blk_alloc_i(struct gfs2_sbd *sdp, unsigned int type)
 {
-	osi_list_t *tmp, *head;
-	struct rgrp_list *rl = NULL;
+	struct osi_node *n, *next = NULL;
+	struct rgrp_tree *rl = NULL;
 	struct gfs2_rindex *ri;
 	struct gfs2_rgrp *rg;
 	unsigned int block, bn = 0, x = 0, y = 0;
@@ -125,14 +125,14 @@ static uint64_t blk_alloc_i(struct gfs2_sbd *sdp, unsigned int type)
 	struct gfs2_buffer_head *bh;
 
 	memset(&rg, 0, sizeof(rg));
-	for (head = &sdp->rglist, tmp = head->next; tmp != head;
-	     tmp = tmp->next) {
-		rl = osi_list_entry(tmp, struct rgrp_list, list);
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rl = (struct rgrp_tree *)n;
 		if (rl->rg.rg_free)
 			break;
 	}
 
-	if (tmp == head)
+	if (n == NULL)
 		die("out of space\n");
 
 	ri = &rl->ri;
@@ -1753,7 +1753,7 @@ int gfs2_lookupi(struct gfs2_inode *dip, const char *filename, int len,
  */
 void gfs2_free_block(struct gfs2_sbd *sdp, uint64_t block)
 {
-	struct rgrp_list *rgd;
+	struct rgrp_tree *rgd;
 
 	/* Adjust the free space count for the freed block */
 	rgd = gfs2_blk2rgrpd(sdp, block); /* find the rg for indir block */
@@ -1778,7 +1778,7 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 	struct gfs2_buffer_head *bh, *nbh;
 	int h, head_size;
 	uint64_t *ptr, block;
-	struct rgrp_list *rgd;
+	struct rgrp_tree *rgd;
 	uint32_t height;
 	osi_list_t metalist[GFS2_MAX_META_HEIGHT];
 	osi_list_t *cur_list, *next_list, *tmp;

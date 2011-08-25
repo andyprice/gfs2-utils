@@ -74,13 +74,14 @@ uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgsize_spe
  * Returns: a list of rgrp_list_t structures
  */
 
-void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified)
+void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree,
+			 int rgsize_specified)
 {
 	struct device *dev;
-	struct rgrp_list *rl, *rlast = NULL, *rlast2 = NULL;
-	osi_list_t *tmp, *head = &sdp->rglist;
+	struct rgrp_tree *rl, *rlast = NULL, *rlast2 = NULL;
+	struct osi_node *n, *next = NULL;
 	unsigned int rgrp = 0, nrgrp;
-	uint64_t rglength;
+	uint64_t rglength, rgaddr;
 
 	sdp->new_rgrps = 0;
 	dev = &sdp->device;
@@ -91,7 +92,7 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified)
 	/* If this is a new file system, compute the length and number */
 	/* of rgs based on the size of the device.                     */
 	/* If we have existing RGs (i.e. gfs2_grow) find the last one. */
-	if (osi_list_empty(&sdp->rglist)) {
+	if (!rgtree->osi_node) {
 		dev->length -= sdp->sb_addr + 1;
 		nrgrp = how_many_rgrps(sdp, dev, rgsize_specified);
 		rglength = dev->length / nrgrp;
@@ -100,9 +101,10 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified)
 		uint64_t old_length, new_chunk;
 
 		log_info("Existing resource groups:\n");
-		for (rgrp = 0, tmp = head->next; tmp != head;
-		     tmp = tmp->next, rgrp++) {
-			rl = osi_list_entry(tmp, struct rgrp_list, list);
+		for (rgrp = 0, n = osi_first(rgtree); n; n = next, rgrp++) {
+			next = osi_next(n);
+			rl = (struct rgrp_tree *)n;
+
 			log_info("%d: start: %" PRIu64 " (0x%"
 				 PRIx64 "), length = %"PRIu64" (0x%"
 				 PRIx64 ")\n", rgrp + 1, rl->start, rl->start,
@@ -122,26 +124,21 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified)
 	if (rgrp < nrgrp)
 		log_info("\nNew resource groups:\n");
 	for (; rgrp < nrgrp; rgrp++) {
-		rl = calloc(1, sizeof(struct rgrp_list));
-		if (rl == NULL) {
-			fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
-			exit(-1);
-		}
-
 		if (rgrp) {
-			rl->start = rlast->start + rlast->length;
+			rgaddr = rlast->start + rlast->length;
+			rl = rgrp_insert(rgtree, rgaddr);
 			rl->length = rglength;
 		} else {
-			rl->start = dev->start;
+			rgaddr = dev->start;
+			rl = rgrp_insert(rgtree, rgaddr);
 			rl->length = dev->length -
 				(nrgrp - 1) * (dev->length / nrgrp);
 		}
-
+		rl->start = rgaddr;
 		log_info("%d: start: %" PRIu64 " (0x%"
 			 PRIx64 "), length = %"PRIu64" (0x%"
 			 PRIx64 ")\n", rgrp + 1, rl->start, rl->start,
 			 rl->length, rl->length);
-		osi_list_add_prev(&rl->list, head);
 		rlast = rl;
 	}
 
@@ -150,8 +147,9 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified)
 	if (sdp->debug) {
 		log_info("\n");
 
-		for (tmp = head->next; tmp != head; tmp = tmp->next) {
-			rl = osi_list_entry(tmp, struct rgrp_list, list);
+		for (n = osi_first(rgtree); n; n = next) {
+			next = osi_next(n);
+			rl = (struct rgrp_tree *)n;
 			log_info("rg_o = %llu, rg_l = %llu\n",
 				 (unsigned long long)rl->start,
 				 (unsigned long long)rl->length);
@@ -202,8 +200,8 @@ void rgblocks2bitblocks(unsigned int bsize, uint32_t *rgblocks, uint32_t *bitblo
  */
 void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 {
-	osi_list_t *tmp, *head;
-	struct rgrp_list *rl;
+	struct osi_node *n, *next = NULL;
+	struct rgrp_tree *rl;
 	uint32_t rgblocks, bitblocks;
 	struct gfs2_rindex *ri;
 	struct gfs2_meta_header mh;
@@ -212,11 +210,14 @@ void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 	mh.mh_magic = GFS2_MAGIC;
 	mh.mh_type = GFS2_METATYPE_RB;
 	mh.mh_format = GFS2_FORMAT_RB;
+	if (do_write)
+		n = osi_first(&sdp->rgtree);
+	else
+		n = osi_first(&sdp->rgcalc);
 
-	for (head = &sdp->rglist, tmp = head->next;
-	     tmp != head;
-	     tmp = tmp->next) {
-		rl = osi_list_entry(tmp, struct rgrp_list, list);
+	for (; n; n = next) {
+		next = osi_next(n);
+		rl = (struct rgrp_tree *)n;
 		ri = &rl->ri;
 
 		rgblocks = rl->length;

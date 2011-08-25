@@ -126,12 +126,14 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
  */
 static void figure_out_rgsize(struct gfs2_sbd *sdp, unsigned int *orgsize)
 {
-	osi_list_t *head = &sdp->rglist;
-	struct rgrp_list *r1, *r2;
+	struct osi_node *n = osi_first(&sdp->rgtree), *next = NULL;
+	struct rgrp_tree *r1, *r2;
 
 	sdp->rgsize = GFS2_DEFAULT_RGSIZE;
-	r1 = osi_list_entry(head->next->next, struct rgrp_list, list);
-	r2 = osi_list_entry(head->next->next->next, struct rgrp_list, list);
+	next = osi_next(n);
+	r1 = (struct rgrp_tree *)next;
+	next = osi_next(next);
+	r2 = (struct rgrp_tree *)next;
 
 	*orgsize = r2->ri.ri_addr - r1->ri.ri_addr;
 }
@@ -147,16 +149,13 @@ static void figure_out_rgsize(struct gfs2_sbd *sdp, unsigned int *orgsize)
 
 static uint64_t filesystem_size(struct gfs2_sbd *sdp)
 {
-	osi_list_t *tmp;
-	struct rgrp_list *rgl;
+	struct osi_node *n, *next = NULL;
+	struct rgrp_tree *rgl;
 	uint64_t size = 0, extent;
 
-	tmp = &sdp->rglist;
-	for (;;) {
-		tmp = tmp->next;
-		if (tmp == &sdp->rglist)
-			break;
-		rgl = osi_list_entry(tmp, struct rgrp_list, list);
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rgl = (struct rgrp_tree *)n;
 		extent = rgl->ri.ri_addr + rgl->ri.ri_length + rgl->ri.ri_data;
 		if (extent > size)
 			size = extent;
@@ -169,19 +168,22 @@ static uint64_t filesystem_size(struct gfs2_sbd *sdp)
  */
 static void initialize_new_portion(struct gfs2_sbd *sdp, int *old_rg_count)
 {
+	struct osi_node *n, *next = NULL;
 	uint64_t rgrp = 0;
-	osi_list_t *head = &sdp->rglist;
-	struct rgrp_list *rl;
+	struct rgrp_tree *rl;
 
 	*old_rg_count = 0;
 	/* Delete the old RGs from the rglist */
-	for (rgrp = 0; !osi_list_empty(head) &&
-		     rgrp < (sdp->rgrps - sdp->new_rgrps); rgrp++) {
+	for (rgrp = 0, n = osi_first(&sdp->rgtree);
+	     n && rgrp < (sdp->rgrps - sdp->new_rgrps); n = next, rgrp++) {
+		next = osi_next(n);
 		(*old_rg_count)++;
-		osi_list_del(head->next);
+		rl = (struct rgrp_tree *)n;
+		osi_erase(&rl->node, &sdp->rgtree);
+		free(rl);
 	}
 	/* Issue a discard ioctl for the new portion */
-	rl = osi_list_entry(sdp->rglist.next, struct rgrp_list, list);
+	rl = (struct rgrp_tree *)n;
 	discard_blocks(sdp->device_fd, rl->start * sdp->bsize,
 		       (sdp->device.length - rl->start) * sdp->bsize);
 	/* Build the remaining resource groups */
@@ -199,17 +201,19 @@ static void initialize_new_portion(struct gfs2_sbd *sdp, int *old_rg_count)
  */
 static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 {
+	struct osi_node *n, *next = NULL;
 	int count, rg;
-	struct rgrp_list *rl;
+	struct rgrp_tree *rl;
 	char *buf, *bufptr;
-	osi_list_t *tmp;
 	ssize_t writelen;
 	struct stat statbuf;
 
 	/* Count the number of new RGs. */
 	rg = 0;
-	osi_list_foreach(tmp, &sdp->rglist)
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
 		rg++;
+	}
 	log_info( _("%d new rindex entries.\n"), rg);
 	writelen = rg * sizeof(struct gfs2_rindex);
 	buf = calloc(1, writelen);
@@ -221,13 +225,14 @@ static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 	/* need to use the gfs2 kernel code rather than the libgfs2 */
 	/* code so we have a live update while mounted.             */
 	bufptr = buf;
-	osi_list_foreach(tmp, &sdp->rglist) {
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
 		rg++;
-		rl = osi_list_entry(tmp, struct rgrp_list, list);
+		rl = (struct rgrp_tree *)n;
 		gfs2_rindex_out(&rl->ri, bufptr);
 		bufptr += sizeof(struct gfs2_rindex);
 	}
-	gfs2_rgrp_free(&sdp->rglist);
+	gfs2_rgrp_free(&sdp->rgtree);
 	fsync(sdp->device_fd);
 	if (!test) {
 		if (fstat(rindex_fd, &statbuf) != 0) {
@@ -308,7 +313,6 @@ main_grow(int argc, char *argv[])
 	struct gfs2_sbd sbd, *sdp = &sbd;
 	int rgcount, rindex_fd;
 	char rindex_name[PATH_MAX];
-	osi_list_t *head = &sdp->rglist;
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	sdp->bsize = GFS2_DEFAULT_BSIZE;
@@ -346,7 +350,8 @@ main_grow(int argc, char *argv[])
 			exit(-1);
 		}
 		log_info( _("Initializing lists...\n"));
-		osi_list_init(&sdp->rglist);
+		sdp->rgtree.osi_node = NULL;
+		sdp->rgcalc.osi_node = NULL;
 
 		sdp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 		sdp->bsize = sdp->sd_sb.sb_bsize;
@@ -399,14 +404,13 @@ main_grow(int argc, char *argv[])
 		else {
 			int old_rg_count;
 
-			compute_rgrp_layout(sdp, TRUE);
+			compute_rgrp_layout(sdp, &sdp->rgtree, TRUE);
 			print_info(sdp);
 			initialize_new_portion(sdp, &old_rg_count);
 			fix_rindex(sdp, rindex_fd, old_rg_count);
 		}
 		/* Delete the remaining RGs from the rglist */
-		while (!osi_list_empty(head))
-			osi_list_del(head->next);
+		gfs2_rgrp_free(&sdp->rgtree);
 		close(rindex_fd);
 		cleanup_metafs(sdp);
 		close(sdp->device_fd);

@@ -540,7 +540,7 @@ void main_mkfs(int argc, char *argv[])
 	sdp->qcsize = GFS2_DEFAULT_QCSIZE;
 	strcpy(sdp->lockproto, GFS2_DEFAULT_LOCKPROTO);
 	sdp->time = time(NULL);
-	osi_list_init(&sdp->rglist);
+	sdp->rgtree.osi_node = NULL;
 
 	decode_arguments(argc, argv, sdp);
 	if (sdp->rgsize == -1)                 /* if rg size not specified */
@@ -626,7 +626,7 @@ void main_mkfs(int argc, char *argv[])
 
 	/* Compute the resource group layouts */
 
-	compute_rgrp_layout(sdp, rgsize_specified);
+	compute_rgrp_layout(sdp, &sdp->rgtree, rgsize_specified);
 
 	/* Generate a random uuid */
 	get_random_bytes(uuid, sizeof(uuid));
@@ -680,7 +680,7 @@ void main_mkfs(int argc, char *argv[])
 	inode_put(&sdp->md.inum);
 	inode_put(&sdp->md.statfs);
 
-	gfs2_rgrp_free(&sdp->rglist);
+	gfs2_rgrp_free(&sdp->rgtree);
 	error = fsync(sdp->device_fd);
 	if (error)
 		die( _("can't fsync device (%d): %s\n"),

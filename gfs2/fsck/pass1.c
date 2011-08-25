@@ -1534,10 +1534,10 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
  */
 int pass1(struct gfs2_sbd *sdp)
 {
+	struct osi_node *n, *next = NULL;
 	struct gfs2_buffer_head *bh;
-	osi_list_t *tmp;
 	uint64_t block;
-	struct rgrp_list *rgd;
+	struct rgrp_tree *rgd;
 	int first;
 	uint64_t i;
 	uint64_t rg_count = 0;
@@ -1562,11 +1562,11 @@ int pass1(struct gfs2_sbd *sdp)
 	 * uses the rg bitmaps, so maybe that's the best way to start
 	 * things - we can change the method later if necessary.
 	 */
-	for (tmp = sdp->rglist.next; tmp != &sdp->rglist;
-	     tmp = tmp->next, rg_count++) {
+	for (n = osi_first(&sdp->rgtree); n; n = next, rg_count++) {
+		next = osi_next(n);
 		log_debug( _("Checking metadata in Resource Group #%llu\n"),
 				 (unsigned long long)rg_count);
-		rgd = osi_list_entry(tmp, struct rgrp_list, list);
+		rgd = (struct rgrp_tree *)n;
 		for (i = 0; i < rgd->ri.ri_length; i++) {
 			log_debug( _("rgrp block %lld (0x%llx) "
 				     "is now marked as 'rgrp data'\n"),

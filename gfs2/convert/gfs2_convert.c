@@ -174,7 +174,7 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 /*                   Fixes all unallocated metadata bitmap states (which are */
 /*                   valid in gfs1 but invalid in gfs2).                     */
 /* ------------------------------------------------------------------------- */
-static void convert_bitmaps(struct gfs2_sbd *sdp, struct rgrp_list *rg)
+static void convert_bitmaps(struct gfs2_sbd *sdp, struct rgrp_tree *rg)
 {
 	uint32_t blk;
 	int x, y;
@@ -202,16 +202,18 @@ static void convert_bitmaps(struct gfs2_sbd *sdp, struct rgrp_list *rg)
 /* ------------------------------------------------------------------------- */
 static int convert_rgs(struct gfs2_sbd *sbp)
 {
-	struct rgrp_list *rgd;
-	osi_list_t *tmp;
+	struct rgrp_tree *rgd;
+	struct osi_node *n, *next = NULL;
 	struct gfs1_rgrp *rgd1;
 	int rgs = 0;
 
 	/* --------------------------------- */
 	/* Now convert its rgs into gfs2 rgs */
 	/* --------------------------------- */
-	osi_list_foreach(tmp, &sbp->rglist) {
-		rgd = osi_list_entry(tmp, struct rgrp_list, list);
+	for (n = osi_first(&sbp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rgd = (struct rgrp_tree *)n;
+
 		rgd1 = (struct gfs1_rgrp *)&rgd->rg; /* recast as gfs1 structure */
 		/* rg_freemeta is a gfs1 structure, so libgfs2 doesn't know to */
 		/* convert from be to cpu. We must do it now. */
@@ -986,8 +988,8 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 /* ------------------------------------------------------------------------- */
 static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_list_t *cdpn_to_fix)
 {
-	struct rgrp_list *rgd;
-	osi_list_t *tmp;
+	struct rgrp_tree *rgd;
+	struct osi_node *n, *next = NULL;
 	uint64_t block;
 	struct gfs2_buffer_head *bh;
 	int first;
@@ -1002,9 +1004,10 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 	/* ---------------------------------------------------------------- */
 	/* Traverse the resource groups to figure out where the inodes are. */
 	/* ---------------------------------------------------------------- */
-	osi_list_foreach(tmp, &sbp->rglist) {
+	for (n = osi_first(&sbp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rgd = (struct rgrp_tree *)n;
 		rgs_processed++;
-		rgd = osi_list_entry(tmp, struct rgrp_list, list);
 		first = 1;
 		while (1) {    /* for all inodes in the resource group */
 			gettimeofday(&tv, NULL);
@@ -1509,7 +1512,7 @@ static int init(struct gfs2_sbd *sbp)
 	sbp->dinodes_alloced = 0; /* dinodes allocated - total them up later */
 	sbp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 	sbp->bsize = sbp->sd_sb.sb_bsize;
-	osi_list_init(&sbp->rglist);
+	sbp->rgtree.osi_node = NULL;
 	if (compute_constants(sbp)) {
 		log_crit(_("Error: Bad constants (1)\n"));
 		exit(-1);
@@ -1737,9 +1740,10 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 	int error = 0;
 	int j, x;
 	struct gfs1_jindex *jndx;
-	struct rgrp_list *rgd, *rgdhigh;
-	osi_list_t *tmp;
+	struct rgrp_tree *rgd, *rgdhigh;
+	struct osi_node *n, *next = NULL;
 	struct gfs2_meta_header mh;
+	uint64_t ri_addr;
 
 	mh.mh_magic = GFS2_MAGIC;
 	mh.mh_type = GFS2_METATYPE_RB;
@@ -1757,8 +1761,9 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 		   by jadd.  gfs_grow adds rgs out of order, so we can't count
 		   on them being in ascending order. */
 		rgdhigh = NULL;
-		osi_list_foreach(tmp, &sdp->rglist) {
-			rgd = osi_list_entry(tmp, struct rgrp_list, list);
+		for (n = osi_first(&sdp->rgtree); n; n = next) {
+			next = osi_next(n);
+			rgd = (struct rgrp_tree *)n;
 			if (rgd->ri.ri_addr < jndx->ji_addr &&
 				((rgdhigh == NULL) ||
 				 (rgd->ri.ri_addr > rgdhigh->ri.ri_addr)))
@@ -1771,15 +1776,12 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 			log_crit(_("Error: No suitable rg found for journal.\n"));
 			return -1;
 		}
+		ri_addr = jndx->ji_addr;
 		/* Allocate a new rgd entry which includes rg and ri. */
+		rgd = rgrp_insert(&sdp->rgtree, ri_addr);
 		/* convert the gfs1 rgrp into a new gfs2 rgrp */
-		rgd = malloc(sizeof(struct rgrp_list));
-		if (!rgd) {
-			log_crit(_("Error: unable to allocate memory for rg conversion.\n"));
-			return -1;
-		}
-		memset(rgd, 0, sizeof(struct rgrp_list));
-		size = jndx->ji_nsegment * be32_to_cpu(raw_gfs1_ondisk_sb.sb_seg_size);
+		size = jndx->ji_nsegment *
+			be32_to_cpu(raw_gfs1_ondisk_sb.sb_seg_size);
 		rgd->rg.rg_header.mh_magic = GFS2_MAGIC;
 		rgd->rg.rg_header.mh_type = GFS2_METATYPE_RG;
 		rgd->rg.rg_header.mh_format = GFS2_FORMAT_RG;
@@ -1822,9 +1824,6 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 			else
 				gfs2_rgrp_out(&rgd->rg, rgd->bh[x]);
 		}
-		/* Add the new gfs2 rg to our list: We'll output the rg index later. */
-		osi_list_add_prev((osi_list_t *)&rgd->list,
-						  (osi_list_t *)&sdp->rglist);
 	} /* for each journal */
 	return error;
 }/* journ_space_to_rg */
@@ -2001,16 +2000,17 @@ static int check_fit(struct gfs2_sbd *sdp)
 
 	/* build_rindex() */
 	{
-		osi_list_t *tmp, *head;
+		struct osi_node *n, *next = NULL;
 		unsigned int rg_count = 0;
 
 		blks_need++; /* creationg of 'rindex' disk inode */
 		/* find the total # of rindex entries, gives size of rindex inode */
-		for (head = &sdp->rglist, tmp = head->next; tmp != head;
-		     tmp = tmp->next)
+		for (n = osi_first(&sdp->rgtree); n; n = next) {
+			next = osi_next(n);
 			rg_count++;
-		blks_need += 
-			total_file_blocks(sdp, rg_count * sizeof(struct gfs2_rindex), 1);
+		}
+		blks_need += total_file_blocks(sdp, rg_count *
+					       sizeof(struct gfs2_rindex), 1);
 	}
 	/* build_quota() */
 	blks_need++; /* quota inode block and uid=gid=0 quota - total 1 block */
@@ -2207,6 +2207,7 @@ int main(int argc, char **argv)
 	/* ---------------------------------------------- */
 	if (!error) {
 		int jreduce = 0;
+
 		/* Now we've got to treat it as a gfs2 file system */
 		if (compute_constants(&sb2)) {
 			log_crit(_("Error: Bad constants (1)\n"));
@@ -2294,7 +2295,7 @@ int main(int argc, char **argv)
 		fsync(sb2.device_fd); /* write the buffers to disk */
 
 		/* Now free all the in memory */
-		gfs2_rgrp_free(&sb2.rglist);
+		gfs2_rgrp_free(&sb2.rgtree);
 		log_notice(_("Committing changes to disk.\n"));
 		fflush(stdout);
 		/* Set filesystem type in superblock to gfs2.  We do this at the */

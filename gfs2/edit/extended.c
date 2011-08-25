@@ -662,7 +662,7 @@ int display_extended(void)
 		return -1;
 	else if (display_indirect(indirect, indirect_blocks, 0, 0) == 0)
 		return -1;
-	else if (block_is_rglist()) {
+	else if (block_is_rgtree()) {
 		if (sbd.gfs1)
 			tmp_bh = bread(&sbd, sbd1->sb_rindex_di.no_addr);
 		else

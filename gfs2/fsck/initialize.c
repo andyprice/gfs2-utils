@@ -110,7 +110,7 @@ static void gfs2_inodetree_free(void)
 static void empty_super_block(struct gfs2_sbd *sdp)
 {
 	log_info( _("Freeing buffers.\n"));
-	gfs2_rgrp_free(&sdp->rglist);
+	gfs2_rgrp_free(&sdp->rgtree);
 
 	if (bl)
 		gfs2_bmap_destroy(sdp, bl);
@@ -131,10 +131,9 @@ static void empty_super_block(struct gfs2_sbd *sdp)
  */
 static int set_block_ranges(struct gfs2_sbd *sdp)
 {
-
-	struct rgrp_list *rgd;
+	struct osi_node *n, *next = NULL;
+	struct rgrp_tree *rgd;
 	struct gfs2_rindex *ri;
-	osi_list_t *tmp;
 	char buf[sdp->sd_sb.sb_bsize];
 	uint64_t rmax = 0;
 	uint64_t rmin = 0;
@@ -142,9 +141,9 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 
 	log_info( _("Setting block ranges...\n"));
 
-	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next)
-	{
-		rgd = osi_list_entry(tmp, struct rgrp_list, list);
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rgd = (struct rgrp_tree *)n;
 		ri = &rgd->ri;
 		if (ri->ri_data0 + ri->ri_data &&
 		    ri->ri_data0 + ri->ri_data - 1 > rmax)
@@ -191,7 +190,7 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 /**
  * check_rgrp_integrity - verify a rgrp free block count against the bitmap
  */
-static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
+static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				 int *fixit, int *this_rg_fixed,
 				 int *this_rg_bad)
 {
@@ -320,17 +319,18 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
  */
 static int check_rgrps_integrity(struct gfs2_sbd *sdp)
 {
+	struct osi_node *n, *next = NULL;
 	int rgs_good = 0, rgs_bad = 0, rgs_fixed = 0;
 	int was_bad = 0, was_fixed = 0, error = 0;
-	osi_list_t *tmp;
-	struct rgrp_list *rgd;
+	struct rgrp_tree *rgd;
 	int reclaim_unlinked = 0;
 
 	log_info( _("Checking the integrity of all resource groups.\n"));
-	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rgd = (struct rgrp_tree *)n;
 		if (fsck_abort)
 			return 0;
-		rgd = osi_list_entry(tmp, struct rgrp_list, list);
 		check_rgrp_integrity(sdp, rgd, &reclaim_unlinked,
 				     &was_fixed, &was_bad);
 		if (was_fixed)
@@ -1224,7 +1224,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 	 ***************** First, initialize all lists **********************
 	 ********************************************************************/
 	log_info( _("Initializing lists...\n"));
-	osi_list_init(&sdp->rglist);
+	sdp->rgtree.osi_node = NULL;
 
 	/********************************************************************
 	 ************  next, read in on-disk SB and set constants  **********

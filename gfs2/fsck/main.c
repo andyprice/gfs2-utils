@@ -149,8 +149,8 @@ static void interrupt(int sig)
 
 static void check_statfs(struct gfs2_sbd *sdp)
 {
-	osi_list_t *tmp;
-	struct rgrp_list *rgd;
+	struct osi_node *n, *next = NULL;
+	struct rgrp_tree *rgd;
 	struct gfs2_rindex *ri;
 	struct gfs2_statfs_change sc;
 	char buf[sizeof(struct gfs2_statfs_change)];
@@ -171,8 +171,9 @@ static void check_statfs(struct gfs2_sbd *sdp)
 	sdp->blks_alloced = 0;
 	sdp->dinodes_alloced = 0;
 
-	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
-		rgd = osi_list_entry(tmp, struct rgrp_list, list);
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rgd = (struct rgrp_tree *)n;
 		ri = &rgd->ri;
 		sdp->blks_total += ri->ri_data;
 		sdp->blks_alloced += (ri->ri_data - rgd->rg.rg_free);

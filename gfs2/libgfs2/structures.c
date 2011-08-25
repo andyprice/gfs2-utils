@@ -344,8 +344,8 @@ int build_statfs(struct gfs2_sbd *sdp)
 int build_rindex(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
-	osi_list_t *tmp, *head;
-	struct rgrp_list *rl;
+	struct osi_node *n, *next = NULL;
+	struct rgrp_tree *rl;
 	char buf[sizeof(struct gfs2_rindex)];
 	int count;
 
@@ -357,9 +357,9 @@ int build_rindex(struct gfs2_sbd *sdp)
 	ip->i_di.di_payload_format = GFS2_FORMAT_RI;
 	bmodified(ip->i_bh);
 
-	for (head = &sdp->rglist, tmp = head->next; tmp != head;
-	     tmp = tmp->next) {
-		rl = osi_list_entry(tmp, struct rgrp_list, list);
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rl = (struct rgrp_tree *)n;
 
 		gfs2_rindex_out(&rl->ri, buf);
 
@@ -502,7 +502,7 @@ int gfs2_check_meta(struct gfs2_buffer_head *bh, int type)
  *
  * Returns: 0 on success, -1 when finished
  */
-static int __gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block,
+static int __gfs2_next_rg_meta(struct rgrp_tree *rgd, uint64_t *block,
 			       int first, unsigned char state)
 {
 	struct gfs2_bitmap *bits = NULL;
@@ -510,17 +510,17 @@ static int __gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block,
 	uint32_t blk = (first)? 0: (uint32_t)((*block + 1) - rgd->ri.ri_data0);
 	int i;
 
-	if(!first && (*block < rgd->ri.ri_data0)) {
+	if (!first && (*block < rgd->ri.ri_data0)) {
 		log_err("next_rg_meta:  Start block is outside rgrp bounds.\n");
 		exit(1);
 	}
-	for(i = 0; i < length; i++){
+	for (i = 0; i < length; i++){
 		bits = &rgd->bits[i];
 		if (blk < bits->bi_len * GFS2_NBBY)
 			break;
 		blk -= bits->bi_len * GFS2_NBBY;
 	}
-	for(; i < length; i++){
+	for (; i < length; i++){
 		bits = &rgd->bits[i];
 		blk = gfs2_bitfit((unsigned char *)rgd->bh[i]->b_data +
 				  bits->bi_offset, bits->bi_len, blk, state);
@@ -531,17 +531,17 @@ static int __gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block,
 		}
 		blk = 0;
 	}
-	if(i == length)
+	if (i == length)
 		return -1;
 	return 0;
 }
 
-int gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block, int first)
+int gfs2_next_rg_meta(struct rgrp_tree *rgd, uint64_t *block, int first)
 {
 	return __gfs2_next_rg_meta(rgd, block, first, GFS2_BLKST_DINODE);
 }
 
-int gfs2_next_rg_freemeta(struct rgrp_list *rgd, uint64_t *block, int first)
+int gfs2_next_rg_freemeta(struct rgrp_tree *rgd, uint64_t *block, int first)
 {
 	return __gfs2_next_rg_meta(rgd, block, first, GFS2_BLKST_UNLINKED);
 }
@@ -555,7 +555,7 @@ int gfs2_next_rg_freemeta(struct rgrp_list *rgd, uint64_t *block, int first)
  *
  * Returns: 0 on success, -1 on error or finished
  */
-int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
+int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 			  uint64_t *block, uint32_t type, int first)
 {
 	struct gfs2_buffer_head *bh = NULL;

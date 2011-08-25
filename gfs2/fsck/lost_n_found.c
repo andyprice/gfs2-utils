@@ -89,8 +89,8 @@ static void add_dotdot(struct gfs2_inode *ip)
 
 static uint64_t find_free_blk(struct gfs2_sbd *sdp)
 {
-	osi_list_t *tmp, *head;
-	struct rgrp_list *rl = NULL;
+	struct osi_node *n, *next = NULL;
+	struct rgrp_tree *rl = NULL;
 	struct gfs2_rindex *ri;
 	struct gfs2_rgrp *rg;
 	unsigned int block, bn = 0, x = 0, y = 0;
@@ -98,14 +98,14 @@ static uint64_t find_free_blk(struct gfs2_sbd *sdp)
 	struct gfs2_buffer_head *bh;
 
 	memset(&rg, 0, sizeof(rg));
-	for (head = &sdp->rglist, tmp = head->next; tmp != head;
-	     tmp = tmp->next) {
-		rl = osi_list_entry(tmp, struct rgrp_list, list);
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rl = (struct rgrp_tree *)n;
 		if (rl->rg.rg_free)
 			break;
 	}
 
-	if (tmp == head)
+	if (n == NULL)
 		return 0;
 
 	ri = &rl->ri;

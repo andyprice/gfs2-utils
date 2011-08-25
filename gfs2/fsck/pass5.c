@@ -195,7 +195,7 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer,
 	return 0;
 }
 
-static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_list *rgp,
+static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgp,
 			uint32_t *count)
 {
 	uint32_t i;
@@ -280,18 +280,19 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_list *rgp,
  */
 int pass5(struct gfs2_sbd *sdp)
 {
-	osi_list_t *tmp;
-	struct rgrp_list *rgp = NULL;
+	struct osi_node *n, *next = NULL;
+	struct rgrp_tree *rgp = NULL;
 	uint32_t count[5];
 	uint64_t rg_count = 0;
 
 	/* Reconcile RG bitmaps with fsck bitmap */
-	for(tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next){
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
 		log_info( _("Verifying Resource Group #%llu\n"), (unsigned long long)rg_count);
 		memset(count, 0, sizeof(count));
-		rgp = osi_list_entry(tmp, struct rgrp_list, list);
+		rgp = (struct rgrp_tree *)n;
 
 		rg_count++;
 		/* Compare the bitmaps and report the differences */

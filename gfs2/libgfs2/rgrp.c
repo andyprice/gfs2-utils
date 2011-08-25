@@ -15,7 +15,7 @@
  *
  * Returns: 0 on success, -1 on error
  */
-int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
+int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
 	struct gfs2_bitmap *bits;
 	uint32_t length = rgd->ri.ri_length;
@@ -95,33 +95,21 @@ int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
  *
  * Returns: Ths resource group, or NULL if not found
  */
-struct rgrp_list *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
+struct rgrp_tree *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
 {
-	osi_list_t *tmp;
-	struct rgrp_list *rgd;
-	static struct rgrp_list *prev_rgd = NULL;
+	struct osi_node *node = sdp->rgtree.osi_node;
 	struct gfs2_rindex *ri;
 
-	if (prev_rgd) {
-		ri = &prev_rgd->ri;
-		if (ri->ri_data0 <= blk && blk < ri->ri_data0 + ri->ri_data)
-			return prev_rgd;
-		if (blk >= ri->ri_addr && blk < ri->ri_addr + ri->ri_length)
-			return prev_rgd;
-	}
-
-	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
-		rgd = osi_list_entry(tmp, struct rgrp_list, list);
+	while (node) {
+		struct rgrp_tree *rgd = (struct rgrp_tree *)node;
 		ri = &rgd->ri;
 
-		if (blk >= ri->ri_addr && blk < ri->ri_addr + ri->ri_length) {
-			prev_rgd = rgd;
+		if (blk < ri->ri_addr)
+			node = node->osi_left;
+		else if (blk > ri->ri_data0 + ri->ri_data)
+			node = node->osi_right;
+		else
 			return rgd;
-		}
-		if (ri->ri_data0 <= blk && blk < ri->ri_data0 + ri->ri_data) {
-			prev_rgd = rgd;
-			return rgd;
-		}
 	}
 	return NULL;
 }
@@ -131,7 +119,7 @@ struct rgrp_list *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
  * @rgd - resource group structure
  * returns: 0 if no error, otherwise the block number that failed
  */
-uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
+uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
 	int x, length = rgd->ri.ri_length;
 	uint64_t max_rgrp_bitbytes, max_rgrp_len;
@@ -167,7 +155,7 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd)
 	return 0;
 }
 
-void gfs2_rgrp_relse(struct rgrp_list *rgd)
+void gfs2_rgrp_relse(struct rgrp_tree *rgd)
 {
 	int x, length = rgd->ri.ri_length;
 
@@ -180,14 +168,46 @@ void gfs2_rgrp_relse(struct rgrp_list *rgd)
 	}
 }
 
-void gfs2_rgrp_free(osi_list_t *rglist)
+struct rgrp_tree *rgrp_insert(struct osi_root *rgtree, uint64_t rgblock)
 {
-	struct rgrp_list *rgd;
+	struct osi_node **newn = &rgtree->osi_node, *parent = NULL;
+	struct rgrp_tree *data;
+
+	/* Figure out where to put new node */
+	while (*newn) {
+		struct rgrp_tree *cur = (struct rgrp_tree *)*newn;
+
+		parent = *newn;
+		if (rgblock < cur->ri.ri_addr)
+			newn = &((*newn)->osi_left);
+		else if (rgblock > cur->ri.ri_addr)
+			newn = &((*newn)->osi_right);
+		else
+			return cur;
+	}
+
+	data = malloc(sizeof(struct rgrp_tree));
+	if (!data)
+		return NULL;
+	if (!memset(data, 0, sizeof(struct rgrp_tree)))
+		return NULL;
+	/* Add new node and rebalance tree. */
+	data->ri.ri_addr = rgblock;
+	osi_link_node(&data->node, parent, newn);
+	osi_insert_color(&data->node, rgtree);
+
+	return data;
+}
+
+void gfs2_rgrp_free(struct osi_root *rgrp_tree)
+{
+	struct rgrp_tree *rgd;
 	int rgs_since_sync = 0;
+	struct osi_node *n;
 	struct gfs2_sbd *sdp = NULL;
 
-	while(!osi_list_empty(rglist->next)){
-		rgd = osi_list_entry(rglist->next, struct rgrp_list, list);
+	while ((n = osi_first(rgrp_tree))) {
+		rgd = (struct rgrp_tree *)n;
 		if (rgd->bh && rgd->bh[0]) { /* if a buffer exists        */
 			rgs_since_sync++;
 			if (rgs_since_sync >= RG_SYNC_TOLERANCE) {
@@ -204,7 +224,7 @@ void gfs2_rgrp_free(osi_list_t *rglist)
 			free(rgd->bh);
 			rgd->bh = NULL;
 		}
-		osi_list_del(&rgd->list);
+		osi_erase(&rgd->node, rgrp_tree);
 		free(rgd);
 	}
 }

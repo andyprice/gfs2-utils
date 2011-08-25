@@ -149,12 +149,12 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 		struct gfs_rindex bufgfs1;
 		struct gfs2_rindex bufgfs2;
 	} buf;
-	struct rgrp_list *rgd, *prev_rgd;
+	struct gfs2_rindex ri;
+	struct rgrp_tree *rgd = NULL, *prev_rgd = NULL;
 	uint64_t prev_length = 0;
 
 	*sane = 1;
 	*count1 = 0;
-	prev_rgd = NULL;
 	if (!fd && sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex))
 		*sane = 0; /* rindex file size must be a multiple of 96 */
 	for (rg = 0; ; rg++) {
@@ -170,15 +170,9 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 		if (error != sizeof(struct gfs2_rindex))
 			return -1;
 
-		rgd = (struct rgrp_list *)malloc(sizeof(struct rgrp_list));
-		if (!rgd) {
-			log_crit("Cannot allocate memory for rindex.\n");
-			exit(-1);
-		}
-		memset(rgd, 0, sizeof(struct rgrp_list));
-		osi_list_add_prev(&rgd->list, &sdp->rglist);
-
-		gfs2_rindex_in(&rgd->ri, (char *)&buf.bufgfs2);
+		gfs2_rindex_in(&ri, (char *)&buf.bufgfs2);
+		rgd = rgrp_insert(&sdp->rgtree, ri.ri_addr);
+		memcpy(&rgd->ri, &ri, sizeof(struct gfs2_rindex));
 
 		rgd->start = rgd->ri.ri_addr;
 		if (prev_rgd) {
@@ -228,17 +222,18 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 static int __ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane,
 		       int quiet)
 {
-	struct rgrp_list *rgd;
+	struct rgrp_tree *rgd;
 	struct gfs2_rindex *ri;
-	osi_list_t *tmp;
 	int count1 = 0, count2 = 0;
 	uint64_t errblock = 0;
 	uint64_t rmax = 0;
+	struct osi_node *n, *next = NULL;
 
 	if (rindex_read(sdp, fd, &count1, sane))
 		goto fail;
-	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
-		rgd = osi_list_entry(tmp, struct rgrp_list, list);
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rgd = (struct rgrp_tree *)n;
 		errblock = gfs2_rgrp_read(sdp, rgd);
 		if (errblock)
 			return errblock;
@@ -260,7 +255,7 @@ static int __ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane,
 	return 0;
 
  fail:
-	gfs2_rgrp_free(&sdp->rglist);
+	gfs2_rgrp_free(&sdp->rgtree);
 	return -1;
 }
 

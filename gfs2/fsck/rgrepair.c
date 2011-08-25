@@ -231,25 +231,25 @@ static uint64_t count_usedspace(struct gfs2_sbd *sdp, int first,
  * This function finds the distance to the next rgrp for these cases.
  */
 static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
-				    struct rgrp_list *prevrgd)
+				    struct rgrp_tree *prevrgd)
 {
+	struct osi_node *n, *next = NULL;
 	uint64_t rgrp_dist = 0, used_blocks, block, next_block, twogigs;
-	osi_list_t *tmp;
-	struct rgrp_list *rgd = NULL, *next_rgd;
+	struct rgrp_tree *rgd = NULL, *next_rgd;
 	struct gfs2_buffer_head *bh;
 	struct gfs2_meta_header mh;
 	int first, length, b, found, mega_in_blocks;
 	uint32_t free_blocks;
 
-	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
-		rgd = osi_list_entry(tmp, struct rgrp_list, list);
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rgd = (struct rgrp_tree *)n;
 		if (rgd->ri.ri_addr == blk)
 			break;
 	}
-	if (rgd && tmp && tmp != &sdp->rglist && tmp->next &&
-	    rgd->ri.ri_addr == blk) {
-		tmp = tmp->next;
-		next_rgd = osi_list_entry(tmp, struct rgrp_list, list);
+	if (rgd && n && osi_next(n) && rgd->ri.ri_addr == blk) {
+		n = osi_next(n);
+		next_rgd = (struct rgrp_tree *)n;
 		rgrp_dist = next_rgd->ri.ri_addr - rgd->ri.ri_addr;
 		return rgrp_dist;
 	}
@@ -346,7 +346,7 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
  * boundaries, and also corrupt.  So we have to go out searching for one.
  */
 static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
-			      struct rgrp_list *prevrgd, uint64_t last_bump)
+			      struct rgrp_tree *prevrgd, uint64_t last_bump)
 {
 	uint64_t rgrp_dist = 0, block, twogigs, last_block, last_meg;
 	struct gfs2_buffer_head *bh;
@@ -431,20 +431,20 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
  * from gfs1 to gfs2 after a gfs_grow operation.  In that case, the rgrps
  * will not be on predictable boundaries.
  */
-static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
-			       int *num_rgs, int gfs_grow)
+static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
+			       int gfs_grow)
 {
+	struct osi_node *n, *next = NULL;
 	struct gfs2_buffer_head *bh;
 	uint64_t shortest_dist_btwn_rgs;
 	uint64_t blk;
 	uint64_t fwd_block, block_bump;
 	uint64_t first_rg_dist, initial_first_rg_dist;
-	struct rgrp_list *calc_rgd, *prev_rgd;
+	struct rgrp_tree *calc_rgd, *prev_rgd;
 	int number_of_rgs, rgi;
 	int rg_was_fnd = FALSE, corrupt_rgs = 0, bitmap_was_fnd;
-	osi_list_t *tmp;
 
-	osi_list_init(ret_list);
+	sdp->rgcalc.osi_node = NULL;
 	initial_first_rg_dist = first_rg_dist = sdp->sb_addr + 1;
 	shortest_dist_btwn_rgs = find_shortest_rgdist(sdp,
 						      &initial_first_rg_dist,
@@ -463,15 +463,12 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 		rg_was_fnd = (!gfs2_check_meta(bh, GFS2_METATYPE_RG));
 		brelse(bh);
 		/* Allocate a new RG and index. */
-		calc_rgd = malloc(sizeof(struct rgrp_list));
+		calc_rgd = rgrp_insert(&sdp->rgcalc, blk);
 		if (!calc_rgd) {
 			log_crit( _("Can't allocate memory for rgrp repair.\n"));
 			return -1;
 		}
-		memset(calc_rgd, 0, sizeof(struct rgrp_list));
-		osi_list_add_prev(&calc_rgd->list, ret_list);
 		calc_rgd->ri.ri_length = 1;
-		calc_rgd->ri.ri_addr = blk;
 		if (!rg_was_fnd) { /* if not an RG */
 			/* ------------------------------------------------- */
 			/* This SHOULD be an RG but isn't.                   */
@@ -588,9 +585,9 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
         /* Now dump out the information (if verbose mode) */      
         /* ---------------------------------------------- */
         log_debug( _("rindex rebuilt as follows:\n"));
-        for (tmp = ret_list->next, rgi = 0; tmp != ret_list;
-	     tmp = tmp->next, rgi++) {
-                calc_rgd = osi_list_entry(tmp, struct rgrp_list, list);
+	for (n = osi_first(&sdp->rgcalc), rgi = 0; n; n = next, rgi++) {
+		next = osi_next(n);
+		calc_rgd = (struct rgrp_tree *)n;
                 log_debug("%d: 0x%llx / %x / 0x%llx"
 			  " / 0x%x / 0x%x\n", rgi + 1,
 			  (unsigned long long)calc_rgd->ri.ri_addr,
@@ -615,8 +612,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, osi_list_t *ret_list,
  * Sets:    sdp->rglist to a linked list of fsck_rgrp structs representing
  *          what we think the rindex should really look like.
  */
-static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, osi_list_t *ret_list,
-			   int *num_rgs)
+static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 {
 	uint64_t num_rgrps = 0;
 
@@ -629,7 +625,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 	/* ----------------------------------------------------------------- */
 	*num_rgs = sdp->md.riinode->i_di.di_size / sizeof(struct gfs2_rindex);
 
-	osi_list_init(ret_list);
+	sdp->rgcalc.osi_node = NULL;
 	if (device_geometry(sdp)) {
 		fprintf(stderr, _("Geometry error\n"));
 		exit(-1);
@@ -652,16 +648,11 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 		}
 	}
 	/* Compute the default resource group layout as mkfs would have done */
-	compute_rgrp_layout(sdp, TRUE);
+	compute_rgrp_layout(sdp, &sdp->rgcalc, TRUE);
 	build_rgrps(sdp, FALSE); /* FALSE = calc but don't write to disk. */
 	log_debug( _("fs_total_size = 0x%llx blocks.\n"),
 		  (unsigned long long)sdp->device.length);
 	log_warn( _("L3: number of rgs in the index = %d.\n"), *num_rgs);
-	/* Move the rg list to the return list */
-	ret_list->next = sdp->rglist.next;
-	ret_list->prev = sdp->rglist.prev;
-	ret_list->next->prev = ret_list;
-	ret_list->prev->next = ret_list;
 	return 0;
 }
 
@@ -669,8 +660,8 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, osi_list_t *ret_list,
  * rewrite_rg_block - rewrite ("fix") a buffer with rg or bitmap data
  * returns: 0 if the rg was repaired, otherwise 1
  */
-static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rg,
-		     uint64_t errblock)
+static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
+			    uint64_t errblock)
 {
 	int x = errblock - rg->ri.ri_addr;
 	const char *typedesc = x ? "GFS2_METATYPE_RB" : "GFS2_METATYPE_RG";
@@ -716,18 +707,16 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_list *rg,
  *                        values as our expected values and assume the
  *                        damage is only to the rgrps themselves.
  */
-static int expect_rindex_sanity(struct gfs2_sbd *sdp, osi_list_t *ret_list,
-				int *num_rgs)
+static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
 {
-	osi_list_t *tmp;
-	struct rgrp_list *exp, *rgd; /* expected, actual */
+	struct osi_node *n, *next = NULL;
+	struct rgrp_tree *rgd, *exp;
 
 	*num_rgs = sdp->md.riinode->i_di.di_size / sizeof(struct gfs2_rindex) ;
-	osi_list_init(ret_list);
-	for (tmp = sdp->rglist.next; tmp != &sdp->rglist; tmp = tmp->next) {
-		rgd = osi_list_entry(tmp, struct rgrp_list, list);
-
-		exp = calloc(1, sizeof(struct rgrp_list));
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rgd = (struct rgrp_tree *)n;
+		exp = rgrp_insert(&sdp->rgcalc, rgd->ri.ri_addr);
 		if (exp == NULL) {
 			fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
 			exit(-1);
@@ -739,42 +728,9 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, osi_list_t *ret_list,
 		exp->bits = NULL;
 		exp->bh = NULL;
 		gfs2_compute_bitstructs(sdp, exp);
-		osi_list_add_prev(&exp->list, ret_list);
 	}
 	sdp->rgrps = *num_rgs;
 	return 0;
-}
-
-/*
- * sort_rgrp_list - sort the rgrp list
- *
- * A bit crude, perhaps, but we're talking about thousands, not millions of
- * entries to sort, and the list will be almost sorted anyway, so there
- * should be very few swaps.
- */
-static void sort_rgrp_list(osi_list_t *head)
-{
-	struct rgrp_list *thisr, *nextr;
-	osi_list_t *tmp, *x, *next;
-	int swaps;
-
-	while (1) {
-		swaps = 0;
-		osi_list_foreach_safe(tmp, head, x) {
-			next = tmp->next;
-			if (next == head) /* at the end */
-				break;
-			thisr = osi_list_entry(tmp, struct rgrp_list, list);
-			nextr = osi_list_entry(next, struct rgrp_list, list);
-			if (thisr->ri.ri_addr > nextr->ri.ri_addr) {
-				osi_list_del(next);
-				osi_list_add_prev(next, tmp);
-				swaps++;
-			}
-		}
-		if (!swaps)
-			break;
-	}
 }
 
 /*
@@ -790,10 +746,9 @@ static void sort_rgrp_list(osi_list_t *head)
  */
 int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 {
+	struct osi_node *n, *next = NULL, *e, *enext;
 	int error, discrepancies, percent;
-	osi_list_t expected_rglist;
 	int calc_rg_count = 0, rgcount_from_index, rg;
-	osi_list_t *exp, *act; /* expected, actual */
 	struct gfs2_rindex buf;
 
 	if (trust_lvl == blind_faith)
@@ -807,57 +762,53 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 				  "expectations.\n"));
 			return -1;
 		}
-		error = expect_rindex_sanity(sdp, &expected_rglist,
-					     &calc_rg_count);
+		error = expect_rindex_sanity(sdp, &calc_rg_count);
 		if (error) {
-			gfs2_rgrp_free(&expected_rglist);
+			gfs2_rgrp_free(&sdp->rgcalc);
 			return error;
 		}
 	} else if (trust_lvl == open_minded) { /* If we can't trust RG index */
 		/* Free previous incarnations in memory, if any. */
-		gfs2_rgrp_free(&sdp->rglist);
+		gfs2_rgrp_free(&sdp->rgtree);
 
 		/* Calculate our own RG index for comparison */
-		error = gfs2_rindex_calculate(sdp, &expected_rglist,
-					      &calc_rg_count);
+		error = gfs2_rindex_calculate(sdp, &calc_rg_count);
 		if (error) { /* If calculated RGs don't match the fs */
-			gfs2_rgrp_free(&expected_rglist);
+			gfs2_rgrp_free(&sdp->rgcalc);
 			return -1;
 		}
 	}
 	else if (trust_lvl == distrust) { /* If we can't trust RG index */
 		/* Free previous incarnations in memory, if any. */
-		gfs2_rgrp_free(&sdp->rglist);
+		gfs2_rgrp_free(&sdp->rgtree);
 
-		error = gfs2_rindex_rebuild(sdp, &expected_rglist,
-					    &calc_rg_count, 0);
+		error = gfs2_rindex_rebuild(sdp, &calc_rg_count, 0);
 		if (error) {
 			log_crit( _("Error rebuilding rgrp list.\n"));
-			gfs2_rgrp_free(&expected_rglist);
+			gfs2_rgrp_free(&sdp->rgcalc);
 			return -1;
 		}
 		sdp->rgrps = calc_rg_count;
 	}
 	else if (trust_lvl == indignation) { /* If we can't trust anything */
 		/* Free previous incarnations in memory, if any. */
-		gfs2_rgrp_free(&sdp->rglist);
+		gfs2_rgrp_free(&sdp->rgtree);
 
-		error = gfs2_rindex_rebuild(sdp, &expected_rglist,
-					    &calc_rg_count, 1);
+		error = gfs2_rindex_rebuild(sdp, &calc_rg_count, 1);
 		if (error) {
 			log_crit( _("Error rebuilding rgrp list.\n"));
-			gfs2_rgrp_free(&expected_rglist);
+			gfs2_rgrp_free(&sdp->rgcalc);
 			return -1;
 		}
 		sdp->rgrps = calc_rg_count;
 	}
 	/* Read in the rindex */
-	osi_list_init(&sdp->rglist); /* Just to be safe */
+	sdp->rgtree.osi_node = NULL; /* Just to be safe */
 	rindex_read(sdp, 0, &rgcount_from_index, sane);
 	if (sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex)) {
 		log_warn( _("WARNING: rindex file is corrupt.\n"));
-		gfs2_rgrp_free(&expected_rglist);
-		gfs2_rgrp_free(&sdp->rglist);
+		gfs2_rgrp_free(&sdp->rgcalc);
+		gfs2_rgrp_free(&sdp->rgtree);
 		return -1;
 	}
 	log_warn( _("L%d: number of rgs expected     = %lld.\n"), trust_lvl + 1,
@@ -867,19 +818,10 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 			    "extended, (2) an odd\n"), trust_lvl + 1);
 		log_warn( _("L%d: rgrp size was used, or (3) we have a corrupt "
 			    "rg index.\n"), trust_lvl + 1);
-		gfs2_rgrp_free(&expected_rglist);
-		gfs2_rgrp_free(&sdp->rglist);
+		gfs2_rgrp_free(&sdp->rgcalc);
+		gfs2_rgrp_free(&sdp->rgtree);
 		return -1;
 	}
-	/* ------------------------------------------------------------- */
-	/* Sort the rindex list.  Older versions of gfs_grow got the     */
-	/* rindex out of sorted order.  But rebuilding the rindex from   */
-	/* scratch will rebuild it in sorted order.                      */
-	/* The gfs2_grow program should, in theory, drop new rgrps into  */
-	/* the rindex in sorted order, so this should only matter for    */
-	/* gfs1 converted file systems.                                  */
-	/* ------------------------------------------------------------- */
-	sort_rgrp_list(&sdp->rglist);
 	/* ------------------------------------------------------------- */
 	/* Now compare the rindex to what we think it should be.         */
 	/* See how far off our expected values are.  If too much, abort. */
@@ -888,22 +830,24 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 	/* abandon this method of recovery and try a better one.         */
 	/* ------------------------------------------------------------- */
 	discrepancies = 0;
-	for (rg = 0, act = sdp->rglist.next, exp = expected_rglist.next;
-	     act != &sdp->rglist && exp != &expected_rglist && !fsck_abort;
-	     rg++) {
-		struct rgrp_list *expected, *actual;
+	for (rg = 0, n = osi_first(&sdp->rgtree), e = osi_first(&sdp->rgcalc);
+	     n && e && !fsck_abort; rg++) {
+		struct rgrp_tree *expected, *actual;
 
-		expected = osi_list_entry(exp, struct rgrp_list, list);
-		actual = osi_list_entry(act, struct rgrp_list, list);
+		next = osi_next(n);
+		enext = osi_next(e);
+
+		expected = (struct rgrp_tree *)e;
+		actual = (struct rgrp_tree *)n;
 		if (actual->ri.ri_addr < expected->ri.ri_addr) {
-			act = act->next;
+			n = next;
 			discrepancies++;
 			log_info(_("%d addr: 0x%llx < 0x%llx * mismatch\n"),
 				 rg + 1, actual->ri.ri_addr,
 				 expected->ri.ri_addr);
 			continue;
 		} else if (expected->ri.ri_addr < actual->ri.ri_addr) {
-			exp = exp->next;
+			e = enext;
 			discrepancies++;
 			log_info(_("%d addr: 0x%llx > 0x%llx * mismatch\n"),
 				 rg + 1, actual->ri.ri_addr,
@@ -919,8 +863,8 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 				 rg + 1, actual->ri.ri_addr,
 				 expected->ri.ri_addr);
 		}
-		act = act->next;
-		exp = exp->next;
+		n = next;
+		e = enext;
 	}
 	if (rg) {
 		/* Check to see if more than 2% of the rgrps are wrong.  */
@@ -931,8 +875,8 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 			log_warn( _("%d out of %d rgrps (%d percent) did not "
 				    "match what was expected.\n"),
 				  discrepancies, rg, percent);
-			gfs2_rgrp_free(&expected_rglist);
-			gfs2_rgrp_free(&sdp->rglist);
+			gfs2_rgrp_free(&sdp->rgcalc);
+			gfs2_rgrp_free(&sdp->rgtree);
 			return -1;
 		}
 	}
@@ -941,28 +885,29 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 	/* Our rindex should be pretty predictable unless we've grown    */
 	/* so look for index problems first before looking at the rgs.   */
 	/* ------------------------------------------------------------- */
-	for (rg = 0, act = sdp->rglist.next, exp = expected_rglist.next;
-	     exp != &expected_rglist && !fsck_abort; rg++) {
-		struct rgrp_list *expected, *actual;
+	for (rg = 0, n = osi_first(&sdp->rgtree), e = osi_first(&sdp->rgcalc);
+	     e && !fsck_abort; rg++) {
+		struct rgrp_tree *expected, *actual;
 
-		expected = osi_list_entry(exp, struct rgrp_list, list);
+		if (n)
+			next = osi_next(n);
+		enext = osi_next(e);
+		expected = (struct rgrp_tree *)e;
 
 		/* If we ran out of actual rindex entries due to rindex
 		   damage, fill in a new one with the expected values. */
-		if (act == &sdp->rglist) { /* end of actual rindex */
+		if (!n) { /* end of actual rindex */
 			log_err( _("Entry missing from rindex: 0x%llx\n"),
 				 (unsigned long long)expected->ri.ri_addr);
-			actual = (struct rgrp_list *)
-				malloc(sizeof(struct rgrp_list));
+			actual = rgrp_insert(&sdp->rgtree,
+					     expected->ri.ri_addr);
 			if (!actual) {
 				log_err(_("Out of memory!\n"));
 				break;
 			}
-			memset(actual, 0, sizeof(struct rgrp_list));
-			osi_list_add_prev(&actual->list, &sdp->rglist);
 			rindex_modified = 1;
 		} else {
-			actual = osi_list_entry(act, struct rgrp_list, list);
+			actual = (struct rgrp_tree *)n;
 			ri_compare(rg, actual->ri, expected->ri, ri_addr,
 				   "llx", unsigned long long);
 			ri_compare(rg, actual->ri, expected->ri, ri_length,
@@ -1001,26 +946,27 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 			gfs2_compute_bitstructs(sdp, actual);
 			rindex_modified = FALSE;
 		}
-		exp = exp->next;
-		if (act != &sdp->rglist)
-			act = act->next;
+		e = enext;
+		if (n)
+			n = next;
 	}
 	/* ------------------------------------------------------------- */
 	/* Read the real RGs and check their integrity.                  */
 	/* Now we can somewhat trust the rindex and the RG addresses,    */
 	/* so let's read them in, check them and optionally fix them.    */
 	/* ------------------------------------------------------------- */
-	for (rg = 0, act = sdp->rglist.next; act != &sdp->rglist &&
-		     !fsck_abort; act = act->next, rg++) {
-		struct rgrp_list *rgd;
+	for (rg = 0, n = osi_first(&sdp->rgtree); n && !fsck_abort;
+	     n = next, rg++) {
+		struct rgrp_tree *rgd;
 		uint64_t prev_err = 0, errblock;
 		int i;
 
+		next = osi_next(n);
 		/* Now we try repeatedly to read in the rg.  For every block */
 		/* we encounter that has errors, repair it and try again.    */
 		i = 0;
 		do {
-			rgd = osi_list_entry(act, struct rgrp_list, list);
+			rgd = (struct rgrp_tree *)n;
 			errblock = gfs2_rgrp_read(sdp, rgd);
 			if (errblock) {
 				if (errblock == prev_err)
@@ -1035,7 +981,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 		} while (i < rgd->ri.ri_length);
 	}
 	*rg_count = rg;
-	gfs2_rgrp_free(&expected_rglist);
-	gfs2_rgrp_free(&sdp->rglist);
+	gfs2_rgrp_free(&sdp->rgcalc);
+	gfs2_rgrp_free(&sdp->rgtree);
 	return 0;
 }

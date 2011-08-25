@@ -17,6 +17,7 @@
 
 #include <linux/gfs2_ondisk.h>
 #include "osi_list.h"
+#include "osi_tree.h"
 
 __BEGIN_DECLS
 
@@ -97,8 +98,8 @@ struct gfs2_bitmap
 	uint32_t   bi_len;     /* The number of bytes in this block */
 };
 
-struct rgrp_list {
-	osi_list_t list;
+struct rgrp_tree {
+	struct osi_node node;
 	uint64_t start;	   /* The offset of the beginning of this resource group */
 	uint64_t length;	/* The length of this resource group */
 
@@ -224,7 +225,8 @@ struct gfs2_sbd {
 	uint64_t orig_rgrps;
 	uint64_t rgrps;
 	uint64_t new_rgrps;
-	osi_list_t rglist;
+	struct osi_root rgtree;
+	struct osi_root rgcalc;
 
 	unsigned int orig_journals;
 
@@ -324,7 +326,7 @@ extern unsigned long gfs2_bitfit(const unsigned char *buffer,
 				 unsigned long goal, unsigned char old_state);
 
 /* functions with blk #'s that are rgrp relative */
-extern uint32_t gfs2_blkalloc_internal(struct rgrp_list *rgd, uint32_t goal,
+extern uint32_t gfs2_blkalloc_internal(struct rgrp_tree *rgd, uint32_t goal,
 				       unsigned char old_state,
 				       unsigned char new_state, int do_it);
 extern int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno);
@@ -332,7 +334,7 @@ extern int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno);
 /* functions with blk #'s that are file system relative */
 extern int valid_block(struct gfs2_sbd *sdp, uint64_t blkno);
 extern int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
-			   struct rgrp_list *rgd);
+			   struct rgrp_tree *rgd);
 extern int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state);
 
 /* fs_geometry.c */
@@ -340,7 +342,8 @@ extern void rgblocks2bitblocks(unsigned int bsize, uint32_t *rgblocks,
 			       uint32_t *bitblocks);
 extern uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev,
 			       int rgsize_specified);
-extern void compute_rgrp_layout(struct gfs2_sbd *sdp, int rgsize_specified);
+extern void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree,
+				int rgsize_specified);
 extern void build_rgrps(struct gfs2_sbd *sdp, int write);
 
 /* fs_ops.c */
@@ -698,12 +701,13 @@ extern int gfs2_find_jhead(struct gfs2_inode *ip, struct gfs2_log_header *head);
 extern int clean_journal(struct gfs2_inode *ip, struct gfs2_log_header *head);
 
 /* rgrp.c */
-extern int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_list *rgd);
-extern struct rgrp_list *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk);
-extern uint64_t __gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd);
-extern uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_list *rgd);
-extern void gfs2_rgrp_relse(struct rgrp_list *rgd);
-extern void gfs2_rgrp_free(osi_list_t *rglist);
+extern int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_tree *rgd);
+extern struct rgrp_tree *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk);
+extern uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd);
+extern void gfs2_rgrp_relse(struct rgrp_tree *rgd);
+extern struct rgrp_tree *rgrp_insert(struct osi_root *rgtree,
+				     uint64_t rgblock);
+extern void gfs2_rgrp_free(struct osi_root *rgrp_tree);
 
 /* structures.c */
 extern int build_master(struct gfs2_sbd *sdp);
@@ -720,11 +724,11 @@ extern int build_root(struct gfs2_sbd *sdp);
 extern int do_init_inum(struct gfs2_sbd *sdp);
 extern int do_init_statfs(struct gfs2_sbd *sdp);
 extern int gfs2_check_meta(struct gfs2_buffer_head *bh, int type);
-extern int gfs2_next_rg_meta(struct rgrp_list *rgd, uint64_t *block,
+extern int gfs2_next_rg_meta(struct rgrp_tree *rgd, uint64_t *block,
 			     int first);
-extern int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
+extern int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				 uint64_t *block, uint32_t type, int first);
-extern int gfs2_next_rg_freemeta(struct rgrp_list *rgd, uint64_t *block,
+extern int gfs2_next_rg_freemeta(struct rgrp_tree *rgd, uint64_t *block,
 				 int first);
 
 /* super.c */

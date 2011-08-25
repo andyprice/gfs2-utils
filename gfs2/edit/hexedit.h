@@ -111,11 +111,11 @@ extern int indirect_blocks;  /* count of indirect blocks */
 extern enum dsp_mode dmode;
 
 /* ------------------------------------------------------------------------ */
-/* block_is_rglist - there's no such block as the rglist.  This is a        */
+/* block_is_rgtree - there's no such block as the rglist.  This is a        */
 /*                   special case meant to parse the rindex and follow the  */
 /*                   blocks to the real rgs.                                */
 /* ------------------------------------------------------------------------ */
-static inline int block_is_rglist(void)
+static inline int block_is_rgtree(void)
 {
 	if (block == RGLIST_DUMMY_BLOCK)
 		return TRUE;

@@ -589,7 +589,7 @@ static void get_journal_inode_blocks(void)
 	}
 }
 
-static int next_rg_freemeta(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
+static int next_rg_freemeta(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 			    uint64_t *nrfblock, int first)
 {
 	struct gfs2_bitmap *bits = NULL;
@@ -631,11 +631,10 @@ static int next_rg_freemeta(struct gfs2_sbd *sdp, struct rgrp_list *rgd,
 void savemeta(char *out_fn, int saveoption, int gziplevel)
 {
 	int slow, ret;
-	osi_list_t *tmp;
 	int rgcount;
 	uint64_t jindex_block;
 	struct gfs2_buffer_head *lbh;
-	struct rgrp_list *last_rgd, *prev_rgd;
+	struct rgrp_tree *last_rgd, *prev_rgd;
 	struct metafd mfd;
 
 	slow = (saveoption == 1);
@@ -661,7 +660,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 				(unsigned long long)sbd.device.length << GFS2_BASIC_BLOCK_SHIFT);
 			exit(-1);
 		}
-		osi_list_init(&sbd.rglist);
+		sbd.rgtree.osi_node = NULL;
 		if (!sbd.gfs1)
 			sbd.sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 		if (compute_constants(&sbd)) {
@@ -702,6 +701,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	if (!slow) {
 		int sane;
 		uint64_t fssize;
+		struct osi_node *n;
 
 		printf("Reading resource groups...");
 		fflush(stdout);
@@ -709,10 +709,10 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 			slow = gfs1_ri_update(&sbd, 0, &rgcount, 0);
 		else
 			slow = ri_update(&sbd, 0, &rgcount, &sane);
-		last_rgd = osi_list_entry(sbd.rglist.prev,
-					  struct rgrp_list, list);
-		prev_rgd = osi_list_entry(last_rgd->list.prev,
-					  struct rgrp_list, list);
+		n = osi_last(&sbd.rgtree);
+		last_rgd = (struct rgrp_tree *)n;
+		n = osi_prev(n);
+		prev_rgd = (struct rgrp_tree *)n;
 		fssize = last_rgd->ri.ri_addr +
 			(last_rgd->ri.ri_addr - prev_rgd->ri.ri_addr);
 		last_fs_block = fssize;
@@ -723,6 +723,8 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	}
 	get_journal_inode_blocks();
 	if (!slow) {
+		struct osi_node *n, *next = NULL;
+
 		/* Save off the superblock */
 		save_block(sbd.device_fd, &mfd, 0x10 * (4096 / sbd.bsize));
 		/* If this is gfs1, save off the rindex because it's not
@@ -744,12 +746,12 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 			}
 		}
 		/* Walk through the resource groups saving everything within */
-		for (tmp = sbd.rglist.next; tmp != &sbd.rglist;
-		     tmp = tmp->next){
-			struct rgrp_list *rgd;
+		for (n = osi_first(&sbd.rgtree); n; n = next) {
 			int first;
+			struct rgrp_tree *rgd;
 
-			rgd = osi_list_entry(tmp, struct rgrp_list, list);
+			next = osi_next(n);
+			rgd = (struct rgrp_tree *)n;
 			slow = gfs2_rgrp_read(&sbd, rgd);
 			if (slow)
 				continue;

@@ -31,7 +31,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
 		       enum gfs2_mark_block new_blockmap_state)
 {
 	int old_bitmap_state, new_bitmap_state;
-	struct rgrp_list *rgd;
+	struct rgrp_tree *rgd;
 
 	rgd = gfs2_blk2rgrpd(sdp, blk);
 
