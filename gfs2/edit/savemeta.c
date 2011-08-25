@@ -211,7 +211,7 @@ static void warm_fuzzy_stuff(uint64_t wfsblock, int force)
  */
 static struct metafd savemetaopen(char *out_fn, int gziplevel)
 {
-	struct metafd mfd;
+	struct metafd mfd = {-1, NULL, NULL, gziplevel};
 	char gzmode[3] = "w9";
 	char dft_fn[] = DFT_SAVE_FILE;
 
@@ -233,7 +233,6 @@ static struct metafd savemetaopen(char *out_fn, int gziplevel)
 		exit(1);
 	}
 
-	mfd.gziplevel = gziplevel;
 	if (gziplevel > 0) {
 		gzmode[1] = '0' + gziplevel;
 		mfd.gzfd = gzdopen(mfd.fd, gzmode);
