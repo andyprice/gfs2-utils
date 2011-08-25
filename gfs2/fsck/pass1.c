@@ -1052,9 +1052,14 @@ static int invalidate_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
  * be trusted. Thus it needs to be in a separate loop.
  * Returns: 0 if good range, otherwise != 0
  */
+enum b_types { btype_meta, btype_leaf, btype_data, btype_ieattr, btype_eattr};
+const char *btypes[5] = {
+	"metadata", "leaf", "data", "indirect extended attribute",
+	"extended attribute" };
+
 static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
-			    struct gfs2_buffer_head **bh,
-			    const char *btype, void *private)
+			    struct gfs2_buffer_head **bh, enum b_types btype,
+			    void *private)
 {
 	long *bad_pointers = (long *)private;
 	uint8_t q;
@@ -1063,7 +1068,7 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 		(*bad_pointers)++;
 		log_info( _("Bad %s block pointer (invalid or out of range "
 			    "#%ld) found in inode %lld (0x%llx).\n"),
-			  btype, *bad_pointers,
+			  btypes[btype], *bad_pointers,
 			  (unsigned long long)ip->i_di.di_num.no_addr,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
 		if ((*bad_pointers) <= BAD_POINTER_TOLERANCE)
@@ -1077,7 +1082,7 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 		(*bad_pointers)++;
 		log_info( _("Duplicated %s block pointer (violation %ld, block"
 			    " %lld (0x%llx)) found in inode %lld (0x%llx).\n"),
-			  btype, *bad_pointers,
+			  btypes[btype], *bad_pointers,
 			  (unsigned long long)block, (unsigned long long)block,
 			  (unsigned long long)ip->i_di.di_num.no_addr,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
@@ -1093,36 +1098,33 @@ static int rangecheck_metadata(struct gfs2_inode *ip, uint64_t block,
 			       struct gfs2_buffer_head **bh, int h,
 			       void *private)
 {
-	return rangecheck_block(ip, block, bh, _("metadata"), private);
+	return rangecheck_block(ip, block, bh, btype_meta, private);
 }
 
 static int rangecheck_leaf(struct gfs2_inode *ip, uint64_t block,
 			   void *private)
 {
-	return rangecheck_block(ip, block, NULL, _("leaf"), private);
+	return rangecheck_block(ip, block, NULL, btype_leaf, private);
 }
 
 static int rangecheck_data(struct gfs2_inode *ip, uint64_t block,
 			   void *private)
 {
-	return rangecheck_block(ip, block, NULL, _("data"), private);
+	return rangecheck_block(ip, block, NULL, btype_data, private);
 }
 
 static int rangecheck_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 				  uint64_t parent,
 				  struct gfs2_buffer_head **bh, void *private)
 {
-	return rangecheck_block(ip, block, NULL,
-				_("indirect extended attribute"),
-				private);
+	return rangecheck_block(ip, block, NULL, btype_ieattr, private);
 }
 
 static int rangecheck_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 				 uint64_t parent, struct gfs2_buffer_head **bh,
 				 void *private)
 {
-	return rangecheck_block(ip, block, NULL, _("extended attribute"),
-				private);
+	return rangecheck_block(ip, block, NULL, btype_eattr, private);
 }
 
 struct metawalk_fxns rangecheck_fxns = {
