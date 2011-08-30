@@ -351,6 +351,8 @@ int main(int argc, char **argv)
 	inode_put(&sdp->md.statfs);
 	for (j = 0; j < sdp->md.journals; j++)
 		inode_put(&sdp->md.journal[j]);
+	free(sdp->md.journal);
+	sdp->md.journal = NULL;
 	inode_put(&sdp->md.jiinode);
 	inode_put(&sdp->md.riinode);
 	inode_put(&sdp->md.qinode);

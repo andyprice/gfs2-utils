@@ -430,6 +430,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			fsck_blockmap_set(ip, block, _("bad indirect"),
 					  gfs2_meta_inval);
 			brelse(nbh);
+			nbh = NULL;
 			return 1;
 		}
 		brelse(nbh);
@@ -439,8 +440,11 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 
 	bc->indir_count++;
 	if (found_dup) {
-		if (nbh)
+		if (nbh) {
 			brelse(nbh);
+			nbh = NULL;
+			*bh = NULL;
+		}
 		return 1; /* don't process the metadata again */
 	} else
 		fsck_blockmap_set(ip, block, _("indirect"),

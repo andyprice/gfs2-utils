@@ -613,6 +613,8 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 		inode_put(&sdp->md.journal[i]);
 	}
 	inode_put(&sdp->md.jiinode);
+	free(sdp->md.journal);
+	sdp->md.journal = NULL;
 	/* Sync the buffers to disk so we get a fresh start. */
 	fsync(sdp->device_fd);
 	return error;

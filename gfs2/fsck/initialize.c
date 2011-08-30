@@ -710,12 +710,16 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 		}
 		do_init_statfs(sdp);
 	}
-	buf = malloc(sdp->md.statfs->i_di.di_size);
-	// FIXME: handle failed malloc
-	gfs2_readi(sdp->md.statfs, buf, 0, sdp->md.statfs->i_di.di_size);
-	/* call gfs2_inum_range_in() to retrieve range */
-	gfs2_statfs_change_in(&sc, buf);
-	free(buf);
+	if (sdp->md.statfs->i_di.di_size) {
+		buf = malloc(sdp->md.statfs->i_di.di_size);
+		if (buf) {
+			gfs2_readi(sdp->md.statfs, buf, 0,
+				   sdp->md.statfs->i_di.di_size);
+			/* call gfs2_inum_range_in() to retrieve range */
+			gfs2_statfs_change_in(&sc, buf);
+			free(buf);
+		}
+	}
 
 	if (sdp->gfs1)
 		sdp->md.qinode = inode_read(sdp, sbd1->sb_quota_di.no_addr);

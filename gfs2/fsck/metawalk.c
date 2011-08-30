@@ -1172,8 +1172,10 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 			for (ptr = (uint64_t *)(bh->b_data + head_size);
 			     (char *)ptr < (bh->b_data + ip->i_sbd->bsize);
 			     ptr++) {
-				if (skip_this_pass || fsck_abort)
+				if (skip_this_pass || fsck_abort) {
+					free_metalist(ip, mlp);
 					return FSCK_OK;
+				}
 				nbh = NULL;
 
 				if (!*ptr)
@@ -1285,6 +1287,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	error = build_and_check_metalist(ip, &metalist[0], pass);
 	if (error) {
 		stack;
+		free_metalist(ip, &metalist[0]);
 		return error;
 	}
 
@@ -1321,8 +1324,10 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		last_reported_fblock = -10000000;
 
 	while (error >= 0 && !osi_list_empty(list)) {
-		if (fsck_abort)
+		if (fsck_abort) {
+			free_metalist(ip, &metalist[0]);
 			return 0;
+		}
 		bh = osi_list_entry(list->next, struct gfs2_buffer_head,
 				    b_altlist);
 
@@ -1375,6 +1380,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			    (unsigned long long)ip->i_di.di_num.no_addr);
 		fflush(stdout);
 	}
+	free_metalist(ip, &metalist[0]);
 	return error;
 }
 
