@@ -134,6 +134,7 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, int *block_type,
 			*gstruct_len = sizeof(struct gfs2_dinode);
 		else
 			*gstruct_len = sbd.bsize;
+		inode_put(&inode);
 		break;
 	case GFS2_METATYPE_IN:   /* 5 (indir inode blklst) */
 		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_indirect);*/
@@ -492,7 +493,10 @@ static void save_inode_data(struct metafd *mfd)
 			mybh = osi_list_entry(cur_list->next,
 					    struct gfs2_buffer_head,
 					    b_altlist);
-			osi_list_del(&mybh->b_altlist);
+			if (mybh == inode->i_bh)
+				osi_list_del(&mybh->b_altlist);
+			else
+				brelse(mybh);
 		}
 	}
 	/* Process directory exhash inodes */
@@ -810,6 +814,8 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	free(savedata);
 	savemetaclose(&mfd);
 	close(sbd.device_fd);
+	free(indirect);
+	gfs2_rgrp_free(&sbd.rgtree);
 	exit(0);
 }
 
@@ -1034,6 +1040,6 @@ void restoremeta(const char *in_fn, const char *out_device,
 	gzclose(gzfd);
 	if (!printblocksonly)
 		close(sbd.device_fd);
-
+	free(indirect);
 	exit(error);
 }
