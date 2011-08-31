@@ -1615,7 +1615,7 @@ static void give_warning(void)
 	printf(_("WARNING: This can't be undone.  It is strongly advised "	\
 		   "that you:\n\n"));
 	printf(_("   1. Back up your entire filesystem first.\n"));
-	printf(_("   2. Run gfs_fsck first to ensure filesystem integrity.\n"));
+	printf(_("   2. Run fsck.gfs2 first to ensure filesystem integrity.\n"));
 	printf(_("   3. Make sure the filesystem is NOT mounted from any node.\n"));
 	printf(_("   4. Make sure you have the latest software versions.\n"));
 }/* give_warning */

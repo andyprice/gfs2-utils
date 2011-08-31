@@ -10,7 +10,7 @@ gfs2_convert - Convert a GFS1 filesystem to GFS2
 .SH DESCRIPTION
 gfs2_convert is used to convert a filesystem from GFS1 to GFS2. It is
 required that the GFS1 filesystem be checked and fixed for errors using 
-\fBgfs_fsck\fP and that the filesystem be backed up before
+\fBfsck.gfs2\fP and that the filesystem be backed up before
 attempting to convert it. The convert process is irreversible and any
 error encountered during the conversion can result in the abrupt
 termination of the program and consequently an unusable filesystem.
