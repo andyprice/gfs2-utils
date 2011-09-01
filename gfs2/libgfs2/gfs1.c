@@ -181,11 +181,9 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 	int journaled = fs_is_jdata(ip);
 	const uint64_t start = offset;
 	int copied = 0;
-	int error = 0;
 
 	if (!size)
-		goto fail;  /*  Not really an error  */
-
+		return 0;
 
 	if (!ip->i_di.di_height && /* stuffed */
 	    ((start + size) > (sdp->bsize - sizeof(struct gfs_dinode))))
@@ -243,7 +241,6 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 		offset = (journaled) ? sizeof(struct gfs2_meta_header) : 0;
 	}
 
- out:
 	if (ip->i_di.di_size < start + copied) {
 		bmodified(ip->i_bh);
 		ip->i_di.di_size = start + copied;
@@ -253,12 +250,6 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 	gfs2_dinode_out(&ip->i_di, ip->i_bh);
 
 	return copied;
-
- fail:
-	if (copied)
-		goto out;
-
-	return error;
 }
 
 /* ------------------------------------------------------------------------ */
