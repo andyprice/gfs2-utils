@@ -574,14 +574,6 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 	*clean_journals = 0;
 
 	sdp->jsize = GFS2_DEFAULT_JSIZE;
-	/* Get master dinode */
-	gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
-
-	/* read in the journal index data */
-	if (ji_update(sdp)){
-		log_err( _("Unable to read in jindex inode.\n"));
-		return -1;
-	}
 
 	for(i = 0; i < sdp->md.journals; i++) {
 		if (!sdp->md.journal[i]) {
@@ -610,11 +602,7 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 			}
 			*clean_journals += clean;
 		}
-		inode_put(&sdp->md.journal[i]);
 	}
-	inode_put(&sdp->md.jiinode);
-	free(sdp->md.journal);
-	sdp->md.journal = NULL;
 	/* Sync the buffers to disk so we get a fresh start. */
 	fsync(sdp->device_fd);
 	return error;

@@ -534,18 +534,13 @@ static void lookup_per_node(struct gfs2_sbd *sdp, int allow_rebuild)
 }
 
 /**
- * init_system_inodes
- *
- * Returns: 0 on success, -1 on failure
+ * fetch_rgrps - fetch the resource groups from disk, and check their integrity
  */
-static int init_system_inodes(struct gfs2_sbd *sdp)
+static int fetch_rgrps(struct gfs2_sbd *sdp)
 {
-	uint64_t inumbuf;
-	char *buf;
-	struct gfs2_statfs_change sc;
-	int rgcount, sane = 1, err = 0;
 	enum rgindex_trust_level trust_lvl;
-	uint64_t addl_mem_needed;
+	int rgcount, sane = 1;
+
 	const char *level_desc[] = {
 		_("Checking if all rgrp and rindex values are good"),
 		_("Checking if rindex values may be easily repaired"),
@@ -560,60 +555,6 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 		_("Too many rgrp misses: rgrps must be unevenly spaced"),
 		_("Too much damage found: we cannot rebuild this rindex"),
 	};
-
-	/*******************************************************************
-	 ******************  Initialize important inodes  ******************
-	 *******************************************************************/
-
-	log_info( _("Initializing special inodes...\n"));
-
-	/* Get root dinode */
-	sdp->md.rooti = inode_read(sdp, sdp->sd_sb.sb_root_dir.no_addr);
-
-	if (sdp->gfs1)
-		sdp->md.riinode = inode_read(sdp, sbd1->sb_rindex_di.no_addr);
-	else
-		gfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
-	if (!sdp->md.riinode) {
-		if (query( _("The gfs2 system rindex inode is missing. "
-			     "Okay to rebuild it? (y/n) "))) {
-			err = build_rindex(sdp);
-			if (err) {
-				log_crit(_("Error rebuilding rindex: %s\n"),
-				         strerror(err));
-				exit(-1);
-			}
-		}
-	}
-
-	/*******************************************************************
-	 ******************  Fill in journal information  ******************
-	 *******************************************************************/
-
-	/* rgrepair requires the journals be read in in order to distinguish
-	   "real" rgrps from rgrps that are just copies left in journals. */
-	if (sdp->gfs1)
-		sdp->md.jiinode = inode_read(sdp, sbd1->sb_jindex_di.no_addr);
-	else
-		gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
-	if (!sdp->md.jiinode) {
-		if (query( _("The gfs2 system jindex inode is missing. "
-			     "Okay to rebuild it? (y/n) "))) {
-			err = build_jindex(sdp);
-			if (err) {
-				log_crit(_("Error rebuilding jindex: %s\n"),
-				         strerror(err));
-				exit(-1);
-			}
-		}
-	}
-
-	/* read in the ji data */
-	if (ji_update(sdp)){
-		log_err( _("Unable to read in jindex inode.\n"));
-		return -1;
-	}
-
 	/*******************************************************************
 	 ********  Validate and read in resource group information  ********
 	 *******************************************************************/
@@ -649,6 +590,34 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	log_info( _("%u resource groups found.\n"), rgcount);
 
 	check_rgrps_integrity(sdp);
+	return 0;
+}
+
+/**
+ * init_system_inodes
+ *
+ * Returns: 0 on success, -1 on failure
+ */
+static int init_system_inodes(struct gfs2_sbd *sdp)
+{
+	uint64_t inumbuf;
+	char *buf;
+	struct gfs2_statfs_change sc;
+	uint64_t addl_mem_needed;
+	int err;
+
+	/*******************************************************************
+	 ******************  Initialize important inodes  ******************
+	 *******************************************************************/
+
+	log_info( _("Initializing special inodes...\n"));
+
+	/* Get root dinode */
+	sdp->md.rooti = inode_read(sdp, sdp->sd_sb.sb_root_dir.no_addr);
+
+	err = fetch_rgrps(sdp);
+	if (err)
+		return err;
 
 	/*******************************************************************
 	 *****************  Initialize more system inodes  *****************
@@ -1301,8 +1270,6 @@ static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
 	log_info("Clearing journal %d\n", jnum);
 
 	for (seg = 0; seg < ji_nsegment; seg++){
-		bh = bget(sdp, lh.lh_first * sdp->bsize);
-		memset(bh->b_data, 0, sdp->bsize);
 		memset(&lh, 0, sizeof(struct gfs_log_header));
 
 		lh.lh_header.mh_magic = GFS2_MAGIC;
@@ -1314,6 +1281,8 @@ static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
 			(seg * sbd1->sb_seg_size);
 		lh.lh_sequence = sequence;
 
+		bh = bget(sdp, lh.lh_first * sdp->bsize);
+		memset(bh->b_data, 0, sdp->bsize);
 		gfs_log_header_out(&lh, bh->b_data);
 		gfs_log_header_out(&lh, bh->b_data + GFS2_BASIC_BLOCK -
 				   sizeof(struct gfs_log_header));
@@ -1338,7 +1307,7 @@ static int reconstruct_journals(struct gfs2_sbd *sdp)
 	struct gfs_jindex ji;
 	char buf[sizeof(struct gfs_jindex)];
 
-	log_err("Clearing GFS journals (this may take a while)");
+	log_err("Clearing GFS journals (this may take a while)\n");
 	for (i = 0; i < sdp->md.journals; i++) {
 		gfs2_readi(sdp->md.jiinode, buf, i * sizeof(struct gfs_jindex),
 			   sizeof(struct gfs_jindex));
@@ -1349,6 +1318,83 @@ static int reconstruct_journals(struct gfs2_sbd *sdp)
 			return -1;
 	}
 	log_err("\nJournals cleared.\n");
+	return 0;
+}
+
+/**
+ * init_rindex - read in the rindex file
+ */
+static int init_rindex(struct gfs2_sbd *sdp)
+{
+	int err;
+
+	if (sdp->gfs1)
+		sdp->md.riinode = inode_read(sdp, sbd1->sb_rindex_di.no_addr);
+	else
+		gfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
+
+	if (sdp->md.riinode)
+		return 0;
+
+	if (!query( _("The gfs2 system rindex inode is missing. "
+		      "Okay to rebuild it? (y/n) "))) {
+		log_crit(_("Error: Cannot proceed without a valid rindex.\n"));
+		return -1;
+	}
+	if ((err = build_rindex(sdp))) {
+		log_crit(_("Error rebuilding rindex: %s\n"),
+			 strerror(err));
+		return -1;
+	}
+	return 0;
+}
+
+/**
+ * init_jindex - read in the rindex file
+ */
+static int init_jindex(struct gfs2_sbd *sdp)
+{
+	/*******************************************************************
+	 ******************  Fill in journal information  ******************
+	 *******************************************************************/
+
+	/* rgrepair requires the journals be read in in order to distinguish
+	   "real" rgrps from rgrps that are just copies left in journals. */
+	if (sdp->gfs1)
+		sdp->md.jiinode = inode_read(sdp, sbd1->sb_jindex_di.no_addr);
+	else
+		gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
+
+	if (!sdp->md.jiinode) {
+		int err;
+
+		if (!query( _("The gfs2 system jindex inode is missing. "
+			      "Okay to rebuild it? (y/n) "))) {
+			log_crit(_("Error: cannot proceed without a valid "
+				   "jindex file.\n"));
+			return -1;
+		}
+		/* In order to rebuild jindex, we need some valid
+		   rgrps in memory.  Temporarily read those in. */
+		err = fetch_rgrps(sdp);
+		if (err)
+			return err;
+
+		err = build_jindex(sdp);
+		/* Free rgrps read in earlier (re-read them later) */
+		gfs2_rgrp_free(&sdp->rgtree);
+		if (err) {
+			log_crit(_("Error rebuilding jindex: %s\n"),
+				 strerror(err));
+			return err;
+		}
+	}
+
+	/* read in the ji data */
+	if (ji_update(sdp)){
+		log_err( _("Unable to read in jindex inode.\n"));
+		return -1;
+	}
 	return 0;
 }
 
@@ -1441,7 +1487,17 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 	if (!sdp->gfs1)
 		lookup_per_node(sdp, 0);
 
-	/* verify various things */
+	/* We need rindex first in case jindex is missing and needs to read
+	   in the rgrps before rebuilding it. */
+	if (init_rindex(sdp))
+		return FSCK_ERROR;
+
+	/* We need to read in jindex in order to replay the journals */
+	if (init_jindex(sdp))
+		return FSCK_ERROR;
+
+	/* If GFS, rebuild the journals.  If GFS2, replay them.  We don't have
+	   the smarts to replay GFS1 journals (neither did gfs_fsck). */
 
 	if (sdp->gfs1) {
 		if (reconstruct_journals(sdp))
@@ -1472,7 +1528,7 @@ mount_fail:
 	return FSCK_USAGE;
 }
 
-static void destroy_sdp(struct gfs2_sbd *sdp)
+void destroy(struct gfs2_sbd *sdp)
 {
 	if (!opts.no) {
 		if (block_mounters(sdp, 0)) {
@@ -1493,9 +1549,4 @@ static void destroy_sdp(struct gfs2_sbd *sdp)
 			log_err( _("fsck.gfs2: Non-fatal error dropping "
 				   "caches.\n"));
 	}
-}
-
-void destroy(struct gfs2_sbd *sdp)
-{
-	destroy_sdp(sdp);
 }
