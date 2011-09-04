@@ -1032,8 +1032,6 @@ int gfs2_get_leaf(struct gfs2_inode *dip, uint64_t leaf_no,
 	int error = 0;
 
 	*bhp = bread(dip->i_sbd, leaf_no);
-	if (error)
-		return error;
 	error = gfs2_check_meta(*bhp, GFS2_METATYPE_LF);
 	if(error)
 		brelse(*bhp);
