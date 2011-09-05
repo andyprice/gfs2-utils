@@ -1286,9 +1286,6 @@ static void loop(void)
 			if (dmsetup_wait) {
 				if (poll_timeout == -1)
 					poll_timeout = 1000;
-			} else {
-				if (poll_timeout == 1000)
-					poll_timeout = -1;
 			}
 		}
 		query_unlock();
