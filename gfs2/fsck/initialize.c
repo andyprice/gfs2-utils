@@ -831,7 +831,7 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 	    (sdp->gfs1 && (di->di_flags & GFS2_DIF_JDATA) &&
 	     (di->di_size % sizeof(struct gfs_jindex) == 0))) {
 		if (fix_md.jiinode || is_journal_copy(ip, bh))
-			return;
+			goto out_discard_ip;
 		log_warn(_("Found system jindex file at: 0x%llx\n"),
 			 di->di_num.no_addr);
 		fix_md.jiinode = ip;
@@ -840,8 +840,10 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 		   jindex: master */
 		gfs2_lookupi(ip, "jindex", 6, &child_ip);
 		if (child_ip) {
-			if (fix_md.jiinode || is_journal_copy(ip, bh))
-				return;
+			if (fix_md.jiinode || is_journal_copy(ip, bh)) {
+				inode_put(&child_ip);
+				goto out_discard_ip;
+			}
 			fix_md.jiinode = child_ip;
 			sdp->sd_sb.sb_master_dir.no_addr = di->di_num.no_addr;
 			log_warn(_("Found system master directory at: "
@@ -853,8 +855,9 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 		   has a statfs_change: per_node, and its .. will be master. */
 		gfs2_lookupi(ip, "statfs_change0", 14, &child_ip);
 		if (child_ip) {
+			inode_put(&child_ip);
 			if (fix_md.pinode || is_journal_copy(ip, bh))
-				return;
+				goto out_discard_ip;
 			log_warn(_("Found system per_node directory at: "
 				   "0x%llx\n"), ip->i_di.di_num.no_addr);
 			fix_md.pinode = ip;
@@ -870,22 +873,22 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 		}
 		log_debug(_("Unknown system directory at block 0x%llx\n"),
 			  di->di_num.no_addr);
-		inode_put(&ip);
+		goto out_discard_ip;
 	} else if (!sdp->gfs1 && di->di_size == 8) {
 		if (fix_md.inum || is_journal_copy(ip, bh))
-			return;
+			goto out_discard_ip;
 		fix_md.inum = ip;
 		log_warn(_("Found system inum file at: 0x%llx\n"),
 			 di->di_num.no_addr);
 	} else if (di->di_size == 24) {
 		if (fix_md.statfs || is_journal_copy(ip, bh))
-			return;
+			goto out_discard_ip;
 		fix_md.statfs = ip;
 		log_warn(_("Found system statfs file at: 0x%llx\n"),
 			 di->di_num.no_addr);
 	} else if ((di->di_size % 96) == 0) {
 		if (fix_md.riinode || is_journal_copy(ip, bh))
-			return;
+			goto out_discard_ip;
 		fix_md.riinode = ip;
 		log_warn(_("Found system rindex file at: 0x%llx\n"),
 			 di->di_num.no_addr);
@@ -893,11 +896,15 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 		   di->di_num.no_formal_ino >= 12 &&
 		   di->di_num.no_formal_ino <= 100) {
 		if (is_journal_copy(ip, bh))
-			return;
+			goto out_discard_ip;
 		fix_md.qinode = ip;
 		log_warn(_("Found system quota file at: 0x%llx\n"),
 			 di->di_num.no_addr);
 	}
+	return;
+
+out_discard_ip:
+	inode_put(&ip);
 }
 
 /**
