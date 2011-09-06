@@ -40,16 +40,18 @@ enum gfs2_mark_block {
 	gfs2_block_free    = (0x0),
 	gfs2_block_used    = (0x1),
 	gfs2_indir_blk     = (0x2),
+	/* These are inode block types (only): */
 	gfs2_inode_dir     = (0x3),
 	gfs2_inode_file    = (0x4),
 
 	gfs2_inode_lnk     = (0x5),
 	gfs2_inode_device  = (0x6), /* char or block device */
-	gfs2_jdata         = (0x7), /* gfs journaled data blocks */
-	gfs2_inode_fifo    = (0x8),
-	gfs2_inode_sock    = (0x9),
+	gfs2_inode_fifo    = (0x7),
+	gfs2_inode_sock    = (0x8),
+	gfs2_inode_invalid = (0x9),
 
-	gfs2_inode_invalid = (0xa),
+	/* misc block types: */
+	gfs2_jdata         = (0xa), /* gfs journaled data blocks */
 	gfs2_meta_inval    = (0xb),
 	gfs2_leaf_blk      = (0xc),
 	gfs2_freemeta      = (0xd), /* was: gfs2_meta_rgrp */
@@ -69,11 +71,11 @@ static const inline char *block_type_string(uint8_t q)
 
 		"symlink",
 		"device",
-		"journaled data",
 		"fifo",
 		"socket",
-
 		"invalid inode",
+
+		"journaled data",
 		"invalid meta",
 		"dir leaf",
 		"free metadata",
@@ -99,11 +101,11 @@ static inline int blockmap_to_bitmap(enum gfs2_mark_block m, int gfs1)
 
 		 GFS2_BLKST_DINODE,  /* symlink */
 		 GFS2_BLKST_DINODE,  /* block or char device */
-		 GFS2_BLKST_USED,    /* journaled data */
 		 GFS2_BLKST_DINODE,  /* fifo */
 		 GFS2_BLKST_DINODE,  /* socket */
-
 		 GFS2_BLKST_FREE,  /* invalid inode */
+
+		 GFS2_BLKST_USED,    /* journaled data */
 		 GFS2_BLKST_FREE,  /* invalid meta */
 		 GFS2_BLKST_USED,  /* dir leaf */
 		 GFS2_BLKST_UNLINKED,  /* GFS unlinked metadata */
@@ -119,11 +121,11 @@ static inline int blockmap_to_bitmap(enum gfs2_mark_block m, int gfs1)
 
 		 GFS2_BLKST_DINODE,  /* symlink */
 		 GFS2_BLKST_DINODE,  /* block or char device */
-		 GFS2_BLKST_DINODE,  /* journaled data */
 		 GFS2_BLKST_DINODE,  /* fifo */
 		 GFS2_BLKST_DINODE,  /* socket */
-
 		 GFS2_BLKST_FREE,  /* invalid inode */
+
+		 GFS2_BLKST_DINODE,  /* journaled data */
 		 GFS2_BLKST_FREE,  /* invalid meta */
 		 GFS2_BLKST_DINODE,  /* dir leaf */
 		 GFS2_BLKST_UNLINKED, /* GFS unlinked metadata */
