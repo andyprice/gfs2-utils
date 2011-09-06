@@ -2056,7 +2056,7 @@ static uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int p
 static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int print)
 {
 	struct osi_node *n, *next = NULL;
-	uint64_t blk;
+	uint64_t blk, errblk;
 	int first = 1, found = 0;
 	struct rgrp_tree *rgd;
 	struct gfs2_rindex *ri;
@@ -2087,6 +2087,9 @@ static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int pri
 	for (; !found && n; n = next){
 		next = osi_next(n);
 		rgd = (struct rgrp_tree *)n;
+		errblk = gfs2_rgrp_read(&sbd, rgd);
+		if (errblk)
+			continue;
 		first = 1;
 		do {
 			if (gfs2_next_rg_metatype(&sbd, rgd, &blk, metatype,
@@ -2098,6 +2101,7 @@ static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int pri
 			}
 			first = 0;
 		} while (blk <= startblk);
+		gfs2_rgrp_relse(rgd);
 	}
 	if (!found)
 		blk = 0;
