@@ -376,14 +376,14 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		              IF2DT(S_IFDIR | 0700));
 		if (err) {
 			log_crit(_("Error adding jindex directory: %s\n"), strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 		sdp->master_dir->i_di.di_nlink++;
 	} else {
 		err = build_jindex(sdp);
 		if (err) {
 			log_crit(_("Error building jindex: %s\n"), strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 	}
 
@@ -394,7 +394,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			IF2DT(S_IFDIR | 0700));
 		if (err) {
 			log_crit(_("Error adding per_node directory: %s\n"), strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 		sdp->master_dir->i_di.di_nlink++;
 	} else {
@@ -402,7 +402,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		if (err) {
 			log_crit(_("Error building per_node directory: %s\n"),
 			         strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 	}
 
@@ -413,14 +413,14 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			IF2DT(S_IFREG | 0600));
 		if (err) {
 			log_crit(_("Error adding inum inode: %s\n"), strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 	} else {
 		err = build_inum(sdp);
 		if (err) {
 			log_crit(_("Error building inum inode: %s\n"),
 			         strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 		gfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);
 	}
@@ -432,14 +432,14 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			      IF2DT(S_IFREG | 0600));
 		if (err) {
 			log_crit(_("Error adding statfs inode: %s\n"), strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 	} else {
 		err = build_statfs(sdp);
 		if (err) {
 			log_crit(_("Error building statfs inode: %s\n"),
 			         strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 		gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
 	}
@@ -451,14 +451,14 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			IF2DT(S_IFREG | 0600));
 		if (err) {
 			log_crit(_("Error adding rindex inode: %s\n"), strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 	} else {
 		err = build_rindex(sdp);
 		if (err) {
 			log_crit(_("Error building rindex inode: %s\n"),
 			         strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 	}
 
@@ -469,14 +469,14 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			IF2DT(S_IFREG | 0600));
 		if (err) {
 			log_crit(_("Error adding quota inode: %s\n"), strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 	} else {
 		err = build_quota(sdp);
 		if (err) {
 			log_crit(_("Error building quota inode: %s\n"),
 			         strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 	}
 
@@ -523,13 +523,13 @@ static void lookup_per_node(struct gfs2_sbd *sdp, int allow_rebuild)
 		if (err) {
 			log_crit(_("Error rebuilding per_node directory: %s\n"),
 				 strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 	}
 	gfs2_lookupi(sdp->master_dir, "per_node", 8, &sdp->md.pinode);
 	if (!sdp->md.pinode) {
 		log_err( _("Unable to rebuild per_node; aborting.\n"));
-		exit(-1);
+		exit(FSCK_ERROR);
 	}
 }
 
@@ -636,7 +636,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 			if (err) {
 				log_crit(_("Error rebuilding inum inode: %s\n"),
 					 strerror(err));
-				exit(-1);
+				exit(FSCK_ERROR);
 			}
 			gfs2_lookupi(sdp->master_dir, "inum", 4,
 				     &sdp->md.inum);
@@ -668,7 +668,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 		if (err) {
 			log_crit(_("Error rebuilding statfs inode: %s\n"),
 				 strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 		gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
 		if (!sdp->md.statfs) {
@@ -705,7 +705,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 		if (err) {
 			log_crit(_("Error rebuilding quota inode: %s\n"),
 				 strerror(err));
-			exit(-1);
+			exit(FSCK_ERROR);
 		}
 		gfs2_lookupi(sdp->master_dir, "quota", 5, &sdp->md.qinode);
 		if (!sdp->md.qinode) {
@@ -1213,7 +1213,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 
 	if (compute_constants(sdp)) {
 		log_crit(_("Bad constants (1)\n"));
-		exit(-1);
+		exit(FSCK_ERROR);
 	}
 	ret = read_sb(sdp, 1);
 	if (ret < 0) {
