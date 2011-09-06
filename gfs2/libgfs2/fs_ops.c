@@ -1510,6 +1510,8 @@ static int linked_leaf_search(struct gfs2_inode *dip, const char *filename,
 	error = get_first_leaf(dip, lindex, &bh_next);
 	if (error)
 		return error;
+	if (bh_next == NULL)
+		return errno;
 
 	/*  Find the entry  */
 	do{
