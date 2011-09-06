@@ -597,7 +597,7 @@ static int fetch_rgrps(struct gfs2_sbd *sdp)
  */
 static int init_system_inodes(struct gfs2_sbd *sdp)
 {
-	uint64_t inumbuf;
+	uint64_t inumbuf = 0;
 	char *buf;
 	struct gfs2_statfs_change sc;
 	uint64_t addl_mem_needed;
@@ -644,8 +644,13 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 			}
 		}
 		/* Read inum entry into buffer */
-		gfs2_readi(sdp->md.inum, &inumbuf, 0,
-			   sdp->md.inum->i_di.di_size);
+		err = gfs2_readi(sdp->md.inum, &inumbuf, 0,
+				 sdp->md.inum->i_di.di_size);
+		if (err != sdp->md.inum->i_di.di_size) {
+			log_crit(_("Error %d reading system inum inode. "
+				   "Aborting.\n"), err);
+			goto fail;
+		}
 		/* call gfs2_inum_range_in() to retrieve range */
 		sdp->md.next_inum = be64_to_cpu(inumbuf);
 	}
@@ -678,8 +683,13 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	if (sdp->md.statfs->i_di.di_size) {
 		buf = malloc(sdp->md.statfs->i_di.di_size);
 		if (buf) {
-			gfs2_readi(sdp->md.statfs, buf, 0,
-				   sdp->md.statfs->i_di.di_size);
+			err = gfs2_readi(sdp->md.statfs, buf, 0,
+					 sdp->md.statfs->i_di.di_size);
+			if (err != sdp->md.statfs->i_di.di_size) {
+				log_crit(_("Error %d reading statfs file. "
+					   "Aborting.\n"), err);
+				goto fail;
+			}
 			/* call gfs2_inum_range_in() to retrieve range */
 			gfs2_statfs_change_in(&sc, buf);
 			free(buf);
@@ -1305,14 +1315,17 @@ static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
  */
 static int reconstruct_journals(struct gfs2_sbd *sdp)
 {
-	int i;
+	int i, count;
 	struct gfs_jindex ji;
 	char buf[sizeof(struct gfs_jindex)];
 
 	log_err("Clearing GFS journals (this may take a while)\n");
 	for (i = 0; i < sdp->md.journals; i++) {
-		gfs2_readi(sdp->md.jiinode, buf, i * sizeof(struct gfs_jindex),
-			   sizeof(struct gfs_jindex));
+		count = gfs2_readi(sdp->md.jiinode, buf,
+				   i * sizeof(struct gfs_jindex),
+				   sizeof(struct gfs_jindex));
+		if (count != sizeof(struct gfs_jindex))
+			return 0;
 		gfs_jindex_in(&ji, buf);
 		if ((i % 2) == 0)
 			log_err(".");

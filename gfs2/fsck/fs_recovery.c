@@ -127,6 +127,10 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			  (unsigned long long)blkno, (unsigned long long)blkno,
 			  start);
 		bh_ip = bget(sdp, blkno);
+		if (!bh_ip) {
+			log_err(_("Out of memory when replaying journals.\n"));
+			return FSCK_ERROR;
+		}
 		memcpy(bh_ip->b_data, bh_log->b_data, sdp->bsize);
 
 		check_magic = ((struct gfs2_meta_header *)
@@ -235,6 +239,10 @@ static int databuf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			  (unsigned long long)blkno, (unsigned long long)blkno,
 			  start);
 		bh_ip = bget(sdp, blkno);
+		if (!bh_ip) {
+			log_err(_("Out of memory when replaying journals.\n"));
+			return FSCK_ERROR;
+		}
 		memcpy(bh_ip->b_data, bh_log->b_data, sdp->bsize);
 
 		/* Unescape */
@@ -359,6 +367,7 @@ static int fix_journal_seq_no(struct gfs2_inode *ip)
 	uint32_t extlen;
 	struct gfs2_buffer_head *bh;
 
+	memset(&lh, 0, sizeof(lh));
 	for (blk = 0; blk < jd_blocks; blk++) {
 		error = get_log_header(ip, blk, &lh);
 		if (error == 1) /* if not a log header */

@@ -1534,7 +1534,8 @@ static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,
 	   after the bitmap has been set but before the blockmap has. */
 	*bh = bread(ip->i_sbd, block);
 	q = block_type(block);
-	if (blockmap_to_bitmap(q, ip->i_sbd->gfs1) == GFS2_BLKST_FREE) {
+	if (q < 0 ||
+	    blockmap_to_bitmap(q, ip->i_sbd->gfs1) == GFS2_BLKST_FREE) {
 		log_debug(_("%s reference to new metadata block "
 			    "%lld (0x%llx) is now marked as indirect.\n"),
 			  desc, (unsigned long long)block,
@@ -1553,7 +1554,8 @@ static int alloc_data(struct gfs2_inode *ip, uint64_t block, void *private)
 	/* We can't check the bitmap here because this function is called
 	   after the bitmap has been set but before the blockmap has. */
 	q = block_type(block);
-	if (blockmap_to_bitmap(q, ip->i_sbd->gfs1) == GFS2_BLKST_FREE) {
+	if (q < 0 ||
+	    blockmap_to_bitmap(q, ip->i_sbd->gfs1) == GFS2_BLKST_FREE) {
 		log_debug(_("%s reference to new data block "
 			    "%lld (0x%llx) is now marked as data.\n"),
 			  desc, (unsigned long long)block,
@@ -1571,7 +1573,8 @@ static int alloc_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	/* We can't check the bitmap here because this function is called
 	   after the bitmap has been set but before the blockmap has. */
 	q = block_type(block);
-	if (blockmap_to_bitmap(q, ip->i_sbd->gfs1) == GFS2_BLKST_FREE)
+	if (q < 0 ||
+	    blockmap_to_bitmap(q, ip->i_sbd->gfs1) == GFS2_BLKST_FREE)
 		fsck_blockmap_set(ip, block, _("newly allocated leaf"),
 				  gfs2_leaf_blk);
 	return 0;

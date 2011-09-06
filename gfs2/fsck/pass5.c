@@ -99,14 +99,14 @@ static int gfs2_convert_mark(uint8_t q, uint32_t *count)
 	return -1;
 }
 
-
 static int check_block_status(struct gfs2_sbd *sdp, char *buffer,
 			      unsigned int buflen, uint64_t *rg_block,
 			      uint64_t rg_data, uint32_t *count)
 {
 	unsigned char *byte, *end;
 	unsigned int bit;
-	unsigned char rg_status, block_status;
+	unsigned char rg_status;
+	int block_status;
 	uint8_t q;
 	uint64_t block;
 
@@ -121,13 +121,26 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer,
 		warm_fuzzy_stuff(block);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return 0;
+
 		q = block_type(block);
+		if (q < 0) {
+			log_err( _("Invalid block type for block #%llu "
+				   "(0x%llx)\n"), (unsigned long long)block,
+				 (unsigned long long)block);
+			return q;
+		}
 
 		if (sdp->gfs1)
 			block_status = gfs1_convert_mark(q, count);
 		else
 			block_status = gfs2_convert_mark(q, count);
 
+		if (block_status < 0) {
+			log_err( _("Invalid status for block %llu (0x%llx).\n"),
+				 (unsigned long long)block,
+				 (unsigned long long)block);
+			return block_status;
+		}
 		/* If one node opens a file and another node deletes it, we
 		   may be left with a block that appears to be "unlinked" in
 		   the bitmap, but nothing links to it. This is a valid case
@@ -208,9 +221,10 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgp,
 		bits = &rgp->bits[i];
 
 		/* update the bitmaps */
-		check_block_status(sdp, rgp->bh[i]->b_data + bits->bi_offset,
-				   bits->bi_len, &rg_block, rgp->ri.ri_data0,
-				   count);
+		if (check_block_status(sdp, rgp->bh[i]->b_data +
+				       bits->bi_offset, bits->bi_len,
+				       &rg_block, rgp->ri.ri_data0, count))
+			return;
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return;
 	}

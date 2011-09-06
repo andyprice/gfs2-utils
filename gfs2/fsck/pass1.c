@@ -1328,7 +1328,7 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 {
 	uint64_t iblock = 0;
 	struct dir_status ds = {0};
-	int error;
+	int error, err = 0;
 
 	log_info( _("Checking system inode '%s'\n"), filename);
 	if (*sysinode) {
@@ -1403,12 +1403,19 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 		sysdir_fxns.private = &bc;
 		if ((*sysinode)->i_di.di_flags & GFS2_DIF_EXHASH)
 			check_metatree(*sysinode, &sysdir_fxns);
-		else
-			check_linear_dir(*sysinode, (*sysinode)->i_bh,
-					 &sysdir_fxns);
+		else {
+			err = check_linear_dir(*sysinode, (*sysinode)->i_bh,
+					       &sysdir_fxns);
+			/* If we encountered an error in our directory check
+			   we should still call handle_ip, but return the
+			   error later. */
+			if (err)
+				log_err(_("Error found in %s while checking "
+					  "directory entries.\n"), filename);
+		}
 	}
 	error = handle_ip(sdp, *sysinode);
-	return error;
+	return error ? error : err;
 }
 
 static int build_a_journal(struct gfs2_sbd *sdp)
@@ -1540,7 +1547,7 @@ int pass1(struct gfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
 	struct gfs2_buffer_head *bh;
-	uint64_t block;
+	uint64_t block = 0;
 	struct rgrp_tree *rgd;
 	int first;
 	uint64_t i;

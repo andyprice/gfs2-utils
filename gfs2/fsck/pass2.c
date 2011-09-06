@@ -328,7 +328,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	 * 2. Blocks marked "bad" need to have their entire
 	 * metadata tree deleted.
 	*/
-	if (q == gfs2_inode_invalid || q == gfs2_bad_block) {
+	if (q < 0 || q == gfs2_inode_invalid || q == gfs2_bad_block) {
 		/* This entry's inode has bad blocks in it */
 
 		/* Handle bad blocks */
