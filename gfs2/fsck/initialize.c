@@ -375,14 +375,14 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		err = dir_add(sdp->master_dir, "jindex", 6, &inum,
 		              IF2DT(S_IFDIR | 0700));
 		if (err) {
-			log_crit(_("Error adding jindex directory: %s\n"), strerror(err));
+			log_crit(_("Error %d adding jindex directory\n"), err);
 			exit(FSCK_ERROR);
 		}
 		sdp->master_dir->i_di.di_nlink++;
 	} else {
 		err = build_jindex(sdp);
 		if (err) {
-			log_crit(_("Error building jindex: %s\n"), strerror(err));
+			log_crit(_("Error %d building jindex\n"), err);
 			exit(FSCK_ERROR);
 		}
 	}
@@ -393,15 +393,16 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		err = dir_add(sdp->master_dir, "per_node", 8, &inum,
 			IF2DT(S_IFDIR | 0700));
 		if (err) {
-			log_crit(_("Error adding per_node directory: %s\n"), strerror(err));
+			log_crit(_("Error %d adding per_node directory\n"),
+				 err);
 			exit(FSCK_ERROR);
 		}
 		sdp->master_dir->i_di.di_nlink++;
 	} else {
 		err = build_per_node(sdp);
 		if (err) {
-			log_crit(_("Error building per_node directory: %s\n"),
-			         strerror(err));
+			log_crit(_("Error %d building per_node directory\n"),
+			         err);
 			exit(FSCK_ERROR);
 		}
 	}
@@ -412,14 +413,13 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		err = dir_add(sdp->master_dir, "inum", 4, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
-			log_crit(_("Error adding inum inode: %s\n"), strerror(err));
+			log_crit(_("Error %d adding inum inode\n"), err);
 			exit(FSCK_ERROR);
 		}
 	} else {
 		err = build_inum(sdp);
 		if (err) {
-			log_crit(_("Error building inum inode: %s\n"),
-			         strerror(err));
+			log_crit(_("Error %d building inum inode\n"), err);
 			exit(FSCK_ERROR);
 		}
 		gfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);
@@ -431,14 +431,13 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		err = dir_add(sdp->master_dir, "statfs", 6, &inum,
 			      IF2DT(S_IFREG | 0600));
 		if (err) {
-			log_crit(_("Error adding statfs inode: %s\n"), strerror(err));
+			log_crit(_("Error %d adding statfs inode\n"), err);
 			exit(FSCK_ERROR);
 		}
 	} else {
 		err = build_statfs(sdp);
 		if (err) {
-			log_crit(_("Error building statfs inode: %s\n"),
-			         strerror(err));
+			log_crit(_("Error %d building statfs inode\n"), err);
 			exit(FSCK_ERROR);
 		}
 		gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
@@ -450,14 +449,13 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		err = dir_add(sdp->master_dir, "rindex", 6, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
-			log_crit(_("Error adding rindex inode: %s\n"), strerror(err));
+			log_crit(_("Error %d adding rindex inode\n"), err);
 			exit(FSCK_ERROR);
 		}
 	} else {
 		err = build_rindex(sdp);
 		if (err) {
-			log_crit(_("Error building rindex inode: %s\n"),
-			         strerror(err));
+			log_crit(_("Error %d building rindex inode\n"), err);
 			exit(FSCK_ERROR);
 		}
 	}
@@ -468,14 +466,13 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		err = dir_add(sdp->master_dir, "quota", 5, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
-			log_crit(_("Error adding quota inode: %s\n"), strerror(err));
+			log_crit(_("Error %d adding quota inode\n"), err);
 			exit(FSCK_ERROR);
 		}
 	} else {
 		err = build_quota(sdp);
 		if (err) {
-			log_crit(_("Error building quota inode: %s\n"),
-			         strerror(err));
+			log_crit(_("Error %d building quota inode\n"), err);
 			exit(FSCK_ERROR);
 		}
 	}
@@ -521,8 +518,8 @@ static void lookup_per_node(struct gfs2_sbd *sdp, int allow_rebuild)
 
 		err = build_per_node(sdp);
 		if (err) {
-			log_crit(_("Error rebuilding per_node directory: %s\n"),
-				 strerror(err));
+			log_crit(_("Error %d rebuilding per_node directory\n"),
+				 err);
 			exit(FSCK_ERROR);
 		}
 	}
@@ -634,8 +631,8 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 			}
 			err = build_inum(sdp);
 			if (err) {
-				log_crit(_("Error rebuilding inum inode: %s\n"),
-					 strerror(err));
+				log_crit(_("Error %d rebuilding inum inode\n"),
+					 err);
 				exit(FSCK_ERROR);
 			}
 			gfs2_lookupi(sdp->master_dir, "inum", 4,
@@ -666,8 +663,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 		}
 		err = build_statfs(sdp);
 		if (err) {
-			log_crit(_("Error rebuilding statfs inode: %s\n"),
-				 strerror(err));
+			log_crit(_("Error %d rebuilding statfs inode\n"), err);
 			exit(FSCK_ERROR);
 		}
 		gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
@@ -703,8 +699,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 		}
 		err = build_quota(sdp);
 		if (err) {
-			log_crit(_("Error rebuilding quota inode: %s\n"),
-				 strerror(err));
+			log_crit(_("Error %d rebuilding quota inode\n"), err);
 			exit(FSCK_ERROR);
 		}
 		gfs2_lookupi(sdp->master_dir, "quota", 5, &sdp->md.qinode);
@@ -1342,8 +1337,7 @@ static int init_rindex(struct gfs2_sbd *sdp)
 		return -1;
 	}
 	if ((err = build_rindex(sdp))) {
-		log_crit(_("Error rebuilding rindex: %s\n"),
-			 strerror(err));
+		log_crit(_("Error %d rebuilding rindex\n"), err);
 		return -1;
 	}
 	return 0;
@@ -1384,8 +1378,7 @@ static int init_jindex(struct gfs2_sbd *sdp)
 		/* Free rgrps read in earlier (re-read them later) */
 		gfs2_rgrp_free(&sdp->rgtree);
 		if (err) {
-			log_crit(_("Error rebuilding jindex: %s\n"),
-				 strerror(err));
+			log_crit(_("Error %d rebuilding jindex\n"), err);
 			return err;
 		}
 	}

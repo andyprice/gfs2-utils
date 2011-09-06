@@ -1422,7 +1422,7 @@ static int build_a_journal(struct gfs2_sbd *sdp)
 	/* Now rebuild it */
 	err = build_journal(sdp, sdp->md.journals, sdp->md.jiinode);
 	if (err) {
-		log_crit(_("Error building journal: %s\n"), strerror(err));
+		log_crit(_("Error %d building journal\n"), err);
 		exit(FSCK_ERROR);
 	}
 	return 0;
