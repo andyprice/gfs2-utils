@@ -1920,7 +1920,7 @@ static void push_block(uint64_t blk)
 			blockstack[bhst].lines_per_row[i] = lines_per_row[i];
 		}
 		blockstack[bhst].gfs2_struct_type = gfs2_struct_type;
-		if (edit_row[dmode] >= 0)
+		if (edit_row[dmode] >= 0 && !block_is_rindex())
 			memcpy(&blockstack[bhst].mp,
 			       &indirect->ii[edit_row[dmode]].mp,
 			       sizeof(struct metapath));
@@ -2409,8 +2409,8 @@ static void jump(void)
 		int i;
 		
 		offset = 0;
+		push_block(temp_blk);
 		block = temp_blk;
-		push_block(block);
 		for (i = 0; i < DMODES; i++) {
 			start_row[i] = end_row[i] = edit_row[i] = 0;
 			edit_col[i] = 0;
