@@ -106,7 +106,7 @@ struct rgrp_tree *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
 
 		if (blk < ri->ri_addr)
 			node = node->osi_left;
-		else if (blk > ri->ri_data0 + ri->ri_data)
+		else if (blk >= ri->ri_data0 + ri->ri_data)
 			node = node->osi_right;
 		else
 			return rgd;
