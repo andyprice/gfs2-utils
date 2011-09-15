@@ -142,7 +142,7 @@ void kick_node_from_cluster(int nodeid)
 static void shutdown_callback(corosync_cfg_handle_t h,
 			      corosync_cfg_shutdown_flags_t flags)
 {
-	if (flags & COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST) {
+	if (flags == COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST) {
 		if (list_empty(&mountgroups))
 			corosync_cfg_replyto_shutdown(ch,
 					COROSYNC_CFG_SHUTDOWN_FLAG_YES);
