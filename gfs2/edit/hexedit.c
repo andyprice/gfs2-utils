@@ -1838,7 +1838,7 @@ int display(int identify_only)
 	lines_per_row[dmode] = 1;
 	if (gfs2_struct_type == GFS2_METATYPE_SB || blk == 0x10 * (4096 / sbd.bsize)) {
 		gfs2_sb_in(&sbd.sd_sb, bh); /* parse it out into the sb structure */
-		memset(indirect, 0, sizeof(indirect));
+		memset(indirect, 0, sizeof(struct iinfo));
 		indirect->ii[0].block = sbd.sd_sb.sb_master_dir.no_addr;
 		indirect->ii[0].is_dir = TRUE;
 		indirect->ii[0].dirents = 2;

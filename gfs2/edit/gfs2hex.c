@@ -279,7 +279,7 @@ void do_dinode_extended(struct gfs2_dinode *dine, struct gfs2_buffer_head *lbh)
 		(sbd.gfs1 && dine->__pad1 == GFS_FILE_DIR);
 
 	indirect_blocks = 0;
-	memset(indirect, 0, sizeof(indirect));
+	memset(indirect, 0, sizeof(struct iinfo));
 	if (dine->di_height > 0) {
 		/* Indirect pointers */
 		for (x = sizeof(struct gfs2_dinode); x < sbd.bsize;
