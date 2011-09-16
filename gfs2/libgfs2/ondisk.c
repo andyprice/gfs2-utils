@@ -610,8 +610,8 @@ void gfs2_statfs_change_print(struct gfs2_statfs_change *sc)
 void gfs2_quota_change_in(struct gfs2_quota_change *qc,
 			  struct gfs2_buffer_head *bh)
 {
-	struct gfs2_quota_change *str = (struct gfs2_quota_change *)bh->b_data +
-		sizeof(struct gfs2_meta_header);
+	struct gfs2_quota_change *str = (struct gfs2_quota_change *)(bh->b_data +
+		sizeof(struct gfs2_meta_header));
 
 	CPIN_64(qc, str, qc_change);
 	CPIN_32(qc, str, qc_flags);
@@ -621,8 +621,8 @@ void gfs2_quota_change_in(struct gfs2_quota_change *qc,
 void gfs2_quota_change_out(struct gfs2_quota_change *qc,
 			   struct gfs2_buffer_head *bh)
 {
-	struct gfs2_quota_change *str = (struct gfs2_quota_change *)bh->b_data +
-		sizeof(struct gfs2_meta_header);
+	struct gfs2_quota_change *str = (struct gfs2_quota_change *)(bh->b_data +
+		sizeof(struct gfs2_meta_header));
 
 	CPOUT_64(qc, str, qc_change);
 	CPOUT_32(qc, str, qc_flags);
