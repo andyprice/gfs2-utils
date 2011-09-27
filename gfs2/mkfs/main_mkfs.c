@@ -289,6 +289,39 @@ static void test_locking(char *lockproto, char *locktable)
 	}
 }
 
+/**
+ * are_you_sure - protect lusers from themselves
+ * @sdp: the command line
+ *
+ */
+
+static void are_you_sure(void)
+{
+	char *line = NULL;
+	size_t len = 0;
+	int ret = -1;
+	int res = 0;
+
+	do{
+		printf( _("Are you sure you want to proceed? [y/n]"));
+		ret = getline(&line, &len, stdin);
+		res = rpmatch(line);
+		
+		if (res > 0){
+			free(line);
+			return;
+		}
+		if (!res){
+			printf("\n");
+			die( _("aborted\n"));
+		}
+		
+	}while(ret >= 0);
+
+	if(line)
+		free(line);
+}
+
 static void verify_bsize(struct gfs2_sbd *sdp)
 {
 	unsigned int x;
@@ -448,46 +481,6 @@ fail:
 	exit(execv(args[0], args));
 }
 
-/**
- * are_you_sure - protect lusers from themselves
- * @sdp: the command line
- *
- */
-
-static void are_you_sure(struct gfs2_sbd *sdp)
-{
-	char *line = NULL;
-	size_t len = 0;
-	int fd;
-	int ret = -1;
-	int res = 0;
-
-	fd = open(sdp->device_name, O_RDONLY|O_CLOEXEC);
-	if (fd < 0)
-		die( _("Error: device %s not found.\n"), sdp->device_name);
-	printf( _("This will destroy any data on %s.\n"), sdp->device_name);
-	check_dev_content(sdp->device_name);
-	close(fd);
-	
-	do{
-		printf( _("Are you sure you want to proceed? [y/n]"));
-		ret = getline(&line, &len, stdin);
-		res = rpmatch(line);
-		
-		if (res > 0){
-			free(line);
-			return;
-		}
-		if (!res){
-			printf("\n");
-			die( _("aborted\n"));
-		}
-		
-	}while(ret >= 0);
-
-	if(line)
-		free(line);
-}
 
 /**
  * print_results - print out summary information
@@ -576,7 +569,7 @@ void main_mkfs(int argc, char *argv[])
 	}
 
 	if (!sdp->override)
-		are_you_sure(sdp);
+		are_you_sure();
 
 	if (!S_ISREG(st_buf.st_mode) && device_topology(sdp)) {
 		fprintf(stderr, _("Device topology error\n"));
