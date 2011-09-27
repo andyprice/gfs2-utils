@@ -350,14 +350,7 @@ static void verify_bsize(struct gfs2_sbd *sdp)
 		if (sdp->override)
 			return;
 
-		printf( _("\nAre you sure you want to proceed? [y/n] "));
-		if(!fgets(input, 32, stdin))
-			die( _("unable to read from stdin\n"));
-
-		if (input[0] != 'y')
-			die( _("aborted\n"));
-		else
-			printf("\n");
+		are_you_sure();
 	}
 }
 
