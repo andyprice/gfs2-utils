@@ -78,7 +78,7 @@ static int discard_blocks(struct gfs2_sbd *sdp)
 	range[0] = 0;
 	range[1] = sdp->device.length * sdp->bsize;
 	if (sdp->debug)
-		printf("Issuing discard ioctl: range: %llu - %llu...",
+		printf(_("Issuing discard ioctl: range: %llu - %llu..."),
 		       (unsigned long long)range[0],
 		       (unsigned long long)range[1]);
 	if (ioctl(sdp->device_fd, BLKDISCARD, &range) < 0) {
@@ -87,7 +87,7 @@ static int discard_blocks(struct gfs2_sbd *sdp)
 		return errno;
 	}
 	if (sdp->debug)
-		printf("Successful.\n");
+		printf(_("Successful.\n"));
         return 0;
 }
 
@@ -456,8 +456,11 @@ fail:
 
 static void are_you_sure(struct gfs2_sbd *sdp)
 {
-	char input[32];
+	char *line = NULL;
+	size_t len = 0;
 	int fd;
+	int ret = -1;
+	int res = 0;
 
 	fd = open(sdp->device_name, O_RDONLY|O_CLOEXEC);
 	if (fd < 0)
@@ -465,14 +468,25 @@ static void are_you_sure(struct gfs2_sbd *sdp)
 	printf( _("This will destroy any data on %s.\n"), sdp->device_name);
 	check_dev_content(sdp->device_name);
 	close(fd);
-	printf( _("\nAre you sure you want to proceed? [y/n] "));
-	if(!fgets(input, 32, stdin))
-		die( _("unable to read from stdin\n"));
+	
+	do{
+		printf( _("Are you sure you want to proceed? [y/n]"));
+		ret = getline(&line, &len, stdin);
+		res = rpmatch(line);
+		
+		if (res > 0){
+			free(line);
+			return;
+		}
+		if (!res){
+			printf("\n");
+			die( _("aborted\n"));
+		}
+		
+	}while(ret >= 0);
 
-	if (input[0] != 'y')
-		die( _("aborted\n"));
-	else
-		printf("\n");
+	if(line)
+		free(line);
 }
 
 /**
