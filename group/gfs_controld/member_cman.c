@@ -103,7 +103,7 @@ int setup_cluster(void)
 		goto fail;
 	}
 
-	err = quorum_trackstart(qh, CS_TRACK_CURRENT);
+	err = quorum_trackstart(qh, CS_TRACK_CHANGES);
 	if (err != CS_OK) {
 		log_error("quorum trackstart error %d", err);
 		goto fail;
