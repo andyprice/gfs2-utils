@@ -80,8 +80,8 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree,
 	struct device *dev;
 	struct rgrp_tree *rl, *rlast = NULL, *rlast2 = NULL;
 	struct osi_node *n, *next = NULL;
-	unsigned int rgrp = 0, nrgrp;
-	uint64_t rglength, rgaddr;
+	unsigned int rgrp = 0, nrgrp, rglength;
+	uint64_t rgaddr;
 
 	sdp->new_rgrps = 0;
 	dev = &sdp->device;
@@ -113,7 +113,7 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree,
 			rlast = rl;
 		}
 		rlast->start = rlast->ri.ri_addr;
-		rglength = rlast->ri.ri_addr - rlast2->ri.ri_addr;
+		rglength = rgrp_size(rlast);
 		rlast->length = rglength;
 		old_length = rlast->ri.ri_addr + rglength;
 		new_chunk = dev->length - old_length;

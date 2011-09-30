@@ -637,7 +637,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	int rgcount;
 	uint64_t jindex_block;
 	struct gfs2_buffer_head *lbh;
-	struct rgrp_tree *last_rgd, *prev_rgd;
+	struct rgrp_tree *last_rgd;
 	struct metafd mfd;
 
 	slow = (saveoption == 1);
@@ -715,9 +715,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		n = osi_last(&sbd.rgtree);
 		last_rgd = (struct rgrp_tree *)n;
 		n = osi_prev(n);
-		prev_rgd = (struct rgrp_tree *)n;
-		fssize = last_rgd->ri.ri_addr +
-			(last_rgd->ri.ri_addr - prev_rgd->ri.ri_addr);
+		fssize = last_rgd->ri.ri_addr + rgrp_size(last_rgd);
 		last_fs_block = fssize;
 		fssize *= sbd.bsize;
 		printf("Done. File system size: %s\n\n",

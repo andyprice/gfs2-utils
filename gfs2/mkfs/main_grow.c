@@ -122,23 +122,6 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 }
 
 /**
- * figure_out_rgsize
- */
-static void figure_out_rgsize(struct gfs2_sbd *sdp, unsigned int *orgsize)
-{
-	struct osi_node *n = osi_first(&sdp->rgtree), *next = NULL;
-	struct rgrp_tree *r1, *r2;
-
-	sdp->rgsize = GFS2_DEFAULT_RGSIZE;
-	next = osi_next(n);
-	r1 = (struct rgrp_tree *)next;
-	next = osi_next(next);
-	r2 = (struct rgrp_tree *)next;
-
-	*orgsize = r2->ri.ri_addr - r1->ri.ri_addr;
-}
-
-/**
  * filesystem_size - Calculate the size of the filesystem
  *
  * Reads the lists of resource groups in order to
@@ -324,6 +307,7 @@ main_grow(int argc, char *argv[])
 	
 	while ((argc - optind) > 0) {
 		int sane;
+		struct rgrp_tree *last_rgrp;
 
 		sdp->path_name = argv[optind++];
 		sdp->path_fd = open(sdp->path_name, O_RDONLY | O_CLOEXEC);
@@ -391,7 +375,13 @@ main_grow(int argc, char *argv[])
 		/* the existing RGs, and only write to the index at EOF.    */
 		ri_update(sdp, rindex_fd, &rgcount, &sane);
 		fssize = filesystem_size(sdp);
-		figure_out_rgsize(sdp, &rgsize);
+		if (!sdp->rgtree.osi_node) {
+			log_err(_("Error: No resource groups found.\n"));
+			goto out;
+		}
+		last_rgrp = (struct rgrp_tree *)osi_last(&sdp->rgtree);
+		sdp->rgsize = GFS2_DEFAULT_RGSIZE;
+		rgsize = rgrp_size(last_rgrp);
 		fsgrowth = ((sdp->device.length - fssize) * sdp->bsize);
 		if (fsgrowth < rgsize * sdp->bsize) {
 			log_err( _("Error: The device has grown by less than "
@@ -409,6 +399,7 @@ main_grow(int argc, char *argv[])
 			initialize_new_portion(sdp, &old_rg_count);
 			fix_rindex(sdp, rindex_fd, old_rg_count);
 		}
+	out:
 		/* Delete the remaining RGs from the rglist */
 		gfs2_rgrp_free(&sdp->rgtree);
 		close(rindex_fd);

@@ -194,7 +194,7 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 					*sane = 0;
 			}
 			prev_length = rgd->start - prev_rgd->start;
-			prev_rgd->length = prev_length;
+			prev_rgd->length = rgrp_size(prev_rgd);
 		}
 
 		if(gfs2_compute_bitstructs(sdp, rgd))
@@ -204,7 +204,7 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 		prev_rgd = rgd;
 	}
 	if (prev_rgd)
-		prev_rgd->length = prev_length;
+		prev_rgd->length = rgrp_size(prev_rgd);
 	return 0;
 }
 

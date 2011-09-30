@@ -708,6 +708,11 @@ extern void gfs2_rgrp_relse(struct rgrp_tree *rgd);
 extern struct rgrp_tree *rgrp_insert(struct osi_root *rgtree,
 				     uint64_t rgblock);
 extern void gfs2_rgrp_free(struct osi_root *rgrp_tree);
+/* figure out the size of the given resource group, in blocks */
+static inline unsigned int rgrp_size(struct rgrp_tree *rgrp)
+{
+	return rgrp->ri.ri_data + rgrp->ri.ri_length;
+}
 
 /* structures.c */
 extern int build_master(struct gfs2_sbd *sdp);
