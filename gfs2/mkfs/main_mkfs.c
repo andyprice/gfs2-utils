@@ -683,13 +683,17 @@ void main_mkfs(int argc, char *argv[])
 	gfs2_rgrp_free(&sdp->rgtree);
 	error = fsync(sdp->device_fd);
 
-	if (error)
+	if (error){
 		perror(sdp->device_name);
+		exit(EXIT_FAILURE);
+	}
 
 	error = close(sdp->device_fd);
 
-	if (error)
+	if (error){
 		perror(sdp->device_name);
+		exit(EXIT_FAILURE);
+	}
 
 	print_results(sdp, real_device_size, uuid);
 }

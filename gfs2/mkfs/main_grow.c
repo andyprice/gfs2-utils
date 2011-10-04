@@ -310,8 +310,10 @@ main_grow(int argc, char *argv[])
 
 		sdp->path_name = argv[optind++];
 		sdp->path_fd = open(sdp->path_name, O_RDONLY | O_CLOEXEC);
-		if (sdp->path_fd < 0)
+		if (sdp->path_fd < 0){
 			perror(sdp->path_name);
+			exit(EXIT_FAILURE);
+		}
 
 		if (check_for_gfs2(sdp)) {
 			perror(sdp->path_name);
@@ -319,8 +321,10 @@ main_grow(int argc, char *argv[])
 		}
 		sdp->device_fd = open(sdp->device_name,
 				      (test ? O_RDONLY : O_RDWR) | O_CLOEXEC);
-		if (sdp->device_fd < 0)
+		if (sdp->device_fd < 0){
 			perror(sdp->device_name);
+			exit(EXIT_FAILURE);
+		}
 
 		if (device_geometry(sdp)) {
 			perror(_("Device geometry error"));

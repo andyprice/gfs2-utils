@@ -34,15 +34,21 @@ make_jdata(int fd, const char *value)
         uint32_t val;
 
         err = ioctl(fd, FS_IOC_GETFLAGS, &val);
-        if (err)
-                die( _("error doing get flags (%d): %s\n"), err, strerror(errno));
+        if (err){
+		perror("GETFLAGS");
+		exit(EXIT_FAILURE);
+	}
+
         if (strcmp(value, "set") == 0)
                 val |= FS_JOURNAL_DATA_FL;
         if (strcmp(value, "clear") == 0)
                 val &= ~FS_JOURNAL_DATA_FL;
         err = ioctl(fd, FS_IOC_SETFLAGS, &val);
-        if (err)
-                die( _("error doing set flags (%d): %s\n"), err, strerror(errno));
+
+        if (err){
+		perror("SETFLAGS");
+		exit(EXIT_FAILURE);
+	}
 }
 
 static int
@@ -211,11 +217,14 @@ create_new_inode(struct gfs2_sbd *sdp)
 			break;
 		if (errno == EEXIST) {
 			error = unlink(name);
-			if (error)
-				die( _("can't unlink %s: %s\n"),
-				    name, strerror(errno));
-		} else
-			die( _("can't create %s: %s\n"), name, strerror(errno));
+			if (error){
+				perror("unlink");
+				exit(EXIT_FAILURE);
+			}
+		} else{
+			perror("create");
+			exit(EXIT_FAILURE);
+		}
 	}
 	
 	return fd;
@@ -236,10 +245,8 @@ add_ir(struct gfs2_sbd *sdp)
 		memset(&ir, 0, sizeof(struct gfs2_inum_range));
 		if (write(fd, (void*)&ir, sizeof(struct gfs2_inum_range)) !=
 		    sizeof(struct gfs2_inum_range)) {
-			fprintf(stderr, _( "write error: %s from %s:%d: "
-				"offset 0\n"), strerror(errno),
-				__FUNCTION__, __LINE__);
-			exit(-1);
+			perror("add_ir");
+			exit(EXIT_FAILURE);
 		}
 	}
 	
@@ -247,9 +254,10 @@ add_ir(struct gfs2_sbd *sdp)
 	
 	sprintf(new_name, "inum_range%u", sdp->md.journals);
 	error = rename2system(sdp, "per_node", new_name);
-	if (error < 0 && errno != EEXIST)
-		die( _("can't rename2system %s (%d): %s\n"), 
-		new_name, error, strerror(errno));
+	if (error < 0 && errno != EEXIST){
+		perror("add_ir rename2system");
+		exit(EXIT_FAILURE);
+	}
 }
 
 static void 
@@ -268,10 +276,8 @@ add_sc(struct gfs2_sbd *sdp)
 		memset(&sc, 0, sizeof(struct gfs2_statfs_change));
 		if (write(fd, (void*)&sc, sizeof(struct gfs2_statfs_change)) !=
 		    sizeof(struct gfs2_statfs_change)) {
-			fprintf(stderr, _("write error: %s from %s:%d: "
-				"offset 0\n"), strerror(errno),
-				__FUNCTION__, __LINE__);
-			exit(-1);
+			perror("add_sc");
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -279,9 +285,10 @@ add_sc(struct gfs2_sbd *sdp)
 	
 	sprintf(new_name, "statfs_change%u", sdp->md.journals);
 	error = rename2system(sdp, "per_node", new_name);
-	if (error < 0 && errno != EEXIST)
-		die( _("can't rename2system %s (%d): %s\n"),
-		    new_name, error, strerror(errno));
+	if (error < 0 && errno != EEXIST){
+		perror("add_sc rename2system");
+		exit(EXIT_FAILURE);
+	}
 }
 
 static void 
@@ -307,13 +314,8 @@ add_qc(struct gfs2_sbd *sdp)
 
 		for (x=0; x<blocks; x++) {
 			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
-				fprintf(stderr, _("write error: %s from %s:%d: "
-					"block %lld (0x%llx)\n"),
-					strerror(errno),
-					__FUNCTION__, __LINE__,
-					(unsigned long long)x,
-					(unsigned long long)x);
-				exit(-1);
+				perror("add_qc");
+				exit(EXIT_FAILURE);
 			}
 		}
 
@@ -327,29 +329,26 @@ add_qc(struct gfs2_sbd *sdp)
 
 		for (x=0; x<blocks; x++) {
 			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
-				fprintf(stderr, _("write error: %s from %s:%d: "
-					"block %lld (0x%llx)\n"),
-					strerror(errno),
-					__FUNCTION__, __LINE__,
-					(unsigned long long)x,
-					(unsigned long long)x);
-				exit(-1);
+				perror("add_qc");
+				exit(EXIT_FAILURE);
 			}
 		}
 
 		error = fsync(fd);
-		if (error)
-			die( _("can't fsync: %s\n"),
-			    strerror(errno));
+		if (error){
+			perror("add_qc fsync");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	close(fd);
 	
 	sprintf(new_name, "quota_change%u", sdp->md.journals);
 	error = rename2system(sdp, "per_node", new_name);
-	if (error < 0 && errno != EEXIST)
-		die( _("can't rename2system %s (%d): %s\n"),
-		    new_name, error, strerror(errno));
+	if (error < 0 && errno != EEXIST){
+		perror("add_qc rename2system");
+		exit(EXIT_FAILURE);
+	}
 }
 
 static void 
@@ -357,8 +356,8 @@ gather_info(struct gfs2_sbd *sdp)
 {
 	struct statfs statbuf;
 	if (statfs(sdp->path_name, &statbuf) < 0) {
-		die( _("Could not statfs the filesystem %s: %s\n"),
-		    sdp->path_name, strerror(errno));
+		perror(sdp->path_name);
+		exit(EXIT_FAILURE);
 	}
 	sdp->bsize = statbuf.f_bsize;
 }
@@ -374,8 +373,8 @@ find_current_journals(struct gfs2_sbd *sdp)
 	sprintf(jindex, "%s/jindex", sdp->metafs_path);
 	dirp = opendir(jindex);
 	if (!dirp) {
-		die( _("Could not find the jindex directory "
-		    "in gfs2meta mount! error: %s\n"), strerror(errno));
+		perror("jindex");
+		exit(EXIT_FAILURE);
 	}
 	while (dirp) {
 		if ((dp = readdir(dirp)) != NULL) {
@@ -415,13 +414,8 @@ add_j(struct gfs2_sbd *sdp)
 		memset(buf, 0, sdp->bsize);
 		for (x=0; x<blocks; x++) {
 			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
-				fprintf(stderr, _("write error: %s from %s:%d: "
-					"block %lld (0x%llx)\n"),
-					strerror(errno),
-					__FUNCTION__, __LINE__,
-					(unsigned long long)x,
-					(unsigned long long)x);
-				exit(-1);
+				perror("add_j");
+				exit(EXIT_FAILURE);
 			}
 		}
 
@@ -445,13 +439,8 @@ add_j(struct gfs2_sbd *sdp)
 			((struct gfs2_log_header *)buf)->lh_hash = cpu_to_be32(hash);
 
 			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
-				fprintf(stderr, _("write error: %s from %s:%d: "
-					"block %lld (0x%llx)\n"),
-					strerror(errno),
-					__FUNCTION__, __LINE__,
-					(unsigned long long)x,
-					(unsigned long long)x);
-				exit(-1);
+				perror("add_j");
+				exit(EXIT_FAILURE);
 			}
 
 			if (++seq == blocks)
@@ -459,18 +448,20 @@ add_j(struct gfs2_sbd *sdp)
 		}
 
 		error = fsync(fd);
-		if (error)
-			die( _("can't fsync: %s\n"),
-			    strerror(errno));
+		if (error){
+			perror("add_j fsync");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	close(fd);
 	
 	sprintf(new_name, "journal%u", sdp->md.journals);
 	error = rename2system(sdp, "jindex", new_name);
-	if (error < 0 && errno != EEXIST)
-		die( _("can't rename2system %s (%d): %s\n"),
-		    new_name, error, strerror(errno));
+	if (error < 0 && errno != EEXIST){
+		perror("add_j rename2system");
+		exit(EXIT_FAILURE);
+	}
 }
 
 /**
@@ -494,30 +485,26 @@ void main_jadd(int argc, char *argv[])
 	verify_arguments(sdp);
 	
 	sdp->path_fd = open(sdp->path_name, O_RDONLY | O_CLOEXEC);
-	if (sdp->path_fd < 0)
-		die( _("can't open root directory %s: %s\n"),
-		    sdp->path_name, strerror(errno));
+	if (sdp->path_fd < 0){
+		perror(sdp->path_name);
+		exit(EXIT_FAILURE);
+	}
 
 	if (check_for_gfs2(sdp)) {
-		if (errno == EINVAL)
-			fprintf(stderr, _("Not a valid GFS2 mount point: %s\n"),
-					sdp->path_name);
-		else
-			fprintf(stderr, "%s\n", strerror(errno));
-		exit(-1);
+		perror(sdp->path_name);
+		exit(EXIT_FAILURE);
 	}
 
 	gather_info(sdp);
 
 	if (mount_gfs2_meta(sdp)) {
-		fprintf(stderr, _("Error mounting GFS2 metafs: %s\n"),
-				strerror(errno));
-		exit(-1);
+		perror("GFS2 metafs");
+		exit(EXIT_FAILURE);
 	}
 
 	if (compute_constants(sdp)) {
-		fprintf(stderr, _("Bad constants (1)\n"));
-		exit(-1);
+		perror(_("Bad constants (1)"));
+		exit(EXIT_FAILURE);
 	}
 	find_current_journals(sdp);
 
