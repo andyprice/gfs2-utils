@@ -953,6 +953,8 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
 		if (dirent_alloc(dip, nbh, 0, &new))
 			die("dir_split_leaf (4)\n");
 		new->de_inum.no_formal_ino = 0;
+		/* Don't count the sentinel dirent as an entry */
+		dip->i_di.di_entries--;
 	}
 
 	oleaf->lf_depth = be16_to_cpu(oleaf->lf_depth) + 1;
