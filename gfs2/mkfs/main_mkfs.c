@@ -591,7 +591,7 @@ void main_mkfs(int argc, char *argv[])
 	verify_bsize(sdp);
 
 	if (compute_constants(sdp)) {
-		perror(_("Bad constants (1)\n"));
+		perror(_("Bad constants (1)"));
 		exit(EXIT_FAILURE);
 	}
 
@@ -599,7 +599,7 @@ void main_mkfs(int argc, char *argv[])
 
 	device_size(sdp->device_fd, &real_device_size);
 	if (device_geometry(sdp)) {
-		perror(_("Device geometry error\n"));
+		perror(_("Device geometry error"));
 		exit(EXIT_FAILURE);
 	}
 	/* Convert optional block-count to basic blocks */

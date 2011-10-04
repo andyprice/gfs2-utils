@@ -202,7 +202,7 @@ static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 	buf = calloc(1, writelen);
 	if (buf == NULL) {
 		perror(__FUNCTION__);
-		exit(-1);
+		exit(EXIT_FAILURE);
 	}
 	/* Now add the new rg entries to the rg index.  Here we     */
 	/* need to use the gfs2 kernel code rather than the libgfs2 */
@@ -219,13 +219,13 @@ static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 	fsync(sdp->device_fd);
 	if (!test) {
 		if (fstat(rindex_fd, &statbuf) != 0) {
-			log_crit("Can't stat rindex : %s\n", strerror(errno));
+			perror("rindex");
 			goto out;
 		}
 		if (statbuf.st_size !=
 		    old_rg_count * sizeof(struct gfs2_rindex)) {
-			log_crit("Incorrect rindex size. want %ld(%d RGs), "
-				 "have %ld\n",
+			log_crit(_("Incorrect rindex size. want %ld(%d RGs), "
+				 "have %ld\n"),
 				 old_rg_count * sizeof(struct gfs2_rindex),
 				 old_rg_count, statbuf.st_size);
 			goto out;
@@ -234,8 +234,8 @@ static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 		lseek(rindex_fd, 0, SEEK_END);
 		count = write(rindex_fd, buf, sizeof(struct gfs2_rindex));
 		if (count != sizeof(struct gfs2_rindex)) {
-			log_crit("Error writing first new rindex entry;"
-				 "aborted.\n");
+			log_crit(_("Error writing first new rindex entry;"
+				 "aborted.\n"));
 			if (count > 0)
 				goto trunc;
 			else
@@ -244,16 +244,15 @@ static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 		count = write(rindex_fd, buf + sizeof(struct gfs2_rindex),
 			      writelen - sizeof(struct gfs2_rindex));
 		if (count != writelen - sizeof(struct gfs2_rindex)) {
-			log_crit("Error writing new rindex entries;"
-				 "aborted.\n");
+			log_crit(_("Error writing new rindex entries;"
+				 "aborted.\n"));
 			if (count > 0)
 				goto trunc;
 			else
 				goto out;
 		}
 		if (fallocate(rindex_fd, FALLOC_FL_KEEP_SIZE, statbuf.st_size + writelen, sizeof(struct gfs2_rindex)) != 0)
-			log_crit("Error fallocating extra space : %s\n",
-				 strerror(errno));
+			perror("fallocate");
 		fsync(rindex_fd);
 	}
 out:
@@ -261,7 +260,7 @@ out:
 	return;
 trunc:
 	count = (count / sizeof(struct gfs2_rindex)) + old_rg_count;
-	log_crit("truncating rindex to %ld\n",
+	log_crit(_("truncating rindex to %ld\n"),
 		 (off_t)count * sizeof(struct gfs2_rindex));
 	ftruncate(rindex_fd, (off_t)count * sizeof(struct gfs2_rindex));
 	free(buf);
@@ -312,26 +311,20 @@ main_grow(int argc, char *argv[])
 		sdp->path_name = argv[optind++];
 		sdp->path_fd = open(sdp->path_name, O_RDONLY | O_CLOEXEC);
 		if (sdp->path_fd < 0)
-			die("can't open root directory %s: %s\n",
-			    sdp->path_name, strerror(errno));
+			perror(sdp->path_name);
 
 		if (check_for_gfs2(sdp)) {
-			if (errno == EINVAL)
-				fprintf(stderr,
-					_("Not a valid GFS2 mount point: %s\n"),
-					sdp->path_name);
-			else
-				fprintf(stderr, "%s\n", strerror(errno));
-			exit(-1);
+			perror(sdp->path_name);
+			exit(EXIT_FAILURE);
 		}
 		sdp->device_fd = open(sdp->device_name,
 				      (test ? O_RDONLY : O_RDWR) | O_CLOEXEC);
 		if (sdp->device_fd < 0)
-			die( _("can't open device %s: %s\n"),
-			    sdp->device_name, strerror(errno));
+			perror(sdp->device_name);
+
 		if (device_geometry(sdp)) {
-			fprintf(stderr, _("Geometry error\n"));
-			exit(-1);
+			perror(_("Device geometry error"));
+			exit(EXIT_FAILURE);
 		}
 		log_info( _("Initializing lists...\n"));
 		sdp->rgtree.osi_node = NULL;
@@ -340,8 +333,8 @@ main_grow(int argc, char *argv[])
 		sdp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 		sdp->bsize = sdp->sd_sb.sb_bsize;
 		if (compute_constants(sdp)) {
-			log_crit(_("Bad constants (1)\n"));
-			exit(-1);
+			perror(_("Bad constants (1)"));
+			exit(EXIT_FAILURE);
 		}
 		if (read_sb(sdp, 0) < 0)
 			die( _("gfs: Error reading superblock.\n"));
@@ -349,13 +342,12 @@ main_grow(int argc, char *argv[])
 		if (fix_device_geometry(sdp)) {
 			fprintf(stderr, _("Device is too small (%llu bytes)\n"),
 				(unsigned long long)sdp->device.length << GFS2_BASIC_BLOCK_SHIFT);
-			exit(-1);
+			exit(EXIT_FAILURE);
 		}
 
 		if (mount_gfs2_meta(sdp)) {
-			fprintf(stderr, _("Error mounting GFS2 metafs: %s\n"),
-					strerror(errno));
-			exit(-1);
+			perror("GFS2 metafs");
+			exit(EXIT_FAILURE);
 		}
 
 		sprintf(rindex_name, "%s/rindex", sdp->metafs_path);
