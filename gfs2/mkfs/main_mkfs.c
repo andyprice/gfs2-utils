@@ -551,22 +551,22 @@ void main_mkfs(int argc, char *argv[])
 	verify_arguments(sdp);
 
 	sdp->device_fd = open(sdp->device_name, O_RDWR | O_CLOEXEC);
-	if (sdp->device_fd < 0)
-		die( _("can't open device %s: %s\n"),
-		    sdp->device_name, strerror(errno));
+	if (sdp->device_fd < 0){
+		perror(sdp->device_name);
+		exit(EXIT_FAILURE);
+	}
 
 	if (fstat(sdp->device_fd, &st_buf) < 0) {
-		fprintf(stderr, _("could not fstat fd %d: %s\n"),
-			sdp->device_fd, strerror(errno));
-		exit(-1);
+		perror(sdp->device_name);
+		exit(EXIT_FAILURE);
 	}
 
 	if (!sdp->override)
 		are_you_sure();
 
 	if (!S_ISREG(st_buf.st_mode) && device_topology(sdp)) {
-		fprintf(stderr, _("Device topology error\n"));
-		exit(-1);
+		perror(_("Device topology error\n"));
+		exit(EXIT_FAILURE);
 	}
 
 	if (sdp->bsize == -1) {
@@ -591,16 +591,16 @@ void main_mkfs(int argc, char *argv[])
 	verify_bsize(sdp);
 
 	if (compute_constants(sdp)) {
-		fprintf(stderr, _("Bad constants (1)\n"));
-		exit(-1);
+		perror(_("Bad constants (1)\n"));
+		exit(EXIT_FAILURE);
 	}
 
 	/* Get the device geometry */
 
 	device_size(sdp->device_fd, &real_device_size);
 	if (device_geometry(sdp)) {
-		fprintf(stderr, _("Geometry error\n"));
-		exit(-1);
+		perror(_("Device geometry error\n"));
+		exit(EXIT_FAILURE);
 	}
 	/* Convert optional block-count to basic blocks */
 	if (sdp->orig_fssize) {
@@ -618,7 +618,7 @@ void main_mkfs(int argc, char *argv[])
 	if (fix_device_geometry(sdp)) {
 		fprintf(stderr, _("Device is too small (%llu bytes)\n"),
 			(unsigned long long)sdp->device.length << GFS2_BASIC_BLOCK_SHIFT);
-		exit(-1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (discard)
@@ -639,35 +639,35 @@ void main_mkfs(int argc, char *argv[])
 	build_sb(sdp, uuid);
 	error = build_jindex(sdp);
 	if (error) {
-		fprintf(stderr, _("Error building jindex: %s\n"), strerror(error));
-		exit(-1);
+		perror(_("Error building jindex"));
+		exit(EXIT_FAILURE);
 	}
 	error = build_per_node(sdp);
 	if (error) {
-		fprintf(stderr, _("Error building per-node directory: %s\n"), strerror(error));
-		exit(-1);
+		perror(_("Error building per-node directory"));
+		exit(EXIT_FAILURE);
 	}
 	error = build_inum(sdp);
 	if (error) {
-		fprintf(stderr, _("Error building inum inode: %s\n"), strerror(error));
-		exit(-1);
+		perror(_("Error building inum inode"));
+		exit(EXIT_FAILURE);
 	}
 	gfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);
 	error = build_statfs(sdp);
 	if (error) {
-		fprintf(stderr, _("Error building statfs inode: %s\n"), strerror(error));
-		exit(-1);
+		perror(_("Error building statfs inode"));
+		exit(EXIT_FAILURE);
 	}
 	gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
 	error = build_rindex(sdp);
 	if (error) {
-		fprintf(stderr, _("Error building rindex inode: %s\n"), strerror(error));
-		exit(-1);
+		perror(_("Error building rindex inode"));
+		exit(EXIT_FAILURE);
 	}
 	error = build_quota(sdp);
 	if (error) {
-		fprintf(stderr, _("Error building quota inode: %s\n"), strerror(error));
-		exit(-1);
+		perror(_("Error building quota inode"));
+		exit(EXIT_FAILURE);
 	}
 
 	do_init_inum(sdp);
@@ -682,13 +682,14 @@ void main_mkfs(int argc, char *argv[])
 
 	gfs2_rgrp_free(&sdp->rgtree);
 	error = fsync(sdp->device_fd);
+
 	if (error)
-		die( _("can't fsync device (%d): %s\n"),
-		    error, strerror(errno));
+		perror(sdp->device_name);
+
 	error = close(sdp->device_fd);
+
 	if (error)
-		die( _("error closing device (%d): %s\n"),
-		    error, strerror(errno));
+		perror(sdp->device_name);
 
 	print_results(sdp, real_device_size, uuid);
 }
