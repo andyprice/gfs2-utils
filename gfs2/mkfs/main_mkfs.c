@@ -109,7 +109,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 	sdp->orig_fssize = 0;
 
 	while (cont) {
-		optchar = getopt(argc, argv, "-b:c:DhJ:j:Op:qr:t:u:VX");
+		optchar = getopt(argc, argv, "-b:c:DhJ:j:KOp:qr:t:u:VX");
 
 		switch (optchar) {
 		case 'b':
@@ -325,7 +325,6 @@ static void are_you_sure(void)
 static void verify_bsize(struct gfs2_sbd *sdp)
 {
 	unsigned int x;
-	char input[32];
 
 	/* Block sizes must be a power of two from 512 to 65536 */
 
@@ -561,8 +560,11 @@ void main_mkfs(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (!sdp->override)
+	if (!sdp->override) {
+		printf( _("This will destroy any data on %s.\n"), sdp->device_name);
+		check_dev_content(sdp->device_name);
 		are_you_sure();
+	}
 
 	if (!S_ISREG(st_buf.st_mode) && device_topology(sdp)) {
 		perror(_("Device topology error\n"));
@@ -621,7 +623,7 @@ void main_mkfs(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (discard)
+	if (!S_ISREG(st_buf.st_mode) && discard)
 		discard_blocks(sdp);
 
 	/* Compute the resource group layouts */
