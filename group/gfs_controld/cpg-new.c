@@ -775,11 +775,12 @@ void process_dlmcontrol(int ci)
 		if (result) {
 			/* shouldn't happen */
 			log_error("process_dlmcontrol register %d", result);
-		} else
+			client_reply_join_full(mg, result);
+			mg->mount_client_notified = 1;
+		} else {
 			log_group(mg, "process_dlmcontrol register %d", result);
-
-		mg->dlm_registered = 1;
-
+			mg->dlm_registered = 1;
+		}
 	} else {
 		log_group(mg, "process_dlmcontrol unknown type %d", type);
 	}
