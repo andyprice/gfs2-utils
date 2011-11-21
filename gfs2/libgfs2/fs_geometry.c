@@ -34,11 +34,10 @@ uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgsize_spe
 		nrgrp = DIV_RU(dev->length, (sdp->rgsize << 20) / sdp->bsize);
 
 		/* check to see if the rg length overflows max # bitblks */
-		rgblocksn = dev->length / nrgrp;
-		rgblocks2bitblocks(sdp->bsize, &rgblocksn, &bitblocksn);
+		bitblocksn = rgblocks2bitblocks(sdp->bsize, dev->length / nrgrp, &rgblocksn);
 		/* calculate size of the first rgrp */
-		rgblocks1 = dev->length - (nrgrp - 1) * (dev->length / nrgrp);
-		rgblocks2bitblocks(sdp->bsize, &rgblocks1, &bitblocks1);
+		bitblocks1 = rgblocks2bitblocks(sdp->bsize, dev->length - (nrgrp - 1) * (dev->length / nrgrp),
+		                                &rgblocks1);
 		if (bitblocks1 > 2149 || bitblocksn > 2149) {
 			bitmap_overflow = 1;
 			if (sdp->rgsize <= GFS2_DEFAULT_RGSIZE) {
@@ -158,39 +157,29 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree,
 }
 
 /**
- * rgblocks2bitblocks -
- * @bsize:
- * @rgblocks:
- * @bitblocks:
- *
- * Given a number of blocks in a RG, figure out the number of blocks
- * needed for bitmaps.
- *
+ * Given a number of blocks in a resource group, return the number of blocks
+ * needed for bitmaps. Also calculate the adjusted number of free data blocks
+ * in the resource group and store it in *ri_data.
  */
-
-void rgblocks2bitblocks(unsigned int bsize, uint32_t *rgblocks, uint32_t *bitblocks)
+uint32_t rgblocks2bitblocks(const unsigned int bsize, const uint32_t rgblocks, uint32_t *ri_data)
 {
-	unsigned int bitbytes_provided, last = 0;
-	unsigned int bitbytes_needed;
+	uint32_t mappable = 0;
+	uint32_t bitblocks = 0;
+	/* Number of blocks mappable by bitmap blocks with these header types */
+	const uint32_t blks_rgrp = GFS2_NBBY * (bsize - sizeof(struct gfs2_rgrp));
+	const uint32_t blks_meta = GFS2_NBBY * (bsize - sizeof(struct gfs2_meta_header));
 
-	*bitblocks = 1;
-	bitbytes_provided = bsize - sizeof(struct gfs2_rgrp);
+	while (blks_rgrp + (blks_meta * bitblocks) < ((rgblocks - bitblocks) & ~(uint32_t)3))
+		bitblocks++;
 
-	for (;;) {
-	        bitbytes_needed = (*rgblocks - *bitblocks) / GFS2_NBBY;
+	if (bitblocks > 0)
+		mappable = blks_rgrp + (blks_meta * (bitblocks - 1));
 
-		if (bitbytes_provided >= bitbytes_needed) {
-			if (last >= bitbytes_needed)
-				(*bitblocks)--;
-			break;
-		}
+	*ri_data = (rgblocks - (bitblocks + 1)) & ~(uint32_t)3;
+	if (mappable < *ri_data)
+		bitblocks++;
 
-		last = bitbytes_provided;
-		(*bitblocks)++;
-		bitbytes_provided += bsize - sizeof(struct gfs2_meta_header);
-	}
-
-	*rgblocks = bitbytes_needed * GFS2_NBBY;
+	return bitblocks;
 }
 
 /**
@@ -220,8 +209,7 @@ void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 		rl = (struct rgrp_tree *)n;
 		ri = &rl->ri;
 
-		rgblocks = rl->length;
-		rgblocks2bitblocks(sdp->bsize, &rgblocks, &bitblocks);
+		bitblocks = rgblocks2bitblocks(sdp->bsize, rl->length, &rgblocks);
 
 		ri->ri_addr = rl->start;
 		ri->ri_length = bitblocks;

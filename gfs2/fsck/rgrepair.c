@@ -507,12 +507,9 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 		calc_rgd->ri.ri_data0 = calc_rgd->ri.ri_addr +
 			calc_rgd->ri.ri_length;
 		if (prev_rgd) {
-			uint32_t rgblocks, bitblocks;
+			uint32_t rgblocks;
 
-			rgblocks = block_bump;
-			rgblocks2bitblocks(sdp->bsize, &rgblocks, &bitblocks);
-
-			prev_rgd->ri.ri_length = bitblocks;
+			prev_rgd->ri.ri_length = rgblocks2bitblocks(sdp->bsize, block_bump, &rgblocks);
 			prev_rgd->ri.ri_data = rgblocks;
 			prev_rgd->ri.ri_data0 = prev_rgd->ri.ri_addr +
 				prev_rgd->ri.ri_length;
@@ -566,12 +563,9 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 	/* allocation information for the very last RG.                      */
 	/* ----------------------------------------------------------------- */
 	if (prev_rgd && !prev_rgd->ri.ri_data) {
-		uint32_t rgblocks, bitblocks;
+		uint32_t rgblocks;
 
-		rgblocks = block_bump;
-		rgblocks2bitblocks(sdp->bsize, &rgblocks, &bitblocks);
-
-		prev_rgd->ri.ri_length = bitblocks;
+		prev_rgd->ri.ri_length = rgblocks2bitblocks(sdp->bsize, block_bump, &rgblocks);
 		prev_rgd->ri.ri_data0 = prev_rgd->ri.ri_addr +
 			prev_rgd->ri.ri_length;
 		prev_rgd->ri.ri_data = rgblocks;
