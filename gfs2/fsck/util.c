@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <stdio.h>
+#include <termios.h>
 #include <libintl.h>
 #include <ctype.h>
 #define _(String) gettext(String)
@@ -87,6 +88,33 @@ void warm_fuzzy_stuff(uint64_t block)
 	}
 }
 
+char gfs2_getch(void)
+{
+	struct termios termattr, savetermattr;
+	char ch;
+	ssize_t size;
+
+	tcgetattr (STDIN_FILENO, &termattr);
+	savetermattr = termattr;
+	termattr.c_lflag &= ~(ICANON | IEXTEN | ISIG);
+	termattr.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+	termattr.c_cflag &= ~(CSIZE | PARENB);
+	termattr.c_cflag |= CS8;
+	termattr.c_oflag &= ~(OPOST);
+   	termattr.c_cc[VMIN] = 0;
+	termattr.c_cc[VTIME] = 0;
+
+	tcsetattr (STDIN_FILENO, TCSANOW, &termattr);
+	do {
+		size = read(STDIN_FILENO, &ch, 1);
+		if (size)
+			break;
+		usleep(50000);
+	} while (!size);
+
+	tcsetattr (STDIN_FILENO, TCSANOW, &savetermattr);
+	return ch;
+}
 
 char generic_interrupt(const char *caller, const char *where,
 		       const char *progress, const char *question,

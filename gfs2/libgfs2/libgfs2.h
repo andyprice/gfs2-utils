@@ -656,7 +656,6 @@ extern int print_level;
 
 #define stack log_debug("<backtrace> - %s()\n", __func__)
 
-extern char gfs2_getch(void);
 extern void increase_verbosity(void);
 extern void decrease_verbosity(void);
 extern void print_fsck_log(int priority, const char *file, int line,

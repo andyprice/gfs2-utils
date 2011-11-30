@@ -23,6 +23,7 @@
 #include <sys/time.h>
 #include <errno.h>
 #include <ctype.h>
+#include <termios.h>
 #include <libintl.h>
 #include <locale.h>
 #define _(String) gettext(String)
@@ -2057,24 +2058,51 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 	inode_put(&oq_ip);
 }
 
+static char gfs2_getch(void)
+{
+	struct termios termattr, savetermattr;
+	char ch;
+	ssize_t size;
+
+	tcgetattr (STDIN_FILENO, &termattr);
+	savetermattr = termattr;
+	termattr.c_lflag &= ~(ICANON | IEXTEN | ISIG);
+	termattr.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+	termattr.c_cflag &= ~(CSIZE | PARENB);
+	termattr.c_cflag |= CS8;
+	termattr.c_oflag &= ~(OPOST);
+   	termattr.c_cc[VMIN] = 0;
+	termattr.c_cc[VTIME] = 0;
+
+	tcsetattr (STDIN_FILENO, TCSANOW, &termattr);
+	do {
+		size = read(STDIN_FILENO, &ch, 1);
+		if (size)
+			break;
+		usleep(50000);
+	} while (!size);
+
+	tcsetattr (STDIN_FILENO, TCSANOW, &savetermattr);
+	return ch;
+}
 
 static char generic_interrupt(const char *caller, const char *where,
 		       const char *progress, const char *question,
 		       const char *answers)
 {
 	fd_set rfds;
-	struct timeval tv;
+	struct timeval stv;
 	char response;
 	int err, i;
 
 	FD_ZERO(&rfds);
 	FD_SET(STDIN_FILENO, &rfds);
 
-	tv.tv_sec = 0;
-	tv.tv_usec = 0;
+	stv.tv_sec = 0;
+	stv.tv_usec = 0;
 	/* Make sure there isn't extraneous input before asking the
 	 * user the question */
-	while((err = select(STDIN_FILENO + 1, &rfds, NULL, NULL, &tv))) {
+	while((err = select(STDIN_FILENO + 1, &rfds, NULL, NULL, &stv))) {
 		if(err < 0) {
 			log_debug("Error in select() on stdin\n");
 			break;
