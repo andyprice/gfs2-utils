@@ -670,7 +670,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 			fprintf(stderr, "Bad constants (1)\n");
 			exit(-1);
 		}
-		ret = read_sb(&sbd, 1);
+		ret = read_sb(&sbd);
 		if (ret < 0) {
 			slow = TRUE;
 			sbd.gfs1 = 0;
@@ -911,7 +911,7 @@ static int restore_data(int fd, gzFile *gzin_fd, int printblocksonly,
 			memcpy(&bufsb, savedata->buf, sizeof(bufsb));
 			gfs2_sb_in(&sbd.sd_sb, &dummy_bh);
 			sbd1 = (struct gfs_sb *)&sbd.sd_sb;
-			ret = check_sb(&sbd.sd_sb, 1);
+			ret = check_sb(&sbd.sd_sb);
 			if (ret < 0) {
 				fprintf(stderr,"Error: Invalid superblock data.\n");
 				return -1;

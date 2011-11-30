@@ -358,9 +358,11 @@ main_grow(int argc, char *argv[])
 			perror(_("Bad constants (1)"));
 			exit(EXIT_FAILURE);
 		}
-		if (read_sb(sdp, 0) < 0)
+		if (read_sb(sdp) < 0)
 			die( _("gfs: Error reading superblock.\n"));
-
+		if (sdp->gfs1) {
+			die( _("cannot grow gfs1 filesystem\n"));
+		}
 		if (fix_device_geometry(sdp)) {
 			fprintf(stderr, _("Device is too small (%llu bytes)\n"),
 				(unsigned long long)sdp->device.length << GFS2_BASIC_BLOCK_SHIFT);

@@ -1227,12 +1227,12 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 		log_crit(_("Bad constants (1)\n"));
 		exit(FSCK_ERROR);
 	}
-	ret = read_sb(sdp, 1);
+	ret = read_sb(sdp);
 	if (ret < 0) {
 		if (sb_repair(sdp) != 0)
 			return -1; /* unrepairable, so exit */
 		/* Now that we've tried to repair it, re-read it. */
-		ret = read_sb(sdp, 1);
+		ret = read_sb(sdp);
 		if (ret < 0)
 			return -1;
 	}

@@ -722,8 +722,8 @@ extern int gfs2_next_rg_freemeta(struct rgrp_tree *rgd, uint64_t *block,
 				 int first);
 
 /* super.c */
-extern int check_sb(struct gfs2_sb *sb, int allow_gfs);
-extern int read_sb(struct gfs2_sbd *sdp, int allow_gfs);
+extern int check_sb(struct gfs2_sb *sb);
+extern int read_sb(struct gfs2_sbd *sdp);
 extern int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane);
 extern int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane);
 extern int write_sb(struct gfs2_sbd *sdp);

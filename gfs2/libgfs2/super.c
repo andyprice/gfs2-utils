@@ -13,7 +13,6 @@
 
 /**
  * check_sb - Check superblock
- * @sdp: the filesystem
  * @sb: The superblock
  *
  * Checks the version code of the FS is one that we understand how to
@@ -22,25 +21,17 @@
  *
  * Returns: -1 on failure, 1 if this is gfs (gfs1), 2 if this is gfs2
  */
-int check_sb(struct gfs2_sb *sb, int allow_gfs)
+int check_sb(struct gfs2_sb *sb)
 {
 	if (sb->sb_header.mh_magic != GFS2_MAGIC ||
 	    sb->sb_header.mh_type != GFS2_METATYPE_SB) {
-		log_crit("Either the super block is corrupted, or this "
-				 "is not a GFS2 filesystem\n");
-		log_crit("Header magic: %X Header Type: %X\n",
-				  sb->sb_header.mh_magic,
-				  sb->sb_header.mh_type);
-		return -EINVAL;
+		errno = -EIO;
+		return -1;
 	}
 	if (sb->sb_fs_format == GFS_FORMAT_FS &&
 	    sb->sb_header.mh_format == GFS_FORMAT_SB &&
 	    sb->sb_multihost_format == GFS_FORMAT_MULTI) {
-		if (allow_gfs)
-			return 1;
-
-		log_crit("Old gfs1 file system detected.\n");
-		return -EINVAL;
+		return 1;
 	}
 	return 2;
 }
@@ -54,12 +45,10 @@ int check_sb(struct gfs2_sb *sb, int allow_gfs)
  * initializes various constants maintained in the super
  * block
  *
- * allow_gfs - passed in as 1 if we're allowed to accept gfs1 file systems
- *
  * Returns: 0 on success, -1 on failure
  * sdp->gfs1 will be set if this is gfs (gfs1)
  */
-int read_sb(struct gfs2_sbd *sdp, int allow_gfs)
+int read_sb(struct gfs2_sbd *sdp)
 {
 	struct gfs2_buffer_head *bh;
 	uint64_t space = 0;
@@ -70,7 +59,7 @@ int read_sb(struct gfs2_sbd *sdp, int allow_gfs)
 	gfs2_sb_in(&sdp->sd_sb, bh);
 	brelse(bh);
 
-	ret = check_sb(&sdp->sd_sb, allow_gfs);
+	ret = check_sb(&sdp->sd_sb);
 	if (ret < 0)
 		return ret;
 	if (ret == 1)
