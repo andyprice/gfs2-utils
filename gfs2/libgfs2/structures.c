@@ -511,7 +511,7 @@ static int __gfs2_next_rg_meta(struct rgrp_tree *rgd, uint64_t *block,
 	int i;
 
 	if (!first && (*block < rgd->ri.ri_data0)) {
-		log_err("next_rg_meta:  Start block is outside rgrp bounds.\n");
+		fprintf(stderr, "next_rg_meta:  Start block is outside rgrp bounds.\n");
 		exit(1);
 	}
 	for (i = 0; i < length; i++){

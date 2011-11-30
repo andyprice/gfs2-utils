@@ -96,7 +96,7 @@ int read_sb(struct gfs2_sbd *sdp)
 		sdp->sd_heightsize[x] = space;
 	}
 	if (x > GFS2_MAX_META_HEIGHT){
-		log_err("Bad max metadata height.\n");
+		errno = E2BIG;
 		return -1;
 	}
 
@@ -111,7 +111,7 @@ int read_sb(struct gfs2_sbd *sdp)
 	}
 	sdp->sd_max_jheight = x;
 	if(sdp->sd_max_jheight > GFS2_MAX_META_HEIGHT) {
-		log_err("Bad max jheight.\n");
+		errno = E2BIG;
 		return -1;
 	}
 	sdp->fssize = lseek(sdp->device_fd, 0, SEEK_END) / sdp->sd_sb.sb_bsize;
