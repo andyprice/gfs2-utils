@@ -6,16 +6,17 @@
 #include "copyright.cf"
 
 /* main_grow */
-void main_grow(int argc, char *argv[]);
+extern void main_grow(int argc, char *argv[]);
+extern void debug_print_rgrps(struct gfs2_sbd *sdp, struct osi_root *rgtree);
 
 /* main_jadd */
-void main_jadd(int argc, char *argv[]);
+extern void main_jadd(int argc, char *argv[]);
 
 /* main_mkfs */
-void main_mkfs(int argc, char *argv[]);
+extern void main_mkfs(int argc, char *argv[]);
 
 /* main_shrink */
-void main_shrink(int argc, char *argv[]);
+extern void main_shrink(int argc, char *argv[]);
 
 /*
  * The following inode IOCTL macros and inode flags 

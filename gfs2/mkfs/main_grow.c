@@ -284,6 +284,24 @@ static void print_info(struct gfs2_sbd *sdp)
 		   (unsigned long long)fsgrowth / MB);
 }
 
+void debug_print_rgrps(struct gfs2_sbd *sdp, struct osi_root *rgtree)
+{
+	struct osi_node *n, *next;
+	struct rgrp_tree *rl;
+
+	if (sdp->debug) {
+		log_info("\n");
+
+		for (n = osi_first(rgtree); n; n = next) {
+			next = osi_next(n);
+			rl = (struct rgrp_tree *)n;
+			log_info("rg_o = %llu, rg_l = %llu\n",
+				 (unsigned long long)rl->start,
+				 (unsigned long long)rl->length);
+		}
+	}
+}
+
 /**
  * main_grow - do everything
  * @argc:
@@ -391,6 +409,7 @@ main_grow(int argc, char *argv[])
 			int old_rg_count;
 
 			compute_rgrp_layout(sdp, &sdp->rgtree, TRUE);
+			debug_print_rgrps(sdp, &sdp->rgtree);
 			print_info(sdp);
 			initialize_new_portion(sdp, &old_rg_count);
 			fix_rindex(sdp, rindex_fd, old_rg_count);

@@ -593,6 +593,24 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 	return 0;
 }
 
+static void debug_print_rgrps(struct gfs2_sbd *sdp, struct osi_root *rgtree)
+{
+	struct osi_node *n, *next;
+	struct rgrp_tree *rl;
+
+	if (sdp->debug) {
+		log_info("\n");
+
+		for (n = osi_first(rgtree); n; n = next) {
+			next = osi_next(n);
+			rl = (struct rgrp_tree *)n;
+			log_info("rg_o = %llu, rg_l = %llu\n",
+				 (unsigned long long)rl->start,
+				 (unsigned long long)rl->length);
+		}
+	}
+}
+
 /*
  * gfs2_rindex_calculate - calculate what the rindex should look like
  *                          in a perfect world (trust_lvl == open_minded)
@@ -643,6 +661,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 	}
 	/* Compute the default resource group layout as mkfs would have done */
 	compute_rgrp_layout(sdp, &sdp->rgcalc, TRUE);
+	debug_print_rgrps(sdp, &sdp->rgcalc);
 	build_rgrps(sdp, FALSE); /* FALSE = calc but don't write to disk. */
 	log_debug( _("fs_total_size = 0x%llx blocks.\n"),
 		  (unsigned long long)sdp->device.length);

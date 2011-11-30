@@ -629,6 +629,7 @@ void main_mkfs(int argc, char *argv[])
 	/* Compute the resource group layouts */
 
 	compute_rgrp_layout(sdp, &sdp->rgtree, rgsize_specified);
+	debug_print_rgrps(sdp, &sdp->rgtree);
 
 	/* Generate a random uuid */
 	get_random_bytes(uuid, sizeof(uuid));

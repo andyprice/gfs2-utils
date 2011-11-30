@@ -142,18 +142,6 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree,
 	}
 
 	sdp->rgrps = nrgrp;
-
-	if (sdp->debug) {
-		log_info("\n");
-
-		for (n = osi_first(rgtree); n; n = next) {
-			next = osi_next(n);
-			rl = (struct rgrp_tree *)n;
-			log_info("rg_o = %llu, rg_l = %llu\n",
-				 (unsigned long long)rl->start,
-				 (unsigned long long)rl->length);
-		}
-	}
 }
 
 /**
