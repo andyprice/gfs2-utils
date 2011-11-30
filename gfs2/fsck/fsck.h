@@ -124,6 +124,13 @@ extern void dirtree_delete(struct dir_info *b);
  * of pass1 and put somewhere else... */
 struct dir_info *dirtree_insert(uint64_t dblock);
 
+struct gfs2_options {
+	char *device;
+	unsigned int yes:1;
+	unsigned int no:1;
+	unsigned int query:1;
+};
+
 extern struct gfs2_options opts;
 extern struct gfs2_inode *lf_dip; /* Lost and found directory inode */
 extern struct gfs2_bmap *bl;

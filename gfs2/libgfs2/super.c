@@ -28,7 +28,7 @@ int check_sb(struct gfs2_sb *sb, int allow_gfs)
 	    sb->sb_header.mh_type != GFS2_METATYPE_SB) {
 		log_crit("Either the super block is corrupted, or this "
 				 "is not a GFS2 filesystem\n");
-		log_debug("Header magic: %X Header Type: %X\n",
+		log_crit("Header magic: %X Header Type: %X\n",
 				  sb->sb_header.mh_magic,
 				  sb->sb_header.mh_type);
 		return -EINVAL;

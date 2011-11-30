@@ -129,38 +129,34 @@ int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 				log_info("\n");
 				prevcount = 0;
 			}
-			print_fsck_log(MSG_DEBUG, caller, fline,
-				       _("%s inode found at block "
-					 "(0x%llx): marking as '%s'\n"),
-				       btype, (unsigned long long)
-				       ip->i_di.di_num.no_addr,
-				       block_type_string(mark));
+			printf( _("(%s:%d) %s inode found at block "
+				  "(0x%llx): marking as '%s'\n"), caller, fline,
+			       btype,
+			       (unsigned long long)ip->i_di.di_num.no_addr,
+			       block_type_string(mark));
+
 		} else if (mark == gfs2_bad_block || mark == gfs2_meta_inval) {
 			if (prevcount) {
 				log_info("\n");
 				prevcount = 0;
 			}
-			print_fsck_log(MSG_DEBUG, caller, fline,
-				       _("inode (0x%llx) references "
-					 "%s block (0x%llx): "
-					 "marking as '%s'\n"),
-				       (unsigned long long)
-				       ip->i_di.di_num.no_addr,
-				       btype, (unsigned long long)bblock,
-				       block_type_string(mark));
+			printf( _("(%s:%d) inode (0x%llx) references %s block"
+				  " (0x%llx): marking as '%s'\n"),
+			       caller, fline,
+			       (unsigned long long)ip->i_di.di_num.no_addr,
+			       btype, (unsigned long long)bblock,
+			       block_type_string(mark));
 		} else {
 			if (prevcount) {
 				log_info("\n");
 				prevcount = 0;
 			}
-			print_fsck_log(MSG_DEBUG, caller, fline,
-				       _("inode (0x%llx) references "
-					 "%s block (0x%llx): "
-					 "marking as '%s'\n"),
-				       (unsigned long long)
-				       ip->i_di.di_num.no_addr, btype,
-				       (unsigned long long)bblock,
-				       block_type_string(mark));
+			printf( _("(%s:%d) inode (0x%llx) references %s block"
+				  " (0x%llx): marking as '%s'\n"),
+			       caller, fline,
+			       (unsigned long long)ip->i_di.di_num.no_addr,
+			       btype, (unsigned long long)bblock,
+			       block_type_string(mark));
 		}
 		prev_ino_addr = ip->i_di.di_num.no_addr;
 		prev_mark = mark;

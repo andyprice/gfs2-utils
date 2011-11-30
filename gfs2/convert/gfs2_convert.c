@@ -139,6 +139,13 @@ struct blocklist {
 	char *ptrbuf;
 };
 
+struct gfs2_options {
+	char *device;
+	unsigned int yes:1;
+	unsigned int no:1;
+	unsigned int query:1;
+};
+
 struct gfs1_sb  raw_gfs1_ondisk_sb;
 struct gfs2_sbd sb2;
 char device[256];
