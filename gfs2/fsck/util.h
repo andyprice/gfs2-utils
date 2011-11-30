@@ -180,4 +180,8 @@ extern void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il);
 extern int gfs2_blockmap_set(struct gfs2_bmap *il, uint64_t block,
 			     enum gfs2_mark_block mark);
 extern int set_ip_blockmap(struct gfs2_inode *ip, int instree);
+extern char generic_interrupt(const char *caller, const char *where,
+                       const char *progress, const char *question,
+                       const char *answers);
+
 #endif /* __UTIL_H__ */

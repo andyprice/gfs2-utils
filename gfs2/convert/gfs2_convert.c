@@ -2057,6 +2057,54 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 	inode_put(&oq_ip);
 }
 
+
+static char generic_interrupt(const char *caller, const char *where,
+		       const char *progress, const char *question,
+		       const char *answers)
+{
+	fd_set rfds;
+	struct timeval tv;
+	char response;
+	int err, i;
+
+	FD_ZERO(&rfds);
+	FD_SET(STDIN_FILENO, &rfds);
+
+	tv.tv_sec = 0;
+	tv.tv_usec = 0;
+	/* Make sure there isn't extraneous input before asking the
+	 * user the question */
+	while((err = select(STDIN_FILENO + 1, &rfds, NULL, NULL, &tv))) {
+		if(err < 0) {
+			log_debug("Error in select() on stdin\n");
+			break;
+		}
+		if(read(STDIN_FILENO, &response, sizeof(char)) < 0) {
+			log_debug("Error in read() on stdin\n");
+			break;
+		}
+	}
+	while (TRUE) {
+		printf("\n%s interrupted during %s:  ", caller, where);
+		if (progress)
+			printf("%s.\n", progress);
+		printf("%s", question);
+
+		/* Make sure query is printed out */
+		fflush(NULL);
+		response = gfs2_getch();
+		printf("\n");
+		fflush(NULL);
+		if (strchr(answers, response))
+			break;
+		printf("Bad response, please type ");
+		for (i = 0; i < strlen(answers) - 1; i++)
+			printf("'%c', ", answers[i]);
+		printf(" or '%c'.\n", answers[i]);
+	}
+	return response;
+}
+
 static int __attribute__((format(printf, 3, 4))) gfs2_query(int *setonabort,
                            struct gfs2_options *opts, const char *format, ...)
 {

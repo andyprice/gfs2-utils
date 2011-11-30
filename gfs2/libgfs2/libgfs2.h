@@ -662,9 +662,6 @@ extern void decrease_verbosity(void);
 extern void print_fsck_log(int priority, const char *file, int line,
 			   const char *format, ...)
 	__attribute__((format(printf,4,5)));
-extern char generic_interrupt(const char *caller, const char *where,
-			      const char *progress, const char *question,
-			      const char *answers);
 /* misc.c */
 
 extern int compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
