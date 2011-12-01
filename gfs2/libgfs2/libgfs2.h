@@ -6,9 +6,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <errno.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <linux/types.h>
@@ -143,10 +140,6 @@ struct gfs2_inode {
 	struct gfs2_sbd *i_sbd;
 };
 
-#define BUF_HASH_SHIFT       (13)    /* # hash buckets = 8K */
-#define BUF_HASH_SIZE        (1 << BUF_HASH_SHIFT)
-#define BUF_HASH_MASK        (BUF_HASH_SIZE - 1)
-
 /* FIXME not sure that i want to keep a record of the inodes or the
  * contents of them, or both ... if I need to write back to them, it
  * would be easier to hold the inode as well  */
@@ -274,10 +267,6 @@ struct metapath {
 #define GFS2_MIN_RGSIZE             (32)
 /* Look at this!  Why can't we go bigger than 2GB? */
 #define GFS2_MAX_RGSIZE             (2048)
-
-#define DATA (1)
-#define META (2)
-#define DINODE (3)
 
 /* bitmap.c */
 struct gfs2_bmap {

@@ -14,6 +14,10 @@
 #include <linux/types.h>
 #include "libgfs2.h"
 
+#define DATA (1)
+#define META (2)
+#define DINODE (3)
+
 static __inline__ uint64_t *metapointer(struct gfs2_buffer_head *bh,
 					unsigned int height,
 					struct metapath *mp)
