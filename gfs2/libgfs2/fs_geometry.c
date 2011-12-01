@@ -85,9 +85,6 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree,
 	sdp->new_rgrps = 0;
 	dev = &sdp->device;
 
-	/* Reserve space for the superblock */
-	dev->start += sdp->sb_addr + 1;
-
 	/* If this is a new file system, compute the length and number */
 	/* of rgs based on the size of the device.                     */
 	/* If we have existing RGs (i.e. gfs2_grow) find the last one. */
@@ -128,7 +125,7 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree,
 			rl = rgrp_insert(rgtree, rgaddr);
 			rl->length = rglength;
 		} else {
-			rgaddr = dev->start;
+			rgaddr = sdp->sb_addr + 1;
 			rl = rgrp_insert(rgtree, rgaddr);
 			rl->length = dev->length -
 				(nrgrp - 1) * (dev->length / nrgrp);

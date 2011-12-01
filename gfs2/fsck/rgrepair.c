@@ -638,15 +638,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 	*num_rgs = sdp->md.riinode->i_di.di_size / sizeof(struct gfs2_rindex);
 
 	sdp->rgcalc.osi_node = NULL;
-	if (device_geometry(sdp)) {
-		fprintf(stderr, _("Geometry error\n"));
-		exit(-1);
-	}
-	if (fix_device_geometry(sdp)) {
-		fprintf(stderr, _("Device is too small (%llu bytes)\n"),
-			(unsigned long long)sdp->device.length << GFS2_BASIC_BLOCK_SHIFT);
-		exit(-1);
-	}
+	fix_device_geometry(sdp);
 
 	/* Try all possible rgrp sizes: 2048, 1024, 512, 256, 128, 64, 32 */
 	for (sdp->rgsize = GFS2_DEFAULT_RGSIZE; sdp->rgsize >= 32;

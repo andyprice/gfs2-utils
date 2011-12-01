@@ -654,15 +654,11 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	if (!sbd.gfs1)
 		sbd.bsize = BUFSIZE;
 	if (!slow) {
-		if (device_geometry(&sbd)) {
-			fprintf(stderr, "Geometery error\n");
+		if (lgfs2_get_dev_info(sbd.device_fd, &sbd.dinfo)) {
+			perror(sbd.device_name);
 			exit(-1);
 		}
-		if (fix_device_geometry(&sbd)) {
-			fprintf(stderr, "Device is too small (%llu bytes)\n",
-				(unsigned long long)sbd.device.length << GFS2_BASIC_BLOCK_SHIFT);
-			exit(-1);
-		}
+		fix_device_geometry(&sbd);
 		sbd.rgtree.osi_node = NULL;
 		if (!sbd.gfs1)
 			sbd.sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;

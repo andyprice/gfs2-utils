@@ -336,16 +336,16 @@ static void verify_bsize(struct gfs2_sbd *sdp)
 		die( _("block size must be a power of two between 512 and "
 		       "%d\n"), getpagesize());
 
-	if (sdp->bsize < sdp->logical_block_size) {
+	if (sdp->bsize < sdp->dinfo.logical_block_size) {
 		die( _("Error: Block size %d is less than minimum logical "
 		       "block size (%d).\n"), sdp->bsize,
-		     sdp->logical_block_size);
+		     sdp->dinfo.logical_block_size);
 	}
 
-	if (sdp->bsize < sdp->physical_block_size) {
+	if (sdp->bsize < sdp->dinfo.physical_block_size) {
 		printf( _("WARNING: Block size %d is inefficient because it "
 			  "is less than the physical block size (%d).\n"),
-			  sdp->bsize, sdp->physical_block_size);
+			  sdp->bsize, sdp->dinfo.physical_block_size);
 		if (sdp->override)
 			return;
 
@@ -528,9 +528,7 @@ void main_mkfs(int argc, char *argv[])
 	struct gfs2_sbd sbd, *sdp = &sbd;
 	int error;
 	int rgsize_specified = 0;
-	uint64_t real_device_size;
 	unsigned char uuid[16];
-	struct stat st_buf;
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	sdp->bsize = -1;
@@ -555,7 +553,7 @@ void main_mkfs(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (fstat(sdp->device_fd, &st_buf) < 0) {
+	if (lgfs2_get_dev_info(sdp->device_fd, &sdp->dinfo) < 0) {
 		perror(sdp->device_name);
 		exit(EXIT_FAILURE);
 	}
@@ -566,24 +564,19 @@ void main_mkfs(int argc, char *argv[])
 		are_you_sure();
 	}
 
-	if (!S_ISREG(st_buf.st_mode) && device_topology(sdp)) {
-		perror(_("Device topology error\n"));
-		exit(EXIT_FAILURE);
-	}
-
 	if (sdp->bsize == -1) {
-		if (S_ISREG(st_buf.st_mode))
+		if (S_ISREG(sdp->dinfo.stat.st_mode))
 			sdp->bsize = GFS2_DEFAULT_BSIZE;
 		/* See if optimal_io_size (the biggest I/O we can submit
 		   without incurring a penalty) is a suitable block size. */
-		else if (sdp->optimal_io_size <= getpagesize() &&
-		    sdp->optimal_io_size >= sdp->minimum_io_size)
-			sdp->bsize = sdp->optimal_io_size;
+		else if (sdp->dinfo.io_optimal_size <= getpagesize() &&
+		    sdp->dinfo.io_optimal_size >= sdp->dinfo.io_min_size)
+			sdp->bsize = sdp->dinfo.io_optimal_size;
 		/* See if physical_block_size (the smallest unit we can write
 		   without incurring read-modify-write penalty) is suitable. */
-		else if (sdp->physical_block_size <= getpagesize() &&
-			 sdp->physical_block_size >= GFS2_DEFAULT_BSIZE)
-			sdp->bsize = sdp->physical_block_size;
+		else if (sdp->dinfo.physical_block_size <= getpagesize() &&
+			 sdp->dinfo.physical_block_size >= GFS2_DEFAULT_BSIZE)
+			sdp->bsize = sdp->dinfo.physical_block_size;
 		else
 			sdp->bsize = GFS2_DEFAULT_BSIZE;
 
@@ -597,13 +590,6 @@ void main_mkfs(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	/* Get the device geometry */
-
-	device_size(sdp->device_fd, &real_device_size);
-	if (device_geometry(sdp)) {
-		perror(_("Device geometry error"));
-		exit(EXIT_FAILURE);
-	}
 	/* Convert optional block-count to basic blocks */
 	if (sdp->orig_fssize) {
 		sdp->orig_fssize *= sdp->bsize;
@@ -612,18 +598,13 @@ void main_mkfs(int argc, char *argv[])
 			fprintf(stderr, _("%s: Specified block count is bigger "
 				"than the actual device.\n"), argv[0]);
 			die( _("Device Size is %.2f GB (%llu blocks)\n"),
-			       real_device_size / ((float)(1 << 30)),
-			       (unsigned long long)real_device_size / sdp->bsize);
+			       sdp->dinfo.size / ((float)(1 << 30)),
+			       (unsigned long long)sdp->dinfo.size / sdp->bsize);
 		}
 		sdp->device.length = sdp->orig_fssize;
 	}
-	if (fix_device_geometry(sdp)) {
-		fprintf(stderr, _("Device is too small (%llu bytes)\n"),
-			(unsigned long long)sdp->device.length << GFS2_BASIC_BLOCK_SHIFT);
-		exit(EXIT_FAILURE);
-	}
-
-	if (!S_ISREG(st_buf.st_mode) && discard)
+	fix_device_geometry(sdp);
+	if (!S_ISREG(sdp->dinfo.stat.st_mode) && discard)
 		discard_blocks(sdp);
 
 	/* Compute the resource group layouts */
@@ -698,5 +679,5 @@ void main_mkfs(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	print_results(sdp, real_device_size, uuid);
+	print_results(sdp, sdp->dinfo.size, uuid);
 }

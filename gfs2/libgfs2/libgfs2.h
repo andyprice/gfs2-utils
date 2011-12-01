@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <linux/types.h>
 #include <linux/limits.h>
 #include <endian.h>
@@ -74,6 +75,20 @@ __BEGIN_DECLS
 #define BLOCKMAP_BYTE_OFFSET4(x) ((x & 0x0000000000000001) << 2)
 #define BLOCKMAP_MASK4 (0xf)
 
+
+struct lgfs2_dev_info {
+	struct stat stat;
+	unsigned readonly:1;
+	long ra_pages;
+	int soft_block_size;
+	int logical_block_size;
+	unsigned int physical_block_size;
+	unsigned int io_min_size;
+	unsigned int io_optimal_size;
+	int io_align_offset;
+	uint64_t size;
+};
+
 static __inline__ __attribute__((noreturn, format (printf, 1, 2)))
 void die(const char *fmt, ...)
 {
@@ -86,9 +101,7 @@ void die(const char *fmt, ...)
 }
 
 struct device {
-	uint64_t start;
 	uint64_t length;
-	uint32_t rgf_flags;
 };
 
 struct gfs2_bitmap
@@ -208,8 +221,8 @@ struct gfs2_sbd {
 
 	int64_t time;
 
+	struct lgfs2_dev_info dinfo;
 	struct device device;
-	uint64_t device_size;
 
 	int device_fd;
 	int path_fd;
@@ -238,12 +251,6 @@ struct gfs2_sbd {
 	char metafs_path[PATH_MAX]; /* where metafs is mounted */
 	struct special_blocks eattr_blocks;
 
-	/* device topology information: */
-	uint32_t logical_block_size;
-	uint32_t minimum_io_size;
-	uint32_t optimal_io_size;
-	uint32_t alignment_offset;
-	uint32_t physical_block_size;
 	uint64_t rg_one_length;
 	uint64_t rg_length;
 	int gfs1;
@@ -311,9 +318,8 @@ extern int brelse(struct gfs2_buffer_head *bh);
 #define bcommit(bl) do { __bcommit(bl, __LINE__, __FUNCTION__); } while(0)
 
 /* device_geometry.c */
-extern int device_topology(struct gfs2_sbd *sdp);
-extern int device_geometry(struct gfs2_sbd *sdp);
-extern int fix_device_geometry(struct gfs2_sbd *sdp);
+extern int lgfs2_get_dev_info(int fd, struct lgfs2_dev_info *i);
+extern void fix_device_geometry(struct gfs2_sbd *sdp);
 
 /* fs_bits.c */
 #define BFITNOENT (0xFFFFFFFF)
@@ -414,16 +420,6 @@ extern void unstuff_dinode(struct gfs2_inode *ip);
 extern unsigned int calc_tree_height(struct gfs2_inode *ip, uint64_t size);
 extern int write_journal(struct gfs2_sbd *sdp, unsigned int j,
 			 unsigned int blocks);
-
-/**
- * device_size - figure out a device's size
- * @fd: the file descriptor of a device
- * @bytes: the number of bytes the device holds
- *
- * Returns: -1 on error (with errno set), 0 on success (with @bytes set)
- */
-
-extern int device_size(int fd, uint64_t *bytes);
 
 /* gfs1.c - GFS1 backward compatibility structures and functions */
 

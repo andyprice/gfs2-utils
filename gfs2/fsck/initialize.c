@@ -1091,7 +1091,7 @@ static int peruse_metadata(struct gfs2_sbd *sdp, uint64_t startblock)
  */
 static int sb_repair(struct gfs2_sbd *sdp)
 {
-	uint64_t real_device_size, half;
+	uint64_t half;
 	uint32_t known_bsize = 0;
 	unsigned char uuid[16];
 	int error = 0;
@@ -1109,8 +1109,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 		log_warn(_("Block size not apparent; checking elsewhere.\n"));
 		/* First, figure out the device size.  We need that so we can
 		   find a suitable start point to determine what's what. */
-		device_size(sdp->device_fd, &real_device_size);
-		half = real_device_size / 2; /* in bytes */
+		half = sdp->dinfo.size / 2; /* in bytes */
 		half /= sdp->bsize;
 		/* Start looking halfway through the device for gfs2
 		   structures.  If there aren't any at all, forget it. */
@@ -1464,6 +1463,11 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 			goto mount_fail;
 
 		was_mounted_ro = 1;
+	}
+
+	if (lgfs2_get_dev_info(sdp->device_fd, &sdp->dinfo)) {
+		perror(sdp->device_name);
+		return FSCK_ERROR;
 	}
 
 	/* read in sb from disk */

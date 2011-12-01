@@ -344,8 +344,8 @@ main_grow(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		if (device_geometry(sdp)) {
-			perror(_("Device geometry error"));
+		if (lgfs2_get_dev_info(sdp->device_fd, &sdp->dinfo) < 0) {
+			perror(sdp->device_name);
 			exit(EXIT_FAILURE);
 		}
 		log_info( _("Initializing lists...\n"));
@@ -363,12 +363,7 @@ main_grow(int argc, char *argv[])
 		if (sdp->gfs1) {
 			die( _("cannot grow gfs1 filesystem\n"));
 		}
-		if (fix_device_geometry(sdp)) {
-			fprintf(stderr, _("Device is too small (%llu bytes)\n"),
-				(unsigned long long)sdp->device.length << GFS2_BASIC_BLOCK_SHIFT);
-			exit(EXIT_FAILURE);
-		}
-
+		fix_device_geometry(sdp);
 		if (mount_gfs2_meta(sdp)) {
 			perror("GFS2 metafs");
 			exit(EXIT_FAILURE);

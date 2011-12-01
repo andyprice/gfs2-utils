@@ -1744,6 +1744,10 @@ static void read_superblock(int fd)
 	sbd.bsize = sbd.sd_sb.sb_bsize;
 	if (!sbd.bsize)
 		sbd.bsize = GFS2_DEFAULT_BSIZE;
+	if (lgfs2_get_dev_info(fd, &sbd.dinfo)) {
+		perror(sbd.device_name);
+		exit(-1);
+	}
 	compute_constants(&sbd);
 	if (sbd.gfs1 || (sbd.sd_sb.sb_header.mh_magic == GFS2_MAGIC &&
 		     sbd.sd_sb.sb_header.mh_type == GFS2_METATYPE_SB))
@@ -1751,12 +1755,7 @@ static void read_superblock(int fd)
 	else {
 		block = starting_blk = 0;
 	}
-	device_geometry(&sbd);
-	if (fix_device_geometry(&sbd)) {
-		fprintf(stderr, "Device is too small (%llu bytes)\n",
-			(unsigned long long)sbd.device.length << GFS2_BASIC_BLOCK_SHIFT);
-		exit(-1);
-	}
+	fix_device_geometry(&sbd);
 	if(sbd.gfs1) {
 		sbd.sd_inptrs = (sbd.bsize - sizeof(struct gfs_indirect)) /
 			sizeof(uint64_t);
