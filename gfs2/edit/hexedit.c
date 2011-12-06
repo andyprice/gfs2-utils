@@ -42,6 +42,7 @@ struct gfs2_log_descriptor *lld;
 int pgnum;
 int details = 0;
 long int gziplevel = 9;
+static int termcols;
 
 int display(int identify_only);
 
@@ -742,50 +743,14 @@ static int gfs2_qc_assignval(struct gfs2_quota_change *qc,
 	return -1;
 }
 
-/* ------------------------------------------------------------------------ */
-/* UpdateSize - screen size changed, so update it                           */
-/* ------------------------------------------------------------------------ */
-static void UpdateSize(int sig)
-{
-	static char term_buffer[2048];
-	int rc;
-
-	termlines = 30;
-	termtype = getenv("TERM");
-	if (termtype == NULL)
-		return;
-	rc=tgetent(term_buffer,termtype);
-	if (rc>=0) {
-		termlines = tgetnum((char *)"li");
-		if (termlines < 10)
-			termlines = 30;
-		termcols = tgetnum((char *)"co");
-		if (termcols < 80)
-			termcols = 80;
-	}
-	else
-		perror("Error: tgetent failed.");
-	termlines--; /* last line is number of lines -1 */
-	display(FALSE);
-	signal(SIGWINCH, UpdateSize);
-}
-
 /* ------------------------------------------------------------------------- */
 /* erase - clear the screen */
 /* ------------------------------------------------------------------------- */
 static void Erase(void)
 {
-	int i;
-	char spaces[256];
-
-	memset(spaces, ' ', sizeof(spaces));
-	spaces[termcols] = '\0';
-	for (i = 0; i < termlines; i++) {
-		move(i, 0);
-		printw(spaces);
-	}
-	/*clear(); doesn't set background correctly */
-	/*erase();*/
+	bkgd(A_NORMAL|COLOR_PAIR(COLOR_NORMAL));
+	/* clear();*/ /* doesn't set background correctly */
+	erase();
 	/*bkgd(bg);*/
 }
 
@@ -2708,10 +2673,9 @@ static void interactive_mode(void)
 		eol(0);
 		exit(-1);
 	}
-
+	getmaxyx(stdscr, termlines, termcols);
+	termlines--;
 	/* Do our initial screen stuff: */
-	signal(SIGWINCH, UpdateSize); /* handle the terminal resize signal */
-	UpdateSize(0); /* update screen size based on terminal settings */
 	clear(); /* don't use Erase */
 	start_color();
 	noecho();
@@ -2934,10 +2898,14 @@ static void interactive_mode(void)
 		/* --------------------------------------------------------- */
 		/* enter key - change a value */
 		/* --------------------------------------------------------- */
-		case(KEY_ENTER):
+		case KEY_ENTER:
 		case('\n'):
 		case('\r'):
 			editing = !editing;
+			break;
+		case KEY_RESIZE:
+			getmaxyx(stdscr, termlines, termcols);
+			termlines--;
 			break;
 		default:
 			move(termlines - 1, 0);

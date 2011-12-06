@@ -56,7 +56,6 @@ int start_row[DMODES], end_row[DMODES], lines_per_row[DMODES];
 struct gfs_sb *sbd1;
 int gfs2_struct_type;
 unsigned int offset;
-int termcols = 80;
 struct indirect_info masterdir;
 struct gfs2_inum gfs1_quota_di;
 int print_entry_ndx;
