@@ -456,9 +456,8 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 	error = gfs2_find_jhead(ip, &head);
 	if (error) {
 		if (opts.no) {
-			log_err( _("Journal #%d (\"journal%d\") is corrupt.\n"
-				   "Not fixing it due to the -n option.\n"),
-				j+1, j);
+			log_err( _("Journal #%d (\"journal%d\") is corrupt\n"),j+1, j);
+			log_err( _("Not fixing it due to the -n option.\n"));
 			goto out;
 		}
 		if (!preen_is_safe(sdp, preen, force_check)) {
@@ -501,13 +500,12 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 		return 0;
 	}
 	if (opts.no) {
-		log_err(_("Journal #%d (\"journal%d\") is dirty; not replaying"
-			  " due to the -n option.\n"),
-			j+1, j);
+		log_err(_("Journal #%d (\"journal%d\") is dirty\n"),j+1, j);
+		log_err(_("not replaying due to the -n option.\n"));
 		goto out;
 	}
 	if (!preen_is_safe(sdp, preen, force_check)) {
-		log_err( _("Journal #%d (\"journal%d\") is dirty.\n"), j+1, j);
+		log_err( _("Journal #%d (\"journal%d\") is dirty\n"), j+1, j);
 		log_err( _("I'm not replaying it because it may be unsafe:\n"
 			   "Locking protocol is not lock_nolock and "
 			   "the -a or -p option was specified.\n"));
