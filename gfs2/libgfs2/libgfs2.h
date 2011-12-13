@@ -285,12 +285,7 @@ extern void gfs2_special_clear(struct special_blocks *blocklist,
 			       uint64_t block);
 
 /* buf.c */
-extern struct gfs2_buffer_head *__bget_generic(struct gfs2_sbd *sdp,
-					       uint64_t num,
-					       int read_disk, int line,
-					       const char *caller);
-extern struct gfs2_buffer_head *__bget(struct gfs2_sbd *sdp, uint64_t num,
-				       int line, const char *caller);
+extern struct gfs2_buffer_head *bget(struct gfs2_sbd *sdp, uint64_t num);
 extern struct gfs2_buffer_head *__bread(struct gfs2_sbd *sdp, uint64_t num,
 					int line, const char *caller);
 extern int bwrite(struct gfs2_buffer_head *bh);
@@ -298,13 +293,7 @@ extern int brelse(struct gfs2_buffer_head *bh);
 
 #define bmodified(bh) do { bh->b_modified = 1; } while(0)
 
-#define bget_generic(bl, num, find, read) __bget_generic(bl, num, find, read, \
-							 __LINE__, \
-							 __FUNCTION__)
-#define bget(bl, num) __bget(bl, num, __LINE__, __FUNCTION__)
 #define bread(bl, num) __bread(bl, num, __LINE__, __FUNCTION__)
-#define bsync(bl) do { __bsync(bl, __LINE__, __FUNCTION__); } while(0)
-#define bcommit(bl) do { __bcommit(bl, __LINE__, __FUNCTION__); } while(0)
 
 /* device_geometry.c */
 extern int lgfs2_get_dev_info(int fd, struct lgfs2_dev_info *i);

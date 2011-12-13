@@ -14,9 +14,7 @@
 
 #include "libgfs2.h"
 
-struct gfs2_buffer_head *__bget_generic(struct gfs2_sbd *sdp, uint64_t num,
-					int read_disk,
-					int line, const char *caller)
+struct gfs2_buffer_head *bget(struct gfs2_sbd *sdp, uint64_t num)
 {
 	struct gfs2_buffer_head *bh;
 
@@ -27,37 +25,31 @@ struct gfs2_buffer_head *__bget_generic(struct gfs2_sbd *sdp, uint64_t num,
 	bh->b_blocknr = num;
 	bh->sdp = sdp;
 	bh->b_data = (char *)bh + sizeof(struct gfs2_buffer_head);
-	if (read_disk) {
-		if (lseek(sdp->device_fd, num * sdp->bsize, SEEK_SET) !=
-		    num * sdp->bsize) {
-			fprintf(stderr, "bad seek: %s from %s:%d: block "
-				"%llu (0x%llx)\n", strerror(errno),
-				caller, line, (unsigned long long)num,
-				(unsigned long long)num);
-			exit(-1);
-		}
-		if (read(sdp->device_fd, bh->b_data, sdp->bsize) < 0) {
-			fprintf(stderr, "bad read: %s from %s:%d: block "
-				"%llu (0x%llx)\n", strerror(errno),
-				caller, line, (unsigned long long)num,
-				(unsigned long long)num);
-			exit(-1);
-		}
-	}
-
 	return bh;
-}
-
-struct gfs2_buffer_head *__bget(struct gfs2_sbd *sdp, uint64_t num, int line,
-				const char *caller)
-{
-	return __bget_generic(sdp, num, FALSE, line, caller);
 }
 
 struct gfs2_buffer_head *__bread(struct gfs2_sbd *sdp, uint64_t num, int line,
 				 const char *caller)
 {
-	return __bget_generic(sdp, num, TRUE, line, caller);
+	struct gfs2_buffer_head *bh = bget(sdp, num);
+	if (bh == NULL)
+		return bh;
+	if (lseek(sdp->device_fd, num * sdp->bsize, SEEK_SET) !=
+	    num * sdp->bsize) {
+		fprintf(stderr, "bad seek: %s from %s:%d: block "
+			"%llu (0x%llx)\n", strerror(errno),
+			caller, line, (unsigned long long)num,
+			(unsigned long long)num);
+		exit(-1);
+	}
+	if (read(sdp->device_fd, bh->b_data, sdp->bsize) < 0) {
+		fprintf(stderr, "bad read: %s from %s:%d: block "
+			"%llu (0x%llx)\n", strerror(errno),
+			caller, line, (unsigned long long)num,
+			(unsigned long long)num);
+		exit(-1);
+	}
+	return bh;
 }
 
 int bwrite(struct gfs2_buffer_head *bh)
