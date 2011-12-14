@@ -136,8 +136,10 @@ static uint64_t blk_alloc_i(struct gfs2_sbd *sdp, unsigned int type)
 			break;
 	}
 
-	if (n == NULL)
-		die("out of space\n");
+	if (n == NULL) {
+		fprintf(stderr, "out of space\n");
+		exit(1);
+	}
 
 	ri = &rl->ri;
 	rg = &rl->rg;
@@ -155,15 +157,18 @@ static uint64_t blk_alloc_i(struct gfs2_sbd *sdp, unsigned int type)
 			}
 	}
 
-	die("allocation is broken (1): %"PRIu64" %u\n",
+	fprintf(stderr, "allocation is broken (1): %"PRIu64" %u\n",
 	    (uint64_t)rl->ri.ri_addr, rl->rg.rg_free);
+	exit(1);
 
 found:
-	if (bn >= ri->ri_bitbytes * GFS2_NBBY)
-		die("allocation is broken (2): bn: %u %u rgrp: %"PRIu64
+	if (bn >= ri->ri_bitbytes * GFS2_NBBY) {
+		fprintf(stderr, "allocation is broken (2): bn: %u %u rgrp: %"PRIu64
 		    " (0x%" PRIx64 ") Free:%u\n",
 		    bn, ri->ri_bitbytes * GFS2_NBBY, (uint64_t)rl->ri.ri_addr,
 		    (uint64_t)rl->ri.ri_addr, rl->rg.rg_free);
+		exit(1);
+	}
 
 	switch (type) {
 	case DATA:
@@ -175,7 +180,8 @@ found:
 		rg->rg_dinodes++;
 		break;
 	default:
-		die("bad state\n");
+		fprintf(stderr, "bad state\n");
+		exit(1);
 	}
 
 	bh->b_data[x] &= ~(0x03 << (GFS2_BIT_SIZE * y));
@@ -684,8 +690,10 @@ struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip, uint64_t lbn,
 		unstuff_dinode(ip);
 
 	block_map(ip, lbn, &new, &dbn, NULL, prealloc);
-	if (!dbn)
-		die("get_file_buf\n");
+	if (!dbn) {
+		fprintf(stderr, "get_file_buf\n");
+		exit(1);
+	}
 
 	if (!prealloc && new &&
 	    ip->i_di.di_size < (lbn + 1) << sdp->sd_sb.sb_bsize_shift) {
@@ -841,8 +849,10 @@ void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t lindex,
 		return gfs_get_leaf_nr(dip, lindex, leaf_out);
 	count = gfs2_readi(dip, (char *)&leaf_no, lindex * sizeof(uint64_t),
 			   sizeof(uint64_t));
-	if (count != sizeof(uint64_t))
-		die("gfs2_get_leaf_nr:  Bad internal read.\n");
+	if (count != sizeof(uint64_t)) {
+		fprintf(stderr, "gfs2_get_leaf_nr:  Bad internal read.\n");
+		exit(1);
+	}
 
 	*leaf_out = be64_to_cpu(leaf_no);
 }
@@ -859,8 +869,10 @@ void gfs2_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out)
 	leaf_no = cpu_to_be64(leaf_out);
 	count = gfs2_writei(dip, (char *)&leaf_no, inx * sizeof(uint64_t),
 			    sizeof(uint64_t));
-	if (count != sizeof(uint64_t))
-		die("gfs2_put_leaf_nr:  Bad internal write.\n");
+	if (count != sizeof(uint64_t)) {
+		fprintf(stderr, "gfs2_put_leaf_nr:  Bad internal write.\n");
+		exit(1);
+	}
 }
 
 static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
@@ -912,8 +924,10 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
 	else
 		count = gfs2_writei(dip, (char *)lp, start * sizeof(uint64_t),
 				    half_len * sizeof(uint64_t));
-	if (count != half_len * sizeof(uint64_t))
-		die("dir_split_leaf (2)\n");
+	if (count != half_len * sizeof(uint64_t)) {
+		fprintf(stderr, "dir_split_leaf (2)\n");
+		exit(1);
+	}
 
 	free(lp);
 
@@ -930,8 +944,10 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
 		    be32_to_cpu(dent->de_hash) < divider) {
 			name_len = be16_to_cpu(dent->de_name_len);
 
-			if (dirent_alloc(dip, nbh, name_len, &new))
-				die("dir_split_leaf (3)\n");
+			if (dirent_alloc(dip, nbh, name_len, &new)) {
+				fprintf(stderr, "dir_split_leaf (3)\n");
+				exit(1);
+			}
 
 			new->de_inum = dent->de_inum;
 			new->de_hash = dent->de_hash;
@@ -954,8 +970,10 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
 	} while (dent);
 
 	if (!moved) {
-		if (dirent_alloc(dip, nbh, 0, &new))
-			die("dir_split_leaf (4)\n");
+		if (dirent_alloc(dip, nbh, 0, &new)) {
+			fprintf(stderr, "dir_split_leaf (4)\n");
+			exit(1);
+		}
 		new->de_inum.no_formal_ino = 0;
 		/* Don't count the sentinel dirent as an entry */
 		dip->i_di.di_entries--;
@@ -993,8 +1011,10 @@ static void dir_double_exhash(struct gfs2_inode *dip)
 		count = gfs2_readi(dip, (char *)buf,
 			      block * sdp->sd_hash_bsize,
 			      sdp->sd_hash_bsize);
-		if (count != sdp->sd_hash_bsize)
-			die("dir_double_exhash (1)\n");
+		if (count != sdp->sd_hash_bsize) {
+			fprintf(stderr, "dir_double_exhash (1)\n");
+			exit(1);
+		}
 
 		from = buf;
 		to = (uint64_t *)((char *)buf + sdp->sd_hash_bsize);
@@ -1012,9 +1032,10 @@ static void dir_double_exhash(struct gfs2_inode *dip)
 			count = gfs2_writei(dip, (char *)buf +
 					    sdp->sd_hash_bsize,
 					    block * sdp->bsize, sdp->bsize);
-		if (count != sdp->bsize)
-			die("dir_double_exhash (2)\n");
-
+		if (count != sdp->bsize) {
+			fprintf(stderr, "dir_double_exhash (2)\n");
+			exit(1);
+		}
 	}
 
 	free(buf);

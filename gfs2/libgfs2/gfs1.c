@@ -403,8 +403,10 @@ void gfs_get_leaf_nr(struct gfs2_inode *dip, uint32_t lindex,
 
 	count = gfs2_readi(dip, (char *)&leaf_no, lindex * sizeof(uint64_t),
 			   sizeof(uint64_t));
-	if (count != sizeof(uint64_t))
-		die("gfs_get_leaf_nr:  Bad internal read.\n");
+	if (count != sizeof(uint64_t)) {
+		fprintf(stderr, "gfs_get_leaf_nr:  Bad internal read.\n");
+		exit(1);
+	}
 
 	*leaf_out = be64_to_cpu(leaf_no);
 }
@@ -417,6 +419,8 @@ void gfs_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out)
 	leaf_no = cpu_to_be64(leaf_out);
 	count = gfs1_writei(dip, (char *)&leaf_no, inx * sizeof(uint64_t),
 			   sizeof(uint64_t));
-	if (count != sizeof(uint64_t))
-		die("gfs_put_leaf_nr:  Bad internal write.\n");
+	if (count != sizeof(uint64_t)) {
+		fprintf(stderr, "gfs_put_leaf_nr:  Bad internal write.\n");
+		exit(1);
+	}
 }
