@@ -1,6 +1,7 @@
 #ifndef __GFS2_QUOTA_DOT_H__
 #define __GFS2_QUOTA_DOT_H__
 
+#include <stdarg.h>
 #include "libgfs2.h"
 #include <linux/gfs2_ondisk.h>
 
@@ -78,5 +79,17 @@ void do_quota_init(struct gfs2_sbd *sdp, commandline_t *comline);
 
 uint32_t name_to_id(int user, char *name, int numbers);
 char *id_to_name(int user, uint32_t id, int numbers);
+
+/* die() used to be in libgfs2.h */
+static __inline__ __attribute__((noreturn, format (printf, 1, 2)))
+void die(const char *fmt, ...)
+{
+	va_list ap;
+	fprintf(stderr, "%s: ", __FILE__);
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	exit(-1);
+}
 
 #endif /* __GFS2_QUOTA_DOT_H__ */

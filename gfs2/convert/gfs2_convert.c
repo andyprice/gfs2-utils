@@ -1847,8 +1847,10 @@ static void update_inode_file(struct gfs2_sbd *sdp)
 	
 	buf = cpu_to_be64(sdp->md.next_inum);
 	count = gfs2_writei(ip, &buf, 0, sizeof(uint64_t));
-	if (count != sizeof(uint64_t))
-		die("update_inode_file\n");
+	if (count != sizeof(uint64_t)) {
+		fprintf(stderr, "update_inode_file\n");
+		exit(1);
+	}
 	
 	log_debug(_("\nNext Inum: %llu\n"), (unsigned long long)sdp->md.next_inum);
 }/* update_inode_file */
@@ -1869,8 +1871,10 @@ static void write_statfs_file(struct gfs2_sbd *sdp)
 
 	gfs2_statfs_change_out(&sc, buf);
 	count = gfs2_writei(ip, buf, 0, sizeof(struct gfs2_statfs_change));
-	if (count != sizeof(struct gfs2_statfs_change))
-		die("do_init (2)\n");
+	if (count != sizeof(struct gfs2_statfs_change)) {
+		fprintf(stderr, "do_init (2)\n");
+		exit(1);
+	}
 }/* write_statfs_file */
 
 /* ------------------------------------------------------------------------- */
@@ -2043,8 +2047,10 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 	int err;
 
 	err = gfs2_lookupi(sdp->master_dir, "quota", 5, &nq_ip);
-	if (err)
-		die(_("Couldn't lookup new quota file: %d\n"), err);
+	if (err) {
+		fprintf(stderr, _("Couldn't lookup new quota file: %d\n"), err);
+		exit(1);
+	}
 
 	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_quota_di);
 	oq_ip = inode_read(sdp, inum.no_addr);

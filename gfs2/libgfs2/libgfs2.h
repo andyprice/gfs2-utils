@@ -3,7 +3,6 @@
 
 #include <features.h>
 #include <inttypes.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -85,17 +84,6 @@ struct lgfs2_dev_info {
 	int io_align_offset;
 	uint64_t size;
 };
-
-static __inline__ __attribute__((noreturn, format (printf, 1, 2)))
-void die(const char *fmt, ...)
-{
-	va_list ap;
-	fprintf(stderr, "%s: ", __FILE__);
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	exit(-1);
-}
 
 struct device {
 	uint64_t length;

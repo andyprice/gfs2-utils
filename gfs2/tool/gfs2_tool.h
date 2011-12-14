@@ -1,6 +1,7 @@
 #ifndef __GFS2_TOOL_DOT_H__
 #define __GFS2_TOOL_DOT_H__
 
+#include <stdarg.h>
 
 #define OUTPUT_BLOCKS 0
 #define OUTPUT_K      1
@@ -47,5 +48,17 @@ void do_sb(int argc, char **argv);
 
 void get_tune(int argc, char **argv);
 void set_tune(int argc, char **argv);
+
+/* die() used to be in libgfs2.h */
+static __inline__ __attribute__((noreturn, format (printf, 1, 2)))
+void die(const char *fmt, ...)
+{
+	va_list ap;
+	fprintf(stderr, "%s: ", __FILE__);
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	exit(-1);
+}
 
 #endif /* __GFS2_TOOL_DOT_H__ */

@@ -124,6 +124,18 @@ static inline int block_is_rgtree(void)
 #define SCREEN_HEIGHT   (16)
 #define SCREEN_WIDTH    (16)
 
+/* die() used to be in libgfs2.h */
+static __inline__ __attribute__((noreturn, format (printf, 1, 2)))
+void die(const char *fmt, ...)
+{
+	va_list ap;
+	fprintf(stderr, "%s: ", __FILE__);
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	exit(-1);
+}
+
 /*  Memory macros  */
 
 #define type_alloc(ptr, type, count) \
