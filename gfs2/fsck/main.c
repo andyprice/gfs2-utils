@@ -228,6 +228,7 @@ int main(int argc, char **argv)
 	int j;
 	int error = 0;
 	int all_clean = 0;
+	struct sigaction act = { .sa_handler = interrupt, };
 
 	setlocale(LC_ALL, "");
 	textdomain("gfs2-utils");
@@ -247,7 +248,8 @@ int main(int argc, char **argv)
 		exit(FSCK_OK);
 	}
 
-	signal(SIGINT, interrupt);
+	sigaction(SIGINT, &act, NULL);
+
 	log_notice( _("Starting pass1\n"));
 	pass = "pass 1";
 	last_reported_block = 0;
