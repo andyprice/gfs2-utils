@@ -147,7 +147,7 @@ static void interrupt(int sig)
 	}
 }
 
-static void check_statfs(struct gfs2_sbd *sdp)
+static int check_statfs(struct gfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgd;
@@ -158,7 +158,7 @@ static void check_statfs(struct gfs2_sbd *sdp)
 
 	if (sdp->gfs1 && !sdp->md.statfs->i_di.di_size) {
 		log_info("This GFS1 file system is not using fast_statfs.\n");
-		return;
+		return 0;
 	}
 	/* Read the current statfs values */
 	count = gfs2_readi(sdp->md.statfs, buf, 0,
@@ -185,7 +185,7 @@ static void check_statfs(struct gfs2_sbd *sdp)
 	    sc.sc_free == (sdp->blks_total - sdp->blks_alloced) &&
 	    sc.sc_dinodes == sdp->dinodes_alloced) {
 		log_info( _("The statfs file is accurate.\n"));
-		return;
+		return 0;
 	}
 	log_err( _("The statfs file is wrong:\n\n"));
 	log_err( _("Current statfs values:\n"));
@@ -213,12 +213,50 @@ static void check_statfs(struct gfs2_sbd *sdp)
 	errors_found++;
 	if (!query( _("Okay to fix the master statfs file? (y/n)"))) {
 		log_err( _("The statfs file was not fixed.\n"));
-		return;
+		return 0;
 	}
 
 	do_init_statfs(sdp);
 	log_err( _("The statfs file was fixed.\n"));
 	errors_corrected++;
+	return 0;
+}
+
+struct fsck_pass {
+	const char *name;
+	int (*f)(struct gfs2_sbd *sdp);
+};
+
+static const struct fsck_pass passes[] = {
+	{ .name = "pass1",  .f = pass1 },
+	{ .name = "pass1b", .f = pass1b },
+	{ .name = "pass1c", .f = pass1c },
+	{ .name = "pass2",  .f = pass2 },
+	{ .name = "pass3",  .f = pass3 },
+	{ .name = "pass4",  .f = pass4 },
+	{ .name = "pass5",  .f = pass5 },
+	{ .name = "check_statfs", .f = check_statfs },
+	{ .name = NULL, }
+};
+
+static int fsck_pass(const struct fsck_pass *p, struct gfs2_sbd *sdp)
+{
+	int ret;
+
+	if (fsck_abort)
+		return FSCK_CANCELED;
+	pass = p->name;
+	log_notice( _("Starting %s\n"), p->name);
+	ret = p->f(sdp);
+	if (ret)
+		exit(ret);
+	if (skip_this_pass || fsck_abort) {
+		skip_this_pass = 0;
+		log_notice( _("%s interrupted   \n"), p->name);
+		return FSCK_CANCELED;
+	}
+	log_notice( _("%s complete      \n"), p->name);
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -226,6 +264,7 @@ int main(int argc, char **argv)
 	struct gfs2_sbd sb;
 	struct gfs2_sbd *sdp = &sb;
 	int j;
+	int i;
 	int error = 0;
 	int all_clean = 0;
 	struct sigaction act = { .sa_handler = interrupt, };
@@ -250,102 +289,8 @@ int main(int argc, char **argv)
 
 	sigaction(SIGINT, &act, NULL);
 
-	log_notice( _("Starting pass1\n"));
-	pass = "pass 1";
-	last_reported_block = 0;
-	if ((error = pass1(sdp)))
-		exit(error);
-	if (skip_this_pass || fsck_abort) {
-		skip_this_pass = FALSE;
-		log_notice( _("Pass1 interrupted   \n"));
-	}
-	else
-		log_notice( _("Pass1 complete      \n"));
-
-	if (!fsck_abort) {
-		last_reported_block = 0;
-		pass = "pass 1b";
-		log_notice( _("Starting pass1b\n"));
-		if ((error = pass1b(sdp)))
-			exit(error);
-		if (skip_this_pass || fsck_abort) {
-			skip_this_pass = FALSE;
-			log_notice( _("Pass1b interrupted   \n"));
-		}
-		else
-			log_notice( _("Pass1b complete\n"));
-	}
-	if (!fsck_abort) {
-		last_reported_block = 0;
-		pass = "pass 1c";
-		log_notice( _("Starting pass1c\n"));
-		if ((error = pass1c(sdp)))
-			exit(error);
-		if (skip_this_pass || fsck_abort) {
-			skip_this_pass = FALSE;
-			log_notice( _("Pass1c interrupted   \n"));
-		}
-		else
-			log_notice( _("Pass1c complete\n"));
-	}
-	if (!fsck_abort) {
-		last_reported_block = 0;
-		pass = "pass 2";
-		log_notice( _("Starting pass2\n"));
-		if ((error = pass2(sdp)))
-			exit(error);
-		if (skip_this_pass || fsck_abort) {
-			skip_this_pass = FALSE;
-			log_notice( _("Pass2 interrupted   \n"));
-		}
-		else
-			log_notice( _("Pass2 complete      \n"));
-	}
-	if (!fsck_abort) {
-		last_reported_block = 0;
-		pass = "pass 3";
-		log_notice( _("Starting pass3\n"));
-		if ((error = pass3(sdp)))
-			exit(error);
-		if (skip_this_pass || fsck_abort) {
-			skip_this_pass = FALSE;
-			log_notice( _("Pass3 interrupted   \n"));
-		}
-		else
-			log_notice( _("Pass3 complete      \n"));
-	}
-	if (!fsck_abort) {
-		last_reported_block = 0;
-		pass = "pass 4";
-		log_notice( _("Starting pass4\n"));
-		if ((error = pass4(sdp)))
-			exit(error);
-		if (skip_this_pass || fsck_abort) {
-			skip_this_pass = FALSE;
-			log_notice( _("Pass4 interrupted   \n"));
-		}
-		else
-			log_notice( _("Pass4 complete      \n"));
-	}
-	if (!fsck_abort) {
-		last_reported_block = 0;
-		pass = "pass 5";
-		log_notice( _("Starting pass5\n"));
-		if ((error = pass5(sdp)))
-			exit(error);
-		if (skip_this_pass || fsck_abort) {
-			skip_this_pass = FALSE;
-			log_notice( _("Pass5 interrupted   \n"));
-			error = FSCK_CANCELED;
-		}
-		else
-			log_notice( _("Pass5 complete      \n"));
-	} else {
-		error = FSCK_CANCELED;
-	}
-
-	if (!fsck_abort)
-		check_statfs(sdp);
+	for (i = 0; passes[i].name; i++)
+		error = fsck_pass(passes + i, sdp);
 
 	/* Free up our system inodes */
 	if (!sdp->gfs1)
