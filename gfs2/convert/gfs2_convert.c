@@ -2071,89 +2071,11 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 	inode_put(&oq_ip);
 }
 
-static char gfs2_getch(void)
+static int gfs2_query(struct gfs2_options *opts, const char *dev)
 {
-	struct termios termattr, savetermattr;
-	char ch;
-	ssize_t size;
-
-	tcgetattr (STDIN_FILENO, &termattr);
-	savetermattr = termattr;
-	termattr.c_lflag &= ~(ICANON | IEXTEN | ISIG);
-	termattr.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-	termattr.c_cflag &= ~(CSIZE | PARENB);
-	termattr.c_cflag |= CS8;
-	termattr.c_oflag &= ~(OPOST);
-   	termattr.c_cc[VMIN] = 0;
-	termattr.c_cc[VTIME] = 0;
-
-	tcsetattr (STDIN_FILENO, TCSANOW, &termattr);
-	do {
-		size = read(STDIN_FILENO, &ch, 1);
-		if (size)
-			break;
-		usleep(50000);
-	} while (!size);
-
-	tcsetattr (STDIN_FILENO, TCSANOW, &savetermattr);
-	return ch;
-}
-
-static char generic_interrupt(const char *caller, const char *where,
-		       const char *progress, const char *question,
-		       const char *answers)
-{
-	fd_set rfds;
-	struct timeval stv;
-	char response;
-	int err, i;
-
-	FD_ZERO(&rfds);
-	FD_SET(STDIN_FILENO, &rfds);
-
-	stv.tv_sec = 0;
-	stv.tv_usec = 0;
-	/* Make sure there isn't extraneous input before asking the
-	 * user the question */
-	while((err = select(STDIN_FILENO + 1, &rfds, NULL, NULL, &stv))) {
-		if(err < 0) {
-			log_debug("Error in select() on stdin\n");
-			break;
-		}
-		if(read(STDIN_FILENO, &response, sizeof(char)) < 0) {
-			log_debug("Error in read() on stdin\n");
-			break;
-		}
-	}
-	while (TRUE) {
-		printf("\n%s interrupted during %s:  ", caller, where);
-		if (progress)
-			printf("%s.\n", progress);
-		printf("%s", question);
-
-		/* Make sure query is printed out */
-		fflush(NULL);
-		response = gfs2_getch();
-		printf("\n");
-		fflush(NULL);
-		if (strchr(answers, response))
-			break;
-		printf("Bad response, please type ");
-		for (i = 0; i < strlen(answers) - 1; i++)
-			printf("'%c', ", answers[i]);
-		printf(" or '%c'.\n", answers[i]);
-	}
-	return response;
-}
-
-static int __attribute__((format(printf, 3, 4))) gfs2_query(int *setonabort,
-                           struct gfs2_options *opts, const char *format, ...)
-{
-	va_list args;
-	char response;
+	char response[3] = { 0, 0 };
 	int ret = 0;
 
-	*setonabort = 0;
 	if(opts->yes)
 		return 1;
 	if(opts->no)
@@ -2161,41 +2083,18 @@ static int __attribute__((format(printf, 3, 4))) gfs2_query(int *setonabort,
 
 	opts->query = TRUE;
 	while (1) {
-		va_start(args, format);
-		vprintf(format, args);
-		va_end(args);
-
+		printf(_("Convert %s from GFS1 to GFS2? (y/n)"), dev);
 		/* Make sure query is printed out */
 		fflush(NULL);
-		response = gfs2_getch();
-
+		fgets(response, 3, stdin);
 		printf("\n");
 		fflush(NULL);
-		if (response == 0x3) { /* if interrupted, by ctrl-c */
+		response[1] = 0;
+		ret = rpmatch(response);
 
-			/*This is ok to translate if nobody changes the (a/c) option.
- 			 * Should we proceed with this translation */
-			response = generic_interrupt(_("Question"), _("response"),
-						     NULL,
-						     _("Do you want to abort " \
-						     "or continue (a/c)?"), 
-						     "ac");
-			if (response == 'a') {
-				ret = 0;
-				*setonabort = 1;
-				break;
-			}
-			printf(_("Continuing.\n"));
-		} else if(tolower(response) == 'y') {
-			ret = 1;
+		if (ret >= 0)
 			break;
-		} else if (tolower(response) == 'n') {
-			ret = 0;
-			break;
-		} else {
-			printf(_("Bad response %d, please type 'y' or 'n'.\n"),
-			       response);
-		}
+		printf(_("Bad response '%s', please type 'y' or 'n'.\n"), response);
 	}
 
 	opts->query = FALSE;
@@ -2223,12 +2122,8 @@ int main(int argc, char **argv)
 	/* Make them seal their fate.                     */
 	/* ---------------------------------------------- */
 	if (!error) {
-		int do_abort;
-
 		give_warning();
-		if (!gfs2_query(&do_abort, &opts,
-				_("Convert %s from GFS1 to GFS2? (y/n)"),
-				device)) {
+		if (!gfs2_query(&opts, device)) {
 			log_crit(_("%s not converted.\n"), device);
 			close(sb2.device_fd);
 			exit(0);
