@@ -24,7 +24,9 @@ struct gfs2_buffer_head *bget(struct gfs2_sbd *sdp, uint64_t num)
 
 	bh->b_blocknr = num;
 	bh->sdp = sdp;
-	bh->b_data = (char *)bh + sizeof(struct gfs2_buffer_head);
+	bh->iov.iov_base = (char *)bh + sizeof(struct gfs2_buffer_head);
+	bh->iov.iov_len = sdp->bsize;
+
 	return bh;
 }
 
@@ -42,7 +44,7 @@ struct gfs2_buffer_head *__bread(struct gfs2_sbd *sdp, uint64_t num, int line,
 			(unsigned long long)num);
 		exit(-1);
 	}
-	if (read(sdp->device_fd, bh->b_data, sdp->bsize) < 0) {
+	if (readv(sdp->device_fd, &bh->iov, 1) < 0) {
 		fprintf(stderr, "bad read: %s from %s:%d: block "
 			"%llu (0x%llx)\n", strerror(errno),
 			caller, line, (unsigned long long)num,
@@ -60,7 +62,7 @@ int bwrite(struct gfs2_buffer_head *bh)
 	    bh->b_blocknr * sdp->bsize) {
 		return -1;
 	}
-	if (write(sdp->device_fd, bh->b_data, sdp->bsize) != sdp->bsize)
+	if (writev(sdp->device_fd, &bh->iov, 1) != bh->iov.iov_len)
 		return -1;
 	sdp->writes++;
 	bh->b_modified = 0;

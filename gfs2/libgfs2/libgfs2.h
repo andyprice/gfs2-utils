@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/uio.h>
 #include <linux/types.h>
 #include <linux/limits.h>
 #include <endian.h>
@@ -111,7 +112,10 @@ struct gfs2_buffer_head {
 	osi_list_t b_altlist; /* alternate list */
 	uint64_t b_blocknr;
 	int b_modified;
-	char *b_data;
+	union {
+		char *b_data;
+		struct iovec iov;
+	};
 	struct gfs2_sbd *sdp;
 };
 
