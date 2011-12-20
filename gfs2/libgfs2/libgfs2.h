@@ -72,6 +72,51 @@ __BEGIN_DECLS
 #define BLOCKMAP_BYTE_OFFSET4(x) ((x & 0x0000000000000001) << 2)
 #define BLOCKMAP_MASK4 (0xf)
 
+enum lgfs2_meta_type {
+	LGFS2_MT_GFS2_SB = 0,
+	LGFS2_MT_GFS_SB = 1,
+	LGFS2_MT_RINDEX = 2,
+	LGFS2_MT_GFS2_RGRP = 3,
+	LGFS2_MT_GFS_RGRP = 4,
+	LGFS2_MT_RGRP_BITMAP = 5,
+	LGFS2_MT_GFS2_DINODE = 6,
+	LGFS2_MT_GFS_DINODE = 7,
+	LGFS2_MT_GFS2_INDIRECT = 8,
+	LGFS2_MT_GFS_INDIRECT = 9,
+	LGFS2_MT_DIR_LEAF = 10,
+	LGFS2_MT_GFS2_LOG_HEADER = 11,
+	LGFS2_MT_GFS2_LOG_DESC = 12,
+	LGFS2_MT_GFS2_LOG_BLOCK = 12,
+	LGFS2_MT_EA_ATTR = 13,
+	LGFS2_MT_EA_DATA = 14,
+	LGFS2_MT_GFS2_QUOTA_CHANGE = 15,
+	LGFS2_MT_DIRENT = 16,
+	LGFS2_MT_EA_HEADER = 17,
+	LGFS2_MT_GFS2_INUM_RANGE = 18,
+	LGFS2_MT_STATFS_CHANGE = 19,
+	
+	LGFS2_MT_NR,
+};
+
+struct lgfs2_metafield {
+	const char *name;
+	const unsigned offset;
+	const unsigned length;
+	const unsigned reserved:1;
+	const unsigned pointer:1;
+};
+
+struct lgfs2_metadata {
+	const unsigned gfs1:1;
+	const unsigned gfs2:1;
+	const unsigned header:1;
+	const uint32_t mh_type;
+	const uint32_t mh_format;
+	const char *name;
+	const struct lgfs2_metafield *fields;
+	const unsigned nfields;
+	const unsigned size;
+};
 
 struct lgfs2_dev_info {
 	struct stat stat;
@@ -259,6 +304,11 @@ struct metapath {
 #define GFS2_MIN_RGSIZE             (32)
 /* Look at this!  Why can't we go bigger than 2GB? */
 #define GFS2_MAX_RGSIZE             (2048)
+
+/* meta.c */
+extern const struct lgfs2_metadata lgfs2_metadata[];
+extern const unsigned lgfs2_metadata_size;
+extern int lgfs2_selfcheck(void);
 
 /* bitmap.c */
 struct gfs2_bmap {
