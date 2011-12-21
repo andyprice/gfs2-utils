@@ -579,19 +579,6 @@ struct gfs_log_header {
 	char lh_reserved[64];
 };
 
-struct gfs_rindex {
-	uint64_t ri_addr;     /* block # of 1st block (header) in rgrp */
-	uint32_t ri_length;   /* # fs blocks containing rgrp header & bitmap */
-	uint32_t ri_pad;
-
-	uint64_t ri_data1;    /* block # of first data/meta block in rgrp */
-	uint32_t ri_data;     /* number (qty) of data/meta blocks in rgrp */
-
-	uint32_t ri_bitbytes; /* total # bytes used by block alloc bitmap */
-
-	char ri_reserved[64];
-};
-
 struct gfs_jindex {
         uint64_t ji_addr;       /* starting block of the journal */
         uint32_t ji_nsegment;   /* number (quantity) of segments in journal */

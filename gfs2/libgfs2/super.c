@@ -135,7 +135,6 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 	unsigned int rg;
 	int error;
 	union {
-		struct gfs_rindex bufgfs1;
 		struct gfs2_rindex bufgfs2;
 	} buf;
 	struct gfs2_rindex ri;

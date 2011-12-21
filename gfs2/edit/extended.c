@@ -500,7 +500,7 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 {
 	int error, start_line;
 	struct gfs2_rindex ri;
-	char rbuf[sizeof(struct gfs_rindex)];
+	char rbuf[sizeof(struct gfs2_rindex)];
 	char highlighted_addr[32];
 
 	start_line = line;
