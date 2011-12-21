@@ -989,17 +989,14 @@ static void print_usage(void)
 /* returns: metatype if block is a GFS2 structure block type                */
 /*          0 if block is not a GFS2 structure                              */
 /* ------------------------------------------------------------------------ */
-static int get_block_type(struct gfs2_buffer_head *lbh)
+static uint32_t get_block_type(const struct gfs2_buffer_head *lbh)
 {
-	int ret_type = 0;
-	char *lpBuffer = lbh->b_data;
+	const struct gfs2_meta_header *mh = lbh->iov.iov_base;
 
-	if (*(lpBuffer+0)==0x01 && *(lpBuffer+1)==0x16 &&
-	    *(lpBuffer+2)==0x19 && *(lpBuffer+3)==0x70 &&
-	    *(lpBuffer+4)==0x00 && *(lpBuffer+5)==0x00 &&
-	    *(lpBuffer+6)==0x00) /* If magic number appears at the start */
-		ret_type = *(lpBuffer+7);
-	return ret_type;
+	if (be32_to_cpu(mh->mh_magic) == GFS2_MAGIC)
+		return be32_to_cpu(mh->mh_type);
+
+	return 0;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -1009,6 +1006,7 @@ static int get_block_type(struct gfs2_buffer_head *lbh)
 /* ------------------------------------------------------------------------ */
 int display_block_type(int from_restore)
 {
+	const struct gfs2_meta_header *mh;
 	int ret_type = 0; /* return type */
 
 	/* first, print out the kind of GFS2 block this is */
@@ -1036,9 +1034,9 @@ int display_block_type(int from_restore)
 		ret_type = GFS2_METATYPE_RG;
 		struct_len = sbd.gfs1 ? sizeof(struct gfs_rgrp) :
 			sizeof(struct gfs2_rgrp);
-	}
-	else if ((ret_type = get_block_type(bh))) {
-		switch (*(bh->b_data + 7)) {
+	} else {
+		ret_type = get_block_type(bh);
+		switch (ret_type) {
 		case GFS2_METATYPE_SB:   /* 1 */
 			print_gfs2("(superblock)");
 			if (sbd.gfs1)
@@ -1103,13 +1101,18 @@ int display_block_type(int from_restore)
 			print_gfs2("(quota change)");
 			struct_len = sizeof(struct gfs2_quota_change);
 			break;
+		case 0:
+			struct_len = sbd.bsize;
+			break;
 		default:
 			print_gfs2("(wtf?)");
 			struct_len = sbd.bsize;
 			break;
 		}
-	} else
-		struct_len = sbd.bsize;
+	}
+	
+
+	mh = bh->iov.iov_base;
 	eol(0);
 	if (from_restore)
 		return ret_type;
@@ -1120,8 +1123,8 @@ int display_block_type(int from_restore)
 		rgd = gfs2_blk2rgrpd(&sbd, block);
 		if (rgd) {
 			gfs2_rgrp_read(&sbd, rgd);
-			if ((*(bh->b_data + 7) == GFS2_METATYPE_RG) ||
-			    (*(bh->b_data + 7) == GFS2_METATYPE_RB))
+			if ((be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RG) ||
+			    (be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RB))
 				type = 4;
 			else
 				type = gfs2_get_bitmap(&sbd, block, rgd);
@@ -1136,7 +1139,7 @@ int display_block_type(int from_restore)
 			   sbd.bsize / screen_chunk_size + 1 : sbd.bsize /
 			   screen_chunk_size, allocdesc[sbd.gfs1][type]);
 		/*eol(9);*/
-		if ((*(bh->b_data + 7) == GFS2_METATYPE_RG)) {
+		if ((be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RG)) {
 			int ptroffset = edit_row[dmode] * 16 + edit_col[dmode];
 
 			if (ptroffset >= struct_len || pgnum) {
@@ -1154,7 +1157,7 @@ int display_block_type(int from_restore)
 						   allocdesc[sbd.gfs1][btype]);
 				}
 			}
-		} else if ((*(bh->b_data + 7) == GFS2_METATYPE_RB)) {
+		} else if ((be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RB)) {
 			int ptroffset = edit_row[dmode] * 16 + edit_col[dmode];
 
 			if (ptroffset >= struct_len || pgnum) {
@@ -2927,7 +2930,7 @@ static void interactive_mode(void)
 void gfs_log_header_in(struct gfs_log_header *head,
 		       struct gfs2_buffer_head *lbh)
 {
-	struct gfs_log_header *str = (struct gfs_log_header *)lbh->b_data;
+	struct gfs_log_header *str = lbh->iov.iov_base;
 
 	gfs2_meta_header_in(&head->lh_header, lbh);
 
