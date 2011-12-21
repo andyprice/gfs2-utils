@@ -475,43 +475,43 @@ struct gfs_dinode {
 
 	struct gfs2_inum di_num; /* formal inode # and block address */
 
-	uint32_t di_mode;	/* mode of file */
-	uint32_t di_uid;	/* owner's user id */
-	uint32_t di_gid;	/* owner's group id */
-	uint32_t di_nlink;	/* number (qty) of links to this file */
-	uint64_t di_size;	/* number (qty) of bytes in file */
-	uint64_t di_blocks;	/* number (qty) of blocks in file */
-	int64_t di_atime;	/* time last accessed */
-	int64_t di_mtime;	/* time last modified */
-	int64_t di_ctime;	/* time last changed */
+	__be32 di_mode;	/* mode of file */
+	__be32 di_uid;	/* owner's user id */
+	__be32 di_gid;	/* owner's group id */
+	__be32 di_nlink;	/* number (qty) of links to this file */
+	__be64 di_size;	/* number (qty) of bytes in file */
+	__be64 di_blocks;	/* number (qty) of blocks in file */
+	__be64 di_atime;	/* time last accessed */
+	__be64 di_mtime;	/* time last modified */
+	__be64 di_ctime;	/* time last changed */
 
 	/*  Non-zero only for character or block device nodes  */
-	uint32_t di_major;	/* device major number */
-	uint32_t di_minor;	/* device minor number */
+	__be32 di_major;	/* device major number */
+	__be32 di_minor;	/* device minor number */
 
 	/*  Block allocation strategy  */
-	uint64_t di_rgrp;	/* dinode rgrp block number */
-	uint64_t di_goal_rgrp;	/* rgrp to alloc from next */
-	uint32_t di_goal_dblk;	/* data block goal */
-	uint32_t di_goal_mblk;	/* metadata block goal */
+	__be64 di_rgrp;	/* dinode rgrp block number */
+	__be64 di_goal_rgrp;	/* rgrp to alloc from next */
+	__be32 di_goal_dblk;	/* data block goal */
+	__be32 di_goal_mblk;	/* metadata block goal */
 
-	uint32_t di_flags;	/* GFS_DIF_... */
+	__be32 di_flags;	/* GFS_DIF_... */
 
 	/*  struct gfs_rindex, struct gfs_jindex, or struct gfs_dirent */
-	uint32_t di_payload_format;  /* GFS_FORMAT_... */
-	uint16_t di_type;	/* GFS_FILE_... type of file */
-	uint16_t di_height;	/* height of metadata (0 == stuffed) */
-	uint32_t di_incarn;	/* incarnation (unused, see gfs_meta_header) */
-	uint16_t di_pad;
+	__be32 di_payload_format;  /* GFS_FORMAT_... */
+	__be16 di_type;	/* GFS_FILE_... type of file */
+	__be16 di_height;	/* height of metadata (0 == stuffed) */
+	__be32 di_incarn;	/* incarnation (unused, see gfs_meta_header) */
+	__be16 di_pad;
 
 	/*  These only apply to directories  */
-	uint16_t di_depth;	/* Number of bits in the table */
-	uint32_t di_entries;	/* The # (qty) of entries in the directory */
+	__be16 di_depth;	/* Number of bits in the table */
+	__be32 di_entries;	/* The # (qty) of entries in the directory */
 
 	/*  This formed an on-disk chain of unused dinodes  */
 	struct gfs2_inum di_next_unused;  /* used in old versions only */
 
-	uint64_t di_eattr;	/* extended attribute block number */
+	__be64 di_eattr;	/* extended attribute block number */
 
 	char di_reserved[56];
 };
@@ -521,13 +521,13 @@ struct gfs_sb {
 	    in order to support on-disk version upgrades */
 	struct gfs2_meta_header sb_header;
 
-	uint32_t sb_fs_format;         /* GFS_FORMAT_FS (on-disk version) */
-	uint32_t sb_multihost_format;  /* GFS_FORMAT_MULTI */
-	uint32_t sb_flags;             /* ?? */
+	__be32 sb_fs_format;         /* GFS_FORMAT_FS (on-disk version) */
+	__be32 sb_multihost_format;  /* GFS_FORMAT_MULTI */
+	__be32 sb_flags;             /* ?? */
 
-	uint32_t sb_bsize;             /* fundamental FS block size in bytes */
-	uint32_t sb_bsize_shift;       /* log2(sb_bsize) */
-	uint32_t sb_seg_size;          /* Journal segment size in FS blocks */
+	__be32 sb_bsize;             /* fundamental FS block size in bytes */
+	__be32 sb_bsize_shift;       /* log2(sb_bsize) */
+	__be32 sb_seg_size;          /* Journal segment size in FS blocks */
 
 	/* These special inodes do not appear in any on-disk directory. */
 	struct gfs2_inum sb_jindex_di;  /* journal index inode */
@@ -535,8 +535,8 @@ struct gfs_sb {
 	struct gfs2_inum sb_root_di;    /* root directory inode */
 
 	/* Default inter-node locking protocol (lock module) and namespace */
-	char sb_lockproto[GFS2_LOCKNAME_LEN]; /* lock protocol name */
-	char sb_locktable[GFS2_LOCKNAME_LEN]; /* unique name for this FS */
+	uint8_t sb_lockproto[GFS2_LOCKNAME_LEN]; /* lock protocol name */
+	uint8_t sb_locktable[GFS2_LOCKNAME_LEN]; /* unique name for this FS */
 
 	/* More special inodes */
 	struct gfs2_inum sb_quota_di;   /* quota inode */
@@ -548,18 +548,17 @@ struct gfs_sb {
 struct gfs_rgrp {
 	struct gfs2_meta_header rg_header;
 
-	uint32_t rg_flags;      /* ?? */
-
-	uint32_t rg_free;       /* Number (qty) of free data blocks */
+	__be32 rg_flags;
+	__be32 rg_free;       /* Number (qty) of free data blocks */
 
 	/* Dinodes are USEDMETA, but are handled separately from other METAs */
-	uint32_t rg_useddi;     /* Number (qty) of dinodes (used or free) */
-	uint32_t rg_freedi;     /* Number (qty) of unused (free) dinodes */
+	__be32 rg_useddi;     /* Number (qty) of dinodes (used or free) */
+	__be32 rg_freedi;     /* Number (qty) of unused (free) dinodes */
 	struct gfs2_inum rg_freedi_list; /* 1st block in chain of free dinodes */
 
 	/* These META statistics do not include dinodes (used or free) */
-	uint32_t rg_usedmeta;   /* Number (qty) of used metadata blocks */
-	uint32_t rg_freemeta;   /* Number (qty) of unused metadata blocks */
+	__be32 rg_usedmeta;   /* Number (qty) of used metadata blocks */
+	__be32 rg_freemeta;   /* Number (qty) of unused metadata blocks */
 
 	char rg_reserved[64];
 };
@@ -567,34 +566,34 @@ struct gfs_rgrp {
 struct gfs_log_header {
 	struct gfs2_meta_header lh_header;
 
-	uint32_t lh_flags;      /* GFS_LOG_HEAD_... */
-	uint32_t lh_pad;
+	__be32 lh_flags;      /* GFS_LOG_HEAD_... */
+	__be32 lh_pad;
 
-	uint64_t lh_first;     /* Block number of first header in this trans */
-	uint64_t lh_sequence;   /* Sequence number of this transaction */
+	__be64 lh_first;     /* Block number of first header in this trans */
+	__be64 lh_sequence;   /* Sequence number of this transaction */
 
-	uint64_t lh_tail;       /* Block number of log tail */
-	uint64_t lh_last_dump;  /* Block number of last dump */
+	__be64 lh_tail;       /* Block number of log tail */
+	__be64 lh_last_dump;  /* Block number of last dump */
 
-	char lh_reserved[64];
+	uint8_t lh_reserved[64];
 };
 
 struct gfs_jindex {
-        uint64_t ji_addr;       /* starting block of the journal */
-        uint32_t ji_nsegment;   /* number (quantity) of segments in journal */
-        uint32_t ji_pad;
+        __be64 ji_addr;       /* starting block of the journal */
+        __be32 ji_nsegment;   /* number (quantity) of segments in journal */
+        __be32 ji_pad;
 
-        char ji_reserved[64];
+        uint8_t ji_reserved[64];
 };
 
 struct gfs_log_descriptor {
 	struct gfs2_meta_header ld_header;
 
-	uint32_t ld_type;       /* GFS_LOG_DESC_... Type of this log chunk */
-	uint32_t ld_length;     /* Number of buffers in this chunk */
-	uint32_t ld_data1;      /* descriptor-specific field */
-	uint32_t ld_data2;      /* descriptor-specific field */
-	char ld_reserved[64];
+	__be32 ld_type;       /* GFS_LOG_DESC_... Type of this log chunk */
+	__be32 ld_length;     /* Number of buffers in this chunk */
+	__be32 ld_data1;      /* descriptor-specific field */
+	__be32 ld_data2;      /* descriptor-specific field */
+	uint8_t ld_reserved[64];
 };
 
 extern int is_gfs_dir(struct gfs2_dinode *dinode);
