@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <libintl.h>
+#include <string.h>
 
 #include "libgfs2.h"
 #include "osi_list.h"
