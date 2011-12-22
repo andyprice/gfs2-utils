@@ -1,6 +1,72 @@
 #include <stdint.h>
 #include "libgfs2.h"
 
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+#define SYM(x) { x, #x },
+
+const struct lgfs2_symbolic lgfs2_metatypes[] = {
+SYM(GFS2_METATYPE_NONE)
+SYM(GFS2_METATYPE_SB)
+SYM(GFS2_METATYPE_RG)
+SYM(GFS2_METATYPE_RB)
+SYM(GFS2_METATYPE_DI)
+SYM(GFS2_METATYPE_IN)
+SYM(GFS2_METATYPE_LF)
+SYM(GFS2_METATYPE_JD)
+SYM(GFS2_METATYPE_LH)
+SYM(GFS2_METATYPE_LD)
+SYM(GFS2_METATYPE_LB)
+SYM(GFS2_METATYPE_EA)
+SYM(GFS2_METATYPE_ED)
+SYM(GFS2_METATYPE_QC)
+};
+
+const unsigned lgfs2_metatype_size = ARRAY_SIZE(lgfs2_metatypes);
+
+const struct lgfs2_symbolic lgfs2_metaformats[] = {
+SYM(GFS2_FORMAT_NONE)
+SYM(GFS2_FORMAT_SB)
+SYM(GFS2_FORMAT_RG)
+SYM(GFS2_FORMAT_RB)
+SYM(GFS2_FORMAT_DI)
+SYM(GFS2_FORMAT_IN)
+SYM(GFS2_FORMAT_LF)
+SYM(GFS2_FORMAT_JD)
+SYM(GFS2_FORMAT_LH)
+SYM(GFS2_FORMAT_LD)
+SYM(GFS2_FORMAT_LB)
+SYM(GFS2_FORMAT_EA)
+SYM(GFS2_FORMAT_ED)
+SYM(GFS2_FORMAT_QC)
+SYM(GFS2_FORMAT_RI)
+SYM(GFS2_FORMAT_DE)
+SYM(GFS2_FORMAT_QU)
+};
+
+const unsigned lgfs2_metaformat_size = ARRAY_SIZE(lgfs2_metaformats);
+
+const struct lgfs2_symbolic lgfs2_di_flags[] = {
+SYM(GFS2_DIF_JDATA)
+SYM(GFS2_DIF_EXHASH)
+SYM(GFS2_DIF_UNUSED)
+SYM(GFS2_DIF_EA_INDIRECT)
+SYM(GFS2_DIF_DIRECTIO)
+SYM(GFS2_DIF_IMMUTABLE)
+SYM(GFS2_DIF_APPENDONLY)
+SYM(GFS2_DIF_NOATIME)
+SYM(GFS2_DIF_SYNC)
+SYM(GFS2_DIF_SYSTEM)
+SYM(GFS2_DIF_TRUNC_IN_PROG)
+SYM(GFS2_DIF_INHERIT_DIRECTIO)
+SYM(GFS2_DIF_INHERIT_JDATA)
+};
+
+const unsigned lgfs2_di_flag_size = ARRAY_SIZE(lgfs2_di_flags);
+
+#undef SYM
+
+
+
 
 #define F(f,...)  { .name = #f, \
 		    .offset = offsetof(struct STRUCT, f), \
@@ -10,7 +76,6 @@
 #define RF(f) F(f, .reserved=1)
 #define RFP(f) F(f, .pointer=1, .reserved=1)
 
-#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
 #define MH(f) F(f.mh_magic) \
 	      F(f.mh_type) \

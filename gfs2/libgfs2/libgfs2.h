@@ -101,6 +101,11 @@ enum lgfs2_meta_type {
 	LGFS2_MT_NR,
 };
 
+struct lgfs2_symbolic {
+	const uint32_t key;
+	const char *value;
+};
+
 struct lgfs2_metafield {
 	const char *name;
 	const unsigned offset;
@@ -311,6 +316,12 @@ struct metapath {
 /* meta.c */
 extern const struct lgfs2_metadata lgfs2_metadata[];
 extern const unsigned lgfs2_metadata_size;
+extern const struct lgfs2_symbolic lgfs2_metatypes[];
+extern const unsigned lgfs2_metatype_size;
+extern const struct lgfs2_symbolic lgfs2_metaformats[];
+extern const unsigned lgfs2_metaformat_size;
+extern const struct lgfs2_symbolic lgfs2_di_flags[];
+extern const unsigned lgfs2_di_flag_size;
 extern int lgfs2_selfcheck(void);
 
 /* bitmap.c */
