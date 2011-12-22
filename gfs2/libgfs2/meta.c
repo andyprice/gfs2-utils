@@ -233,9 +233,35 @@ F(lh_hash)
 };
 
 #undef STRUCT
+#define STRUCT gfs_log_header
+
+static const struct lgfs2_metafield gfs_log_header_fields[] = {
+MH(lh_header)
+F(lh_flags)
+RF(lh_pad)
+F(lh_first)
+F(lh_sequence)
+F(lh_tail)
+F(lh_last_dump)
+RF(lh_reserved)
+};
+
+#undef STRUCT
 #define STRUCT gfs2_log_descriptor
 
 static const struct lgfs2_metafield gfs2_log_desc_fields[] = {
+MH(ld_header)
+F(ld_type)
+F(ld_length)
+F(ld_data1)
+F(ld_data2)
+RF(ld_reserved)
+};
+
+#undef STRUCT
+#define STRUCT gfs_log_descriptor
+
+static const struct lgfs2_metafield gfs_log_desc_fields[] = {
 MH(ld_header)
 F(ld_type)
 F(ld_length)
@@ -326,6 +352,16 @@ static const struct lgfs2_metafield gfs2_statfs_change_fields[] = {
 F(sc_total)
 F(sc_free)
 F(sc_dinodes)
+};
+
+#undef STRUCT
+#define STRUCT gfs_jindex
+
+static const struct lgfs2_metafield gfs_jindex_fields[] = {
+FP(ji_addr)
+F(ji_nsegment)
+RF(ji_pad)
+RF(ji_reserved)
 };
 
 const struct lgfs2_metadata lgfs2_metadata[] = {
@@ -449,6 +485,16 @@ const struct lgfs2_metadata lgfs2_metadata[] = {
 		.nfields = ARRAY_SIZE(gfs2_log_header_fields),
 		.size = sizeof(struct gfs2_log_header),
 	},
+	[LGFS2_MT_GFS_LOG_HEADER] = {
+		.gfs1 = 1,
+		.header = 1,
+		.mh_type = GFS2_METATYPE_LH,
+		.mh_format = GFS2_FORMAT_LH,
+		.name = "gfs_log_header",
+		.fields = gfs_log_header_fields,
+		.nfields = ARRAY_SIZE(gfs_log_header_fields),
+		.size = sizeof(struct gfs_log_header),
+	},
 	[LGFS2_MT_GFS2_LOG_DESC] = {
 		.gfs2 = 1,
 		.header = 1,
@@ -458,6 +504,16 @@ const struct lgfs2_metadata lgfs2_metadata[] = {
 		.fields = gfs2_log_desc_fields,
 		.nfields = ARRAY_SIZE(gfs2_log_desc_fields),
 		.size = sizeof(struct gfs2_log_descriptor),
+	},
+	[LGFS2_MT_GFS_LOG_DESC] = {
+		.gfs1 = 1,
+		.header = 1,
+		.mh_type = GFS2_METATYPE_LD,
+		.mh_format = GFS2_FORMAT_LD,
+		.name = "gfs_log_desc",
+		.fields = gfs_log_desc_fields,
+		.nfields = ARRAY_SIZE(gfs_log_desc_fields),
+		.size = sizeof(struct gfs_log_descriptor),
 	},
 	[LGFS2_MT_GFS2_LOG_BLOCK] = {
 		.gfs2 = 1,
@@ -528,6 +584,13 @@ const struct lgfs2_metadata lgfs2_metadata[] = {
 		.fields = gfs2_statfs_change_fields,
 		.nfields = ARRAY_SIZE(gfs2_statfs_change_fields),
 		.size = sizeof(struct gfs2_statfs_change),
+	},
+	[LGFS2_MT_GFS_JINDEX] = {
+		.gfs1 = 1,
+		.name = "gfs_jindex",
+		.fields = gfs_jindex_fields,
+		.nfields = ARRAY_SIZE(gfs_jindex_fields),
+		.size = sizeof(struct gfs_jindex),
 	},
 };
 
