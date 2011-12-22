@@ -85,435 +85,6 @@ int display(int identify_only);
 		}						\
 	} while(0)
 
-/* -------------------------------------------------------------------------
- * superblock
- * ------------------------------------------------------------------------- */
-const int fieldsize_sb[] = {
-	sizeof(sb.sb_header.mh_magic),
-	sizeof(sb.sb_header.mh_type),
-	sizeof(sb.sb_header.__pad0),
-	sizeof(sb.sb_header.mh_format),
-	sizeof(sb.sb_header.__pad1),
-	sizeof(sb.sb_fs_format),
-	sizeof(sb.sb_multihost_format),
-	sizeof(sb.__pad0),
-	sizeof(sb.sb_bsize),
-	sizeof(sb.sb_bsize_shift),
-	sizeof(sb.__pad1),
-	sizeof(sb.sb_master_dir.no_formal_ino),
-	sizeof(sb.sb_master_dir.no_addr),
-	sizeof(sb.__pad2.no_formal_ino),
-	sizeof(sb.__pad2.no_addr),
-	sizeof(sb.sb_root_dir.no_formal_ino),
-	sizeof(sb.sb_root_dir.no_addr),
-	sizeof(sb.sb_lockproto),
-	sizeof(sb.sb_locktable),
-	sizeof(sb.__pad3.no_formal_ino),
-	sizeof(sb.__pad3.no_addr),
-	sizeof(sb.__pad4.no_formal_ino),
-	sizeof(sb.__pad4.no_addr),
-	sizeof(sb.sb_uuid),
-	-1
-};
-
-const char *fieldnames_sb[] = {
-	"mh_magic",
-	"mh_type",
-	"mh.__pad0",
-	"mh_format",
-	"mh.__pad1",
-	"sb_fs_format",
-	"sb_multihost_format",
-	"__pad0",
-	"sb_bsize",
-	"sb_bsize_shift",
-	"__pad1",
-	"master.no_formal_ino",
-	"master.no_addr",
-	"__pad2.no_formal_ino",
-	"__pad2.no_addr",
-	"root.no_formal_ino",
-	"root.no_addr",
-	"sb_lockproto",
-	"sb_locktable",
-	"__pad3.no_formal_ino",
-	"__pad3.no_addr",
-	"__pad4.no_formal_ino",
-	"__pad4.no_addr",
-	"sb_uuid",
-};
-
-/* This determines which field the cursor is located in */
-static int which_field_sb(int off)
-{
-	int i, tot;
-
-	tot = 0;
-	for (i = 0; fieldsize_sb[i] != -1; i++) {
-		tot += fieldsize_sb[i];
-		if (off < tot)
-			return i;
-	}
-	return -1;
-}
-
-static const char *which_fieldname_sb(int off)
-{
-	int w = which_field_sb(off);
-	if (w < 0)
-		return NULL;
-	return fieldnames_sb[w];
-}
-
-/* -------------------------------------------------------------------------
- * rgrp
- * ------------------------------------------------------------------------- */
-const int fieldsize_rgrp[] = {
-	sizeof(lrgrp->rg_header.mh_magic),
-	sizeof(lrgrp->rg_header.mh_type),
-	sizeof(lrgrp->rg_header.__pad0),
-	sizeof(lrgrp->rg_header.mh_format),
-	sizeof(lrgrp->rg_header.__pad1),
-	sizeof(lrgrp->rg_flags),
-	sizeof(lrgrp->rg_free),
-	sizeof(lrgrp->rg_dinodes),
-	sizeof(lrgrp->__pad),
-	sizeof(lrgrp->rg_igeneration),
-	sizeof(lrgrp->rg_reserved),
-	-1
-};
-
-const char *fieldnames_rgrp[] = {
-	"mh_magic",
-	"mh_type",
-	"mh.__pad0",
-	"mh_format",
-	"mh.__pad1",
-	"rg_flags",
-	"rg_free",
-	"rg_dinodes",
-	"__pad",
-	"rg_igeneration",
-	"rg_reserved",
-};
-
-static int which_field_rgrp(int off)
-{
-	int i, tot;
-
-	tot = 0;
-	for (i = 0; fieldsize_rgrp[i] != -1; i++) {
-		tot += fieldsize_rgrp[i];
-		if (off < tot)
-			return i;
-	}
-	return -1;
-}
-
-static const char *which_fieldname_rgrp(int off)
-{
-	int w = which_field_rgrp(off);
-	if (w < 0)
-		return NULL;
-	return fieldnames_rgrp[w];
-}
-
-/* -------------------------------------------------------------------------
- * metaheader
- * ------------------------------------------------------------------------- */
-const int fieldsize_mh[] = {
-	sizeof(lmh->mh_magic),
-	sizeof(lmh->mh_type),
-	sizeof(lmh->__pad0),
-	sizeof(lmh->mh_format),
-	sizeof(lmh->__pad1),
-	-1
-};
-
-const char *fieldnames_mh[] = {
-	"mh_magic",
-	"mh_type",
-	"mh.__pad0",
-	"mh_format",
-	"mh.__pad1",
-};
-
-static int which_field_mh(int off)
-{
-	int i, tot;
-
-	tot = 0;
-	for (i = 0; fieldsize_mh[i] != -1; i++) {
-		tot += fieldsize_mh[i];
-		if (off < tot)
-			return i;
-	}
-	return -1;
-}
-
-static const char *which_fieldname_mh(int off)
-{
-	int w = which_field_mh(off);
-	if (w < 0)
-		return NULL;
-	return fieldnames_mh[w];
-}
-
-/* -------------------------------------------------------------------------
- * dinode
- * ------------------------------------------------------------------------- */
-const int fieldsize_di[] = {
-	sizeof(ldi->di_header.mh_magic),
-	sizeof(ldi->di_header.mh_type),
-	sizeof(ldi->di_header.__pad0),
-	sizeof(ldi->di_header.mh_format),
-	sizeof(ldi->di_header.__pad1),
-	sizeof(ldi->di_num.no_formal_ino),
-	sizeof(ldi->di_num.no_addr),
-	sizeof(ldi->di_mode),
-	sizeof(ldi->di_uid),
-	sizeof(ldi->di_gid),
-	sizeof(ldi->di_nlink),
-	sizeof(ldi->di_size),
-	sizeof(ldi->di_blocks),
-	sizeof(ldi->di_atime),
-	sizeof(ldi->di_mtime),
-	sizeof(ldi->di_ctime),
-	sizeof(ldi->di_major),
-	sizeof(ldi->di_minor),
-	sizeof(ldi->di_goal_meta),
-	sizeof(ldi->di_goal_data),
-	sizeof(ldi->di_generation),
-	sizeof(ldi->di_flags),
-	sizeof(ldi->di_payload_format),
-	sizeof(ldi->__pad1),
-	sizeof(ldi->di_height),
-	sizeof(ldi->__pad2),
-	sizeof(ldi->__pad3),
-	sizeof(ldi->di_depth),
-	sizeof(ldi->di_entries),
-	sizeof(ldi->__pad4.no_formal_ino),
-	sizeof(ldi->__pad4.no_addr),
-	sizeof(ldi->di_eattr),
-	sizeof(ldi->di_atime_nsec),
-	sizeof(ldi->di_mtime_nsec),
-	sizeof(ldi->di_ctime_nsec),
-	sizeof(ldi->di_reserved),
-	-1
-};
-
-const char *fieldnames_di[] = {
-	"mh_magic",
-	"mh_type",
-	"mh.__pad0",
-	"mh_format",
-	"mh.__pad1",
-	"no_formal_ino",
-	"no_addr",
-	"di_mode",
-	"di_uid",
-	"di_gid",
-	"di_nlink",
-	"di_size",
-	"di_blocks",
-	"di_atime",
-	"di_mtime",
-	"di_ctime",
-	"di_major",
-	"di_minor",
-	"di_goal_meta",
-	"di_goal_data",
-	"di_generation",
-	"di_flags",
-	"di_payload_format",
-	"__pad1",
-	"di_height",
-	"__pad2",
-	"__pad3",
-	"di_depth",
-	"di_entries",
-	"__pad4.no_formal_ino",
-	"__pad4.no_addr",
-	"di_eattr",
-	"di_atime_nsec",
-	"di_mtime_nsec",
-	"di_ctime_nsec",
-	"di_reserved",
-};
-
-static int which_field_di(int off)
-{
-	int i, tot;
-
-	tot = 0;
-	for (i = 0; fieldsize_di[i] != -1; i++) {
-		tot += fieldsize_di[i];
-		if (off < tot)
-			return i;
-	}
-	return -1;
-}
-
-static const char *which_fieldname_di(int off)
-{
-	int w = which_field_di(off);
-	if (w < 0)
-		return NULL;
-	return fieldnames_di[w];
-}
-
-/* -------------------------------------------------------------------------
- * directory leaf
- * ------------------------------------------------------------------------- */
-const int fieldsize_lf[] = {
-	sizeof(lleaf->lf_header.mh_magic),
-	sizeof(lleaf->lf_header.mh_type),
-	sizeof(lleaf->lf_header.__pad0),
-	sizeof(lleaf->lf_header.mh_format),
-	sizeof(lleaf->lf_header.__pad1),
-	sizeof(lleaf->lf_depth),
-	sizeof(lleaf->lf_entries),
-	sizeof(lleaf->lf_dirent_format),
-	sizeof(lleaf->lf_next),
-	sizeof(lleaf->lf_reserved),
-	-1
-};
-
-const char *fieldnames_lf[] = {
-	"mh_magic",
-	"mh_type",
-	"mh.__pad0",
-	"mh_format",
-	"mh.__pad1",
-	"lf_depth",
-	"lf_entries",
-	"lf_dirent_format",
-	"lf_next",
-	"lf_reserved",
-};
-
-static int which_field_lf(int off)
-{
-	int i, tot;
-
-	tot = 0;
-	for (i = 0; fieldsize_lf[i] != -1; i++) {
-		tot += fieldsize_lf[i];
-		if (off < tot)
-			return i;
-	}
-	return -1;
-}
-
-static const char *which_fieldname_lf(int off)
-{
-	int w = which_field_lf(off);
-	if (w < 0)
-		return NULL;
-	return fieldnames_lf[w];
-}
-
-/* -------------------------------------------------------------------------
- * log header
- * ------------------------------------------------------------------------- */
-const int fieldsize_lh[] = {
-	sizeof(llh->lh_header.mh_magic),
-	sizeof(llh->lh_header.mh_type),
-	sizeof(llh->lh_header.__pad0),
-	sizeof(llh->lh_header.mh_format),
-	sizeof(llh->lh_header.__pad1),
-	sizeof(llh->lh_sequence),
-	sizeof(llh->lh_flags),
-	sizeof(llh->lh_tail),
-	sizeof(llh->lh_blkno),
-	sizeof(llh->lh_hash),
-	-1
-};
-
-const char *fieldnames_lh[] = {
-	"mh_magic",
-	"mh_type",
-	"mh.__pad0",
-	"mh_format",
-	"mh.__pad1",
-	"lh_sequence",
-	"lh_flags",
-	"lh_tail",
-	"lh_blkno",
-	"lh_hash",
-};
-
-static int which_field_lh(int off)
-{
-	int i, tot;
-
-	tot = 0;
-	for (i = 0; fieldsize_lh[i] != -1; i++) {
-		tot += fieldsize_lh[i];
-		if (off < tot)
-			return i;
-	}
-	return -1;
-}
-
-static const char *which_fieldname_lh(int off)
-{
-	int w = which_field_lh(off);
-	if (w < 0)
-		return NULL;
-	return fieldnames_lh[w];
-}
-
-/* -------------------------------------------------------------------------
- * log descriptor
- * ------------------------------------------------------------------------- */
-const int fieldsize_ld[] = {
-	sizeof(lld->ld_header.mh_magic),
-	sizeof(lld->ld_header.mh_type),
-	sizeof(lld->ld_header.__pad0),
-	sizeof(lld->ld_header.mh_format),
-	sizeof(lld->ld_header.__pad1),
-	sizeof(lld->ld_type),
-	sizeof(lld->ld_length),
-	sizeof(lld->ld_data1),
-	sizeof(lld->ld_data2),
-	sizeof(lld->ld_reserved),
-	-1
-};
-
-const char *fieldnames_ld[] = {
-	"mh_magic",
-	"mh_type",
-	"mh.__pad0",
-	"mh_format",
-	"mh.__pad1",
-	"ld_type",
-	"ld_length",
-	"ld_data1",
-	"ld_data2",
-	"ld_reserved",
-};
-
-static int which_field_ld(int off)
-{
-	int i, tot;
-
-	tot = 0;
-	for (i = 0; fieldsize_ld[i] != -1; i++) {
-		tot += fieldsize_ld[i];
-		if (off < tot)
-			return i;
-	}
-	return -1;
-}
-
-static const char *which_fieldname_ld(int off)
-{
-	int w = which_field_ld(off);
-	if (w < 0)
-		return NULL;
-	return fieldnames_ld[w];
-}
 
 /* -------------------------------------------------------------------------
  * field-related functions:
@@ -1235,6 +806,20 @@ int display_block_type(int from_restore)
 	return ret_type;
 }
 
+static const struct lgfs2_metadata *find_mtype(uint32_t mtype)
+{
+	const struct lgfs2_metadata *m = lgfs2_metadata;
+	unsigned n = 0;
+
+	do {
+		if (m->gfs2 && m->mh_type == mtype)
+			return m;
+		n++;
+	} while (n < lgfs2_metadata_size);
+
+	return NULL;
+}
+
 /* ------------------------------------------------------------------------ */
 /* hexdump - hex dump the filesystem block to the screen                    */
 /* ------------------------------------------------------------------------ */
@@ -1342,45 +927,20 @@ static int hexdump(uint64_t startaddr, int len)
 		}
 		print_gfs2("] ");
 		if (print_field >= 0) {
-			switch (get_block_type(bh)) {
-			case GFS2_METATYPE_SB:   /* 1 */
-				print_gfs2(which_fieldname_sb(print_field));
-				break;
-			case GFS2_METATYPE_RG:   /* 2 */
-				print_gfs2(which_fieldname_rgrp(print_field));
-				break;
-			case GFS2_METATYPE_RB:   /* 3 */
-				print_gfs2(which_fieldname_mh(print_field));
-				break;
-			case GFS2_METATYPE_DI:   /* 4 */
-				print_gfs2(which_fieldname_di(print_field));
-				break;
-			case GFS2_METATYPE_IN:   /* 5 */
-				print_gfs2(which_fieldname_mh(print_field));
-				break;
-			case GFS2_METATYPE_LF:   /* 6 */
-				print_gfs2(which_fieldname_lf(print_field));
-				break;
-			case GFS2_METATYPE_JD:
-				print_gfs2(which_fieldname_mh(print_field));
-				break;
-			case GFS2_METATYPE_LH:
-				print_gfs2(which_fieldname_lh(print_field));
-				break;
-			case GFS2_METATYPE_LD:
-				print_gfs2(which_fieldname_ld(print_field));
-				break;
-			case GFS2_METATYPE_EA:
-				break;
-			case GFS2_METATYPE_ED:
-				break;
-			case GFS2_METATYPE_LB:
-				break;
-			case GFS2_METATYPE_QC:
-				break;
-			default:
-				break;
+			const struct lgfs2_metadata *m = find_mtype(get_block_type(bh));
+			if (m) {
+				const struct lgfs2_metafield *f;
+				unsigned n;
+				for (n = 0; n < m->nfields; n++) {
+					f = &m->fields[n];
+					if (print_field >= f->offset &&
+					    print_field < (f->offset + f->length)) {
+						print_gfs2(m->fields[n].name);
+						break;
+					}
+				}
 			}
+
 		}
 		if (cursor_line) {
 			if (((*(bh->b_data + 7) == GFS2_METATYPE_IN) ||
@@ -3545,6 +3105,9 @@ static void process_parameters(int argc, char *argv[], int pass)
 int main(int argc, char *argv[])
 {
 	int i, j, fd;
+
+	if (lgfs2_selfcheck())
+		return EXIT_FAILURE;
 
 	indirect = malloc(sizeof(struct iinfo));
 	if (!indirect)
