@@ -1276,7 +1276,10 @@ static void read_superblock(int fd)
 		perror(sbd.device_name);
 		exit(-1);
 	}
-	compute_constants(&sbd);
+	if(compute_constants(&sbd)) {
+		fprintf(stderr, "Failed to compute constants.\n");
+		exit(-1);
+	}
 	if (sbd.gfs1 || (sbd.sd_sb.sb_header.mh_magic == GFS2_MAGIC &&
 		     sbd.sd_sb.sb_header.mh_type == GFS2_METATYPE_SB))
 		block = 0x10 * (GFS2_DEFAULT_BSIZE / sbd.bsize);
