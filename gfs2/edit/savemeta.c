@@ -710,7 +710,6 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 			slow = ri_update(&sbd, 0, &rgcount, &sane);
 		n = osi_last(&sbd.rgtree);
 		last_rgd = (struct rgrp_tree *)n;
-		n = osi_prev(n);
 		fssize = last_rgd->ri.ri_addr + rgrp_size(last_rgd);
 		last_fs_block = fssize;
 		fssize *= sbd.bsize;
