@@ -2232,7 +2232,7 @@ static void process_field(const char *field, const char *nstr)
 /* ------------------------------------------------------------------------ */
 static void interactive_mode(void)
 {
-	int ch, Quit;
+	int ch = 0, Quit;
 
 	if ((wind = initscr()) == NULL) {
 		fprintf(stderr, "Error: unable to initialize screen.");
