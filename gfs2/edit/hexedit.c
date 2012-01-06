@@ -1493,7 +1493,6 @@ static uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 	int amtread;
 	struct gfs2_buffer_head *jindex_bh, *j_bh;
 	char jbuf[sbd.bsize];
-	struct gfs2_inode *j_inode = NULL;
 
 	journal_num = atoi(journal + 7);
 	/* Figure out the block of the jindex file */
@@ -1527,7 +1526,6 @@ static uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 
 		jblock = indirect->ii[0].dirent[journal_num + 2].block;
 		j_bh = bread(&sbd, jblock);
-		j_inode = inode_get(&sbd, j_bh);
 		gfs2_dinode_in(&jdi, j_bh);/* parse dinode to struct */
 		*j_size = jdi.di_size;
 		brelse(j_bh);
