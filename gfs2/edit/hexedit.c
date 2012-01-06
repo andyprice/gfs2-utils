@@ -713,7 +713,7 @@ int display_block_type(int from_restore)
 		if ((be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RG)) {
 			int ptroffset = edit_row[dmode] * 16 + edit_col[dmode];
 
-			if (ptroffset >= struct_len || pgnum) {
+			if (rgd && (ptroffset >= struct_len || pgnum)) {
 				int blknum, b, btype;
 
 				blknum = pgnum * screen_chunk_size;
@@ -731,7 +731,7 @@ int display_block_type(int from_restore)
 		} else if ((be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RB)) {
 			int ptroffset = edit_row[dmode] * 16 + edit_col[dmode];
 
-			if (ptroffset >= struct_len || pgnum) {
+			if (rgd && (ptroffset >= struct_len || pgnum)) {
 				int blknum, b, btype, rb_number;
 
 				rb_number = block - rgd->ri.ri_addr;
