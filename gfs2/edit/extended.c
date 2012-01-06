@@ -669,30 +669,35 @@ int display_extended(void)
 			tmp_bh = bread(&sbd, masterblock("rindex"));
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		parse_rindex(tmp_inode, FALSE);
+		inode_put(&tmp_inode);
 		brelse(tmp_bh);
 	}
 	else if (block_is_jindex()) {
 		tmp_bh = bread(&sbd, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		print_jindex(tmp_inode);
+		inode_put(&tmp_inode);
 		brelse(tmp_bh);
 	}
 	else if (block_is_inum_file()) {
 		tmp_bh = bread(&sbd, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		print_inum(tmp_inode);
+		inode_put(&tmp_inode);
 		brelse(tmp_bh);
 	}
 	else if (block_is_statfs_file()) {
 		tmp_bh = bread(&sbd, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		print_statfs(tmp_inode);
+		inode_put(&tmp_inode);
 		brelse(tmp_bh);
 	}
 	else if (block_is_quota_file()) {
 		tmp_bh = bread(&sbd, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		print_quota(tmp_inode);
+		inode_put(&tmp_inode);
 		brelse(tmp_bh);
 	}
 	return 0;
