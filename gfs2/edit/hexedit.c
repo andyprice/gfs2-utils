@@ -756,6 +756,10 @@ int display_block_type(int from_restore)
 				print_gfs2(" blk ");
 				for (b = blknum; b < blknum + 4; b++) {
 					btype = gfs2_get_bitmap(&sbd, b, rgd);
+					if (btype < 0) {
+						fprintf(stderr, "Failed to retrieve block state from bitmap\n");
+						exit(-1);
+					}
 					print_gfs2("0x%x-%s  ", b,
 						   allocdesc[sbd.gfs1][btype]);
 				}
