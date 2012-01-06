@@ -2775,6 +2775,7 @@ static void dump_journal(const char *journal)
 			block = saveblk;
 		}
 	}
+	inode_put(&j_inode);
 	brelse(j_bh);
 	blockhist = -1; /* So we don't print anything else */
 	free(jbuf);
