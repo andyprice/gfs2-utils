@@ -1521,6 +1521,7 @@ static uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 			jblock = ji.ji_addr;
 			*j_size = ji.ji_nsegment * 0x10;
 		}
+		inode_put(&jiinode);
 	} else {
 		struct gfs2_dinode jdi;
 
