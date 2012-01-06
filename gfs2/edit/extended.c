@@ -396,6 +396,7 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 	if (!tmpbuf) {
 		fprintf(stderr, "Out of memory in function "
 			"display_indirect\n");
+		free(more_indir);
 		return;
 	}
 	while (thisblk) {
