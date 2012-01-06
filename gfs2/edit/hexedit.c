@@ -2672,6 +2672,10 @@ static void dump_journal(const char *journal)
 		j_bh = bread(&sbd, jblock);
 		j_inode = inode_get(&sbd, j_bh);
 		jbuf = malloc(sbd.bsize);
+		if (jbuf == NULL) {
+			fprintf(stderr, "Out of memory\n");
+			exit(-1);
+		}
 	}
 
 	for (jb = 0; jb < j_size; jb += (sbd.gfs1 ? 1:sbd.bsize)) {
