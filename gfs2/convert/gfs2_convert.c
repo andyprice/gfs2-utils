@@ -1918,6 +1918,9 @@ static int conv_build_jindex(struct gfs2_sbd *sdp)
 
 	sdp->md.journal = malloc(sdp->md.journals *
 				 sizeof(struct gfs2_inode *));
+	if (sdp->md.journal == NULL) {
+		return errno;
+	}
 	for (j = 0; j < sdp->md.journals; j++) {
 		char name[256];
 
