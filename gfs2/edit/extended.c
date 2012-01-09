@@ -656,6 +656,7 @@ int display_extended(void)
 		tmp_bh = bread(&sbd, block);
 		tmp_inode = inode_get(&sbd, tmp_bh);
 		parse_rindex(tmp_inode, TRUE);
+		inode_put(&tmp_inode);
 		brelse(tmp_bh);
 	}
 	else if (has_indirect_blocks() && !indirect_blocks &&
