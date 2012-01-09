@@ -697,8 +697,13 @@ int display_block_type(int from_restore)
 			if ((be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RG) ||
 			    (be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RB))
 				type = 4;
-			else
+			else {
 				type = gfs2_get_bitmap(&sbd, block, rgd);
+				if (type < 0) {
+					fprintf(stderr, "Failed to retrieve block state from bitmap\n");
+					exit(-1);
+				}
+			}
 		} else
 			type = 4;
 		screen_chunk_size = ((termlines - 4) * 16) >> 8 << 8;
@@ -724,6 +729,10 @@ int display_block_type(int from_restore)
 				print_gfs2(" blk ");
 				for (b = blknum; b < blknum + 4; b++) {
 					btype = gfs2_get_bitmap(&sbd, b, rgd);
+					if (btype < 0) {
+						fprintf(stderr, "Failed to retrieve block state from bitmap\n");
+						exit(-1);
+					}
 					print_gfs2("0x%x-%s  ", b,
 						   allocdesc[sbd.gfs1][btype]);
 				}
