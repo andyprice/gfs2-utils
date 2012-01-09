@@ -428,7 +428,7 @@ static void check_dev_content(const char *devname)
 		(char *)"-bs",
 		(char *)devname,
 		NULL };
-	int p[2];
+	int p[2] = {-1, -1};
 	int ret;
 	int pid;
 
@@ -463,7 +463,8 @@ fail:
 				goto fail;
 			printf( _("It appears to contain: %s"), content);
 		}
-		close(p[0]);
+		if (p[0] >= 0)
+			close(p[0]);
 		return;
 	}
 
