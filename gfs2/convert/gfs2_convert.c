@@ -1777,13 +1777,13 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 				 (rgd->ri.ri_addr > rgdhigh->ri.ri_addr)))
 				rgdhigh = rgd;
 		} /* for each rg */
-		log_info(_("Addr 0x%llx comes after rg at addr 0x%llx\n"),
-			 (unsigned long long)jndx->ji_addr,
-			 (unsigned long long)rgdhigh->ri.ri_addr);
 		if (!rgdhigh) { /* if we somehow didn't find one. */
 			log_crit(_("Error: No suitable rg found for journal.\n"));
 			return -1;
 		}
+		log_info(_("Addr 0x%llx comes after rg at addr 0x%llx\n"),
+			 (unsigned long long)jndx->ji_addr,
+			 (unsigned long long)rgdhigh->ri.ri_addr);
 		ri_addr = jndx->ji_addr;
 		/* Allocate a new rgd entry which includes rg and ri. */
 		rgd = rgrp_insert(&sdp->rgtree, ri_addr);
