@@ -688,6 +688,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 			if (err != sdp->md.statfs->i_di.di_size) {
 				log_crit(_("Error %d reading statfs file. "
 					   "Aborting.\n"), err);
+				free(buf);
 				goto fail;
 			}
 			/* call gfs2_inum_range_in() to retrieve range */
