@@ -123,12 +123,6 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer,
 			return 0;
 
 		q = block_type(block);
-		if (q < 0) {
-			log_err( _("Invalid block type for block #%llu "
-				   "(0x%llx)\n"), (unsigned long long)block,
-				 (unsigned long long)block);
-			return q;
-		}
 
 		if (sdp->gfs1)
 			block_status = gfs1_convert_mark(q, count);

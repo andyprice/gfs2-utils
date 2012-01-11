@@ -701,7 +701,7 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *b)
 		ip = fsck_load_inode(sdp, id->block_no);
 
 		q = block_type(id->block_no);
-		if (q < 0 || q == gfs2_inode_invalid) {
+		if (q == gfs2_inode_invalid) {
 			log_debug( _("The remaining reference inode %lld "
 				     "(0x%llx) is marked invalid: Marking "
 				     "the block as free.\n"),
