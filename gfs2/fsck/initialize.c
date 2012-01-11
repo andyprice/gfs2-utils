@@ -375,7 +375,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		err = dir_add(sdp->master_dir, "jindex", 6, &inum,
 		              IF2DT(S_IFDIR | 0700));
 		if (err) {
-			log_crit(_("Error %d adding jindex directory\n"), err);
+			log_crit(_("Error %d adding jindex directory\n"), errno);
 			exit(FSCK_ERROR);
 		}
 		sdp->master_dir->i_di.di_nlink++;
@@ -394,7 +394,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			IF2DT(S_IFDIR | 0700));
 		if (err) {
 			log_crit(_("Error %d adding per_node directory\n"),
-				 err);
+				 errno);
 			exit(FSCK_ERROR);
 		}
 		sdp->master_dir->i_di.di_nlink++;
@@ -413,7 +413,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		err = dir_add(sdp->master_dir, "inum", 4, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
-			log_crit(_("Error %d adding inum inode\n"), err);
+			log_crit(_("Error %d adding inum inode\n"), errno);
 			exit(FSCK_ERROR);
 		}
 	} else {
@@ -431,7 +431,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		err = dir_add(sdp->master_dir, "statfs", 6, &inum,
 			      IF2DT(S_IFREG | 0600));
 		if (err) {
-			log_crit(_("Error %d adding statfs inode\n"), err);
+			log_crit(_("Error %d adding statfs inode\n"), errno);
 			exit(FSCK_ERROR);
 		}
 	} else {
@@ -449,7 +449,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		err = dir_add(sdp->master_dir, "rindex", 6, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
-			log_crit(_("Error %d adding rindex inode\n"), err);
+			log_crit(_("Error %d adding rindex inode\n"), errno);
 			exit(FSCK_ERROR);
 		}
 	} else {
@@ -466,7 +466,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		err = dir_add(sdp->master_dir, "quota", 5, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
-			log_crit(_("Error %d adding quota inode\n"), err);
+			log_crit(_("Error %d adding quota inode\n"), errno);
 			exit(FSCK_ERROR);
 		}
 	} else {

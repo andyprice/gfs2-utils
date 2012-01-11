@@ -677,8 +677,8 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 					 GFS_FILE_DIR : DT_DIR));
 			if (error) {
 				log_err(_("Error adding directory %s: %s\n"),
-				        filename, strerror(error));
-				return -error;
+				        filename, strerror(errno));
+				return -errno;
 			}
 			if (cur_blks != sysinode->i_di.di_blocks)
 				reprocess_inode(sysinode, dirname);
@@ -897,8 +897,8 @@ int pass2(struct gfs2_sbd *sdp)
 						 DT_DIR));
 				if (error) {
 					log_err(_("Error adding directory %s: %s\n"),
-					        filename, strerror(error));
-					return -error;
+					        filename, strerror(errno));
+					return -errno;
 				}
 				if (cur_blks != ip->i_di.di_blocks) {
 					char dirname[80];

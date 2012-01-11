@@ -58,7 +58,7 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 		      (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 	if (err) {
 		log_err(_("Error adding directory %s: %s\n"),
-		        filename, strerror(err));
+		        filename, strerror(errno));
 		exit(FSCK_ERROR);
 	}
 	if (cur_blks != ip->i_di.di_blocks) {

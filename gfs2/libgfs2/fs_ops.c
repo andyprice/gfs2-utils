@@ -737,6 +737,11 @@ int gfs2_dirent_next(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 	return 0;
 }
 
+/**
+ * Allocate a gfs2 dirent
+ * Returns 0 on success, with *dent_out pointing to the new dirent,
+ * or -1 on failure, with errno set
+ */
 static int dirent_alloc(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 			int name_len, struct gfs2_dirent **dent_out)
 {
@@ -807,7 +812,8 @@ static int dirent_alloc(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 		}
 	} while (gfs2_dirent_next(dip, bh, &dent) == 0);
 
-	return -ENOSPC;
+	errno = ENOSPC;
+	return -1;
 }
 
 void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
@@ -1395,10 +1401,8 @@ static struct gfs2_inode *__createi(struct gfs2_inode *dip,
 		inum.no_addr = bn;
 
 		err = dir_add(dip, filename, strlen(filename), &inum, IF2DT(mode));
-		if (err) {
-			errno = -err;
+		if (err)
 			return NULL;
-		}
 
 		if (if_gfs1)
 			is_dir = (IF2DT(mode) == GFS_FILE_DIR);
