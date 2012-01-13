@@ -667,6 +667,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 				    filename_len))) {
 				log_err( _("Unable to zero name string\n"));
 				stack;
+				free(filename);
 				return -1;
 			}
 			memcpy(filename, tmp_name, filename_len);
@@ -678,6 +679,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 			if (error) {
 				log_err(_("Error adding directory %s: %s\n"),
 				        filename, strerror(errno));
+				free(filename);
 				return -errno;
 			}
 			if (cur_blks != sysinode->i_di.di_blocks)
