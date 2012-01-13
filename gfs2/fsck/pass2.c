@@ -623,10 +623,15 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 
 	log_info( _("Checking system directory inode '%s'\n"), dirname);
 
-	if (sysinode) {
-		iblock = sysinode->i_di.di_num.no_addr;
-		ds.q = block_type(iblock);
+	if (!sysinode) {
+		log_err( _("Failed to check '%s': sysinode is null\n"), dirname);
+		stack;
+		return -1;
 	}
+
+	iblock = sysinode->i_di.di_num.no_addr;
+	ds.q = block_type(iblock);
+
 	pass2_fxns.private = (void *) &ds;
 	if (ds.q == gfs2_bad_block) {
 		/* First check that the directory's metatree is valid */
