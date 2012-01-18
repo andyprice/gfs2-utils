@@ -7,7 +7,6 @@
 
 #include "libgfs2.h"
 #include "osi_list.h"
-#include "hash.h"
 #include "inode_hash.h"
 #include "fsck.h"
 #define _(String) gettext(String)

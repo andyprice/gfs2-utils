@@ -16,7 +16,6 @@
 #include "fsck.h"
 #include "util.h"
 #include "metawalk.h"
-#include "hash.h"
 #include "inode_hash.h"
 
 #define COMFORTABLE_BLKS 5242880 /* 20GB in 4K blocks */
