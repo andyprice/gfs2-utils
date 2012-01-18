@@ -129,7 +129,6 @@ static __inline__ __attribute__((noreturn, format (printf, 1, 2)))
 void die(const char *fmt, ...)
 {
 	va_list ap;
-	fprintf(stderr, "%s: ", __FILE__);
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
 	va_end(ap);

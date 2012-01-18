@@ -257,6 +257,10 @@ static void test_locking(char *lockproto, char *locktable)
 		/*  Nolock is always ok.  */
 	} else if (strcmp(lockproto, "lock_gulm") == 0 ||
 		   strcmp(lockproto, "lock_dlm") == 0) {
+		if (locktable == NULL || *locktable == '\0') {
+			fprintf(stderr, _("No lock table specified.\n"));
+			exit(-1);
+		}
 		for (c = locktable; *c; c++) {
 			if (isspace(*c))
 				die( _("locktable error: contains space characters\n"));
