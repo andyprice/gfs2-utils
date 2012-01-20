@@ -911,11 +911,10 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 		fix_md.qinode = ip;
 		log_warn(_("Found system quota file at: 0x%llx\n"),
 			 di->di_num.no_addr);
-	}
-	return;
-
+	} else {
 out_discard_ip:
-	inode_put(&ip);
+		inode_put(&ip);
+	}
 }
 
 /**
