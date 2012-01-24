@@ -699,10 +699,6 @@ int display_block_type(int from_restore)
 				type = 4;
 			else {
 				type = gfs2_get_bitmap(&sbd, block, rgd);
-				if (type < 0) {
-					fprintf(stderr, "Failed to retrieve block state from bitmap\n");
-					exit(-1);
-				}
 			}
 		} else
 			type = 4;
@@ -710,10 +706,12 @@ int display_block_type(int from_restore)
 		if (!screen_chunk_size)
 			screen_chunk_size = 256;
 		pgnum = (offset / screen_chunk_size);
-		print_gfs2("(p.%d of %d--%s)", pgnum + 1,
-			   (sbd.bsize % screen_chunk_size) > 0 ?
-			   sbd.bsize / screen_chunk_size + 1 : sbd.bsize /
-			   screen_chunk_size, allocdesc[sbd.gfs1][type]);
+		if (type >= 0) {
+			print_gfs2("(p.%d of %d--%s)", pgnum + 1,
+				   (sbd.bsize % screen_chunk_size) > 0 ?
+				   sbd.bsize / screen_chunk_size + 1 : sbd.bsize /
+				   screen_chunk_size, allocdesc[sbd.gfs1][type]);
+		}
 		/*eol(9);*/
 		if ((be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RG)) {
 			int ptroffset = edit_row[dmode] * 16 + edit_col[dmode];
@@ -729,12 +727,10 @@ int display_block_type(int from_restore)
 				print_gfs2(" blk ");
 				for (b = blknum; b < blknum + 4; b++) {
 					btype = gfs2_get_bitmap(&sbd, b, rgd);
-					if (btype < 0) {
-						fprintf(stderr, "Failed to retrieve block state from bitmap\n");
-						exit(-1);
+					if (btype >= 0) {
+						print_gfs2("0x%x-%s  ", b,
+							   allocdesc[sbd.gfs1][btype]);
 					}
-					print_gfs2("0x%x-%s  ", b,
-						   allocdesc[sbd.gfs1][btype]);
 				}
 			}
 		} else if ((be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RB)) {
@@ -765,12 +761,10 @@ int display_block_type(int from_restore)
 				print_gfs2(" blk ");
 				for (b = blknum; b < blknum + 4; b++) {
 					btype = gfs2_get_bitmap(&sbd, b, rgd);
-					if (btype < 0) {
-						fprintf(stderr, "Failed to retrieve block state from bitmap\n");
-						exit(-1);
+					if (btype >= 0) {
+						print_gfs2("0x%x-%s  ", b,
+							   allocdesc[sbd.gfs1][btype]);
 					}
-					print_gfs2("0x%x-%s  ", b,
-						   allocdesc[sbd.gfs1][btype]);
 				}
 			}
 		}
