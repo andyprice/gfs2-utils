@@ -72,15 +72,15 @@ const unsigned lgfs2_di_flag_size = ARRAY_SIZE(lgfs2_di_flags);
 		    .offset = offsetof(struct STRUCT, f), \
 		    .length = sizeof(((struct STRUCT *)(0))->f), \
 		    __VA_ARGS__ },
-#define FP(f) F(f, .pointer=1)
-#define RF(f) F(f, .reserved=1)
-#define RFP(f) F(f, .pointer=1, .reserved=1)
+#define FP(f) F(f, .flags = LGFS2_MFF_POINTER )
+#define RF(f) F(f, .flags = LGFS2_MFF_RESERVED)
+#define RFP(f) F(f, .flags = LGFS2_MFF_POINTER|LGFS2_MFF_RESERVED)
 
 
 #define MH(f) F(f.mh_magic) \
-	      F(f.mh_type) \
+	      F(f.mh_type, .flags = LGFS2_MFF_ENUM, .symtab=lgfs2_metatypes, .nsyms=ARRAY_SIZE(lgfs2_metatypes)) \
 	      RF(f.__pad0) \
-	      F(f.mh_format) \
+	      F(f.mh_format, .flags = LGFS2_MFF_ENUM, .symtab=lgfs2_metaformats, .nsyms=ARRAY_SIZE(lgfs2_metaformats)) \
 	      F(f.mh_jid)
 
 #define IN(f) F(f.no_formal_ino) \
@@ -98,17 +98,17 @@ MH(sb_header)
 F(sb_fs_format)
 F(sb_multihost_format)
 RF(__pad0)
-F(sb_bsize)
-F(sb_bsize_shift)
+F(sb_bsize, .flags = LGFS2_MFF_BYTES)
+F(sb_bsize_shift, .flags = LGFS2_MFF_BYTES|LGFS2_MFF_SHIFT)
 RF(__pad1)
 IN(sb_master_dir)
 INR(__pad2)
 IN(sb_root_dir)
-F(sb_lockproto)
-F(sb_locktable)
-IN( __pad3)
-IN( __pad4)
-F(sb_uuid)
+F(sb_lockproto, .flags = LGFS2_MFF_STRING)
+F(sb_locktable, .flags = LGFS2_MFF_STRING)
+IN(__pad3)
+IN(__pad4)
+F(sb_uuid, .flags = LGFS2_MFF_UUID)
 };
 
 #undef STRUCT
@@ -119,14 +119,14 @@ MH(sb_header)
 F(sb_fs_format)
 F(sb_multihost_format)
 F(sb_flags)
-F(sb_bsize)
-F(sb_bsize_shift)
-F(sb_seg_size)
+F(sb_bsize, .flags = LGFS2_MFF_BYTES)
+F(sb_bsize_shift, .flags = LGFS2_MFF_BYTES|LGFS2_MFF_SHIFT)
+F(sb_seg_size, .flags = LGFS2_MFF_FSBLOCKS)
 IN(sb_jindex_di)
 IN(sb_rindex_di)
 IN(sb_root_di)
-F(sb_lockproto)
-F(sb_locktable)
+F(sb_lockproto, .flags = LGFS2_MFF_STRING)
+F(sb_locktable, .flags = LGFS2_MFF_STRING)
 IN(sb_quota_di)
 IN(sb_license_di)
 RF(sb_reserved)
@@ -137,11 +137,11 @@ RF(sb_reserved)
 
 static const struct lgfs2_metafield gfs2_rindex_fields[] = {
 FP(ri_addr)
-F(ri_length)
+F(ri_length, .flags = LGFS2_MFF_FSBLOCKS)
 RF(__pad)
 FP(ri_data0)
-F(ri_data)
-F(ri_bitbytes)
+F(ri_data, .flags = LGFS2_MFF_FSBLOCKS)
+F(ri_bitbytes, .flags = LGFS2_MFF_BYTES)
 F(ri_reserved)
 };
 
@@ -151,8 +151,8 @@ F(ri_reserved)
 static const struct lgfs2_metafield gfs2_rgrp_fields[] = {
 MH(rg_header)
 F(rg_flags)
-F(rg_free)
-F(rg_dinodes)
+F(rg_free, .flags = LGFS2_MFF_FSBLOCKS)
+F(rg_dinodes, .flags = LGFS2_MFF_FSBLOCKS)
 RF(__pad)
 F(rg_igeneration)
 RF(rg_reserved)
@@ -164,24 +164,21 @@ RF(rg_reserved)
 static const struct lgfs2_metafield gfs_rgrp_fields[] = {
 MH(rg_header)
 F(rg_flags)
-F(rg_free)
-F(rg_useddi)
-F(rg_freedi)
+F(rg_free, .flags = LGFS2_MFF_FSBLOCKS)
+F(rg_useddi, .flags = LGFS2_MFF_FSBLOCKS)
+F(rg_freedi, .flags = LGFS2_MFF_FSBLOCKS)
 IN(rg_freedi_list)
-F(rg_usedmeta)
-F(rg_freemeta)
+F(rg_usedmeta, .flags = LGFS2_MFF_FSBLOCKS)
+F(rg_freemeta, .flags = LGFS2_MFF_FSBLOCKS)
 RF(rg_reserved)
 };
 
 #undef STRUCT
-#define STRUCT gfs2_meta_header
+struct gfs2_rgrp_bitmap { struct gfs2_meta_header rb_header; };
+#define STRUCT gfs2_rgrp_bitmap
 
 static const struct lgfs2_metafield gfs2_rgrp_bitmap_fields[] = {
-F(mh_magic)
-F(mh_type)
-RF(__pad0)
-F(mh_format)
-F(mh_jid)
+MH(rb_header)
 };
 
 #undef STRUCT
@@ -190,21 +187,21 @@ F(mh_jid)
 static const struct lgfs2_metafield gfs2_dinode_fields[] = {
 MH(di_header)
 IN(di_num)
-F(di_mode)
-F(di_uid)
-F(di_gid)
+F(di_mode, .flags = LGFS2_MFF_MODE)
+F(di_uid, .flags = LGFS2_MFF_UID)
+F(di_gid, .flags = LGFS2_MFF_GID)
 F(di_nlink)
-F(di_size)
-F(di_blocks)
-F(di_atime)
-F(di_mtime)
-F(di_ctime)
-F(di_major)
-F(di_minor)
+F(di_size, .flags = LGFS2_MFF_BYTES)
+F(di_blocks, .flags = LGFS2_MFF_FSBLOCKS)
+F(di_atime, .flags = LGFS2_MFF_SECS)
+F(di_mtime, .flags = LGFS2_MFF_SECS)
+F(di_ctime, .flags = LGFS2_MFF_SECS)
+F(di_major, .flags = LGFS2_MFF_MAJOR)
+F(di_minor, .flags = LGFS2_MFF_MINOR)
 FP(di_goal_meta)
 FP(di_goal_data)
 F(di_generation)
-F(di_flags)
+F(di_flags, .flags = LGFS2_MFF_MASK, .symtab=lgfs2_di_flags, .nsyms=ARRAY_SIZE(lgfs2_di_flags))
 F(di_payload_format)
 RF(__pad1)
 F(di_height)
@@ -214,9 +211,9 @@ F(di_depth)
 F(di_entries)
 INR(__pad4)
 FP(di_eattr)
-F(di_atime_nsec)
-F(di_mtime_nsec)
-F(di_ctime_nsec)
+F(di_atime_nsec, .flags = LGFS2_MFF_NSECS)
+F(di_mtime_nsec, .flags = LGFS2_MFF_NSECS)
+F(di_ctime_nsec, .flags = LGFS2_MFF_NSECS)
 RF(di_reserved)
 };
 
@@ -226,22 +223,22 @@ RF(di_reserved)
 static const struct lgfs2_metafield gfs_dinode_fields[] = {
 MH(di_header)
 IN(di_num)
-F(di_mode)
-F(di_uid)
-F(di_gid)
+F(di_mode, .flags = LGFS2_MFF_MODE)
+F(di_uid, .flags = LGFS2_MFF_UID)
+F(di_gid, .flags = LGFS2_MFF_GID)
 F(di_nlink)
-F(di_size)
-F(di_blocks)
-F(di_atime)
-F(di_mtime)
-F(di_ctime)
-F(di_major)
-F(di_minor)
+F(di_size, .flags = LGFS2_MFF_BYTES)
+F(di_blocks, .flags = LGFS2_MFF_FSBLOCKS)
+F(di_atime, .flags = LGFS2_MFF_SECS)
+F(di_mtime, .flags = LGFS2_MFF_SECS)
+F(di_ctime, .flags = LGFS2_MFF_SECS)
+F(di_major, .flags = LGFS2_MFF_MAJOR)
+F(di_minor, .flags = LGFS2_MFF_MINOR)
 FP(di_rgrp)
 FP(di_goal_rgrp)
 F(di_goal_dblk)
 F(di_goal_mblk)
-F(di_flags)
+F(di_flags, .flags = LGFS2_MFF_MASK, .symtab=lgfs2_di_flags, .nsyms=ARRAY_SIZE(lgfs2_di_flags))
 F(di_payload_format)
 F(di_type)
 F(di_height)
@@ -255,14 +252,11 @@ F(di_reserved)
 };
 
 #undef STRUCT
-#define STRUCT gfs2_meta_header
+struct gfs2_indirect { struct gfs2_meta_header in_header; };
+#define STRUCT gfs2_indirect
 
 static const struct lgfs2_metafield gfs2_indirect_fields[] = {
-F(mh_magic)
-F(mh_type)
-RF(__pad0)
-F(mh_format)
-F(mh_jid)
+MH(in_header)
 };
 
 #undef STRUCT
@@ -286,6 +280,14 @@ RF(lf_reserved)
 };
 
 #undef STRUCT
+struct gfs2_jrnl_data { struct gfs2_meta_header jd_header; };
+#define STRUCT gfs2_jrnl_data
+
+static const struct lgfs2_metafield gfs2_jdata_fields[] = {
+MH(jd_header)
+};
+
+#undef STRUCT
 #define STRUCT gfs2_log_header
 
 static const struct lgfs2_metafield gfs2_log_header_fields[] = {
@@ -294,7 +296,7 @@ F(lh_sequence)
 F(lh_flags)
 F(lh_tail)
 F(lh_blkno)
-F(lh_hash)
+F(lh_hash, .flags = LGFS2_MFF_CHECK)
 };
 
 #undef STRUCT
@@ -317,7 +319,7 @@ RF(lh_reserved)
 static const struct lgfs2_metafield gfs2_log_desc_fields[] = {
 MH(ld_header)
 F(ld_type)
-F(ld_length)
+F(ld_length, .flags = LGFS2_MFF_FSBLOCKS)
 F(ld_data1)
 F(ld_data2)
 RF(ld_reserved)
@@ -329,50 +331,41 @@ RF(ld_reserved)
 static const struct lgfs2_metafield gfs_log_desc_fields[] = {
 MH(ld_header)
 F(ld_type)
-F(ld_length)
+F(ld_length, .flags = LGFS2_MFF_FSBLOCKS)
 F(ld_data1)
 F(ld_data2)
 RF(ld_reserved)
 };
 
 #undef STRUCT
-#define STRUCT gfs2_meta_header
+struct gfs2_log_block { struct gfs2_meta_header lb_header; };
+#define STRUCT gfs2_log_block
 
 static const struct lgfs2_metafield gfs2_log_block_fields[] = {
-F(mh_magic)
-F(mh_type)
-RF(__pad0)
-F(mh_format)
-F(mh_jid)
+MH(lb_header)
 };
 
 #undef STRUCT
-#define STRUCT gfs2_meta_header
+struct gfs2_ea_attr { struct gfs2_meta_header ea_header; };
+#define STRUCT gfs2_ea_attr
 
 static const struct lgfs2_metafield gfs2_ea_attr_fields[] = {
-F(mh_magic)
-F(mh_type)
-RF(__pad0)
-F(mh_format)
-F(mh_jid)
+MH(ea_header)
 };
 
 #undef STRUCT
-#define STRUCT gfs2_meta_header
+struct gfs2_ea_data { struct gfs2_meta_header ed_header; };
+#define STRUCT gfs2_ea_data
 
 static const struct lgfs2_metafield gfs2_ea_data_fields[] = {
-F(mh_magic)
-F(mh_type)
-RF(__pad0)
-F(mh_format)
-F(mh_jid)
+MH(ed_header)
 };
 
 #undef STRUCT
 #define STRUCT gfs2_quota_change
 
 static const struct lgfs2_metafield gfs2_quota_change_fields[] = {
-F(qc_change)
+F(qc_change, .flags = LGFS2_MFF_FSBLOCKS)
 F(qc_flags)
 F(qc_id)
 };
@@ -382,9 +375,9 @@ F(qc_id)
 
 static const struct lgfs2_metafield gfs2_dirent_fields[] = {
 IN(de_inum)
-F(de_hash)
-F(de_rec_len)
-F(de_name_len)
+F(de_hash, .flags = LGFS2_MFF_CHECK)
+F(de_rec_len, .flags = LGFS2_MFF_BYTES)
+F(de_name_len, .flags = LGFS2_MFF_BYTES)
 F(de_type)
 RF(__pad)
 };
@@ -393,9 +386,9 @@ RF(__pad)
 #define STRUCT gfs2_ea_header
 
 static const struct lgfs2_metafield gfs2_ea_header_fields[] = {
-F(ea_rec_len)
-F(ea_data_len)
-F(ea_name_len)
+F(ea_rec_len, .flags = LGFS2_MFF_BYTES)
+F(ea_data_len, .flags = LGFS2_MFF_BYTES)
+F(ea_name_len, .flags = LGFS2_MFF_BYTES)
 F(ea_type)
 F(ea_flags)
 F(ea_num_ptrs)
@@ -414,9 +407,9 @@ F(ir_length)
 #define STRUCT gfs2_statfs_change
 
 static const struct lgfs2_metafield gfs2_statfs_change_fields[] = {
-F(sc_total)
-F(sc_free)
-F(sc_dinodes)
+F(sc_total, .flags = LGFS2_MFF_FSBLOCKS)
+F(sc_free, .flags = LGFS2_MFF_FSBLOCKS)
+F(sc_dinodes, .flags = LGFS2_MFF_FSBLOCKS)
 };
 
 #undef STRUCT
@@ -484,7 +477,7 @@ const struct lgfs2_metadata lgfs2_metadata[] = {
 		.header = 1,
 		.mh_type = GFS2_METATYPE_RB,
 		.mh_format = GFS2_FORMAT_RB,
-		.name = "gfs2_metaheader",
+		.name = "gfs2_rgrp_bitmap",
 		.fields = gfs2_rgrp_bitmap_fields,
 		.nfields = ARRAY_SIZE(gfs2_rgrp_bitmap_fields),
 		.size = sizeof(struct gfs2_meta_header),
@@ -514,7 +507,7 @@ const struct lgfs2_metadata lgfs2_metadata[] = {
 		.header = 1,
 		.mh_type = GFS2_METATYPE_IN,
 		.mh_format = GFS2_FORMAT_IN,
-		.name = "gfs2_meta_header",
+		.name = "gfs2_indirect",
 		.fields = gfs2_indirect_fields,
 		.nfields = ARRAY_SIZE(gfs2_indirect_fields),
 		.size = sizeof(struct gfs2_meta_header),
@@ -539,6 +532,17 @@ const struct lgfs2_metadata lgfs2_metadata[] = {
 		.fields = gfs2_leaf_fields,
 		.nfields = ARRAY_SIZE(gfs2_leaf_fields),
 		.size = sizeof(struct gfs2_leaf),
+	},
+	[LGFS2_MT_JRNL_DATA] = {
+		.gfs1 = 1,
+		.gfs2 = 1,
+		.header = 1,
+		.mh_type = GFS2_METATYPE_JD,
+		.mh_format = GFS2_FORMAT_JD,
+		.name = "gfs2_jdata",
+		.fields = gfs2_jdata_fields,
+		.nfields = ARRAY_SIZE(gfs2_jdata_fields),
+		.size = sizeof(struct gfs2_meta_header),
 	},
 	[LGFS2_MT_GFS2_LOG_HEADER] = {
 		.gfs2 = 1,
@@ -585,7 +589,7 @@ const struct lgfs2_metadata lgfs2_metadata[] = {
 		.header = 1,
 		.mh_type = GFS2_METATYPE_LB,
 		.mh_format = GFS2_FORMAT_LB,
-		.name = "gfs2_meta_header",
+		.name = "gfs2_log_block",
 		.fields = gfs2_log_block_fields,
 		.nfields = ARRAY_SIZE(gfs2_log_block_fields),
 		.size = sizeof(struct gfs2_meta_header),
@@ -596,7 +600,7 @@ const struct lgfs2_metadata lgfs2_metadata[] = {
 		.header = 1,
 		.mh_type = GFS2_METATYPE_EA,
 		.mh_format = GFS2_FORMAT_EA,
-		.name = "gfs2_meta_header",
+		.name = "gfs2_ea_attr",
 		.fields = gfs2_ea_attr_fields,
 		.nfields = ARRAY_SIZE(gfs2_ea_attr_fields),
 		.size = sizeof(struct gfs2_meta_header),
@@ -607,7 +611,7 @@ const struct lgfs2_metadata lgfs2_metadata[] = {
 		.header = 1,
 		.mh_type = GFS2_METATYPE_ED,
 		.mh_format = GFS2_FORMAT_ED,
-		.name = "gfs2_meta_header",
+		.name = "gfs2_ea_data",
 		.fields = gfs2_ea_data_fields,
 		.nfields = ARRAY_SIZE(gfs2_ea_data_fields),
 		.size = sizeof(struct gfs2_meta_header),
@@ -665,6 +669,7 @@ static int check_metadata_sizes(void)
 {
 	unsigned offset;
 	int i, j;
+	int ret = 0;
 
 	for (i = 0; i < lgfs2_metadata_size; i++) {
 		const struct lgfs2_metadata *m = &lgfs2_metadata[i];
@@ -673,17 +678,44 @@ static int check_metadata_sizes(void)
 			const struct lgfs2_metafield *f = &m->fields[j];
 			if (f->offset != offset) {
 				fprintf(stderr, "%s: %s: offset is %u, expected %u\n", m->name, f->name, f->offset, offset);
-				return -1;
+				ret = -1;
 			}
 			offset += f->length;
 		}
 		if (offset != m->size) {
 			fprintf(stderr, "%s: size mismatch between struct %u and fields %u\n", m->name, m->size, offset);
-			return -1;
+			ret = -1;
 		}
 	}
 
-	return 0;
+	return ret;
+}
+
+static int check_symtab(void)
+{
+	int i, j;
+	int ret = 0;
+
+	for (i = 0; i < lgfs2_metadata_size; i++) {
+		const struct lgfs2_metadata *m = &lgfs2_metadata[i];
+		for (j = 0; j < m->nfields; j++) {
+			const struct lgfs2_metafield *f = &m->fields[j];
+			if (f->flags & (LGFS2_MFF_MASK|LGFS2_MFF_ENUM)) {
+				if (f->symtab == NULL) {
+					fprintf(stderr, "%s: Missing symtab for %s\n", m->name, f->name);
+					ret = -1;
+				}
+			}
+			if (f->symtab) {
+				if (!(f->flags & (LGFS2_MFF_MASK|LGFS2_MFF_ENUM))) {
+					fprintf(stderr, "%s: Symtab for non-enum and non-mask field %s\n", m->name, f->name);
+					ret = -1;
+				}
+			}
+		}
+	}
+
+	return ret;
 }
 
 int lgfs2_selfcheck(void)
@@ -691,6 +723,7 @@ int lgfs2_selfcheck(void)
 	int ret = 0;
 
 	ret |= check_metadata_sizes();
+	ret |= check_symtab();
 
 	return ret;
 }
