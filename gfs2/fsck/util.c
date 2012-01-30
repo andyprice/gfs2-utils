@@ -253,6 +253,10 @@ static struct duptree *gfs2_dup_set(uint64_t dblock, int create)
 	if (!create)
 		return NULL;
 	data = malloc(sizeof(struct duptree));
+	if (data == NULL) {
+		log_crit( _("Unable to allocate duptree structure\n"));
+		return NULL;
+	}
 	dups_found++;
 	memset(data, 0, sizeof(struct duptree));
 	/* Add new node and rebalance tree. */

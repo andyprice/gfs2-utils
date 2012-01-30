@@ -84,19 +84,20 @@ enum lgfs2_meta_type {
 	LGFS2_MT_GFS2_INDIRECT = 8,
 	LGFS2_MT_GFS_INDIRECT = 9,
 	LGFS2_MT_DIR_LEAF = 10,
-	LGFS2_MT_GFS2_LOG_HEADER = 11,
-	LGFS2_MT_GFS_LOG_HEADER = 12,
-	LGFS2_MT_GFS2_LOG_DESC = 13,
-	LGFS2_MT_GFS_LOG_DESC = 14,
-	LGFS2_MT_GFS2_LOG_BLOCK = 15,
-	LGFS2_MT_EA_ATTR = 16,
-	LGFS2_MT_EA_DATA = 17,
-	LGFS2_MT_GFS2_QUOTA_CHANGE = 18,
-	LGFS2_MT_DIRENT = 19,
-	LGFS2_MT_EA_HEADER = 20,
-	LGFS2_MT_GFS2_INUM_RANGE = 21,
-	LGFS2_MT_STATFS_CHANGE = 22,
-	LGFS2_MT_GFS_JINDEX = 23,
+	LGFS2_MT_JRNL_DATA = 11,
+	LGFS2_MT_GFS2_LOG_HEADER = 12,
+	LGFS2_MT_GFS_LOG_HEADER = 13,
+	LGFS2_MT_GFS2_LOG_DESC = 14,
+	LGFS2_MT_GFS_LOG_DESC = 15,
+	LGFS2_MT_GFS2_LOG_BLOCK = 16,
+	LGFS2_MT_EA_ATTR = 17,
+	LGFS2_MT_EA_DATA = 18,
+	LGFS2_MT_GFS2_QUOTA_CHANGE = 19,
+	LGFS2_MT_DIRENT = 20,
+	LGFS2_MT_EA_HEADER = 21,
+	LGFS2_MT_GFS2_INUM_RANGE = 22,
+	LGFS2_MT_STATFS_CHANGE = 23,
+	LGFS2_MT_GFS_JINDEX = 24,
 	
 	LGFS2_MT_NR,
 };
@@ -110,8 +111,29 @@ struct lgfs2_metafield {
 	const char *name;
 	const unsigned offset;
 	const unsigned length;
-	const unsigned reserved:1;
-	const unsigned pointer:1;
+	const unsigned flags;
+
+#define LGFS2_MFF_RESERVED 0x00001	/* Field is reserved */
+#define LGFS2_MFF_POINTER  0x00002	/* Field is a pointer to a block */
+#define LGFS2_MFF_ENUM     0x00004	/* Field is an enum */
+#define LGFS2_MFF_MASK     0x00008	/* Field is a bitmask */
+#define LGFS2_MFF_UUID     0x00010	/* Field is a UUID */
+#define LGFS2_MFF_STRING   0x00020	/* Field in an ASCII string */
+#define LGFS2_MFF_UID      0x00040	/* Field is a UID */
+#define LGFS2_MFF_GID      0x00080	/* Field is a GID */
+#define LGFS2_MFF_MODE     0x00100	/* Field is a file mode */
+#define LGFS2_MFF_FSBLOCKS 0x00200	/* Units are fs blocks */
+#define LGFS2_MFF_BYTES    0x00400	/* Units are bytes */
+#define LGFS2_MFF_SHIFT    0x00800	/* Log_{2} quantity */
+#define LGFS2_MFF_CHECK    0x01000	/* Field is a checksum */
+#define LGFS2_MFF_SECS     0x02000	/* Units are seconds */
+#define LGFS2_MFF_NSECS    0x04000	/* Units are nsecs */
+#define LGFS2_MFF_MAJOR    0x08000	/* Major device number */
+#define LGFS2_MFF_MINOR    0x10000	/* Minor device number */
+
+	/* If isenum or ismask are set, these must also be filled in */
+	const struct lgfs2_symbolic *symtab;
+	const unsigned nsyms;
 };
 
 struct lgfs2_metadata {

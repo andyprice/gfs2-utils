@@ -344,6 +344,7 @@ static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
 		log_debug( _("Block %lld (0x%llx) is not gfs2 metadata.\n"),
 			     (unsigned long long)inode,
 			     (unsigned long long)inode);
+		fsck_inode_put(&ip);
 		return 1;
 	}
 	/* Check to see if this inode was referenced by another by mistake */

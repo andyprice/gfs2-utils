@@ -108,7 +108,7 @@ static int do_dump(int cmd, char *name, char *buf)
 	fd = do_connect(GFSC_QUERY_SOCK_PATH);
 	if (fd < 0) {
 		rv = fd;
-		goto out;
+		goto out_free;
 	}
 
 	rv = do_write(fd, &h, sizeof(h));
@@ -127,6 +127,8 @@ static int do_dump(int cmd, char *name, char *buf)
 	       GFSC_DUMP_SIZE);
  out_close:
 	close(fd);
+ out_free:
+	free(reply);
  out:
 	return rv;
 }
@@ -238,7 +240,7 @@ int gfsc_mountgroups(int max, int *count, struct gfsc_mountgroup *mgs)
 	fd = do_connect(GFSC_QUERY_SOCK_PATH);
 	if (fd < 0) {
 		rv = fd;
-		goto out;
+		goto out_free;
 	}
 
 	rv = do_write(fd, &h, sizeof(h));
@@ -268,6 +270,8 @@ int gfsc_mountgroups(int max, int *count, struct gfsc_mountgroup *mgs)
 	       mg_count * sizeof(struct gfsc_mountgroup));
  out_close:
 	close(fd);
+ out_free:
+	free(reply);
  out:
 	return rv;
 }
@@ -296,7 +300,7 @@ int gfsc_mountgroup_nodes(char *name, int type, int max, int *count,
 	fd = do_connect(GFSC_QUERY_SOCK_PATH);
 	if (fd < 0) {
 		rv = fd;
-		goto out;
+		goto out_free;
 	}
 
 	rv = do_write(fd, &h, sizeof(h));
@@ -326,6 +330,8 @@ int gfsc_mountgroup_nodes(char *name, int type, int max, int *count,
 	       node_count * sizeof(struct gfsc_node));
  out_close:
 	close(fd);
+ out_free:
+	free(reply);
  out:
 	return rv;
 }
@@ -409,7 +415,7 @@ int gfsc_fs_leave(struct gfsc_mount_args *ma, int reason)
 	char msg[sizeof(struct gfsc_header) + sizeof(struct gfsc_mount_args)];
 	struct gfsc_header *h = (struct gfsc_header *)msg;
 	char *name = strstr(ma->table, ":") + 1;
-	int fd;
+	int fd, err;
 
 	init_header(h, GFSC_CMD_FS_LEAVE, name,
 		    sizeof(struct gfsc_mount_args));
@@ -423,6 +429,8 @@ int gfsc_fs_leave(struct gfsc_mount_args *ma, int reason)
 	if (fd < 0)
 		return fd;
 
-	return do_write(fd, msg, sizeof(msg));
+	err = do_write(fd, msg, sizeof(msg));
+	close(fd);
+	return err;
 }
 
