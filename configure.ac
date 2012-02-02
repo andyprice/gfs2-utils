@@ -280,7 +280,6 @@ AC_CONFIG_FILES([Makefile
 		 gfs2/edit/Makefile
 		 gfs2/fsck/Makefile
 		 gfs2/mkfs/Makefile
-		 gfs2/mount/Makefile
 		 gfs2/quota/Makefile
 		 gfs2/tool/Makefile
 		 gfs2/tune/Makefile
