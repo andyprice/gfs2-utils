@@ -98,6 +98,7 @@ enum lgfs2_meta_type {
 	LGFS2_MT_GFS2_INUM_RANGE = 22,
 	LGFS2_MT_STATFS_CHANGE = 23,
 	LGFS2_MT_GFS_JINDEX = 24,
+	LGFS2_MT_GFS_BLOCK_TAG = 25,
 	
 	LGFS2_MT_NR,
 };
@@ -344,6 +345,12 @@ extern const struct lgfs2_symbolic lgfs2_metaformats[];
 extern const unsigned lgfs2_metaformat_size;
 extern const struct lgfs2_symbolic lgfs2_di_flags[];
 extern const unsigned lgfs2_di_flag_size;
+extern const struct lgfs2_symbolic lgfs2_lh_flags[];
+extern const unsigned lgfs2_lh_flag_size;
+extern const struct lgfs2_symbolic lgfs2_ld_types[];
+extern const unsigned lgfs2_ld_type_size;
+extern const struct lgfs2_symbolic lgfs2_ld1_types[];
+extern const unsigned lgfs2_ld1_type_size;
 extern int lgfs2_selfcheck(void);
 
 /* bitmap.c */

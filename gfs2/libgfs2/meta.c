@@ -63,6 +63,30 @@ SYM(GFS2_DIF_INHERIT_JDATA)
 
 const unsigned lgfs2_di_flag_size = ARRAY_SIZE(lgfs2_di_flags);
 
+const struct lgfs2_symbolic lgfs2_lh_flags[] = {
+SYM(GFS2_LOG_HEAD_UNMOUNT)
+};
+
+const unsigned int lgfs2_lh_flag_size = ARRAY_SIZE(lgfs2_lh_flags);
+
+const struct lgfs2_symbolic lgfs2_ld_types[] = {
+SYM(GFS2_LOG_DESC_METADATA)
+SYM(GFS2_LOG_DESC_REVOKE)
+SYM(GFS2_LOG_DESC_JDATA)
+};
+
+const unsigned int lgfs2_ld_type_size = ARRAY_SIZE(lgfs2_ld_types);
+
+const struct lgfs2_symbolic lgfs2_ld1_types[] = {
+SYM(GFS_LOG_DESC_METADATA)
+SYM(GFS_LOG_DESC_IUL)
+SYM(GFS_LOG_DESC_IDA)
+SYM(GFS_LOG_DESC_Q)
+SYM(GFS_LOG_DESC_LAST)
+};
+
+const unsigned int lgfs2_ld1_type_size = ARRAY_SIZE(lgfs2_ld1_types);
+
 #undef SYM
 
 
@@ -304,7 +328,7 @@ F(lh_hash, .flags = LGFS2_MFF_CHECK)
 
 static const struct lgfs2_metafield gfs_log_header_fields[] = {
 MH(lh_header)
-F(lh_flags)
+F(lh_flags, .flags = LGFS2_MFF_MASK, .symtab = lgfs2_lh_flags, .nsyms = ARRAY_SIZE(lgfs2_lh_flags))
 RF(lh_pad)
 F(lh_first)
 F(lh_sequence)
@@ -318,7 +342,7 @@ RF(lh_reserved)
 
 static const struct lgfs2_metafield gfs2_log_desc_fields[] = {
 MH(ld_header)
-F(ld_type)
+F(ld_type, .flags = LGFS2_MFF_ENUM, .symtab = lgfs2_ld_types, .nsyms = ARRAY_SIZE(lgfs2_ld_types))
 F(ld_length, .flags = LGFS2_MFF_FSBLOCKS)
 F(ld_data1)
 F(ld_data2)
@@ -330,7 +354,7 @@ RF(ld_reserved)
 
 static const struct lgfs2_metafield gfs_log_desc_fields[] = {
 MH(ld_header)
-F(ld_type)
+F(ld_type, .flags = LGFS2_MFF_ENUM, .symtab = lgfs2_ld1_types, .nsyms = ARRAY_SIZE(lgfs2_ld1_types))
 F(ld_length, .flags = LGFS2_MFF_FSBLOCKS)
 F(ld_data1)
 F(ld_data2)
@@ -420,6 +444,20 @@ FP(ji_addr)
 F(ji_nsegment)
 RF(ji_pad)
 RF(ji_reserved)
+};
+
+#undef STRUCT
+struct gfs_block_tag {
+	uint64_t bt_blkno;      /* inplace block number */
+	uint32_t bt_flags;      /* ?? */
+	uint32_t bt_pad;
+};
+#define STRUCT gfs_block_tag
+
+static const struct lgfs2_metafield gfs_block_tag_fields[] = {
+FP(bt_blkno)
+RF(bt_flags)
+RF(bt_pad)
 };
 
 const struct lgfs2_metadata lgfs2_metadata[] = {
@@ -660,6 +698,13 @@ const struct lgfs2_metadata lgfs2_metadata[] = {
 		.fields = gfs_jindex_fields,
 		.nfields = ARRAY_SIZE(gfs_jindex_fields),
 		.size = sizeof(struct gfs_jindex),
+	},
+	[LGFS2_MT_GFS_BLOCK_TAG] = {
+		.gfs1 = 1,
+		.name = "gfs_block_tag",
+		.fields = gfs_block_tag_fields,
+		.nfields = ARRAY_SIZE(gfs_block_tag_fields),
+		.size = sizeof(struct gfs_block_tag),
 	},
 };
 
