@@ -99,7 +99,9 @@ enum lgfs2_meta_type {
 	LGFS2_MT_STATFS_CHANGE = 23,
 	LGFS2_MT_GFS_JINDEX = 24,
 	LGFS2_MT_GFS_BLOCK_TAG = 25,
-	
+	LGFS2_MT_DATA = 26,
+	LGFS2_MT_FREE = 27,
+
 	LGFS2_MT_NR,
 };
 
@@ -132,6 +134,8 @@ struct lgfs2_metafield {
 #define LGFS2_MFF_MAJOR    0x08000	/* Major device number */
 #define LGFS2_MFF_MINOR    0x10000	/* Minor device number */
 
+	/* If it is a pointer, then this field must be set */
+	const unsigned points_to;
 	/* If isenum or ismask are set, these must also be filled in */
 	const struct lgfs2_symbolic *symtab;
 	const unsigned nsyms;
