@@ -633,14 +633,14 @@ static int next_rg_freemeta(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 
 void savemeta(char *out_fn, int saveoption, int gziplevel)
 {
-	int slow, ret;
 	int rgcount;
 	uint64_t jindex_block;
 	struct gfs2_buffer_head *lbh;
 	struct rgrp_tree *last_rgd;
 	struct metafd mfd;
+	int sane;
+	struct osi_node *n, *next = NULL;
 
-	slow = (saveoption == 1);
 	sbd.md.journals = 1;
 
 	mfd = savemetaopen(out_fn, gziplevel);
@@ -653,144 +653,120 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	blks_saved = total_out = last_reported_block = 0;
 	if (!sbd.gfs1)
 		sbd.bsize = BUFSIZE;
-	if (!slow) {
-		if (lgfs2_get_dev_info(sbd.device_fd, &sbd.dinfo)) {
-			perror(sbd.device_name);
-			exit(-1);
-		}
-		fix_device_geometry(&sbd);
-		sbd.rgtree.osi_node = NULL;
-		if (!sbd.gfs1)
-			sbd.sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
-		if (compute_constants(&sbd)) {
-			fprintf(stderr, "Bad constants (1)\n");
-			exit(-1);
-		}
-		ret = read_sb(&sbd);
-		if (ret < 0) {
-			slow = TRUE;
-			sbd.gfs1 = 0;
-		}
-		if (sbd.gfs1)
-			sbd.bsize = sbd.sd_sb.sb_bsize;
+	if (lgfs2_get_dev_info(sbd.device_fd, &sbd.dinfo)) {
+		perror(sbd.device_name);
+		exit(-1);
 	}
+	fix_device_geometry(&sbd);
+	sbd.rgtree.osi_node = NULL;
+	if (!sbd.gfs1)
+		sbd.sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
+	if (compute_constants(&sbd)) {
+		fprintf(stderr, "Bad constants (1)\n");
+		exit(-1);
+	}
+	if (read_sb(&sbd) < 0) {
+		fprintf(stderr, "Unable to read superblock.\n");
+		exit(-1);
+	}
+	if (sbd.gfs1)
+		sbd.bsize = sbd.sd_sb.sb_bsize;
 	last_fs_block = lseek(sbd.device_fd, 0, SEEK_END) / sbd.bsize;
 	printf("There are %llu blocks of %u bytes in the destination "
 	       "device.\n", (unsigned long long)last_fs_block, sbd.bsize);
-	if (!slow) {
-		if (sbd.gfs1) {
-			sbd.md.riinode = inode_read(&sbd,
-						sbd1->sb_rindex_di.no_addr);
-			jindex_block = sbd1->sb_jindex_di.no_addr;
-		} else {
-			sbd.master_dir =
-				inode_read(&sbd,
-					sbd.sd_sb.sb_master_dir.no_addr);
+	if (sbd.gfs1) {
+		sbd.md.riinode = inode_read(&sbd, sbd1->sb_rindex_di.no_addr);
+		jindex_block = sbd1->sb_jindex_di.no_addr;
+	} else {
+		sbd.master_dir = inode_read(&sbd,
+					    sbd.sd_sb.sb_master_dir.no_addr);
 
-			slow = gfs2_lookupi(sbd.master_dir, "rindex", 6, 
-					    &sbd.md.riinode);
-			jindex_block = masterblock("jindex");
-		}
-		lbh = bread(&sbd, jindex_block);
-		gfs2_dinode_in(&di, lbh);
-		if (!sbd.gfs1)
-			do_dinode_extended(&di, lbh);
-		brelse(lbh);
+		gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
+		jindex_block = masterblock("jindex");
 	}
-	if (!slow) {
-		int sane;
-		uint64_t fssize;
-		struct osi_node *n;
+	lbh = bread(&sbd, jindex_block);
+	gfs2_dinode_in(&di, lbh);
+	if (!sbd.gfs1)
+		do_dinode_extended(&di, lbh);
+	brelse(lbh);
 
-		printf("Reading resource groups...");
-		fflush(stdout);
-		if (sbd.gfs1)
-			slow = gfs1_ri_update(&sbd, 0, &rgcount, 0);
-		else
-			slow = ri_update(&sbd, 0, &rgcount, &sane);
-		n = osi_last(&sbd.rgtree);
-		last_rgd = (struct rgrp_tree *)n;
-		fssize = last_rgd->ri.ri_addr + rgrp_size(last_rgd);
-		last_fs_block = fssize;
-		fssize *= sbd.bsize;
-		printf("Done. File system size: %s\n\n",
-		       anthropomorphize(fssize));
-		fflush(stdout);
-	}
+	printf("Reading resource groups...");
+	fflush(stdout);
+	if (sbd.gfs1)
+		gfs1_ri_update(&sbd, 0, &rgcount, 0);
+	else
+		ri_update(&sbd, 0, &rgcount, &sane);
+	n = osi_last(&sbd.rgtree);
+	last_rgd = (struct rgrp_tree *)n;
+	sbd.fssize = last_rgd->ri.ri_addr + rgrp_size(last_rgd);
+	last_fs_block = sbd.fssize;
+	sbd.fssize *= sbd.bsize;
+	printf("Done. File system size: %s\n\n", anthropomorphize(sbd.fssize));
+	fflush(stdout);
+
 	get_journal_inode_blocks();
-	if (!slow) {
-		struct osi_node *n, *next = NULL;
 
-		/* Save off the superblock */
-		save_block(sbd.device_fd, &mfd, 0x10 * (4096 / sbd.bsize));
-		/* If this is gfs1, save off the rindex because it's not
-		   part of the file system as it is in gfs2. */
-		if (sbd.gfs1) {
-			int j;
+	/* Save off the superblock */
+	save_block(sbd.device_fd, &mfd, 0x10 * (4096 / sbd.bsize));
+	/* If this is gfs1, save off the rindex because it's not
+	   part of the file system as it is in gfs2. */
+	if (sbd.gfs1) {
+		int j;
 
-			block = sbd1->sb_rindex_di.no_addr;
-			save_block(sbd.device_fd, &mfd, block);
-			save_inode_data(&mfd);
-			/* In GFS1, journals aren't part of the RG space */
-			for (j = 0; j < journals_found; j++) {
-				log_debug("Saving journal #%d\n", j + 1);
-				for (block = journal_blocks[j];
-				     block < journal_blocks[j] +
-					     gfs1_journal_size;
-				     block++)
-					save_block(sbd.device_fd, &mfd, block);
-			}
-		}
-		/* Walk through the resource groups saving everything within */
-		for (n = osi_first(&sbd.rgtree); n; n = next) {
-			int first;
-			struct rgrp_tree *rgd;
-
-			next = osi_next(n);
-			rgd = (struct rgrp_tree *)n;
-			slow = gfs2_rgrp_read(&sbd, rgd);
-			if (slow)
-				continue;
-			log_debug("RG at %lld (0x%llx) is %u long\n",
-				  (unsigned long long)rgd->ri.ri_addr,
-				  (unsigned long long)rgd->ri.ri_addr,
-				  rgd->ri.ri_length);
-			first = 1;
-			/* Save off the rg and bitmaps */
-			for (block = rgd->ri.ri_addr;
-			     block < rgd->ri.ri_data0; block++) {
-				warm_fuzzy_stuff(block, FALSE);
+		block = sbd1->sb_rindex_di.no_addr;
+		save_block(sbd.device_fd, &mfd, block);
+		save_inode_data(&mfd);
+		/* In GFS1, journals aren't part of the RG space */
+		for (j = 0; j < journals_found; j++) {
+			log_debug("Saving journal #%d\n", j + 1);
+			for (block = journal_blocks[j];
+			     block < journal_blocks[j] + gfs1_journal_size;
+			     block++)
 				save_block(sbd.device_fd, &mfd, block);
-			}
-			/* Save off the other metadata: inodes, etc. */
-			if (saveoption != 2) {
-				int blktype;
-
-				while (!gfs2_next_rg_meta(rgd, &block, first)){
-					warm_fuzzy_stuff(block, FALSE);
-					blktype = save_block(sbd.device_fd,
-							     &mfd, block);
-					if (blktype == GFS2_METATYPE_DI)
-						save_inode_data(&mfd);
-					first = 0;
-				}
-				/* Save off the free/unlinked meta blocks too.
-				   If we don't, we may run into metadata
-				   allocation issues. */
-				while (!next_rg_freemeta(&sbd, rgd, &block,
-							 first)) {
-					blktype = save_block(sbd.device_fd,
-							     &mfd, block);
-					first = 0;
-				}
-			}
-			gfs2_rgrp_relse(rgd);
 		}
 	}
-	if (slow) {
-		for (block = 0; block < last_fs_block; block++) {
+	/* Walk through the resource groups saving everything within */
+	for (n = osi_first(&sbd.rgtree); n; n = next) {
+		int first;
+		struct rgrp_tree *rgd;
+
+		next = osi_next(n);
+		rgd = (struct rgrp_tree *)n;
+		if (gfs2_rgrp_read(&sbd, rgd))
+			continue;
+		log_debug("RG at %lld (0x%llx) is %u long\n",
+			  (unsigned long long)rgd->ri.ri_addr,
+			  (unsigned long long)rgd->ri.ri_addr,
+			  rgd->ri.ri_length);
+		first = 1;
+		/* Save off the rg and bitmaps */
+		for (block = rgd->ri.ri_addr;
+		     block < rgd->ri.ri_data0; block++) {
+			warm_fuzzy_stuff(block, FALSE);
 			save_block(sbd.device_fd, &mfd, block);
 		}
+		/* Save off the other metadata: inodes, etc. */
+		if (saveoption != 2) {
+			int blktype;
+
+			while (!gfs2_next_rg_meta(rgd, &block, first)){
+				warm_fuzzy_stuff(block, FALSE);
+				blktype = save_block(sbd.device_fd, &mfd,
+						     block);
+				if (blktype == GFS2_METATYPE_DI)
+					save_inode_data(&mfd);
+				first = 0;
+			}
+			/* Save off the free/unlinked meta blocks too.
+			   If we don't, we may run into metadata
+			   allocation issues. */
+			while (!next_rg_freemeta(&sbd, rgd, &block, first)) {
+				blktype = save_block(sbd.device_fd,
+						     &mfd, block);
+				first = 0;
+			}
+		}
+		gfs2_rgrp_relse(rgd);
 	}
 	/* Clean up */
 	/* There may be a gap between end of file system and end of device */
