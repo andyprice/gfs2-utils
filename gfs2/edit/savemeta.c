@@ -43,7 +43,7 @@ struct metafd {
 };
 
 struct saved_metablock *savedata;
-uint64_t last_fs_block, last_reported_block, blks_saved, total_out, pct;
+uint64_t last_reported_block, blks_saved, total_out, pct;
 uint64_t journal_blocks[MAX_JOURNALS_SAVED];
 uint64_t gfs1_journal_size = 0; /* in blocks */
 int journals_found = 0;
@@ -189,9 +189,9 @@ static void warm_fuzzy_stuff(uint64_t wfsblock, int force)
 		static uint64_t percent;
 
 		seconds = tv.tv_sec;
-		if (last_fs_block) {
+		if (sbd.fssize) {
 			printf("\r");
-			percent = (wfsblock * 100) / last_fs_block;
+			percent = (wfsblock * 100) / sbd.fssize;
 			printf("%llu inodes processed, %llu blocks saved "
 			       "(%llu%%) processed, ",
 			       (unsigned long long)wfsblock,
@@ -301,7 +301,7 @@ static int save_block(int fd, struct metafd *mfd, uint64_t blk)
 	char *p;
 	struct gfs2_buffer_head *savebh;
 
-	if (blk > last_fs_block) {
+	if (gfs2_check_range(&sbd, blk) && blk != sbd.sb_addr) {
 		fprintf(stderr, "\nWarning: bad block pointer '0x%llx' "
 			"ignored in block (block %llu (0x%llx))",
 			(unsigned long long)blk,
@@ -421,7 +421,8 @@ static void save_indirect_blocks(struct metafd *mfd, osi_list_t *cur_list,
 			save_ea_block(mfd, nbh);
 			brelse(nbh);
 		}
-		if (height != hgt) { /* If not at max height */
+		if (height != hgt && /* If not at max height and */
+		    (!gfs2_check_range(&sbd, indir_block))) {
 			nbh = bread(&sbd, indir_block);
 			osi_list_add_prev(&nbh->b_altlist, cur_list);
 			/* The buffer_head needs to be queued ahead, so
@@ -640,7 +641,6 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	int rgcount;
 	uint64_t jindex_block;
 	struct gfs2_buffer_head *lbh;
-	struct rgrp_tree *last_rgd;
 	struct metafd mfd;
 	int sane;
 	struct osi_node *n, *next = NULL;
@@ -675,9 +675,8 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	}
 	if (sbd.gfs1)
 		sbd.bsize = sbd.sd_sb.sb_bsize;
-	last_fs_block = lseek(sbd.device_fd, 0, SEEK_END) / sbd.bsize;
 	printf("There are %llu blocks of %u bytes in the destination "
-	       "device.\n", (unsigned long long)last_fs_block, sbd.bsize);
+	       "device.\n", (unsigned long long)sbd.fssize, sbd.bsize);
 	if (sbd.gfs1) {
 		sbd.md.riinode = inode_read(&sbd, sbd1->sb_rindex_di.no_addr);
 		jindex_block = sbd1->sb_jindex_di.no_addr;
@@ -700,11 +699,6 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		gfs1_ri_update(&sbd, 0, &rgcount, 0);
 	else
 		ri_update(&sbd, 0, &rgcount, &sane);
-	n = osi_last(&sbd.rgtree);
-	last_rgd = (struct rgrp_tree *)n;
-	sbd.fssize = last_rgd->ri.ri_addr + rgrp_size(last_rgd);
-	last_fs_block = sbd.fssize;
-	sbd.fssize *= sbd.bsize;
 	printf("Done. File system size: %s\n\n", anthropomorphize(sbd.fssize));
 	fflush(stdout);
 
@@ -775,7 +769,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	/* Clean up */
 	/* There may be a gap between end of file system and end of device */
 	/* so we tell the user that we've processed everything. */
-	block = last_fs_block;
+	block = sbd.fssize;
 	warm_fuzzy_stuff(block, TRUE);
 	printf("\nMetadata saved to file %s ", mfd.filename);
 	if (mfd.gziplevel) {
@@ -827,7 +821,6 @@ static int restore_data(int fd, gzFile *gzin_fd, int printblocksonly,
 		exit(-1);
 	}
 	blks_saved = total_out = 0;
-	last_fs_block = 0;
 	while (TRUE) {
 		struct gfs2_buffer_head dummy_bh;
 
@@ -842,11 +835,11 @@ static int restore_data(int fd, gzFile *gzin_fd, int printblocksonly,
 		total_out += sbd.bsize;
 		savedata->blk = be64_to_cpu(buf64);
 		if (!printblocksonly &&
-		    last_fs_block && savedata->blk >= last_fs_block) {
+		    sbd.fssize && savedata->blk >= sbd.fssize) {
 			fprintf(stderr, "Error: File system is too small to "
 				"restore this metadata.\n");
 			fprintf(stderr, "File system is %llu blocks, ",
-				(unsigned long long)last_fs_block);
+				(unsigned long long)sbd.fssize);
 			fprintf(stderr, "Restore block = %llu\n",
 				(unsigned long long)savedata->blk);
 			return -1;
@@ -897,11 +890,11 @@ static int restore_data(int fd, gzFile *gzin_fd, int printblocksonly,
 			if (find_highblk)
 				;
 			else if (!printblocksonly) {
-				last_fs_block =
+				sbd.fssize =
 					lseek(fd, 0, SEEK_END) / sbd.bsize;
 				printf("There are %llu blocks of %u bytes in "
 				       "the destination device.\n\n",
-				       (unsigned long long)last_fs_block, sbd.bsize);
+				       (unsigned long long)sbd.fssize, sbd.bsize);
 			} else {
 				printf("This is %s metadata\n", sbd.gfs1 ?
 				       "gfs (not gfs2)" : "gfs2");
@@ -927,7 +920,7 @@ static int restore_data(int fd, gzFile *gzin_fd, int printblocksonly,
 			}
 		} else {
 			warm_fuzzy_stuff(savedata->blk, FALSE);
-			if (savedata->blk >= last_fs_block) {
+			if (savedata->blk >= sbd.fssize) {
 				printf("\nOut of space on the destination "
 				       "device; quitting.\n");
 				break;
@@ -956,13 +949,13 @@ static int restore_data(int fd, gzFile *gzin_fd, int printblocksonly,
 		blks_saved++;
 	}
 	if (!printblocksonly && !find_highblk)
-		warm_fuzzy_stuff(last_fs_block, TRUE);
+		warm_fuzzy_stuff(sbd.fssize, TRUE);
 	if (find_highblk) {
 		printf("File system size: %lld (0x%llx) blocks, aka %sB\n",
 		       (unsigned long long)highest_valid_block,
 		       (unsigned long long)highest_valid_block,
 		       anthropomorphize(highest_valid_block * sbd.bsize));
-		last_fs_block = highest_valid_block;
+		sbd.fssize = highest_valid_block;
 	}
 	return 0;
 }
