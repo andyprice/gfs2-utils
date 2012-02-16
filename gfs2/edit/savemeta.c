@@ -945,6 +945,8 @@ static int restore_data(int fd, gzFile *gzin_fd, int printblocksonly,
 				exit(-1);
 			}
 			writes++;
+			if (writes % 1000 == 0)
+				fsync(fd);
 		}
 		blks_saved++;
 	}
