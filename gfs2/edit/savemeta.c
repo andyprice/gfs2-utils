@@ -192,8 +192,10 @@ static void warm_fuzzy_stuff(uint64_t wfsblock, int force)
 		if (last_fs_block) {
 			printf("\r");
 			percent = (wfsblock * 100) / last_fs_block;
-			printf("%llu metadata blocks (%llu%%) processed, ",
+			printf("%llu inodes processed, %llu blocks saved "
+			       "(%llu%%) processed, ",
 			       (unsigned long long)wfsblock,
+			       (unsigned long long)blks_saved,
 			       (unsigned long long)percent);
 			if (force)
 				printf("\n");
@@ -481,6 +483,7 @@ static void save_inode_data(struct metafd *mfd)
 		for (tmp = prev_list->next; tmp != prev_list; tmp = tmp->next){
 			mybh = osi_list_entry(tmp, struct gfs2_buffer_head,
 					      b_altlist);
+			warm_fuzzy_stuff(block, FALSE);
 			save_indirect_blocks(mfd, cur_list, mybh,
 					     height, i);
 		} /* for blocks at that height */
@@ -511,6 +514,7 @@ static void save_inode_data(struct metafd *mfd)
 				continue;
 			old_leaf = leaf_no;
 			mybh = bread(&sbd, leaf_no);
+			warm_fuzzy_stuff(block, FALSE);
 			if (gfs2_check_meta(mybh, GFS2_METATYPE_LF) == 0)
 				save_block(sbd.device_fd, mfd, leaf_no);
 			brelse(mybh);
