@@ -137,7 +137,7 @@ static uint64_t blk_alloc_i(struct gfs2_sbd *sdp, unsigned int type)
 	}
 
 	if (n == NULL) {
-		fprintf(stderr, "out of space\n");
+		fprintf(stderr, "Not enough space available on device\n");
 		exit(1);
 	}
 

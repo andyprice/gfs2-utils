@@ -1700,10 +1700,14 @@ uint64_t check_keywords(const char *kword)
 	else if (!strcmp(kword, "root") || !strcmp(kword, "rootdir"))
 		blk = sbd.sd_sb.sb_root_dir.no_addr;
 	else if (!strcmp(kword, "master")) {
-		if (!sbd.gfs1)
-			blk = sbd.sd_sb.sb_master_dir.no_addr;
-		else
+		if (sbd.gfs1)
 			fprintf(stderr, "This is GFS1; there's no master directory.\n");
+		else if (!sbd.sd_sb.sb_master_dir.no_addr) {
+			fprintf(stderr, "GFS2 master directory not found on %s\n",
+			                                          sbd.device_name);
+			exit(-1);
+		} else
+			blk = sbd.sd_sb.sb_master_dir.no_addr;
 	}
 	else if (!strcmp(kword, "jindex")) {
 		if (sbd.gfs1)
