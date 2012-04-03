@@ -975,6 +975,7 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	int first_ea_is_bad = 0;
 	uint64_t di_eattr_save = ip->i_di.di_eattr;
+	uint64_t offset = ip->i_sbd->gfs1 ? sizeof(struct gfs_indirect) : sizeof(struct gfs2_meta_header);
 
 	log_debug( _("Checking EA indirect block #%llu (0x%llx).\n"),
 		  (unsigned long long)indirect,
@@ -987,10 +988,8 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 	if (!error) {
 		int leaf_pointers = 0, leaf_pointer_errors = 0;
 
-		ea_leaf_ptr = (uint64_t *)(indirect_buf->b_data
-					   + sizeof(struct gfs2_meta_header));
-		end = ea_leaf_ptr + ((sdp->sd_sb.sb_bsize
-				      - sizeof(struct gfs2_meta_header)) / 8);
+		ea_leaf_ptr = (uint64_t *)(indirect_buf->b_data + offset);
+		end = ea_leaf_ptr + ((sdp->sd_sb.sb_bsize - offset) / 8);
 
 		while (*ea_leaf_ptr && (ea_leaf_ptr < end)){
 			block = be64_to_cpu(*ea_leaf_ptr);
