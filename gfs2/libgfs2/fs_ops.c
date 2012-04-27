@@ -851,8 +851,6 @@ void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t lindex,
 	uint64_t leaf_no;
 	int count;
 
-	if (dip->i_sbd->gfs1)
-		return gfs_get_leaf_nr(dip, lindex, leaf_out);
 	count = gfs2_readi(dip, (char *)&leaf_no, lindex * sizeof(uint64_t),
 			   sizeof(uint64_t));
 	if (count != sizeof(uint64_t)) {

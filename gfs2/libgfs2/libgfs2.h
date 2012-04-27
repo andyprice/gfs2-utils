@@ -660,8 +660,6 @@ extern struct gfs2_inode *gfs_inode_read(struct gfs2_sbd *sdp,
 extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
 extern void gfs_rgrp_in(struct gfs_rgrp *rg, struct gfs2_buffer_head *bh);
 extern void gfs_rgrp_out(struct gfs_rgrp *rg, struct gfs2_buffer_head *bh);
-extern void gfs_get_leaf_nr(struct gfs2_inode *dip, uint32_t lindex,
-			    uint64_t *leaf_out);
 extern void gfs_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx,
 			    uint64_t leaf_out);
 
