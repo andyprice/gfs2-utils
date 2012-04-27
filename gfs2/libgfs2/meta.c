@@ -729,7 +729,7 @@ const struct lgfs2_metadata lgfs2_metadata[] = {
 	},
 	[LGFS2_MT_FREE] = {
 		.gfs1 = 1,
-		.gfs2 = 2,
+		.gfs2 = 1,
 		.name = "free",
 	},
 };

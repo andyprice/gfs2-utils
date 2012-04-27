@@ -77,7 +77,7 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree,
 			 int rgsize_specified)
 {
 	struct device *dev;
-	struct rgrp_tree *rl, *rlast = NULL, *rlast2 = NULL;
+	struct rgrp_tree *rl, *rlast = NULL;
 	struct osi_node *n, *next = NULL;
 	unsigned int rgrp = 0, nrgrp, rglength;
 	uint64_t rgaddr;
@@ -105,7 +105,6 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree,
 				 PRIx64 "), length = %"PRIu64" (0x%"
 				 PRIx64 ")\n", rgrp + 1, rl->start, rl->start,
 				 rl->length, rl->length);
-			rlast2 = rlast;
 			rlast = rl;
 		}
 		rlast->start = rlast->ri.ri_addr;
