@@ -109,7 +109,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 	sdp->orig_fssize = 0;
 
 	while (cont) {
-		optchar = getopt(argc, argv, "-b:c:DhJ:j:KOp:qr:t:u:VX");
+		optchar = getopt(argc, argv, "-b:c:DhJ:j:KOp:qr:t:VX");
 
 		switch (optchar) {
 		case 'b':
@@ -164,9 +164,6 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			if (strlen(optarg) >= GFS2_LOCKNAME_LEN)
 				die( _("lock table name %s is too long\n"), optarg);
 			strcpy(sdp->locktable, optarg);
-			break;
-
-		case 'u':
 			break;
 
 		case 'V':

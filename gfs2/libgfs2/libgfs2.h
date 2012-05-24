@@ -255,7 +255,6 @@ struct gfs2_sbd {
 	unsigned int bsize;	     /* The block size of the FS (in bytes) */
 	unsigned int jsize;	     /* Size of journals (in MB) */
 	unsigned int rgsize;     /* Size of resource groups (in MB) */
-	unsigned int utsize;     /* Size of unlinked tag files (in MB) */
 	unsigned int qcsize;     /* Size of quota change files (in MB) */
 
 	int debug;
