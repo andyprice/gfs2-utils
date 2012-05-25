@@ -838,6 +838,7 @@ static int hexdump(uint64_t startaddr, int len)
 	uint64_t l;
 	const char *lpBuffer = bh->b_data;
 	int print_field, cursor_line;
+	const uint32_t block_type = get_block_type(bh);
 
 	strcpy(edit_fmt,"%02x");
 	pointer = (unsigned char *)lpBuffer + offset;
@@ -935,7 +936,7 @@ static int hexdump(uint64_t startaddr, int len)
 		}
 		print_gfs2("] ");
 		if (print_field >= 0) {
-			const struct lgfs2_metadata *m = find_mtype(get_block_type(bh), sbd.gfs1);
+			const struct lgfs2_metadata *m = find_mtype(block_type, sbd.gfs1);
 			if (m) {
 				const struct lgfs2_metafield *f;
 				unsigned n;
@@ -951,9 +952,9 @@ static int hexdump(uint64_t startaddr, int len)
 
 		}
 		if (cursor_line) {
-			if (((*(bh->b_data + 7) == GFS2_METATYPE_IN) ||
-			   (*(bh->b_data + 7) == GFS2_METATYPE_DI &&
-			    (*(bh->b_data + 0x8b) || *(bh->b_data + 0x8a))))) {
+			if (block_type == GFS2_METATYPE_IN ||
+			    ((block_type == GFS2_METATYPE_DI) &&
+			     ((struct gfs2_dinode*)bh->b_data)->di_height)) {
 				int ptroffset = edit_row[dmode] * 16 +
 					edit_col[dmode];
 
