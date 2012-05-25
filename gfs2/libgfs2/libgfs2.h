@@ -142,8 +142,9 @@ struct lgfs2_metafield {
 };
 
 struct lgfs2_metadata {
-	const unsigned gfs1:1;
-	const unsigned gfs2:1;
+	const unsigned versions:2;
+#define LGFS2_MD_GFS1 0x01
+#define LGFS2_MD_GFS2 0x02
 	const unsigned header:1;
 	const uint32_t mh_type;
 	const uint32_t mh_format;
