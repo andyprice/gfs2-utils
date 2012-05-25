@@ -813,14 +813,15 @@ int display_block_type(int from_restore)
 	return ret_type;
 }
 
-static const struct lgfs2_metadata *find_mtype(uint32_t mtype)
+static const struct lgfs2_metadata *find_mtype(uint32_t mtype, int gfs1)
 {
 	const struct lgfs2_metadata *m = lgfs2_metadata;
 	unsigned n = 0;
 
 	do {
-		if (m->gfs2 && m->mh_type == mtype)
-			return m;
+		if (((gfs1 && m[n].gfs1) || (!gfs1 && m[n].gfs2))
+		                         && m[n].mh_type == mtype)
+			return &m[n];
 		n++;
 	} while (n < lgfs2_metadata_size);
 
@@ -934,7 +935,7 @@ static int hexdump(uint64_t startaddr, int len)
 		}
 		print_gfs2("] ");
 		if (print_field >= 0) {
-			const struct lgfs2_metadata *m = find_mtype(get_block_type(bh));
+			const struct lgfs2_metadata *m = find_mtype(get_block_type(bh), sbd.gfs1);
 			if (m) {
 				const struct lgfs2_metafield *f;
 				unsigned n;
