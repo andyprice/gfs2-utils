@@ -518,19 +518,46 @@ print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
 	printf("\n");
 }
 
+
+/**
+ * If path is a symlink, return 1 with *abspath pointing to the absolute path,
+ * otherwise return 0. Exit on errors. The caller must free the memory pointed
+ * to by *abspath.
+ */
+static int is_symlink(char *path, char **abspath)
+{
+	struct stat lnkstat;
+
+	if (lstat(path, &lnkstat) == -1) {
+		perror("Failed to lstat the device");
+		exit(EXIT_FAILURE);
+	}
+	if (!S_ISLNK(lnkstat.st_mode)) {
+		return 0;
+	}
+	*abspath = canonicalize_file_name(path);
+	if (*abspath == NULL) {
+		perror(_("Could not find the absolute path of the device"));
+		exit(EXIT_FAILURE);
+	}
+	printf( _("%s is a symlink to %s\n"), path, *abspath);
+	return 1;
+}
+
 /**
  * main_mkfs - do everything
  * @argc:
  * @argv:
  *
  */
-
 void main_mkfs(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd, *sdp = &sbd;
 	int error;
 	int rgsize_specified = 0;
 	unsigned char uuid[16];
+	char *absname = NULL;
+	int islnk = 0;
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	sdp->bsize = -1;
@@ -561,8 +588,10 @@ void main_mkfs(int argc, char *argv[])
 	}
 
 	if (!sdp->override) {
-		printf( _("This will destroy any data on %s.\n"), sdp->device_name);
-		check_dev_content(sdp->device_name);
+		islnk = is_symlink(sdp->device_name, &absname);
+		printf(_("This will destroy any data on %s.\n"), islnk ? absname : sdp->device_name);
+		check_dev_content(islnk ? absname : sdp->device_name);
+		free(absname);
 		are_you_sure();
 	}
 
