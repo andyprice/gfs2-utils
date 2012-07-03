@@ -95,6 +95,10 @@ AC_ARG_ENABLE([debug],
 	[  --enable-debug          enable debug build. ],
 	[ default="no" ])
 
+AC_ARG_ENABLE([gfs_controld],
+	[  --enable-gfs_controld   build gfs_controld. ],
+	[ default="no" ])
+
 AC_ARG_WITH([syslogfacility],
 	[  --syslogfacility=FACILITY
                           cluster default syslog facility. ],
@@ -114,15 +118,20 @@ AC_ARG_WITH([kernel],
 
 KERNEL_CPPFLAGS="-I$KERNEL_DIR/include"
 
-PKG_CHECK_MODULES([corosync],[corosync])
-PKG_CHECK_MODULES([cpg],[libcpg])
-PKG_CHECK_MODULES([sackpt],[libSaCkpt])
-PKG_CHECK_MODULES([logt],[liblogthread])
-PKG_CHECK_MODULES([ccs],[libccs])
-PKG_CHECK_MODULES([cfg],[libcfg])
-PKG_CHECK_MODULES([fenced],[libfenced])
-PKG_CHECK_MODULES([dlmcontrol],[libdlmcontrol])
-PKG_CHECK_MODULES([quorum],[libquorum])
+# gfs_controld isn't required in the latest versions of cluster
+AM_CONDITIONAL([BUILD_GFS_CONTROLD], [test "x$enable_gfs_controld" = "xyes"])
+AS_IF([test "x$enable_gfs_controld" = "xyes"], [
+	PKG_CHECK_MODULES([corosync],[corosync])
+	PKG_CHECK_MODULES([cpg],[libcpg])
+	PKG_CHECK_MODULES([sackpt],[libSaCkpt])
+	PKG_CHECK_MODULES([logt],[liblogthread])
+	PKG_CHECK_MODULES([ccs],[libccs])
+	PKG_CHECK_MODULES([cfg],[libcfg])
+	PKG_CHECK_MODULES([fenced],[libfenced])
+	PKG_CHECK_MODULES([dlmcontrol],[libdlmcontrol])
+	PKG_CHECK_MODULES([quorum],[libquorum])
+])
+
 PKG_CHECK_MODULES([zlib],[zlib])
 
 # old versions of ncurses don't ship pkg-config files

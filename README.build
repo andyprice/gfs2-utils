@@ -21,6 +21,12 @@ Plus the following libraries:
   - libcfg
  - openaislib
 
+By default gfs_controld is not built as it is not required in Fedora 17 and
+later and cannot build on it. To re-enable it for older systems, use
+--enable-gfs_controld when running the configure script (see below). The
+library dependencies for gfs_controld are only required when this option is
+given.
+
 Run the following commands:
 
 ./autogen.sh
