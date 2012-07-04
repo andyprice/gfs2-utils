@@ -1368,14 +1368,6 @@ struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
 	return __init_dinode(sdp, inum, mode, flags, parent, 0);
 }
 
-struct gfs2_buffer_head *init_gfs_dinode(struct gfs2_sbd *sdp,
-					 struct gfs2_inum *inum,
-					 unsigned int mode, uint32_t flags,
-					 struct gfs2_inum *parent)
-{
-	return __init_dinode(sdp, inum, mode, flags, parent, 1);
-}
-
 static struct gfs2_inode *__createi(struct gfs2_inode *dip,
 				    const char *filename, unsigned int mode,
 				    uint32_t flags, int if_gfs1)

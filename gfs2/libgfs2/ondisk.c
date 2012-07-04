@@ -415,21 +415,6 @@ void gfs2_dirent_out(struct gfs2_dirent *de, char *buf)
 	memset(str->__pad, 0, sizeof(str->__pad));
 }
 
-void gfs2_dirent_print(struct gfs2_dirent *de, char *name)
-{
-	char buf[GFS2_FNAMESIZE + 1];
-
-	gfs2_inum_print(&de->de_inum);
-	pv(de, de_hash, "0x%.8X", NULL);
-	pv(de, de_rec_len, "%u", "0x%x");
-	pv(de, de_name_len, "%u", "0x%x");
-	pv(de, de_type, "%u", "0x%x");
-
-	memset(buf, 0, GFS2_FNAMESIZE + 1);
-	memcpy(buf, name, de->de_name_len);
-	print_it("  name", "%s", NULL, buf);
-}
-
 void gfs2_leaf_in(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh)
 {
 	struct gfs2_leaf *str = (struct gfs2_leaf *)bh->b_data;
@@ -476,19 +461,6 @@ void gfs2_ea_header_in(struct gfs2_ea_header *ea, char *buf)
 	ea->ea_type = str->ea_type;
 	ea->ea_flags = str->ea_flags;
 	ea->ea_num_ptrs = str->ea_num_ptrs;
-}
-
-void gfs2_ea_header_out(struct gfs2_ea_header *ea, char *buf)
-{
-	struct gfs2_ea_header *str = (struct gfs2_ea_header *)buf;
-
-	CPOUT_32(ea, str, ea_rec_len);
-	CPOUT_32(ea, str, ea_data_len);
-	str->ea_name_len = ea->ea_name_len;
-	str->ea_type = ea->ea_type;
-	str->ea_flags = ea->ea_flags;
-	str->ea_num_ptrs = ea->ea_num_ptrs;
-	str->__pad = 0;
 }
 
 void gfs2_ea_header_print(struct gfs2_ea_header *ea, char *name)

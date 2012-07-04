@@ -392,8 +392,6 @@ extern void fix_device_geometry(struct gfs2_sbd *sdp);
 #define BFITNOENT (0xFFFFFFFF)
 
 /* functions with blk #'s that are buffer relative */
-extern uint32_t gfs2_bitcount(unsigned char *buffer, unsigned int buflen,
-			      unsigned char state);
 extern unsigned long gfs2_bitfit(const unsigned char *buffer,
 				 const unsigned int buflen,
 				 unsigned long goal, unsigned char old_state);
@@ -448,11 +446,6 @@ extern struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
 					    struct gfs2_inum *inum,
 					    unsigned int mode, uint32_t flags,
 					    struct gfs2_inum *parent);
-extern struct gfs2_buffer_head *init_gfs_dinode(struct gfs2_sbd *sdp,
-						struct gfs2_inum *inum,
-						unsigned int mode,
-						uint32_t flags,
-						struct gfs2_inum *parent);
 extern struct gfs2_inode *createi(struct gfs2_inode *dip, const char *filename,
 				  unsigned int mode, uint32_t flags);
 extern struct gfs2_inode *gfs_createi(struct gfs2_inode *dip,
@@ -709,9 +702,6 @@ extern int dir_exists(const char *dir);
 extern int check_for_gfs2(struct gfs2_sbd *sdp);
 extern int mount_gfs2_meta(struct gfs2_sbd *sdp);
 extern void cleanup_metafs(struct gfs2_sbd *sdp);
-extern char *find_debugfs_mount(void);
-extern char *mp2fsname(char *mp);
-extern char *get_sysfs(const char *fsname, const char *filename);
 extern int set_sysfs(const char *fsname, const char *filename, const char *val);
 extern int is_fsname(char *name);
 extern void get_random_bytes(void *buf, int nbytes);
@@ -807,7 +797,6 @@ extern void gfs2_dirent_out(struct gfs2_dirent *de, char *buf);
 extern void gfs2_leaf_in(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh);
 extern void gfs2_leaf_out(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh);
 extern void gfs2_ea_header_in(struct gfs2_ea_header *ea, char *buf);
-extern void gfs2_ea_header_out(struct gfs2_ea_header *ea, char *buf);
 extern void gfs2_log_header_in(struct gfs2_log_header *lh,
 			       struct gfs2_buffer_head *bh);
 extern void gfs2_log_header_out(struct gfs2_log_header *lh,
@@ -832,7 +821,6 @@ extern void gfs2_rindex_print(struct gfs2_rindex *ri);
 extern void gfs2_rgrp_print(struct gfs2_rgrp *rg);
 extern void gfs2_quota_print(struct gfs2_quota *qu);
 extern void gfs2_dinode_print(struct gfs2_dinode *di);
-extern void gfs2_dirent_print(struct gfs2_dirent *de, char *name);
 extern void gfs2_leaf_print(struct gfs2_leaf *lf);
 extern void gfs2_ea_header_print(struct gfs2_ea_header *ea, char *name);
 extern void gfs2_log_header_print(struct gfs2_log_header *lh);

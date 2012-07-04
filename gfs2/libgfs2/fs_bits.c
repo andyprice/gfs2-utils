@@ -98,38 +98,6 @@ unsigned long gfs2_bitfit(const unsigned char *buf, const unsigned int len,
 	return (((const unsigned char *)ptr - buf) * GFS2_NBBY) + bit;
 }
 
-/**
- * fs_bitcount - count the number of bits in a certain state
- * @buffer: the buffer that holds the bitmaps
- * @buflen: the length (in bytes) of the buffer
- * @state: the state of the block we're looking for
- *
- * Returns: The number of bits
- */
-uint32_t gfs2_bitcount(unsigned char *buffer, unsigned int buflen,
-		       unsigned char state)
-{
-	unsigned char *byte, *end;
-	unsigned int bit;
-	uint32_t count = 0;
-
-	byte = buffer;
-	bit = 0;
-	end = buffer + buflen;
-
-	while (byte < end){
-		if (((*byte >> bit) & GFS2_BIT_MASK) == state)
-			count++;
-
-		bit += GFS2_BIT_SIZE;
-		if (bit >= 8){
-			bit = 0;
-			byte++;
-		}
-	}
-	return count;
-}
-
 /*
  * check_range - check if blkno is within FS limits
  * @sdp: super block
