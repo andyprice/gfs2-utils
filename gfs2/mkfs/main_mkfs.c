@@ -426,7 +426,7 @@ static void check_dev_content(const char *devname)
 	char content[1024] = { 0, };
 	char * args[] = {
 		(char *)"/usr/bin/file",
-		(char *)"-bs",
+		(char *)"-bsL",
 		(char *)devname,
 		NULL };
 	int p[2] = {-1, -1};
@@ -557,6 +557,7 @@ void main_mkfs(int argc, char *argv[])
 	int rgsize_specified = 0;
 	unsigned char uuid[16];
 	char *absname = NULL;
+	char *fdpath = NULL;
 	int islnk = 0;
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
@@ -587,13 +588,19 @@ void main_mkfs(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (asprintf(&fdpath, "/proc/%d/fd/%d", getpid(), sdp->device_fd) < 0) {
+		perror(_("Failed to build string"));
+		exit(EXIT_FAILURE);
+	}
+
 	if (!sdp->override) {
 		islnk = is_symlink(sdp->device_name, &absname);
 		printf(_("This will destroy any data on %s.\n"), islnk ? absname : sdp->device_name);
-		check_dev_content(islnk ? absname : sdp->device_name);
 		free(absname);
+		check_dev_content(fdpath);
 		are_you_sure();
 	}
+	free(fdpath);
 
 	if (sdp->bsize == -1) {
 		if (S_ISREG(sdp->dinfo.stat.st_mode))
