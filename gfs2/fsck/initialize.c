@@ -753,12 +753,13 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 static int get_lockproto_table(struct gfs2_sbd *sdp)
 {
 	FILE *fp;
-	char line[PATH_MAX], *p, *p2;
-	char fsname[PATH_MAX];
+	char line[PATH_MAX];
+	char *cluname, *end;
+	const char *fsname, *cfgfile = "/etc/cluster/cluster.conf";
 
 	memset(sdp->lockproto, 0, sizeof(sdp->lockproto));
 	memset(sdp->locktable, 0, sizeof(sdp->locktable));
-	fp = fopen("/etc/cluster/cluster.conf", "rt");
+	fp = fopen(cfgfile, "rt");
 	if (!fp) {
 		/* no cluster.conf; must be a stand-alone file system */
 		strcpy(sdp->lockproto, "lock_nolock");
@@ -771,28 +772,29 @@ static int get_lockproto_table(struct gfs2_sbd *sdp)
 	log_warn(_("Lock protocol assumed to be: " GFS2_DEFAULT_LOCKPROTO
 		   "\n"));
 	strcpy(sdp->lockproto, GFS2_DEFAULT_LOCKPROTO);
+
 	while (fgets(line, sizeof(line) - 1, fp)) {
-		p = strstr(line,"<cluster name=");
-		if (p) {
-			p += 15;
-			p2 = strchr(p,'"');
-			strncpy(sdp->locktable, p, p2 - p);
+		cluname = strstr(line,"<cluster name=");
+		if (cluname) {
+			cluname += 15;
+			end = strchr(cluname,'"');
+			if (end)
+				*end = '\0';
 			break;
 		}
 	}
-	if (sdp->locktable[0] == '\0') {
-		log_err(_("Error: Unable to determine cluster name from "
-			  "/etc/cluster.conf\n"));
+	if (cluname == NULL || end == NULL || end - cluname < 1) {
+		log_err(_("Error: Unable to determine cluster name from %s\n"),
+		                                                      cfgfile);
 	} else {
-		memset(fsname, 0, sizeof(fsname));
-		p = strrchr(opts.device, '/');
-		if (p) {
-			p++;
-			strncpy(fsname, p, sizeof(fsname));
-		} else
-			strcpy(fsname, "repaired");
-		strcat(sdp->locktable, ":");
-		strcat(sdp->locktable, fsname);
+		fsname = strrchr(opts.device, '/');
+		if (fsname)
+			fsname++;
+		else
+			fsname = "repaired";
+		snprintf(sdp->locktable, sizeof(sdp->locktable), "%.*s:%.16s",
+		         (int)(sizeof(sdp->locktable) - strlen(fsname) - 2),
+		         cluname, fsname);
 		log_warn(_("Lock table determined to be: %s\n"),
 			 sdp->locktable);
 	}
