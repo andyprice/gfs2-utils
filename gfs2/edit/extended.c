@@ -30,9 +30,6 @@
 static void print_block_details(struct iinfo *ind, int level, int cur_height,
 				int pndx, uint64_t file_offset);
 
-/* ------------------------------------------------------------------------ */
-/* get_height                                                               */
-/* ------------------------------------------------------------------------ */
 static int get_height(void)
 {
 	int cur_height = 0, i;
@@ -49,9 +46,6 @@ static int get_height(void)
 	return cur_height;
 }
 
-/* ------------------------------------------------------------------------ */
-/* _do_indirect_extended                                                    */
-/* ------------------------------------------------------------------------ */
 static int _do_indirect_extended(char *diebuf, struct iinfo *iinf, int hgt)
 {
 	unsigned int x, y;
@@ -81,9 +75,6 @@ static int _do_indirect_extended(char *diebuf, struct iinfo *iinf, int hgt)
 	return i_blocks;
 }
 
-/* ------------------------------------------------------------------------ */
-/* do_indirect_extended                                                     */
-/* ------------------------------------------------------------------------ */
 int do_indirect_extended(char *diebuf, struct iinfo *iinf)
 {
 	return _do_indirect_extended(diebuf, iinf, get_height());
@@ -107,9 +98,6 @@ static int dinode_valid(void)
 	return 0;
 }
 
-/* ------------------------------------------------------------------------ */
-/* metapath_to_lblock - convert from metapath, height to logical block      */
-/* ------------------------------------------------------------------------ */
 static uint64_t metapath_to_lblock(struct metapath *mp, int hgt)
 {
 	int h;
@@ -128,9 +116,6 @@ static uint64_t metapath_to_lblock(struct metapath *mp, int hgt)
 	return lblock;
 }
 
-/* ------------------------------------------------------------------------ */
-/* display_indirect                                                         */
-/* ------------------------------------------------------------------------ */
 static int display_indirect(struct iinfo *ind, int indblocks, int level,
 			    uint64_t startoff)
 {
@@ -246,9 +231,6 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 	return 0;
 }
 
-/* ------------------------------------------------------------------------ */
-/* print_inode_type                                                         */
-/* ------------------------------------------------------------------------ */
 static void print_inode_type(__be16 de_type)
 {
 	if (sbd.gfs1) {
@@ -314,9 +296,6 @@ static void print_inode_type(__be16 de_type)
 	}
 }
 
-/* ------------------------------------------------------------------------ */
-/* display_leaf - display directory leaf                                    */
-/* ------------------------------------------------------------------------ */
 static int display_leaf(struct iinfo *ind)
 {
 	int start_line, total_dirents = start_row[dmode];
@@ -374,9 +353,6 @@ static int display_leaf(struct iinfo *ind)
 	return 0;
 }
 
-/* ------------------------------------------------------------------------ */
-/* print_block_details                                                      */
-/* ------------------------------------------------------------------------ */
 static void print_block_details(struct iinfo *ind, int level, int cur_height,
 				int pndx, uint64_t file_offset)
 {
@@ -441,9 +417,6 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 	free(more_indir);
 }
 
-/* ------------------------------------------------------------------------ */
-/* gfs_jindex_print - print an jindex entry.                                */
-/* ------------------------------------------------------------------------ */
 static void gfs_jindex_print(struct gfs_jindex *ji)
 {
         pv((unsigned long long)ji, ji_addr, "%llu", "0x%llx");
@@ -451,9 +424,6 @@ static void gfs_jindex_print(struct gfs_jindex *ji)
         pv(ji, ji_pad, "%u", "0x%x");
 }
 
-/* ------------------------------------------------------------------------ */
-/* print_jindex - print the jindex file.                                    */
-/* ------------------------------------------------------------------------ */
 static int print_jindex(struct gfs2_inode *dij)
 {
 	int error, start_line;
@@ -494,9 +464,6 @@ static int print_jindex(struct gfs2_inode *dij)
 	return error;
 }
 
-/* ------------------------------------------------------------------------ */
-/* parse_rindex - print the rgindex file.                                   */
-/* ------------------------------------------------------------------------ */
 static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 {
 	int error, start_line;
@@ -562,9 +529,6 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 	return error;
 }
 
-/* ------------------------------------------------------------------------ */
-/* print_inum - print the inum file.                                        */
-/* ------------------------------------------------------------------------ */
 static int print_inum(struct gfs2_inode *dii)
 {
 	uint64_t inum, inodenum;
@@ -587,9 +551,6 @@ static int print_inum(struct gfs2_inode *dii)
 	return 0;
 }
 
-/* ------------------------------------------------------------------------ */
-/* print_statfs - print the statfs file.                                    */
-/* ------------------------------------------------------------------------ */
 static int print_statfs(struct gfs2_inode *dis)
 {
 	struct gfs2_statfs_change sfb, sfc;
@@ -613,9 +574,6 @@ static int print_statfs(struct gfs2_inode *dis)
 	return 0;
 }
 
-/* ------------------------------------------------------------------------ */
-/* print_quota - print the quota file.                                      */
-/* ------------------------------------------------------------------------ */
 static int print_quota(struct gfs2_inode *diq)
 {
 	struct gfs2_quota qbuf, q;
@@ -642,9 +600,6 @@ static int print_quota(struct gfs2_inode *diq)
 	return 0;
 }
 
-/* ------------------------------------------------------------------------ */
-/* display_extended                                                         */
-/* ------------------------------------------------------------------------ */
 int display_extended(void)
 {
 	struct gfs2_inode *tmp_inode;

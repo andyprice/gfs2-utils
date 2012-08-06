@@ -19,7 +19,6 @@
 
 #include "extended.h"
 #include "gfs2hex.h"
-/* from libgfs2: */
 #include "libgfs2.h"
 
 #define pv(struct, member, fmt, fmt2) do {				\
@@ -255,21 +254,6 @@ static int indirect_dirent(struct indirect_info *indir, char *ptr, int d)
 	return de.de_rec_len;
 }
 
-/******************************************************************************
-*******************************************************************************
-**
-** do_dinode_extended()
-**
-** Description:
-**
-** Input(s):
-**
-** Output(s):
-**
-** Returns:
-**
-*******************************************************************************
-******************************************************************************/
 void do_dinode_extended(struct gfs2_dinode *dine, struct gfs2_buffer_head *lbh)
 {
 	unsigned int x, y, ptroff = 0;
@@ -350,21 +334,9 @@ void do_dinode_extended(struct gfs2_dinode *dine, struct gfs2_buffer_head *lbh)
 	} /* if exhash */
 }/* do_dinode_extended */
 
-/******************************************************************************
-*******************************************************************************
-**
-** do_leaf_extended()
-**
-** Description:
-**
-** Input(s):
-**
-** Output(s):
-**
-** Returns: next leaf block, if any, in a chain of leaf blocks
-**
-*******************************************************************************
-******************************************************************************/
+/**
+ * Returns: next leaf block, if any, in a chain of leaf blocks
+ */
 uint64_t do_leaf_extended(char *dlebuf, struct iinfo *indir)
 {
 	int x, i;
@@ -402,23 +374,6 @@ uint64_t do_leaf_extended(char *dlebuf, struct iinfo *indir)
 	}
 	return leaf.lf_next;
 }
-
-
-/******************************************************************************
-*******************************************************************************
-**
-** do_eattr_extended()
-**
-** Description:
-**
-** Input(s):
-**
-** Output(s):
-**
-** Returns:
-**
-*******************************************************************************
-******************************************************************************/
 
 static void do_eattr_extended(struct gfs2_buffer_head *ebh)
 {
@@ -524,23 +479,6 @@ static void gfs1_rgrp_print(struct gfs1_rgrp *rg)
         pv(rg, rg_freemeta, "%u", "0x%x");
 }
 
-/******************************************************************************
-*******************************************************************************
-**
-** int display_gfs2()
-**
-** Description:
-**   This routine...
-**
-** Input(s):
-**  *buffer   - 
-**   extended - 
-**
-** Returns:
-**   0 if OK, 1 on error.
-**
-*******************************************************************************
-******************************************************************************/
 int display_gfs2(void)
 {
 	struct gfs2_meta_header mh;
