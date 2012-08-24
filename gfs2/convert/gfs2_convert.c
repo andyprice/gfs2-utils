@@ -895,7 +895,11 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 	struct inode_block *fixdir;
 	int inode_was_gfs1;
 
-	inode = gfs_inode_get(sbp, bh);
+	inode = lgfs2_gfs_inode_get(sbp, bh);
+	if (inode == NULL) {
+		log_crit(_("Error reading inode: %s\n"), strerror(errno));
+		return -1;
+	}
 
 	inode_was_gfs1 = (inode->i_di.di_num.no_formal_ino ==
 					  inode->i_di.di_num.no_addr);
@@ -1591,7 +1595,11 @@ static int init(struct gfs2_sbd *sbp)
 	}
 	/* get gfs1 rindex inode - gfs1's rindex inode ptr became __pad2 */
 	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_rindex_di);
-	sbp->md.riinode = gfs_inode_read(sbp, inum.no_addr);
+	sbp->md.riinode = lgfs2_gfs_inode_read(sbp, inum.no_addr);
+	if (sbp->md.riinode == NULL) {
+		log_crit(_("Could not read resource group index: %s\n"), strerror(errno));
+		exit(-1);
+	}
 	/* get gfs1 jindex inode - gfs1's journal index inode ptr became master */
 	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_jindex_di);
 	sbp->md.jiinode = lgfs2_inode_read(sbp, inum.no_addr);

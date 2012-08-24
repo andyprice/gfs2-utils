@@ -226,7 +226,7 @@ struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sdp, uint64_t block)
 	if (ip)
 		return ip;
 	if (sdp->gfs1)
-		return gfs_inode_read(sdp, block);
+		return lgfs2_gfs_inode_read(sdp, block);
 	return lgfs2_inode_read(sdp, block);
 }
 
@@ -242,7 +242,7 @@ struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp,
 		return sysip;
 
 	if (sdp->gfs1)
-		return gfs_inode_get(sdp, bh);
+		return lgfs2_gfs_inode_get(sdp, bh);
 	return lgfs2_inode_get(sdp, bh);
 }
 

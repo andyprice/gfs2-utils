@@ -147,13 +147,13 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, int *block_type,
 		break;
 	case GFS2_METATYPE_DI:   /* 4 (disk inode) */
 		if (sbd.gfs1) {
-			inode = gfs_inode_get(&sbd, lbh);
+			inode = lgfs2_gfs_inode_get(&sbd, lbh);
 		} else {
 			inode = lgfs2_inode_get(&sbd, lbh);
-			if (inode == NULL) {
-				fprintf(stderr, "Out of memory\n");
-				exit(-1);
-			}
+		}
+		if (inode == NULL) {
+			perror("Error reading inode");
+			exit(-1);
 		}
 		if (S_ISDIR(inode->i_di.di_mode) ||
 		     (sbd.gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR))
@@ -488,14 +488,14 @@ static void save_inode_data(struct metafd *mfd)
 	for (i = 0; i < GFS2_MAX_META_HEIGHT; i++)
 		osi_list_init(&metalist[i]);
 	metabh = bread(&sbd, block);
-	if (sbd.gfs1)
-		inode = gfs_inode_get(&sbd, metabh);
-	else {
+	if (sbd.gfs1) {
+		inode = lgfs2_gfs_inode_get(&sbd, metabh);
+	} else {
 		inode = lgfs2_inode_get(&sbd, metabh);
-		if (inode == NULL) {
-			fprintf(stderr, "Failed to read inode: %s\n", strerror(errno));
-			exit(-1);
-		}
+	}
+	if (inode == NULL) {
+		perror("Failed to read inode");
+		exit(-1);
 	}
 	height = inode->i_di.di_height;
 	/* If this is a user inode, we don't follow to the file height.
@@ -611,8 +611,12 @@ static void get_journal_inode_blocks(void)
 			struct gfs_jindex ji;
 			char jbuf[sizeof(struct gfs_jindex)];
 
-			j_inode = gfs_inode_read(&sbd,
+			j_inode = lgfs2_gfs_inode_read(&sbd,
 						 sbd1->sb_jindex_di.no_addr);
+			if (j_inode == NULL) {
+				fprintf(stderr, "Error reading journal inode: %s\n", strerror(errno));
+				return;
+			}
 			amt = gfs2_readi(j_inode, (void *)&jbuf,
 					 journal * sizeof(struct gfs_jindex),
 					 sizeof(struct gfs_jindex));

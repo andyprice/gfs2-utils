@@ -293,8 +293,7 @@ static struct gfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp,
 
 	ip = calloc(1, sizeof(struct gfs2_inode));
 	if (ip == NULL) {
-		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
-		exit(-1);
+		return NULL;
 	}
 
 	ip->bh_owned = 0;
@@ -332,13 +331,13 @@ static struct gfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp,
 	return ip;
 }
 
-struct gfs2_inode *gfs_inode_get(struct gfs2_sbd *sdp,
+struct gfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp,
 				 struct gfs2_buffer_head *bh)
 {
 	return __gfs_inode_get(sdp, bh, 0);
 }
 
-struct gfs2_inode *gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
+struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 {
 	return __gfs_inode_get(sdp, NULL, di_addr);
 }
