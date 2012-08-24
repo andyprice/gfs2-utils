@@ -60,6 +60,30 @@ static int block_is_a_journal(void)
 	return FALSE;
 }
 
+static int block_is_in_per_node(void)
+{
+	int d;
+	struct gfs2_inode *per_node_di;
+
+	if (sbd.gfs1)
+		return FALSE;
+
+	per_node_di = lgfs2_inode_read(&sbd, masterblock("per_node"));
+	if (per_node_di == NULL) {
+		fprintf(stderr, "Failed to read per_node: %s\n", strerror(errno));
+		exit(1);
+	}
+
+	do_dinode_extended(&per_node_di->i_di, per_node_di->i_bh);
+	inode_put(&per_node_di);
+
+	for (d = 0; d < indirect->ii[0].dirents; d++) {
+		if (block == indirect->ii[0].dirent[d].block)
+			return TRUE;
+	}
+	return FALSE;
+}
+
 static int block_is_systemfile(void)
 {
 	return block_is_jindex() || block_is_inum_file() ||
@@ -122,10 +146,15 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, int *block_type,
 		*gstruct_len = sbd.bsize;
 		break;
 	case GFS2_METATYPE_DI:   /* 4 (disk inode) */
-		if (sbd.gfs1)
+		if (sbd.gfs1) {
 			inode = gfs_inode_get(&sbd, lbh);
-		else
-			inode = inode_get(&sbd, lbh);
+		} else {
+			inode = lgfs2_inode_get(&sbd, lbh);
+			if (inode == NULL) {
+				fprintf(stderr, "Out of memory\n");
+				exit(-1);
+			}
+		}
 		if (S_ISDIR(inode->i_di.di_mode) ||
 		     (sbd.gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR))
 			*gstruct_len = sbd.bsize;
@@ -461,8 +490,13 @@ static void save_inode_data(struct metafd *mfd)
 	metabh = bread(&sbd, block);
 	if (sbd.gfs1)
 		inode = gfs_inode_get(&sbd, metabh);
-	else
-		inode = inode_get(&sbd, metabh);
+	else {
+		inode = lgfs2_inode_get(&sbd, metabh);
+		if (inode == NULL) {
+			fprintf(stderr, "Failed to read inode: %s\n", strerror(errno));
+			exit(-1);
+		}
+	}
 	height = inode->i_di.di_height;
 	/* If this is a user inode, we don't follow to the file height.
 	   We stop one level less.  That way we save off the indirect
@@ -678,11 +712,19 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	printf("There are %llu blocks of %u bytes in the destination "
 	       "device.\n", (unsigned long long)sbd.fssize, sbd.bsize);
 	if (sbd.gfs1) {
-		sbd.md.riinode = inode_read(&sbd, sbd1->sb_rindex_di.no_addr);
+		sbd.md.riinode = lgfs2_inode_read(&sbd, sbd1->sb_rindex_di.no_addr);
+		if (sbd.md.riinode == NULL) {
+			fprintf(stderr, "Unable to read rindex: %s.\n", strerror(errno));
+			exit(-1);
+		}
 		jindex_block = sbd1->sb_jindex_di.no_addr;
 	} else {
-		sbd.master_dir = inode_read(&sbd,
+		sbd.master_dir = lgfs2_inode_read(&sbd,
 					    sbd.sd_sb.sb_master_dir.no_addr);
+		if (sbd.master_dir == NULL) {
+			fprintf(stderr, "Unable to read master: %s.\n", strerror(errno));
+			exit(-1);
+		}
 
 		gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
 		jindex_block = masterblock("jindex");

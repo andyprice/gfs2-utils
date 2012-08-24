@@ -34,34 +34,32 @@ static int inode_is_stuffed(struct gfs2_inode *ip)
 	return !ip->i_di.di_height;
 }
 
-struct gfs2_inode *inode_get(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
+struct gfs2_inode *lgfs2_inode_get(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 {
 	struct gfs2_inode *ip;
 
 	ip = calloc(1, sizeof(struct gfs2_inode));
 	if (ip == NULL) {
-		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
-		exit(-1);
+		return NULL;
 	}
 	gfs2_dinode_in(&ip->i_di, bh);
 	ip->i_bh = bh;
 	ip->i_sbd = sdp;
-	ip->bh_owned = 0; /* caller did the bread so we don't own the bh */
 	return ip;
 }
 
-struct gfs2_inode *inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
+struct gfs2_inode *lgfs2_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 {
 	struct gfs2_inode *ip;
-
-	ip = calloc(1, sizeof(struct gfs2_inode));
-	if (ip == NULL) {
-		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
-		exit(-1);
+	struct gfs2_buffer_head *bh = bread(sdp, di_addr);
+	if (bh == NULL) {
+		return NULL;
 	}
-	ip->i_bh = bread(sdp, di_addr);
-	gfs2_dinode_in(&ip->i_di, ip->i_bh);
-	ip->i_sbd = sdp;
+	ip = lgfs2_inode_get(sdp, bh);
+	if (ip == NULL) {
+		brelse(bh);
+		return NULL;
+	}
 	ip->bh_owned = 1; /* We did the bread so we own the bh */
 	return ip;
 }
@@ -1405,7 +1403,9 @@ static struct gfs2_inode *__createi(struct gfs2_inode *dip,
 
 		bh = __init_dinode(sdp, &inum, mode, flags, &dip->i_di.di_num,
 				   if_gfs1);
-		ip = inode_get(sdp, bh);
+		ip = lgfs2_inode_get(sdp, bh);
+		if (ip == NULL)
+			return NULL;
 		bmodified(bh);
 	}
 	ip->bh_owned = 1;
@@ -1764,7 +1764,7 @@ int gfs2_lookupi(struct gfs2_inode *dip, const char *filename, int len,
 			return 0;
 	}
 	else
-		*ipp = inode_read(sdp, inum.no_addr);
+		*ipp = lgfs2_inode_read(sdp, inum.no_addr);
 
 	return error;
 }
@@ -1808,7 +1808,11 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 		osi_list_init(&metalist[h]);
 
 	bh = bread(sdp, diblock);
-	ip = inode_get(sdp, bh);
+	if (bh == NULL)
+		return -1;
+	ip = lgfs2_inode_get(sdp, bh);
+	if (ip == NULL)
+		return -1;
 	height = ip->i_di.di_height;
 	osi_list_add(&bh->b_altlist, &metalist[0]);
 

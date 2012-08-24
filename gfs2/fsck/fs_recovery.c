@@ -667,7 +667,9 @@ int ji_update(struct gfs2_sbd *sdp)
 				return -1;
 			}
 			gfs_jindex_in(&ji, buf);
-			sdp->md.journal[i] = inode_read(sdp, ji.ji_addr);
+			sdp->md.journal[i] = lgfs2_inode_read(sdp, ji.ji_addr);
+			if (sdp->md.journal[i] == NULL)
+				return -1;
 		} else {
 			/* FIXME check snprintf return code */
 			snprintf(journal_name, JOURNAL_NAME_SIZE,

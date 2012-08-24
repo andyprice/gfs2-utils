@@ -26,7 +26,9 @@ int build_master(struct gfs2_sbd *sdp)
 
 	bh = init_dinode(sdp, &inum, S_IFDIR | 0755, GFS2_DIF_SYSTEM, &inum);
 	
-	sdp->master_dir = inode_get(sdp, bh);
+	sdp->master_dir = lgfs2_inode_get(sdp, bh);
+	if (sdp->master_dir == NULL)
+		return -1;
 
 	if (sdp->debug) {
 		printf("\nMaster dir:\n");
@@ -429,7 +431,9 @@ int build_root(struct gfs2_sbd *sdp)
 	inum.no_addr = bn;
 
 	bh = init_dinode(sdp, &inum, S_IFDIR | 0755, 0, &inum);
-	sdp->md.rooti = inode_get(sdp, bh);
+	sdp->md.rooti = lgfs2_inode_get(sdp, bh);
+	if (sdp->md.rooti == NULL)
+		return -1;
 
 	if (sdp->debug) {
 		printf("\nRoot directory:\n");

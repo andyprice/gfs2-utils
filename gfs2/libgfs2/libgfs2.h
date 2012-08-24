@@ -425,9 +425,9 @@ extern struct metapath *find_metapath(struct gfs2_inode *ip, uint64_t block);
 extern void lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			 unsigned int height, struct metapath *mp,
 			 int create, int *new, uint64_t *block);
-extern struct gfs2_inode *inode_get(struct gfs2_sbd *sdp,
+extern struct gfs2_inode *lgfs2_inode_get(struct gfs2_sbd *sdp,
 				    struct gfs2_buffer_head *bh);
-extern struct gfs2_inode *inode_read(struct gfs2_sbd *sdp, uint64_t di_addr);
+extern struct gfs2_inode *lgfs2_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr);
 extern struct gfs2_inode *is_system_inode(struct gfs2_sbd *sdp,
 					  uint64_t block);
 extern void inode_put(struct gfs2_inode **ip);

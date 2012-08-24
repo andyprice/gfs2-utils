@@ -1063,7 +1063,9 @@ static uint64_t get_rg_addr(int rgnum)
 		gblock = sbd1->sb_rindex_di.no_addr;
 	else
 		gblock = masterblock("rindex");
-	riinode = inode_read(&sbd, gblock);
+	riinode = lgfs2_inode_read(&sbd, gblock);
+	if (riinode == NULL)
+		return 0;
 	if (rgnum < riinode->i_di.di_size / sizeof(struct gfs2_rindex))
 		rgblk = find_rgrp_block(riinode, rgnum);
 	else
@@ -1205,29 +1207,6 @@ int block_is_per_node(void)
 }
 
 /* ------------------------------------------------------------------------ */
-/* block_is_in_per_node                                                     */
-/* ------------------------------------------------------------------------ */
-int block_is_in_per_node(void)
-{
-	int d;
-	struct gfs2_inode *per_node_di;
-
-	if (sbd.gfs1)
-		return FALSE;
-
-	per_node_di = inode_read(&sbd, masterblock("per_node"));
-
-	do_dinode_extended(&per_node_di->i_di, per_node_di->i_bh);
-	inode_put(&per_node_di);
-
-	for (d = 0; d < indirect->ii[0].dirents; d++) {
-		if (block == indirect->ii[0].dirent[d].block)
-			return TRUE;
-	}
-	return FALSE;
-}
-
-/* ------------------------------------------------------------------------ */
 /* block_has_extended_info                                                  */
 /* ------------------------------------------------------------------------ */
 static int block_has_extended_info(void)
@@ -1301,15 +1280,19 @@ static void read_superblock(int fd)
 			sizeof(uint64_t);
 		sbd.sd_diptrs = (sbd.bsize - sizeof(struct gfs_dinode)) /
 			sizeof(uint64_t);
-		sbd.md.riinode = inode_read(&sbd, sbd1->sb_rindex_di.no_addr);
+		sbd.md.riinode = lgfs2_inode_read(&sbd, sbd1->sb_rindex_di.no_addr);
 	} else {
 		sbd.sd_inptrs = (sbd.bsize - sizeof(struct gfs2_meta_header)) /
 			sizeof(uint64_t);
 		sbd.sd_diptrs = (sbd.bsize - sizeof(struct gfs2_dinode)) /
 			sizeof(uint64_t);
-		sbd.master_dir = inode_read(&sbd,
+		sbd.master_dir = lgfs2_inode_read(&sbd,
 					    sbd.sd_sb.sb_master_dir.no_addr);
-		gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
+		if (sbd.master_dir == NULL) {
+			sbd.md.riinode = NULL;
+		} else {
+			gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
+		}
 	}
 	sbd.fssize = sbd.device.length;
 	if (sbd.md.riinode) /* If we found the rindex */
@@ -1521,7 +1504,9 @@ static uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 		struct gfs2_inode *jiinode;
 		struct gfs_jindex ji;
 
-		jiinode = inode_get(&sbd, jindex_bh);
+		jiinode = lgfs2_inode_get(&sbd, jindex_bh);
+		if (jiinode == NULL)
+			return 0;
 		amtread = gfs2_readi(jiinode, (void *)&jbuf,
 				   journal_num * sizeof(struct gfs_jindex),
 				   sizeof(struct gfs_jindex));
@@ -2682,7 +2667,11 @@ static void dump_journal(const char *journal)
 		return;
 	if (!sbd.gfs1) {
 		j_bh = bread(&sbd, jblock);
-		j_inode = inode_get(&sbd, j_bh);
+		j_inode = lgfs2_inode_get(&sbd, j_bh);
+		if (j_inode == NULL) {
+			fprintf(stderr, "Out of memory\n");
+			exit(-1);
+		}
 		jbuf = malloc(sbd.bsize);
 		if (jbuf == NULL) {
 			fprintf(stderr, "Out of memory\n");

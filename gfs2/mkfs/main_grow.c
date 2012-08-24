@@ -376,8 +376,11 @@ main_grow(int argc, char *argv[])
 			die( _("GFS2 rindex not found.  Please run gfs2_fsck.\n"));
 		}
 		/* Get master dinode */
-		sdp->master_dir =
-			inode_read(sdp, sdp->sd_sb.sb_master_dir.no_addr);
+		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_sb.sb_master_dir.no_addr);
+		if (sdp->master_dir == NULL) {
+			perror("Could not read master");
+			exit(EXIT_FAILURE);
+		}
 		gfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
 		/* Fetch the rindex from disk.  We aren't using gfs2 here,  */
 		/* which means that the bitmaps will most likely be cached  */

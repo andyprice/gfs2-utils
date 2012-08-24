@@ -1092,7 +1092,9 @@ static int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
 {
 	struct gfs2_inode *fix_inode;
 
-	fix_inode = inode_read(sbp, iblock);
+	fix_inode = lgfs2_inode_read(sbp, iblock);
+	if (fix_inode == NULL)
+		return 1;
 	inum->no_formal_ino = fix_inode->i_di.di_num.no_formal_ino;
 	inum->no_addr = fix_inode->i_di.di_num.no_addr;
 	if (eablk)
@@ -1289,7 +1291,9 @@ static int process_directory(struct gfs2_sbd *sbp, uint64_t dirblock, uint64_t d
 	struct gfs2_inode *dip;
 	int error = 0;
 	/* read in the directory inode */
-	dip = inode_read(sbp, dirblock);
+	dip = lgfs2_inode_read(sbp, dirblock);
+	if (dip == NULL)
+		return -1;
 	/* fix the directory: either exhash (leaves) or linear (stuffed) */
 	if (dip->i_di.di_flags & GFS2_DIF_EXHASH) {
 		if (fix_one_directory_exhash(sbp, dip, dentmod)) {
@@ -1391,7 +1395,9 @@ static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 
 		/* initialize the symlink inode to be a directory */
 		bh = init_dinode(sbp, &fix, S_IFDIR | 0755, 0, &dir);
-		fix_inode = inode_get(sbp, bh);
+		fix_inode = lgfs2_inode_get(sbp, bh);
+		if (fix_inode == NULL)
+			return -1;
 		fix_inode->i_di.di_eattr = eablk; /*fix extended attribute */
 		inode_put(&fix_inode);
 		bmodified(bh);
@@ -1588,7 +1594,11 @@ static int init(struct gfs2_sbd *sbp)
 	sbp->md.riinode = gfs_inode_read(sbp, inum.no_addr);
 	/* get gfs1 jindex inode - gfs1's journal index inode ptr became master */
 	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_jindex_di);
-	sbp->md.jiinode = inode_read(sbp, inum.no_addr);
+	sbp->md.jiinode = lgfs2_inode_read(sbp, inum.no_addr);
+	if (sbp->md.jiinode == NULL) {
+		log_crit(_("Could not read journal index: %s\n"), strerror(errno));
+		exit(-1);
+	}
 	/* read in the journal index data */
 	read_gfs1_jiindex(sbp);
 	/* read in the resource group index data: */
@@ -2056,7 +2066,11 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 	}
 
 	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_quota_di);
-	oq_ip = inode_read(sdp, inum.no_addr);
+	oq_ip = lgfs2_inode_read(sdp, inum.no_addr);
+	if (oq_ip == NULL) {
+		fprintf(stderr, _("Couldn't lookup old quota file: %s\n"), strerror(errno));
+		exit(1);
+	}
 
 	nq_ip->i_di.di_height = oq_ip->i_di.di_height;
 	nq_ip->i_di.di_size = oq_ip->i_di.di_size;
