@@ -259,10 +259,8 @@ static void test_locking(char *lockproto, char *locktable)
 			exit(-1);
 		}
 		for (c = locktable; *c; c++) {
-			if (isspace(*c))
-				die( _("locktable error: contains space characters\n"));
-			if (!isprint(*c))
-				die( _("locktable error: contains unprintable characters\n"));
+			if (!isalnum(*c) && (*c != '-') && (*c != '_') && (*c != ':'))
+				die( _("locktable error: invalid character '%c'\n"), *c);
 		}
 
 		c = strstr(locktable, ":");

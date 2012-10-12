@@ -73,7 +73,8 @@ Clustername must match that in cluster.conf; only members of this
 cluster are permitted to use this file system.
 Fsname is a unique file system name used to distinguish this GFS2 file
 system from others created (1 to 16 characters).  Lock_nolock doesn't
-use this field.
+use this field. Valid \fIclustername\fRs and \fIfsname\fRs may only contain
+alphanumeric characters, hyphens (-) and underscores (_).
 .TP
 \fB-V\fP
 Print program version information, then exit.
