@@ -1759,11 +1759,7 @@ int gfs2_lookupi(struct gfs2_inode *dip, const char *filename, int len,
 		return 0;
 	}
 	error = dir_search(dip, filename, len, NULL, &inum);
-	if (error) {
-		if (error == -ENOENT)
-			return 0;
-	}
-	else
+	if (!error)
 		*ipp = lgfs2_inode_read(sdp, inum.no_addr);
 
 	return error;

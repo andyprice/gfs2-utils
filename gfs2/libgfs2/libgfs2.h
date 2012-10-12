@@ -356,6 +356,10 @@ extern const unsigned lgfs2_ld_type_size;
 extern const struct lgfs2_symbolic lgfs2_ld1_types[];
 extern const unsigned lgfs2_ld1_type_size;
 extern int lgfs2_selfcheck(void);
+extern const struct lgfs2_metadata *lgfs2_find_mtype(uint32_t mh_type, const unsigned versions);
+extern int lgfs2_field_print(const struct gfs2_buffer_head *bh,
+                             const struct lgfs2_metadata *mtype,
+                             const struct lgfs2_metafield *field);
 
 /* bitmap.c */
 struct gfs2_bmap {
@@ -379,6 +383,7 @@ extern struct gfs2_buffer_head *__bread(struct gfs2_sbd *sdp, uint64_t num,
 					int line, const char *caller);
 extern int bwrite(struct gfs2_buffer_head *bh);
 extern int brelse(struct gfs2_buffer_head *bh);
+extern uint32_t lgfs2_get_block_type(const struct gfs2_buffer_head *lbh);
 
 #define bmodified(bh) do { bh->b_modified = 1; } while(0)
 
@@ -827,6 +832,25 @@ extern void gfs2_log_header_print(struct gfs2_log_header *lh);
 extern void gfs2_log_descriptor_print(struct gfs2_log_descriptor *ld);
 extern void gfs2_statfs_change_print(struct gfs2_statfs_change *sc);
 extern void gfs2_quota_change_print(struct gfs2_quota_change *qc);
+
+/* Language functions */
+
+struct lgfs2_lang_state;
+
+struct lgfs2_lang_result {
+	uint64_t lr_blocknr;
+	struct gfs2_buffer_head *lr_bh;
+	const struct lgfs2_metadata *lr_mtype;
+	int lr_state; // GFS2_BLKST_*
+};
+
+extern struct lgfs2_lang_state *lgfs2_lang_init(void);
+extern int lgfs2_lang_parsef(struct lgfs2_lang_state *state, FILE *script);
+extern int lgfs2_lang_parses(struct lgfs2_lang_state *state, const char *script);
+extern struct lgfs2_lang_result *lgfs2_lang_result_next(struct lgfs2_lang_state *state, struct gfs2_sbd *sbd);
+extern int lgfs2_lang_result_print(struct lgfs2_lang_result *result);
+extern void lgfs2_lang_result_free(struct lgfs2_lang_result **result);
+extern void lgfs2_lang_free(struct lgfs2_lang_state **state);
 
 __END_DECLS
 

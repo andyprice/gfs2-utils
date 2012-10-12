@@ -25,7 +25,7 @@ int check_sb(struct gfs2_sb *sb)
 {
 	if (sb->sb_header.mh_magic != GFS2_MAGIC ||
 	    sb->sb_header.mh_type != GFS2_METATYPE_SB) {
-		errno = -EIO;
+		errno = EIO;
 		return -1;
 	}
 	if (sb->sb_fs_format == GFS_FORMAT_FS &&

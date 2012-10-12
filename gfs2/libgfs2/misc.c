@@ -26,8 +26,6 @@
 #define SYS_BASE "/sys/fs/gfs2" /* FIXME: Look in /proc/mounts to find this */
 #define DIV_RU(x, y) (((x) + (y) - 1) / (y))
 
-static char sysfs_buf[PAGE_SIZE];
-
 int compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
 	uint32_t *maxheight, uint32_t bsize1, int diptrs, int inptrs)
 {
