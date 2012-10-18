@@ -148,4 +148,10 @@ extern int dups_found_first; /* How many duplicates have we found the original
 				reference for? */
 extern struct gfs_sb *sbd1;
 
+static inline int valid_block(struct gfs2_sbd *sdp, uint64_t blkno)
+{
+	return !((blkno > sdp->fssize) || (blkno <= sdp->sb_addr) ||
+	         (gfs2_get_bitmap(sdp, blkno, NULL) < 0));
+}
+
 #endif /* _FSCK_H */

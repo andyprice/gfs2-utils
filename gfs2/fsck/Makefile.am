@@ -10,7 +10,7 @@ sbindir := $(shell rpl=0; test '$(exec_prefix):$(sbindir)' = /usr:/usr/sbin \
 
 sbin_PROGRAMS		= fsck.gfs2
 
-noinst_HEADERS		= eattr.h fs_bits.h fsck.h fs_recovery.h \
+noinst_HEADERS		= eattr.h fsck.h fs_recovery.h \
 			  inode_hash.h link.h lost_n_found.h metawalk.h util.h
 
 fsck_gfs2_SOURCES	= eattr.c fs_recovery.c initialize.c \

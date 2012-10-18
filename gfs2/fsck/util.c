@@ -13,7 +13,6 @@
 #define _(String) gettext(String)
 
 #include "libgfs2.h"
-#include "fs_bits.h"
 #include "metawalk.h"
 #include "util.h"
 

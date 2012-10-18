@@ -113,23 +113,6 @@ int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno)
 }
 
 /*
- * valid_block - check if blkno is valid and not part of our rgrps or bitmaps
- * @sdp: super block
- * @blkno: block number
- *
- * Returns: 1 if ok, 0 if out of bounds
- */
-int valid_block(struct gfs2_sbd *sdp, uint64_t blkno)
-{
-	if((blkno > sdp->fssize) || (blkno <= sdp->sb_addr))
-		return 0;
-	/* Check if the block is one of our rgrp or bitmap blocks */
-	if (gfs2_get_bitmap(sdp, blkno, NULL) < 0)
-		return 0;
-	return 1;
-}
-
-/*
  * gfs2_set_bitmap
  * @sdp: super block
  * @blkno: block number relative to file system
