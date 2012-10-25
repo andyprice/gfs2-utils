@@ -698,7 +698,7 @@ int display_block_type(int from_restore)
 			    (be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RB))
 				type = 4;
 			else {
-				type = gfs2_get_bitmap(&sbd, block, rgd);
+				type = lgfs2_get_bitmap(&sbd, block, rgd);
 			}
 		} else
 			type = 4;
@@ -726,7 +726,7 @@ int display_block_type(int from_restore)
 
 				print_gfs2(" blk ");
 				for (b = blknum; b < blknum + 4; b++) {
-					btype = gfs2_get_bitmap(&sbd, b, rgd);
+					btype = lgfs2_get_bitmap(&sbd, b, rgd);
 					if (btype >= 0) {
 						print_gfs2("0x%x-%s  ", b,
 							   allocdesc[sbd.gfs1][btype]);
@@ -760,7 +760,7 @@ int display_block_type(int from_restore)
 				blknum += rgd->ri.ri_data0;
 				print_gfs2(" blk ");
 				for (b = blknum; b < blknum + 4; b++) {
-					btype = gfs2_get_bitmap(&sbd, b, rgd);
+					btype = lgfs2_get_bitmap(&sbd, b, rgd);
 					if (btype >= 0) {
 						print_gfs2("0x%x-%s  ", b,
 							   allocdesc[sbd.gfs1][btype]);
@@ -2053,7 +2053,7 @@ static void find_change_block_alloc(int *newval)
 				else
 					printf("%d\n", *newval);
 			} else {
-				type = gfs2_get_bitmap(&sbd, ablock, rgd);
+				type = lgfs2_get_bitmap(&sbd, ablock, rgd);
 				if (type < 0) {
 					printf("-1 (block invalid or part of "
 					       "an rgrp).\n");

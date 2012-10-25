@@ -34,7 +34,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
 
 	rgd = gfs2_blk2rgrpd(sdp, blk);
 
-	old_bitmap_state = gfs2_get_bitmap(sdp, blk, rgd);
+	old_bitmap_state = lgfs2_get_bitmap(sdp, blk, rgd);
 	if (old_bitmap_state < 0) {
 		log_err( _("Block %llu (0x%llx) is not represented in the "
 			   "system bitmap; part of an rgrp or superblock.\n"),

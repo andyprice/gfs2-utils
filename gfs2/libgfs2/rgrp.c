@@ -98,17 +98,12 @@ int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
  */
 struct rgrp_tree *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
 {
-	struct osi_node *node = sdp->rgtree.osi_node;
-	struct gfs2_rindex *ri;
-
-	while (node) {
-		struct rgrp_tree *rgd = (struct rgrp_tree *)node;
-		ri = &rgd->ri;
-
-		if (blk < ri->ri_addr)
-			node = node->osi_left;
-		else if (blk >= ri->ri_data0 + ri->ri_data)
-			node = node->osi_right;
+	struct rgrp_tree *rgd = (struct rgrp_tree *)sdp->rgtree.osi_node;
+	while (rgd) {
+		if (blk < rgd->ri.ri_addr)
+			rgd = (struct rgrp_tree *)rgd->node.osi_left;
+		else if (blk >= rgd->ri.ri_data0 + rgd->ri.ri_data)
+			rgd = (struct rgrp_tree *)rgd->node.osi_right;
 		else
 			return rgd;
 	}

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include "libgfs2.h"
 
@@ -175,14 +176,12 @@ int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state)
  *
  * Returns: state on success, -1 on error
  */
-int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
-		    struct rgrp_tree *rgd)
+int lgfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, struct rgrp_tree *rgd)
 {
-	int           i, val;
-	uint32_t        rgrp_block;
-	struct gfs2_bitmap	*bits = NULL;
-	unsigned int  bit;
-	unsigned char *byte;
+	uint64_t offset;
+	uint32_t i = 0;
+	char *byte;
+	unsigned int bit;
 
 	if (rgd == NULL) {
 		rgd = gfs2_blk2rgrpd(sdp, blkno);
@@ -190,23 +189,28 @@ int gfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno,
 			return -1;
 	}
 
-	rgrp_block = (uint32_t)(blkno - rgd->ri.ri_data0);
-
-	for (i = 0; i < rgd->ri.ri_length; i++) {
-		bits = &(rgd->bits[i]);
-		if(rgrp_block < ((bits->bi_start + bits->bi_len)*GFS2_NBBY))
-			break;
+	offset = blkno - rgd->ri.ri_data0;
+	if (offset > UINT_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+	if (offset >= rgd->ri.ri_data0 + rgd->ri.ri_data) {
+		errno = E2BIG;
+		return -1;
 	}
 
-	if (i >= rgd->ri.ri_length)
-		return -1;
+	if (offset >= (rgd->bits->bi_start + rgd->bits->bi_len) * GFS2_NBBY) {
+		offset += (sizeof(struct gfs2_rgrp) - sizeof(struct gfs2_meta_header))
+		          * GFS2_NBBY;
+		i = offset / sdp->sd_blocks_per_bitmap;
+		offset -= i * sdp->sd_blocks_per_bitmap;
+	}
+
 	if (!rgd->bh || !rgd->bh[i])
-		return 0;
-	byte = (unsigned char *)(rgd->bh[i]->b_data + bits->bi_offset) +
-		(rgrp_block/GFS2_NBBY - bits->bi_start);
-	bit = (rgrp_block % GFS2_NBBY) * GFS2_BIT_SIZE;
+		return GFS2_BLKST_FREE;
 
-	val = ((*byte >> bit) & GFS2_BIT_MASK);
+	byte = (rgd->bh[i]->b_data + rgd->bits[i].bi_offset) + (offset/GFS2_NBBY);
+	bit = (offset % GFS2_NBBY) * GFS2_BIT_SIZE;
 
-	return val;
+	return (*byte >> bit) & GFS2_BIT_MASK;
 }

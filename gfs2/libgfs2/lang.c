@@ -329,7 +329,7 @@ static int ast_get_bitstate(uint64_t bn, struct gfs2_sbd *sbd)
 		return -1;
 	}
 
-	state = gfs2_get_bitmap(sbd, bn, rgd);
+	state = lgfs2_get_bitmap(sbd, bn, rgd);
 	if (state == -1) {
 		fprintf(stderr, "Failed to acquire bitmap state for block %"PRIu64"\n", bn);
 		return -1;
