@@ -392,7 +392,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	return 0;
 }
 
-struct dir_info *dirtree_insert(uint64_t dblock)
+struct dir_info *dirtree_insert(struct gfs2_inum inum)
 {
 	struct osi_node **newn = &dirtree.osi_node, *parent = NULL;
 	struct dir_info *data;
@@ -402,9 +402,9 @@ struct dir_info *dirtree_insert(uint64_t dblock)
 		struct dir_info *cur = (struct dir_info *)*newn;
 
 		parent = *newn;
-		if (dblock < cur->dinode)
+		if (inum.no_addr < cur->dinode.no_addr)
 			newn = &((*newn)->osi_left);
-		else if (dblock > cur->dinode)
+		else if (inum.no_addr > cur->dinode.no_addr)
 			newn = &((*newn)->osi_right);
 		else
 			return cur;
@@ -420,7 +420,8 @@ struct dir_info *dirtree_insert(uint64_t dblock)
 		return NULL;
 	}
 	/* Add new node and rebalance tree. */
-	data->dinode = dblock;
+	data->dinode.no_addr = inum.no_addr;
+	data->dinode.no_formal_ino = inum.no_formal_ino;
 	osi_link_node(&data->node, parent, newn);
 	osi_insert_color(&data->node, &dirtree);
 
@@ -434,9 +435,9 @@ struct dir_info *dirtree_find(uint64_t block)
 	while (node) {
 		struct dir_info *data = (struct dir_info *)node;
 
-		if (block < data->dinode)
+		if (block < data->dinode.no_addr)
 			node = node->osi_left;
-		else if (block > data->dinode)
+		else if (block > data->dinode.no_addr)
 			node = node->osi_right;
 		else
 			return data;
@@ -571,7 +572,7 @@ int set_ip_blockmap(struct gfs2_inode *ip, int instree)
 		if (fsck_blockmap_set(ip, block, _("directory"),
 				      gfs2_inode_dir))
 			goto bad_dinode;
-		if (instree && !dirtree_insert(block))
+		if (instree && !dirtree_insert(ip->i_di.di_num))
 			goto bad_dinode;
 		break;
 	case S_IFREG:

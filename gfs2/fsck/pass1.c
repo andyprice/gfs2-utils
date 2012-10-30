@@ -1363,7 +1363,7 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 					  filename, mark);
 			ds.q = mark;
 			if (mark == gfs2_inode_dir)
-				dirtree_insert((*sysinode)->i_di.di_num.no_addr);
+				dirtree_insert((*sysinode)->i_di.di_num);
 		}
 	} else
 		log_info( _("System inode for '%s' is corrupt or missing.\n"),
@@ -1390,7 +1390,7 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 					  filename, mark);
 			ds.q = mark;
 			if (mark == gfs2_inode_dir)
-				dirtree_insert((*sysinode)->i_di.di_num.no_addr);
+				dirtree_insert((*sysinode)->i_di.di_num);
 		} else {
 			log_err( _("Cannot continue without valid %s inode\n"),
 				filename);
@@ -1504,13 +1504,13 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 		/* gfs1 has four dinodes that are set in the superblock and
 		   therefore not linked to anything else. We need to adjust
 		   the link counts so pass4 doesn't get confused. */
-		incr_link_count(sdp->md.statfs->i_di.di_num.no_addr, 0,
+		incr_link_count(sdp->md.statfs->i_di.di_num, NULL,
 				_("gfs1 statfs inode"));
-		incr_link_count(sdp->md.jiinode->i_di.di_num.no_addr, 0,
+		incr_link_count(sdp->md.jiinode->i_di.di_num, NULL,
 				_("gfs1 jindex inode"));
-		incr_link_count(sdp->md.riinode->i_di.di_num.no_addr, 0,
+		incr_link_count(sdp->md.riinode->i_di.di_num, NULL,
 				_("gfs1 rindex inode"));
-		incr_link_count(sdp->md.qinode->i_di.di_num.no_addr, 0,
+		incr_link_count(sdp->md.qinode->i_di.di_num, NULL,
 				_("gfs1 quota inode"));
 		return 0;
 	}

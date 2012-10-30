@@ -60,28 +60,28 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 		}
 		/* Don't check reference counts on the special gfs files */
 		if (sdp->gfs1 &&
-		    ((ii->inode == sdp->md.riinode->i_di.di_num.no_addr) ||
-		     (ii->inode == sdp->md.jiinode->i_di.di_num.no_addr) ||
-		     (ii->inode == sdp->md.qinode->i_di.di_num.no_addr) ||
-		     (ii->inode == sdp->md.statfs->i_di.di_num.no_addr)))
+		    ((ii->di_num.no_addr == sdp->md.riinode->i_di.di_num.no_addr) ||
+		     (ii->di_num.no_addr == sdp->md.jiinode->i_di.di_num.no_addr) ||
+		     (ii->di_num.no_addr == sdp->md.qinode->i_di.di_num.no_addr) ||
+		     (ii->di_num.no_addr == sdp->md.statfs->i_di.di_num.no_addr)))
 			continue;
 		if (ii->counted_links == 0) {
 			log_err( _("Found unlinked inode at %llu (0x%llx)\n"),
-				(unsigned long long)ii->inode,
-				(unsigned long long)ii->inode);
-			q = block_type(ii->inode);
+				(unsigned long long)ii->di_num.no_addr,
+				(unsigned long long)ii->di_num.no_addr);
+			q = block_type(ii->di_num.no_addr);
 			if (q == gfs2_bad_block) {
 				log_err( _("Unlinked inode %llu (0x%llx) contains "
 					"bad blocks\n"),
-					(unsigned long long)ii->inode,
-					(unsigned long long)ii->inode);
+					(unsigned long long)ii->di_num.no_addr,
+					(unsigned long long)ii->di_num.no_addr);
 				if (query(  _("Delete unlinked inode with bad "
 					     "blocks? (y/n) "))) {
-					ip = fsck_load_inode(sdp, ii->inode);
+					ip = fsck_load_inode(sdp, ii->di_num.no_addr);
 					check_inode_eattr(ip,
 							  &pass4_fxns_delete);
 					check_metatree(ip, &pass4_fxns_delete);
-					fsck_blockmap_set(ip, ii->inode,
+					fsck_blockmap_set(ip, ii->di_num.no_addr,
 							  _("bad unlinked"),
 							  gfs2_block_free);
 					fsck_inode_put(&ip);
@@ -98,14 +98,14 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 				log_err( _("Unlinked block %lld (0x%llx) "
 					   "marked as inode is "
 					   "not an inode (%d)\n"),
-					 (unsigned long long)ii->inode,
-					 (unsigned long long)ii->inode, q);
-				ip = fsck_load_inode(sdp, ii->inode);
+					 (unsigned long long)ii->di_num.no_addr,
+					 (unsigned long long)ii->di_num.no_addr, q);
+				ip = fsck_load_inode(sdp, ii->di_num.no_addr);
 				if (query(_("Delete unlinked inode? (y/n) "))) {
 					check_inode_eattr(ip,
 							  &pass4_fxns_delete);
 					check_metatree(ip, &pass4_fxns_delete);
-					fsck_blockmap_set(ip, ii->inode,
+					fsck_blockmap_set(ip, ii->di_num.no_addr,
 						  _("invalid unlinked"),
 							  gfs2_block_free);
 					fsck_inode_put(&ip);
@@ -117,7 +117,7 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 				}
 				continue;
 			}
-			ip = fsck_load_inode(sdp, ii->inode);
+			ip = fsck_load_inode(sdp, ii->di_num.no_addr);
 
 			/* We don't want to clear zero-size files with
 			 * eattrs - there might be relevent info in
@@ -126,7 +126,7 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 				log_err( _("Unlinked inode has zero size\n"));
 				if (query(_("Clear zero-size unlinked inode? "
 					   "(y/n) "))) {
-					fsck_blockmap_set(ip, ii->inode,
+					fsck_blockmap_set(ip, ii->di_num.no_addr,
 						_("unlinked zero-length"),
 							  gfs2_block_free);
 					fsck_inode_put(&ip);
@@ -151,33 +151,34 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 		else if (ii->di_nlink != ii->counted_links) {
 			log_err( _("Link count inconsistent for inode %llu"
 				" (0x%llx) has %u but fsck found %u.\n"),
-				(unsigned long long)ii->inode, 
-				(unsigned long long)ii->inode, ii->di_nlink,
+				(unsigned long long)ii->di_num.no_addr, 
+				(unsigned long long)ii->di_num.no_addr, ii->di_nlink,
 				ii->counted_links);
 			/* Read in the inode, adjust the link count,
 			 * and write it back out */
 			if (query( _("Update link count for inode %llu"
 				    " (0x%llx) ? (y/n) "),
-				  (unsigned long long)ii->inode,
-				  (unsigned long long)ii->inode)) {
-				ip = fsck_load_inode(sdp, ii->inode); /* bread, inode_get */
+				  (unsigned long long)ii->di_num.no_addr,
+				  (unsigned long long)ii->di_num.no_addr)) {
+				ip = fsck_load_inode(sdp, ii->di_num.no_addr); /* bread, inode_get */
 				fix_link_count(ii, ip);
 				ii->di_nlink = ii->counted_links;
 				fsck_inode_put(&ip); /* out, brelse, free */
 				log_warn( _("Link count updated to %d for "
 					    "inode %llu (0x%llx)\n"),
 					  ii->di_nlink,
-					  (unsigned long long)ii->inode,
-					  (unsigned long long)ii->inode);
+					  (unsigned long long)ii->di_num.no_addr,
+					  (unsigned long long)ii->di_num.no_addr);
 			} else {
-				log_err( _("Link count for inode %llu (0x%llx) still incorrect\n"),
-					(unsigned long long)ii->inode,
-					(unsigned long long)ii->inode);
+				log_err( _("Link count for inode %llu (0x%llx"
+					   ") still incorrect\n"),
+					 (unsigned long long)ii->di_num.no_addr,
+					 (unsigned long long)ii->di_num.no_addr);
 			}
 		}
 		log_debug( _("block %llu (0x%llx) has link count %d\n"),
-			 (unsigned long long)ii->inode,
-			 (unsigned long long)ii->inode, ii->di_nlink);
+			 (unsigned long long)ii->di_num.no_addr,
+			 (unsigned long long)ii->di_num.no_addr, ii->di_nlink);
 	} /* osi_list_foreach(tmp, list) */
 
 	if (lf_addition) {

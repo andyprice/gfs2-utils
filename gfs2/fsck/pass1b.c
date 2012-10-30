@@ -530,12 +530,12 @@ static int resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *b,
 		check_inode_eattr(ip, &clear_dup_fxns);
 		/* If the dup was in data or metadata, clear the dinode */
 		if (id->reftypecount[ref_as_data] ||
-		    id->reftypecount[ref_as_meta])
+		    id->reftypecount[ref_as_meta]) {
 			check_metatree(ip, &clear_dup_fxns);
-
-		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-				  _("duplicate referencing bad"),
-				  gfs2_inode_invalid);
+			fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
+					  _("duplicate referencing bad"),
+					  gfs2_inode_invalid);
+		}
 		fsck_inode_put(&ip); /* out, brelse, free */
 		(dh->ref_inode_count)--;
 		/* FIXME: other option should be to duplicate the

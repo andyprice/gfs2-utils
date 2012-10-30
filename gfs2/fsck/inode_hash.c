@@ -18,9 +18,9 @@ struct inode_info *inodetree_find(uint64_t block)
 	while (node) {
 		struct inode_info *data = (struct inode_info *)node;
 
-		if (block < data->inode)
+		if (block < data->di_num.no_addr)
 			node = node->osi_left;
-		else if (block > data->inode)
+		else if (block > data->di_num.no_addr)
 			node = node->osi_right;
 		else
 			return data;
@@ -28,7 +28,7 @@ struct inode_info *inodetree_find(uint64_t block)
 	return NULL;
 }
 
-struct inode_info *inodetree_insert(uint64_t dblock)
+struct inode_info *inodetree_insert(struct gfs2_inum di_num)
 {
 	struct osi_node **newn = &inodetree.osi_node, *parent = NULL;
 	struct inode_info *data;
@@ -38,9 +38,9 @@ struct inode_info *inodetree_insert(uint64_t dblock)
 		struct inode_info *cur = (struct inode_info *)*newn;
 
 		parent = *newn;
-		if (dblock < cur->inode)
+		if (di_num.no_addr < cur->di_num.no_addr)
 			newn = &((*newn)->osi_left);
-		else if (dblock > cur->inode)
+		else if (di_num.no_addr > cur->di_num.no_addr)
 			newn = &((*newn)->osi_right);
 		else
 			return cur;
@@ -56,7 +56,8 @@ struct inode_info *inodetree_insert(uint64_t dblock)
 		return NULL;
 	}
 	/* Add new node and rebalance tree. */
-	data->inode = dblock;
+	data->di_num.no_addr = di_num.no_addr;
+	data->di_num.no_formal_ino = di_num.no_formal_ino;
 	osi_link_node(&data->node, parent, newn);
 	osi_insert_color(&data->node, &inodetree);
 

@@ -31,18 +31,19 @@ static void add_dotdot(struct gfs2_inode *ip)
 	/* If there's a pre-existing .. directory entry, we have to
 	   back out the links. */
 	di = dirtree_find(ip->i_di.di_num.no_addr);
-	if (di && valid_block(sdp, di->dotdot_parent)) {
+	if (di && valid_block(sdp, di->dotdot_parent.no_addr)) {
 		struct gfs2_inode *dip;
 
 		log_debug(_("Directory %lld (0x%llx) already had a "
 			    "\"..\" link to %lld (0x%llx).\n"),
 			  (unsigned long long)ip->i_di.di_num.no_addr,
 			  (unsigned long long)ip->i_di.di_num.no_addr,
-			  (unsigned long long)di->dotdot_parent,
-			  (unsigned long long)di->dotdot_parent);
-		decr_link_count(di->dotdot_parent, ip->i_di.di_num.no_addr,
+			  (unsigned long long)di->dotdot_parent.no_addr,
+			  (unsigned long long)di->dotdot_parent.no_addr);
+		decr_link_count(di->dotdot_parent.no_addr,
+				ip->i_di.di_num.no_addr,
 				_(".. unlinked, moving to lost+found"));
-		dip = fsck_load_inode(sdp, di->dotdot_parent);
+		dip = fsck_load_inode(sdp, di->dotdot_parent.no_addr);
 		if (dip->i_di.di_nlink > 0) {
 			dip->i_di.di_nlink--;
 			set_di_nlink(dip); /* keep inode tree in sync */
@@ -67,7 +68,7 @@ static void add_dotdot(struct gfs2_inode *ip)
 				    "'..' = 0x%llx\n"),
 				  (unsigned long long)ip->i_di.di_num.no_addr,
 				  (unsigned long long)ip->i_di.di_num.no_addr,
-				  (unsigned long long)di->dotdot_parent);
+				  (unsigned long long)di->dotdot_parent.no_addr);
 		else
 			log_debug(_("Couldn't find directory %lld (0x%llx) "
 				    "in directory tree.\n"),
@@ -187,14 +188,13 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 					  _("lost+found dinode"),
 					  gfs2_inode_dir);
 			/* root inode links to lost+found */
-			incr_link_count(sdp->md.rooti->i_di.di_num.no_addr,
-				       lf_dip->i_di.di_num.no_addr, _("root"));
+			incr_link_count(sdp->md.rooti->i_di.di_num,
+				       lf_dip, _("root"));
 			/* lost+found link for '.' from itself */
-			incr_link_count(lf_dip->i_di.di_num.no_addr,
-					lf_dip->i_di.di_num.no_addr, "\".\"");
+			incr_link_count(lf_dip->i_di.di_num,
+					lf_dip, "\".\"");
 			/* lost+found link for '..' back to root */
-			incr_link_count(lf_dip->i_di.di_num.no_addr,
-					sdp->md.rooti->i_di.di_num.no_addr,
+			incr_link_count(lf_dip->i_di.di_num, sdp->md.rooti,
 				       "\"..\"");
 			if (sdp->gfs1)
 				lf_dip->i_di.__pad1 = GFS_FILE_DIR;
@@ -277,12 +277,10 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 		reprocess_inode(lf_dip, "lost+found");
 
 	/* This inode is linked from lost+found */
-	incr_link_count(ip->i_di.di_num.no_addr, lf_dip->i_di.di_num.no_addr,
-			_("from lost+found"));
+	incr_link_count(ip->i_di.di_num, lf_dip, _("from lost+found"));
 	/* If it's a directory, lost+found is back-linked to it via .. */
 	if (mode == S_IFDIR)
-		incr_link_count(lf_dip->i_di.di_num.no_addr,
-				ip->i_di.di_num.no_addr, _("to lost+found"));
+		incr_link_count(lf_dip->i_di.di_num, ip, _("to lost+found"));
 
 	log_notice( _("Added inode #%llu (0x%llx) to lost+found\n"),
 		    (unsigned long long)ip->i_di.di_num.no_addr,

@@ -28,7 +28,7 @@
 struct inode_info
 {
         struct osi_node node;
-        uint64_t   inode;
+        struct gfs2_inum di_num;
         uint32_t   di_nlink;    /* the number of links the inode
 				 * thinks it has */
         uint32_t   counted_links; /* the number of links we've found */
@@ -37,9 +37,9 @@ struct inode_info
 struct dir_info
 {
         struct osi_node node;
-        uint64_t dinode;
+        struct gfs2_inum dinode;
         uint64_t treewalk_parent;
-        uint64_t dotdot_parent;
+        struct gfs2_inum dotdot_parent;
         uint8_t  checked:1;
 
 };
@@ -122,7 +122,7 @@ extern void dirtree_delete(struct dir_info *b);
 
 /* FIXME: Hack to get this going for pass2 - this should be pulled out
  * of pass1 and put somewhere else... */
-struct dir_info *dirtree_insert(uint64_t dblock);
+struct dir_info *dirtree_insert(struct gfs2_inum inum);
 
 struct gfs2_options {
 	char *device;
