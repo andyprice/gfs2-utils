@@ -296,7 +296,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		 uint32_t *count, void *priv)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	uint8_t q;
+	uint8_t q = 0;
 	char tmp_name[MAX_FILENAME];
 	struct gfs2_inum entry;
 	struct dir_status *ds = (struct dir_status *) priv;
