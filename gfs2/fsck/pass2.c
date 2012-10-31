@@ -261,7 +261,7 @@ static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	/* We have a directory pointing to another directory, but the
 	   formal inode number still doesn't match. If that directory
 	   has a '..' pointing back, just fix up the no_formal_ino. */
-	child_ip = inode_read(sdp, entry.no_addr);
+	child_ip = lgfs2_inode_read(sdp, entry.no_addr);
 	error = dir_search(child_ip, "..", 2, NULL, &childs_dotdot);
 	if (!error && childs_dotdot.no_addr == ip->i_di.di_num.no_addr) {
 		log_err( _("The entry points to another directory with intact "
