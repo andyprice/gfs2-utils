@@ -82,16 +82,6 @@ check_lib_no_libs() {
 	LIBS=$ac_check_lib_save_LIBS
 }
 
-# check kernel headers path
-uname="$(uname -r)"
-if test -d "/lib/modules/$uname/source" -o -L "/lib/modules/$uname/source"; then
-	DEFAULT_KERNEL_DIR="/lib/modules/$uname/source"
-elif test -d "/lib/modules/$uname/build" -o -L "/lib/modules/$uname -r/build"; then
-	DEFAULT_KERNEL_DIR="/lib/modules/$uname/build"
-else
-	DEFAULT_KERNEL_DIR="/usr/src/linux"
-fi
-
 # local options
 AC_ARG_ENABLE([debug],
 	[  --enable-debug          enable debug build. ],
@@ -112,13 +102,6 @@ AC_ARG_WITH([sysloglevel],
                           cluster default syslog level. ],
 	[ SYSLOGLEVEL="$withval" ],
 	[ SYSLOGLEVEL="LOG_INFO" ])
-
-AC_ARG_WITH([kernel],
-	[  --with-kernel=path      path to kernel source. ],
-	[ KERNEL_DIR="$withval" ],
-	[ KERNEL_DIR="$DEFAULT_KERNEL_DIR" ])
-
-KERNEL_CPPFLAGS="-I$KERNEL_DIR/include"
 
 # gfs_controld isn't required in the latest versions of cluster
 AM_CONDITIONAL([BUILD_GFS_CONTROLD], [test "x$enable_gfs_controld" = "xyes"])
@@ -151,27 +134,15 @@ check_lib_no_libs pthread pthread_mutex_lock
 
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h libintl.h limits.h locale.h mntent.h netdb.h netinet/in.h stddef.h stdint.h stdlib.h string.h sys/file.h sys/ioctl.h sys/mount.h sys/param.h sys/socket.h sys/time.h sys/vfs.h syslog.h termios.h unistd.h])
 
-BACKUP_CPPFLAGS="$CPPFLAGS"
-CPPFLAGS="$KERNEL_CPPFLAGS"
-
-# check kernel headers
-# 2.6.26 adds dlm_plock.h that's our checking barrier, instead
-# of implementing some insane kernel version checks
-AC_CHECK_HEADERS([linux/dlmconstants.h linux/dlm_plock.h linux/kdev_t.h linux/limits.h linux/types.h],,
-		 [AC_MSG_ERROR([Unable to find required kernel headers.
-Make sure to install kernel headers 2.6.26 (or higher) or use --with-kernel=path
-configure option to point to the kernel source.])])
+AC_CHECK_HEADERS([linux/dlmconstants.h linux/limits.h linux/types.h linux/netlink.h linux/fs.h],,
+		 [AC_MSG_ERROR([Unable to find all required kernel headers.])])
 
 AC_CHECK_HEADERS([linux/gfs2_ondisk.h],
 		 [AC_CHECK_MEMBERS([struct gfs2_sb.sb_uuid],,
 			[AC_MSG_ERROR([Unable to find gfs2 uuid support in your headers.
 Please update your kernel headers to a more recent version])],
 			[#include <linux/gfs2_ondisk.h>])],
-		 [AC_MSG_ERROR([Unable to find required kernel headers.
-Make sure to install kernel headers 2.6.26 (or higher) or use --with-kernel=path
-configure option to point to the kernel source.])])
-
-CPPFLAGS="$BACKUP_CPPFLAGS"
+		 [AC_MSG_ERROR([Unable to find required kernel headers.])])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -200,7 +171,6 @@ AC_CHECK_FUNCS([ftruncate gettimeofday memset realpath rmdir select setlocale so
 
 LOGDIR=${localstatedir}/log/cluster
 CLUSTERVARRUN=${localstatedir}/run/cluster
-CLUSTERVARLIB=${localstatedir}/lib/cluster
 
 ## do subst
 
@@ -211,8 +181,6 @@ AC_DEFINE_UNQUOTED([LOGDIR], "$(eval echo ${LOGDIR})",
 AC_SUBST([CLUSTERVARRUN])
 AC_DEFINE_UNQUOTED([CLUSTERVARRUN], "$(eval echo ${CLUSTERVARRUN})",
 		   [Default cluster var/run directory])
-
-AC_SUBST([CLUSTERVARLIB])
 
 AC_DEFINE_UNQUOTED([SYSLOGFACILITY], $(eval echo ${SYSLOGFACILITY}),
 		   [Default syslog facility])
@@ -273,7 +241,7 @@ done
 
 CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS \
 	$EXTRA_WARNINGS $WERROR_CFLAGS"
-CPPFLAGS="$KERNEL_CPPFLAGS -I\$(top_builddir)/make -I\$(top_srcdir)/make \
+CPPFLAGS="-I\$(top_builddir)/make -I\$(top_srcdir)/make \
 	  -I. $ENV_CPPFLAGS"
 LDFLAGS="$ENV_LDFLAGS"
 

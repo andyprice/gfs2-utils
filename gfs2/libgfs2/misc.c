@@ -15,7 +15,6 @@
 #include <linux/types.h>
 #include <sys/file.h>
 #include <dirent.h>
-#include <linux/kdev_t.h>
 #include <sys/sysmacros.h>
 #include <mntent.h>
 #include <sys/time.h>
