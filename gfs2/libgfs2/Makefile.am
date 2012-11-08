@@ -9,6 +9,8 @@ noinst_HEADERS		= libgfs2.h lang.h
 
 noinst_LTLIBRARIES	= libgfs2.la
 
+noinst_PROGRAMS		= gfs2l
+
 libgfs2_la_SOURCES	= block_list.c fs_bits.c gfs1.c misc.c rgrp.c super.c \
 			  buf.c fs_geometry.c gfs2_disk_hash.c ondisk.c \
 			  device_geometry.c fs_ops.c gfs2_log.c recovery.c \
@@ -18,6 +20,10 @@ libgfs2_la_CPPFLAGS	= -D_FILE_OFFSET_BITS=64 \
 			  -D_LARGEFILE64_SOURCE \
 			  -D_GNU_SOURCE \
 			  -I$(top_srcdir)/gfs2/include
+
+gfs2l_SOURCES		= gfs2l.c
+gfs2l_CPPFLAGS		= -I$(top_srcdir)/gfs2/include
+gfs2l_LDADD		= $(top_builddir)/gfs2/libgfs2/libgfs2.la
 
 # Autotools can't handle header files output by flex so we have to generate it manually
 lexer.h: lexer.l
