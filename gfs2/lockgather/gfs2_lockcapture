@@ -1,0 +1,1078 @@
+#!/usr/bin/env python
+"""
+This script will gather GFS2 glocks and dlm lock dump information for a cluster
+node. The script can get all the mounted GFS2 filesystem data or set of selected
+GFS2 filesystems. The script will also gather some general information about the
+system.
+
+@author    : Shane Bradley
+@contact   : sbradley@redhat.com
+@version   : 0.9
+@copyright : GPLv2
+"""
+import sys
+import os
+import os.path
+import logging
+from optparse import OptionParser, Option
+import time
+import platform
+import shutil
+import subprocess
+import tarfile
+
+# #####################################################################
+# Global vars:
+# #####################################################################
+"""
+@cvar VERSION_NUMBER: The version number of this script.
+@type VERSION_NUMBER: String
+@cvar MAIN_LOGGER_NAME: The name of the logger.
+@type MAIN_LOGGER_NAME: String
+@cvar PATH_TO_DEBUG_DIR: The path to the debug directory for the linux kernel.
+@type PATH_TO_DEBUG_DIR: String
+@cvar PATH_TO_PID_FILENAME: The path to the pid file that will be used to make
+sure only 1 instance of this script is running at any time.
+@type PATH_TO_PID_FILENAME: String
+"""
+VERSION_NUMBER = "0.9-1"
+MAIN_LOGGER_NAME = "%s" %(os.path.basename(sys.argv[0]))
+PATH_TO_DEBUG_DIR="/sys/kernel/debug"
+PATH_TO_PID_FILENAME = "/var/run/%s.pid" %(os.path.basename(sys.argv[0]))
+
+# #####################################################################
+# Class to define what a clusternode is.
+# #####################################################################
+class ClusterNode:
+    """
+    This class represents a cluster node that is a current memeber in a cluster.
+    """
+    def __init__(self, clusternodeName, clusterName, mapOfMountedFilesystemLabels):
+        """
+        @param clusternodeName: The name of the cluster node.
+        @type clusternodeName: String
+        @param clusterName: The name of the cluster that this cluster node is a
+        member of.
+        @type clusterName: String
+        @param mapOfMountedFilesystemLabels: A map of filesystem labels(key) for
+        a mounted filesystem. The value is the line for the matching mounted
+        filesystem from the mount -l command.
+        @type mapOfMountedFilesystemLabels: Dict
+        """
+        self.__clusternodeName = clusternodeName
+        self.__clusterName = clusterName
+        self.__mapOfMountedFilesystemLabels = mapOfMountedFilesystemLabels
+
+    def __str__(self):
+        """
+        This function will return a string representation of the object.
+
+        @return: Returns a string representation of the object.
+        @rtype: String
+        """
+        rString = ""
+        rString += "%s:%s" %(self.getClusterName(), self.getClusterNodeName())
+        fsLabels = self.__mapOfMountedFilesystemLabels.keys()
+        fsLabels.sort()
+        for fsLabel in fsLabels:
+            rString += "\n\t%s --> %s" %(fsLabel, self.__mapOfMountedFilesystemLabels.get(fsLabel))
+        return rString.rstrip()
+
+    def getClusterNodeName(self):
+        """
+        Returns the name of the cluster node.
+
+        @return: Returns the name of the cluster node.
+        @rtype: String
+        """
+        return self.__clusternodeName
+
+    def getClusterName(self):
+        """
+        Returns the name of cluster that this cluster node is a member of.
+
+        @return: Returns the name of cluster that this cluster node is a member
+        of.
+        @rtype: String
+        """
+        return self.__clusterName
+
+    def getMountedGFS2FilesystemNames(self, includeClusterName=True):
+        """
+        Returns the names of all the mounted GFS2 filesystems. By default
+        includeClusterName is True which will include the name of the cluster
+        and the GFS2 filesystem name(ex. f18cluster:mygfs2vol1) in the list of
+        mounted GFS2 filesystems. If includeClusterName is False it will only
+        return a list of all the mounted GFS2 filesystem names(ex. mygfs2vol1).
+
+        @return: Returns a list of all teh mounted GFS2 filesystem names.
+        @rtype: Array
+
+        @param includeClusterName: By default this option is True and will
+        include the name of the cluster and the GFS2 filesystem name. If False
+        then only the GFS2 filesystem name will be included.
+        @param includeClusterName: Boolean
+        """
+        # If true will prepend the cluster name to gfs2 fs name
+        if (includeClusterName):
+            return self.__mapOfMountedFilesystemLabels.keys()
+        else:
+            listOfGFS2MountedFilesystemLabels = []
+            for fsLabel in self.__mapOfMountedFilesystemLabels.keys():
+                fsLabelSplit = fsLabel.split(":", 1)
+                if (len(fsLabelSplit) == 2):
+                    listOfGFS2MountedFilesystemLabels.append(fsLabelSplit[1])
+            return listOfGFS2MountedFilesystemLabels
+
+# #####################################################################
+# Helper functions.
+# #####################################################################
+def runCommand(command, listOfCommandOptions, standardOut=subprocess.PIPE, standardError=subprocess.PIPE):
+    """
+    This function will execute a command. It will return True if the return code
+    was zero, otherwise False is returned.
+
+    @return: Returns True if the return code was zero, otherwise False is
+    returned.
+    @rtype: Boolean
+
+    @param command: The command that will be executed.
+    @type command: String
+    @param listOfCommandOptions: The list of options for the command that will
+    be executed.
+    @type listOfCommandOptions: Array
+    @param standardOut: The pipe that will be used to write standard output. By
+    default the pipe that is used is subprocess.PIPE.
+    @type standardOut: Pipe
+    @param standardError: The pipe that will be used to write standard error. By
+    default the pipe that is used is subprocess.PIPE.
+    @type standardError: Pipe
+    """
+    stdout = ""
+    stderr = ""
+    try:
+        commandList = [command]
+        commandList += listOfCommandOptions
+        task = subprocess.Popen(commandList, stdout=standardOut, stderr=standardError)
+        task.wait()
+        (stdout, stderr) = task.communicate()
+        return (task.returncode == 0)
+    except OSError:
+        commandOptionString = ""
+        for option in listOfCommandOptions:
+            commandOptionString += "%s " %(option)
+        message = "An error occurred running the command: $ %s %s\n" %(command, commandOptionString)
+        if (len(stdout) > 0):
+            message += stdout
+        message += "\n"
+        if (len(stderr) > 0):
+            message += stderr
+        logging.getLogger(MAIN_LOGGER_NAME).error(message)
+    return False
+
+def runCommandOutput(command, listOfCommandOptions, standardOut=subprocess.PIPE, standardError=subprocess.PIPE):
+    """
+    This function will execute a command. Returns the output that was written to standard output. None is
+    returned if there was an error.
+
+    @return: Returns the output that was written to standard output. None is
+    returned if there was an error.
+    @rtype: String
+
+    @param command: The command that will be executed.
+    @type command: String
+    @param listOfCommandOptions: The list of options for the command that will
+    be executed.
+    @type listOfCommandOptions: Array
+    @param standardOut: The pipe that will be used to write standard output. By
+    default the pipe that is used is subprocess.PIPE.
+    @type standardOut: Pipe
+    @param standardError: The pipe that will be used to write standard error. By
+    default the pipe that is used is subprocess.PIPE.
+    @type standardError: Pipe
+    """
+    stdout = ""
+    stderr = ""
+    try:
+        commandList = [command]
+        commandList += listOfCommandOptions
+        task = subprocess.Popen(commandList, stdout=standardOut, stderr=standardError)
+        task.wait()
+        (stdout, stderr) = task.communicate()
+    except OSError:
+        commandOptionString = ""
+        for option in listOfCommandOptions:
+            commandOptionString += "%s " %(option)
+        message = "An error occurred running the command: $ %s %s\n" %(command, commandOptionString)
+        if (len(stdout) > 0):
+            message += stdout
+        message += "\n"
+        if (len(stderr) > 0):
+            message += stderr
+        logging.getLogger(MAIN_LOGGER_NAME).error(message)
+        return None
+    return stdout.strip().rstrip()
+
+def writeToFile(pathToFilename, data, appendToFile=True, createFile=False):
+    """
+    This function will write a string to a file.
+
+    @return: Returns True if the string was successfully written to the file,
+    otherwise False is returned.
+    @rtype: Boolean
+
+    @param pathToFilename: The path to the file that will have a string written
+    to it.
+    @type pathToFilename: String
+    @param data: The string that will be written to the file.
+    @type data: String
+    @param appendToFile: If True then the data will be appened to the file, if
+    False then the data will overwrite the contents of the file.
+    @type appendToFile: Boolean
+    @param createFile: If True then the file will be created if it does not
+    exists, if False then file will not be created if it does not exist
+    resulting in no data being written to the file.
+    @type createFile: Boolean
+    """
+    [parentDir, filename] = os.path.split(pathToFilename)
+    if (os.path.isfile(pathToFilename) or (os.path.isdir(parentDir) and createFile)):
+        try:
+            filemode = "w"
+            if (appendToFile):
+                filemode = "a"
+            fout = open(pathToFilename, filemode)
+            fout.write(data + "\n")
+            fout.close()
+            return True
+        except UnicodeEncodeError, e:
+            message = "There was a unicode encode error writing to the file: %s." %(pathToFilename)
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+            return False
+        except IOError:
+            message = "There was an error writing to the file: %s." %(pathToFilename)
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+            return False
+    return False
+
+def mkdirs(pathToDSTDir):
+    """
+    This function will attempt to create a directory with the path of the value of pathToDSTDir.
+
+    @return: Returns True if the directory was created or already exists.
+    @rtype: Boolean
+
+    @param pathToDSTDir: The path to the directory that will be created.
+    @type pathToDSTDir: String
+    """
+    if (os.path.isdir(pathToDSTDir)):
+        return True
+    elif ((not os.access(pathToDSTDir, os.F_OK)) and (len(pathToDSTDir) > 0)):
+        try:
+            os.makedirs(pathToDSTDir)
+        except (OSError, os.error):
+            message = "Could not create the directory: %s." %(pathToDSTDir)
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+            return False
+        except (IOError, os.error):
+            message = "Could not create the directory with the path: %s." %(pathToDSTDir)
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+            return False
+    return os.path.isdir(pathToDSTDir)
+
+def removePIDFile():
+    """
+    This function will remove the pid file.
+
+    @return: Returns True if the file was successfully remove or does not exist,
+    otherwise False is returned.
+    @rtype: Boolean
+    """
+    message = "Removing the pid file: %s" %(PATH_TO_PID_FILENAME)
+    logging.getLogger(MAIN_LOGGER_NAME).debug(message)
+    if (os.path.exists(PATH_TO_PID_FILENAME)):
+        try:
+            os.remove(PATH_TO_PID_FILENAME)
+        except IOError:
+            message = "There was an error removing the file: %s." %(PATH_TO_PID_FILENAME)
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+    return os.path.exists(PATH_TO_PID_FILENAME)
+
+def archiveData(pathToSrcDir):
+    """
+    This function will return the path to the tar.bz2 file that was created. If
+    the tar.bz2 file failed to be created then an empty string will be returned
+    which would indicate an error occurred.
+
+    @return: This function will return the path to the tar.bz2 file that was
+    created. If the tar.bz2 file failed to be created then an empty string will
+    be returned which would indicate an error occurred.
+    @rtype: String
+
+    @param pathToSrcDir: The path to the directory that will be archived into a
+    .tar.bz2 file.
+    @type pathToSrcDir: String
+    """
+    if (os.path.exists(pathToSrcDir)):
+        pathToTarFilename = "%s.tar.bz2" %(pathToSrcDir)
+        if (os.path.exists(pathToTarFilename)):
+            message = "A compressed archvied file already exists and will be removed: %s" %(pathToTarFilename)
+            logging.getLogger(MAIN_LOGGER_NAME).status(message)
+            try:
+                os.remove(PATH_TO_PID_FILENAME)
+            except IOError:
+                message = "There was an error removing the file: %s." %(pathToTarFilename)
+                logging.getLogger(MAIN_LOGGER_NAME).error(message)
+                return ""
+        message = "Creating a compressed archvied file: %s" %(pathToTarFilename)
+        logging.getLogger(MAIN_LOGGER_NAME).status(message)
+        try:
+            tar = tarfile.open(pathToTarFilename, "w:bz2")
+            tar.add(pathToSrcDir, arcname=os.path.basename(pathToSrcDir))
+            tar.close()
+        except tarfile.TarError:
+            message = "There was an error creating the tarfile: %s." %(pathToTarFilename)
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+            return ""
+        if (os.path.exists(pathToTarFilename)):
+            return pathToTarFilename
+    return ""
+
+def backupOutputDirectory(pathToOutputDir):
+    """
+    This function will return True if the pathToOutputDir does not exist or the
+    directory was successfully rename. If pathToOutputDir exists and was not
+    successfully rename then False is returned.
+
+    @return: Returns True if the pathToOutputDir does not exist or the directory
+    was successfully rename. If pathToOutputDir exists and was not successfully
+    rename then False is returned.
+    @rtype: Boolean
+
+    @param pathToOutputDir: The path to the directory that will be backed up.
+    @type pathToOutputDir: String
+    """
+    if (os.path.exists(pathToOutputDir)):
+        message = "The path already exists and could contain previous lockdump data: %s" %(pathToOutputDir)
+        logging.getLogger(MAIN_LOGGER_NAME).info(message)
+        backupIndex = 1
+        pathToDST = ""
+        keepSearchingForIndex = True
+        while (keepSearchingForIndex):
+            pathToDST = "%s.bk-%d" %(pathToOutputDir, backupIndex)
+            if (os.path.exists(pathToDST)):
+                backupIndex += 1
+            else:
+                keepSearchingForIndex = False
+        try:
+            message = "The existing output directory will be renamed: %s to %s." %(pathToOutputDir, pathToDST)
+            logging.getLogger(MAIN_LOGGER_NAME).status(message)
+            shutil.move(pathToOutputDir, pathToDST)
+        except shutil.Error:
+            message = "There was an error renaming the directory: %s to %s." %(pathToOutputDir, pathToDST)
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+        except OSError:
+            message = "There was an error renaming the directory: %s to %s." %(pathToOutputDir, pathToDST)
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+    # The path should not exists now, else there was an error backing up an
+    # existing output directory.
+    return (not os.path.exists(pathToOutputDir))
+
+def exitScript(removePidFile=True, errorCode=0):
+    """
+    This function will cause the script to exit or quit. It will return an error
+    code and will remove the pid file that was created.
+
+    @param removePidFile: If True(default) then the pid file will be remove
+    before the script exits.
+    @type removePidFile: Boolean
+    @param errorCode: The exit code that will be returned. The default value is 0.
+    @type errorCode: Int
+    """
+    if (removePidFile):
+        removePIDFile()
+    message = "The script will exit."
+    logging.getLogger(MAIN_LOGGER_NAME).info(message)
+    sys.exit(errorCode)
+
+# #####################################################################
+# Helper functions for gathering the lockdumps.
+# #####################################################################
+def getClusterNode(listOfGFS2Names):
+    """
+    This function return a ClusterNode object if the machine is a member of a
+    cluster and has GFS2 filesystems mounted for that cluster. The
+    listOfGFS2Names is a list of GFS2 filesystem that need to have their data
+    capture. If the list is empty then that means that all the mounted GFS2
+    filesystems will be captured, if list is not empty then only those GFS2
+    filesystems in the list will have their data captured.
+
+    @return: Returns a cluster node object if there was mounted GFS2 filesystems
+    found that will have their data captured.
+    @rtype: ClusterNode
+
+    @param listOfGFS2Names: A list of GFS2 filesystem names that will have their
+    data captured.  If the list is empty then that means that all the mounted
+    GFS2 filesystems will be captured, if list is not empty then only those GFS2
+    filesystems in the list will have their data captured.
+    @type listOfGFS2Names: Array
+    """
+    # Return a ClusterNode object if the clusternode and cluster name are found
+    # in the output, else return None.
+    clusterName = ""
+    clusternodeName = ""
+    if (runCommand("which", ["cman_tool"])):
+        stdout = runCommandOutput("cman_tool", ["status"])
+        if (not stdout == None):
+            stdoutSplit = stdout.split("\n")
+            clusterName = ""
+            clusternodeName = ""
+            for line in stdoutSplit:
+                if (line.startswith("Cluster Name:")):
+                    clusterName = line.split("Cluster Name:")[1].strip().rstrip()
+                if (line.startswith("Node name: ")):
+                    clusternodeName = line.split("Node name:")[1].strip().rstrip()
+    elif (runCommand("which", ["corosync-cmapctl"])):
+        # Another way to get the local cluster node is: $ crm_node -i; crm_node -l
+        # Get the name of the cluster.
+        stdout = runCommandOutput("corosync-cmapctl", ["-g", "totem.cluster_name"])
+        if (not stdout == None):
+            stdoutSplit = stdout.split("=")
+            if (len(stdoutSplit) == 2):
+                clusterName = stdoutSplit[1].strip().rstrip()
+        # Get the id of the local cluster node so we can get the clusternode name
+        thisNodeID = ""
+        stdout = runCommandOutput("corosync-cmapctl", ["-g", "runtime.votequorum.this_node_id"])
+        if (not stdout == None):
+            stdoutSplit = stdout.split("=")
+            if (len(stdoutSplit) == 2):
+               thisNodeID = stdoutSplit[1].strip().rstrip()
+        # Now that we the nodeid then we can get the clusternode name.
+        if (len(thisNodeID) > 0):
+            stdout = runCommandOutput("corosync-quorumtool", ["-l"])
+            if (not stdout == None):
+                for line in stdout.split("\n"):
+                    splitLine = line.split()
+                    if (len(splitLine) == 4):
+                        if (splitLine[0].strip().rstrip() == thisNodeID):
+                            clusternodeName = splitLine[3]
+                            break;
+    # If a clusternode name and cluster name was found then return a new object
+    # since this means this cluster is part of cluster.
+    if ((len(clusterName) > 0) and (len(clusternodeName) > 0)):
+        mapOfMountedFilesystemLabels = getLabelMapForMountedFilesystems(clusterName, getMountedGFS2Filesystems())
+        # These will be the GFS2 filesystems that will have their lockdump information gathered.
+        if (len(listOfGFS2Names) > 0):
+            for label in mapOfMountedFilesystemLabels.keys():
+                foundMatch = False
+                for name in listOfGFS2Names:
+                    if ((name == label) or ("%s:%s"%(clusterName, name) == label)):
+                        foundMatch = True
+                        break
+                if ((not foundMatch) and (mapOfMountedFilesystemLabels.has_key(label))):
+                    del(mapOfMountedFilesystemLabels[label])
+        return ClusterNode(clusternodeName, clusterName, mapOfMountedFilesystemLabels)
+    else:
+        return None
+
+def getMountedGFS2Filesystems():
+    """
+    This function returns a list of all the mounted GFS2 filesystems.
+
+    @return: Returns a list of all the mounted GFS2 filesystems.
+    @rtype: Array
+    """
+    fsType = "gfs2"
+    listOfMountedFilesystems = []
+    stdout = runCommandOutput("mount", ["-l"])
+    if (not stdout == None):
+        stdoutSplit = stdout.split("\n")
+        for line in stdoutSplit:
+            splitLine = line.split()
+            if (len(splitLine) >= 5):
+                if (splitLine[4] == fsType):
+                    listOfMountedFilesystems.append(line)
+    return listOfMountedFilesystems
+
+def getLabelMapForMountedFilesystems(clusterName, listOfMountedFilesystems):
+    """
+    This function will return a dictionary of the mounted GFS2 filesystem that
+    contain a label that starts with the cluster name. For example:
+    {'f18cluster:mygfs2vol1': '/dev/vdb1 on /mnt/gfs2vol1 type gfs2 (rw,relatime) [f18cluster:mygfs2vol1]'}
+
+    @return: Returns a dictionary of the mounted GFS2 filesystems that contain a
+    label that starts with the cluster name.
+    @rtype: Dict
+
+    @param clusterName: The name of the cluster.
+    @type clusterName: String
+    @param listOfMountedFilesystems: A list of all the mounted GFS2 filesystems.
+    @type listOfMountedFilesystems: Array
+    """
+    mapOfMountedFilesystemLabels = {}
+    for mountedFilesystem in listOfMountedFilesystems:
+        splitMountedFilesystem = mountedFilesystem.split()
+        fsLabel = splitMountedFilesystem[-1].strip().strip("[").rstrip("]")
+        if (len(fsLabel) > 0):
+            # Verify it starts with name of the cluster.
+            if (fsLabel.startswith("%s:" %(clusterName))):
+                mapOfMountedFilesystemLabels[fsLabel] = mountedFilesystem
+    return mapOfMountedFilesystemLabels
+
+def verifyDebugFilesystemMounted(enableMounting=True):
+    """
+    This function verifies that the debug filesystem is mounted. If the debug
+    filesystem is mounted then True is returned, otherwise False is returned.
+
+    @return: If the debug filesystem is mounted then True is returned, otherwise
+    False is returned.
+    @rtype: Boolean
+
+    @param enableMounting: If True then the debug filesystem will be mounted if
+    it is currently not mounted.
+    @type enableMounting: Boolean
+    """
+    if (os.path.ismount(PATH_TO_DEBUG_DIR)):
+        message = "The debug filesystem %s is mounted." %(PATH_TO_DEBUG_DIR)
+        logging.getLogger(MAIN_LOGGER_NAME).info(message)
+        return True
+    else:
+        message = "The debug filesystem %s is not mounted." %(PATH_TO_DEBUG_DIR)
+        logging.getLogger(MAIN_LOGGER_NAME).warning(message)
+        if (cmdLineOpts.enableMountDebugFS):
+            if(mountFilesystem("debugfs", "none", PATH_TO_DEBUG_DIR)):
+                message = "The debug filesystem was mounted: %s." %(PATH_TO_DEBUG_DIR)
+                logging.getLogger(MAIN_LOGGER_NAME).info(message)
+                return True
+    return False
+
+def mountFilesystem(filesystemType, pathToDevice, pathToMountPoint):
+    """
+    This function will attempt to mount a filesystem. If the filesystem is
+    already mounted or the filesystem was successfully mounted then True is
+    returned, otherwise False is returned.
+
+    @return: If the filesystem is already mounted or the filesystem was
+    successfully mounted then True is returned, otherwise False is returned.
+    @rtype: Boolean
+
+    @param filesystemType: The type of filesystem that will be mounted.
+    @type filesystemType: String
+    @param pathToDevice: The path to the device that will be mounted.
+    @type pathToDevice: String
+    @param pathToMountPoint: The path to the directory that will be used as the
+    mount point for the device.
+    @type pathToMountPoint: String
+    """
+    if (os.path.ismount(PATH_TO_DEBUG_DIR)):
+        return True
+    listOfCommandOptions = ["-t", filesystemType, pathToDevice, pathToMountPoint]
+    if (not runCommand("mount", listOfCommandOptions)):
+        message = "There was an error mounting the filesystem type %s for the device %s to the mount point %s." %(filesystemType, pathToDevice, pathToMountPoint)
+        logging.getLogger(MAIN_LOGGER_NAME).error(message)
+    return  os.path.ismount(PATH_TO_DEBUG_DIR)
+
+def gatherGeneralInformation(pathToDSTDir):
+    """
+    This function will gather general information about the cluster and write
+    the results to a file. The following data will be captured: hostname, date,
+    uname -a, uptime, contents of /proc/mounts, and ps h -AL -o tid,s,cmd.
+
+
+    @param pathToDSTDir: This is the path to directory where the files will be
+    written to.
+    @type pathToDSTDir: String
+    """
+    # Gather some general information and write to system.txt.
+    systemString = "HOSTNAME: %s\nDATE: %s\n" %(platform.node(), time.strftime("%Y-%m-%d_%H:%M:%S"))
+    stdout = runCommandOutput("uname", ["-a"])
+    if (not stdout == None):
+        systemString += "UNAME-A: %s\n" %(stdout)
+    stdout = runCommandOutput("uptime", [])
+    if (not stdout == None):
+        systemString += "UPTIME: %s\n" %(stdout)
+    writeToFile(os.path.join(pathToDSTDir, "system.txt"), systemString, createFile=True)
+
+    # Get "mount -l" filesystem data.
+    command = "cat"
+    pathToCommandOutput = os.path.join(pathToDSTDir, "cat-proc_mounts.txt")
+    try:
+        fout = open(pathToCommandOutput, "w")
+        runCommand(command, ["/proc/mounts"], standardOut=fout)
+        fout.close()
+    except IOError:
+        message = "There was an error the command output for %s to the file %s." %(command, pathToCommandOutput)
+        logging.getLogger(MAIN_LOGGER_NAME).error(message)
+
+    # Get "ps -eo user,pid,%cpu,%mem,vsz,rss,tty,stat,start,time,comm,wchan" data.
+    command = "ps"
+    pathToCommandOutput = os.path.join(pathToDSTDir, "ps.txt")
+    try:
+        fout = open(pathToCommandOutput, "w")
+        #runCommand(command, ["-eo", "user,pid,%cpu,%mem,vsz,rss,tty,stat,start,time,comm,wchan"], standardOut=fout)
+        runCommand(command, ["h", "-AL", "-o", "tid,s,cmd"], standardOut=fout)
+        fout.close()
+    except IOError:
+        message = "There was an error the command output for %s to the file %s." %(command, pathToCommandOutput)
+        logging.getLogger(MAIN_LOGGER_NAME).error(message)
+
+def triggerSysRQEvents():
+    """
+    This command will trigger sysrq events which will write the output to
+    /var/log/messages. The events that will be trigger are "m" and "t". The "m"
+    event will dump information about memory allocation. The "t" event will dump
+    all the threads state information.
+    """
+    command = "echo"
+    pathToSysrqTriggerFile = "/proc/sysrq-trigger"
+    # m - dump information about memory allocation
+    # t - dump thread state information
+    triggers = ["m", "t"]
+    for trigger in triggers:
+        try:
+            fout = open(pathToSysrqTriggerFile, "w")
+            runCommand(command, [trigger], standardOut=fout)
+            fout.close()
+        except IOError:
+            message = "There was an error the command output for %s to the file %s." %(command, pathToSysrqTriggerFile)
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+
+def gatherLogs(pathToDSTDir):
+    """
+    This function will copy all the cluster logs(/var/log/cluster) and the
+    system log(/var/log/messages) to the directory given by pathToDSTDir.
+
+    @param pathToDSTDir: This is the path to directory where the files will be
+    copied to.
+    @type pathToDSTDir: String
+    """
+    if (mkdirs(pathToDSTDir)):
+        # Copy messages logs that contain the sysrq data.
+        pathToLogFile = "/var/log/messages"
+        pathToDSTLogFile = os.path.join(pathToDSTDir, os.path.basename(pathToLogFile))
+        try:
+            shutil.copyfile(pathToLogFile, pathToDSTLogFile)
+        except shutil.Error:
+            message = "There was an error copying the file: %s to %s." %(pathToLogFile, pathToDSTLogFile)
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+
+        pathToLogDir = "/var/log/cluster"
+        pathToDSTLogDir = os.path.join(pathToDSTDir, os.path.basename(pathToLogDir))
+        if (os.path.isdir(pathToLogDir)):
+            try:
+                shutil.copytree(pathToLogDir, pathToDSTLogDir)
+            except shutil.Error:
+                message = "There was an error copying the directory: %s to %s." %(pathToLogDir, pathToDSTLogDir)
+                logging.getLogger(MAIN_LOGGER_NAME).error(message)
+
+def gatherDLMLockDumps(pathToDSTDir, listOfGFS2Filesystems):
+    """
+    This function copies the debug files for dlm for a GFS2 filesystem in the
+    list to a directory. The list of GFS2 filesystems will only include the
+    filesystem name for each item in the list. For example: "mygfs2vol1"
+
+    @param pathToDSTDir: This is the path to directory where the files will be
+    copied to.
+    @type pathToDSTDir: String
+    @param listOfGFS2Filesystems: This is the list of the GFS2 filesystems that
+    will have their debug directory copied.
+    @type listOfGFS2Filesystems: Array
+    """
+    lockDumpType = "dlm"
+    pathToSrcDir = os.path.join(PATH_TO_DEBUG_DIR, lockDumpType)
+    pathToOutputDir = os.path.join(pathToDSTDir, lockDumpType)
+    message = "Copying the files in the %s lockdump data directory %s for the selected GFS2 filesystem with dlm debug files." %(lockDumpType.upper(), pathToSrcDir)
+    logging.getLogger(MAIN_LOGGER_NAME).status(message)
+    for filename in os.listdir(pathToSrcDir):
+        for name in listOfGFS2Filesystems:
+            if (filename.startswith(name)):
+                pathToCurrentFilename = os.path.join(pathToSrcDir, filename)
+                pathToDSTDir = os.path.join(pathToOutputDir, name)
+                mkdirs(pathToDSTDir)
+                pathToDSTFilename = os.path.join(pathToDSTDir, filename)
+                try:
+                    shutil.copy(pathToCurrentFilename, pathToDSTFilename)
+                except shutil.Error:
+                    message = "There was an error copying the file: %s to %s." %(pathToCurrentFilename, pathToDSTFilename)
+                    logging.getLogger(MAIN_LOGGER_NAME).error(message)
+                except OSError:
+                    message = "There was an error copying the file: %s to %s." %(pathToCurrentFilename, pathToDSTFilename)
+                    logging.getLogger(MAIN_LOGGER_NAME).error(message)
+
+def gatherGFS2LockDumps(pathToDSTDir, listOfGFS2Filesystems):
+    """
+    This function copies the debug directory for a GFS2 filesystems in the list
+    to a directory. The list of GFS2 filesystems will include the cluster name
+    and filesystem name for each item in the list. For example:
+    "f18cluster:mygfs2vol1"
+
+    @param pathToDSTDir: This is the path to directory where the files will be
+    copied to.
+    @type pathToDSTDir: String
+    @param listOfGFS2Filesystems: This is the list of the GFS2 filesystems that
+    will have their debug directory copied.
+    @type listOfGFS2Filesystems: Array
+    """
+    lockDumpType = "gfs2"
+    pathToSrcDir = os.path.join(PATH_TO_DEBUG_DIR, lockDumpType)
+    pathToOutputDir = os.path.join(pathToDSTDir, lockDumpType)
+    for dirName in os.listdir(pathToSrcDir):
+        pathToCurrentDir = os.path.join(pathToSrcDir, dirName)
+        if ((os.path.isdir(pathToCurrentDir)) and (dirName in listOfGFS2Filesystems)):
+            mkdirs(pathToOutputDir)
+            pathToDSTDir = os.path.join(pathToOutputDir, dirName)
+            try:
+                message = "Copying the lockdump data for the %s filesystem: %s" %(lockDumpType.upper(), dirName)
+                logging.getLogger(MAIN_LOGGER_NAME).status(message)
+                shutil.copytree(pathToCurrentDir, pathToDSTDir)
+            except shutil.Error:
+                message = "There was an error copying the directory: %s to %s." %(pathToCurrentDir, pathToDSTDir)
+                logging.getLogger(MAIN_LOGGER_NAME).error(message)
+            except OSError:
+                message = "There was an error copying the directory: %s to %s." %(pathToCurrentDir, pathToDSTDir)
+                logging.getLogger(MAIN_LOGGER_NAME).error(message)
+
+# ##############################################################################
+# Get user selected options
+# ##############################################################################
+def __getOptions(version) :
+    """
+    This function creates the OptionParser and returns commandline
+    a tuple of the selected commandline options and commandline args.
+
+    The cmdlineOpts which is the options user selected and cmdLineArgs
+    is value passed and  not associated with an option.
+
+    @return: A tuple of the selected commandline options and commandline args.
+    @rtype: Tuple
+
+    @param version: The version of the this script.
+    @type version: String
+    """
+    cmdParser = OptionParserExtended(version)
+    cmdParser.add_option("-d", "--debug",
+                         action="store_true",
+                         dest="enableDebugLogging",
+                         help="Enables debug logging.",
+                         default=False)
+    cmdParser.add_option("-q", "--quiet",
+                         action="store_true",
+                         dest="disableLoggingToConsole",
+                         help="Disables logging to console.",
+                         default=False)
+    cmdParser.add_option("-i", "--info",
+                         action="store_true",
+                         dest="enablePrintInfo",
+                         help="Prints to console some basic information about the GFS2 filesystems mounted on the cluster node.",
+                         default=False)
+    cmdParser.add_option("-M", "--mount_debug_fs",
+                         action="store_true",
+                         dest="enableMountDebugFS",
+                         help="Enables the mounting of the debug filesystem if it is not mounted. Default is disabled.",
+                         default=False)
+    cmdParser.add_option("-o", "--path_to_output_dir",
+                         action="store",
+                         dest="pathToOutputDir",
+                         help="The path to the output directory where all the collect data will be stored. Default is /tmp/<date>-<hostname>-%s" %(os.path.basename(sys.argv[0])),
+                         type="string",
+                         default="")
+    cmdParser.add_option("-r", "--num_of_runs",
+                         action="store",
+                         dest="numberOfRuns",
+                         help="The number of lockdumps runs to do. Default is 2.",
+                         type="int",
+                         default=2)
+    cmdParser.add_option("-s", "--seconds_sleep",
+                         action="store",
+                         dest="secondsToSleep",
+                         help="The number of seconds sleep between runs. Default is 120 seconds.",
+                         type="int",
+                         default=120)
+    cmdParser.add_option("-t", "--archive",
+                         action="store_true",
+                         dest="enableArchiveOutputDir",
+                         help="Enables archiving and compressing of the output directory with tar and bzip2. Default is disabled.",
+                         default=False)
+    cmdParser.add_option("-n", "--fs_name",
+                         action="extend",
+                         dest="listOfGFS2Names",
+                         help="List of GFS2 filesystems that will have their lockdump data gathered.",
+                         type="string",
+                         default=[])    # Get the options and return the result.
+    (cmdLineOpts, cmdLineArgs) = cmdParser.parse_args()
+    return (cmdLineOpts, cmdLineArgs)
+
+# ##############################################################################
+# OptParse classes for commandline options
+# ##############################################################################
+class OptionParserExtended(OptionParser):
+    """
+    This is the class that gets the command line options the end user
+    selects.
+    """
+    def __init__(self, version) :
+        """
+        @param version: The version of the this script.
+        @type version: String
+        """
+        self.__commandName = os.path.basename(sys.argv[0])
+        versionMessage = "%s %s\n" %(self.__commandName, version)
+
+        commandDescription  ="%s will capture information about lockdata data for GFS2 and DLM required to analyze a GFS2 filesystem.\n"%(self.__commandName)
+
+        OptionParser.__init__(self, option_class=ExtendOption,
+                              version=versionMessage,
+                              description=commandDescription)
+
+    def print_help(self):
+        """
+        Print examples at the bottom of the help message.
+        """
+        self.print_version()
+        examplesMessage = "\n"
+        examplesMessage = "\nPrints information about the available GFS2 filesystems that can have lockdump data captured."
+        examplesMessage += "\n$ %s -i\n" %(self.__commandName)
+        examplesMessage += "\nThis command will mount the debug directory if it is not mounted. It will do 3 runs of\n"
+        examplesMessage += "gathering the lockdump information in 10 second intervals for only the GFS2 filesystems\n"
+        examplesMessage += "with the names myGFS2vol2,myGFS2vol1. Then it will archive and compress the data collected."
+        examplesMessage += "\n$ %s -M -r 3 -s 10 -t -n myGFS2vol2,myGFS2vol1\n" %(self.__commandName)
+        OptionParser.print_help(self)
+        print examplesMessage
+
+class ExtendOption (Option):
+    """
+    Allow to specify comma delimited list of entries for arrays
+    and dictionaries.
+    """
+    ACTIONS = Option.ACTIONS + ("extend",)
+    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
+    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
+
+    def take_action(self, action, dest, opt, value, values, parser):
+        """
+        This function is a wrapper to take certain options passed on command
+        prompt and wrap them into an Array.
+
+        @param action: The type of action that will be taken. For example:
+        "store_true", "store_false", "extend".
+        @type action: String
+        @param dest: The name of the variable that will be used to store the
+        option.
+        @type dest: String/Boolean/Array
+        @param opt: The option string that triggered the action.
+        @type opt: String
+        @param value: The value of opt(option) if it takes a
+        value, if not then None.
+        @type value:
+        @param values: All the opt(options) in a dictionary.
+        @type values: Dictionary
+        @param parser: The option parser that was orginally called.
+        @type parser: OptionParser
+        """
+        if (action == "extend") :
+            valueList=[]
+            try:
+                for v in value.split(","):
+                    # Need to add code for dealing with paths if there is option for paths.
+                    valueList.append(v)
+            except:
+                pass
+            else:
+                values.ensure_value(dest, []).extend(valueList)
+        else:
+            Option.take_action(self, action, dest, opt, value, values, parser)
+
+# ###############################################################################
+# Main Function
+# ###############################################################################
+if __name__ == "__main__":
+    """
+    When the script is executed then this code is ran.
+    """
+    try:
+        # #######################################################################
+        # Get the options from the commandline.
+        # #######################################################################
+        (cmdLineOpts, cmdLineArgs) = __getOptions(VERSION_NUMBER)
+        # #######################################################################
+        # Setup the logger and create config directory
+        # #######################################################################
+        # Create the logger
+        logLevel = logging.INFO
+        logger = logging.getLogger(MAIN_LOGGER_NAME)
+        logger.setLevel(logLevel)
+        # Create a new status function and level.
+        logging.STATUS = logging.INFO + 2
+        logging.addLevelName(logging.STATUS, "STATUS")
+        # Create a function for the STATUS_LEVEL since not defined by python. This
+        # means you can call it like the other predefined message
+        # functions. Example: logging.getLogger("loggerName").status(message)
+        setattr(logger, "status", lambda *args: logger.log(logging.STATUS, *args))
+        streamHandler = logging.StreamHandler()
+        streamHandler.setLevel(logLevel)
+        streamHandler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+        logger.addHandler(streamHandler)
+
+        # Set the handler for writing to log file.
+        pathToLogFile = "/tmp/%s.log" %(MAIN_LOGGER_NAME)
+        if (((os.access(pathToLogFile, os.W_OK) and os.access("/tmp", os.R_OK))) or (not os.path.exists(pathToLogFile))):
+            fileHandler = logging.FileHandler(pathToLogFile)
+            fileHandler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s", "%Y-%m-%d %H:%M:%S"))
+            logger.addHandler(fileHandler)
+            message = "A log file will be created or appened to: %s" %(pathToLogFile)
+            logging.getLogger(MAIN_LOGGER_NAME).info(message)
+        else:
+            message = "There was permission problem accessing the write attributes for the log file: %s." %(pathToLogFile)
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+        # #######################################################################
+        # Set the logging levels.
+        # #######################################################################
+        if ((cmdLineOpts.enableDebugLogging) and (not cmdLineOpts.disableLoggingToConsole)):
+            logging.getLogger(MAIN_LOGGER_NAME).setLevel(logging.DEBUG)
+            streamHandler.setLevel(logging.DEBUG)
+            message = "Debugging has been enabled."
+            logging.getLogger(MAIN_LOGGER_NAME).debug(message)
+        if (cmdLineOpts.disableLoggingToConsole):
+            logging.disable(logging.CRITICAL)
+        # #######################################################################
+        # Check to see if pid file exists and error if it does.
+        # #######################################################################
+        if (os.path.exists(PATH_TO_PID_FILENAME)):
+            message = "The PID file %s already exists and this script cannot run till it does not exist." %(PATH_TO_PID_FILENAME)
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+            message = "Verify that there are no other existing processes running. If there are running processes those need to be stopped first and the file removed."
+            logging.getLogger(MAIN_LOGGER_NAME).info(message)
+            exitScript(removePidFile=False, errorCode=1)
+        else:
+            message = "Creating the pid file: %s" %(PATH_TO_PID_FILENAME)
+            logging.getLogger(MAIN_LOGGER_NAME).debug(message)
+            # Creata the pid file so we dont have more than 1 process of this
+            # script running.
+            writeToFile(PATH_TO_PID_FILENAME, str(os.getpid()), createFile=True)
+        # #######################################################################
+        # Get the clusternode name and verify that mounted GFS2 filesystems were
+        # found.
+        # #######################################################################
+        clusternode = getClusterNode(cmdLineOpts.listOfGFS2Names)
+        if (clusternode == None):
+            message = "The cluster or cluster node name could not be found."
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+            exitScript(removePidFile=True, errorCode=1)
+        elif (not len(clusternode.getMountedGFS2FilesystemNames()) > 0):
+            message = "There were no mounted GFS2 filesystems found."
+            if (len(cmdLineOpts.listOfGFS2Names) > 0):
+                message = "There were no mounted GFS2 filesystems found with the name:"
+                for name in cmdLineOpts.listOfGFS2Names:
+                    message += " %s" %(name)
+                message += "."
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+            exitScript(removePidFile=True, errorCode=1)
+        if (cmdLineOpts.enablePrintInfo):
+            logging.disable(logging.CRITICAL)
+            print "List of all the mounted GFS2 filesystems that can have their lockdump data captured:"
+            print clusternode
+            exitScript()
+        # #######################################################################
+        # Create the output directory to verify it can be created before
+        # proceeding unless it is already created from a previous run data needs
+        # to be analyzed. Probably could add more debugging on if file or dir.
+        # #######################################################################
+        message = "The gathering of the lockdumps will be performed on the clusternode \"%s\" which is part of the cluster \"%s\"." %(clusternode.getClusterNodeName(), clusternode.getClusterName())
+        logging.getLogger(MAIN_LOGGER_NAME).info(message)
+        pathToOutputDir = cmdLineOpts.pathToOutputDir
+        if (not len(pathToOutputDir) > 0):
+            pathToOutputDir = "%s" %(os.path.join("/tmp", "%s-%s-%s" %(time.strftime("%Y-%m-%d_%H%M%S"), clusternode.getClusterNodeName(), os.path.basename(sys.argv[0]))))
+        # #######################################################################
+        # Backup any existing directory with same name as current output
+        # directory.
+        # #######################################################################
+        if (backupOutputDirectory(pathToOutputDir)):
+            message = "This directory that will be used to capture all the data: %s" %(pathToOutputDir)
+            logging.getLogger(MAIN_LOGGER_NAME).info(message)
+            if (not mkdirs(pathToOutputDir)):
+                exitScript(errorCode=1)
+        else:
+            # There was an existing directory with same path as current output
+            # directory and it failed to back it up.
+            message = "Please change the output directory path (-o) or manual rename or remove the existing path: %s" %(pathToOutputDir)
+            logging.getLogger(MAIN_LOGGER_NAME).info(message)
+            exitScript(errorCode=1)
+        # #######################################################################
+        # Check to see if the debug directory is mounted. If not then
+        # log an error.
+        # #######################################################################
+        result = verifyDebugFilesystemMounted(cmdLineOpts.enableMountDebugFS)
+        if (not result):
+            message = "Please mount the debug filesystem before running this script. For example: $ mount none -t debugfs %s" %(PATH_TO_DEBUG_DIR)
+            logging.getLogger(MAIN_LOGGER_NAME).info(message)
+            exitScript(errorCode=1)
+
+        # #######################################################################
+        # Gather data and the lockdumps.
+        # #######################################################################
+        message = "The process of gathering all the required files will begin before capturing the lockdumps."
+        logging.getLogger(MAIN_LOGGER_NAME).info(message)
+        for i in range(0,cmdLineOpts.numberOfRuns):
+            # The current log count that will start at 1 and not zero to make it
+            # make sense in logs.
+            currentLogRunCount = (i + 1)
+            # Add clusternode name under each run dir to make combining multple
+            # clusternode gfs2_lockgather data together and all data in each run directory.
+            pathToOutputRunDir = os.path.join(pathToOutputDir, "run%d/%s" %(i, clusternode.getClusterNodeName()))
+            if (not mkdirs(pathToOutputRunDir)):
+                exitScript(errorCode=1)
+            # Gather various bits of data from the clusternode.
+            message = "Gathering some general information about the clusternode %s for run %d/%d." %(clusternode.getClusterNodeName(), currentLogRunCount, cmdLineOpts.numberOfRuns)
+            logging.getLogger(MAIN_LOGGER_NAME).status(message)
+            gatherGeneralInformation(pathToOutputRunDir)
+            # Trigger sysrq events to capture memory and thread information
+            message = "Triggering the sysrq events for the clusternode %s for run %d/%d." %(clusternode.getClusterNodeName(), currentLogRunCount, cmdLineOpts.numberOfRuns)
+            logging.getLogger(MAIN_LOGGER_NAME).status(message)
+            triggerSysRQEvents()
+            # Gather the dlm locks.
+            lockDumpType = "dlm"
+            message = "Gathering the %s lock dumps for clusternode %s for run %d/%d." %(lockDumpType.upper(), clusternode.getClusterNodeName(), currentLogRunCount, cmdLineOpts.numberOfRuns)
+            logging.getLogger(MAIN_LOGGER_NAME).status(message)
+            gatherDLMLockDumps(pathToOutputRunDir, clusternode.getMountedGFS2FilesystemNames(includeClusterName=False))
+            # Gather the glock locks from gfs2.
+            lockDumpType = "gfs2"
+            message = "Gathering the %s lock dumps for clusternode %s for run %d/%d." %(lockDumpType.upper(), clusternode.getClusterNodeName(), currentLogRunCount, cmdLineOpts.numberOfRuns)
+            logging.getLogger(MAIN_LOGGER_NAME).status(message)
+            gatherGFS2LockDumps(pathToOutputRunDir, clusternode.getMountedGFS2FilesystemNames())
+            # Gather log files
+            message = "Gathering the log files for the clusternode %s for run %d/%d." %(clusternode.getClusterNodeName(), currentLogRunCount, cmdLineOpts.numberOfRuns)
+            logging.getLogger(MAIN_LOGGER_NAME).status(message)
+            gatherLogs(os.path.join(pathToOutputRunDir, "logs"))
+            # Sleep between each run if secondsToSleep is greater than or equal
+            # to 0 and current run is not the last run.
+            if ((cmdLineOpts.secondsToSleep >= 0) and (i < (cmdLineOpts.numberOfRuns - 1))):
+                message = "The script will sleep for %d seconds between each run of capturing the lockdumps." %(cmdLineOpts.secondsToSleep)
+                logging.getLogger(MAIN_LOGGER_NAME).info(message)
+                message = "The script is sleeping before beginning the next run."
+                logging.getLogger(MAIN_LOGGER_NAME).status(message)
+                time.sleep(cmdLineOpts.secondsToSleep)
+        # #######################################################################
+        # Archive the directory that contains all the data and archive it after
+        # all the information has been gathered.
+        # #######################################################################
+        message = "All the files have been gathered and this directory contains all the captured data: %s" %(pathToOutputDir)
+        logging.getLogger(MAIN_LOGGER_NAME).info(message)
+        if (cmdLineOpts.enableArchiveOutputDir):
+            message = "The lockdump data will now be archived. This could some time depending on the size of the data collected."
+            logging.getLogger(MAIN_LOGGER_NAME).info(message)
+            pathToTarFilename = archiveData(pathToOutputDir)
+            if (os.path.exists(pathToTarFilename)):
+                message = "The compressed archvied file was created: %s" %(pathToTarFilename)
+                logging.getLogger(MAIN_LOGGER_NAME).info(message)
+            else:
+                message = "The compressed archvied failed to be created: %s" %(pathToTarFilename)
+                logging.getLogger(MAIN_LOGGER_NAME).error(message)
+        # #######################################################################
+    except KeyboardInterrupt:
+        print ""
+        message =  "This script will exit since control-c was executed by end user."
+        logging.getLogger(MAIN_LOGGER_NAME).error(message)
+        exitScript(errorCode=1)
+    # #######################################################################
+    # Exit the application with zero exit code since we cleanly exited.
+    # #######################################################################
+    exitScript()
