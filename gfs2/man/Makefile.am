@@ -7,5 +7,4 @@ dist_man_MANS		= fsck.gfs2.8 \
 			  gfs2_grow.8 \
 			  gfs2_jadd.8 \
 			  mkfs.gfs2.8 \
-			  gfs2_lockgather.8 \
 			  tunegfs2.8

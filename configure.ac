@@ -261,7 +261,7 @@ AC_CONFIG_FILES([Makefile
 		 gfs2/mkfs/Makefile
 		 gfs2/tune/Makefile
 		 gfs2/man/Makefile
-		 gfs2/lockgather/Makefile
+		 gfs2/lockcapture/Makefile
 		 doc/Makefile
 		 po/Makefile.in
 		 ])
