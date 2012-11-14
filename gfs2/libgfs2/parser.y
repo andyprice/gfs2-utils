@@ -1,3 +1,7 @@
+%code requires {
+/* Required to break a circular dependency introduced with bison 2.6 */
+typedef void* yyscan_t;
+}
 %code top {
 #include <errno.h>
 #include "lang.h"
