@@ -59,12 +59,12 @@ rename2system(struct gfs2_sbd *sdp, const char *new_dir, const char *new_name)
 	error = snprintf(oldpath, PATH_MAX, "%s/new_inode", 
 			 sdp->metafs_path);
 	if (error >= PATH_MAX)
-		die( _("rename2system (1)\n"));
+		die("rename2system (1)\n");
 
 	error = snprintf(newpath, PATH_MAX, "%s/%s/%s",
 			 sdp->metafs_path, new_dir, new_name);
 	if (error >= PATH_MAX)
-		die( _("rename2system (2)\n"));
+		die("rename2system (2)\n");
 	
 	return rename(oldpath, newpath);
 }
@@ -76,16 +76,30 @@ rename2system(struct gfs2_sbd *sdp, const char *new_dir, const char *new_name)
 
 static void print_usage(const char *prog_name)
 {
-	printf( _("Usage:\n\n"
-		"%s [options] /path/to/filesystem\n\n"
-		"Options:\n\n"
-		"  -c <MB>           Size of quota change file\n"
-		"  -D                Enable debugging code\n"
-		"  -h                Print this help, then exit\n"
-		"  -J <MB>           Size of journals\n"
-		"  -j <num>          Number of journals\n"
-		"  -q                Don't print anything\n"
-		"  -V                Print program version information, then exit\n"), prog_name);
+	int i;
+	const char *option, *param, *desc;
+	const char *options[] = {
+		"-c", "<size>",   _("Size of quota change file, in megabytes"),
+		"-D", NULL,       _("Enable debugging code"),
+		"-h", NULL,       _("Display this help, then exit"),
+		"-J", "<size>",   _("Size of journals, in megabytes"),
+		"-j", "<number>", _("Number of journals"),
+		"-q", NULL,       _("Don't print anything"),
+		"-V", NULL,       _("Display version information, then exit"),
+		NULL, NULL, NULL /* Must be kept at the end */
+	};
+
+	printf("%s\n", _("Usage:"));
+	printf("%s [%s] <%s>\n\n", prog_name, _("options"), _("device"));
+	printf(_("Adds journals to a GFS2 file system."));
+	printf("\n\n%s\n", _("Options:"));
+
+	for (i = 0; options[i] != NULL; i += 3) {
+		option = options[i];
+		param = options[i+1];
+		desc = options[i+2];
+		printf("%3s %-15s %s\n", option, param ? param : "", desc);
+	}
 }
 
 /**
@@ -386,8 +400,7 @@ find_current_journals(struct gfs2_sbd *sdp)
 close:
 	closedir(dirp);
 	if (existing_journals <= 0) {
-		die( _("There are no journals for this "
-		    "gfs2 fs! Did you mkfs.gfs2 correctly?\n"));
+		die( _("No journals found. Did you run mkfs.gfs2 correctly?\n"));
 	}
 
 	sdp->orig_journals = existing_journals;

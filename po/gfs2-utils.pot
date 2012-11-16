@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gfs2-utils master\n"
 "Report-Msgid-Bugs-To: linux-cluster@redhat.com\n"
-"POT-Creation-Date: 2012-11-14 13:58+0000\n"
+"POT-Creation-Date: 2012-11-15 18:50+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,288 +17,366 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: gfs2/mkfs/main_mkfs.c:52
-#, c-format
-msgid ""
-"Usage:\n"
-"\n"
-"%s [options] <device> [ block-count ]\n"
-"\n"
-"Options:\n"
-"\n"
-"  -b <bytes>       Filesystem block size\n"
-"  -c <MB>          Size of quota change file\n"
-"  -D               Enable debugging code\n"
-"  -h               Print this help, then exit\n"
-"  -J <MB>          Size of journals\n"
-"  -j <num>         Number of journals\n"
-"  -K               Don't try to discard unused blocks\n"
-"  -O               Don't ask for confirmation\n"
-"  -p <name>        Name of the locking protocol\n"
-"  -q               Don't print anything\n"
-"  -r <MB>          Resource Group Size\n"
-"  -t <name>        Name of the lock table\n"
-"  -V               Print program version information, then exit\n"
+#: gfs2/mkfs/main_mkfs.c:55 gfs2/mkfs/main_mkfs.c:56 gfs2/mkfs/main_mkfs.c:59
+#: gfs2/mkfs/main_mkfs.c:65
+msgid "<size>"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:81
+#: gfs2/mkfs/main_mkfs.c:55
+msgid "File system block size, in bytes"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:56 gfs2/mkfs/main_jadd.c:82
+msgid "Size of quota change file, in megabytes"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:57 gfs2/mkfs/main_jadd.c:83
+msgid "Enable debugging code"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:58 gfs2/mkfs/main_jadd.c:84
+msgid "Display this help, then exit"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:59 gfs2/mkfs/main_jadd.c:85
+msgid "Size of journals, in megabytes"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:60
+msgid "<number>"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:60 gfs2/mkfs/main_jadd.c:86
+msgid "Number of journals"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:61
+msgid "Don't try to discard unused blocks"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:62
+msgid "Don't ask for confirmation"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:63 gfs2/mkfs/main_mkfs.c:66
+msgid "<name>"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:63
+msgid "Name of the locking protocol"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:64 gfs2/mkfs/main_jadd.c:87
+msgid "Don't print anything"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:65
+msgid "Size of resource groups, in megabytes"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:66
+msgid "Name of the lock table"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:67
+msgid "Display program version information, then exit"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:71 gfs2/mkfs/main_grow.c:75 gfs2/mkfs/main_jadd.c:92
+msgid "Usage:"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:72 gfs2/mkfs/main_grow.c:76 gfs2/mkfs/main_jadd.c:93
+msgid "options"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:72 gfs2/mkfs/main_grow.c:76 gfs2/mkfs/main_jadd.c:93
+msgid "device"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:72
+msgid "size"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:73
+#, c-format
+msgid ""
+"Create a gfs2 file system on a device. If a size, in blocks, is not "
+"specified, the whole device will be used."
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:75 gfs2/mkfs/main_grow.c:78 gfs2/mkfs/main_jadd.c:95
+msgid "Options:"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:96
 #, c-format
 msgid "Issuing discard ioctl: range: %llu - %llu..."
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:90
+#: gfs2/mkfs/main_mkfs.c:101
+msgid "error"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:105
 #, c-format
 msgid "Successful.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:150
+#: gfs2/mkfs/main_mkfs.c:165
 #, c-format
 msgid "lock protocol name %s is too long\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:165
+#: gfs2/mkfs/main_mkfs.c:180
 #, c-format
 msgid "lock table name %s is too long\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:182 gfs2/mkfs/main_grow.c:109
-#: gfs2/mkfs/main_jadd.c:138 gfs2/fsck/main.c:103 gfs2/fsck/main.c:114
+#: gfs2/mkfs/main_mkfs.c:197 gfs2/mkfs/main_grow.c:120
+#: gfs2/mkfs/main_jadd.c:152 gfs2/fsck/main.c:103 gfs2/fsck/main.c:114
 #, c-format
 msgid "Please use '-h' for help.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:199
+#: gfs2/mkfs/main_mkfs.c:214
 msgid "More than one device specified (try -h for help)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:203 gfs2/mkfs/main_jadd.c:145 gfs2/tune/main.c:92
+#: gfs2/mkfs/main_mkfs.c:218 gfs2/mkfs/main_jadd.c:159 gfs2/tune/main.c:92
 #, c-format
 msgid "Invalid option: %c\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:212 gfs2/convert/gfs2_convert.c:1722
+#: gfs2/mkfs/main_mkfs.c:227 gfs2/convert/gfs2_convert.c:1722
 #: gfs2/convert/gfs2_convert.c:1726
 #, c-format
 msgid "No device specified. Please use '-h' for help\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:218 gfs2/mkfs/main_jadd.c:157
+#: gfs2/mkfs/main_mkfs.c:233 gfs2/mkfs/main_jadd.c:171
 #, c-format
 msgid "Unrecognized argument: %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:221 gfs2/mkfs/main_jadd.c:160
+#: gfs2/mkfs/main_mkfs.c:236 gfs2/mkfs/main_jadd.c:174
 #, c-format
 msgid "Command Line Arguments:\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:231
-#, c-format
-msgid "  rgsize = optimize for best performance\n"
+#: gfs2/mkfs/main_mkfs.c:246
+msgid "Optimize for best performance"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:258
+#: gfs2/mkfs/main_mkfs.c:267
+msgid "Invalid lock table:"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:274
 #, c-format
 msgid "No lock table specified.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:263
-#, c-format
-msgid "locktable error: invalid character '%c'\n"
+#: gfs2/mkfs/main_mkfs.c:279
+msgid "invalid character"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:268
-msgid "locktable error: missing colon in the locktable\n"
-msgstr ""
-
-#: gfs2/mkfs/main_mkfs.c:271
-msgid "locktable error: missing cluster name\n"
-msgstr ""
-
-#: gfs2/mkfs/main_mkfs.c:273
-msgid "locktable error: cluster name too long\n"
-msgstr ""
-
-#: gfs2/mkfs/main_mkfs.c:277 gfs2/mkfs/main_mkfs.c:283
-msgid "locktable error: missing filesystem name\n"
-msgstr ""
-
-#: gfs2/mkfs/main_mkfs.c:280 gfs2/tune/super.c:205
-#, c-format
-msgid "locktable error: more than one colon present\n"
-msgstr ""
-
-#: gfs2/mkfs/main_mkfs.c:285
-msgid "locktable error: filesystem name too long\n"
+#: gfs2/mkfs/main_mkfs.c:284
+msgid "missing colon"
 msgstr ""
 
 #: gfs2/mkfs/main_mkfs.c:287
-#, c-format
-msgid "lockproto error: %s unknown\n"
+msgid "cluster name is missing"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:305
+#: gfs2/mkfs/main_mkfs.c:289
+msgid "cluster name is too long"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:293
+msgid "contains more than one colon"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:295
+msgid "file system name is missing"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:297
+msgid "file system name too long"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:299
+#, c-format
+msgid "Invalid lock protocol: %s\n"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:317
 #, c-format
 msgid "Are you sure you want to proceed? [y/n]"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:315
+#: gfs2/mkfs/main_mkfs.c:327
 msgid "aborted\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:335
+#: gfs2/mkfs/main_mkfs.c:347
 #, c-format
 msgid "block size must be a power of two between 512 and %d\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:339
+#: gfs2/mkfs/main_mkfs.c:351
 #, c-format
 msgid "Error: Block size %d is less than minimum logical block size (%d).\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:345
+#: gfs2/mkfs/main_mkfs.c:357
 #, c-format
 msgid ""
 "WARNING: Block size %d is inefficient because it is less than the physical "
 "block size (%d).\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:361 gfs2/mkfs/main_mkfs.c:364
+#: gfs2/mkfs/main_mkfs.c:373 gfs2/mkfs/main_mkfs.c:376
 msgid "bad resource group size\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:368 gfs2/mkfs/main_jadd.c:173
+#: gfs2/mkfs/main_mkfs.c:380 gfs2/mkfs/main_jadd.c:187
 msgid "no journals specified\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:371 gfs2/mkfs/main_jadd.c:175
+#: gfs2/mkfs/main_mkfs.c:383 gfs2/mkfs/main_jadd.c:189
 msgid "bad journal size\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:374 gfs2/mkfs/main_jadd.c:177
+#: gfs2/mkfs/main_mkfs.c:386 gfs2/mkfs/main_jadd.c:191
 msgid "bad quota change size\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:459
+#: gfs2/mkfs/main_mkfs.c:471
 #, c-format
 msgid ""
 "Content of file or device unknown (do you have GNU fileutils installed?)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:463
+#: gfs2/mkfs/main_mkfs.c:475
 #, c-format
 msgid "It appears to contain: %s"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:493
-#, c-format
-msgid "Expert mode:               on\n"
-msgstr ""
-
-#: gfs2/mkfs/main_mkfs.c:495
-#, c-format
-msgid "Device:                    %s\n"
-msgstr ""
-
-#: gfs2/mkfs/main_mkfs.c:497
-#, c-format
-msgid "Blocksize:                 %u\n"
-msgstr ""
-
-#: gfs2/mkfs/main_mkfs.c:498
-#, c-format
-msgid "Device Size                %.2f GB (%llu blocks)\n"
-msgstr ""
-
-#: gfs2/mkfs/main_mkfs.c:501
-#, c-format
-msgid "Filesystem Size:           %.2f GB (%llu blocks)\n"
-msgstr ""
-
-#: gfs2/mkfs/main_mkfs.c:504
-#, c-format
-msgid "Journals:                  %u\n"
+#: gfs2/mkfs/main_mkfs.c:505
+msgid "Expert mode:"
 msgstr ""
 
 #: gfs2/mkfs/main_mkfs.c:505
-#, c-format
-msgid "Resource Groups:           %llu\n"
+msgid "on"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:507
-#, c-format
-msgid "Locking Protocol:          \"%s\"\n"
+#: gfs2/mkfs/main_mkfs.c:507 gfs2/mkfs/main_grow.c:285
+msgid "Device:"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:508
-#, c-format
-msgid "Lock Table:                \"%s\"\n"
+#: gfs2/mkfs/main_mkfs.c:509
+msgid "Block size:"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:512
-#, c-format
-msgid "Writes:                    %u\n"
+#: gfs2/mkfs/main_mkfs.c:510 gfs2/mkfs/main_mkfs.c:645
+msgid "Device size:"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:515
-#, c-format
-msgid "UUID:                      %s\n"
+#: gfs2/mkfs/main_mkfs.c:511 gfs2/mkfs/main_mkfs.c:514
+#: gfs2/mkfs/main_mkfs.c:646
+msgid "GB"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:538
+#: gfs2/mkfs/main_mkfs.c:512 gfs2/mkfs/main_mkfs.c:515
+#: gfs2/mkfs/main_mkfs.c:647
+msgid "blocks"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:513
+msgid "Filesystem size:"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:516
+msgid "Journals:"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:517
+msgid "Resource groups:"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:518
+msgid "Locking protocol:"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:519
+msgid "Lock table:"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:522
+msgid "Writes:"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:525
+msgid "UUID:"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:539
+msgid "Failed to lstat the device"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:547
 msgid "Could not find the absolute path of the device"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:541
+#: gfs2/mkfs/main_mkfs.c:550
 #, c-format
 msgid "%s is a symlink to %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:590
+#: gfs2/mkfs/main_mkfs.c:599
 msgid "Failed to build string"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:596
+#: gfs2/mkfs/main_mkfs.c:605
 #, c-format
 msgid "This will destroy any data on %s.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:625 gfs2/mkfs/main_grow.c:358
-#: gfs2/mkfs/main_jadd.c:506
+#: gfs2/mkfs/main_mkfs.c:629
+msgid "Using block size:"
+msgstr ""
+
+#: gfs2/mkfs/main_mkfs.c:634 gfs2/mkfs/main_grow.c:367
+#: gfs2/mkfs/main_jadd.c:519
 msgid "Bad constants (1)"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:634
-#, c-format
-msgid "%s: Specified block count is bigger than the actual device.\n"
+#: gfs2/mkfs/main_mkfs.c:644
+msgid "Specified size is bigger than the device."
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:636
-#, c-format
-msgid "Device Size is %.2f GB (%llu blocks)\n"
-msgstr ""
-
-#: gfs2/mkfs/main_mkfs.c:662
+#: gfs2/mkfs/main_mkfs.c:671
 msgid "Error building jindex"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:667
+#: gfs2/mkfs/main_mkfs.c:676
 msgid "Error building per-node directory"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:672
+#: gfs2/mkfs/main_mkfs.c:681
 msgid "Error building inum inode"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:678
+#: gfs2/mkfs/main_mkfs.c:687
 msgid "Error building statfs inode"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:684
+#: gfs2/mkfs/main_mkfs.c:693
 msgid "Error building rindex inode"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:689
+#: gfs2/mkfs/main_mkfs.c:698
 msgid "Error building quota inode"
 msgstr ""
 
@@ -306,139 +384,168 @@ msgstr ""
 msgid "Unknown mode\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:65
+#: gfs2/mkfs/main_grow.c:67
+msgid "Display this usage information"
+msgstr ""
+
+#: gfs2/mkfs/main_grow.c:68
+msgid "Quiet, reduce verbosity"
+msgstr ""
+
+#: gfs2/mkfs/main_grow.c:69
+msgid "Do everything except update FS"
+msgstr ""
+
+#: gfs2/mkfs/main_grow.c:70
+msgid "Display version information"
+msgstr ""
+
+#: gfs2/mkfs/main_grow.c:71
+msgid "Increase verbosity"
+msgstr ""
+
+#: gfs2/mkfs/main_grow.c:77
 #, c-format
 msgid ""
-"Usage:\n"
-"\n"
-"gfs2_grow [options] /path/to/filesystem\n"
-"\n"
-"Options:\n"
-"  -h               Usage information\n"
-"  -q               Quiet, reduce verbosity\n"
-"  -T               Test, do everything except update FS\n"
-"  -V               Version information\n"
-"  -v               Verbose, increase verbosity\n"
+"Expands a GFS2 file system after the device upon which the file system "
+"resides has been expanded"
 msgstr ""
 
 #: gfs2/mkfs/main_grow.c:99
 #, c-format
-msgid "(Test mode--File system will not be changed)\n"
+msgid "%s %s (built %s %s)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:112 gfs2/fsck/main.c:106
+#: gfs2/mkfs/main_grow.c:110
 #, c-format
-msgid "Invalid option %c\n"
+msgid "(Test mode - file system will not be changed)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:200
+#: gfs2/mkfs/main_grow.c:123
+#, c-format
+msgid "Invalid option '%c'\n"
+msgstr ""
+
+#: gfs2/mkfs/main_grow.c:211
 #, c-format
 msgid "%d new rindex entries.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:227
+#: gfs2/mkfs/main_grow.c:238
 #, c-format
 msgid "Incorrect rindex size. want %ld(%d RGs), have %ld\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:237
-msgid "Error writing first new rindex entry;aborted.\n"
+#: gfs2/mkfs/main_grow.c:248
+msgid "Error writing first new rindex entry; aborted.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:247
-msgid "Error writing new rindex entries;aborted.\n"
+#: gfs2/mkfs/main_grow.c:257
+msgid "Error writing new rindex entries; aborted.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:263
+#: gfs2/mkfs/main_grow.c:272
 #, c-format
-msgid "truncating rindex to %ld\n"
+msgid "truncating rindex to %ld entries\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:351 gfs2/fsck/initialize.c:1306
+#: gfs2/mkfs/main_grow.c:284
+msgid "Mount point:"
+msgstr ""
+
+#: gfs2/mkfs/main_grow.c:286
+msgid "Size:"
+msgstr ""
+
+#: gfs2/mkfs/main_grow.c:288
+msgid "Resource group size:"
+msgstr ""
+
+#: gfs2/mkfs/main_grow.c:289
+msgid "Length:"
+msgstr ""
+
+#: gfs2/mkfs/main_grow.c:292
+#, c-format
+msgid "The file system grew by %lluMB.\n"
+msgstr ""
+
+#: gfs2/mkfs/main_grow.c:360 gfs2/fsck/initialize.c:1306
 msgid "Initializing lists...\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:362
-msgid "gfs: Error reading superblock.\n"
+#: gfs2/mkfs/main_grow.c:371
+msgid "Error reading superblock.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:364
+#: gfs2/mkfs/main_grow.c:373
 msgid "cannot grow gfs1 filesystem\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:376
-msgid "GFS2 rindex not found.  Please run gfs2_fsck.\n"
+#: gfs2/mkfs/main_grow.c:377
+msgid "GFS2 metafs mount failed"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:393
+#: gfs2/mkfs/main_grow.c:385
+msgid "GFS2 rindex not found.  Please run fsck.gfs2.\n"
+msgstr ""
+
+#: gfs2/mkfs/main_grow.c:390
+msgid "Could not read master directory"
+msgstr ""
+
+#: gfs2/mkfs/main_grow.c:402
 msgid "Error: No resource groups found.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:401
+#: gfs2/mkfs/main_grow.c:410
 msgid "Error: The device has grown by less than one Resource Group (RG).\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:403
+#: gfs2/mkfs/main_grow.c:412
 #, c-format
 msgid "The device grew by %lluMB. "
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:405
+#: gfs2/mkfs/main_grow.c:414
 #, c-format
 msgid "One RG is %uMB for this file system.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:426
+#: gfs2/mkfs/main_grow.c:435
 msgid "gfs2_grow complete.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:62
-msgid "rename2system (1)\n"
+#: gfs2/mkfs/main_jadd.c:88
+msgid "Display version information, then exit"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:67
-msgid "rename2system (2)\n"
-msgstr ""
-
-#: gfs2/mkfs/main_jadd.c:79
+#: gfs2/mkfs/main_jadd.c:94
 #, c-format
-msgid ""
-"Usage:\n"
-"\n"
-"%s [options] /path/to/filesystem\n"
-"\n"
-"Options:\n"
-"\n"
-"  -c <MB>           Size of quota change file\n"
-"  -D                Enable debugging code\n"
-"  -h                Print this help, then exit\n"
-"  -J <MB>           Size of journals\n"
-"  -j <num>          Number of journals\n"
-"  -q                Don't print anything\n"
-"  -V                Print program version information, then exit\n"
+msgid "Adds journals to a GFS2 file system."
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:154
+#: gfs2/mkfs/main_jadd.c:168
 msgid "no path specified (try -h for help)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:197
+#: gfs2/mkfs/main_jadd.c:211
 #, c-format
 msgid "Filesystem:            %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:198
+#: gfs2/mkfs/main_jadd.c:212
 #, c-format
 msgid "Old Journals           %u\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:199
+#: gfs2/mkfs/main_jadd.c:213
 #, c-format
 msgid "New Journals           %u\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:389
-msgid "There are no journals for this gfs2 fs! Did you mkfs.gfs2 correctly?\n"
+#: gfs2/mkfs/main_jadd.c:403
+msgid "No journals found. Did you run mkfs.gfs2 correctly?\n"
 msgstr ""
 
 #: gfs2/tune/main.c:99
@@ -554,6 +661,11 @@ msgstr ""
 #: gfs2/tune/super.c:201
 #, c-format
 msgid "locktable error: fsname too long\n"
+msgstr ""
+
+#: gfs2/tune/super.c:205
+#, c-format
+msgid "locktable error: more than one colon present\n"
 msgstr ""
 
 #: gfs2/convert/gfs2_convert.c:554
@@ -2876,6 +2988,11 @@ msgstr ""
 #: gfs2/fsck/main.c:58
 #, c-format
 msgid "GFS2 fsck %s (built %s %s)\n"
+msgstr ""
+
+#: gfs2/fsck/main.c:106
+#, c-format
+msgid "Invalid option %c\n"
 msgstr ""
 
 #: gfs2/fsck/main.c:118

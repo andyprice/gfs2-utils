@@ -61,17 +61,28 @@ static int discard_blocks(int fd, uint64_t start, uint64_t len)
 
 static void usage(void)
 {
-	fprintf(stdout,
-		_("Usage:\n"
-		"\n"
-		"gfs2_grow [options] /path/to/filesystem\n"
-		"\n"
-		"Options:\n"
-		"  -h               Usage information\n"
-		"  -q               Quiet, reduce verbosity\n"
-		"  -T               Test, do everything except update FS\n"
-		"  -V               Version information\n"
-		"  -v               Verbose, increase verbosity\n"));
+	int i;
+	const char *option, *param, *desc;
+	const char *options[] = {
+		"-h", NULL, _("Display this usage information"),
+		"-q", NULL, _("Quiet, reduce verbosity"),
+		"-T", NULL, _("Do everything except update FS"),
+		"-V", NULL, _("Display version information"),
+		"-v", NULL, _("Increase verbosity"),
+		NULL, NULL, NULL /* Must be kept at the end */
+	};
+
+	printf("%s\n", _("Usage:"));
+	printf("    gfs2_grow [%s] <%s>\n\n", _("options"), _("device"));
+	printf(_("Expands a GFS2 file system after the device upon which the file system resides has been expanded"));
+	printf("\n\n%s\n", _("Options:"));
+
+	for (i = 0; options[i] != NULL; i += 3) {
+		option = options[i];
+		param = options[i+1];
+		desc = options[i+2];
+		printf("%3s %-15s %s\n", option, param ? param : "", desc);
+	}
 }
 
 static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
@@ -85,7 +96,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			override_device_size <<= 20;
 			break;
 		case 'V':
-			printf("%s %s (built %s %s)\n", argv[0],
+			printf(_("%s %s (built %s %s)\n"), argv[0],
 			       VERSION, __DATE__, __TIME__);
 			printf(REDHAT_COPYRIGHT "\n");
 			exit(0);
@@ -96,7 +107,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			decrease_verbosity();
 			break;
 		case 'T':
-			printf( _("(Test mode--File system will not "
+			printf( _("(Test mode - file system will not "
 			       "be changed)\n"));
 			test = 1;
 			break;
@@ -109,7 +120,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			fprintf(stderr, _("Please use '-h' for help.\n"));
 			exit(EXIT_FAILURE);
 		default:
-			fprintf(stderr, _("Invalid option %c\n"), opt);
+			fprintf(stderr, _("Invalid option '%c'\n"), opt);
 			exit(EXIT_FAILURE);
 			break;
 		}
@@ -234,8 +245,7 @@ static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 		lseek(rindex_fd, 0, SEEK_END);
 		count = write(rindex_fd, buf, sizeof(struct gfs2_rindex));
 		if (count != sizeof(struct gfs2_rindex)) {
-			log_crit(_("Error writing first new rindex entry;"
-				 "aborted.\n"));
+			log_crit(_("Error writing first new rindex entry; aborted.\n"));
 			if (count > 0)
 				goto trunc;
 			else
@@ -244,8 +254,7 @@ static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 		count = write(rindex_fd, buf + sizeof(struct gfs2_rindex),
 			      writelen - sizeof(struct gfs2_rindex));
 		if (count != writelen - sizeof(struct gfs2_rindex)) {
-			log_crit(_("Error writing new rindex entries;"
-				 "aborted.\n"));
+			log_crit(_("Error writing new rindex entries; aborted.\n"));
 			if (count > 0)
 				goto trunc;
 			else
@@ -260,7 +269,7 @@ out:
 	return;
 trunc:
 	count = (count / sizeof(struct gfs2_rindex)) + old_rg_count;
-	log_crit(_("truncating rindex to %ld\n"),
+	log_crit(_("truncating rindex to %ld entries\n"),
 		 (off_t)count * sizeof(struct gfs2_rindex));
 	ftruncate(rindex_fd, (off_t)count * sizeof(struct gfs2_rindex));
 	free(buf);
@@ -272,15 +281,15 @@ trunc:
  */
 static void print_info(struct gfs2_sbd *sdp)
 {
-	log_notice("FS: Mount Point: %s\n", sdp->path_name);
-	log_notice("FS: Device:      %s\n", sdp->device_name);
-	log_notice("FS: Size:        %llu (0x%llx)\n",
+	log_notice("FS: %-22s%s\n", _("Mount point:"), sdp->path_name);
+	log_notice("FS: %-22s%s\n", _("Device:"), sdp->device_name);
+	log_notice("FS: %-22s%llu (0x%llx)\n", _("Size:"),
 		   (unsigned long long)fssize, (unsigned long long)fssize);
-	log_notice("FS: RG size:     %u (0x%x)\n", rgsize, rgsize);
-	log_notice("DEV: Size:       %llu (0x%llx)\n",
+	log_notice("FS: %-22s%u (0x%x)\n", _("Resource group size:"), rgsize, rgsize);
+	log_notice("DEV: %-22s%llu (0x%llx)\n", _("Length:"),
 		   (unsigned long long)sdp->device.length,
 		   (unsigned long long)sdp->device.length);
-	log_notice("The file system grew by %lluMB.\n",
+	log_notice(_("The file system grew by %lluMB.\n"),
 		   (unsigned long long)fsgrowth / MB);
 }
 
@@ -359,13 +368,13 @@ main_grow(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 		if (read_sb(sdp) < 0)
-			die( _("gfs: Error reading superblock.\n"));
+			die( _("Error reading superblock.\n"));
 		if (sdp->gfs1) {
 			die( _("cannot grow gfs1 filesystem\n"));
 		}
 		fix_device_geometry(sdp);
 		if (mount_gfs2_meta(sdp)) {
-			perror("GFS2 metafs");
+			perror(_("GFS2 metafs mount failed"));
 			exit(EXIT_FAILURE);
 		}
 
@@ -373,12 +382,12 @@ main_grow(int argc, char *argv[])
 		rindex_fd = open(rindex_name, (test ? O_RDONLY : O_RDWR) | O_CLOEXEC);
 		if (rindex_fd < 0) {
 			cleanup_metafs(sdp);
-			die( _("GFS2 rindex not found.  Please run gfs2_fsck.\n"));
+			die( _("GFS2 rindex not found.  Please run fsck.gfs2.\n"));
 		}
 		/* Get master dinode */
 		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_sb.sb_master_dir.no_addr);
 		if (sdp->master_dir == NULL) {
-			perror("Could not read master");
+			perror(_("Could not read master directory"));
 			exit(EXIT_FAILURE);
 		}
 		gfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
