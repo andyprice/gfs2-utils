@@ -117,6 +117,12 @@ AS_IF([test "x$enable_gfs_controld" = "xyes"], [
 	PKG_CHECK_MODULES([quorum],[libquorum])
 ])
 
+# We use the Check framework for unit tests
+PKG_CHECK_MODULES([check], [check >= 0.9.8],
+                  [have_check=yes],
+                  [have_check=no])
+AM_CONDITIONAL([BUILD_TESTS], [test "x$have_check" = "xyes"])
+
 PKG_CHECK_MODULES([zlib],[zlib])
 
 # old versions of ncurses don't ship pkg-config files
@@ -263,6 +269,7 @@ AC_CONFIG_FILES([Makefile
 		 gfs2/man/Makefile
 		 gfs2/lockcapture/Makefile
 		 doc/Makefile
+		 tests/Makefile
 		 po/Makefile.in
 		 ])
 

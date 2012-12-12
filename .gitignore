@@ -40,6 +40,7 @@ gfs2/libgfs2/lexer.h
 gfs2/fsck/fsck.gfs2
 gfs2/mkfs/mkfs.gfs2
 gfs2/tune/tunegfs2
+tests/check_libgfs2
 group/gfs_control/gfs_control
 group/gfs_controld/gfs_controld
 ABOUT-NLS

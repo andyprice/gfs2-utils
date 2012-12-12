@@ -7,35 +7,36 @@ To build this source tree, you will need:
 
 Plus the following libraries:
 
- - ncurses (for gfs2_edit)
- - clusterlib (for gfs_controld)
-   - libccs
-   - libcman
-   - libdlmcontrol
-   - liblogthread
-   - libfenced
- - pthread (for gfs_controld)
- - corosynclib (for gfs_controld)
-  - libquorum
-  - libcpg
-  - libcfg
- - openaislib
+    ncurses (for gfs2_edit)
+    gettext
+    bison
+    flex
+    zlib
+    check (optional, enables the test suite)
 
 By default gfs_controld is not built as it is not required in Fedora 17 and
 later and cannot build on it. To re-enable it for older systems, use
 --enable-gfs_controld when running the configure script (see below). The
 library dependencies for gfs_controld are only required when this option is
-given.
+given. The extra libraries upon which gfs_controld depends are:
 
-Run the following commands:
+   clusterlib
+   corosynclib
+   openaislib
 
-./autogen.sh
-./configure
-make
+To build gfs2-utils, run the following commands:
 
-and optionally:
+    ./autogen.sh
+    ./configure
+    make
 
-make install
+To run the test suite:
+
+    make check
+
+To install gfs2-utils, run:
+
+    make install
 
 There is also an alternative (experimental, but eventually will take over
 from the current build system) build system which requires only GNU make.

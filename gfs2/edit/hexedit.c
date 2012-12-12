@@ -3105,9 +3105,6 @@ int main(int argc, char *argv[])
 {
 	int i, j, fd;
 
-	if (lgfs2_selfcheck())
-		return EXIT_FAILURE;
-
 	indirect = malloc(sizeof(struct iinfo));
 	if (!indirect)
 		die("Out of memory.");
