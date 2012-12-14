@@ -1,0 +1,53 @@
+.TH gfs2_lockcapture 8
+
+.SH NAME
+gfs2_lockcapture \- will capture locking information from GFS2 file systems and DLM.
+
+.SH SYNOPSIS
+.B gfs2_lockcapture \fR[-dqyt]  [-o \fIoutput directory]\fR [-r \fInumber of runs]\fR [-s \fIseconds to sleep]\fR [-n \fIname of GFS2 filesystem]\fP
+.PP 
+.B gfs2_lockcapture \fR[-dqyi]
+
+.SH DESCRIPTION
+\fIgfs2_lockcapture\fR is used to capture all the GFS2 lockdump data and
+corresponding DLM data. The command can be configured to capture the data
+multiple times and how much time to sleep between each iteration of capturing
+the data. By default all of the mounted GFS2 filesystems will have their data
+collected unless GFS2 filesystems are specified.
+.PP
+Please note that sysrq -t and -m events are trigger or the pid directories in /proc are 
+collected on each iteration of capturing the data.
+
+.SH OPTIONS
+.TP
+\fB-h,  --help\fP
+Prints out a short usage message and exits.
+.TP
+\fB-d,  --debug\fP
+enables debug logging.
+.TP
+\fB-q,  --quiet\fP
+disables logging to console.
+.TP
+\fB-y,  --no_ask\fP
+disables all questions and assumes yes.
+.TP
+\fB-i,  --info\fP
+prints information about the mounted GFS2 file systems.
+.TP
+\fB-t,  --archive\fP
+the output directory will be archived(tar) and compressed(.bz2).
+.TP
+\fB-o \fI<output directory>, \fB--path_to_output_dir\fR=\fI<output directory>\fP
+the directory where all the collect data will stored.
+.TP
+\fB-r \fI<number of runs>,  \fB--num_of_runs\fR=\fI<number of runs>\fP
+number of runs capturing the lockdump data.
+.TP
+\fB-s \fI<seconds to sleep>,  \fB--seconds_sleep\fR=\fI<seconds to sleep>\fP
+number of seconds to sleep between runs of capturing the lockdump data.
+.TP
+\fB-n \fI<name of GFS2 filesystem>,  \fB--fs_name\fR=\fI<name of GFS2 filesystem>\fP
+name of the GFS2 filesystem(s) that will have their lockdump data captured.
+.
+.SH SEE ALSO
