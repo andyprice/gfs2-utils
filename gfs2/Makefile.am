@@ -1,4 +1,4 @@
 MAINTAINERCLEANFILES	= Makefile.in
 
 SUBDIRS			= libgfs2 convert edit fsck mkfs man \
-			  tune include lockcapture #init.d
+			  tune include scripts #init.d
