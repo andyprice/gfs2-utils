@@ -831,7 +831,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	exit(0);
 }
 
-static int restore_data(int fd, gzFile *gzin_fd, int printblocksonly,
+static int restore_data(int fd, gzFile gzin_fd, int printblocksonly,
 			int find_highblk)
 {
 	size_t rs;

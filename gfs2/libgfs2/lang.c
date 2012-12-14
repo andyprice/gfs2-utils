@@ -7,8 +7,8 @@
 #include <limits.h>
 #include <ctype.h>
 
-#include "parser.h"
 #include "lang.h"
+#include "parser.h"
 
 const char* ast_type_string[] = {
 	[AST_NONE] = "NONE",
