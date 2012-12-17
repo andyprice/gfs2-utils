@@ -1074,10 +1074,10 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 							~(0x03 << (GFS2_BIT_SIZE * byte_bit));
 						rgd->bh[blk]->b_data[buf_offset + bitmap_byte] |=
 							(0x01 << (GFS2_BIT_SIZE * byte_bit));
+						bmodified(rgd->bh[blk]);
 						break;
 					}
 					bitmap_byte -= (sbp->bsize - buf_offset);
-					bmodified(rgd->bh[blk]);
 				}
 			}
 			brelse(bh);
