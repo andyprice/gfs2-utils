@@ -198,8 +198,10 @@ static void convert_bitmaps(struct gfs2_sbd *sdp, struct rgrp_tree *rg)
 			for (y = 0; y < GFS2_NBBY; y++) {
 				state = (rg->bh[blk]->b_data[x] >>
 					 (GFS2_BIT_SIZE * y)) & 0x03;
-				if (state == 0x02) /* unallocated metadata state invalid */
+				if (state == 0x02) {/* unallocated metadata state invalid */
 					rg->bh[blk]->b_data[x] &= ~(0x02 << (GFS2_BIT_SIZE * y));
+					bmodified(rg->bh[blk]);
+				}
 			}
 	}
 }/* convert_bitmaps */
