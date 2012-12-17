@@ -356,7 +356,8 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 			gfs2_meta_header_out(&mh, bh);
 		}
 
-		hdrsize = sizeof(struct gfs2_meta_header);
+		hdrsize = blk->height ? sizeof(struct gfs2_meta_header) :
+			sizeof(struct gfs2_dinode);
 
 		if (amount > sbp->bsize - hdrsize - ptramt)
 			amount = sbp->bsize - hdrsize - ptramt;
