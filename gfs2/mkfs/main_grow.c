@@ -322,6 +322,7 @@ main_grow(int argc, char *argv[])
 	struct gfs2_sbd sbd, *sdp = &sbd;
 	int rgcount, rindex_fd;
 	char rindex_name[PATH_MAX];
+	int error = EXIT_SUCCESS;
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	sdp->bsize = GFS2_DEFAULT_BSIZE;
@@ -400,6 +401,7 @@ main_grow(int argc, char *argv[])
 		fssize = filesystem_size(sdp);
 		if (!sdp->rgtree.osi_node) {
 			log_err(_("Error: No resource groups found.\n"));
+			error = -EXIT_FAILURE;
 			goto out;
 		}
 		last_rgrp = (struct rgrp_tree *)osi_last(&sdp->rgtree);
@@ -413,8 +415,9 @@ main_grow(int argc, char *argv[])
 				(unsigned long long)fsgrowth / MB);
 			log_err( _("One resource group is %uMB for this file system.\n"),
 				(rgsize * sdp->bsize) / MB);
-		}
-		else {
+			error = -EXIT_FAILURE;
+			goto out;
+		} else {
 			int old_rg_count;
 
 			compute_rgrp_layout(sdp, &sdp->rgtree, TRUE);
@@ -433,4 +436,5 @@ main_grow(int argc, char *argv[])
 	close(sdp->path_fd);
 	sync();
 	log_notice( _("gfs2_grow complete.\n"));
+	exit(error);
 }
