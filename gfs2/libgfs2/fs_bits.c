@@ -149,6 +149,8 @@ int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state)
 			break;
 	}
 
+	if (bits == NULL)
+		return -1;
 	byte = (unsigned char *)(rgd->bh[buf]->b_data + bits->bi_offset) +
 		(rgrp_block/GFS2_NBBY - bits->bi_start);
 	bit = (rgrp_block % GFS2_NBBY) * GFS2_BIT_SIZE;
