@@ -272,6 +272,12 @@ static unsigned int calc_gfs2_tree_height(struct gfs2_inode *ip, uint64_t size)
 	for (height = 0; height < max; height++)
 		if (arr[height] >= size)
 			break;
+	/* If calc_gfs2_tree_height was called, the dinode is not stuffed or
+	   we would have returned before this point. After the call, a call is
+	   made to fix_metatree, which unstuffs the dinode. Therefore, the
+	   smallest height that can result after this call is 1. */
+	if (!height)
+		height = 1;
 
 	return height;
 }
