@@ -2084,6 +2084,7 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 
 	nq_ip->i_di.di_height = oq_ip->i_di.di_height;
 	nq_ip->i_di.di_size = oq_ip->i_di.di_size;
+	nq_ip->i_di.di_blocks = oq_ip->i_di.di_blocks;
 	memcpy(nq_ip->i_bh->b_data + sizeof(struct gfs2_dinode), 
 	       oq_ip->i_bh->b_data + sizeof(struct gfs2_dinode),
 	       sdp->bsize - sizeof(struct gfs2_dinode));
