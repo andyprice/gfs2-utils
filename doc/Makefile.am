@@ -6,4 +6,5 @@ dist_doc_DATA		= gfs2.txt \
 			  COPYING.applications \
 			  COPYING.libraries \
 			  COPYRIGHT \
+			  README.contributing \
 			  README.licence
