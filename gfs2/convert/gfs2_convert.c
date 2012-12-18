@@ -916,6 +916,7 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 	inode->i_di.di_num.no_formal_ino = sbp->md.next_inum;           ;
 	
 	/* Fix the inode type: gfs1 uses di_type, gfs2 uses di_mode. */
+	inode->i_di.di_mode &= ~S_IFMT;
 	switch (inode->i_di.__pad1) { /* formerly di_type */
 	case GFS_FILE_DIR:           /* directory        */
 		inode->i_di.di_mode |= S_IFDIR;
