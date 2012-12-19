@@ -830,7 +830,6 @@ static int has_cdpn(const char *str)
 
 static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, struct gfs2_inode *ip)
 {
-	int ret = 0;
 	char *linkptr = NULL;
 
 	if (ip->i_di.di_height != 0)
@@ -851,7 +850,7 @@ static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, s
 				  (osi_list_t *)&cdpns_to_fix);
 	}
 
-	return ret;
+	return 0;
 }
 
 /*
@@ -866,7 +865,7 @@ static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, s
  */
 static int fix_xattr(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, struct gfs2_inode *ip)
 {
-	int ret = 0, len, old_hdr_sz, new_hdr_sz;
+	int len, old_hdr_sz, new_hdr_sz;
 	struct gfs2_buffer_head *eabh;
 	char *buf;
 
@@ -890,7 +889,7 @@ static int fix_xattr(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, struct g
 	}
         brelse(eabh);
 
-	return ret;
+	return 0;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -913,8 +912,8 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 	inode_was_gfs1 = (inode->i_di.di_num.no_formal_ino ==
 					  inode->i_di.di_num.no_addr);
 	/* Fix the inode number: */
-	inode->i_di.di_num.no_formal_ino = sbp->md.next_inum;           ;
-	
+	inode->i_di.di_num.no_formal_ino = sbp->md.next_inum;
+
 	/* Fix the inode type: gfs1 uses di_type, gfs2 uses di_mode. */
 	inode->i_di.di_mode &= ~S_IFMT;
 	switch (inode->i_di.__pad1) { /* formerly di_type */
@@ -981,7 +980,7 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 		if (adjust_indirect_blocks(sbp, inode))
 			return -1;
 		/* Check for cdpns */
-		if (inode->i_di.di_mode & S_IFLNK) {
+		if (S_ISLNK(inode->i_di.di_mode)) {
 			ret = fix_cdpn_symlink(sbp, bh, inode);
 			if (ret)
 				return -1;
