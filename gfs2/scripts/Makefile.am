@@ -9,4 +9,4 @@ sbindir := $(shell rpl=0; test '$(exec_prefix):$(sbindir)' = /usr:/usr/sbin \
                                      test $$rpl = 1 && echo /sbin || echo '$(exec_prefix)/sbin')
 
 
-dist_sbin_SCRIPTS           = gfs2_lockcapture
+dist_sbin_SCRIPTS           = gfs2_lockcapture gfs2_trace
