@@ -1311,6 +1311,23 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 				(unsigned long long)block,
 				(unsigned long long)block);
 	}
+	if (sdp->gfs1 && ip->i_di.di_num.no_formal_ino != block) {
+		log_err( _("Inode #%llu (0x%llx): GFS1 formal inode number "
+			   "mismatch: was %llu (0x%llx)\n"),
+			 (unsigned long long)block, (unsigned long long)block,
+			 (unsigned long long)ip->i_di.di_num.no_formal_ino,
+			 (unsigned long long)ip->i_di.di_num.no_formal_ino);
+		if (query( _("Fix formal inode number in inode #%llu"
+			    " (0x%llx)? (y/n) "), (unsigned long long)block,
+			   (unsigned long long)block)) {
+			ip->i_di.di_num.no_formal_ino = block;
+			bmodified(ip->i_bh);
+		} else
+			log_err( _("Inode number in inode at block #%lld "
+				   "(0x%llx) not fixed\n"),
+				 (unsigned long long)block,
+				 (unsigned long long)block);
+	}
 	error = handle_ip(sdp, ip);
 	fsck_inode_put(&ip);
 	return error;
