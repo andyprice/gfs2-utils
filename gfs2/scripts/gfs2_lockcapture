@@ -33,7 +33,7 @@ import tarfile
 sure only 1 instance of this script is running at any time.
 @type PATH_TO_PID_FILENAME: String
 """
-VERSION_NUMBER = "0.9-2"
+VERSION_NUMBER = "0.9-3"
 MAIN_LOGGER_NAME = "%s" %(os.path.basename(sys.argv[0]))
 PATH_TO_DEBUG_DIR="/sys/kernel/debug"
 PATH_TO_PID_FILENAME = "/var/run/%s.pid" %(os.path.basename(sys.argv[0]))
@@ -570,11 +570,10 @@ def getClusterNode(listOfGFS2Names):
             stdout = runCommandOutput("corosync-quorumtool", ["-l"])
             if (not stdout == None):
                 for line in stdout.split("\n"):
-                    splitLine = line.split()
-                    if (len(splitLine) == 4):
-                        if (splitLine[0].strip().rstrip() == thisNodeID):
-                            clusternodeName = splitLine[3]
-                            break;
+                    if (line.find("local") >=0):
+                        splitLine = line.split(" (local)")
+                        clusternodeName = splitLine[0].split()[2]
+                        break;
     # If a clusternode name and cluster name was found then return a new object
     # since this means this cluster is part of cluster.
     if ((len(clusterName) > 0) and (len(clusternodeName) > 0)):
@@ -815,6 +814,10 @@ def gatherGFS2LockDumps(pathToDSTDir, listOfGFS2Filesystems):
     and filesystem name for each item in the list. For example:
     "f18cluster:mygfs2vol1"
 
+    @return: Returns True if files(not directories) were copied to the
+    destination directory.
+    @rtype: Boolean
+
     @param pathToDSTDir: This is the path to directory where the files will be
     copied to.
     @type pathToDSTDir: String
@@ -825,13 +828,19 @@ def gatherGFS2LockDumps(pathToDSTDir, listOfGFS2Filesystems):
     lockDumpType = "gfs2"
     pathToSrcDir = os.path.join(PATH_TO_DEBUG_DIR, lockDumpType)
     pathToOutputDir = os.path.join(pathToDSTDir, lockDumpType)
+    # The number of files that were copied
+    fileCopiedCount = 0
     for dirName in os.listdir(pathToSrcDir):
         pathToCurrentDir = os.path.join(pathToSrcDir, dirName)
         if ((os.path.isdir(pathToCurrentDir)) and (dirName in listOfGFS2Filesystems)):
             message = "Copying the lockdump data for the %s filesystem: %s" %(lockDumpType.upper(), dirName)
             logging.getLogger(MAIN_LOGGER_NAME).debug(message)
-            copyDirectory(pathToCurrentDir, pathToOutputDir)
-
+            copySuccessful = copyDirectory(pathToCurrentDir, pathToOutputDir)
+            if (copySuccessful and os.path.exists(os.path.join(pathToOutputDir, dirName))):
+                fileCopiedCount = len(os.listdir(os.path.join(pathToOutputDir, dirName)))
+    # If the number of files(not directories) copied was greater than zero then files were copied
+    # succesfully.
+    return (fileCopiedCount > 0)
 # ##############################################################################
 # Get user selected options
 # ##############################################################################
@@ -936,18 +945,18 @@ class OptionParserExtended(OptionParser):
         self.print_version()
         examplesMessage = "\n"
         examplesMessage = "\nPrints information about the available GFS2 filesystems that can have lockdump data captured."
-        examplesMessage += "\n$ %s -i\n" %(self.__commandName)
+        examplesMessage += "\n# %s -i\n" %(self.__commandName)
 
         examplesMessage += "\nIt will do 3 runs of gathering the lockdump information in 10 second intervals for only the"
         examplesMessage += "\nGFS2 filesystems with the names myGFS2vol2,myGFS2vol1. Then it will archive and compress"
         examplesMessage += "\nthe data collected. All of the lockdump data will be written to the directory: "
         examplesMessage += "\n/tmp/2012-11-12_095556-gfs2_lockcapture and all the questions will be answered with yes.\n"
-        examplesMessage += "\n$ %s -r 3 -s 10 -t -n myGFS2vol2,myGFS2vol1 -o /tmp/2012-11-12_095556-gfs2_lockcapture -y\n" %(self.__commandName)
+        examplesMessage += "\n# %s -r 3 -s 10 -t -n myGFS2vol2,myGFS2vol1 -o /tmp/2012-11-12_095556-gfs2_lockcapture -y\n" %(self.__commandName)
 
         examplesMessage += "\nIt will do 2 runs of gathering the lockdump information in 25 second intervals for all the"
         examplesMessage += "\nmounted GFS2 filesystems. Then it will archive and compress the data collected. All of the"
         examplesMessage += "\nlockdump data will be written to the directory: /tmp/2012-11-12_095556-gfs2_lockcapture.\n"
-        examplesMessage += "\n$ %s -r 2 -s 25 -t -o /tmp/2012-11-12_095556-gfs2_lockcapture\n" %(self.__commandName)
+        examplesMessage += "\n# %s -r 2 -s 25 -t -o /tmp/2012-11-12_095556-gfs2_lockcapture\n" %(self.__commandName)
         OptionParser.print_help(self)
         print examplesMessage
 
@@ -1001,7 +1010,8 @@ class ExtendOption (Option):
 # ###############################################################################
 if __name__ == "__main__":
     """
-    When the script is executed then this code is ran.
+    When the script is executed then this code is ran. If there was files(not
+    directories) created then 0 will be returned, else a 1 is returned.
     """
     try:
         # #######################################################################
@@ -1106,7 +1116,7 @@ if __name__ == "__main__":
         # #######################################################################
         pathToOutputDir = cmdLineOpts.pathToOutputDir
         if (not len(pathToOutputDir) > 0):
-            pathToOutputDir = "%s" %(os.path.join("/tmp", "%s-%s-%s" %(time.strftime("%Y-%m-%d_%H%M%S"), clusternode.getClusterNodeName(), os.path.basename(sys.argv[0]))))
+            pathToOutputDir = "%s" %(os.path.join("/tmp", "%s-%s" %(time.strftime("%Y-%m-%d_%H%M%S"), os.path.basename(sys.argv[0]))))
         # #######################################################################
         # Backup any existing directory with same name as current output
         # directory.
@@ -1139,8 +1149,12 @@ if __name__ == "__main__":
         # Gather data and the lockdumps.
         # #######################################################################
         if (cmdLineOpts.numberOfRuns <= 0):
-            message = "The number of runs should be greater than zero."
+            message = "The number of runs must be greater than zero."
+            logging.getLogger(MAIN_LOGGER_NAME).warning(message)
             exitScript(errorCode=1)
+        # If GFS2 lockdump files were successfully copied to output directory
+        # then the exit code will be set to 0, else the exit code will be 1.
+        exitCode = 1
         for i in range(1,(cmdLineOpts.numberOfRuns + 1)):
             # The current log count that will start at 1 and not zero to make it
             # make sense in logs.
@@ -1189,14 +1203,15 @@ if __name__ == "__main__":
             lockDumpType = "gfs2"
             message = "Pass (%d/%d): Gathering the %s lock dumps for the host." %(i, cmdLineOpts.numberOfRuns, lockDumpType.upper())
             logging.getLogger(MAIN_LOGGER_NAME).debug(message)
-            gatherGFS2LockDumps(pathToOutputRunDir, clusternode.getMountedGFS2FilesystemNames())
+            if(gatherGFS2LockDumps(pathToOutputRunDir, clusternode.getMountedGFS2FilesystemNames())):
+                exitCode = 0
             # Gather log files
             message = "Pass (%d/%d): Gathering the log files for the host." %(i, cmdLineOpts.numberOfRuns)
             logging.getLogger(MAIN_LOGGER_NAME).debug(message)
             gatherLogs(os.path.join(pathToOutputRunDir, "logs"))
             # Sleep between each run if secondsToSleep is greater than or equal
             # to 0 and current run is not the last run.
-            if ((cmdLineOpts.secondsToSleep >= 0) and (i <= (cmdLineOpts.numberOfRuns))):
+            if ((cmdLineOpts.secondsToSleep >= 0) and (i < (cmdLineOpts.numberOfRuns))):
                 message = "The script will sleep for %d seconds between each run of capturing the lockdump data." %(cmdLineOpts.secondsToSleep)
                 logging.getLogger(MAIN_LOGGER_NAME).info(message)
                 time.sleep(cmdLineOpts.secondsToSleep)
@@ -1228,4 +1243,4 @@ if __name__ == "__main__":
     # #######################################################################
     # Exit the application with zero exit code since we cleanly exited.
     # #######################################################################
-    exitScript()
+    exitScript(errorCode=exitCode)
