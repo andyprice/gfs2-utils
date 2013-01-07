@@ -52,6 +52,9 @@ print_usage(const char *prog_name)
 	int i;
 	const char *option, *param, *desc;
 	const char *options[] = {
+	    /* Translators: This is a usage string printed with --help.
+	       <size> and <number> here are  to commandline parameters,
+	       e.g. mkfs.gfs2 -b <size> -j <number> /dev/sda */
 	    "-b", _("<size>"),   _("File system block size, in bytes"),
 	    "-c", _("<size>"),   _("Size of quota change file, in megabytes"),
 	    "-D", NULL,          _("Enable debugging code"),
@@ -93,7 +96,9 @@ static int discard_blocks(struct gfs2_sbd *sdp)
 	range[0] = 0;
 	range[1] = sdp->device.length * sdp->bsize;
 	if (sdp->debug)
-		printf(_("Issuing discard ioctl: range: %llu - %llu..."),
+		/* Translators: "discard" is a request sent to a storage device to
+		 * discard a range of blocks. */
+		printf(_("Issuing discard request: range: %llu - %llu..."),
 		       (unsigned long long)range[0],
 		       (unsigned long long)range[1]);
 	if (ioctl(sdp->device_fd, BLKDISCARD, &range) < 0) {
@@ -162,7 +167,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 
 		case 'p':
 			if (strlen(optarg) >= GFS2_LOCKNAME_LEN)
-				die( _("lock protocol name %s is too long\n"),
+				die( _("lock protocol name '%s' is too long\n"),
 				    optarg);
 			strcpy(sdp->lockproto, optarg);
 			break;
@@ -177,7 +182,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 
 		case 't':
 			if (strlen(optarg) >= GFS2_LOCKNAME_LEN)
-				die( _("lock table name %s is too long\n"), optarg);
+				die( _("lock table name '%s' is too long\n"), optarg);
 			strcpy(sdp->locktable, optarg);
 			break;
 
@@ -264,6 +269,8 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 static void test_locking(char *lockproto, char *locktable)
 {
 	char *c;
+	/* Translators: A lock table is a string identifying a gfs2 file system
+	 * in a cluster, e.g. cluster_name:fs_name */
 	const char *errprefix = _("Invalid lock table:");
 
 	if (strcmp(lockproto, "lock_nolock") == 0) {
@@ -314,6 +321,11 @@ static void are_you_sure(void)
 	int res = 0;
 
 	do{
+		/* Translators: We use rpmatch(3) to match the answers to y/n
+		   questions in the user's own language, so the [y/n] here must also be
+		   translated to match one of the letters in the pattern printed by
+		   `locale -k yesexpr` and one of the letters in the pattern printed by
+		   `locale -k noexpr` */
 		printf( _("Are you sure you want to proceed? [y/n]"));
 		ret = getline(&line, &len, stdin);
 		res = rpmatch(line);
@@ -324,7 +336,7 @@ static void are_you_sure(void)
 		}
 		if (!res){
 			printf("\n");
-			die( _("aborted\n"));
+			die( _("Aborted.\n"));
 		}
 		
 	}while(ret >= 0);
@@ -344,8 +356,8 @@ static void verify_bsize(struct gfs2_sbd *sdp)
 			break;
 
 	if (!x || sdp->bsize > getpagesize())
-		die( _("block size must be a power of two between 512 and "
-		       "%d\n"), getpagesize());
+		die( _("Block size must be a power of two between 512 and %d\n"),
+		       getpagesize());
 
 	if (sdp->bsize < sdp->dinfo.logical_block_size) {
 		die( _("Error: Block size %d is less than minimum logical "
@@ -370,6 +382,8 @@ static void verify_arguments(struct gfs2_sbd *sdp)
 		test_locking(sdp->lockproto, sdp->locktable);
 	if (sdp->expert) {
 		if (GFS2_EXP_MIN_RGSIZE > sdp->rgsize || sdp->rgsize > GFS2_MAX_RGSIZE)
+			/* Translators: gfs2 file systems are split into equal sized chunks called
+			   resource groups. We're checking that the user gave a valid size for them. */
 			die( _("bad resource group size\n"));
 	} else {
 		if (GFS2_MIN_RGSIZE > sdp->rgsize || sdp->rgsize > GFS2_MAX_RGSIZE)
@@ -508,6 +522,7 @@ print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
 
 	printf("%-27s%u\n", _("Block size:"), sdp->bsize);
 	printf("%-27s%.2f %s (%llu %s)\n", _("Device size:"),
+	       /* Translators: "GB" here means "gigabytes" */
 	       real_device_size / ((float)(1 << 30)), _("GB"),
 	       (unsigned long long)real_device_size / sdp->bsize, _("blocks"));
 	printf("%-27s%.2f %s (%llu %s)\n", _("Filesystem size:"),
@@ -521,7 +536,7 @@ print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
 	if (sdp->debug) {
 		printf("\n%-27s%u\n", _("Writes:"), sdp->writes);
 	}
-
+	/* Translators: "UUID" = universally unique identifier. */
 	printf("%-27s%s\n\n", _("UUID:"), str_uuid(uuid));
 }
 
@@ -547,7 +562,8 @@ static int is_symlink(char *path, char **abspath)
 		perror(_("Could not find the absolute path of the device"));
 		exit(EXIT_FAILURE);
 	}
-	printf( _("%s is a symlink to %s\n"), path, *abspath);
+	/* Translators: Example: "/dev/vg/lv is a symbolic link to /dev/dm-2" */
+	printf( _("%s is a symbolic link to %s\n"), path, *abspath);
 	return 1;
 }
 
@@ -631,7 +647,7 @@ void main_mkfs(int argc, char *argv[])
 	verify_bsize(sdp);
 
 	if (compute_constants(sdp)) {
-		perror(_("Bad constants (1)"));
+		perror(_("Failed to compute file system constants"));
 		exit(EXIT_FAILURE);
 	}
 
@@ -668,34 +684,40 @@ void main_mkfs(int argc, char *argv[])
 	build_sb(sdp, uuid);
 	error = build_jindex(sdp);
 	if (error) {
-		perror(_("Error building jindex"));
+		/* Translators: "jindex" is the name of a special file */
+		perror(_("Error building 'jindex'"));
 		exit(EXIT_FAILURE);
 	}
 	error = build_per_node(sdp);
 	if (error) {
+		/* Translators: "per-node" is the name of a special directory */
 		perror(_("Error building per-node directory"));
 		exit(EXIT_FAILURE);
 	}
 	error = build_inum(sdp);
 	if (error) {
-		perror(_("Error building inum inode"));
+		/* Translators: "inum" here is the name of a special file */
+		perror(_("Error building 'inum'"));
 		exit(EXIT_FAILURE);
 	}
 	gfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);
 	error = build_statfs(sdp);
 	if (error) {
-		perror(_("Error building statfs inode"));
+		/* Translators: "statfs" is the name of a special file */
+		perror(_("Error building 'statfs'"));
 		exit(EXIT_FAILURE);
 	}
 	gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
 	error = build_rindex(sdp);
 	if (error) {
-		perror(_("Error building rindex inode"));
+		/* Translators: "rindex" is the name of a special file */
+		perror(_("Error building 'rindex'"));
 		exit(EXIT_FAILURE);
 	}
 	error = build_quota(sdp);
 	if (error) {
-		perror(_("Error building quota inode"));
+		/* Translators: "quota" is the name of a special file */
+		perror(_("Error building 'quota'"));
 		exit(EXIT_FAILURE);
 	}
 

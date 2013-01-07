@@ -66,7 +66,7 @@ static void usage(void)
 	const char *options[] = {
 		"-h", NULL, _("Display this usage information"),
 		"-q", NULL, _("Quiet, reduce verbosity"),
-		"-T", NULL, _("Do everything except update FS"),
+		"-T", NULL, _("Do everything except update file system"),
 		"-V", NULL, _("Display version information"),
 		"-v", NULL, _("Increase verbosity"),
 		NULL, NULL, NULL /* Must be kept at the end */
@@ -235,7 +235,7 @@ static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
 		}
 		if (statbuf.st_size !=
 		    old_rg_count * sizeof(struct gfs2_rindex)) {
-			log_crit(_("Incorrect rindex size. want %ld(%d RGs), "
+			log_crit(_("Incorrect rindex size. want %ld(%d resource groups), "
 				 "have %ld\n"),
 				 old_rg_count * sizeof(struct gfs2_rindex),
 				 old_rg_count, statbuf.st_size);
@@ -374,7 +374,7 @@ main_grow(int argc, char *argv[])
 		}
 		fix_device_geometry(sdp);
 		if (mount_gfs2_meta(sdp)) {
-			perror(_("GFS2 metafs mount failed"));
+			perror(_("Failed to mount GFS2 meta file system"));
 			exit(EXIT_FAILURE);
 		}
 
@@ -408,10 +408,10 @@ main_grow(int argc, char *argv[])
 		fsgrowth = ((sdp->device.length - fssize) * sdp->bsize);
 		if (fsgrowth < rgsize * sdp->bsize) {
 			log_err( _("Error: The device has grown by less than "
-				"one Resource Group (RG).\n"));
+				"one resource group.\n"));
 			log_err( _("The device grew by %lluMB. "),
 				(unsigned long long)fsgrowth / MB);
-			log_err( _("One RG is %uMB for this file system.\n"),
+			log_err( _("One resource group is %uMB for this file system.\n"),
 				(rgsize * sdp->bsize) / MB);
 		}
 		else {

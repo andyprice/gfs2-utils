@@ -79,6 +79,9 @@ static void print_usage(const char *prog_name)
 	int i;
 	const char *option, *param, *desc;
 	const char *options[] = {
+		/* Translators: This is a usage string printed with --help.
+		   <size> and <number> here are  to commandline parameters,
+		   e.g. gfs2_jadd -j <number> /dev/sda */
 		"-c", "<size>",   _("Size of quota change file, in megabytes"),
 		"-D", NULL,       _("Enable debugging code"),
 		"-h", NULL,       _("Display this help, then exit"),
