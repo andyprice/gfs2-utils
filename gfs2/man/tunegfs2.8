@@ -11,8 +11,7 @@ tunegfs2 - View and manipulate gfs2 superblocks
 .SH DESCRIPTION
 tunegfs2 allows viewing and manipulating the values contained in a
 GFS or GFS2 superblock. It is able to modify the \fIUUID\fR (on GFS2 only),
-\fIlabel\fR, \fIlockproto\fR and \fIlocktable\fR. Run without any options,
-this command will print out information about the content of the superblock.
+\fIlabel\fR, \fIlockproto\fR and \fIlocktable\fR.
 
 The values in the GFS2 superblock are read only on mount. Any
 changes on a live filesystem will not take effect until the next
@@ -24,7 +23,13 @@ recommended for this reason.
 .TP
 \fB-h\fP
 
-Prints out usage infomration for this command.
+Prints out usage information for this command.
+
+.TP
+\fB-l\fP
+
+List contents of the filesystem superblock. Includes the current values of the
+parameters that can be set by this program.
 
 .TP
 \fB-L\fP \fI<label>\fR
