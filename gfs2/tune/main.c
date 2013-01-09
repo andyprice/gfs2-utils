@@ -52,8 +52,9 @@ static void parse_mount_options(char *arg)
 
 static void usage(char *name)
 {
-	printf("Usage: %s [-hlV] [-L <volume_label>] [-U <UUID>]\n\t"
-		"[-o <mount_options>] <device> \n", basename(name));
+	printf("%s %s [-hlV] [-L <%s>] [-U <%s>] [-o <%s>] <%s>\n",
+	       _("Usage:"), basename(name), _("label"), _("UUID"),
+	       _("mount options"), _("device"));
 }
 
 static void version(void)
@@ -102,7 +103,7 @@ int main(int argc, char **argv)
 	}
 
 	if (tfs->opt_label && tfs->opt_table) {
-		fprintf(stderr, _("The -L and -o locktable= options are mutually exclusive\n"));
+		fprintf(stderr, _("The -L argument cannot be used with the 'locktable' option\n"));
 		usage(argv[0]);
 		return EX_USAGE;
 	}

@@ -301,7 +301,7 @@ static void test_locking(char *lockproto, char *locktable)
 		if (!strlen(c))
 			die("%s %s\n", errprefix, _("file system name is missing"));
 		if (strlen(c) > 16)
-			die("%s %s\n", errprefix, _("file system name too long"));
+			die("%s %s\n", errprefix, _("file system name is too long"));
 	} else {
 		die( _("Invalid lock protocol: %s\n"), lockproto);
 	}

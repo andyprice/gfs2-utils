@@ -62,7 +62,7 @@ static int str2uuid(const char *newval, char *uuid)
 	int i;
 
 	if (strlen(newval) != 36) {
-		fprintf(stderr, _("Invalid UUID specified.\n"));
+		fprintf(stderr, _("Invalid UUID: %s\n"), newval);
 		return EX_DATAERR;
 	}
 
@@ -72,14 +72,13 @@ static int str2uuid(const char *newval, char *uuid)
 				(i == 18) || (i == 23)) {
 			if (newval[i] == '-')
 				continue;
-			fprintf(stderr, _("uuid %s has an invalid format."),
-					newval);
+			fprintf(stderr, _("Invalid UUID: %s\n"), newval);
 			return EX_DATAERR;
 		}
 		if (!isxdigit(newval[i])) {
-			fprintf(stderr, _("uuid %s has an invalid hex "
-						"digit '%c' at offset %d.\n"),
-					newval, newval[i], i + 1);
+			fprintf(stderr, _("Invalid UUID: %s\n"), newval);
+			fprintf(stderr, _("Bad digit '%c' at position %d\n"),
+			                newval[i], i + 1);
 			return EX_DATAERR;
 		}
 		*cp = str_to_hexchar(&newval[i++]);
@@ -106,7 +105,7 @@ int read_super(struct tunegfs2 *tfs)
 	}
 	tfs->sb = block;
 	if (be32_to_cpu(tfs->sb->sb_header.mh_magic) != GFS2_MAGIC) {
-		fprintf(stderr, _("Not a GFS/GFS2 device\n"));
+		fprintf(stderr, _("Device does not contain a GFS or GFS2 file system\n"));
 		tfs->sb = NULL;
 		free(block);
 		return EX_IOERR;
@@ -124,16 +123,16 @@ static int is_gfs2(const struct tunegfs2 *tfs)
 
 int print_super(const struct tunegfs2 *tfs)
 {
-	printf(_("Filesystem volume name: %s\n"), tfs->sb->sb_locktable);
+	printf(_("File system volume name: %s\n"), tfs->sb->sb_locktable);
 	if (is_gfs2(tfs))
-		printf(_("Filesystem UUID: %s\n"), uuid2str(tfs->sb->sb_uuid));
-	printf( _("Filesystem magic number: 0x%X\n"), be32_to_cpu(tfs->sb->sb_header.mh_magic));
+		printf(_("File system UUID: %s\n"), uuid2str(tfs->sb->sb_uuid));
+	printf( _("File system magic number: 0x%X\n"), be32_to_cpu(tfs->sb->sb_header.mh_magic));
 	printf(_("Block size: %d\n"), be32_to_cpu(tfs->sb->sb_bsize));
 	printf(_("Block shift: %d\n"), be32_to_cpu(tfs->sb->sb_bsize_shift));
 	printf(_("Root inode: %llu\n"), (unsigned long long)be64_to_cpu(tfs->sb->sb_root_dir.no_addr));
 	if (is_gfs2(tfs))
 		printf(_("Master inode: %llu\n"), (unsigned long long)be64_to_cpu(tfs->sb->sb_master_dir.no_addr));
-	printf(_("Lock Protocol: %s\n"), tfs->sb->sb_lockproto);
+	printf(_("Lock protocol: %s\n"), tfs->sb->sb_lockproto);
 	printf(_("Lock table: %s\n"), tfs->sb->sb_locktable);
 
 	return 0;
@@ -154,11 +153,6 @@ int change_uuid(struct tunegfs2 *tfs, const char *str)
 {
 	char uuid[16];
 	int status = 0;
-	if (be32_to_cpu(tfs->sb->sb_header.mh_magic) != GFS2_MAGIC) {
-		fprintf(stderr, _("UUID can be changed for a GFS2"));
-		fprintf(stderr, _(" device only\n"));
-		return EX_IOERR;
-	}
 	status = str2uuid(str, uuid);
 	if (!status)
 		memcpy(tfs->sb->sb_uuid, uuid, 16);
@@ -170,13 +164,13 @@ int change_lockproto(struct tunegfs2 *tfs, const char *lockproto)
 	int l = strlen(lockproto);
 
 	if (l >= GFS2_LOCKNAME_LEN) {
-		fprintf(stderr, _("Lock protocol name too long\n"));
+		fprintf(stderr, _("Invalid lock protocol: %s\n"), _("too long"));
 		return EX_DATAERR;
 	}
 
 	if (strncmp(lockproto, "lock_dlm", 8) &&
 	    strncmp(lockproto, "lock_nolock", 11)) {
-		fprintf(stderr, _("Incorrect lock protocol specified\n"));
+		fprintf(stderr, _("Invalid lock protocol: %s\n"), lockproto);
 		return EX_DATAERR;
 	}
 	memset(tfs->sb->sb_lockproto, '\0', GFS2_LOCKNAME_LEN);
@@ -186,23 +180,25 @@ int change_lockproto(struct tunegfs2 *tfs, const char *lockproto)
 
 int change_locktable(struct tunegfs2 *tfs, const char *locktable)
 {
+	const char *errpre = _("Invalid lock table:");
+
 	if (strlen(locktable) >= GFS2_LOCKNAME_LEN) {
-		fprintf(stderr, _("Lock table name too long\n"));
+		fprintf(stderr, "%s %s\n", errpre, _("too long"));
 		return EX_DATAERR;
 	}
 
 	if (strcmp(tfs->sb->sb_lockproto, "lock_dlm") == 0) {
 		char *fsname = strchr(locktable, ':');
 		if (fsname == NULL) {
-			fprintf(stderr, _("locktable error: mising colon in the locktable\n"));
+			fprintf(stderr, "%s %s\n", errpre, _("missing colon"));
 			return EX_DATAERR;
 		}
 		if (strlen(++fsname) > 16) {
-			fprintf(stderr, _("locktable error: fsname too long\n"));
+			fprintf(stderr, "%s %s\n", errpre, _("file system name is too long"));
 			return EX_DATAERR;
 		}
 		if (strchr(fsname, ':')) {
-			fprintf(stderr, _("locktable error: more than one colon present\n"));
+			fprintf(stderr, "%s %s\n", errpre, _("contains more than one colon"));
 			return EX_DATAERR;
 		}
 	}
