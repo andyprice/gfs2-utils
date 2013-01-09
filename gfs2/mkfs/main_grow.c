@@ -74,7 +74,7 @@ static void usage(void)
 
 	printf("%s\n", _("Usage:"));
 	printf("    gfs2_grow [%s] <%s>\n\n", _("options"), _("device"));
-	printf(_("Expands a GFS2 file system after the device upon which the file system resides has been expanded"));
+	printf(_("Expands a GFS2 file system after the device containing the file system has been expanded"));
 	printf("\n\n%s\n", _("Options:"));
 
 	for (i = 0; options[i] != NULL; i += 3) {

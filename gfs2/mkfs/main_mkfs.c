@@ -229,7 +229,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 		strcpy(sdp->device_name, argv[optind++]);
 
 	if (sdp->device_name[0] == '\0')
-		die( _("No device specified. Please use '-h' for help\n"));
+		die( _("No device specified. Please use '-h' for help.\n"));
 
 	if (optind < argc)
 		sdp->orig_fssize = atol(argv[optind++]);
@@ -684,40 +684,34 @@ void main_mkfs(int argc, char *argv[])
 	build_sb(sdp, uuid);
 	error = build_jindex(sdp);
 	if (error) {
-		/* Translators: "jindex" is the name of a special file */
-		perror(_("Error building 'jindex'"));
+		fprintf(stderr, _("Error building '%s': %s\n"), "jindex", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	error = build_per_node(sdp);
 	if (error) {
-		/* Translators: "per-node" is the name of a special directory */
-		perror(_("Error building per-node directory"));
+		fprintf(stderr, _("Error building '%s': %s\n"), "per_node", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	error = build_inum(sdp);
 	if (error) {
-		/* Translators: "inum" here is the name of a special file */
-		perror(_("Error building 'inum'"));
+		fprintf(stderr, _("Error building '%s': %s\n"), "inum", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	gfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);
 	error = build_statfs(sdp);
 	if (error) {
-		/* Translators: "statfs" is the name of a special file */
-		perror(_("Error building 'statfs'"));
+		fprintf(stderr, _("Error building '%s': %s\n"), "statfs", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
 	error = build_rindex(sdp);
 	if (error) {
-		/* Translators: "rindex" is the name of a special file */
-		perror(_("Error building 'rindex'"));
+		fprintf(stderr, _("Error building '%s': %s\n"), "rindex", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	error = build_quota(sdp);
 	if (error) {
-		/* Translators: "quota" is the name of a special file */
-		perror(_("Error building 'quota'"));
+		fprintf(stderr, _("Error building '%s': %s\n"), "quota", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 

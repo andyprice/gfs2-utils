@@ -211,9 +211,9 @@ print_results(struct gfs2_sbd *sdp)
 	if (sdp->expert)
 		printf("Expert mode:            on\n");
 
-	printf( _("Filesystem:            %s\n"), sdp->path_name);
-	printf( _("Old Journals           %u\n"), sdp->orig_journals);
-	printf( _("New Journals           %u\n"), sdp->md.journals);
+	printf( _("Filesystem: %s\n"), sdp->path_name);
+	printf( _("Old Journals: %u\n"), sdp->orig_journals);
+	printf( _("New Journals: %u\n"), sdp->md.journals);
 
 }
 
