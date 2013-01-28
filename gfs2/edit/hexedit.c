@@ -2809,7 +2809,7 @@ static void dump_journal(const char *journal)
 /* ------------------------------------------------------------------------ */
 static void usage(void)
 {
-	fprintf(stderr,"\nFormat is: gfs2_edit [-c 1] [-V] [-x] [-h] [identify] [-z <0-9>] [-p structures|blocks][blocktype][blockalloc [val]][blockbits][blockrg][find sb|rg|rb|di|in|lf|jd|lh|ld|ea|ed|lb|13|qc][field <f>[val]] /dev/device\n\n");
+	fprintf(stderr,"\nFormat is: gfs2_edit [-c 1] [-V] [-x] [-h] [identify] [-z <0-9>] [-p structures|blocks][blocktype][blockalloc [val]][blockbits][blockrg][rgcount][rgflags][rgbitmaps][find sb|rg|rb|di|in|lf|jd|lh|ld|ea|ed|lb|13|qc][field <f>[val]] /dev/device\n\n");
 	fprintf(stderr,"If only the device is specified, it enters into hexedit mode.\n");
 	fprintf(stderr,"identify - prints out only the block type, not the details.\n");
 	fprintf(stderr,"printsavedmeta - prints out the saved metadata blocks from a savemeta file.\n");
@@ -2820,6 +2820,8 @@ static void usage(void)
 	fprintf(stderr,"restoremeta - restore metadata for debugging (DANGEROUS).\n");
 	fprintf(stderr,"rgcount - print how many RGs in the file system.\n");
 	fprintf(stderr,"rgflags rgnum [new flags] - print or modify flags for rg #rgnum (0 - X)\n");
+	fprintf(stderr,"rgbitmaps <rgnum> - print out the bitmaps for rgrp "
+		"rgnum.\n");
 	fprintf(stderr,"-V   prints version number.\n");
 	fprintf(stderr,"-c 1 selects alternate color scheme 1\n");
 	fprintf(stderr,"-d   prints details (for printing journals)\n");
@@ -3097,6 +3099,29 @@ static void process_parameters(int argc, char *argv[], int pass)
 				gfs2_rgrp_free(&sbd.rgtree);
 				exit(EXIT_SUCCESS);
 			}
+		} else if (!strcmp(argv[i], "rgbitmaps")) {
+			int rg, bmap;
+			uint64_t rgblk;
+			struct rgrp_tree *rgd;
+
+			i++;
+			if (i >= argc - 1) {
+				printf("Error: rg # not specified.\n");
+				printf("Format is: %s rgbitmaps rgnum\n",
+				       argv[0]);
+				gfs2_rgrp_free(&sbd.rgtree);
+				exit(EXIT_FAILURE);
+			}
+			rg = atoi(argv[i]);
+			rgblk = get_rg_addr(rg);
+			rgd = gfs2_blk2rgrpd(&sbd, rgblk);
+			if (rgd == NULL) {
+				printf("Error: rg # is invalid.\n");
+				gfs2_rgrp_free(&sbd.rgtree);
+				exit(EXIT_FAILURE);
+			}
+			for (bmap = 0; bmap < rgd->ri.ri_length; bmap++)
+				push_block(rgblk + bmap);
 		}
 		else if (!strcasecmp(argv[i], "savemeta")) {
 			getgziplevel(argv, &i);
@@ -3177,7 +3202,8 @@ int main(int argc, char *argv[])
 	if (termlines)
 		interactive_mode();
 	else { /* print all the structures requested */
-		for (i = 0; i <= blockhist; i++) {
+		i = 0;
+		while (blockhist > 0) {
 			block = blockstack[i + 1].block;
 			if (!block)
 				break;
@@ -3189,6 +3215,7 @@ int main(int argc, char *argv[])
 				eol(0);
 			}
 			block = pop_block();
+			i++;
 		}
 	}
 	close(fd);
