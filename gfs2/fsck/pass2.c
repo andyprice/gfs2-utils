@@ -260,7 +260,7 @@ static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		 (unsigned long long)entry.no_formal_ino,
 		 (unsigned long long)ii->di_num.no_formal_ino,
 		 (unsigned long long)ii->di_num.no_formal_ino);
-	if (q != gfs2_inode_dir) {
+	if (q != gfs2_inode_dir || !strcmp("..", tmp_name)) {
 		if (query( _("Remove the corrupt directory entry? (y/n) ")))
 			return 1;
 		log_err( _("Corrupt directory entry not removed.\n"));
