@@ -5,7 +5,7 @@ gfs2_lockcapture \- will capture locking information from GFS2 file systems and 
 
 .SH SYNOPSIS
 .B gfs2_lockcapture \fR[-dqyt]  [-o \fIoutput directory]\fR [-r \fInumber of runs]\fR [-s \fIseconds to sleep]\fR [-n \fIname of GFS2 filesystem]\fP
-.PP 
+.PP
 .B gfs2_lockcapture \fR[-dqyi]
 
 .SH DESCRIPTION
@@ -15,7 +15,7 @@ multiple times and how much time to sleep between each iteration of capturing
 the data. By default all of the mounted GFS2 filesystems will have their data
 collected unless GFS2 filesystems are specified.
 .PP
-Please note that sysrq -t and -m events are trigger or the pid directories in /proc are 
+Please note that sysrq -t and -m events are trigger or the pid directories in /proc are
 collected on each iteration of capturing the data.
 
 .SH OPTIONS
@@ -51,3 +51,4 @@ number of seconds to sleep between runs of capturing the lockdump data.
 name of the GFS2 filesystem(s) that will have their lockdump data captured.
 .
 .SH SEE ALSO
+gfs2_lockanalyze(8)

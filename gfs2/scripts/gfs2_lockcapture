@@ -45,12 +45,15 @@ class ClusterNode:
     """
     This class represents a cluster node that is a current memeber in a cluster.
     """
-    def __init__(self, clusternodeName, clusterName, mapOfMountedFilesystemLabels):
+    def __init__(self, clusternodeName, clusternodeID, clusterName, mapOfMountedFilesystemLabels):
         """
         @param clusternodeName: The name of the cluster node.
         @type clusternodeName: String
         @param clusterName: The name of the cluster that this cluster node is a
         member of.
+        @param clusternodeID: The id of the cluster node.
+        @type clusternodeID: Int
+        @param clusterName: The name of the cluster that this cluster node is a
         @type clusterName: String
         @param mapOfMountedFilesystemLabels: A map of filesystem labels(key) for
         a mounted filesystem. The value is the line for the matching mounted
@@ -58,6 +61,7 @@ class ClusterNode:
         @type mapOfMountedFilesystemLabels: Dict
         """
         self.__clusternodeName = clusternodeName
+        self.__clusternodeID  = clusternodeID
         self.__clusterName = clusterName
         self.__mapOfMountedFilesystemLabels = mapOfMountedFilesystemLabels
 
@@ -69,7 +73,7 @@ class ClusterNode:
         @rtype: String
         """
         rString = ""
-        rString += "%s:%s" %(self.getClusterName(), self.getClusterNodeName())
+        rString += "%s:%s(id:%d)" %(self.getClusterName(), self.getClusterNodeName(), self.getClusterNodeID())
         fsLabels = self.__mapOfMountedFilesystemLabels.keys()
         fsLabels.sort()
         for fsLabel in fsLabels:
@@ -84,6 +88,14 @@ class ClusterNode:
         @rtype: String
         """
         return self.__clusternodeName
+
+    def getClusterNodeID(self):
+        """
+        Returns the id of the cluster node.
+        @return: Returns the id of the cluster node.
+        @rtype: String
+        """
+        return self.__clusternodeID
 
     def getClusterName(self):
         """
@@ -539,6 +551,7 @@ def getClusterNode(listOfGFS2Names):
     # in the output, else return None.
     clusterName = ""
     clusternodeName = ""
+    clusternodeID = ""
     if (runCommand("which", ["cman_tool"])):
         stdout = runCommandOutput("cman_tool", ["status"])
         if (not stdout == None):
@@ -550,6 +563,8 @@ def getClusterNode(listOfGFS2Names):
                     clusterName = line.split("Cluster Name:")[1].strip().rstrip()
                 if (line.startswith("Node name: ")):
                     clusternodeName = line.split("Node name:")[1].strip().rstrip()
+                if (line.startswith("Node ID: ")):
+                    clusternodeID = line.split("Node ID: ")[1].strip().rstrip()
     elif (runCommand("which", ["corosync-cmapctl"])):
         # Another way to get the local cluster node is: $ crm_node -i; crm_node -l
         # Get the name of the cluster.
@@ -559,14 +574,14 @@ def getClusterNode(listOfGFS2Names):
             if (len(stdoutSplit) == 2):
                 clusterName = stdoutSplit[1].strip().rstrip()
         # Get the id of the local cluster node so we can get the clusternode name
-        thisNodeID = ""
+        clusternodeID = ""
         stdout = runCommandOutput("corosync-cmapctl", ["-g", "runtime.votequorum.this_node_id"])
         if (not stdout == None):
             stdoutSplit = stdout.split("=")
             if (len(stdoutSplit) == 2):
-               thisNodeID = stdoutSplit[1].strip().rstrip()
+               clusternodeID = stdoutSplit[1].strip().rstrip()
         # Now that we the nodeid then we can get the clusternode name.
-        if (len(thisNodeID) > 0):
+        if (len(clusternodeID) > 0):
             stdout = runCommandOutput("corosync-quorumtool", ["-l"])
             if (not stdout == None):
                 for line in stdout.split("\n"):
@@ -588,7 +603,15 @@ def getClusterNode(listOfGFS2Names):
                         break
                 if ((not foundMatch) and (mapOfMountedFilesystemLabels.has_key(label))):
                     del(mapOfMountedFilesystemLabels[label])
-        return ClusterNode(clusternodeName, clusterName, mapOfMountedFilesystemLabels)
+        # Cast the node id to an int, and default is 0 if node is not found or
+        # not castable.
+        clusternodeIDInt = 0
+        if (clusternodeID.isalnum()):
+            try:
+                clusternodeIDInt = int(clusternodeID)
+            except(ValueError):
+                pass
+        return ClusterNode(clusternodeName, clusternodeIDInt, clusterName, mapOfMountedFilesystemLabels)
     else:
         return None
 
@@ -700,6 +723,28 @@ def gatherGeneralInformation(pathToDSTDir):
     except IOError:
         message = "There was an error the command output for %s to the file %s." %(command, pathToCommandOutput)
         logging.getLogger(MAIN_LOGGER_NAME).error(message)
+
+    # Write the status of all the nodes in the cluster out.
+    if (runCommand("which", ["cman_tool"])):
+        command = "cman_tool"
+        pathToCommandOutput = os.path.join(pathToDSTDir, "cman_tool_status")
+        try:
+            fout = open(pathToCommandOutput, "w")
+            runCommand(command, ["status"], standardOut=fout)
+            fout.close()
+        except IOError:
+            message = "There was an error the command output for %s to the file %s." %(command, pathToCommandOutput)
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
+    elif (runCommand("which", ["corosync-cmapctl"])):
+        command = "corosync-quorumtool"
+        pathToCommandOutput = os.path.join(pathToDSTDir, "corosync-quorumtool_l")
+        try:
+            fout = open(pathToCommandOutput, "w")
+            runCommand(command, ["-l"], standardOut=fout)
+            fout.close()
+        except IOError:
+            message = "There was an error the command output for %s to the file %s." %(command, pathToCommandOutput)
+            logging.getLogger(MAIN_LOGGER_NAME).error(message)
 
 
 def isProcPidStackEnabled(pathToPidData):
@@ -1067,26 +1112,6 @@ if __name__ == "__main__":
             # script running.
             writeToFile(PATH_TO_PID_FILENAME, str(os.getpid()), createFile=True)
         # #######################################################################
-        # Verify they want to continue because this script will trigger sysrq events.
-        # #######################################################################
-        if (not cmdLineOpts.disableQuestions):
-            valid = {"yes":True, "y":True, "no":False, "n":False}
-            question = "This script will trigger a sysrq -t event or collect the data for each pid directory located in /proc for each run. Are you sure you want to continue?"
-            prompt = " [y/n] "
-            while True:
-                sys.stdout.write(question + prompt)
-                choice = raw_input().lower()
-                if (choice in valid):
-                    if (valid.get(choice)):
-                        # If yes, or y then exit loop and continue.
-                        break
-                    else:
-                        message = "The script will not continue since you chose not to continue."
-                        logging.getLogger(MAIN_LOGGER_NAME).error(message)
-                        exitScript(removePidFile=True, errorCode=1)
-                else:
-                    sys.stdout.write("Please respond with '(y)es' or '(n)o'.\n")
-        # #######################################################################
         # Get the clusternode name and verify that mounted GFS2 filesystems were
         # found.
         # #######################################################################
@@ -1109,6 +1134,26 @@ if __name__ == "__main__":
             print "List of all the mounted GFS2 filesystems that can have their lockdump data captured:"
             print clusternode
             exitScript()
+        # #######################################################################
+        # Verify they want to continue because this script will trigger sysrq events.
+        # #######################################################################
+        if (not cmdLineOpts.disableQuestions):
+            valid = {"yes":True, "y":True, "no":False, "n":False}
+            question = "This script will trigger a sysrq -t event or collect the data for each pid directory located in /proc for each run. Are you sure you want to continue?"
+            prompt = " [y/n] "
+            while True:
+                sys.stdout.write(question + prompt)
+                choice = raw_input().lower()
+                if (choice in valid):
+                    if (valid.get(choice)):
+                        # If yes, or y then exit loop and continue.
+                        break
+                    else:
+                        message = "The script will not continue since you chose not to continue."
+                        logging.getLogger(MAIN_LOGGER_NAME).error(message)
+                        exitScript(removePidFile=True, errorCode=1)
+                else:
+                    sys.stdout.write("Please respond with '(y)es' or '(n)o'.\n")
         # #######################################################################
         # Create the output directory to verify it can be created before
         # proceeding unless it is already created from a previous run data needs
@@ -1178,6 +1223,11 @@ if __name__ == "__main__":
             message = "Pass (%d/%d): Gathering general information about the host." %(i, cmdLineOpts.numberOfRuns)
             logging.getLogger(MAIN_LOGGER_NAME).debug(message)
             gatherGeneralInformation(pathToOutputRunDir)
+            # Write the clusternode name and id to the general information file.
+            writeToFile(os.path.join(pathToOutputRunDir, "hostinformation.txt"),
+                        "NODE_NAME=%s\nNODE_ID=%d" %(clusternode.getClusterNodeName(), clusternode.getClusterNodeID()),
+                        appendToFile=True, createFile=True)
+
             # Going to sleep for 2 seconds, so that TIMESTAMP should be in the
             # past in the logs so that capturing sysrq data will be guaranteed.
             time.sleep(2)
