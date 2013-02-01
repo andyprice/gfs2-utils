@@ -954,7 +954,8 @@ static int hexdump(uint64_t startaddr, int len)
 		if (cursor_line) {
 			if (block_type == GFS2_METATYPE_IN ||
 			    ((block_type == GFS2_METATYPE_DI) &&
-			     ((struct gfs2_dinode*)bh->b_data)->di_height)) {
+			     ((struct gfs2_dinode*)bh->b_data)->di_height) ||
+			     S_ISDIR(di.di_mode)) {
 				int ptroffset = edit_row[dmode] * 16 +
 					edit_col[dmode];
 
