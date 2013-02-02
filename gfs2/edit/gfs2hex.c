@@ -122,7 +122,7 @@ void eol(int col) /* end of line */
 void __attribute__((format (printf, 1, 2))) print_gfs2(const char *fmt, ...)
 {
 	va_list args;
-	char string[NAME_MAX];
+	char string[PATH_MAX];
 	
 	memset(string, 0, sizeof(string));
 	va_start(args, fmt);
