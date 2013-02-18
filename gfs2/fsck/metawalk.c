@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <libintl.h>
 #include <ctype.h>
+#include <fcntl.h>
 #define _(String) gettext(String)
 
 #include "libgfs2.h"
@@ -638,24 +639,87 @@ out_copy_old_leaf:
 	return 1;
 }
 
+static uint64_t *get_dir_hash(struct gfs2_inode *ip)
+{
+	unsigned hsize = (1 << ip->i_di.di_depth) * sizeof(uint64_t);
+	int ret;
+	uint64_t *tbl = malloc(hsize);
+
+	if (tbl == NULL)
+		return NULL;
+
+	ret = gfs2_readi(ip, tbl, 0, hsize);
+	if (ret != hsize) {
+		free(tbl);
+		return NULL;
+	}
+
+	return tbl;
+}
+
+static int u64cmp(const void *p1, const void *p2)
+{
+	uint64_t a = *(uint64_t *)p1;
+	uint64_t b = *(uint64_t *)p2;
+
+	if (a > b)
+		return 1;
+	if (b < b)
+		return -1;
+
+	return 0;
+}
+
+static void dir_leaf_reada(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize)
+{
+	uint64_t *t = alloca(hsize * sizeof(uint64_t));
+	uint64_t leaf_no;
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	unsigned n = 0;
+	unsigned i;
+
+	for (i = 0; i < hsize; i++) {
+		leaf_no = be64_to_cpu(tbl[i]);
+		if (valid_block(ip->i_sbd, leaf_no))
+			t[n++] = leaf_no * sdp->bsize;
+	}
+	qsort(t, n, sizeof(uint64_t), u64cmp);
+	for (i = 0; i < n; i++)
+		posix_fadvise(sdp->device_fd, t[i], sdp->bsize, POSIX_FADV_WILLNEED);
+}
+
 /* Checks exhash directory entries */
 static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	int error;
 	struct gfs2_leaf leaf, oldleaf;
+	unsigned hsize = (1 << ip->i_di.di_depth);
 	uint64_t leaf_no, old_leaf, bad_leaf = -1;
 	uint64_t first_ok_leaf;
 	struct gfs2_buffer_head *lbh;
 	int lindex;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	int ref_count = 0, old_was_dup;
+	uint64_t *tbl;
+
+	tbl = get_dir_hash(ip);
+	if (tbl == NULL) {
+		perror("get_dir_hash");
+		return -1;
+	}
+
+	/* Turn off system readahead */
+	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_RANDOM);
+
+	/* Readahead */
+	dir_leaf_reada(ip, tbl, hsize);
 
 	/* Find the first valid leaf pointer in range and use it as our "old"
 	   leaf. That way, bad blocks at the beginning will be overwritten
 	   with the first valid leaf. */
 	first_ok_leaf = leaf_no = -1;
-	for (lindex = 0; lindex < (1 << ip->i_di.di_depth); lindex++) {
-		gfs2_get_leaf_nr(ip, lindex, &leaf_no);
+	for (lindex = 0; lindex < hsize; lindex++) {
+		leaf_no = be64_to_cpu(tbl[lindex]);
 		if (valid_block(ip->i_sbd, leaf_no)) {
 			lbh = bread(sdp, leaf_no);
 			/* Make sure it's really a valid leaf block. */
@@ -672,19 +736,22 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			   "blocks\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
+		free(tbl);
+		posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 		return 1;
 	}
 	old_leaf = -1;
 	memset(&oldleaf, 0, sizeof(oldleaf));
 	old_was_dup = 0;
-	for (lindex = 0; lindex < (1 << ip->i_di.di_depth); lindex++) {
+	for (lindex = 0; lindex < hsize; lindex++) {
 		if (fsck_abort)
 			break;
-		gfs2_get_leaf_nr(ip, lindex, &leaf_no);
+		leaf_no = be64_to_cpu(tbl[lindex]);
 
 		/* GFS has multiple indirect pointers to the same leaf
 		 * until those extra pointers are needed, so skip the dups */
 		if (leaf_no == bad_leaf) {
+			tbl[lindex] = cpu_to_be64(old_leaf);
 			gfs2_put_leaf_nr(ip, lindex, old_leaf);
 			ref_count++;
 			continue;
@@ -694,8 +761,11 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		}
 
 		do {
-			if (fsck_abort)
+			if (fsck_abort) {
+				free(tbl);
+				posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 				return 0;
+			}
 			/* If the old leaf was a duplicate referenced by a
 			   previous dinode, we can't check the number of
 			   pointers because the number of pointers may be for
@@ -706,8 +776,10 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 							     &ref_count,
 							     &lindex,
 							     &oldleaf);
-				if (error)
+				if (error) {
+					free(tbl);
 					return error;
+				}
 			}
 			error = check_leaf(ip, lindex, pass, &ref_count,
 					   &leaf_no, old_leaf, &bad_leaf,
@@ -722,6 +794,8 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 				   (unsigned long long)leaf_no);
 		} while (1); /* while we have chained leaf blocks */
 	} /* for every leaf block */
+	free(tbl);
+	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 	return 0;
 }
 
