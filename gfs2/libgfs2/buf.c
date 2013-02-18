@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
@@ -30,39 +31,54 @@ struct gfs2_buffer_head *bget(struct gfs2_sbd *sdp, uint64_t num)
 	return bh;
 }
 
+int __breadm(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhs, size_t n,
+	     uint64_t block, int line, const char *caller)
+{
+	struct iovec *iov = alloca(n * sizeof(struct iovec));
+	struct iovec *iovbase = iov;
+	uint64_t b = block;
+	size_t size = 0;
+	size_t i;
+	int ret;
+
+	for (i = 0; i < n; i++) {
+		bhs[i] = bget(sdp, b++);
+		if (bhs[i] == NULL)
+			return -1;
+		*iov++ = bhs[i]->iov;
+		size += bhs[i]->iov.iov_len;
+	}
+
+	ret = preadv(sdp->device_fd, iovbase, n, block * sdp->bsize);
+
+	if (ret != size) {
+		fprintf(stderr, "bad read: %s from %s:%d: block "
+				"%llu (0x%llx)\n", strerror(errno),
+				caller, line, (unsigned long long)block,
+				(unsigned long long)block);
+		exit(-1);
+	}
+
+	return 0;
+}
+
 struct gfs2_buffer_head *__bread(struct gfs2_sbd *sdp, uint64_t num, int line,
 				 const char *caller)
 {
-	struct gfs2_buffer_head *bh = bget(sdp, num);
-	if (bh == NULL)
+	struct gfs2_buffer_head *bh;
+	int ret;
+
+	ret = __breadm(sdp, &bh, 1, num, line, caller);
+	if (ret >= 0)
 		return bh;
-	if (lseek(sdp->device_fd, num * sdp->bsize, SEEK_SET) !=
-	    num * sdp->bsize) {
-		fprintf(stderr, "bad seek: %s from %s:%d: block "
-			"%llu (0x%llx)\n", strerror(errno),
-			caller, line, (unsigned long long)num,
-			(unsigned long long)num);
-		exit(-1);
-	}
-	if (readv(sdp->device_fd, &bh->iov, 1) < 0) {
-		fprintf(stderr, "bad read: %s from %s:%d: block "
-			"%llu (0x%llx)\n", strerror(errno),
-			caller, line, (unsigned long long)num,
-			(unsigned long long)num);
-		exit(-1);
-	}
-	return bh;
+	return NULL;
 }
 
 int bwrite(struct gfs2_buffer_head *bh)
 {
 	struct gfs2_sbd *sdp = bh->sdp;
 
-	if (lseek(sdp->device_fd, bh->b_blocknr * sdp->bsize, SEEK_SET) !=
-	    bh->b_blocknr * sdp->bsize) {
-		return -1;
-	}
-	if (writev(sdp->device_fd, &bh->iov, 1) != bh->iov.iov_len)
+	if (pwritev(sdp->device_fd, &bh->iov, 1, bh->b_blocknr * sdp->bsize) != bh->iov.iov_len)
 		return -1;
 	sdp->writes++;
 	bh->b_modified = 0;

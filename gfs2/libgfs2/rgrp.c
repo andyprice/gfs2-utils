@@ -127,10 +127,10 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 		return -1;
 	if (gfs2_check_range(sdp, rgd->ri.ri_addr))
 		return -1;
+	if (breadm(sdp, rgd->bh, length, rgd->ri.ri_addr))
+		return -1;
 	for (x = 0; x < length; x++){
-		rgd->bh[x] = bread(sdp, rgd->ri.ri_addr + x);
-		if(gfs2_check_meta(rgd->bh[x],
-				   (x) ? GFS2_METATYPE_RB : GFS2_METATYPE_RG))
+		if(gfs2_check_meta(rgd->bh[x], (x) ? GFS2_METATYPE_RB : GFS2_METATYPE_RG))
 		{
 			uint64_t error;
 

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include "libgfs2.h"
 #include "osi_list.h"
@@ -198,6 +199,29 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 	return 0;
 }
 
+#define RA_WINDOW 32
+
+static unsigned gfs2_rgrp_reada(struct gfs2_sbd *sdp, unsigned cur_window,
+				struct osi_node *n)
+{
+	struct rgrp_tree *rgd;
+	unsigned i;
+	off_t start, len;
+
+	for (i = 0; i < RA_WINDOW; i++, n = osi_next(n)) {
+		if (n == NULL)
+			return i;
+		if (i < cur_window)
+			continue;
+		rgd = (struct rgrp_tree *)n;
+		start = rgd->ri.ri_addr * sdp->bsize;
+		len = rgd->ri.ri_length * sdp->bsize;
+		posix_fadvise(sdp->device_fd, start, len, POSIX_FADV_WILLNEED);
+	}
+
+	return i;
+}
+
 /**
  * ri_update - attach rgrps to the super block
  * @sdp: incore superblock data
@@ -218,15 +242,24 @@ static int __ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane,
 	uint64_t errblock = 0;
 	uint64_t rmax = 0;
 	struct osi_node *n, *next = NULL;
+	unsigned ra_window = 0;
+
+	/* Turn off generic readhead */
+	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_RANDOM);
 
 	if (rindex_read(sdp, fd, &count1, sane))
 		goto fail;
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
 		rgd = (struct rgrp_tree *)n;
+		/* Readahead resource group headers */
+		if (ra_window < RA_WINDOW/2)
+			ra_window = gfs2_rgrp_reada(sdp, ra_window, n);
+		/* Read resource group header */
 		errblock = gfs2_rgrp_read(sdp, rgd);
 		if (errblock)
 			return errblock;
+		ra_window--;
 		count2++;
 		if (!quiet && count2 % 100 == 0) {
 			printf(".");
@@ -242,9 +275,11 @@ static int __ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane,
 	if (count1 != count2)
 		goto fail;
 
+	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 	return 0;
 
  fail:
+	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 	gfs2_rgrp_free(&sdp->rgtree);
 	return -1;
 }
