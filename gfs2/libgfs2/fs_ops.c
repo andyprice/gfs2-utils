@@ -116,32 +116,24 @@ void inode_put(struct gfs2_inode **ip_in)
 	*ip_in = NULL; /* make sure the memory isn't accessed again */
 }
 
-static uint64_t blk_alloc_i(struct gfs2_sbd *sdp, unsigned int type)
+static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned int type, struct rgrp_tree *rl, uint64_t *blkno)
 {
-	struct osi_node *n, *next = NULL;
-	struct rgrp_tree *rl = NULL;
 	struct gfs2_rindex *ri;
 	struct gfs2_rgrp *rg;
 	unsigned int block, bn = 0, x = 0, y = 0;
 	unsigned int state;
 	struct gfs2_buffer_head *bh;
 
-	memset(&rg, 0, sizeof(rg));
-	for (n = osi_first(&sdp->rgtree); n; n = next) {
-		next = osi_next(n);
-		rl = (struct rgrp_tree *)n;
-		if (rl->rg.rg_free)
-			break;
+	if (rl == NULL || rl->rg.rg_free == 0) {
+		errno = ENOSPC;
+		return -1;
 	}
 
-	if (n == NULL) {
-		fprintf(stderr, "Not enough space available on device\n");
-		exit(1);
-	}
+	if (rl->bh[0] == NULL && gfs2_rgrp_read(sdp, rl) != 0)
+		return -1;
 
 	ri = &rl->ri;
 	rg = &rl->rg;
-
 	for (block = 0; block < ri->ri_length; block++) {
 		bh = rl->bh[block];
 		x = (block) ? sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_rgrp);
@@ -157,7 +149,7 @@ static uint64_t blk_alloc_i(struct gfs2_sbd *sdp, unsigned int type)
 
 	fprintf(stderr, "allocation is broken (1): %"PRIu64" %u\n",
 	    (uint64_t)rl->ri.ri_addr, rl->rg.rg_free);
-	exit(1);
+	return -1;
 
 found:
 	if (bn >= ri->ri_bitbytes * GFS2_NBBY) {
@@ -165,7 +157,7 @@ found:
 		    " (0x%" PRIx64 ") Free:%u\n",
 		    bn, ri->ri_bitbytes * GFS2_NBBY, (uint64_t)rl->ri.ri_addr,
 		    (uint64_t)rl->ri.ri_addr, rl->rg.rg_free);
-		exit(1);
+		return -1;
 	}
 
 	switch (type) {
@@ -179,7 +171,7 @@ found:
 		break;
 	default:
 		fprintf(stderr, "bad state\n");
-		exit(1);
+		return -1;
 	}
 
 	bh->b_data[x] &= ~(0x03 << (GFS2_BIT_SIZE * y));
@@ -193,7 +185,27 @@ found:
 		gfs2_rgrp_out(rg, rl->bh[0]);
 
 	sdp->blks_alloced++;
-	return ri->ri_data0 + bn;
+	*blkno = ri->ri_data0 + bn;
+	return 0;
+}
+
+/**
+ * Do not use this function, it's only here until we can kill it.
+ * Use blk_alloc_in_rg directly instead.
+ */
+static uint64_t blk_alloc_i(struct gfs2_sbd *sdp, unsigned int type)
+{
+	int ret;
+	uint64_t blkno = 0;
+	struct osi_node *n = NULL;
+	for (n = osi_first(&sdp->rgtree); n; n = osi_next(n)) {
+		if (((struct rgrp_tree *)n)->rg.rg_free)
+			break;
+	}
+	ret = blk_alloc_in_rg(sdp, type, (struct rgrp_tree *)n, &blkno);
+	if (ret != 0) /* Do what the old blk_alloc_i did */
+		exit(1);
+	return blkno;
 }
 
 uint64_t data_alloc(struct gfs2_inode *ip)
@@ -218,6 +230,33 @@ uint64_t dinode_alloc(struct gfs2_sbd *sdp)
 {
 	sdp->dinodes_alloced++;
 	return blk_alloc_i(sdp, DINODE);
+}
+
+/**
+ * Allocate a dinode block in a bitmap. In order to plan ahead we look for a
+ * resource group with blksreq free blocks but only allocate the one dinode block.
+ * Returns 0 on success with the allocated block number in *blkno or non-zero otherwise.
+ */
+int lgfs2_dinode_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, uint64_t *blkno)
+{
+	int ret;
+	struct rgrp_tree *rgt;
+	struct osi_node *n = NULL;
+	for (n = osi_first(&sdp->rgtree); n; n = osi_next(n)) {
+		rgt = (struct rgrp_tree *)n;
+		if (rgt->rg.rg_free >= blksreq)
+			break;
+	}
+	if (rgt == NULL)
+		return -1;
+
+	ret = blk_alloc_in_rg(sdp, DINODE, rgt, blkno);
+	gfs2_rgrp_relse(rgt);
+
+	if (ret == 0)
+		sdp->dinodes_alloced++;
+
+	return ret;
 }
 
 static __inline__ void buffer_clear_tail(struct gfs2_sbd *sdp,
@@ -1380,7 +1419,9 @@ static struct gfs2_inode *__createi(struct gfs2_inode *dip,
 
 	gfs2_lookupi(dip, filename, strlen(filename), &ip);
 	if (!ip) {
-		bn = dinode_alloc(sdp);
+		err = lgfs2_dinode_alloc(sdp, 1, &bn);
+		if (err != 0)
+			return NULL;
 
 		if (if_gfs1)
 			inum.no_formal_ino = bn;
