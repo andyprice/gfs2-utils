@@ -182,7 +182,7 @@ found:
 	if (sdp->gfs1)
 		gfs_rgrp_out((struct gfs_rgrp *)rg, rl->bh[0]);
 	else
-		gfs2_rgrp_out(rg, rl->bh[0]);
+		gfs2_rgrp_out_bh(rg, rl->bh[0]);
 
 	sdp->blks_alloced++;
 	*blkno = ri->ri_data0 + bn;
@@ -294,7 +294,7 @@ void unstuff_dinode(struct gfs2_inode *ip)
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_JD;
 			mh.mh_format = GFS2_FORMAT_JD;
-			gfs2_meta_header_out(&mh, bh);
+			gfs2_meta_header_out_bh(&mh, bh);
 
 			buffer_copy_tail(sdp, bh,
 					 sizeof(struct gfs2_meta_header),
@@ -371,7 +371,7 @@ void build_height(struct gfs2_inode *ip, int height)
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_IN;
 			mh.mh_format = GFS2_FORMAT_IN;
-			gfs2_meta_header_out(&mh, bh);
+			gfs2_meta_header_out_bh(&mh, bh);
 			buffer_copy_tail(sdp, bh,
 					 sizeof(struct gfs2_meta_header),
 					 ip->i_bh, sizeof(struct gfs2_dinode));
@@ -494,7 +494,7 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_IN;
 			mh.mh_format = GFS2_FORMAT_IN;
-			gfs2_meta_header_out(&mh, bh);
+			gfs2_meta_header_out_bh(&mh, bh);
 		} else {
 			if (*dblock == ip->i_di.di_num.no_addr)
 				bh = ip->i_bh;
@@ -688,7 +688,7 @@ int __gfs2_writei(struct gfs2_inode *ip, void *buf,
 				mh.mh_magic = GFS2_MAGIC;
 				mh.mh_type = GFS2_METATYPE_JD;
 				mh.mh_format = GFS2_FORMAT_JD;
-				gfs2_meta_header_out(&mh, bh);
+				gfs2_meta_header_out_bh(&mh, bh);
 			}
 		} else {
 			if (dblock == ip->i_di.di_num.no_addr)
@@ -935,7 +935,7 @@ static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
 		mh.mh_magic = GFS2_MAGIC;
 		mh.mh_type = GFS2_METATYPE_LF;
 		mh.mh_format = GFS2_FORMAT_LF;
-		gfs2_meta_header_out(&mh, nbh);
+		gfs2_meta_header_out_bh(&mh, nbh);
 		buffer_clear_tail(dip->i_sbd, nbh,
 				  sizeof(struct gfs2_meta_header));
 	}
@@ -1197,7 +1197,7 @@ restart:
 				mh.mh_magic = GFS2_MAGIC;
 				mh.mh_type = GFS2_METATYPE_LF;
 				mh.mh_format = GFS2_FORMAT_LF;
-				gfs2_meta_header_out(&mh, nbh);
+				gfs2_meta_header_out_bh(&mh, nbh);
 
 				leaf->lf_next = cpu_to_be64(bn);
 
@@ -1248,7 +1248,7 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 		mh.mh_magic = GFS2_MAGIC;
 		mh.mh_type = GFS2_METATYPE_LF;
 		mh.mh_format = GFS2_FORMAT_LF;
-		gfs2_meta_header_out(&mh, bh);
+		gfs2_meta_header_out_bh(&mh, bh);
 	}
 
 	leaf = (struct gfs2_leaf *)bh->b_data;
@@ -1821,7 +1821,7 @@ void gfs2_free_block(struct gfs2_sbd *sdp, uint64_t block)
 		if (sdp->gfs1)
 			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bh[0]);
 		else
-			gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
+			gfs2_rgrp_out_bh(&rgd->rg, rgd->bh[0]);
 		sdp->blks_alloced--;
 	}
 }
@@ -1892,7 +1892,7 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 	if (sdp->gfs1)
 		gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bh[0]);
 	else
-		gfs2_rgrp_out(&rgd->rg, rgd->bh[0]);
+		gfs2_rgrp_out_bh(&rgd->rg, rgd->bh[0]);
 	sdp->dinodes_alloced--;
 	return 0;
 }

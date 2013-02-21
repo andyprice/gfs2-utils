@@ -684,7 +684,7 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_RB;
 			mh.mh_format = GFS2_FORMAT_RB;
-			gfs2_meta_header_out(&mh, rg->bh[x]);
+			gfs2_meta_header_out_bh(&mh, rg->bh[x]);
 		} else {
 			if (sdp->gfs1)
 				memset(&rg->rg, 0, sizeof(struct gfs_rgrp));
@@ -698,7 +698,7 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
 				gfs_rgrp_out((struct gfs_rgrp *)&rg->rg,
 					     rg->bh[x]);
 			else
-				gfs2_rgrp_out(&rg->rg, rg->bh[x]);
+				gfs2_rgrp_out_bh(&rg->rg, rg->bh[x]);
 		}
 		brelse(rg->bh[x]);
 		rg->bh[x] = NULL;

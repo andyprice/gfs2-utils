@@ -274,7 +274,7 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgp,
 			if (sdp->gfs1)
 				gfs_rgrp_out(gfs1rg, rgp->bh[0]);
 			else
-				gfs2_rgrp_out(&rgp->rg, rgp->bh[0]);
+				gfs2_rgrp_out_bh(&rgp->rg, rgp->bh[0]);
 		} else
 			log_err( _("Resource group counts left inconsistent\n"));
 	}

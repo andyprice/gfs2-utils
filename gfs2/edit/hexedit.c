@@ -1106,7 +1106,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 		if (sbd.gfs1)
 			gfs_rgrp_out(&rg.rg1, rbh);
 		else
-			gfs2_rgrp_out(&rg.rg2, rbh);
+			gfs2_rgrp_out_bh(&rg.rg2, rbh);
 		brelse(rbh);
 	} else {
 		if (full) {
@@ -2125,7 +2125,7 @@ static void process_field(const char *field, const char *nstr)
 		gfs2_rgrp_in(&rg, rbh);
 		if (setval) {
 			gfs2_rgrp_assignval(&rg, field, newval);
-			gfs2_rgrp_out(&rg, rbh);
+			gfs2_rgrp_out_bh(&rg, rbh);
 			if (!termlines)
 				gfs2_rgrp_printval(&rg, field);
 		} else {

@@ -72,16 +72,21 @@ void gfs2_meta_header_in(struct gfs2_meta_header *mh,
 	CPIN_32(mh, str, mh_format);
 }
 
-void gfs2_meta_header_out(struct gfs2_meta_header *mh,
-			  struct gfs2_buffer_head *bh)
+void gfs2_meta_header_out(const struct gfs2_meta_header *mh, char *buf)
 {
-	struct gfs2_meta_header *str = (struct gfs2_meta_header *)bh->b_data;
+	struct gfs2_meta_header *str = (struct gfs2_meta_header *)buf;
 
 	CPOUT_32(mh, str, mh_magic);
 	CPOUT_32(mh, str, mh_type);
 	CPOUT_32(mh, str, mh_format);
 	str->__pad0 = 0;
 	str->__pad1 = 0;
+}
+
+void gfs2_meta_header_out_bh(const struct gfs2_meta_header *mh,
+                             struct gfs2_buffer_head *bh)
+{
+	gfs2_meta_header_out(mh, bh->iov.iov_base);
 	bmodified(bh);
 }
 
@@ -123,7 +128,7 @@ void gfs2_sb_out(struct gfs2_sb *sb, struct gfs2_buffer_head *bh)
 {
 	struct gfs2_sb *str = (struct gfs2_sb *)bh->b_data;
 
-	gfs2_meta_header_out(&sb->sb_header, bh);
+	gfs2_meta_header_out_bh(&sb->sb_header, bh);
 
 	CPOUT_32(sb, str, sb_fs_format);
 	CPOUT_32(sb, str, sb_multihost_format);
@@ -243,16 +248,21 @@ void gfs2_rgrp_in(struct gfs2_rgrp *rg, struct gfs2_buffer_head *bh)
 	CPIN_08(rg, str, rg_reserved, 80);
 }
 
-void gfs2_rgrp_out(struct gfs2_rgrp *rg, struct gfs2_buffer_head *bh)
+void gfs2_rgrp_out(const struct gfs2_rgrp *rg, char *buf)
 {
-	struct gfs2_rgrp *str = (struct gfs2_rgrp *)bh->b_data;
+	struct gfs2_rgrp *str = (struct gfs2_rgrp *)buf;
 
-	gfs2_meta_header_out(&rg->rg_header, bh);
+	gfs2_meta_header_out(&rg->rg_header, buf);
 	CPOUT_32(rg, str, rg_flags);
 	CPOUT_32(rg, str, rg_free);
 	CPOUT_32(rg, str, rg_dinodes);
 
 	CPOUT_08(rg, str, rg_reserved, 80);
+}
+
+void gfs2_rgrp_out_bh(const struct gfs2_rgrp *rg, struct gfs2_buffer_head *bh)
+{
+	gfs2_rgrp_out(rg, bh->iov.iov_base);
 	bmodified(bh);
 }
 
@@ -330,7 +340,7 @@ void gfs2_dinode_out(struct gfs2_dinode *di, struct gfs2_buffer_head *bh)
 {
 	struct gfs2_dinode *str = (struct gfs2_dinode *)bh->b_data;
 
-	gfs2_meta_header_out(&di->di_header, bh);
+	gfs2_meta_header_out_bh(&di->di_header, bh);
 	gfs2_inum_out(&di->di_num, (char *)&str->di_num);
 
 	CPOUT_32(di, str, di_mode);
@@ -432,7 +442,7 @@ void gfs2_leaf_out(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh)
 {
 	struct gfs2_leaf *str = (struct gfs2_leaf *)bh->b_data;
 
-	gfs2_meta_header_out(&lf->lf_header, bh);
+	gfs2_meta_header_out_bh(&lf->lf_header, bh);
 	CPOUT_16(lf, str, lf_depth);
 	CPOUT_16(lf, str, lf_entries);
 	CPOUT_32(lf, str, lf_dirent_format);
@@ -497,7 +507,7 @@ void gfs2_log_header_out(struct gfs2_log_header *lh,
 {
 	struct gfs2_log_header *str = (struct gfs2_log_header *)bh->b_data;
 
-	gfs2_meta_header_out(&lh->lh_header, bh);
+	gfs2_meta_header_out_bh(&lh->lh_header, bh);
 	CPOUT_64(lh, str, lh_sequence);
 	CPOUT_32(lh, str, lh_flags);
 	CPOUT_32(lh, str, lh_tail);
@@ -535,7 +545,7 @@ void gfs2_log_descriptor_out(struct gfs2_log_descriptor *ld,
 {
 	struct gfs2_log_descriptor *str = (struct gfs2_log_descriptor *)bh->b_data;
 
-	gfs2_meta_header_out(&ld->ld_header, bh);
+	gfs2_meta_header_out_bh(&ld->ld_header, bh);
 	CPOUT_32(ld, str, ld_type);
 	CPOUT_32(ld, str, ld_length);
 	CPOUT_32(ld, str, ld_data1);

@@ -256,7 +256,7 @@ static int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 			return -1;
 
 		memset(bh->b_data, 0, sdp->bsize);
-		gfs2_meta_header_out(&mh, bh);
+		gfs2_meta_header_out_bh(&mh, bh);
 		brelse(bh);
 	}
 

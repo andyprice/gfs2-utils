@@ -342,7 +342,7 @@ add_qc(struct gfs2_sbd *sdp)
 		mh.mh_magic = GFS2_MAGIC;
 		mh.mh_type = GFS2_METATYPE_QC;
 		mh.mh_format = GFS2_FORMAT_QC;
-		gfs2_meta_header_out(&mh, &dummy_bh);
+		gfs2_meta_header_out_bh(&mh, &dummy_bh);
 
 		for (x=0; x<blocks; x++) {
 			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
