@@ -925,13 +925,13 @@ void gfs2_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out)
 	}
 }
 
-void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex, uint64_t leaf_no,
+void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
 		    struct gfs2_buffer_head *obh)
 {
 	struct gfs2_buffer_head *nbh;
 	struct gfs2_leaf *nleaf, *oleaf;
 	struct gfs2_dirent *dent, *prev = NULL, *next = NULL, *new;
-	uint32_t start, len, half_len, divider;
+	uint32_t len, half_len, divider;
 	uint64_t bn, *lp;
 	uint32_t name_len;
 	int x, moved = FALSE;
@@ -956,8 +956,6 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex, uint64_t leaf_no,
 
 	len = 1 << (dip->i_di.di_depth - be16_to_cpu(oleaf->lf_depth));
 	half_len = len >> 1;
-
-	start = (lindex & ~(len - 1));
 
 	lp = calloc(1, half_len * sizeof(uint64_t));
 	if (lp == NULL) {
@@ -1160,7 +1158,7 @@ static int dir_e_add(struct gfs2_inode *dip, const char *filename, int len,
 	struct gfs2_buffer_head *bh, *nbh;
 	struct gfs2_leaf *leaf, *nleaf;
 	struct gfs2_dirent *dent;
-	uint32_t lindex;
+	uint32_t lindex, llen;
 	uint32_t hash;
 	uint64_t leaf_no, bn;
 	int err = 0;
@@ -1182,7 +1180,10 @@ restart:
 		if (dirent_alloc(dip, bh, len, &dent)) {
 
 			if (be16_to_cpu(leaf->lf_depth) < dip->i_di.di_depth) {
-				dir_split_leaf(dip, lindex, leaf_no, bh);
+				llen = 1 << (dip->i_di.di_depth -
+					     be16_to_cpu(leaf->lf_depth));
+				dir_split_leaf(dip, lindex & ~(llen - 1),
+					       leaf_no, bh);
 				brelse(bh);
 				goto restart;
 
