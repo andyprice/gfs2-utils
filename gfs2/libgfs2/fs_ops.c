@@ -925,9 +925,10 @@ void gfs2_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out)
 	}
 }
 
-void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex, uint64_t leaf_no)
+void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex, uint64_t leaf_no,
+		    struct gfs2_buffer_head *obh)
 {
-	struct gfs2_buffer_head *nbh, *obh;
+	struct gfs2_buffer_head *nbh;
 	struct gfs2_leaf *nleaf, *oleaf;
 	struct gfs2_dirent *dent, *prev = NULL, *next = NULL, *new;
 	uint32_t start, len, half_len, divider;
@@ -951,7 +952,6 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex, uint64_t leaf_no)
 	nleaf = (struct gfs2_leaf *)nbh->b_data;
 	nleaf->lf_dirent_format = cpu_to_be32(GFS2_FORMAT_DE);
 
-	obh = bread(dip->i_sbd, leaf_no);
 	oleaf = (struct gfs2_leaf *)obh->b_data;
 
 	len = 1 << (dip->i_di.di_depth - be16_to_cpu(oleaf->lf_depth));
@@ -1036,7 +1036,6 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex, uint64_t leaf_no)
 	bmodified(dip->i_bh);
 
 	bmodified(obh); /* Need to do this in case nothing was moved */
-	brelse(obh);
 	bmodified(nbh);
 	brelse(nbh);
 }
@@ -1183,8 +1182,8 @@ restart:
 		if (dirent_alloc(dip, bh, len, &dent)) {
 
 			if (be16_to_cpu(leaf->lf_depth) < dip->i_di.di_depth) {
+				dir_split_leaf(dip, lindex, leaf_no, bh);
 				brelse(bh);
-				dir_split_leaf(dip, lindex, leaf_no);
 				goto restart;
 
 			} else if (dip->i_di.di_depth < GFS2_DIR_MAX_DEPTH) {
