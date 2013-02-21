@@ -469,6 +469,8 @@ extern void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 extern void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t index,
 			     uint64_t *leaf_out);
 extern void gfs2_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out);
+extern void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
+			   uint64_t leaf_no);
 extern void gfs2_free_block(struct gfs2_sbd *sdp, uint64_t block);
 extern int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t block);
 extern int gfs2_get_leaf(struct gfs2_inode *dip, uint64_t leaf_no,

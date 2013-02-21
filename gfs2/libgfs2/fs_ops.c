@@ -925,8 +925,7 @@ void gfs2_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out)
 	}
 }
 
-static void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex,
-			   uint64_t leaf_no)
+void dir_split_leaf(struct gfs2_inode *dip, uint32_t lindex, uint64_t leaf_no)
 {
 	struct gfs2_buffer_head *nbh, *obh;
 	struct gfs2_leaf *nleaf, *oleaf;
