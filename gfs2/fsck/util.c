@@ -615,3 +615,42 @@ bad_dinode:
 	stack;
 	return -EPERM;
 }
+
+uint64_t find_free_blk(struct gfs2_sbd *sdp)
+{
+	struct osi_node *n, *next = NULL;
+	struct rgrp_tree *rl = NULL;
+	struct gfs2_rindex *ri;
+	struct gfs2_rgrp *rg;
+	unsigned int block, bn = 0, x = 0, y = 0;
+	unsigned int state;
+	struct gfs2_buffer_head *bh;
+
+	memset(&rg, 0, sizeof(rg));
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rl = (struct rgrp_tree *)n;
+		if (rl->rg.rg_free)
+			break;
+	}
+
+	if (n == NULL)
+		return 0;
+
+	ri = &rl->ri;
+	rg = &rl->rg;
+
+	for (block = 0; block < ri->ri_length; block++) {
+		bh = rl->bh[block];
+		x = (block) ? sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_rgrp);
+
+		for (; x < sdp->bsize; x++)
+			for (y = 0; y < GFS2_NBBY; y++) {
+				state = (bh->b_data[x] >> (GFS2_BIT_SIZE * y)) & 0x03;
+				if (state == GFS2_BLKST_FREE)
+					return ri->ri_data0 + bn;
+				bn++;
+			}
+	}
+	return 0;
+}

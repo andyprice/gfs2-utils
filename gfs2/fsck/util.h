@@ -184,6 +184,8 @@ extern char generic_interrupt(const char *caller, const char *where,
                        const char *progress, const char *question,
                        const char *answers);
 extern char gfs2_getch(void);
+extern uint64_t find_free_blk(struct gfs2_sbd *sdp);
+
 #define stack log_debug("<backtrace> - %s()\n", __func__)
 
 #endif /* __UTIL_H__ */
