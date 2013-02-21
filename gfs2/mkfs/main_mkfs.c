@@ -567,6 +567,93 @@ static int is_symlink(char *path, char **abspath)
 	return 1;
 }
 
+static int writerg(int fd, const struct rgrp_tree *rgt, const unsigned bsize)
+{
+	ssize_t ret = 0;
+	unsigned int i;
+	const struct gfs2_meta_header bmh = {
+		.mh_magic = GFS2_MAGIC,
+		.mh_type = GFS2_METATYPE_RB,
+		.mh_format = GFS2_FORMAT_RB,
+	};
+	struct iovec iov = {
+		.iov_len = rgt->ri.ri_length * bsize,
+		.iov_base = calloc(rgt->ri.ri_length, bsize),
+	};
+	if (iov.iov_base == NULL)
+		return -1;
+
+	gfs2_rgrp_out(&rgt->rg, iov.iov_base);
+	for (i = 1; i < rgt->ri.ri_length; i++)
+		gfs2_meta_header_out(&bmh, (char *)iov.iov_base + (i * bsize));
+
+	ret = pwritev(fd, &iov, 1, rgt->ri.ri_addr * bsize);
+	if (ret != iov.iov_len) {
+		free(iov.iov_base);
+		return -1;
+	}
+
+	free(iov.iov_base);
+	return 0;
+}
+
+static int place_rgrps(struct gfs2_sbd *sdp, int rgsize_specified)
+{
+	struct rgrp_tree *rgt = NULL;
+	uint64_t rgaddr = 0;
+	unsigned int i = 0;
+	int err = 0;
+
+	sdp->device.length -= sdp->sb_addr + 1;
+	sdp->new_rgrps = how_many_rgrps(sdp, &sdp->device, rgsize_specified);
+	rgaddr = sdp->sb_addr + 1;
+
+	for (i = 0; i < sdp->new_rgrps; i++) {
+		/* TODO: align to RAID stripes, etc. */
+		rgt = rgrp_insert(&sdp->rgtree, rgaddr);
+		if (rgt == NULL)
+			return -1;
+		if (i == 0)
+			rgt->length = sdp->device.length - ((sdp->new_rgrps - 1) * (sdp->device.length / sdp->new_rgrps));
+		else
+			rgt->length = sdp->device.length / sdp->new_rgrps;
+
+		/* Build the rindex entry */
+		rgt->ri.ri_length = rgblocks2bitblocks(sdp->bsize, rgt->length, &rgt->ri.ri_data);
+		rgt->ri.ri_addr = rgaddr;
+		rgt->ri.ri_data0 = rgaddr + rgt->ri.ri_length;
+		rgt->ri.ri_bitbytes = rgt->ri.ri_data / GFS2_NBBY;
+
+		/* Build the rgrp header */
+		memset(&rgt->rg, 0, sizeof(rgt->rg));
+		rgt->rg.rg_header.mh_magic = GFS2_MAGIC;
+		rgt->rg.rg_header.mh_type = GFS2_METATYPE_RG;
+		rgt->rg.rg_header.mh_format = GFS2_FORMAT_RG;
+		rgt->rg.rg_free = rgt->ri.ri_data;
+
+		/* TODO: This call allocates buffer heads and bitmap pointers
+		 * in rgt. We really shouldn't need to do that. */
+		err = gfs2_compute_bitstructs(sdp, rgt);
+		if (err != 0) {
+			fprintf(stderr, _("Could not compute bitmaps. "
+			        "Check resource group and block size options.\n"));
+			return -1;
+		}
+
+		err = writerg(sdp->device_fd, rgt, sdp->bsize);
+		if (err != 0) {
+			perror(_("Failed to write resource group"));
+			return -1;
+		}
+		sdp->blks_total += rgt->ri.ri_data;
+		rgaddr += rgt->length;
+	}
+
+	sdp->rgrps = sdp->new_rgrps;
+	sdp->fssize = rgt->ri.ri_data0 + rgt->ri.ri_data;
+	return 0;
+}
+
 /**
  * main_mkfs - do everything
  * @argc:
@@ -668,20 +755,13 @@ void main_mkfs(int argc, char *argv[])
 	if (!S_ISREG(sdp->dinfo.stat.st_mode) && discard)
 		discard_blocks(sdp);
 
-	/* Compute the resource group layouts */
-
-	compute_rgrp_layout(sdp, &sdp->rgtree, rgsize_specified);
-	debug_print_rgrps(sdp, &sdp->rgtree);
-
-	/* Generate a random uuid */
-	get_random_bytes(uuid, sizeof(uuid));
-
-	/* Build ondisk structures */
-
-	build_rgrps(sdp, TRUE);
+	error = place_rgrps(sdp, rgsize_specified);
+	if (error) {
+		fprintf(stderr, _("Failed to build resource groups\n"));
+		exit(1);
+	}
 	build_root(sdp);
 	build_master(sdp);
-	build_sb(sdp, uuid);
 	error = build_jindex(sdp);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "jindex", strerror(errno));
@@ -714,11 +794,11 @@ void main_mkfs(int argc, char *argv[])
 		fprintf(stderr, _("Error building '%s': %s\n"), "quota", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+	get_random_bytes(uuid, sizeof(uuid));
+	build_sb(sdp, uuid);
 
 	do_init_inum(sdp);
 	do_init_statfs(sdp);
-
-	/* Cleanup */
 
 	inode_put(&sdp->md.rooti);
 	inode_put(&sdp->master_dir);
@@ -727,14 +807,12 @@ void main_mkfs(int argc, char *argv[])
 
 	gfs2_rgrp_free(&sdp->rgtree);
 	error = fsync(sdp->device_fd);
-
 	if (error){
 		perror(sdp->device_name);
 		exit(EXIT_FAILURE);
 	}
 
 	error = close(sdp->device_fd);
-
 	if (error){
 		perror(sdp->device_name);
 		exit(EXIT_FAILURE);
