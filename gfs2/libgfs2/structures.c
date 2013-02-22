@@ -495,6 +495,24 @@ int gfs2_check_meta(struct gfs2_buffer_head *bh, int type)
 	return 0;
 }
 
+unsigned lgfs2_bm_scan(struct rgrp_tree *rgd, unsigned idx, uint64_t *buf, uint8_t state)
+{
+	struct gfs2_bitmap *bi = &rgd->bits[idx];
+	unsigned n = 0;
+	uint32_t blk = 0;
+
+	while(blk < (bi->bi_len * GFS2_NBBY)) {
+		blk = gfs2_bitfit((const unsigned char *)rgd->bh[idx]->b_data + bi->bi_offset,
+				  bi->bi_len, blk, state);
+		if (blk == BFITNOENT)
+			break;
+		buf[n++] = blk + (bi->bi_start * GFS2_NBBY) + rgd->ri.ri_data0;
+		blk++;
+	}
+
+	return n;
+}
+
 /**
  * gfs2_next_rg_meta
  * @rgd:
@@ -543,11 +561,6 @@ static int __gfs2_next_rg_meta(struct rgrp_tree *rgd, uint64_t *block,
 int gfs2_next_rg_meta(struct rgrp_tree *rgd, uint64_t *block, int first)
 {
 	return __gfs2_next_rg_meta(rgd, block, first, GFS2_BLKST_DINODE);
-}
-
-int gfs2_next_rg_freemeta(struct rgrp_tree *rgd, uint64_t *block, int first)
-{
-	return __gfs2_next_rg_meta(rgd, block, first, GFS2_BLKST_UNLINKED);
 }
 
 /**

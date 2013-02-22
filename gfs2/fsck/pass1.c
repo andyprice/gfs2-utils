@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <inttypes.h>
 #include <libintl.h>
@@ -1547,6 +1548,128 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 	return 0;
 }
 
+static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uint64_t *ibuf, unsigned n)
+{
+	struct gfs2_buffer_head *bh;
+	unsigned i;
+	uint64_t block;
+
+	for (i = 0; i < n; i++) {
+		block = ibuf[i];
+
+		/* skip gfs1 rindex indirect blocks */
+		if (sdp->gfs1 && blockfind(&gfs1_rindex_blks, block)) {
+			log_debug(_("Skipping rindex indir block "
+				    "%lld (0x%llx)\n"),
+				  (unsigned long long)block,
+				  (unsigned long long)block);
+			continue;
+		}
+		warm_fuzzy_stuff(block);
+
+		if (fsck_abort) { /* if asked to abort */
+			gfs2_special_free(&gfs1_rindex_blks);
+			return FSCK_OK;
+		}
+		if (skip_this_pass) {
+			printf( _("Skipping pass 1 is not a good idea.\n"));
+			skip_this_pass = FALSE;
+			fflush(stdout);
+		}
+		if (fsck_system_inode(sdp, block)) {
+			log_debug(_("Already processed system inode "
+				    "%lld (0x%llx)\n"),
+				  (unsigned long long)block,
+				  (unsigned long long)block);
+			continue;
+		}
+		bh = bread(sdp, block);
+
+		if (gfs2_check_meta(bh, GFS2_METATYPE_DI)) {
+			/* In gfs2, a bitmap mark of 2 means an inode,
+			   but in gfs1 it means any metadata.  So if
+			   this is gfs1 and not an inode, it may be
+			   okay.  If it's non-dinode metadata, it will
+			   be referenced by an inode, so we need to
+			   skip it here and it will be sorted out
+			   when the referencing inode is checked. */
+			if (sdp->gfs1) {
+				uint32_t check_magic;
+
+				check_magic = ((struct gfs2_meta_header *)
+					       (bh->b_data))->mh_magic;
+				if (be32_to_cpu(check_magic) == GFS2_MAGIC) {
+					log_debug( _("Deferring GFS1 "
+						     "metadata block #"
+						     "%" PRIu64" (0x%"
+						     PRIx64 ")\n"),
+						   block, block);
+					brelse(bh);
+					continue;
+				}
+			}
+			log_err( _("Found invalid inode at block #"
+				   "%llu (0x%llx)\n"),
+				 (unsigned long long)block,
+				 (unsigned long long)block);
+			if (gfs2_blockmap_set(bl, block, gfs2_block_free)) {
+				stack;
+				brelse(bh);
+				gfs2_special_free(&gfs1_rindex_blks);
+				return FSCK_ERROR;
+			}
+			check_n_fix_bitmap(sdp, block, gfs2_block_free);
+		} else if (handle_di(sdp, bh) < 0) {
+			stack;
+			brelse(bh);
+			gfs2_special_free(&gfs1_rindex_blks);
+			return FSCK_ERROR;
+		}
+		/* Ignore everything else - they should be hit by the
+		   handle_di step.  Don't check NONE either, because
+		   check_meta passes everything if GFS2_METATYPE_NONE
+		   is specified.  Hopefully, other metadata types such
+		   as indirect blocks will be handled when the inode
+		   itself is processed, and if it's not, it should be
+		   caught in pass5. */
+		brelse(bh);
+	}
+
+	return 0;
+}
+
+static int pass1_process_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
+{
+	unsigned k, n, i;
+	uint64_t *ibuf = malloc(sdp->bsize * GFS2_NBBY * sizeof(uint64_t));
+	int ret;
+
+	for (k = 0; k < rgd->ri.ri_length; k++) {
+		n = lgfs2_bm_scan(rgd, k, ibuf, GFS2_BLKST_DINODE);
+
+		if (n) {
+			ret = pass1_process_bitmap(sdp, rgd, ibuf, n);
+			if (ret)
+				return ret;
+		}
+
+		/*
+		  For GFS1, we have to count the "free meta" blocks in the
+		  resource group and mark them specially so we can count them
+		  properly in pass5.
+		 */
+		if (!sdp->gfs1)
+			continue;
+
+		n = lgfs2_bm_scan(rgd, k, ibuf, GFS2_BLKST_UNLINKED);
+		for (i = 0; i < n; i++)
+			gfs2_blockmap_set(bl, ibuf[i], gfs2_freemeta);
+	}
+
+	free(ibuf);
+	return 0;
+}
+
 /**
  * pass1 - walk through inodes and check inode state
  *
@@ -1563,12 +1686,10 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 int pass1(struct gfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
-	struct gfs2_buffer_head *bh;
-	uint64_t block = 0;
 	struct rgrp_tree *rgd;
-	int first;
 	uint64_t i;
 	uint64_t rg_count = 0;
+	int ret;
 
 	osi_list_init(&gfs1_rindex_blks.list);
 
@@ -1611,115 +1732,10 @@ int pass1(struct gfs2_sbd *sdp)
 			gfs2_meta_rgrp);*/
 		}
 
-		first = 1;
+		ret = pass1_process_rgrp(sdp, rgd);
+		if (ret)
+			return ret;
 
-		while (1) {
-			/* "block" is relative to the entire file system */
-			/* Get the next dinode in the file system, according
-			   to the bitmap.  This should ONLY be dinodes unless
-			   it's GFS1, in which case it can be any metadata. */
-			if (gfs2_next_rg_meta(rgd, &block, first))
-				break;
-			/* skip gfs1 rindex indirect blocks */
-			if (sdp->gfs1 && blockfind(&gfs1_rindex_blks, block)) {
-				log_debug(_("Skipping rindex indir block "
-					    "%lld (0x%llx)\n"),
-					  (unsigned long long)block,
-					  (unsigned long long)block);
-				first = 0;
-				continue;
-			}
-			warm_fuzzy_stuff(block);
-
-			if (fsck_abort) { /* if asked to abort */
-				gfs2_special_free(&gfs1_rindex_blks);
-				return FSCK_OK;
-			}
-			if (skip_this_pass) {
-				printf( _("Skipping pass 1 is not a good idea.\n"));
-				skip_this_pass = FALSE;
-				fflush(stdout);
-			}
-			if (fsck_system_inode(sdp, block)) {
-				log_debug(_("Already processed system inode "
-					    "%lld (0x%llx)\n"),
-					  (unsigned long long)block,
-					  (unsigned long long)block);
-				first = 0;
-				continue;
-			}
-			bh = bread(sdp, block);
-
-			/*log_debug( _("Checking metadata block #%" PRIu64
-			  " (0x%" PRIx64 ")\n"), block, block);*/
-
-			if (gfs2_check_meta(bh, GFS2_METATYPE_DI)) {
-				/* In gfs2, a bitmap mark of 2 means an inode,
-				   but in gfs1 it means any metadata.  So if
-				   this is gfs1 and not an inode, it may be
-				   okay.  If it's non-dinode metadata, it will
-				   be referenced by an inode, so we need to
-				   skip it here and it will be sorted out
-				   when the referencing inode is checked. */
-				if (sdp->gfs1) {
-					uint32_t check_magic;
-
-					check_magic = ((struct
-							gfs2_meta_header *)
-						       (bh->b_data))->mh_magic;
-					if (be32_to_cpu(check_magic) ==
-					    GFS2_MAGIC) {
-						log_debug( _("Deferring GFS1 "
-							     "metadata block #"
-							     "%" PRIu64" (0x%"
-							     PRIx64 ")\n"),
-							   block, block);
-						brelse(bh);
-						first = 0;
-						continue;
-					}
-				}
-				log_err( _("Found invalid inode at block #"
-					   "%llu (0x%llx)\n"),
-					 (unsigned long long)block,
-					 (unsigned long long)block);
-				if (gfs2_blockmap_set(bl, block,
-						      gfs2_block_free)) {
-					stack;
-					brelse(bh);
-					gfs2_special_free(&gfs1_rindex_blks);
-					return FSCK_ERROR;
-				}
-				check_n_fix_bitmap(sdp, block,
-						   gfs2_block_free);
-			} else if (handle_di(sdp, bh) < 0) {
-				stack;
-				brelse(bh);
-				gfs2_special_free(&gfs1_rindex_blks);
-				return FSCK_ERROR;
-			}
-			/* Ignore everything else - they should be hit by the
-			   handle_di step.  Don't check NONE either, because
-			   check_meta passes everything if GFS2_METATYPE_NONE
-			   is specified.  Hopefully, other metadata types such
-			   as indirect blocks will be handled when the inode
-			   itself is processed, and if it's not, it should be
-			   caught in pass5. */
-			brelse(bh);
-			first = 0;
-		}
-		/*
-		  For GFS1, we have to count the "free meta" blocks in the
-		  resource group and mark them specially so we can count them
-		  properly in pass5.
-		 */
-		if (!sdp->gfs1)
-			continue;
-		first = 1;
-		while (gfs2_next_rg_freemeta(rgd, &block, first) == 0) {
-			gfs2_blockmap_set(bl, block, gfs2_freemeta);
-			first = 0;
-		}
 	}
 	gfs2_special_free(&gfs1_rindex_blks);
 	return FSCK_OK;
