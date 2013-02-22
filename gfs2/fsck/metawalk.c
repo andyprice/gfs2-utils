@@ -335,6 +335,7 @@ static void dirblk_truncate(struct gfs2_inode *ip, struct gfs2_dirent *fixb,
  * bh - buffer for the leaf block
  * type - type of block this is (linear or exhash)
  * @count - set to the count entries
+ * @lindex - the last inde
  * @pass - structure pointing to pass-specific functions
  *
  * returns: 0 - good block or it was repaired to be good
@@ -515,6 +516,8 @@ static int warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no,
 
 /**
  * check_leaf - check a leaf block for errors
+ * Reads in the leaf block
+ * Leaves the buffer around for further analysis (caller must brelse)
  */
 static int check_leaf(struct gfs2_inode *ip, int lindex,
 		      struct metawalk_fxns *pass, int *ref_count,
@@ -1170,6 +1173,9 @@ static void free_metalist(struct gfs2_inode *ip, osi_list_t *mlp)
  *                            This includes hash table blocks for directories
  *                            which are technically "data" in the bitmap.
  *
+ * Returns: 0 - all is well, process the blocks this metadata references
+ *          1 - something went wrong, but process the sub-blocks anyway
+ *         -1 - something went wrong, so don't process the sub-blocks
  * @ip:
  * @mlp:
  */

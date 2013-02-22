@@ -211,7 +211,7 @@ static int check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	   So we know it's a leaf block. */
 	q = block_type(block);
 	if (q != gfs2_block_free) {
-		log_err( _("Found duplicate block %llu (0x%llx) referenced "
+		log_err( _("Found duplicate block #%llu (0x%llx) referenced "
 			   "as a directory leaf in dinode "
 			   "%llu (0x%llx) - was marked %d (%s)\n"),
 			 (unsigned long long)block,
@@ -264,7 +264,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 	}
 	q = block_type(block);
 	if (q != gfs2_block_free) {
-		log_err( _("Found duplicate block %llu (0x%llx) referenced "
+		log_err( _("Found duplicate block #%llu (0x%llx) referenced "
 			   "as metadata in indirect block for dinode "
 			   "%llu (0x%llx) - was marked %d (%s)\n"),
 			 (unsigned long long)block,
