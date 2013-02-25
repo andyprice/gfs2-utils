@@ -301,6 +301,166 @@ static int hash_table_index(uint32_t hash, struct gfs2_inode *ip)
 	return hash >> (32 - ip->i_di.di_depth);
 }
 
+static int hash_table_max(int lindex, struct gfs2_inode *ip,
+		   struct gfs2_buffer_head *bh)
+{
+	struct gfs2_leaf *leaf = (struct gfs2_leaf *)bh->b_data;
+	return (1 << (ip->i_di.di_depth - be16_to_cpu(leaf->lf_depth))) +
+		lindex - 1;
+}
+
+static int check_leaf_depth(struct gfs2_inode *ip, uint64_t leaf_no,
+			    int ref_count, struct gfs2_buffer_head *lbh)
+{
+	struct gfs2_leaf *leaf = (struct gfs2_leaf *)lbh->b_data;
+	int cur_depth = be16_to_cpu(leaf->lf_depth);
+	int exp_count = 1 << (ip->i_di.di_depth - cur_depth);
+	int divisor;
+	int factor, correct_depth;
+
+	if (exp_count == ref_count)
+		return 0;
+
+	factor = 0;
+	divisor = ref_count;
+	while (divisor > 1) {
+		factor++;
+		divisor >>= 1;
+	}
+	correct_depth = ip->i_di.di_depth - factor;
+	if (cur_depth == correct_depth)
+		return 0;
+
+	log_err(_("Leaf block %llu (0x%llx) in dinode %llu (0x%llx) has the "
+		  "wrong depth: is %d (length %d), should be %d (length "
+		  "%d).\n"),
+		(unsigned long long)leaf_no, (unsigned long long)leaf_no,
+		(unsigned long long)ip->i_di.di_num.no_addr,
+		(unsigned long long)ip->i_di.di_num.no_addr,
+		cur_depth, ref_count, correct_depth, exp_count);
+	if (!query( _("Fix the leaf block? (y/n)"))) {
+		log_err( _("The leaf block was not fixed.\n"));
+		return 0;
+	}
+
+	leaf->lf_depth = cpu_to_be16(correct_depth);
+	bmodified(lbh);
+	log_err( _("The leaf block depth was fixed.\n"));
+	return 1;
+}
+
+/* wrong_leaf: Deal with a dirent discovered to be on the wrong leaf block
+ *
+ * Returns: 1 if the dirent is to be removed, 0 if it needs to be kept,
+ *          or -1 on error
+ */
+static int wrong_leaf(struct gfs2_inode *ip, struct gfs2_inum *entry,
+		      const char *tmp_name, int lindex, int lindex_max,
+		      int hash_index, struct gfs2_buffer_head *bh,
+		      struct dir_status *ds, struct gfs2_dirent *dent,
+		      struct gfs2_dirent *de, struct gfs2_dirent *prev_de,
+		      uint32_t *count, uint8_t q)
+{
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct gfs2_buffer_head *dest_lbh;
+	uint64_t planned_leaf, real_leaf;
+	int li, dest_ref, error;
+	uint64_t *tbl;
+
+	log_err(_("Directory entry '%s' at block %lld (0x%llx) is on the "
+		  "wrong leaf block.\n"), tmp_name,
+		(unsigned long long)entry->no_addr,
+		(unsigned long long)entry->no_addr);
+	log_err(_("Leaf index is: 0x%x. The range for this leaf block is "
+		  "0x%x - 0x%x\n"), hash_index, lindex, lindex_max);
+	if (!query( _("Move the misplaced directory entry to "
+		      "a valid leaf block? (y/n) "))) {
+		log_err( _("Misplaced directory entry not moved.\n"));
+		return 0;
+	}
+
+	/* check the destination leaf block's depth */
+	tbl = get_dir_hash(ip);
+	if (tbl == NULL) {
+		perror("get_dir_hash");
+		return -1;
+	}
+	planned_leaf = be64_to_cpu(tbl[hash_index]);
+	log_err(_("Moving it from leaf %llu (0x%llx) to %llu (0x%llx)\n"),
+		(unsigned long long)be64_to_cpu(tbl[lindex]),
+		(unsigned long long)be64_to_cpu(tbl[lindex]),
+		(unsigned long long)planned_leaf,
+		(unsigned long long)planned_leaf);
+	/* Can't trust lf_depth; we have to count */
+	dest_ref = 0;
+	for (li = 0; li < (1 << ip->i_di.di_depth); li++) {
+		if (be64_to_cpu(tbl[li]) == planned_leaf)
+			dest_ref++;
+		else if (dest_ref)
+			break;
+	}
+	dest_lbh = bread(sdp, planned_leaf);
+	check_leaf_depth(ip, planned_leaf, dest_ref, dest_lbh);
+	brelse(dest_lbh);
+	free(tbl);
+
+	/* check if it's already on the correct leaf block */
+	error = dir_search(ip, tmp_name, de->de_name_len, NULL, &de->de_inum);
+	if (!error) {
+		log_err(_("The misplaced directory entry already appears on "
+			  "the correct leaf block.\n"));
+		log_err( _("The bad duplicate directory entry "
+			   "'%s' was cleared.\n"), tmp_name);
+		return 1; /* nuke the dent upon return */
+	}
+
+	if (dir_add(ip, tmp_name, de->de_name_len, &de->de_inum,
+		    de->de_type) == 0) {
+		log_err(_("The misplaced directory entry was moved to a "
+			  "valid leaf block.\n"));
+		gfs2_get_leaf_nr(ip, hash_index, &real_leaf);
+		if (real_leaf != planned_leaf) {
+			log_err(_("The planned leaf was split. The new leaf "
+				  "is: %llu (0x%llx)"),
+				(unsigned long long)real_leaf,
+				(unsigned long long)real_leaf);
+			fsck_blockmap_set(ip, real_leaf, _("split leaf"),
+					  gfs2_indir_blk);
+		}
+		/* If the misplaced dirent was supposed to be earlier in the
+		   hash table, we need to adjust our counts for the blocks
+		   that have already been processed. If it's supposed to
+		   appear later, we'll count it has part of our normal
+		   processing when we get to that leaf block later on in the
+		   hash table. */
+		if (hash_index > lindex) {
+			log_err(_("Accounting deferred.\n"));
+			return 1; /* nuke the dent upon return */
+		}
+		/* If we get here, it's because we moved a dent to another
+		   leaf, but that leaf has already been processed. So we have
+		   to nuke the dent from this leaf when we return, but we
+		   still need to do the "good dent" accounting. */
+		error = incr_link_count(*entry, ip, _("valid reference"));
+		if (error > 0 &&
+		    bad_formal_ino(ip, dent, *entry, tmp_name, q, de, bh) == 1)
+			return 1; /* nuke it */
+
+		/* You cannot do this:
+		   (*count)++;
+		   The reason is: *count is the count of dentries on the leaf,
+		   and we moved the dentry to a previous leaf within the same
+		   directory dinode. So the directory counts still get
+		   incremented, but not leaf entries. When we called dir_add
+		   above, it should have fixed that prev leaf's lf_entries. */
+		ds->entry_count++;
+		return 1;
+	} else {
+		log_err(_("Error moving directory entry.\n"));
+		return 1; /* nuke it */
+	}
+}
+
 /* basic_dentry_checks - fundamental checks for directory entries
  *
  * @ip: pointer to the incode inode structure
@@ -522,9 +682,9 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 /* FIXME: should maybe refactor this a bit - but need to deal with
  * FIXMEs internally first */
 static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
-		 struct gfs2_dirent *prev_de,
-		 struct gfs2_buffer_head *bh, char *filename,
-		 uint32_t *count, void *priv)
+			struct gfs2_dirent *prev_de,
+			struct gfs2_buffer_head *bh, char *filename,
+			uint32_t *count, int lindex, void *priv)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint8_t q = 0;
@@ -534,6 +694,8 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	int error;
 	struct gfs2_inode *entry_ip = NULL;
 	struct gfs2_dirent dentry, *de;
+	int hash_index; /* index into the hash table based on the hash */
+	int lindex_max; /* largest acceptable hash table index for hash */
 
 	memset(&dentry, 0, sizeof(struct gfs2_dirent));
 	gfs2_dirent_in(&dentry, (char *)dent);
@@ -674,6 +836,21 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		ds->dotdotdir = 1;
 		goto dentry_is_valid;
 	}
+	/* If this is an exhash directory, make sure the dentries in the leaf
+	   block have a hash table index that fits */
+	if (ip->i_di.di_flags & GFS2_DIF_EXHASH) {
+		hash_index = hash_table_index(de->de_hash, ip);
+		lindex_max = hash_table_max(lindex, ip, bh);
+		if (hash_index < lindex || hash_index > lindex_max) {
+			int nuke_dent;
+
+			nuke_dent = wrong_leaf(ip, &entry, tmp_name, lindex,
+					       lindex_max, hash_index, bh, ds,
+					       dent, de, prev_de, count, q);
+			if (nuke_dent)
+				goto nuke_dentry;
+		}
+	}
 
 	/* After this point we're only concerned with directories */
 	if (q != gfs2_inode_dir) {
@@ -705,10 +882,9 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 dentry_is_valid:
 	/* This directory inode links to this inode via this dentry */
 	error = incr_link_count(entry, ip, _("valid reference"));
-	if (error > 0) {
-		if (bad_formal_ino(ip, dent, entry, tmp_name, q, de, bh) == 1)
-			goto nuke_dentry;
-	}
+	if (error > 0 &&
+	    bad_formal_ino(ip, dent, entry, tmp_name, q, de, bh) == 1)
+		goto nuke_dentry;
 
 	(*count)++;
 	ds->entry_count++;

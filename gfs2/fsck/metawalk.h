@@ -85,7 +85,8 @@ struct metawalk_fxns {
 	int (*check_dentry) (struct gfs2_inode *ip, struct gfs2_dirent *de,
 			     struct gfs2_dirent *prev,
 			     struct gfs2_buffer_head *bh,
-			     char *filename, uint32_t *count, void *private);
+			     char *filename, uint32_t *count,
+			     int lindex, void *private);
 	int (*check_eattr_entry) (struct gfs2_inode *ip,
 				  struct gfs2_buffer_head *leaf_bh,
 				  struct gfs2_ea_header *ea_hdr,

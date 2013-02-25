@@ -342,7 +342,8 @@ static void dirblk_truncate(struct gfs2_inode *ip, struct gfs2_dirent *fixb,
  *         -1 - error occurred
  */
 static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
-		  int type, uint32_t *count, struct metawalk_fxns *pass)
+			 int type, uint32_t *count, int lindex,
+			 struct metawalk_fxns *pass)
 {
 	struct gfs2_dirent *dent;
 	struct gfs2_dirent de, *prev;
@@ -450,6 +451,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			} else {
 				error = pass->check_dentry(ip, dent, prev, bh,
 							   filename, count,
+							   lindex,
 							   pass->private);
 				if (error < 0) {
 					stack;
@@ -589,7 +591,8 @@ static int check_leaf(struct gfs2_inode *ip, int lindex,
 	}
 
 	if (pass->check_dentry && is_dir(&ip->i_di, sdp->gfs1)) {
-		error = check_entries(ip, lbh, DIR_EXHASH, &count, pass);
+		error = check_entries(ip, lbh, DIR_EXHASH, &count, lindex,
+				      pass);
 
 		if (skip_this_pass || fsck_abort)
 			goto out;
@@ -1450,7 +1453,7 @@ int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	int error = 0;
 	uint32_t count = 0;
 
-	error = check_entries(ip, bh, DIR_LINEAR, &count, pass);
+	error = check_entries(ip, bh, DIR_LINEAR, &count, 0, pass);
 	if (error < 0) {
 		stack;
 		return -1;
@@ -1481,7 +1484,8 @@ int check_dir(struct gfs2_sbd *sdp, uint64_t block, struct metawalk_fxns *pass)
 static int remove_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			 struct gfs2_dirent *prev_de,
 			 struct gfs2_buffer_head *bh,
-			 char *filename, uint32_t *count, void *private)
+			 char *filename, uint32_t *count, int lindex,
+			 void *private)
 {
 	/* the metawalk_fxn's private field must be set to the dentry
 	 * block we want to clear */
