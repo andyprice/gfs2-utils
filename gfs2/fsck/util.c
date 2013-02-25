@@ -654,3 +654,22 @@ uint64_t find_free_blk(struct gfs2_sbd *sdp)
 	}
 	return 0;
 }
+
+uint64_t *get_dir_hash(struct gfs2_inode *ip)
+{
+	unsigned hsize = (1 << ip->i_di.di_depth) * sizeof(uint64_t);
+	int ret;
+	uint64_t *tbl = malloc(hsize);
+
+	if (tbl == NULL)
+		return NULL;
+
+	ret = gfs2_readi(ip, tbl, 0, hsize);
+	if (ret != hsize) {
+		free(tbl);
+		return NULL;
+	}
+
+	return tbl;
+}
+

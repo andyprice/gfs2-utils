@@ -639,24 +639,6 @@ out_copy_old_leaf:
 	return 1;
 }
 
-static uint64_t *get_dir_hash(struct gfs2_inode *ip)
-{
-	unsigned hsize = (1 << ip->i_di.di_depth) * sizeof(uint64_t);
-	int ret;
-	uint64_t *tbl = malloc(hsize);
-
-	if (tbl == NULL)
-		return NULL;
-
-	ret = gfs2_readi(ip, tbl, 0, hsize);
-	if (ret != hsize) {
-		free(tbl);
-		return NULL;
-	}
-
-	return tbl;
-}
-
 static int u64cmp(const void *p1, const void *p2)
 {
 	uint64_t a = *(uint64_t *)p1;
