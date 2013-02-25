@@ -88,6 +88,70 @@ static void add_dotdot(struct gfs2_inode *ip)
 	}
 }
 
+void make_sure_lf_exists(struct gfs2_inode *ip)
+{
+	uint8_t q;
+	struct dir_info *di;
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	uint32_t mode;
+
+	if (lf_dip)
+		return;
+
+	log_info( _("Locating/Creating lost+found directory\n"));
+
+	/* if this is gfs1, we have to trick createi into using
+	   no_formal_ino = no_addr, so we set next_inum to the
+	   free block we're about to allocate. */
+	if (sdp->gfs1)
+		sdp->md.next_inum = find_free_blk(sdp);
+	mode = (sdp->gfs1 ? DT2IF(GFS_FILE_DIR) : S_IFDIR) | 0700;
+	if (sdp->gfs1)
+		lf_dip = gfs_createi(sdp->md.rooti, "lost+found", mode, 0);
+	else
+		lf_dip = createi(sdp->md.rooti, "lost+found",
+				 S_IFDIR | 0700, 0);
+	if (lf_dip == NULL) {
+		log_crit(_("Error creating lost+found: %s\n"),
+			 strerror(errno));
+		exit(FSCK_ERROR);
+	}
+
+	/* createi will have incremented the di_nlink link count for the root
+	   directory.  We must set the nlink value in the hash table to keep
+	   them in sync so that pass4 can detect and fix any descrepancies. */
+	set_di_nlink(sdp->md.rooti);
+
+	q = block_type(lf_dip->i_di.di_num.no_addr);
+	if (q != gfs2_inode_dir) {
+		/* This is a new lost+found directory, so set its block type
+		   and increment link counts for the directories */
+		/* FIXME: i'd feel better about this if fs_mkdir returned
+		   whether it created a new directory or just found an old one,
+		   and we used that instead of the block_type to run this */
+		fsck_blockmap_set(ip, lf_dip->i_di.di_num.no_addr,
+				  _("lost+found dinode"), gfs2_inode_dir);
+		dirtree_insert(lf_dip->i_di.di_num);
+		/* root inode links to lost+found */
+		incr_link_count(sdp->md.rooti->i_di.di_num, lf_dip, _("root"));
+		/* lost+found link for '.' from itself */
+		incr_link_count(lf_dip->i_di.di_num, lf_dip, "\".\"");
+		/* lost+found link for '..' back to root */
+		incr_link_count(lf_dip->i_di.di_num, sdp->md.rooti, "\"..\"");
+		if (sdp->gfs1)
+			lf_dip->i_di.__pad1 = GFS_FILE_DIR;
+	}
+	log_info( _("lost+found directory is dinode %lld (0x%llx)\n"),
+		  (unsigned long long)lf_dip->i_di.di_num.no_addr,
+		  (unsigned long long)lf_dip->i_di.di_num.no_addr);
+	di = dirtree_find(lf_dip->i_di.di_num.no_addr);
+	if (di) {
+		log_info( _("Marking lost+found inode connected\n"));
+		di->checked = 1;
+		di = NULL;
+	}
+}
+
 /* add_inode_to_lf - Add dir entry to lost+found for the inode
  * @ip: inode to add to lost + found
  *
@@ -102,74 +166,10 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	__be32 inode_type;
 	uint64_t lf_blocks;
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct dir_info *di;
 	int err = 0;
 	uint32_t mode;
 
-	if (!lf_dip) {
-		uint8_t q;
-
-		log_info( _("Locating/Creating lost+found directory\n"));
-
-		/* if this is gfs1, we have to trick createi into using
-		   no_formal_ino = no_addr, so we set next_inum to the
-		   free block we're about to allocate. */
-		if (sdp->gfs1)
-			sdp->md.next_inum = find_free_blk(sdp);
-		mode = (sdp->gfs1 ? DT2IF(GFS_FILE_DIR) : S_IFDIR) | 0700;
-		if (sdp->gfs1)
-			lf_dip = gfs_createi(sdp->md.rooti, "lost+found",
-					     mode, 0);
-		else
-			lf_dip = createi(sdp->md.rooti, "lost+found",
-					 S_IFDIR | 0700, 0);
-		if (lf_dip == NULL) {
-			log_crit(_("Error creating lost+found: %s\n"),
-			         strerror(errno));
-			exit(FSCK_ERROR);
-		}
-
-		/* createi will have incremented the di_nlink link count for
-		   the root directory.  We must set the nlink value
-		   in the hash table to keep them in sync so that pass4 can
-		   detect and fix any descrepancies. */
-		set_di_nlink(sdp->md.rooti);
-
-		q = block_type(lf_dip->i_di.di_num.no_addr);
-		if (q != gfs2_inode_dir) {
-			/* This is a new lost+found directory, so set its
-			 * block type and increment link counts for
-			 * the directories */
-			/* FIXME: i'd feel better about this if
-			 * fs_mkdir returned whether it created a new
-			 * directory or just found an old one, and we
-			 * used that instead of the block_type to run
-			 * this */
-			fsck_blockmap_set(ip, lf_dip->i_di.di_num.no_addr,
-					  _("lost+found dinode"),
-					  gfs2_inode_dir);
-			/* root inode links to lost+found */
-			incr_link_count(sdp->md.rooti->i_di.di_num,
-				       lf_dip, _("root"));
-			/* lost+found link for '.' from itself */
-			incr_link_count(lf_dip->i_di.di_num,
-					lf_dip, "\".\"");
-			/* lost+found link for '..' back to root */
-			incr_link_count(lf_dip->i_di.di_num, sdp->md.rooti,
-				       "\"..\"");
-			if (sdp->gfs1)
-				lf_dip->i_di.__pad1 = GFS_FILE_DIR;
-		}
-		log_info( _("lost+found directory is dinode %lld (0x%llx)\n"),
-			  (unsigned long long)lf_dip->i_di.di_num.no_addr,
-			  (unsigned long long)lf_dip->i_di.di_num.no_addr);
-		di = dirtree_find(lf_dip->i_di.di_num.no_addr);
-		if (di) {
-			log_info( _("Marking lost+found inode connected\n"));
-			di->checked = 1;
-			di = NULL;
-		}
-	}
+	make_sure_lf_exists(ip);
 	if (ip->i_di.di_num.no_addr == lf_dip->i_di.di_num.no_addr) {
 		log_err( _("Trying to add lost+found to itself...skipping"));
 		return 0;
