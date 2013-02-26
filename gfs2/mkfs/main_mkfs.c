@@ -26,8 +26,6 @@
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
 
-int discard = 1;
-
 /**
  * This function is for libgfs2's sake.
  */
@@ -41,13 +39,7 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 	va_end(args);
 }
 
-/**
- * print_usage - print out usage information
- * @prog_name: The name of this program
- */
-
-static void
-print_usage(const char *prog_name)
+static void print_usage(const char *prog_name)
 {
 	int i;
 	const char *option, *param, *desc;
@@ -85,177 +77,156 @@ print_usage(const char *prog_name)
 	}
 }
 
+struct mkfs_opts {
+	unsigned bsize;
+	unsigned qcsize;
+	unsigned jsize;
+	unsigned rgsize;
+	uint64_t fssize;
+	uint32_t journals;
+	const char *lockproto;
+	const char *locktable;
+	const char *device;
+	unsigned discard:1;
+
+	unsigned got_bsize:1;
+	unsigned got_qcsize:1;
+	unsigned got_jsize:1;
+	unsigned got_rgsize:1;
+	unsigned got_fssize:1;
+	unsigned got_journals:1;
+	unsigned got_lockproto:1;
+	unsigned got_locktable:1;
+	unsigned got_device:1;
+
+	unsigned override:1;
+	unsigned quiet:1;
+	unsigned expert:1;
+	unsigned debug:1;
+	unsigned confirm:1;
+};
+
+static void opts_init(struct mkfs_opts *opts)
+{
+	memset(opts, 0, sizeof(*opts));
+	opts->discard = 1;
+	opts->journals = 1;
+	opts->bsize = GFS2_DEFAULT_BSIZE;
+	opts->jsize = GFS2_DEFAULT_JSIZE;
+	opts->qcsize = GFS2_DEFAULT_QCSIZE;
+	opts->rgsize = GFS2_DEFAULT_RGSIZE;
+	opts->lockproto = "lock_dlm";
+	opts->locktable = "";
+}
+
 #ifndef BLKDISCARD
 #define BLKDISCARD      _IO(0x12,119)
 #endif
 
-static int discard_blocks(struct gfs2_sbd *sdp)
+static int discard_blocks(int fd, uint64_t len, int debug)
 {
         __uint64_t range[2];
 
 	range[0] = 0;
-	range[1] = sdp->device.length * sdp->bsize;
-	if (sdp->debug)
+	range[1] = len;
+	if (debug)
 		/* Translators: "discard" is a request sent to a storage device to
 		 * discard a range of blocks. */
 		printf(_("Issuing discard request: range: %llu - %llu..."),
 		       (unsigned long long)range[0],
 		       (unsigned long long)range[1]);
-	if (ioctl(sdp->device_fd, BLKDISCARD, &range) < 0) {
-		if (sdp->debug)
+	if (ioctl(fd, BLKDISCARD, &range) < 0) {
+		if (debug)
 			printf("%s = %d\n", _("error"), errno);
 		return errno;
 	}
-	if (sdp->debug)
+	if (debug)
 		printf(_("Successful.\n"));
         return 0;
 }
 
-/**
- * decode_arguments - decode command line arguments and fill in the struct gfs2_sbd
- * @argc:
- * @argv:
- * @sdp: the decoded command line arguments
- *
- */
-
-static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
+static void opts_get(int argc, char *argv[], struct mkfs_opts *opts)
 {
-	int cont = TRUE;
-	int optchar;
+	int c;
+	while (1) {
+		c = getopt(argc, argv, "-b:c:DhJ:j:KOp:qr:t:VX");
+		if (c == -1)
+			break;
 
-	memset(sdp->device_name, 0, sizeof(sdp->device_name));
-	sdp->md.journals = 1;
-	sdp->orig_fssize = 0;
-
-	while (cont) {
-		optchar = getopt(argc, argv, "-b:c:DhJ:j:KOp:qr:t:VX");
-
-		switch (optchar) {
+		switch (c) {
 		case 'b':
-			sdp->bsize = atoi(optarg);
+			opts->bsize = atoi(optarg);
+			opts->got_bsize = 1;
 			break;
-
 		case 'c':
-			sdp->qcsize = atoi(optarg);
+			opts->qcsize = atoi(optarg);
+			opts->got_qcsize = 1;
 			break;
-
 		case 'D':
-			sdp->debug = TRUE;
+			opts->debug = 1;
 			break;
-
 		case 'h':
 			print_usage(argv[0]);
 			exit(0);
-			break;
-
 		case 'J':
-			sdp->jsize = atoi(optarg);
+			opts->jsize = atoi(optarg);
+			opts->got_jsize = 1;
 			break;
-
 		case 'j':
-			sdp->md.journals = atoi(optarg);
+			opts->journals = atoi(optarg);
+			opts->got_journals = 1;
 			break;
-
 		case 'K':
-			discard = 0;
+			opts->discard = 0;
 			break;
-
 		case 'O':
-			sdp->override = TRUE;
+			opts->override = 1;
 			break;
-
 		case 'p':
-			if (strlen(optarg) >= GFS2_LOCKNAME_LEN)
-				die( _("lock protocol name '%s' is too long\n"),
-				    optarg);
-			strcpy(sdp->lockproto, optarg);
+			opts->lockproto = optarg;
+			opts->got_lockproto = 1;
 			break;
-
-		case 'q':
-			sdp->quiet = TRUE;
-			break;
-
-		case 'r':
-			sdp->rgsize = atoi(optarg);
-			break;
-
 		case 't':
-			if (strlen(optarg) >= GFS2_LOCKNAME_LEN)
-				die( _("lock table name '%s' is too long\n"), optarg);
-			strcpy(sdp->locktable, optarg);
+			opts->locktable = optarg;
+			opts->got_locktable = 1;
 			break;
-
+		case 'q':
+			opts->quiet = 1;
+			break;
+		case 'r':
+			opts->rgsize = atoi(optarg);
+			opts->got_rgsize = 1;
+			break;
 		case 'V':
 			printf("mkfs.gfs2 %s (built %s %s)\n", VERSION,
 			       __DATE__, __TIME__);
 			printf(REDHAT_COPYRIGHT "\n");
 			exit(EXIT_SUCCESS);
 			break;
-
 		case 'X':
-			sdp->expert = TRUE;
+			opts->expert = 1;
 			break;
-
 		case ':':
 		case '?':
 			fprintf(stderr, _("Please use '-h' for help.\n"));
 			exit(EXIT_FAILURE);
 			break;
-
-		case EOF:
-			cont = FALSE;
-			break;
-
 		case 1:
 			if (strcmp(optarg, "gfs2") == 0)
 				continue;
-			if (!sdp->device_name[0])
-				strcpy(sdp->device_name, optarg);
-			else if (!sdp->orig_fssize &&
-				 isdigit(optarg[0]))
-				sdp->orig_fssize = atol(optarg);
-			else
+			if (!opts->got_device) {
+				opts->device = optarg;
+				opts->got_device = 1;
+			} else if (!opts->got_fssize && isdigit(optarg[0])) {
+				opts->fssize = atol(optarg);
+				opts->got_fssize = 1;
+			} else
 				die( _("More than one device specified (try -h for help)\n"));
 			break;
-
 		default:
-			die( _("Invalid option: %c\n"), optchar);
+			die( _("Invalid option: %c\n"), c);
 			break;
 		};
-	}
-
-	if ((sdp->device_name[0] == 0) && (optind < argc))
-		strcpy(sdp->device_name, argv[optind++]);
-
-	if (sdp->device_name[0] == '\0')
-		die( _("No device specified. Please use '-h' for help.\n"));
-
-	if (optind < argc)
-		sdp->orig_fssize = atol(argv[optind++]);
-
-	if (optind < argc)
-		die( _("Unrecognized argument: %s\n"), argv[optind]);
-
-	if (sdp->debug) {
-		printf( _("Command Line Arguments:\n"));
-		if (sdp->bsize != -1)
-			printf("  bsize = %u\n", sdp->bsize);
-		printf("  qcsize = %u\n", sdp->qcsize);
-		printf("  jsize = %u\n", sdp->jsize);
-		printf("  journals = %u\n", sdp->md.journals);
-		printf("  override = %d\n", sdp->override);
-		printf("  proto = %s\n", sdp->lockproto);
-		printf("  quiet = %d\n", sdp->quiet);
-		if (sdp->rgsize == (unsigned int)-1)
-			printf("  rgsize = %s\n", _("Optimize for best performance"));
-		else
-			printf("  rgsize = %u\n", sdp->rgsize);
-		printf("  table = %s\n", sdp->locktable);
-		printf("  device = %s\n", sdp->device_name);
-		if (sdp->orig_fssize)
-			printf("  block-count = %llu\n",
-			       (unsigned long long)sdp->orig_fssize);
 	}
 }
 
@@ -266,9 +237,9 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
  *
  */
 
-static void test_locking(char *lockproto, char *locktable)
+static void test_locking(const char *lockproto, const char *locktable)
 {
-	char *c;
+	const char *c;
 	/* Translators: A lock table is a string identifying a gfs2 file system
 	 * in a cluster, e.g. cluster_name:fs_name */
 	const char *errprefix = _("Invalid lock table:");
@@ -307,12 +278,6 @@ static void test_locking(char *lockproto, char *locktable)
 	}
 }
 
-/**
- * are_you_sure - protect lusers from themselves
- * @sdp: the command line
- *
- */
-
 static void are_you_sure(void)
 {
 	char *line = NULL;
@@ -345,59 +310,73 @@ static void are_you_sure(void)
 		free(line);
 }
 
-static void verify_bsize(struct gfs2_sbd *sdp)
+static unsigned choose_blocksize(struct mkfs_opts *opts, struct lgfs2_dev_info *dinfo)
 {
 	unsigned int x;
+	unsigned int bsize = opts->bsize;
+
+	if (!opts->got_bsize) {
+		if (S_ISREG(dinfo->stat.st_mode))
+			bsize = GFS2_DEFAULT_BSIZE;
+		/* See if optimal_io_size (the biggest I/O we can submit
+		   without incurring a penalty) is a suitable block size. */
+		else if (dinfo->io_optimal_size <= getpagesize() && dinfo->io_optimal_size >= dinfo->io_min_size)
+			bsize = dinfo->io_optimal_size;
+		/* See if physical_block_size (the smallest unit we can write
+		   without incurring read-modify-write penalty) is suitable. */
+		else if (dinfo->physical_block_size <= getpagesize() && dinfo->physical_block_size >= GFS2_DEFAULT_BSIZE)
+			bsize = dinfo->physical_block_size;
+		else
+			bsize = GFS2_DEFAULT_BSIZE;
+
+	}
 
 	/* Block sizes must be a power of two from 512 to 65536 */
-
 	for (x = 512; x; x <<= 1)
-		if (x == sdp->bsize)
+		if (x == bsize)
 			break;
 
-	if (!x || sdp->bsize > getpagesize())
+	if (!x || bsize > getpagesize())
 		die( _("Block size must be a power of two between 512 and %d\n"),
 		       getpagesize());
 
-	if (sdp->bsize < sdp->dinfo.logical_block_size) {
+	if (bsize < dinfo->logical_block_size) {
 		die( _("Error: Block size %d is less than minimum logical "
-		       "block size (%d).\n"), sdp->bsize,
-		     sdp->dinfo.logical_block_size);
+		       "block size (%d).\n"), bsize, dinfo->logical_block_size);
 	}
 
-	if (sdp->bsize < sdp->dinfo.physical_block_size) {
-		printf( _("WARNING: Block size %d is inefficient because it "
+	if (bsize < dinfo->physical_block_size) {
+		printf( _("Warning: Block size %d is inefficient because it "
 			  "is less than the physical block size (%d).\n"),
-			  sdp->bsize, sdp->dinfo.physical_block_size);
-		if (sdp->override)
-			return;
-
-		are_you_sure();
+			  bsize, dinfo->physical_block_size);
+		opts->confirm = 1;
 	}
+	return bsize;
 }
 
-static void verify_arguments(struct gfs2_sbd *sdp)
+static void opts_check(struct mkfs_opts *opts)
 {
-	if (!sdp->expert)
-		test_locking(sdp->lockproto, sdp->locktable);
-	if (sdp->expert) {
-		if (GFS2_EXP_MIN_RGSIZE > sdp->rgsize || sdp->rgsize > GFS2_MAX_RGSIZE)
+	if (!opts->expert)
+		test_locking(opts->lockproto, opts->locktable);
+	if (opts->expert) {
+		if (GFS2_EXP_MIN_RGSIZE > opts->rgsize || opts->rgsize > GFS2_MAX_RGSIZE)
 			/* Translators: gfs2 file systems are split into equal sized chunks called
 			   resource groups. We're checking that the user gave a valid size for them. */
 			die( _("bad resource group size\n"));
 	} else {
-		if (GFS2_MIN_RGSIZE > sdp->rgsize || sdp->rgsize > GFS2_MAX_RGSIZE)
+		if (GFS2_MIN_RGSIZE > opts->rgsize || opts->rgsize > GFS2_MAX_RGSIZE)
 			die( _("bad resource group size\n"));
 	}
 
-	if (!sdp->md.journals)
+	if (!opts->journals)
 		die( _("no journals specified\n"));
 
-	if (sdp->jsize < 8 || sdp->jsize > 1024)
+	if (opts->jsize < 8 || opts->jsize > 1024)
 		die( _("bad journal size\n"));
 
-	if (!sdp->qcsize || sdp->qcsize > 64)
+	if (!opts->qcsize || opts->qcsize > 64)
 		die( _("bad quota change size\n"));
+
 }
 
 static int get_file_output(int fd, char *buffer, size_t buflen)
@@ -499,27 +478,10 @@ fail:
 	exit(execv(args[0], args));
 }
 
-
-/**
- * print_results - print out summary information
- * @sdp: the command line
- *
- */
-
-static void
-print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
-	      unsigned char uuid[16])
+static void print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
+                          struct mkfs_opts *opts, unsigned char uuid[16])
 {
-	if (sdp->debug)
-		printf("\n");
-	else if (sdp->quiet)
-		return;
-
-	if (sdp->expert)
-		printf("%-27s%s\n", _("Expert mode:"), _("on"));
-
-	printf("%-27s%s\n", _("Device:"), sdp->device_name);
-
+	printf("%-27s%s\n", _("Device:"), opts->device);
 	printf("%-27s%u\n", _("Block size:"), sdp->bsize);
 	printf("%-27s%.2f %s (%llu %s)\n", _("Device size:"),
 	       /* Translators: "GB" here means "gigabytes" */
@@ -533,11 +495,11 @@ print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
 	printf("%-27s\"%s\"\n", _("Locking protocol:"), sdp->lockproto);
 	printf("%-27s\"%s\"\n", _("Lock table:"), sdp->locktable);
 
-	if (sdp->debug) {
-		printf("\n%-27s%u\n", _("Writes:"), sdp->writes);
+	if (opts->debug) {
+		printf("%-27s%u\n", _("Writes:"), sdp->writes);
 	}
 	/* Translators: "UUID" = universally unique identifier. */
-	printf("%-27s%s\n\n", _("UUID:"), str_uuid(uuid));
+	printf("%-27s%s\n", _("UUID:"), str_uuid(uuid));
 }
 
 
@@ -546,7 +508,7 @@ print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
  * otherwise return 0. Exit on errors. The caller must free the memory pointed
  * to by *abspath.
  */
-static int is_symlink(char *path, char **abspath)
+static int is_symlink(const char *path, char **abspath)
 {
 	struct stat lnkstat;
 
@@ -597,7 +559,7 @@ static int writerg(int fd, const struct rgrp_tree *rgt, const unsigned bsize)
 	return 0;
 }
 
-static int place_rgrps(struct gfs2_sbd *sdp, int rgsize_specified)
+static int place_rgrps(struct gfs2_sbd *sdp, const struct mkfs_opts *opts)
 {
 	struct rgrp_tree *rgt = NULL;
 	uint64_t rgaddr = 0;
@@ -605,7 +567,7 @@ static int place_rgrps(struct gfs2_sbd *sdp, int rgsize_specified)
 	int err = 0;
 
 	sdp->device.length -= sdp->sb_addr + 1;
-	sdp->new_rgrps = how_many_rgrps(sdp, &sdp->device, rgsize_specified);
+	sdp->new_rgrps = how_many_rgrps(sdp, &sdp->device, opts->got_rgsize);
 	rgaddr = sdp->sb_addr + 1;
 
 	for (i = 0; i < sdp->new_rgrps; i++) {
@@ -654,169 +616,160 @@ static int place_rgrps(struct gfs2_sbd *sdp, int rgsize_specified)
 	return 0;
 }
 
-/**
- * main_mkfs - do everything
- * @argc:
- * @argv:
- *
- */
+static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct lgfs2_dev_info *dinfo, int fd)
+{
+	memset(sdp, 0, sizeof(struct gfs2_sbd));
+	sdp->time = time(NULL);
+	sdp->rgtree.osi_node = NULL;
+	sdp->rgsize = opts->rgsize;
+	sdp->qcsize = opts->qcsize;
+	sdp->jsize = opts->jsize;
+	sdp->md.journals = opts->journals;
+	sdp->device_fd = fd;
+	sdp->bsize = choose_blocksize(opts, dinfo);
+
+	if (compute_constants(sdp)) {
+		perror(_("Failed to compute file system constants"));
+		exit(1);
+	}
+	sdp->device.length = dinfo->size / sdp->bsize;
+	if (opts->got_fssize) {
+		if (opts->fssize > sdp->device.length) {
+			fprintf(stderr, _("Specified size is bigger than the device."));
+			die("%s %.2f %s (%llu %s)\n", _("Device size:"),
+			       dinfo->size / ((float)(1 << 30)), _("GB"),
+			       (unsigned long long)dinfo->size / sdp->bsize, _("blocks"));
+		}
+		/* TODO: Check if the fssize is too small, somehow */
+		sdp->device.length = opts->fssize;
+	}
+	strcpy(sdp->lockproto, opts->lockproto);
+	strcpy(sdp->locktable, opts->locktable);
+	if (opts->debug) {
+		printf(_("Calculated file system options:\n"));
+		printf("  bsize = %u\n", sdp->bsize);
+		printf("  qcsize = %u\n", sdp->qcsize);
+		printf("  jsize = %u\n", sdp->jsize);
+		printf("  journals = %u\n", sdp->md.journals);
+		printf("  proto = %s\n", sdp->lockproto);
+		printf("  rgsize = %u\n", sdp->rgsize);
+		printf("  table = %s\n", sdp->locktable);
+		printf("  fssize = %"PRIu64"\n", opts->fssize);
+	}
+}
+
 void main_mkfs(int argc, char *argv[])
 {
-	struct gfs2_sbd sbd, *sdp = &sbd;
+	struct gfs2_sbd sbd;
+	struct mkfs_opts opts;
+	struct lgfs2_dev_info dinfo;
 	int error;
-	int rgsize_specified = 0;
 	unsigned char uuid[16];
 	char *absname = NULL;
 	char *fdpath = NULL;
 	int islnk = 0;
+	int fd;
 
-	memset(sdp, 0, sizeof(struct gfs2_sbd));
-	sdp->bsize = -1;
-	sdp->jsize = GFS2_DEFAULT_JSIZE;
-	sdp->rgsize = -1;
-	sdp->qcsize = GFS2_DEFAULT_QCSIZE;
-	strcpy(sdp->lockproto, GFS2_DEFAULT_LOCKPROTO);
-	sdp->time = time(NULL);
-	sdp->rgtree.osi_node = NULL;
+	opts_init(&opts);
+	opts_get(argc, argv, &opts);
 
-	decode_arguments(argc, argv, sdp);
-	if (sdp->rgsize == -1)                 /* if rg size not specified */
-		sdp->rgsize = GFS2_DEFAULT_RGSIZE; /* default it for now */
-	else
-		rgsize_specified = TRUE;
-
-	verify_arguments(sdp);
-
-	sdp->device_fd = open(sdp->device_name, O_RDWR | O_CLOEXEC);
-	if (sdp->device_fd < 0){
-		perror(sdp->device_name);
+	fd = open(opts.device, O_RDWR | O_CLOEXEC);
+	if (fd < 0){
+		perror(opts.device);
 		exit(EXIT_FAILURE);
 	}
 
-	if (lgfs2_get_dev_info(sdp->device_fd, &sdp->dinfo) < 0) {
-		perror(sdp->device_name);
+	if (lgfs2_get_dev_info(fd, &dinfo) < 0) {
+		perror(opts.device);
 		exit(EXIT_FAILURE);
 	}
 
-	if (asprintf(&fdpath, "/proc/%d/fd/%d", getpid(), sdp->device_fd) < 0) {
+	opts_check(&opts);
+	sbd_init(&sbd, &opts, &dinfo, fd);
+
+	if (asprintf(&fdpath, "/proc/%d/fd/%d", getpid(), fd) < 0) {
 		perror(_("Failed to build string"));
 		exit(EXIT_FAILURE);
 	}
 
-	if (!sdp->override) {
-		islnk = is_symlink(sdp->device_name, &absname);
-		printf(_("This will destroy any data on %s.\n"), islnk ? absname : sdp->device_name);
+	if (!opts.override) {
+		islnk = is_symlink(opts.device, &absname);
+		printf(_("This will destroy any data on %s.\n"), islnk ? absname : opts.device);
 		free(absname);
 		check_dev_content(fdpath);
-		are_you_sure();
+		opts.confirm = 1;
 	}
 	free(fdpath);
 
-	if (sdp->bsize == -1) {
-		if (S_ISREG(sdp->dinfo.stat.st_mode))
-			sdp->bsize = GFS2_DEFAULT_BSIZE;
-		/* See if optimal_io_size (the biggest I/O we can submit
-		   without incurring a penalty) is a suitable block size. */
-		else if (sdp->dinfo.io_optimal_size <= getpagesize() &&
-		    sdp->dinfo.io_optimal_size >= sdp->dinfo.io_min_size)
-			sdp->bsize = sdp->dinfo.io_optimal_size;
-		/* See if physical_block_size (the smallest unit we can write
-		   without incurring read-modify-write penalty) is suitable. */
-		else if (sdp->dinfo.physical_block_size <= getpagesize() &&
-			 sdp->dinfo.physical_block_size >= GFS2_DEFAULT_BSIZE)
-			sdp->bsize = sdp->dinfo.physical_block_size;
-		else
-			sdp->bsize = GFS2_DEFAULT_BSIZE;
+	if (opts.confirm && !opts.override)
+		are_you_sure();
 
-		if (sdp->debug)
-			printf("\n%s %u\n", _("Using block size:"), sdp->bsize);
-	}
-	verify_bsize(sdp);
+	if (!S_ISREG(dinfo.stat.st_mode) && opts.discard)
+		discard_blocks(fd, sbd.bsize * sbd.device.length, opts.debug);
 
-	if (compute_constants(sdp)) {
-		perror(_("Failed to compute file system constants"));
-		exit(EXIT_FAILURE);
-	}
-
-	/* Convert optional block-count to basic blocks */
-	if (sdp->orig_fssize) {
-		sdp->orig_fssize *= sdp->bsize;
-		sdp->orig_fssize >>= GFS2_BASIC_BLOCK_SHIFT;
-		if (sdp->orig_fssize > sdp->device.length) {
-			fprintf(stderr, "%s:%s\n", argv[0],
-			        _("Specified size is bigger than the device."));
-			die("%s %.2f %s (%llu %s)\n", _("Device size:"),
-			       sdp->dinfo.size / ((float)(1 << 30)), _("GB"),
-			       (unsigned long long)sdp->dinfo.size / sdp->bsize, _("blocks"));
-		}
-		sdp->device.length = sdp->orig_fssize;
-	}
-	fix_device_geometry(sdp);
-	if (!S_ISREG(sdp->dinfo.stat.st_mode) && discard)
-		discard_blocks(sdp);
-
-	error = place_rgrps(sdp, rgsize_specified);
+	error = place_rgrps(&sbd, &opts);
 	if (error) {
 		fprintf(stderr, _("Failed to build resource groups\n"));
 		exit(1);
 	}
-	build_root(sdp);
-	build_master(sdp);
-	error = build_jindex(sdp);
+	build_root(&sbd);
+	build_master(&sbd);
+	error = build_jindex(&sbd);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "jindex", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	error = build_per_node(sdp);
+	error = build_per_node(&sbd);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "per_node", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	error = build_inum(sdp);
+	error = build_inum(&sbd);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "inum", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	gfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);
-	error = build_statfs(sdp);
+	gfs2_lookupi(sbd.master_dir, "inum", 4, &sbd.md.inum);
+	error = build_statfs(&sbd);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "statfs", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
-	error = build_rindex(sdp);
+	gfs2_lookupi(sbd.master_dir, "statfs", 6, &sbd.md.statfs);
+	error = build_rindex(&sbd);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "rindex", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	error = build_quota(sdp);
+	error = build_quota(&sbd);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "quota", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	get_random_bytes(uuid, sizeof(uuid));
-	build_sb(sdp, uuid);
+	build_sb(&sbd, uuid);
 
-	do_init_inum(sdp);
-	do_init_statfs(sdp);
+	do_init_inum(&sbd);
+	do_init_statfs(&sbd);
 
-	inode_put(&sdp->md.rooti);
-	inode_put(&sdp->master_dir);
-	inode_put(&sdp->md.inum);
-	inode_put(&sdp->md.statfs);
+	inode_put(&sbd.md.rooti);
+	inode_put(&sbd.master_dir);
+	inode_put(&sbd.md.inum);
+	inode_put(&sbd.md.statfs);
 
-	gfs2_rgrp_free(&sdp->rgtree);
-	error = fsync(sdp->device_fd);
+	gfs2_rgrp_free(&sbd.rgtree);
+	error = fsync(fd);
 	if (error){
-		perror(sdp->device_name);
+		perror(opts.device);
 		exit(EXIT_FAILURE);
 	}
 
-	error = close(sdp->device_fd);
+	error = close(fd);
 	if (error){
-		perror(sdp->device_name);
+		perror(opts.device);
 		exit(EXIT_FAILURE);
 	}
 
-	print_results(sdp, sdp->dinfo.size, uuid);
+	if (!opts.quiet)
+		print_results(&sbd, dinfo.size, &opts, uuid);
 }

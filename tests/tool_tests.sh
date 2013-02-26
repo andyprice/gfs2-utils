@@ -5,10 +5,10 @@
 # of the whole script will be non-zero but the tests will continue to be run. The
 # sparse file which is used as the target of the tests can be configured by
 # setting the environment variables TEST_TARGET (the filename) and TEST_TARGET_SZ
-# (its apparent size in gigabytes). Defaults to "test_sparse" and 10GB.
+# (its apparent size in gigabytes). Defaults to "testvol" and 10GB.
 
-MKFS="${TOPBUILDDIR}/gfs2/mkfs/mkfs.gfs2 -qO"
-FSCK="${TOPBUILDDIR}/gfs2/fsck/fsck.gfs2 -qn"
+MKFS="${TOPBUILDDIR}/gfs2/mkfs/mkfs.gfs2 -O"
+FSCK="${TOPBUILDDIR}/gfs2/fsck/fsck.gfs2 -n"
 
 # Name of the sparse file we'll use for testing
 TEST_TARGET=${TEST_TARGET:-testvol}
@@ -50,18 +50,40 @@ fn_recreate_target()
 	fn_test 0 "truncate -s ${TEST_TARGET_SZ}G ${TEST_TARGET}"
 }
 
+util_max_blocks()
+{
+	printf $((TEST_TARGET_SZ*1073741824/$1))
+}
 
 # Tests start here
 fn_recreate_target
 fn_test 0 "$MKFS -p lock_nolock $TEST_TARGET"
 fn_test 0 "$MKFS -p lock_dlm -t foo:bar $TEST_TARGET"
-fn_test 255 "$MKFS -p badprotocol $TEST_TARGET"
 fn_test 0 "$FSCK $TEST_TARGET"
+fn_test 255 "$MKFS -p badprotocol $TEST_TARGET"
 fn_test 255 "$MKFS -p lock_nolock -r 31 $TEST_TARGET"
 fn_test 255 "$MKFS -p lock_nolock -r 2049 $TEST_TARGET"
 fn_test 0 "$MKFS -p lock_nolock -r 32 $TEST_TARGET"
 fn_test 0 "$FSCK $TEST_TARGET"
 fn_test 0 "$MKFS -p lock_nolock -r 2048 $TEST_TARGET"
+fn_test 0 "$FSCK $TEST_TARGET"
+fn_test 255 "$MKFS -p lock_nolock -b 512 $TEST_TARGET $(($(util_max_blocks 512)+1))"
+fn_test 255 "$MKFS -p lock_nolock -b 4096 $TEST_TARGET $(($(util_max_blocks 4096)+1))"
+fn_test 0 "$MKFS -p lock_nolock -b 512 $TEST_TARGET $(util_max_blocks 512)"
+fn_test 0 "$FSCK $TEST_TARGET"
+fn_test 0 "$MKFS -p lock_nolock -b 4096 $TEST_TARGET $(util_max_blocks 4096)"
+fn_test 0 "$FSCK $TEST_TARGET"
+fn_test 255 "$MKFS -p lock_nolock -J 7 $TEST_TARGET"
+fn_test 255 "$MKFS -p lock_nolock -J 1025 $TEST_TARGET"
+fn_test 0 "$MKFS -p lock_nolock -J 1024 $TEST_TARGET"
+fn_test 0 "$FSCK $TEST_TARGET"
+fn_test 0 "$MKFS -p lock_nolock -J 8 $TEST_TARGET"
+fn_test 0 "$FSCK $TEST_TARGET"
+fn_test 255 "$MKFS -p lock_nolock -c 0 $TEST_TARGET"
+fn_test 255 "$MKFS -p lock_nolock -c 65 $TEST_TARGET"
+fn_test 0 "$MKFS -p lock_nolock -c 1 $TEST_TARGET"
+fn_test 0 "$FSCK $TEST_TARGET"
+fn_test 0 "$MKFS -p lock_nolock -c 64 $TEST_TARGET"
 fn_test 0 "$FSCK $TEST_TARGET"
 
 # Tests end here

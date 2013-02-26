@@ -295,7 +295,6 @@ struct gfs2_sbd {
 
 	uint64_t sb_addr;
 
-	uint64_t orig_fssize;
 	uint64_t fssize;
 	uint64_t blks_total;
 	uint64_t blks_alloced;
