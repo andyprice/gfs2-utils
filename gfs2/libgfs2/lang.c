@@ -298,6 +298,43 @@ static const char *bitstate_strings[] = {
 };
 
 /**
+ * Print a representation of an arbitrary field of an arbitrary GFS2 block to stdout
+ * Returns 0 if successful, 1 otherwise
+ */
+static int field_print(const struct gfs2_buffer_head *bh, const struct lgfs2_metadata *mtype,
+                      const struct lgfs2_metafield *field)
+{
+	const char *fieldp = (char *)bh->iov.iov_base + field->offset;
+
+	printf("%s\t%"PRIu64"\t%u\t%u\t%s\t", mtype->name, bh->b_blocknr, field->offset, field->length, field->name);
+	if (field->flags & LGFS2_MFF_UUID) {
+		printf("'%s'\n", str_uuid((const unsigned char *)fieldp));
+	} else if (field->flags & LGFS2_MFF_STRING) {
+		printf("'%s'\n", fieldp);
+	} else {
+		switch(field->length) {
+		case 1:
+			printf("%"PRIu8"\n", *(uint8_t *)fieldp);
+			break;
+		case 2:
+			printf("%"PRIu16"\n", be16_to_cpu(*(uint16_t *)fieldp));
+			break;
+		case 4:
+			printf("%"PRIu32"\n", be32_to_cpu(*(uint32_t *)fieldp));
+			break;
+		case 8:
+			printf("%"PRIu64"\n", be64_to_cpu(*(uint64_t *)fieldp));
+			break;
+		default:
+			// "Reserved" field so just print 0
+			printf("0\n");
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/**
  * Print a representation of an arbitrary GFS2 block to stdout
  */
 int lgfs2_lang_result_print(struct lgfs2_lang_result *result)
@@ -305,7 +342,7 @@ int lgfs2_lang_result_print(struct lgfs2_lang_result *result)
 	int i;
 	if (result->lr_mtype != NULL) {
 		for (i = 0; i < result->lr_mtype->nfields; i++) {
-			lgfs2_field_print(result->lr_bh, result->lr_mtype, &result->lr_mtype->fields[i]);
+			field_print(result->lr_bh, result->lr_mtype, &result->lr_mtype->fields[i]);
 		}
 	} else {
 		printf("%"PRIu64": %s\n", result->lr_blocknr, bitstate_strings[result->lr_state]);

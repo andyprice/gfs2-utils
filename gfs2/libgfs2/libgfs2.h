@@ -357,9 +357,6 @@ extern const struct lgfs2_symbolic lgfs2_ld1_types[];
 extern const unsigned lgfs2_ld1_type_size;
 extern int lgfs2_selfcheck(void);
 extern const struct lgfs2_metadata *lgfs2_find_mtype(uint32_t mh_type, const unsigned versions);
-extern int lgfs2_field_print(const struct gfs2_buffer_head *bh,
-                             const struct lgfs2_metadata *mtype,
-                             const struct lgfs2_metafield *field);
 
 /* bitmap.c */
 struct gfs2_bmap {
