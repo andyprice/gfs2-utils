@@ -664,7 +664,7 @@ static int u64cmp(const void *p1, const void *p2)
 
 	if (a > b)
 		return 1;
-	if (b < b)
+	if (a < b)
 		return -1;
 
 	return 0;
