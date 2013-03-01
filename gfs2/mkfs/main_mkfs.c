@@ -583,14 +583,9 @@ static void print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
 	printf("%-27s%llu\n", _("Resource groups:"), (unsigned long long)sdp->rgrps);
 	printf("%-27s\"%s\"\n", _("Locking protocol:"), sdp->lockproto);
 	printf("%-27s\"%s\"\n", _("Lock table:"), sdp->locktable);
-
-	if (opts->debug) {
-		printf("%-27s%u\n", _("Writes:"), sdp->writes);
-	}
 	/* Translators: "UUID" = universally unique identifier. */
 	printf("%-27s%s\n", _("UUID:"), str_uuid(uuid));
 }
-
 
 /**
  * If path is a symlink, return 1 with *abspath pointing to the absolute path,

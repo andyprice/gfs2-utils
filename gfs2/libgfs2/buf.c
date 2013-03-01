@@ -80,7 +80,6 @@ int bwrite(struct gfs2_buffer_head *bh)
 
 	if (pwritev(sdp->device_fd, &bh->iov, 1, bh->b_blocknr * sdp->bsize) != bh->iov.iov_len)
 		return -1;
-	sdp->writes++;
 	bh->b_modified = 0;
 	return 0;
 }

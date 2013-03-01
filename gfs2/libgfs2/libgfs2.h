@@ -311,7 +311,6 @@ struct gfs2_sbd {
 	struct gfs2_inode *master_dir;
 	struct master_dir md;
 
-	unsigned int writes;
 	int metafs_fd;
 	char metafs_path[PATH_MAX]; /* where metafs is mounted */
 	struct special_blocks eattr_blocks;
