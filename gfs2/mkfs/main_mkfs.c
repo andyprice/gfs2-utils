@@ -19,6 +19,7 @@
 #include <sys/time.h>
 #include <libintl.h>
 #include <sys/ioctl.h>
+#include <limits.h>
 
 #define _(String) gettext(String)
 
@@ -55,6 +56,7 @@ static void print_usage(const char *prog_name)
 	    "-j", _("<number>"), _("Number of journals"),
 	    "-K", NULL,          _("Don't try to discard unused blocks"),
 	    "-O", NULL,          _("Don't ask for confirmation"),
+	    "-o", _("<key>[=<value>][,...]"), _("Specify extended options"),
 	    "-p", _("<name>"),   _("Name of the locking protocol"),
 	    "-q", NULL,          _("Don't print anything"),
 	    "-r", _("<size>"),   _("Size of resource groups, in megabytes"),
@@ -73,7 +75,7 @@ static void print_usage(const char *prog_name)
 		option = options[i];
 		param = options[i+1];
 		desc = options[i+2];
-		printf("%3s %-15s %s\n", option, param ? param : "", desc);
+		printf("%3s %-22s %s\n", option, param ? param : "", desc);
 	}
 }
 
@@ -82,6 +84,8 @@ struct mkfs_opts {
 	unsigned qcsize;
 	unsigned jsize;
 	unsigned rgsize;
+	unsigned sunit;
+	unsigned swidth;
 	uint64_t fssize;
 	uint32_t journals;
 	const char *lockproto;
@@ -93,6 +97,8 @@ struct mkfs_opts {
 	unsigned got_qcsize:1;
 	unsigned got_jsize:1;
 	unsigned got_rgsize:1;
+	unsigned got_sunit:1;
+	unsigned got_swidth:1;
 	unsigned got_fssize:1;
 	unsigned got_journals:1;
 	unsigned got_lockproto:1;
@@ -145,11 +151,91 @@ static int discard_blocks(int fd, uint64_t len, int debug)
         return 0;
 }
 
+/**
+ * Convert a human-readable size string to a long long.
+ * Copied and adapted from xfs_mkfs.c.
+ */
+static long long cvtnum(unsigned int blocksize, unsigned int sectorsize, const char *s)
+{
+        long long i;
+        char *sp;
+
+        i = strtoll(s, &sp, 0);
+        if (i == 0 && sp == s)
+                return -1LL;
+        if (*sp == '\0')
+                return i;
+
+	*sp = tolower(*sp);
+        if (*sp == 'b' && sp[1] == '\0') {
+                if (blocksize)
+                        return i * blocksize;
+                fprintf(stderr, _("Block size not available yet.\n"));
+		exit(1);
+        }
+        if (*sp == 's' && sp[1] == '\0') {
+                if (sectorsize)
+                        return i * sectorsize;
+                return i * GFS2_BASIC_BLOCK;
+        }
+        if (*sp == 'k' && sp[1] == '\0')
+                return 1024LL * i;
+        if (*sp == 'm' && sp[1] == '\0')
+                return 1024LL * 1024LL * i;
+        if (*sp == 'g' && sp[1] == '\0')
+                return 1024LL * 1024LL * 1024LL * i;
+        if (*sp == 't' && sp[1] == '\0')
+                return 1024LL * 1024LL * 1024LL * 1024LL * i;
+        if (*sp == 'p' && sp[1] == '\0')
+                return 1024LL * 1024LL * 1024LL * 1024LL * 1024LL * i;
+        if (*sp == 'e' && sp[1] == '\0')
+                return 1024LL * 1024LL * 1024LL * 1024LL * 1024LL * 1024LL * i;
+        return -1LL;
+}
+
+static void parse_unsigned(struct mkfs_opts *opts, const char *key, const char *val, unsigned *n)
+{
+	long long l;
+	if (val == NULL || *val == '\0') {
+		fprintf(stderr, _("Missing argument to '%s'\n"), key);
+		exit(-1);
+	}
+	l = cvtnum(opts->bsize, 0, val);
+	if (l > UINT_MAX || l < 0) {
+		fprintf(stderr, _("Value of '%s' is invalid\n"), key);
+		exit(-1);
+	}
+	*n = (unsigned)l;
+}
+
+static void opt_parse_extended(char *str, struct mkfs_opts *opts)
+{
+	char *opt;
+	while ((opt = strsep(&str, ",")) != NULL) {
+		char *key = strsep(&opt, "=");
+		char *val = strsep(&opt, "=");
+		if (key == NULL || *key == '\0') {
+			fprintf(stderr, _("Missing argument to '-o' option\n"));
+			exit(-1);
+		}
+		if (strcmp("sunit", key) == 0) {
+			parse_unsigned(opts, "sunit", val, &opts->sunit);
+			opts->got_sunit = 1;
+		} else if (strcmp("swidth", key) == 0) {
+			parse_unsigned(opts, "swidth", val, &opts->swidth);
+			opts->got_swidth = 1;
+		} else {
+			fprintf(stderr, _("Invalid option '%s'\n"), key);
+			exit(-1);
+		}
+	}
+}
+
 static void opts_get(int argc, char *argv[], struct mkfs_opts *opts)
 {
 	int c;
 	while (1) {
-		c = getopt(argc, argv, "-b:c:DhJ:j:KOp:qr:t:VX");
+		c = getopt(argc, argv, "-b:c:DhJ:j:KOo:p:qr:t:VX");
 		if (c == -1)
 			break;
 
@@ -196,6 +282,9 @@ static void opts_get(int argc, char *argv[], struct mkfs_opts *opts)
 		case 'r':
 			opts->rgsize = atoi(optarg);
 			opts->got_rgsize = 1;
+			break;
+		case 'o':
+			opt_parse_extended(optarg, opts);
 			break;
 		case 'V':
 			printf("mkfs.gfs2 %s (built %s %s)\n", VERSION,
@@ -655,6 +744,8 @@ static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct lgfs2_
 		printf("  rgsize = %u\n", sdp->rgsize);
 		printf("  table = %s\n", sdp->locktable);
 		printf("  fssize = %"PRIu64"\n", opts->fssize);
+		printf("  sunit = %u\n", opts->sunit);
+		printf("  swidth = %u\n", opts->swidth);
 	}
 }
 
@@ -672,6 +763,11 @@ void main_mkfs(int argc, char *argv[])
 
 	opts_init(&opts);
 	opts_get(argc, argv, &opts);
+
+	if (!opts.got_device) {
+		fprintf(stderr, _("No device specified. Use -h for help\n"));
+		exit(1);
+	}
 
 	fd = open(opts.device, O_RDWR | O_CLOEXEC);
 	if (fd < 0){
