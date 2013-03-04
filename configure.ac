@@ -4,6 +4,7 @@
 AC_PREREQ([2.63])
 AC_INIT([gfs2-utils], [master], [linux-cluster@redhat.com])
 AM_INIT_AUTOMAKE([-Wno-portability])
+AM_SILENT_RULES([yes])
 LT_PREREQ([2.2.6])
 LT_INIT
 
