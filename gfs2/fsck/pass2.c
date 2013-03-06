@@ -315,6 +315,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	uint32_t calculated_hash;
 	struct gfs2_inode *entry_ip = NULL;
 	int error;
+	struct inode_info *ii;
 
 	if (!valid_block(ip->i_sbd, entry->no_addr)) {
 		log_err( _("Block # referenced by directory entry %s in inode "
@@ -488,6 +489,25 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		check_inode_eattr(entry_ip, &clear_eattrs);
 		if (entry_ip != ip)
 			fsck_inode_put(&entry_ip);
+		return 1;
+	}
+	/* We need to verify the formal inode number matches. If it doesn't,
+	   it needs to be deleted. */
+	ii = inodetree_find(entry->no_addr);
+	if (ii && ii->di_num.no_formal_ino != entry->no_formal_ino) {
+		log_err( _("Directory entry '%s' pointing to block %llu "
+			   "(0x%llx) in directory %llu (0x%llx) has the "
+			   "wrong 'formal' inode number.\n"), tmp_name,
+			 (unsigned long long)entry->no_addr,
+			 (unsigned long long)entry->no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr);
+		log_err( _("The directory entry has %llu (0x%llx) but the "
+			   "inode has %llu (0x%llx)\n"),
+			 (unsigned long long)entry->no_formal_ino,
+			 (unsigned long long)entry->no_formal_ino,
+			 (unsigned long long)ii->di_num.no_formal_ino,
+			 (unsigned long long)ii->di_num.no_formal_ino);
 		return 1;
 	}
 	return 0;
