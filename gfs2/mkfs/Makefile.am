@@ -20,6 +20,9 @@ mkfs_gfs2_CPPFLAGS	= -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE \
 			  -I$(top_srcdir)/gfs2/include \
 			  -I$(top_srcdir)/gfs2/libgfs2
 
+mkfs_gfs2_CFLAGS	= $(blkid_CFLAGS)
+mkfs_gfs2_LDFLAGS	= $(blkid_LIBS)
+
 mkfs_gfs2_LDADD		= $(top_builddir)/gfs2/libgfs2/libgfs2.la
 
 relative_sbin		= $(shell perl -MFile::Spec -le 'print File::Spec->abs2rel("/sbin", "$(sbindir)")')

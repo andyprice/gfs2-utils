@@ -126,6 +126,7 @@ PKG_CHECK_MODULES([check], [check >= 0.9.8],
 AM_CONDITIONAL([BUILD_TESTS], [test "x$have_check" = "xyes"])
 
 PKG_CHECK_MODULES([zlib],[zlib])
+PKG_CHECK_MODULES([blkid],[blkid])
 
 # old versions of ncurses don't ship pkg-config files
 PKG_CHECK_MODULES([ncurses],[ncurses],,
