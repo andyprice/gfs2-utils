@@ -34,11 +34,9 @@ static void add_dotdot(struct gfs2_inode *ip)
 	if (di && valid_block(sdp, di->dotdot_parent.no_addr)) {
 		struct gfs2_inode *dip;
 
-		log_debug(_("Directory %lld (0x%llx) already had a "
-			    "\"..\" link to %lld (0x%llx).\n"),
+		log_debug(_("Directory (0x%llx) already had a "
+			    "\"..\" link to (0x%llx).\n"),
 			  (unsigned long long)ip->i_di.di_num.no_addr,
-			  (unsigned long long)ip->i_di.di_num.no_addr,
-			  (unsigned long long)di->dotdot_parent.no_addr,
 			  (unsigned long long)di->dotdot_parent.no_addr);
 		dip = fsck_load_inode(sdp, di->dotdot_parent.no_addr);
 		if (dip->i_di.di_num.no_formal_ino ==
@@ -76,15 +74,13 @@ static void add_dotdot(struct gfs2_inode *ip)
 	} else {
 		if (di)
 			log_debug(_("Couldn't find a valid \"..\" entry "
-				    "for orphan directory %lld (0x%llx): "
+				    "for orphan directory (0x%llx): "
 				    "'..' = 0x%llx\n"),
-				  (unsigned long long)ip->i_di.di_num.no_addr,
 				  (unsigned long long)ip->i_di.di_num.no_addr,
 				  (unsigned long long)di->dotdot_parent.no_addr);
 		else
-			log_debug(_("Couldn't find directory %lld (0x%llx) "
+			log_debug(_("Couldn't find directory (0x%llx) "
 				    "in directory tree.\n"),
-				  (unsigned long long)ip->i_di.di_num.no_addr,
 				  (unsigned long long)ip->i_di.di_num.no_addr);
 	}
 	if (gfs2_dirent_del(ip, "..", 2))
