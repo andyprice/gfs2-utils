@@ -714,6 +714,24 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	/* Readahead */
 	dir_leaf_reada(ip, tbl, hsize);
 
+	if (pass->check_hash_tbl) {
+		error = pass->check_hash_tbl(ip, tbl, hsize, pass->private);
+		if (error < 0) {
+			free(tbl);
+			posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
+			return error;
+		}
+		/* If hash table changes were made, read it in again. */
+		if (error) {
+			free(tbl);
+			tbl = get_dir_hash(ip);
+			if (tbl == NULL) {
+				perror("get_dir_hash");
+				return -1;
+			}
+		}
+	}
+
 	/* Find the first valid leaf pointer in range and use it as our "old"
 	   leaf. That way, bad blocks at the beginning will be overwritten
 	   with the first valid leaf. */
@@ -765,21 +783,6 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 				free(tbl);
 				posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 				return 0;
-			}
-			/* If the old leaf was a duplicate referenced by a
-			   previous dinode, we can't check the number of
-			   pointers because the number of pointers may be for
-			   that other dinode's reference, not this one. */
-			if (pass->check_num_ptrs && !old_was_dup &&
-			    valid_block(ip->i_sbd, old_leaf)) {
-				error = pass->check_num_ptrs(ip, old_leaf,
-							     &ref_count,
-							     &lindex,
-							     &oldleaf);
-				if (error) {
-					free(tbl);
-					return error;
-				}
 			}
 			error = check_leaf(ip, lindex, pass, &ref_count,
 					   &leaf_no, old_leaf, &bad_leaf,
@@ -1686,4 +1689,145 @@ void reprocess_inode(struct gfs2_inode *ip, const char *desc)
 	if (error)
 		log_err( _("Error %d reprocessing the %s metadata tree.\n"),
 			 error, desc);
+}
+
+/*
+ * write_new_leaf - allocate and write a new leaf to cover a gap in hash table
+ * @dip: the directory inode
+ * @start_lindex: where in the hash table to start writing
+ * @num_copies: number of copies of the pointer to write into hash table
+ * @before_or_after: desc. of whether this is being added before/after/etc.
+ * @bn: pointer to return the newly allocated leaf's block number
+ */
+int write_new_leaf(struct gfs2_inode *dip, int start_lindex, int num_copies,
+		   const char *before_or_after, uint64_t *bn)
+{
+	struct gfs2_buffer_head *nbh;
+	struct gfs2_leaf *leaf;
+	struct gfs2_dirent *dent;
+	int count, i;
+	int factor = 0, pad_size;
+	uint64_t *cpyptr;
+	char *padbuf;
+	int divisor = num_copies;
+	int end_lindex = start_lindex + num_copies;
+
+	padbuf = malloc(num_copies * sizeof(uint64_t));
+	/* calculate the depth needed for the new leaf */
+	while (divisor > 1) {
+		factor++;
+		divisor /= 2;
+	}
+	/* Make sure the number of copies is properly a factor of 2 */
+	if ((1 << factor) != num_copies) {
+		log_err(_("Program error: num_copies not a factor of 2.\n"));
+		log_err(_("num_copies=%d, dinode = %lld (0x%llx)\n"),
+			num_copies,
+			(unsigned long long)dip->i_di.di_num.no_addr,
+			(unsigned long long)dip->i_di.di_num.no_addr);
+		log_err(_("lindex = %d (0x%x)\n"), start_lindex, start_lindex);
+		stack;
+		free(padbuf);
+		return -1;
+	}
+
+	/* allocate and write out a new leaf block */
+	*bn = meta_alloc(dip);
+	fsck_blockmap_set(dip, *bn, _("directory leaf"), gfs2_leaf_blk);
+	log_err(_("A new directory leaf was allocated at block %lld "
+		  "(0x%llx) to fill the %d (0x%x) pointer gap %s the existing "
+		  "pointer at index %d (0x%x).\n"), (unsigned long long)*bn,
+		(unsigned long long)*bn, num_copies, num_copies,
+		before_or_after, start_lindex, start_lindex);
+	dip->i_di.di_blocks++;
+	bmodified(dip->i_bh);
+	nbh = bget(dip->i_sbd, *bn);
+	memset(nbh->b_data, 0, dip->i_sbd->bsize);
+	leaf = (struct gfs2_leaf *)nbh->b_data;
+	leaf->lf_header.mh_magic = cpu_to_be32(GFS2_MAGIC);
+	leaf->lf_header.mh_type = cpu_to_be32(GFS2_METATYPE_LF);
+	leaf->lf_header.mh_format = cpu_to_be32(GFS2_FORMAT_LF);
+	leaf->lf_depth = cpu_to_be16(dip->i_di.di_depth - factor);
+
+	/* initialize the first dirent on the new leaf block */
+	dent = (struct gfs2_dirent *)(nbh->b_data + sizeof(struct gfs2_leaf));
+	dent->de_rec_len = cpu_to_be16(dip->i_sbd->bsize -
+				       sizeof(struct gfs2_leaf));
+	bmodified(nbh);
+	brelse(nbh);
+
+	/* pad the hash table with the new leaf block */
+	cpyptr = (uint64_t *)padbuf;
+	for (i = start_lindex; i < end_lindex; i++) {
+		*cpyptr = cpu_to_be64(*bn);
+		cpyptr++;
+	}
+	pad_size = num_copies * sizeof(uint64_t);
+	log_err(_("Writing to the hash table of directory %lld "
+		  "(0x%llx) at index: 0x%x for 0x%lx pointers.\n"),
+		(unsigned long long)dip->i_di.di_num.no_addr,
+		(unsigned long long)dip->i_di.di_num.no_addr,
+		start_lindex, pad_size / sizeof(uint64_t));
+	if (dip->i_sbd->gfs1)
+		count = gfs1_writei(dip, padbuf, start_lindex *
+				    sizeof(uint64_t), pad_size);
+	else
+		count = gfs2_writei(dip, padbuf, start_lindex *
+				    sizeof(uint64_t), pad_size);
+	free(padbuf);
+	if (count != pad_size) {
+		log_err( _("Error: bad write while fixing directory leaf "
+			   "pointers.\n"));
+		return -1;
+	}
+	return 0;
+}
+
+/* repair_leaf - Warn the user of an error and ask permission to fix it
+ * Process a bad leaf pointer and ask to repair the first time.
+ * The repair process involves extending the previous leaf's entries
+ * so that they replace the bad ones.  We have to hack up the old
+ * leaf a bit, but it's better than deleting the whole directory,
+ * which is what used to happen before. */
+int repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no, int lindex,
+		int ref_count, const char *msg)
+{
+	int new_leaf_blks = 0, error, refs;
+	uint64_t bn = 0;
+
+	log_err( _("Directory Inode %llu (0x%llx) points to leaf %llu"
+		   " (0x%llx) %s.\n"),
+		 (unsigned long long)ip->i_di.di_num.no_addr,
+		 (unsigned long long)ip->i_di.di_num.no_addr,
+		 (unsigned long long)*leaf_no,
+		 (unsigned long long)*leaf_no, msg);
+	if (!query( _("Attempt to patch around it? (y/n) "))) {
+		log_err( _("Bad leaf left in place.\n"));
+		goto out;
+	}
+	/* We can only write leafs in quantities that are factors of
+	   two, since leaves are doubled, not added sequentially.
+	   So if we have a hole that's not a factor of 2, we have to
+	   break it down into separate leaf blocks that are. */
+	while (ref_count) {
+		refs = 1;
+		while (refs <= ref_count) {
+			if (refs * 2 > ref_count)
+				break;
+			refs *= 2;
+		}
+		error = write_new_leaf(ip, lindex, refs, _("replacing"), &bn);
+		if (error)
+			return error;
+
+		new_leaf_blks++;
+		lindex += refs;
+		ref_count -= refs;
+	}
+	log_err( _("Directory Inode %llu (0x%llx) repaired.\n"),
+		 (unsigned long long)ip->i_di.di_num.no_addr,
+		 (unsigned long long)ip->i_di.di_num.no_addr);
+out:
+	*leaf_no = bn;
+	return new_leaf_blks;
 }

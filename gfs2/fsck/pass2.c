@@ -15,6 +15,7 @@
 #include "eattr.h"
 #include "metawalk.h"
 #include "link.h"
+#include "lost_n_found.h"
 #include "inode_hash.h"
 
 #define MAX_FILENAME 256
@@ -293,6 +294,11 @@ static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	}
 	inode_put(&child_ip);
 	return 0;
+}
+
+static int hash_table_index(uint32_t hash, struct gfs2_inode *ip)
+{
+	return hash >> (32 - ip->i_di.di_depth);
 }
 
 /* basic_dentry_checks - fundamental checks for directory entries
@@ -715,6 +721,530 @@ nuke_dentry:
 	return 1;
 }
 
+/* pad_with_leafblks - pad a hash table with pointers to new leaf blocks
+ *
+ * @ip: pointer to the dinode structure
+ * @tbl: pointer to the hash table in memory
+ * @lindex: index location within the hash table to pad
+ * @len: number of pointers to be padded
+ */
+static void pad_with_leafblks(struct gfs2_inode *ip, uint64_t *tbl,
+			      int lindex, int len)
+{
+	int new_len, i;
+	uint32_t proper_start = lindex;
+	uint64_t new_leaf_blk;
+
+	log_err(_("Padding inode %llu (0x%llx) hash table at offset %d (0x%x) "
+		  "for %d pointers.\n"),
+		(unsigned long long)ip->i_di.di_num.no_addr,
+		(unsigned long long)ip->i_di.di_num.no_addr, lindex, lindex,
+		len);
+	while (len) {
+		new_len = 1;
+		/* Determine the next factor of 2 down from extras. We can't
+		   just write out a leaf block on a power-of-two boundary.
+		   We also need to make sure it has a length that will
+		   ensure a "proper start" block as well. */
+		while ((new_len << 1) <= len) {
+			/* Translation: If doubling the size of the new leaf
+			   will make its start boundary wrong, we have to
+			   settle for a smaller length (and iterate more). */
+			proper_start = (lindex & ~((new_len << 1) - 1));
+			if (lindex != proper_start)
+				break;
+			new_len <<= 1;
+		}
+		write_new_leaf(ip, lindex, new_len, "after", &new_leaf_blk);
+		log_err(_("New leaf block was allocated at %llu (0x%llx) for "
+			  "index %d (0x%x), length %d\n"),
+			(unsigned long long)new_leaf_blk,
+			(unsigned long long)new_leaf_blk,
+			lindex, lindex, new_len);
+		fsck_blockmap_set(ip, new_leaf_blk, _("pad leaf"),
+				  gfs2_leaf_blk);
+		/* Fix the hash table in memory to have the new leaf */
+		for (i = 0; i < new_len; i++)
+			tbl[lindex + i] = cpu_to_be64(new_leaf_blk);
+		len -= new_len;
+		lindex += new_len;
+	}
+}
+
+/* lost_leaf - repair a leaf block that's on the wrong directory inode
+ *
+ * If the correct index is less than the starting index, we have a problem.
+ * Since we process the index sequentially, the previous index has already
+ * been processed, fixed, and is now correct. But this leaf wants to overwrite
+ * a previously written good leaf. The only thing we can do is move all the
+ * directory entries to lost+found so we don't overwrite the good leaf. Then
+ * we need to pad the gap we leave.
+ */
+static int lost_leaf(struct gfs2_inode *ip, uint64_t *tbl, uint64_t leafno,
+		     int ref_count, int lindex, struct gfs2_buffer_head *bh)
+{
+	char *filename;
+	char *bh_end = bh->b_data + ip->i_sbd->bsize;
+	struct gfs2_dirent de, *dent;
+	int error;
+
+	log_err(_("Leaf block %llu (0x%llx) seems to be out of place and its "
+		  "contents need to be moved to lost+found.\n"),
+		(unsigned long long)leafno, (unsigned long long)leafno);
+	if (!query( _("Attempt to fix it? (y/n) "))) {
+		log_err( _("Directory leaf was not fixed.\n"));
+		return 0;
+	}
+	make_sure_lf_exists(ip);
+
+	dent = (struct gfs2_dirent *)(bh->b_data + sizeof(struct gfs2_leaf));
+	while (1) {
+		char tmp_name[PATH_MAX];
+
+		memset(&de, 0, sizeof(struct gfs2_dirent));
+		gfs2_dirent_in(&de, (char *)dent);
+		filename = (char *)dent + sizeof(struct gfs2_dirent);
+		memset(tmp_name, 0, sizeof(tmp_name));
+		if (de.de_name_len > sizeof(filename)) {
+			log_debug(_("Encountered bad filename length; "
+				    "stopped processing.\n"));
+			break;
+		}
+		memcpy(tmp_name, filename, de.de_name_len);
+		if ((de.de_name_len == 1 && filename[0] == '.')) {
+			log_debug(_("Skipping entry '.'\n"));
+		} else if (de.de_name_len == 2 && filename[0] == '.' &&
+			   filename[1] == '.') {
+			log_debug(_("Skipping entry '..'\n"));
+		} else if (!de.de_inum.no_formal_ino) { /* sentinel */
+			log_debug(_("Skipping sentinel '%s'\n"), tmp_name);
+		} else {
+			uint32_t count;
+			struct dir_status ds = {0};
+			uint8_t q = 0;
+
+			error = basic_dentry_checks(ip, dent, &de.de_inum,
+						    tmp_name, &count, &de,
+						    &ds, &q, bh);
+			if (error) {
+				log_err(_("Not relocating corrupt entry "
+					  "\"%s\".\n"), tmp_name);
+			} else {
+				error = dir_add(lf_dip, filename,
+						de.de_name_len, &de.de_inum,
+						de.de_type);
+				if (error && error != -EEXIST) {
+					log_err(_("Error %d encountered while "
+						  "trying to relocate \"%s\" "
+						  "to lost+found.\n"), error,
+						tmp_name);
+					return error;
+				}
+				/* This inode is linked from lost+found */
+				incr_link_count(de.de_inum, lf_dip,
+						_("from lost+found"));
+				/* If it's a directory, lost+found is
+				   back-linked to it via .. */
+				if (q == gfs2_inode_dir)
+					incr_link_count(lf_dip->i_di.di_num,
+							NULL,
+							_("to lost+found"));
+				log_err(_("Relocated \"%s\", block %llu "
+					  "(0x%llx) to lost+found.\n"),
+					tmp_name,
+					(unsigned long long)de.de_inum.no_addr,
+					(unsigned long long)de.de_inum.no_addr);
+			}
+		}
+		if ((char *)dent + de.de_rec_len >= bh_end)
+			break;
+		dent = (struct gfs2_dirent *)((char *)dent + de.de_rec_len);
+	}
+	log_err(_("Directory entries from misplaced leaf block were relocated "
+		  "to lost+found.\n"));
+	/* Free the lost leaf. */
+	fsck_blockmap_set(ip, leafno, _("lost leaf"), gfs2_block_free);
+	ip->i_di.di_blocks--;
+	bmodified(ip->i_bh);
+	/* Now we have to deal with the bad hash table entries pointing to the
+	   misplaced leaf block. But we can't just fill the gap with a single
+	   leaf. We have to write on nice power-of-two boundaries, and we have
+	   to pad out any extra pointers. */
+	pad_with_leafblks(ip, tbl, lindex, ref_count);
+	return 1;
+}
+
+/* fix_hashtable - fix a corrupt hash table
+ *
+ * The main intent of this function is to sort out hash table problems.
+ * That is, it needs to determine if leaf blocks are in the wrong place,
+ * if the count of pointers is wrong, and if there are extra pointers.
+ * Everything should be placed on correct power-of-two boundaries appropriate
+ * to their leaf depth, and extra pointers should be correctly padded with new
+ * leaf blocks.
+ *
+ * @ip: the directory dinode structure pointer
+ * @tbl: hash table that's already read into memory
+ * @hsize: hash table size, as dictated by the dinode's di_depth
+ * @leafblk: the leaf block number that appears at this lindex in the tbl
+ * @lindex: leaf index that has a problem
+ * @proper_start: where this leaf's pointers should start, as far as the
+ *                hash table is concerned (sight unseen; trusting the leaf
+ *                really belongs here).
+ * @len: count of pointers in the hash table to this leafblk
+ * @proper_len: pointer to return the proper number of pointers, as the kernel
+ *              calculates it, based on the leaf depth.
+ * @factor: the proper depth, given this number of pointers (rounded down).
+ *
+ * Returns: 0 - no changes made, or X if changes were made
+ */
+static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
+			 uint64_t leafblk, int lindex, uint32_t proper_start,
+			 int len, int *proper_len, int factor)
+{
+	struct gfs2_buffer_head *lbh;
+	struct gfs2_leaf *leaf;
+	struct gfs2_dirent dentry, *de;
+	int changes = 0, error, i, extras, hash_index;
+	uint64_t new_leaf_blk;
+	uint32_t leaf_proper_start;
+
+	*proper_len = len;
+	log_err(_("Dinode %llu (0x%llx) has a hash table error at index "
+		  "0x%x, length 0x%x: leaf block %llu (0x%llx)\n"),
+		(unsigned long long)ip->i_di.di_num.no_addr,
+		(unsigned long long)ip->i_di.di_num.no_addr, lindex, len,
+		(unsigned long long)leafblk, (unsigned long long)leafblk);
+	if (!query( _("Fix the hash table? (y/n) "))) {
+		log_err(_("Hash table not fixed.\n"));
+		return 0;
+	}
+
+	lbh = bread(ip->i_sbd, leafblk);
+	leaf = (struct gfs2_leaf *)lbh->b_data;
+	/* If the leaf's depth is out of range for this dinode, it's obviously
+	   attached to the wrong dinode. Move the dirents to lost+found. */
+	if (be16_to_cpu(leaf->lf_depth) > ip->i_di.di_depth) {
+		log_err(_("This leaf block's depth (%d) is too big for this "
+			  "dinode's depth (%d)\n"),
+			be16_to_cpu(leaf->lf_depth), ip->i_di.di_depth);
+		error = lost_leaf(ip, tbl, leafblk, len, lindex, lbh);
+		brelse(lbh);
+		return error;
+	}
+
+	memset(&dentry, 0, sizeof(struct gfs2_dirent));
+	de = (struct gfs2_dirent *)(lbh->b_data + sizeof(struct gfs2_leaf));
+	gfs2_dirent_in(&dentry, (char *)de);
+
+	/* If this is an empty leaf, we can just delete it and pad. */
+	if ((dentry.de_rec_len == cpu_to_be16(ip->i_sbd->bsize -
+					      sizeof(struct gfs2_leaf))) &&
+	    (dentry.de_inum.no_formal_ino == 0)) {
+		brelse(lbh);
+		gfs2_free_block(ip->i_sbd, leafblk);
+		log_err(_("Out of place leaf block %llu (0x%llx) had no "
+			"entries, so it was deleted.\n"),
+			(unsigned long long)leafblk,
+			(unsigned long long)leafblk);
+		pad_with_leafblks(ip, tbl, lindex, len);
+		log_err(_("Reprocessing index 0x%x (case 1).\n"), lindex);
+		return 1;
+	}
+
+	/* Calculate the proper number of pointers based on the leaf depth. */
+	*proper_len = 1 << (ip->i_di.di_depth - be16_to_cpu(leaf->lf_depth));
+
+	/* Look at the first dirent and check its hash value to see if it's
+	   at the proper starting offset. */
+	hash_index = hash_table_index(dentry.de_hash, ip);
+	if (hash_index < lindex ||  hash_index > lindex + len) {
+		log_err(_("This leaf block has hash index %d, which is out of "
+			  "bounds for where it appears in the hash table "
+			  "(%d - %d)\n"),
+			hash_index, lindex, lindex + len);
+		error = lost_leaf(ip, tbl, leafblk, len, lindex, lbh);
+		brelse(lbh);
+		return error;
+	}
+
+	/* Now figure out where this leaf should start, and pad any pointers
+	   up to that point with new leaf blocks. */
+	leaf_proper_start = (hash_index & ~(*proper_len - 1));
+	if (lindex < leaf_proper_start) {
+		log_err(_("Leaf pointers start at %d (0x%x), should be %d "
+			  "(%x).\n"), lindex, lindex,
+			leaf_proper_start, leaf_proper_start);
+		pad_with_leafblks(ip, tbl, lindex, leaf_proper_start - lindex);
+		brelse(lbh);
+		return 1; /* reprocess the starting lindex */
+	}
+	/* If the proper start according to the leaf's hash index is later
+	   than the proper start according to the hash table, it's once
+	   again lost and we have to relocate it. The same applies if the
+	   leaf's hash index is prior to the proper state, but the leaf is
+	   already at its maximum depth. */
+	if ((leaf_proper_start < proper_start) ||
+	    ((*proper_len > len || lindex > leaf_proper_start) &&
+	     be16_to_cpu(leaf->lf_depth) == ip->i_di.di_depth)) {
+		log_err(_("Leaf block should start at 0x%x, but it appears at "
+			  "0x%x in the hash table.\n"), leaf_proper_start,
+			proper_start);
+		error = lost_leaf(ip, tbl, leafblk, len, lindex, lbh);
+		brelse(lbh);
+		return error;
+	}
+
+	/* If we SHOULD have more pointers than we do, we can solve the
+	   problem by splitting the block to a lower depth. Then we may have
+	   the right number of pointers. If the leaf block pointers start
+	   later than they should, we can split the leaf to give it a smaller
+	   footprint in the hash table. */
+	if ((*proper_len > len || lindex > leaf_proper_start) &&
+	    ip->i_di.di_depth > be16_to_cpu(leaf->lf_depth)) {
+		log_err(_("For depth %d, length %d, the proper start is: "
+			  "0x%x.\n"), factor, len, proper_start);
+		changes++;
+		new_leaf_blk = find_free_blk(ip->i_sbd);
+		dir_split_leaf(ip, lindex, leafblk, lbh);
+		/* re-read the leaf to pick up dir_split_leaf's changes */
+		gfs2_leaf_in(leaf, lbh);
+		*proper_len = 1 << (ip->i_di.di_depth -
+				    be16_to_cpu(leaf->lf_depth));
+		log_err(_("Leaf block %llu (0x%llx) was split from length "
+			  "%d to %d\n"), (unsigned long long)leafblk,
+			(unsigned long long)leafblk, len, *proper_len);
+		if (*proper_len < 0) {
+			log_err(_("Programming error: proper_len=%d, "
+				  "di_depth = %d, lf_depth = %d.\n"),
+				*proper_len, ip->i_di.di_depth,
+				be16_to_cpu(leaf->lf_depth));
+			exit(FSCK_ERROR);
+		}
+		log_err(_("New split-off leaf block was allocated at %lld "
+			  "(0x%llx) for index %d (0x%x)\n"),
+			(unsigned long long)new_leaf_blk,
+			(unsigned long long)new_leaf_blk, lindex, lindex);
+		fsck_blockmap_set(ip, new_leaf_blk, _("split leaf"),
+				  gfs2_leaf_blk);
+		log_err(_("Hash table repaired.\n"));
+		/* Fix up the hash table in memory to include the new leaf */
+		for (i = 0; i < *proper_len; i++)
+			tbl[lindex + i] = cpu_to_be64(new_leaf_blk);
+		if (*proper_len < (len >> 1)) {
+			log_err(_("One leaf split is not enough. The hash "
+				  "table will need to be reprocessed.\n"));
+			brelse(lbh);
+			return changes;
+		}
+		lindex += (*proper_len); /* skip the new leaf from the split */
+		len -= (*proper_len);
+	}
+	if (*proper_len < len) {
+		log_err(_("There are %d pointers, but leaf 0x%llx's "
+			  "depth, %d, only allows %d\n"),
+			len, (unsigned long long)leafblk,
+			be16_to_cpu(leaf->lf_depth), *proper_len);
+	}
+	brelse(lbh);
+	/* At this point, lindex should be at the proper end of the pointers.
+	   Now we need to replace any extra duplicate pointers to the old
+	   (original) leafblk (that ran off the end) with new leaf blocks. */
+	lindex += (*proper_len); /* Skip past the normal good pointers */
+	len -= (*proper_len);
+	extras = 0;
+	for (i = 0; i < len; i++) {
+		if (be64_to_cpu(tbl[lindex + i]) == leafblk)
+			extras++;
+		else
+			break;
+	}
+	if (extras) {
+		log_err(_("Found %d extra pointers to leaf %llu (0x%llx)\n"),
+			extras, (unsigned long long)leafblk,
+			(unsigned long long)leafblk);
+		pad_with_leafblks(ip, tbl, lindex, extras);
+		log_err(_("Reprocessing index 0x%x (case 2).\n"), lindex);
+		return 1;
+	}
+	return changes;
+}
+
+/* check_hash_tbl - check that the hash table is sane
+ *
+ * We've got to make sure the hash table is sane. Each leaf needs to
+ * be counted a proper power of 2. We can't just have 3 pointers to a leaf.
+ * The number of pointers must correspond to the proper leaf depth, and they
+ * must all fall on power-of-two boundaries. The leaf block pointers all need
+ * to fall properly on these boundaries, otherwise the kernel code's
+ * calculations will land it on the wrong leaf block while it's searching,
+ * and the result will be files you can see with ls, but can't open, delete
+ * or use them.
+ *
+ * The goal of this function is to check the hash table to make sure the
+ * boundaries and lengths all line up properly, and if not, to fix it.
+ *
+ * Note: There's a delicate balance here, because this function gets called
+ *       BEFORE leaf blocks are checked by function check_leaf from function
+ *       check_leaf_blks: the hash table has to be sane before we can start
+ *       checking all the leaf blocks. And yet if there's hash table corruption
+ *       we may need to reference leaf blocks to fix it, which means we need
+ *       to check and/or fix a leaf block along the way.
+ */
+static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
+			  unsigned hsize, void *private)
+{
+	int error = 0;
+	int lindex, len, proper_len, i, changes = 0;
+	uint64_t leafblk;
+	struct gfs2_leaf leaf;
+	struct gfs2_buffer_head *lbh;
+	int factor;
+	uint32_t proper_start;
+
+	lindex = 0;
+	while (lindex < hsize) {
+		if (fsck_abort)
+			return changes;
+		len = 1;
+		factor = 0;
+		leafblk = be64_to_cpu(tbl[lindex]);
+		while (lindex + (len << 1) - 1 < hsize) {
+			if (be64_to_cpu(tbl[lindex + (len << 1) - 1]) !=
+			    leafblk)
+				break;
+			len <<= 1;
+			factor++;
+		}
+
+		/* Check for leftover pointers after the factor of two: */
+		proper_len = len; /* A factor of 2 that fits nicely */
+		while (lindex + len < hsize &&
+		       be64_to_cpu(tbl[lindex + len]) == leafblk)
+			len++;
+
+		/* See if that leaf block is valid. If not, write a new one
+		   that falls on a proper boundary. If it doesn't naturally,
+		   we may need more. */
+		if (!valid_block(ip->i_sbd, leafblk)) {
+			uint64_t new_leafblk;
+
+			log_err(_("Dinode %llu (0x%llx) has bad leaf pointers "
+				  "at offset %d for %d\n"),
+				(unsigned long long)ip->i_di.di_num.no_addr,
+				(unsigned long long)ip->i_di.di_num.no_addr,
+				lindex, len);
+			if (!query( _("Fix the hash table? (y/n) "))) {
+				log_err(_("Hash table not fixed.\n"));
+				lindex += len;
+				continue;
+			}
+			error = write_new_leaf(ip, lindex, proper_len,
+					       _("replacing"), &new_leafblk);
+			if (error)
+				return error;
+
+			for (i = lindex; i < lindex + proper_len; i++)
+				tbl[i] = cpu_to_be64(new_leafblk);
+			lindex += proper_len;
+			continue;
+		}
+		/* Make sure they call on proper leaf-split boundaries. This
+		   is the calculation used by the kernel, and dir_split_leaf */
+		proper_start = (lindex & ~(proper_len - 1));
+		if (lindex != proper_start) {
+			log_debug(_("lindex 0x%llx is not a proper starting "
+				    "point for this leaf: 0x%llx\n"),
+				  (unsigned long long)lindex,
+				  (unsigned long long)proper_start);
+			changes = fix_hashtable(ip, tbl, hsize, leafblk,
+						lindex, proper_start, len,
+						&proper_len, factor);
+			/* Check if we need to split more leaf blocks */
+			if (changes) {
+				if (proper_len < (len >> 1))
+					log_err(_("More leaf splits are "
+						  "needed; "));
+				log_err(_("Reprocessing index 0x%x (case 3).\n"),
+					lindex);
+				continue; /* Make it reprocess the lindex */
+			}
+		}
+		/* Check for extra pointers to this leaf. At this point, len
+		   is the number of pointers we have. proper_len is the proper
+		   number of pointers if the hash table is assumed correct.
+		   Function fix_hashtable will read in the leaf block and
+		   determine the "actual" proper length based on the leaf
+		   depth, and adjust the hash table accordingly. */
+		if (len != proper_len) {
+			log_err(_("Length %d (0x%x) is not a proper length "
+				  "for this leaf. Valid boundary assumed to "
+				  "be %d (0x%x).\n"),
+				len, len, proper_len, proper_len);
+			lbh = bread(ip->i_sbd, leafblk);
+			gfs2_leaf_in(&leaf, lbh);
+			if (gfs2_check_meta(lbh, GFS2_METATYPE_LF) ||
+			    leaf.lf_depth > ip->i_di.di_depth)
+				leaf.lf_depth = factor;
+			brelse(lbh);
+			changes = fix_hashtable(ip, tbl, hsize, leafblk,
+						lindex, lindex, len,
+						&proper_len, leaf.lf_depth);
+			/* If fixing the hash table made changes, we can no
+			   longer count on the leaf block pointers all pointing
+			   to the same leaf (which is checked below). To avoid
+			   flagging another error, reprocess the offset. */
+			if (changes) {
+				log_err(_("Reprocessing index 0x%x (case 4).\n"),
+					lindex);
+				continue; /* Make it reprocess the lindex */
+			}
+		}
+
+		/* Now make sure they're all the same pointer */
+		for (i = lindex; i < lindex + proper_len; i++) {
+			if (fsck_abort)
+				return changes;
+
+			if (be64_to_cpu(tbl[i]) == leafblk) /* No problem */
+				continue;
+
+			log_err(_("Dinode %llu (0x%llx) has a hash table "
+				  "inconsistency at index %d (0x%d) for %d\n"),
+				(unsigned long long)ip->i_di.di_num.no_addr,
+				(unsigned long long)ip->i_di.di_num.no_addr,
+				i, i, len);
+			if (!query( _("Fix the hash table? (y/n) "))) {
+				log_err(_("Hash table not fixed.\n"));
+				continue;
+			}
+			changes++;
+			/* Now we have to determine if the hash table is
+			   corrupt, or if the leaf has the wrong depth. */
+			lbh = bread(ip->i_sbd, leafblk);
+			gfs2_leaf_in(&leaf, lbh);
+			brelse(lbh);
+			/* Calculate the expected pointer count based on the
+			   leaf depth. */
+			proper_len = 1 << (ip->i_di.di_depth - leaf.lf_depth);
+			if (proper_len != len) {
+				log_debug(_("Length 0x%x is not proper for "
+					    "this leaf: 0x%x"),
+					  len, proper_len);
+				changes = fix_hashtable(ip, tbl, hsize,
+							leafblk, lindex,
+							lindex, len,
+							&proper_len,
+							leaf.lf_depth);
+				break;
+			}
+		}
+		lindex += proper_len;
+	}
+	if (!error && changes)
+		error = 1;
+	return error;
+}
 
 struct metawalk_fxns pass2_fxns = {
 	.private = NULL,
@@ -725,6 +1255,8 @@ struct metawalk_fxns pass2_fxns = {
 	.check_eattr_leaf = check_eattr_leaf,
 	.check_dentry = check_dentry,
 	.check_eattr_entry = NULL,
+	.check_hash_tbl = check_hash_tbl,
+	.repair_leaf = repair_leaf,
 };
 
 /* Check system directory inode                                           */

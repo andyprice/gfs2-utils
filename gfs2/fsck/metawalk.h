@@ -39,6 +39,11 @@ extern struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
 					    uint64_t block);
 extern int find_remove_dup(struct gfs2_inode *ip, uint64_t block,
 			   const char *btype);
+extern int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
+			  int num_copies, const char *before_or_after,
+			  uint64_t *bn);
+extern int repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no, int lindex,
+		       int ref_count, const char *msg);
 extern int free_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 				const char *btype);
 
@@ -95,9 +100,10 @@ struct metawalk_fxns {
 	int (*finish_eattr_indir) (struct gfs2_inode *ip, int leaf_pointers,
 				   int leaf_pointer_errors, void *private);
 	void (*big_file_msg) (struct gfs2_inode *ip, uint64_t blks_checked);
-	int (*check_num_ptrs) (struct gfs2_inode *ip, uint64_t leafno,
-			       int *ref_count, int *lindex,
-			       struct gfs2_leaf *leaf);
+	int (*check_hash_tbl) (struct gfs2_inode *ip, uint64_t *tbl,
+			       unsigned hsize, void *private);
+	int (*repair_leaf) (struct gfs2_inode *ip, uint64_t *leaf_no,
+			    int lindex, int ref_count, const char *msg);
 };
 
 #endif /* _METAWALK_H */
