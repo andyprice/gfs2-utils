@@ -40,24 +40,36 @@ static void add_dotdot(struct gfs2_inode *ip)
 			  (unsigned long long)ip->i_di.di_num.no_addr,
 			  (unsigned long long)di->dotdot_parent.no_addr,
 			  (unsigned long long)di->dotdot_parent.no_addr);
-		decr_link_count(di->dotdot_parent.no_addr,
-				ip->i_di.di_num.no_addr,
-				_(".. unlinked, moving to lost+found"));
 		dip = fsck_load_inode(sdp, di->dotdot_parent.no_addr);
-		if (dip->i_di.di_nlink > 0) {
-			dip->i_di.di_nlink--;
-			set_di_nlink(dip); /* keep inode tree in sync */
-			log_debug(_("Decrementing its links to %d\n"),
-				  dip->i_di.di_nlink);
-			bmodified(dip->i_bh);
-		} else if (!dip->i_di.di_nlink) {
-			log_debug(_("Its link count is zero.\n"));
+		if (dip->i_di.di_num.no_formal_ino ==
+		    di->dotdot_parent.no_formal_ino) {
+			decr_link_count(di->dotdot_parent.no_addr,
+					ip->i_di.di_num.no_addr,
+					_(".. unlinked, moving to lost+found"));
+			if (dip->i_di.di_nlink > 0) {
+			  dip->i_di.di_nlink--;
+			  set_di_nlink(dip); /* keep inode tree in sync */
+			  log_debug(_("Decrementing its links to %d\n"),
+				    dip->i_di.di_nlink);
+			  bmodified(dip->i_bh);
+			} else if (!dip->i_di.di_nlink) {
+			  log_debug(_("Its link count is zero.\n"));
+			} else {
+			  log_debug(_("Its link count is %d!  Changing "
+				      "it to 0.\n"), dip->i_di.di_nlink);
+			  dip->i_di.di_nlink = 0;
+			  set_di_nlink(dip); /* keep inode tree in sync */
+			  bmodified(dip->i_bh);
+			}
 		} else {
-			log_debug(_("Its link count is %d!  Changing "
-				    "it to 0.\n"), dip->i_di.di_nlink);
-			dip->i_di.di_nlink = 0;
-			set_di_nlink(dip); /* keep inode tree in sync */
-			bmodified(dip->i_bh);
+			log_debug(_("Directory (0x%llx)'s link to parent "
+				    "(0x%llx) had a formal inode discrepancy: "
+				    "was 0x%llx, expected 0x%llx\n"),
+				  (unsigned long long)ip->i_di.di_num.no_addr,
+				  (unsigned long long)di->dotdot_parent.no_addr,
+				  di->dotdot_parent.no_formal_ino,
+				  dip->i_di.di_num.no_formal_ino);
+			log_debug(_("The parent directory was not changed.\n"));
 		}
 		fsck_inode_put(&dip);
 		di = NULL;
