@@ -20,6 +20,7 @@
 #include <libintl.h>
 #include <sys/ioctl.h>
 #include <limits.h>
+#include <blkid.h>
 
 #define _(String) gettext(String)
 
@@ -123,6 +124,7 @@ static void opts_init(struct mkfs_opts *opts)
 	opts->rgsize = GFS2_DEFAULT_RGSIZE;
 	opts->lockproto = "lock_dlm";
 	opts->locktable = "";
+	opts->confirm = 1;
 }
 
 #ifndef BLKDISCARD
@@ -468,105 +470,6 @@ static void opts_check(struct mkfs_opts *opts)
 
 }
 
-static int get_file_output(int fd, char *buffer, size_t buflen)
-{
-	struct pollfd pf = { .fd = fd, .events = POLLIN|POLLRDHUP };
-	int flags;
-	int pos = 0;
-	int rv;
-
-	flags = fcntl(fd, F_GETFL, 0);
-	if (flags < 0)
-		return flags;
-
-	flags |= O_NONBLOCK;
-	rv = fcntl(fd, F_SETFL, flags);
-	if (rv < 0)
-		return rv;
-
-	while (1) {
-		rv = poll(&pf, 1, 10 * 1000);
-		if (rv == 0)
-			break;
-		if (rv < 0)
-			return rv;
-		if (pf.revents & POLLIN) {
-			rv = read(fd, buffer + pos,
-				   buflen - pos);
-			if (rv < 0) {
-				if (errno == EAGAIN)
-					continue;
-				return rv;
-			}
-			if (rv == 0)
-				break;
-			pos += rv;
-			if (pos >= buflen)
-				return -1;
-			buffer[pos] = 0;
-			continue;
-		}
-		if (pf.revents & (POLLRDHUP | POLLHUP | POLLERR))
-			break;
-	}
-	return 0;
-}
-
-static void check_dev_content(const char *devname)
-{
-	struct sigaction sa;
-	char content[1024] = { 0, };
-	char * args[] = {
-		(char *)"/usr/bin/file",
-		(char *)"-bsL",
-		(char *)devname,
-		NULL };
-	int p[2] = {-1, -1};
-	int ret;
-	int pid;
-
-	ret = sigaction(SIGCHLD, NULL, &sa);
-	if  (ret)
-		return;
-	sa.sa_handler = SIG_IGN;
-	sa.sa_flags |= (SA_NOCLDSTOP | SA_NOCLDWAIT);
-	ret = sigaction(SIGCHLD, &sa, NULL);
-	if (ret)
-		goto fail;
-
-	ret = pipe(p);
-	if (ret)
-		goto fail;
-
-	pid = fork();
-
-	if (pid < 0) {
-		close(p[1]);
-		goto fail;
-	}
-
-	if (pid) {
-		close(p[1]);
-		ret = get_file_output(p[0], content, sizeof(content));
-		if (ret) {
-fail:
-			printf( _("Content of file or device unknown (do you have GNU fileutils installed?)\n"));
-		} else {
-			if (*content == 0)
-				goto fail;
-			printf( _("It appears to contain: %s"), content);
-		}
-		if (p[0] >= 0)
-			close(p[0]);
-		return;
-	}
-
-	close(p[0]);
-	dup2(p[1], STDOUT_FILENO);
-	close(STDIN_FILENO);
-	exit(execv(args[0], args));
-}
-
 static void print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
                           struct mkfs_opts *opts, unsigned char uuid[16])
 {
@@ -587,30 +490,27 @@ static void print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
 	printf("%-27s%s\n", _("UUID:"), str_uuid(uuid));
 }
 
-/**
- * If path is a symlink, return 1 with *abspath pointing to the absolute path,
- * otherwise return 0. Exit on errors. The caller must free the memory pointed
- * to by *abspath.
- */
-static int is_symlink(const char *path, char **abspath)
+static void warn_of_destruction(const char *path)
 {
 	struct stat lnkstat;
+	char *abspath = NULL;
 
 	if (lstat(path, &lnkstat) == -1) {
 		perror(_("Failed to lstat the device"));
 		exit(EXIT_FAILURE);
 	}
-	if (!S_ISLNK(lnkstat.st_mode)) {
-		return 0;
+	if (S_ISLNK(lnkstat.st_mode)) {
+		abspath = canonicalize_file_name(path);
+		if (abspath == NULL) {
+			perror(_("Could not find the absolute path of the device"));
+			exit(EXIT_FAILURE);
+		}
+		/* Translators: Example: "/dev/vg/lv is a symbolic link to /dev/dm-2" */
+		printf( _("%s is a symbolic link to %s\n"), path, abspath);
+		path = abspath;
 	}
-	*abspath = canonicalize_file_name(path);
-	if (*abspath == NULL) {
-		perror(_("Could not find the absolute path of the device"));
-		exit(EXIT_FAILURE);
-	}
-	/* Translators: Example: "/dev/vg/lv is a symbolic link to /dev/dm-2" */
-	printf( _("%s is a symbolic link to %s\n"), path, *abspath);
-	return 1;
+	printf(_("This will destroy any data on %s\n"), path);
+	free(abspath);
 }
 
 static int writerg(int fd, const struct rgrp_tree *rgt, const unsigned bsize)
@@ -744,6 +644,38 @@ static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct lgfs2_
 	}
 }
 
+static int probe_contents(int fd)
+{
+	int ret;
+	const char *contents;
+	blkid_probe pr = blkid_new_probe();
+	if (pr == NULL || blkid_probe_set_device(pr, fd, 0, 0) != 0
+	               || blkid_probe_enable_superblocks(pr, TRUE) != 0
+	               || blkid_probe_enable_partitions(pr, TRUE) != 0) {
+		fprintf(stderr, _("Failed to create probe\n"));
+		return -1;
+	}
+
+	ret = blkid_do_fullprobe(pr);
+	if (ret == -1) {
+		fprintf(stderr, _("Failed to probe device\n"));
+		return -1;
+	}
+
+	if (ret == 1)
+		return 0;
+
+	if (!blkid_probe_lookup_value(pr, "TYPE", &contents, NULL)) {
+		printf(_("It appears to contain an existing filesystem (%s)\n"), contents);
+	} else if (!blkid_probe_lookup_value(pr, "PTTYPE", &contents, NULL)) {
+		printf(_("It appears to contain a partition table (%s).\n"), contents);
+	}
+
+	blkid_free_probe(pr);
+
+	return 0;
+}
+
 void main_mkfs(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd;
@@ -751,9 +683,6 @@ void main_mkfs(int argc, char *argv[])
 	struct lgfs2_dev_info dinfo;
 	int error;
 	unsigned char uuid[16];
-	char *absname = NULL;
-	char *fdpath = NULL;
-	int islnk = 0;
 	int fd;
 
 	opts_init(&opts);
@@ -776,21 +705,13 @@ void main_mkfs(int argc, char *argv[])
 	}
 
 	opts_check(&opts);
-	sbd_init(&sbd, &opts, &dinfo, fd);
+	warn_of_destruction(opts.device);
 
-	if (asprintf(&fdpath, "/proc/%d/fd/%d", getpid(), fd) < 0) {
-		perror(_("Failed to build string"));
+	error = probe_contents(fd);
+	if (error)
 		exit(EXIT_FAILURE);
-	}
 
-	if (!opts.override) {
-		islnk = is_symlink(opts.device, &absname);
-		printf(_("This will destroy any data on %s.\n"), islnk ? absname : opts.device);
-		free(absname);
-		check_dev_content(fdpath);
-		opts.confirm = 1;
-	}
-	free(fdpath);
+	sbd_init(&sbd, &opts, &dinfo, fd);
 
 	if (opts.confirm && !opts.override)
 		are_you_sure();
