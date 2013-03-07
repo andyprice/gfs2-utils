@@ -683,18 +683,23 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	struct gfs2_leaf leaf, oldleaf;
 	unsigned hsize = (1 << ip->i_di.di_depth);
 	uint64_t leaf_no, old_leaf, bad_leaf = -1;
-	uint64_t first_ok_leaf;
+	uint64_t first_ok_leaf, orig_di_blocks;
 	struct gfs2_buffer_head *lbh;
 	int lindex;
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	int ref_count = 0, old_was_dup;
+	int ref_count = 0, orig_ref_count, orig_di_depth, orig_di_height, old_was_dup;
 	uint64_t *tbl;
+	int tbl_valid;
 
 	tbl = get_dir_hash(ip);
 	if (tbl == NULL) {
 		perror("get_dir_hash");
 		return -1;
 	}
+	tbl_valid = 1;
+	orig_di_depth = ip->i_di.di_depth;
+	orig_di_height = ip->i_di.di_height;
+	orig_di_blocks = ip->i_di.di_blocks;
 
 	/* Turn off system readahead */
 	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_RANDOM);
@@ -752,6 +757,21 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	for (lindex = 0; lindex < hsize; lindex++) {
 		if (fsck_abort)
 			break;
+
+		if (!tbl_valid) {
+			free(tbl);
+			log_debug(_("Re-reading 0x%llx hash table.\n"),
+				  (unsigned long long)ip->i_di.di_num.no_addr);
+			tbl = get_dir_hash(ip);
+			if (tbl == NULL) {
+				perror("get_dir_hash");
+				return -1;
+			}
+			tbl_valid = 1;
+			orig_di_depth = ip->i_di.di_depth;
+			orig_di_height = ip->i_di.di_height;
+			orig_di_blocks = ip->i_di.di_blocks;
+		}
 		leaf_no = be64_to_cpu(tbl[lindex]);
 
 		/* GFS has multiple indirect pointers to the same leaf
@@ -765,6 +785,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			ref_count++;
 			continue;
 		}
+		orig_ref_count = ref_count;
 
 		do {
 			if (fsck_abort) {
@@ -775,6 +796,8 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			error = check_leaf(ip, lindex, pass, &ref_count,
 					   &leaf_no, old_leaf, &bad_leaf,
 					   first_ok_leaf, &leaf, &oldleaf);
+			if (ref_count != orig_ref_count)
+				tbl_valid = 0;
 			old_was_dup = (error == -EEXIST);
 			old_leaf = leaf_no;
 			memcpy(&oldleaf, &leaf, sizeof(oldleaf));
@@ -784,6 +807,28 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			log_debug( _("Leaf chain (0x%llx) detected.\n"),
 				   (unsigned long long)leaf_no);
 		} while (1); /* while we have chained leaf blocks */
+		if (orig_di_depth != ip->i_di.di_depth) {
+			log_debug(_("Depth of 0x%llx changed from %d to %d\n"),
+				  (unsigned long long)ip->i_di.di_num.no_addr,
+				  orig_di_depth, ip->i_di.di_depth);
+			tbl_valid = 0;
+		}
+		if (orig_di_height != ip->i_di.di_height) {
+			log_debug(_("Height of 0x%llx changed from %d to "
+				    "%d\n"),
+				  (unsigned long long)ip->i_di.di_num.no_addr,
+				  orig_di_height, ip->i_di.di_height);
+			tbl_valid = 0;
+		}
+		if (orig_di_blocks != ip->i_di.di_blocks) {
+			log_debug(_("Block count of 0x%llx changed from %llu "
+				    "to %llu\n"),
+				  (unsigned long long)ip->i_di.di_num.no_addr,
+				  (unsigned long long)orig_di_blocks,
+				  (unsigned long long)ip->i_di.di_blocks);
+			tbl_valid = 0;
+		}
+		lindex += ref_count;
 	} /* for every leaf block */
 	free(tbl);
 	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
