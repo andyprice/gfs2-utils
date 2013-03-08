@@ -523,9 +523,12 @@ static int resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *b,
 			  (unsigned long long)id->block_no);
 
 		ip = fsck_load_inode(sdp, id->block_no);
-		ii = inodetree_find(ip->i_di.di_num.no_addr);
-		if (ii)
-			inodetree_delete(ii);
+		if (id->reftypecount[ref_as_data] ||
+		    id->reftypecount[ref_as_meta]) {
+			ii = inodetree_find(ip->i_di.di_num.no_addr);
+			if (ii)
+				inodetree_delete(ii);
+		}
 		clear_dup_fxns.private = (void *) dh;
 		/* Clear the EAs for the inode first */
 		check_inode_eattr(ip, &clear_dup_fxns);
