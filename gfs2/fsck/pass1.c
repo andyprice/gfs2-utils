@@ -1021,7 +1021,6 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	int error;
 	struct block_count bc = {0};
 	long bad_pointers;
-	uint64_t block = ip->i_bh->b_blocknr;
 	uint64_t lf_blks = 0;
 
 	bad_pointers = 0L;
@@ -1068,21 +1067,6 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 
 	if (set_di_nlink(ip))
 		goto bad_dinode;
-
-	if (is_dir(&ip->i_di, sdp->gfs1) && (ip->i_di.di_flags & GFS2_DIF_EXHASH)) {
-		if (((1 << ip->i_di.di_depth) * sizeof(uint64_t)) != ip->i_di.di_size){
-			log_warn( _("Directory dinode block #%llu (0x%llx"
-				 ") has bad depth.  Found %u, Expected %u\n"),
-				 (unsigned long long)ip->i_di.di_num.no_addr,
-				 (unsigned long long)ip->i_di.di_num.no_addr,
-				 ip->i_di.di_depth,
-				 (1 >> (ip->i_di.di_size/sizeof(uint64_t))));
-			if (fsck_blockmap_set(ip, block, _("bad depth"),
-					     gfs2_block_free))
-				goto bad_dinode;
-			return 0;
-		}
-	}
 
 	if (lf_dip)
 		lf_blks = lf_dip->i_di.di_blocks;
