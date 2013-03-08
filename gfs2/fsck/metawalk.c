@@ -356,14 +356,12 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 
 	if (type == DIR_LINEAR) {
 		dent = (struct gfs2_dirent *)(bh->b_data + sizeof(struct gfs2_dinode));
-	}
-	else if (type == DIR_EXHASH) {
+	} else if (type == DIR_EXHASH) {
 		dent = (struct gfs2_dirent *)(bh->b_data + sizeof(struct gfs2_leaf));
-		log_debug( _("Checking leaf %llu (0x%llu)\n"),
+		log_debug( _("Checking leaf %llu (0x%llx)\n"),
 			  (unsigned long long)bh->b_blocknr,
 			  (unsigned long long)bh->b_blocknr);
-	}
-	else {
+	} else {
 		log_err( _("Invalid directory type %d specified\n"), type);
 		return -1;
 	}
@@ -498,11 +496,12 @@ static int check_leaf(struct gfs2_inode *ip, int lindex,
 	/* Make sure the block number is in range. */
 	if (!valid_block(ip->i_sbd, *leaf_no)) {
 		log_err( _("Leaf block #%llu (0x%llx) is out of range for "
-			   "directory #%llu (0x%llx).\n"),
+			   "directory #%llu (0x%llx) at index %d (0x%x).\n"),
 			 (unsigned long long)*leaf_no,
 			 (unsigned long long)*leaf_no,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)ip->i_di.di_num.no_addr);
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 lindex, lindex);
 		msg = _("that is out of range");
 		goto bad_leaf;
 	}
@@ -1334,8 +1333,8 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 
 /**
  * check_metatree
- * @ip:
- * @rgd:
+ * @ip: inode structure in memory
+ * @pass: structure passed in from caller to determine the sub-functions
  *
  */
 int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
@@ -1684,8 +1683,11 @@ void reprocess_inode(struct gfs2_inode *ip, const char *desc)
 	int error;
 
 	alloc_fxns.private = (void *)desc;
-	log_info( _("%s had blocks added; reprocessing its metadata tree "
-		    "at height=%d.\n"), desc, ip->i_di.di_height);
+	log_info( _("%s inode %llu (0x%llx) had blocks added; reprocessing "
+		    "its metadata tree at height=%d.\n"), desc,
+		  (unsigned long long)ip->i_di.di_num.no_addr,
+		  (unsigned long long)ip->i_di.di_num.no_addr,
+		  ip->i_di.di_height);
 	error = check_metatree(ip, &alloc_fxns);
 	if (error)
 		log_err( _("Error %d reprocessing the %s metadata tree.\n"),

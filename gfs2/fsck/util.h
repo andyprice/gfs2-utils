@@ -65,7 +65,7 @@ static const inline char *block_type_string(uint8_t q)
 	const char *blktyp[] = {
 		"free",
 		"data",
-		"indirect data",
+		"indirect meta",
 		"directory",
 		"file",
 

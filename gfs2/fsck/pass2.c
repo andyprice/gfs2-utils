@@ -46,9 +46,9 @@ static int set_parent_dir(struct gfs2_sbd *sdp, struct gfs2_inum child,
 	if (di->dinode.no_addr == child.no_addr &&
 	    di->dinode.no_formal_ino == child.no_formal_ino) {
 		if (di->treewalk_parent) {
-			log_err( _("Another directory at block %llx (0x%llx) "
-				   "already contains this child %lld (%llx) - "
-				   "checking parent %llx (0x%llx)\n"),
+			log_err( _("Another directory at block %lld (0x%llx) "
+				   "already contains this child %lld (0x%llx)"
+				   " - checking parent %lld (0x%llx)\n"),
 				 (unsigned long long)di->treewalk_parent,
 				 (unsigned long long)di->treewalk_parent,
 				 (unsigned long long)child.no_addr,
@@ -1784,6 +1784,3 @@ int pass2(struct gfs2_sbd *sdp)
 	gfs2_dup_free();
 	return FSCK_OK;
 }
-
-
-
