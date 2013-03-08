@@ -104,7 +104,8 @@ struct metawalk_fxns {
 	int (*check_hash_tbl) (struct gfs2_inode *ip, uint64_t *tbl,
 			       unsigned hsize, void *private);
 	int (*repair_leaf) (struct gfs2_inode *ip, uint64_t *leaf_no,
-			    int lindex, int ref_count, const char *msg);
+			    int lindex, int ref_count, const char *msg,
+			    void *private);
 };
 
 #endif /* _METAWALK_H */

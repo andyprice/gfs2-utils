@@ -1422,6 +1422,13 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 	return error;
 }
 
+static int pass2_repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no,
+			     int lindex, int ref_count, const char *msg,
+			     void *private)
+{
+	return repair_leaf(ip, leaf_no, lindex, ref_count, msg);
+}
+
 struct metawalk_fxns pass2_fxns = {
 	.private = NULL,
 	.check_leaf = NULL,
@@ -1432,7 +1439,7 @@ struct metawalk_fxns pass2_fxns = {
 	.check_dentry = check_dentry,
 	.check_eattr_entry = NULL,
 	.check_hash_tbl = check_hash_tbl,
-	.repair_leaf = repair_leaf,
+	.repair_leaf = pass2_repair_leaf,
 };
 
 /* Check system directory inode                                           */

@@ -480,52 +480,14 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	return 0;
 }
 
-/* warn_and_patch - Warn the user of an error and ask permission to fix it
- * Process a bad leaf pointer and ask to repair the first time.
- * The repair process involves extending the previous leaf's entries
- * so that they replace the bad ones.  We have to hack up the old
- * leaf a bit, but it's better than deleting the whole directory,
- * which is what used to happen before. */
-static int warn_and_patch(struct gfs2_inode *ip, uint64_t *leaf_no, 
-			  uint64_t *bad_leaf, uint64_t old_leaf,
-			  uint64_t first_ok_leaf, int pindex, const char *msg)
-{
-	int okay_to_fix = 0;
-
-	if (*bad_leaf != *leaf_no) {
-		log_err( _("Directory Inode %llu (0x%llx) points to leaf %llu"
-			" (0x%llx) %s.\n"),
-			(unsigned long long)ip->i_di.di_num.no_addr,
-			(unsigned long long)ip->i_di.di_num.no_addr,
-			(unsigned long long)*leaf_no,
-			(unsigned long long)*leaf_no, msg);
-	}
-	if (*leaf_no == *bad_leaf ||
-	    (okay_to_fix = query( _("Attempt to patch around it? (y/n) ")))) {
-		if (valid_block(ip->i_sbd, old_leaf))
-			gfs2_put_leaf_nr(ip, pindex, old_leaf);
-		else
-			gfs2_put_leaf_nr(ip, pindex, first_ok_leaf);
-		log_err( _("Directory Inode %llu (0x%llx) repaired.\n"),
-			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)ip->i_di.di_num.no_addr);
-	} else
-		log_err( _("Bad leaf left in place.\n"));
-	*bad_leaf = *leaf_no;
-	*leaf_no = old_leaf;
-	return okay_to_fix;
-}
-
 /**
  * check_leaf - check a leaf block for errors
  * Reads in the leaf block
  * Leaves the buffer around for further analysis (caller must brelse)
  */
 static int check_leaf(struct gfs2_inode *ip, int lindex,
-		      struct metawalk_fxns *pass, int *ref_count,
-		      uint64_t *leaf_no, uint64_t old_leaf, uint64_t *bad_leaf,
-		      uint64_t first_ok_leaf, struct gfs2_leaf *leaf,
-		      struct gfs2_leaf *oldleaf)
+		      struct metawalk_fxns *pass,
+		      uint64_t *leaf_no, struct gfs2_leaf *leaf, int *ref_count)
 {
 	int error = 0, fix;
 	struct gfs2_buffer_head *lbh = NULL;
@@ -533,7 +495,6 @@ static int check_leaf(struct gfs2_inode *ip, int lindex,
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	const char *msg;
 
-	*ref_count = 1;
 	/* Make sure the block number is in range. */
 	if (!valid_block(ip->i_sbd, *leaf_no)) {
 		log_err( _("Leaf block #%llu (0x%llx) is out of range for "
@@ -543,7 +504,7 @@ static int check_leaf(struct gfs2_inode *ip, int lindex,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
 		msg = _("that is out of range");
-		goto out_copy_old_leaf;
+		goto bad_leaf;
 	}
 
 	/* Try to read in the leaf block. */
@@ -551,7 +512,7 @@ static int check_leaf(struct gfs2_inode *ip, int lindex,
 	/* Make sure it's really a valid leaf block. */
 	if (gfs2_check_meta(lbh, GFS2_METATYPE_LF)) {
 		msg = _("that is not really a leaf");
-		goto out_copy_old_leaf;
+		goto bad_leaf;
 	}
 	if (pass->check_leaf) {
 		error = pass->check_leaf(ip, *leaf_no, pass->private);
@@ -587,7 +548,7 @@ static int check_leaf(struct gfs2_inode *ip, int lindex,
 			 (unsigned long long)*leaf_no,
 			 (unsigned long long)*leaf_no);
 		msg = _("that is not a leaf");
-		goto out_copy_old_leaf;
+		goto bad_leaf;
 	}
 
 	if (pass->check_dentry && is_dir(&ip->i_di, sdp->gfs1)) {
@@ -599,16 +560,18 @@ static int check_leaf(struct gfs2_inode *ip, int lindex,
 
 		if (error < 0) {
 			stack;
-			goto out;
+			goto out; /* This seems wrong: needs investigation */
 		}
 
-		if (count != leaf->lf_entries) {
-			/* release and re-read the leaf in case check_entries
-			   changed it. */
-			brelse(lbh);
-			lbh = bread(sdp, *leaf_no);
-			gfs2_leaf_in(leaf, lbh);
+		if (count == leaf->lf_entries)
+			goto out;
 
+		/* release and re-read the leaf in case check_entries
+		   changed it. */
+		brelse(lbh);
+		lbh = bread(sdp, *leaf_no);
+		gfs2_leaf_in(leaf, lbh);
+		if (count != leaf->lf_entries) {
 			log_err( _("Leaf %llu (0x%llx) entry count in "
 				   "directory %llu (0x%llx) does not match "
 				   "number of entries found - is %u, found %u\n"),
@@ -630,17 +593,16 @@ out:
 	brelse(lbh);
 	return 0;
 
-out_copy_old_leaf:
-	/* The leaf we read in is bad.  So we'll copy the old leaf into the
-	 * new one.  However, that will make us shift our ref count. */
-	fix = warn_and_patch(ip, leaf_no, bad_leaf, old_leaf,
-			     first_ok_leaf, lindex, msg);
-	(*ref_count)++;
-	memcpy(leaf, oldleaf, sizeof(struct gfs2_leaf));
-	if (lbh) {
-		if (fix)
-			bmodified(lbh);
+bad_leaf:
+	if (lbh)
 		brelse(lbh);
+	if (pass->repair_leaf) {
+		/* The leaf we read in is bad so we need to repair it. */
+		fix = pass->repair_leaf(ip, leaf_no, lindex, *ref_count, msg,
+					pass->private);
+		if (fix < 0)
+			return fix;
+
 	}
 	return 1;
 }
@@ -679,17 +641,17 @@ static void dir_leaf_reada(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize)
 /* Checks exhash directory entries */
 static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 {
-	int error;
-	struct gfs2_leaf leaf, oldleaf;
+	int error = 0;
+	struct gfs2_leaf leaf;
 	unsigned hsize = (1 << ip->i_di.di_depth);
-	uint64_t leaf_no, old_leaf, bad_leaf = -1;
+	uint64_t leaf_no, leaf_next;
 	uint64_t first_ok_leaf, orig_di_blocks;
 	struct gfs2_buffer_head *lbh;
 	int lindex;
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	int ref_count = 0, orig_ref_count, orig_di_depth, orig_di_height, old_was_dup;
+	int ref_count, orig_ref_count, orig_di_depth, orig_di_height;
 	uint64_t *tbl;
-	int tbl_valid;
+	int chained_leaf, tbl_valid;
 
 	tbl = get_dir_hash(ip);
 	if (tbl == NULL) {
@@ -751,10 +713,11 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 		return 1;
 	}
-	old_leaf = -1;
-	memset(&oldleaf, 0, sizeof(oldleaf));
-	old_was_dup = 0;
-	for (lindex = 0; lindex < hsize; lindex++) {
+	lindex = 0;
+	leaf_next = -1;
+	while (lindex < hsize) {
+		int l;
+
 		if (fsck_abort)
 			break;
 
@@ -774,38 +737,36 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		}
 		leaf_no = be64_to_cpu(tbl[lindex]);
 
-		/* GFS has multiple indirect pointers to the same leaf
-		 * until those extra pointers are needed, so skip the dups */
-		if (leaf_no == bad_leaf) {
-			tbl[lindex] = cpu_to_be64(old_leaf);
-			gfs2_put_leaf_nr(ip, lindex, old_leaf);
+		/* count the number of block pointers to this leaf. We don't
+		   need to count the current lindex, because we already know
+		   it's a reference */
+		ref_count = 1;
+
+		for (l = lindex + 1; l < hsize; l++) {
+			leaf_next = be64_to_cpu(tbl[l]);
+			if (leaf_next != leaf_no)
+				break;
 			ref_count++;
-			continue;
-		} else if (old_leaf == leaf_no) {
-			ref_count++;
-			continue;
 		}
 		orig_ref_count = ref_count;
 
+		chained_leaf = 0;
 		do {
 			if (fsck_abort) {
 				free(tbl);
 				posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 				return 0;
 			}
-			error = check_leaf(ip, lindex, pass, &ref_count,
-					   &leaf_no, old_leaf, &bad_leaf,
-					   first_ok_leaf, &leaf, &oldleaf);
+			error = check_leaf(ip, lindex, pass, &leaf_no, &leaf,
+					   &ref_count);
 			if (ref_count != orig_ref_count)
 				tbl_valid = 0;
-			old_was_dup = (error == -EEXIST);
-			old_leaf = leaf_no;
-			memcpy(&oldleaf, &leaf, sizeof(oldleaf));
 			if (!leaf.lf_next || error)
 				break;
 			leaf_no = leaf.lf_next;
-			log_debug( _("Leaf chain (0x%llx) detected.\n"),
-				   (unsigned long long)leaf_no);
+			chained_leaf++;
+			log_debug( _("Leaf chain #%d (0x%llx) detected.\n"),
+				   chained_leaf, (unsigned long long)leaf_no);
 		} while (1); /* while we have chained leaf blocks */
 		if (orig_di_depth != ip->i_di.di_depth) {
 			log_debug(_("Depth of 0x%llx changed from %d to %d\n"),

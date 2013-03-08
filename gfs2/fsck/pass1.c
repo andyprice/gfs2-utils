@@ -78,6 +78,19 @@ static int invalidate_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 				 void *private);
 static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip);
 
+static int pass1_repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no,
+			     int lindex, int ref_count, const char *msg,
+			     void *private)
+{
+	struct block_count *bc = (struct block_count *)private;
+	int new_leaf_blks;
+
+	new_leaf_blks = repair_leaf(ip, leaf_no, lindex, ref_count, msg);
+	bc->indir_count += new_leaf_blks;
+
+	return new_leaf_blks;
+}
+
 struct metawalk_fxns pass1_fxns = {
 	.private = NULL,
 	.check_leaf = check_leaf,
@@ -90,6 +103,7 @@ struct metawalk_fxns pass1_fxns = {
 	.check_eattr_extentry = check_extended_leaf_eattr,
 	.finish_eattr_indir = finish_eattr_indir,
 	.big_file_msg = big_file_comfort,
+	.repair_leaf = pass1_repair_leaf,
 };
 
 struct metawalk_fxns undo_fxns = {
