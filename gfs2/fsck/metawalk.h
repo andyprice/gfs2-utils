@@ -69,6 +69,8 @@ extern int free_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
  */
 struct metawalk_fxns {
 	void *private;
+	int (*check_leaf_depth) (struct gfs2_inode *ip, uint64_t leaf_no,
+				 int ref_count, struct gfs2_buffer_head *lbh);
 	int (*check_leaf) (struct gfs2_inode *ip, uint64_t block,
 			   void *private);
 	int (*check_metalist) (struct gfs2_inode *ip, uint64_t block,

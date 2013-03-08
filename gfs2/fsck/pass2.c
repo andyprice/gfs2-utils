@@ -1431,6 +1431,7 @@ static int pass2_repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no,
 
 struct metawalk_fxns pass2_fxns = {
 	.private = NULL,
+	.check_leaf_depth = check_leaf_depth,
 	.check_leaf = NULL,
 	.check_metalist = NULL,
 	.check_data = NULL,

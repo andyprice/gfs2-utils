@@ -514,6 +514,9 @@ static int check_leaf(struct gfs2_inode *ip, int lindex,
 		msg = _("that is not really a leaf");
 		goto bad_leaf;
 	}
+	if (pass->check_leaf_depth)
+		error = pass->check_leaf_depth(ip, *leaf_no, *ref_count, lbh);
+
 	if (pass->check_leaf) {
 		error = pass->check_leaf(ip, *leaf_no, pass->private);
 		if (error) {
