@@ -1022,6 +1022,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	struct block_count bc = {0};
 	long bad_pointers;
 	uint64_t block = ip->i_bh->b_blocknr;
+	uint64_t lf_blks = 0;
 
 	bad_pointers = 0L;
 
@@ -1083,8 +1084,18 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		}
 	}
 
+	if (lf_dip)
+		lf_blks = lf_dip->i_di.di_blocks;
+
 	pass1_fxns.private = &bc;
 	error = check_metatree(ip, &pass1_fxns);
+
+	/* Pass1 may have added some blocks to lost+found by virtue of leafs
+	   that were misplaced. If it did, we need to reprocess lost+found
+	   to correctly account for its blocks. */
+	if (lf_dip && lf_dip->i_di.di_blocks != lf_blks)
+		reprocess_inode(lf_dip, "lost+found");
+
 	if (fsck_abort || error < 0)
 		return 0;
 	if (error > 0) {

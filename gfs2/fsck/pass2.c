@@ -1448,7 +1448,7 @@ struct metawalk_fxns pass2_fxns = {
 static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		     int builder(struct gfs2_sbd *sdp))
 {
-	uint64_t iblock = 0;
+	uint64_t iblock = 0, cur_blks;
 	struct dir_status ds = {0};
 	char *filename;
 	int filename_len;
@@ -1468,12 +1468,15 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 
 	pass2_fxns.private = (void *) &ds;
 	if (ds.q == gfs2_bad_block) {
+		cur_blks = sysinode->i_di.di_blocks;
 		/* First check that the directory's metatree is valid */
 		error = check_metatree(sysinode, &pass2_fxns);
 		if (error < 0) {
 			stack;
 			return error;
 		}
+		if (sysinode->i_di.di_blocks != cur_blks)
+			reprocess_inode(sysinode, _("System inode"));
 	}
 	error = check_dir(sysinode->i_sbd, iblock, &pass2_fxns);
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
@@ -1493,8 +1496,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 	if (!ds.dotdir) {
 		log_err( _("No '.' entry found for %s directory.\n"), dirname);
 		if (query( _("Is it okay to add '.' entry? (y/n) "))) {
-			uint64_t cur_blks = sysinode->i_di.di_blocks;
-
+			cur_blks = sysinode->i_di.di_blocks;
 			sprintf(tmp_name, ".");
 			filename_len = strlen(tmp_name); /* no trailing NULL */
 			if (!(filename = malloc(sizeof(char) * filename_len))) {
@@ -1585,7 +1587,7 @@ static inline int is_system_dir(struct gfs2_sbd *sdp, uint64_t block)
  */
 int pass2(struct gfs2_sbd *sdp)
 {
-	uint64_t dirblk;
+	uint64_t dirblk, cur_blks;
 	uint8_t q;
 	struct dir_status ds = {0};
 	struct gfs2_inode *ip;
@@ -1647,12 +1649,15 @@ int pass2(struct gfs2_sbd *sdp)
 			/* First check that the directory's metatree
 			 * is valid */
 			ip = fsck_load_inode(sdp, dirblk);
+			cur_blks = ip->i_di.di_blocks;
 			error = check_metatree(ip, &pass2_fxns);
 			fsck_inode_put(&ip);
 			if (error < 0) {
 				stack;
 				return error;
 			}
+			if (ip->i_di.di_blocks != cur_blks)
+				reprocess_inode(ip, "current");
 		}
 		error = check_dir(sdp, dirblk, &pass2_fxns);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
@@ -1711,8 +1716,6 @@ int pass2(struct gfs2_sbd *sdp)
 				(unsigned long long)dirblk);
 
 			if (query( _("Is it okay to add '.' entry? (y/n) "))) {
-				uint64_t cur_blks;
-
 				sprintf(tmp_name, ".");
 				filename_len = strlen(tmp_name); /* no trailing
 								    NULL */
