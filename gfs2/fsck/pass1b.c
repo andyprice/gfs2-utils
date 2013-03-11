@@ -485,6 +485,15 @@ static int resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *b,
 			q = block_type(id->block_no);
 			if (q != gfs2_inode_invalid) {
 				found_good_ref = 1;
+				log_warn( _("Inode %s (%lld/0x%llx)'s "
+					    "reference to block %llu (0x%llx) "
+					    "as '%s' is acceptable.\n"),
+					  id->name,
+					  (unsigned long long)id->block_no,
+					  (unsigned long long)id->block_no,
+					  (unsigned long long)b->block,
+					  (unsigned long long)b->block,
+					  reftypes[this_ref]);
 				continue; /* don't delete the dinode */
 			}
 		}
