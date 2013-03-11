@@ -635,43 +635,34 @@ static void get_journal_inode_blocks(void)
 	}
 }
 
-static int next_rg_freemeta(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
-			    uint64_t *nrfblock, int first)
+static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 {
-	struct gfs2_bitmap *bits = NULL;
-	uint32_t length = rgd->ri.ri_length;
-	uint32_t blk = (first)? 0: (uint32_t)((*nrfblock+1)-rgd->ri.ri_data0);
-	int i;
-	struct gfs2_buffer_head *lbh;
+	int blktype;
+	unsigned i, j, m;
+	uint64_t *ibuf = malloc(sbd.bsize * GFS2_NBBY * sizeof(uint64_t));
 
-	if(!first && (*nrfblock < rgd->ri.ri_data0)) {
-		log_err("next_rg_freemeta:  Start block is outside rgrp "
-			"bounds.\n");
-		exit(1);
-	}
-	for(i=0; i < length; i++){
-		bits = &rgd->bits[i];
-		if(blk < bits->bi_len*GFS2_NBBY)
-			break;
-		blk -= bits->bi_len*GFS2_NBBY;
-	}
-	for(; i < length; i++){
-		bits = &rgd->bits[i];
-		lbh = bread(sdp, rgd->ri.ri_addr + i);
-		blk = gfs2_bitfit((unsigned char *)lbh->b_data +
-				  bits->bi_offset, bits->bi_len, blk,
-				  GFS2_BLKST_UNLINKED);
-		brelse(lbh);
-		if(blk != BFITNOENT){
-			*nrfblock = blk + (bits->bi_start * GFS2_NBBY) +
-				rgd->ri.ri_data0;
-			break;
+	for (i = 0; i < rgd->ri.ri_length; i++) {
+		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_DINODE);
+
+		for (j = 0; j < m; j++) {
+			block = ibuf[j];
+			warm_fuzzy_stuff(block, FALSE);
+			blktype = save_block(sbd.device_fd, mfd, block);
+			if (blktype == GFS2_METATYPE_DI)
+				save_inode_data(mfd);
 		}
-		blk=0;
+
+		if (!sbd.gfs1)
+			continue;
+
+		/* For gfs1, Save off the free/unlinked meta blocks too.
+		 * If we don't, we may run into metadata allocation issues. */
+		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_UNLINKED);
+		for (j = 0; j < m; j++) {
+			blktype = save_block(sbd.device_fd, mfd, block);
+		}
 	}
-	if(i == length)
-		return -1;
-	return 0;
+	free(ibuf);
 }
 
 void savemeta(char *out_fn, int saveoption, int gziplevel)
@@ -771,7 +762,6 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	}
 	/* Walk through the resource groups saving everything within */
 	for (n = osi_first(&sbd.rgtree); n; n = next) {
-		int first;
 		struct rgrp_tree *rgd;
 
 		next = osi_next(n);
@@ -782,33 +772,15 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 			  (unsigned long long)rgd->ri.ri_addr,
 			  (unsigned long long)rgd->ri.ri_addr,
 			  rgd->ri.ri_length);
-		first = 1;
 		/* Save off the rg and bitmaps */
 		for (block = rgd->ri.ri_addr;
 		     block < rgd->ri.ri_data0; block++) {
 			warm_fuzzy_stuff(block, FALSE);
 			save_block(sbd.device_fd, &mfd, block);
 		}
-		/* Save off the other metadata: inodes, etc. */
+		/* Save off the other metadata: inodes, etc. if mode is not 'savergs' */
 		if (saveoption != 2) {
-			int blktype;
-
-			while (!gfs2_next_rg_meta(rgd, &block, first)){
-				warm_fuzzy_stuff(block, FALSE);
-				blktype = save_block(sbd.device_fd, &mfd,
-						     block);
-				if (blktype == GFS2_METATYPE_DI)
-					save_inode_data(&mfd);
-				first = 0;
-			}
-			/* Save off the free/unlinked meta blocks too.
-			   If we don't, we may run into metadata
-			   allocation issues. */
-			while (!next_rg_freemeta(&sbd, rgd, &block, first)) {
-				blktype = save_block(sbd.device_fd,
-						     &mfd, block);
-				first = 0;
-			}
+			save_allocated(rgd, &mfd);
 		}
 		gfs2_rgrp_relse(rgd);
 	}

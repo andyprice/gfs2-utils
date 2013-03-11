@@ -999,6 +999,56 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 	return 0;
 } /* adjust_inode */
 
+static int next_rg_meta(struct rgrp_tree *rgd, uint64_t *block, int first)
+{
+	struct gfs2_bitmap *bits = NULL;
+	uint32_t length = rgd->ri.ri_length;
+	uint32_t blk = (first)? 0: (uint32_t)((*block + 1) - rgd->ri.ri_data0);
+	int i;
+
+	if (!first && (*block < rgd->ri.ri_data0)) {
+		fprintf(stderr, "next_rg_meta:  Start block is outside rgrp bounds.\n");
+		exit(1);
+	}
+	for (i = 0; i < length; i++){
+		bits = &rgd->bits[i];
+		if (blk < bits->bi_len * GFS2_NBBY)
+			break;
+		blk -= bits->bi_len * GFS2_NBBY;
+	}
+	for (; i < length; i++){
+		bits = &rgd->bits[i];
+		blk = gfs2_bitfit((unsigned char *)rgd->bh[i]->b_data +
+				  bits->bi_offset, bits->bi_len, blk, GFS2_BLKST_DINODE);
+		if(blk != BFITNOENT){
+			*block = blk + (bits->bi_start * GFS2_NBBY) +
+				rgd->ri.ri_data0;
+			break;
+		}
+		blk = 0;
+	}
+	if (i == length)
+		return -1;
+	return 0;
+}
+
+static int next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
+                            uint64_t *block, uint32_t type, int first)
+{
+	struct gfs2_buffer_head *bh = NULL;
+
+	do{
+		if (bh)
+			brelse(bh);
+		if (next_rg_meta(rgd, block, first))
+			return -1;
+		bh = bread(sdp, *block);
+		first = 0;
+	} while(gfs2_check_meta(bh, type));
+	brelse(bh);
+	return 0;
+}
+
 /* ------------------------------------------------------------------------- */
 /* inode_renumber - renumber the inodes                                      */
 /*                                                                           */
@@ -1046,7 +1096,7 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 			/* be "11" (used meta) for both inodes and indirect blocks.     */
 			/* We need to process the inodes and change the indirect blocks */
 			/* to have a bitmap type of "01" (data).                        */
-			if (gfs2_next_rg_metatype(sbp, rgd, &block, 0, first))
+			if (next_rg_metatype(sbp, rgd, &block, 0, first))
 				break;
 			/* If this is the root inode block, remember it for later: */
 			if (block == root_inode_addr) {

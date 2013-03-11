@@ -756,11 +756,6 @@ extern int do_init_statfs(struct gfs2_sbd *sdp);
 extern int gfs2_check_meta(struct gfs2_buffer_head *bh, int type);
 extern unsigned lgfs2_bm_scan(struct rgrp_tree *rgd, unsigned idx,
 			      uint64_t *buf, uint8_t state);
-extern int gfs2_next_rg_meta(struct rgrp_tree *rgd, uint64_t *block,
-			     int first);
-extern int gfs2_next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
-				 uint64_t *block, uint32_t type, int first);
-
 /* super.c */
 extern int check_sb(struct gfs2_sb *sb);
 extern int read_sb(struct gfs2_sbd *sdp);

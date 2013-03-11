@@ -1569,6 +1569,31 @@ static uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int p
 	return blk;
 }
 
+static int find_rg_metatype(struct rgrp_tree *rgd, uint64_t *blk, uint64_t startblk, int mtype)
+{
+	int found;
+	unsigned i, j, m;
+	struct gfs2_buffer_head *bhp = NULL;
+	uint64_t *ibuf = malloc(sbd.bsize * GFS2_NBBY * sizeof(uint64_t));
+
+	for (i = 0; i < rgd->ri.ri_length; i++) {
+		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_DINODE);
+
+		for (j = 0; j < m; j++) {
+			*blk = ibuf[j];
+			bhp = bread(&sbd, *blk);
+			found = (*blk > startblk) && !gfs2_check_meta(bhp, mtype);
+			brelse(bhp);
+			if (found) {
+				free(ibuf);
+				return 0;
+			}
+		}
+	}
+	free(ibuf);
+	return -1;
+}
+
 /* ------------------------------------------------------------------------ */
 /* Find next "metadata in use" block AFTER a given point in the fs          */
 /*                                                                          */
@@ -1578,7 +1603,7 @@ static uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int p
 /* ------------------------------------------------------------------------ */
 static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int print)
 {
-	struct osi_node *n, *next = NULL;
+	struct osi_node *next = NULL;
 	uint64_t blk, errblk;
 	int first = 1, found = 0;
 	struct rgrp_tree *rgd;
@@ -1586,9 +1611,8 @@ static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int pri
 
 	blk = 0;
 	/* Skip the rgs prior to the block we've been given */
-	for (n = osi_first(&sbd.rgtree); n; n = next) {
-		next = osi_next(n);
-		rgd = (struct rgrp_tree *)n;
+	for (next = osi_first(&sbd.rgtree); next; next = osi_next(next)) {
+		rgd = (struct rgrp_tree *)next;
 		ri = &rgd->ri;
 		if (first && startblk <= ri->ri_data0) {
 			startblk = ri->ri_data0;
@@ -1607,25 +1631,19 @@ static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int pri
 		if (print)
 			exit(-1);
 	}
-	for (; !found && n; n = next){
-		next = osi_next(n);
-		rgd = (struct rgrp_tree *)n;
+	for (; !found && next; next = osi_next(next)){
+		rgd = (struct rgrp_tree *)next;
 		errblk = gfs2_rgrp_read(&sbd, rgd);
 		if (errblk)
 			continue;
-		first = 1;
-		do {
-			if (gfs2_next_rg_metatype(&sbd, rgd, &blk, metatype,
-						  first))
-				break;
-			if (blk > startblk) {
-				found = 1;
-				break;
-			}
-			first = 0;
-		} while (blk <= startblk);
+
+		found = !find_rg_metatype(rgd, &blk, startblk, metatype);
+		if (found)
+			break;
+
 		gfs2_rgrp_relse(rgd);
 	}
+
 	if (!found)
 		blk = 0;
 	if (print) {
