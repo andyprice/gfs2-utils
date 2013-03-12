@@ -39,8 +39,7 @@ static int check_leaf(struct gfs2_inode *ip, uint64_t block, void *private);
 static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			  struct gfs2_buffer_head **bh, int h, void *private);
 static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
-			       struct gfs2_buffer_head **bh, int h,
-			       void *private);
+			       int h, void *private);
 static int check_data(struct gfs2_inode *ip, uint64_t block, void *private);
 static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
 			   void *private);
@@ -104,12 +103,8 @@ struct metawalk_fxns pass1_fxns = {
 	.finish_eattr_indir = finish_eattr_indir,
 	.big_file_msg = big_file_comfort,
 	.repair_leaf = pass1_repair_leaf,
-};
-
-struct metawalk_fxns undo_fxns = {
-	.private = NULL,
-	.check_metalist = undo_check_metalist,
-	.check_data = undo_check_data,
+	.undo_check_meta = undo_check_metalist,
+	.undo_check_data = undo_check_data,
 };
 
 struct metawalk_fxns invalidate_fxns = {
@@ -326,51 +321,65 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 	return 0;
 }
 
-static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
-			       struct gfs2_buffer_head **bh, int h,
-			       void *private)
-{
-	int found_dup = 0, iblk_type;
-	struct gfs2_buffer_head *nbh;
-	struct block_count *bc = (struct block_count *)private;
+/* undo_reference - undo previously processed data or metadata
+ * We've treated the metadata for this dinode as good so far, but not we
+ * realize it's bad. So we need to undo what we've done.
+ *
+ * Returns: 0 - We need to process the block as metadata. In other words,
+ *              we need to undo any blocks it refers to.
+ *          1 - We can't process the block as metadata.
+ */
 
-	*bh = NULL;
+static int undo_reference(struct gfs2_inode *ip, uint64_t block, int meta,
+			  void *private)
+{
+	struct block_count *bc = (struct block_count *)private;
+	struct duptree *dt;
+	struct inode_with_dups *id;
 
 	if (!valid_block(ip->i_sbd, block)) { /* blk outside of FS */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
 				  _("bad block referencing"), gfs2_block_free);
 		return 1;
 	}
-	if (is_dir(&ip->i_di, ip->i_sbd->gfs1) && h == ip->i_di.di_height)
-		iblk_type = GFS2_METATYPE_JD;
-	else
-		iblk_type = GFS2_METATYPE_IN;
 
-	found_dup = find_remove_dup(ip, block, _("Metadata"));
-	nbh = bread(ip->i_sbd, block);
+	if (meta)
+		bc->indir_count--;
+	dt = dupfind(block);
+	if (dt) {
+		/* remove all duplicate reference structures from this inode */
+		do {
+			id = find_dup_ref_inode(dt, ip);
+			if (!id)
+				break;
 
-	if (gfs2_check_meta(nbh, iblk_type)) {
-		if (!found_dup) {
-			fsck_blockmap_set(ip, block, _("bad indirect"),
-					  gfs2_block_free);
-			brelse(nbh);
+			dup_listent_delete(id);
+		} while (id);
+
+		if (dt->refs) {
+			log_err(_("Block %llu (0x%llx) is still referenced "
+				  "from another inode; not freeing.\n"),
+				(unsigned long long)block,
+				(unsigned long long)block);
 			return 1;
 		}
-		brelse(nbh);
-		nbh = NULL;
-	} else /* blk check ok */
-		*bh = nbh;
-
-	bc->indir_count--;
-	if (found_dup) {
-		if (nbh)
-			brelse(nbh);
-		*bh = NULL;
-		return 1; /* don't process the metadata again */
-	} else
-		fsck_blockmap_set(ip, block, _("bad indirect"),
-				  gfs2_block_free);
+	}
+	fsck_blockmap_set(ip, block,
+			  meta ? _("bad indirect") : _("referenced data"),
+			  gfs2_block_free);
 	return 0;
+}
+
+static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
+			       int h, void *private)
+{
+	return undo_reference(ip, block, 1, private);
+}
+
+static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
+			   void *private)
+{
+	return undo_reference(ip, block, 0, private);
 }
 
 static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
@@ -438,71 +447,9 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 	return 0;
 }
 
-static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
-			   void *private)
-{
-	struct block_count *bc = (struct block_count *) private;
-
-	if (!valid_block(ip->i_sbd, block)) {
-		/* Mark the owner of this block with the bad_block
-		 * designator so we know to check it for out of range
-		 * blocks later */
-		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-				  _("bad (invalid or out of range) data"),
-				  gfs2_block_free);
-		return 1;
-	}
-	bc->data_count--;
-	return free_block_if_notdup(ip, block, _("data"));
-}
-
 static int remove_inode_eattr(struct gfs2_inode *ip, struct block_count *bc)
 {
-	struct duptree *dt;
-	struct inode_with_dups *id;
-	osi_list_t *ref;
-	int moved = 0;
-
-	/* If it's a duplicate reference to the block, we need to check
-	   if the reference is on the valid or invalid inodes list.
-	   If it's on the valid inode's list, move it to the invalid
-	   inodes list.  The reason is simple: This inode, although
-	   valid, has an now-invalid reference, so we should not give
-	   this reference preferential treatment over others. */
-	dt = dupfind(ip->i_di.di_eattr);
-	if (dt) {
-		osi_list_foreach(ref, &dt->ref_inode_list) {
-			id = osi_list_entry(ref, struct inode_with_dups, list);
-			if (id->block_no == ip->i_di.di_num.no_addr) {
-				log_debug( _("Moving inode %lld (0x%llx)'s "
-					     "duplicate reference to %lld "
-					     "(0x%llx) from the valid to the "
-					     "invalid reference list.\n"),
-					   (unsigned long long)
-					   ip->i_di.di_num.no_addr,
-					   (unsigned long long)
-					   ip->i_di.di_num.no_addr,
-					   (unsigned long long)
-					   ip->i_di.di_eattr,
-					   (unsigned long long)
-					   ip->i_di.di_eattr);
-				/* Move from the normal to the invalid list */
-				osi_list_del(&id->list);
-				osi_list_add_prev(&id->list,
-						  &dt->ref_invinode_list);
-				moved = 1;
-				break;
-			}
-		}
-		if (!moved)
-			log_debug( _("Duplicate reference to %lld "
-				     "(0x%llx) not moved.\n"),
-				   (unsigned long long)ip->i_di.di_eattr,
-				   (unsigned long long)ip->i_di.di_eattr);
-	} else {
-		delete_block(ip, ip->i_di.di_eattr, NULL,
-			     "extended attribute", NULL);
-	}
+	undo_reference(ip, ip->i_di.di_eattr, 0, bc);
 	ip->i_di.di_eattr = 0;
 	bc->ea_count = 0;
 	ip->i_di.di_blocks = 1 + bc->indir_count + bc->data_count;
@@ -1080,23 +1027,10 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	if (lf_dip && lf_dip->i_di.di_blocks != lf_blks)
 		reprocess_inode(lf_dip, "lost+found");
 
-	if (fsck_abort || error < 0)
+	/* We there was an error, we return 0 because we want fsck to continue
+	   and analyze the other dinodes as well. */
+	if (fsck_abort || error != 0)
 		return 0;
-	if (error > 0) {
-		log_err( _("Error: inode %llu (0x%llx) has unrecoverable "
-			   "errors; invalidating.\n"),
-			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)ip->i_di.di_num.no_addr);
-		undo_fxns.private = &bc;
-		check_metatree(ip, &undo_fxns);
-		/* If we undo the metadata accounting, including metadatas
-		   duplicate block status, we need to make sure later passes
-		   don't try to free up the metadata referenced by this inode.
-		   Therefore we mark the inode as free space. */
-		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-				  _("corrupt"), gfs2_block_free);
-		return 0;
-	}
 
 	error = check_inode_eattr(ip, &pass1_fxns);
 

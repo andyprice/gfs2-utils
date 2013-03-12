@@ -1259,7 +1259,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 				if (err < 0) {
 					stack;
 					error = err;
-					goto fail;
+					return error;
 				}
 				if (err > 0) {
 					if (!error)
@@ -1278,14 +1278,11 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 				}
 				if (!nbh)
 					nbh = bread(ip->i_sbd, block);
-				osi_list_add(&nbh->b_altlist, cur_list);
+				osi_list_add_prev(&nbh->b_altlist, cur_list);
 			} /* for all data on the indirect block */
 		} /* for blocks at that height */
 	} /* for height */
-	return error;
-fail:
-	free_metalist(ip, mlp);
-	return error;
+	return 0;
 }
 
 /**
@@ -1331,6 +1328,27 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 	return error;
 }
 
+static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
+			   uint64_t *ptr_start, char *ptr_end)
+{
+	int rc = 0;
+	uint64_t block, *ptr;
+
+	/* If there isn't much pointer corruption check the pointers */
+	for (ptr = ptr_start ; (char *)ptr < ptr_end && !fsck_abort; ptr++) {
+		if (!*ptr)
+			continue;
+
+		if (skip_this_pass || fsck_abort)
+			return 1;
+		block =  be64_to_cpu(*ptr);
+		rc = pass->undo_check_data(ip, block, pass->private);
+		if (rc < 0)
+			return rc;
+	}
+	return 0;
+}
+
 static int hdr_size(struct gfs2_buffer_head *bh, int height)
 {
 	if (height > 1) {
@@ -1363,6 +1381,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	int  i, head_size;
 	uint64_t blks_checked = 0;
 	int error, rc;
+	int metadata_clean = 0;
 
 	if (!height && !is_dir(&ip->i_di, ip->i_sbd->gfs1))
 		return 0;
@@ -1374,35 +1393,21 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	error = build_and_check_metalist(ip, &metalist[0], pass);
 	if (error) {
 		stack;
-		free_metalist(ip, &metalist[0]);
-		return error;
+		goto undo_metalist;
 	}
 
+	metadata_clean = 1;
 	/* For directories, we've already checked the "data" blocks which
 	 * comprise the directory hash table, so we perform the directory
 	 * checks and exit. */
         if (is_dir(&ip->i_di, ip->i_sbd->gfs1)) {
-		free_metalist(ip, &metalist[0]);
 		if (!(ip->i_di.di_flags & GFS2_DIF_EXHASH))
-			return 0;
+			goto out;
 		/* check validity of leaf blocks and leaf chains */
 		error = check_leaf_blks(ip, pass);
-		return error;
-	}
-
-	/* Free the metalist buffers from heights we don't need to check.
-	   For the rest we'll free as we check them to save time.
-	   metalist[0] will only have the dinode bh, so we can skip it. */
-	for (i = 1; i < height - 1; i++) {
-		list = &metalist[i];
-		while (!osi_list_empty(list)) {
-			bh = osi_list_entry(list->next,
-					    struct gfs2_buffer_head, b_altlist);
-			if (bh == ip->i_bh)
-				osi_list_del(&bh->b_altlist);
-			else
-				brelse(bh);
-		}
+		if (error)
+			goto undo_metalist;
+		goto out;
 	}
 
 	/* check data blocks */
@@ -1410,7 +1415,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	if (ip->i_di.di_blocks > COMFORTABLE_BLKS)
 		last_reported_fblock = -10000000;
 
-	while (error >= 0 && !osi_list_empty(list)) {
+	while (!error && !osi_list_empty(list)) {
 		if (fsck_abort) {
 			free_metalist(ip, &metalist[0]);
 			return 0;
@@ -1428,21 +1433,12 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		}
 
 		if (pass->check_data)
-			rc = check_data(ip, pass, (uint64_t *)
-					(bh->b_data + head_size),
-					(bh->b_data + ip->i_sbd->bsize),
-					&blks_checked);
-		else
-			rc = 0;
-
-		if (rc && (!error || rc < 0))
-			error = rc;
+			error = check_data(ip, pass, (uint64_t *)
+					   (bh->b_data + head_size),
+					   (bh->b_data + ip->i_sbd->bsize),
+					   &blks_checked);
 		if (pass->big_file_msg && ip->i_di.di_blocks > COMFORTABLE_BLKS)
 			pass->big_file_msg(ip, blks_checked);
-		if (bh == ip->i_bh)
-			osi_list_del(&bh->b_altlist);
-		else
-			brelse(bh);
 	}
 	if (pass->big_file_msg && ip->i_di.di_blocks > COMFORTABLE_BLKS) {
 		log_notice( _("\rLarge file at %lld (0x%llx) - 100 percent "
@@ -1452,6 +1448,50 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			    (unsigned long long)ip->i_di.di_num.no_addr);
 		fflush(stdout);
 	}
+undo_metalist:
+	if (!error)
+		goto out;
+	log_err( _("Error: inode %llu (0x%llx) had unrecoverable errors.\n"),
+		 (unsigned long long)ip->i_di.di_num.no_addr,
+		 (unsigned long long)ip->i_di.di_num.no_addr);
+	if (!query( _("Remove the invalid inode? (y/n) "))) {
+		free_metalist(ip, &metalist[0]);
+		log_err(_("Invalid inode not deleted.\n"));
+		return error;
+	}
+	for (i = 0; pass->undo_check_meta && i < height; i++) {
+		while (!osi_list_empty(&metalist[i])) {
+			list = &metalist[i];
+			bh = osi_list_entry(list->next,
+					    struct gfs2_buffer_head,
+					    b_altlist);
+			log_err(_("Undoing metadata work for block %llu "
+				  "(0x%llx)\n"),
+				(unsigned long long)bh->b_blocknr,
+				(unsigned long long)bh->b_blocknr);
+			if (i)
+				rc = pass->undo_check_meta(ip, bh->b_blocknr,
+							   i, pass->private);
+			else
+				rc = 0;
+			if (metadata_clean && rc == 0 && i == height - 1) {
+				head_size = hdr_size(bh, height);
+				if (head_size)
+					undo_check_data(ip, pass, (uint64_t *)
+					      (bh->b_data + head_size),
+					      (bh->b_data + ip->i_sbd->bsize));
+			}
+			if (bh == ip->i_bh)
+				osi_list_del(&bh->b_altlist);
+			else
+				brelse(bh);
+		}
+	}
+	/* Set the dinode as "bad" so it gets deleted */
+	fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
+			  _("corrupt"), gfs2_block_free);
+	log_err(_("The corrupt inode was invalidated.\n"));
+out:
 	free_metalist(ip, &metalist[0]);
 	return error;
 }
