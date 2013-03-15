@@ -459,6 +459,9 @@ static int resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *b,
 	int found_good_ref = 0;
 
 	osi_list_foreach_safe(tmp, ref_list, x) {
+		if (skip_this_pass || fsck_abort)
+			return FSCK_OK;
+
 		id = osi_list_entry(tmp, struct inode_with_dups, list);
 		dh->b = b;
 		dh->id = id;
