@@ -113,6 +113,27 @@ struct mkfs_opts {
 	unsigned confirm:1;
 };
 
+/**
+ * Values probed by libblkid:
+ *  alignment_offset: offset, in bytes, of the start of the dev from its natural alignment
+ *  logical_sector_size: smallest addressable unit
+ *  minimum_io_size: device's preferred unit of I/O. RAID stripe unit.
+ *  optimal_io_size: biggest I/O we can submit without incurring a penalty. RAID stripe width.
+ *  physical_sector_size: the smallest unit we can write atomically
+ */
+struct mkfs_dev {
+	int fd;
+	struct stat stat;
+	uint64_t size;
+	unsigned long alignment_offset;
+	unsigned long logical_sector_size;
+	unsigned long minimum_io_size;
+	unsigned long optimal_io_size;
+	unsigned long physical_sector_size;
+
+	unsigned int got_topol:1;
+};
+
 static void opts_init(struct mkfs_opts *opts)
 {
 	memset(opts, 0, sizeof(*opts));
@@ -401,25 +422,26 @@ static void are_you_sure(void)
 		free(line);
 }
 
-static unsigned choose_blocksize(struct mkfs_opts *opts, struct lgfs2_dev_info *dinfo)
+static unsigned choose_blocksize(struct mkfs_opts *opts, const struct mkfs_dev *dev)
 {
 	unsigned int x;
 	unsigned int bsize = opts->bsize;
 
-	if (!opts->got_bsize) {
-		if (S_ISREG(dinfo->stat.st_mode))
-			bsize = GFS2_DEFAULT_BSIZE;
-		/* See if optimal_io_size (the biggest I/O we can submit
-		   without incurring a penalty) is a suitable block size. */
-		else if (dinfo->io_optimal_size <= getpagesize() && dinfo->io_optimal_size >= dinfo->io_min_size)
-			bsize = dinfo->io_optimal_size;
-		/* See if physical_block_size (the smallest unit we can write
-		   without incurring read-modify-write penalty) is suitable. */
-		else if (dinfo->physical_block_size <= getpagesize() && dinfo->physical_block_size >= GFS2_DEFAULT_BSIZE)
-			bsize = dinfo->physical_block_size;
-		else
-			bsize = GFS2_DEFAULT_BSIZE;
+	if (dev->got_topol && opts->debug) {
+		printf("alignment_offset: %lu\n", dev->alignment_offset);
+		printf("logical_sector_size: %lu\n", dev->logical_sector_size);
+		printf("minimum_io_size: %lu\n", dev->minimum_io_size);
+		printf("optimal_io_size: %lu\n", dev->optimal_io_size);
+		printf("physical_sector_size: %lu\n", dev->physical_sector_size);
+	}
 
+	if (!opts->got_bsize && dev->got_topol) {
+		if (dev->optimal_io_size <= getpagesize() &&
+		    dev->optimal_io_size >= dev->minimum_io_size)
+			bsize = dev->optimal_io_size;
+		else if (dev->physical_sector_size <= getpagesize() &&
+		         dev->physical_sector_size >= GFS2_DEFAULT_BSIZE)
+			bsize = dev->physical_sector_size;
 	}
 
 	/* Block sizes must be a power of two from 512 to 65536 */
@@ -431,15 +453,15 @@ static unsigned choose_blocksize(struct mkfs_opts *opts, struct lgfs2_dev_info *
 		die( _("Block size must be a power of two between 512 and %d\n"),
 		       getpagesize());
 
-	if (bsize < dinfo->logical_block_size) {
+	if (bsize < dev->logical_sector_size) {
 		die( _("Error: Block size %d is less than minimum logical "
-		       "block size (%d).\n"), bsize, dinfo->logical_block_size);
+		       "block size (%lu).\n"), bsize, dev->logical_sector_size);
 	}
 
-	if (bsize < dinfo->physical_block_size) {
+	if (bsize < dev->physical_sector_size) {
 		printf( _("Warning: Block size %d is inefficient because it "
-			  "is less than the physical block size (%d).\n"),
-			  bsize, dinfo->physical_block_size);
+			  "is less than the physical block size (%lu).\n"),
+			  bsize, dev->physical_sector_size);
 		opts->confirm = 1;
 	}
 	return bsize;
@@ -447,6 +469,11 @@ static unsigned choose_blocksize(struct mkfs_opts *opts, struct lgfs2_dev_info *
 
 static void opts_check(struct mkfs_opts *opts)
 {
+	if (!opts->got_device) {
+		fprintf(stderr, _("No device specified. Use -h for help\n"));
+		exit(1);
+	}
+
 	if (!opts->expert)
 		test_locking(opts->lockproto, opts->locktable);
 	if (opts->expert) {
@@ -600,7 +627,7 @@ static int place_rgrps(struct gfs2_sbd *sdp, const struct mkfs_opts *opts)
 	return 0;
 }
 
-static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct lgfs2_dev_info *dinfo, int fd)
+static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct mkfs_dev *dev)
 {
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	sdp->time = time(NULL);
@@ -609,20 +636,20 @@ static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct lgfs2_
 	sdp->qcsize = opts->qcsize;
 	sdp->jsize = opts->jsize;
 	sdp->md.journals = opts->journals;
-	sdp->device_fd = fd;
-	sdp->bsize = choose_blocksize(opts, dinfo);
+	sdp->device_fd = dev->fd;
+	sdp->bsize = choose_blocksize(opts, dev);
 
 	if (compute_constants(sdp)) {
 		perror(_("Failed to compute file system constants"));
 		exit(1);
 	}
-	sdp->device.length = dinfo->size / sdp->bsize;
+	sdp->device.length = dev->size / sdp->bsize;
 	if (opts->got_fssize) {
 		if (opts->fssize > sdp->device.length) {
 			fprintf(stderr, _("Specified size is bigger than the device."));
-			die("%s %.2f %s (%llu %s)\n", _("Device size:"),
-			       dinfo->size / ((float)(1 << 30)), _("GB"),
-			       (unsigned long long)dinfo->size / sdp->bsize, _("blocks"));
+			die("%s %.2f %s (%"PRIu64" %s)\n", _("Device size:"),
+			       dev->size / ((float)(1 << 30)), _("GB"),
+			       dev->size / sdp->bsize, _("blocks"));
 		}
 		/* TODO: Check if the fssize is too small, somehow */
 		sdp->device.length = opts->fssize;
@@ -644,14 +671,19 @@ static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct lgfs2_
 	}
 }
 
-static int probe_contents(int fd)
+static int probe_contents(struct mkfs_dev *dev)
 {
 	int ret;
 	const char *contents;
 	blkid_probe pr = blkid_new_probe();
-	if (pr == NULL || blkid_probe_set_device(pr, fd, 0, 0) != 0
+	if (pr == NULL || blkid_probe_set_device(pr, dev->fd, 0, 0) != 0
 	               || blkid_probe_enable_superblocks(pr, TRUE) != 0
 	               || blkid_probe_enable_partitions(pr, TRUE) != 0) {
+		fprintf(stderr, _("Failed to create probe\n"));
+		return -1;
+	}
+
+	if (!S_ISREG(dev->stat.st_mode) && blkid_probe_enable_topology(pr, TRUE) != 0) {
 		fprintf(stderr, _("Failed to create probe\n"));
 		return -1;
 	}
@@ -671,53 +703,84 @@ static int probe_contents(int fd)
 		printf(_("It appears to contain a partition table (%s).\n"), contents);
 	}
 
-	blkid_free_probe(pr);
+	if (!S_ISREG(dev->stat.st_mode)) {
+		blkid_topology tp = blkid_probe_get_topology(pr);
+		if (tp != NULL) {
+			dev->alignment_offset = blkid_topology_get_alignment_offset(tp);
+			dev->logical_sector_size = blkid_topology_get_logical_sector_size(tp);
+			dev->minimum_io_size = blkid_topology_get_minimum_io_size(tp);
+			dev->optimal_io_size = blkid_topology_get_optimal_io_size(tp);
+			dev->physical_sector_size = blkid_topology_get_physical_sector_size(tp);
+			dev->got_topol = 1;
+		}
+	}
 
+	blkid_free_probe(pr);
 	return 0;
+}
+
+static void open_dev(const char *path, struct mkfs_dev *dev)
+{
+	int error;
+
+	memset(dev, 0, sizeof(*dev));
+	dev->fd = open(path, O_RDWR | O_CLOEXEC);
+	if (dev->fd < 0) {
+		perror(path);
+		exit(1);
+	}
+
+	error = fstat(dev->fd, &dev->stat);
+	if (error < 0) {
+		perror(path);
+		exit(1);
+	}
+
+	if (S_ISREG(dev->stat.st_mode)) {
+		dev->size = dev->stat.st_size;
+	} else if (S_ISBLK(dev->stat.st_mode)) {
+		dev->size = lseek(dev->fd, 0, SEEK_END);
+		if (dev->size < 1) {
+			fprintf(stderr, _("Device '%s' is too small\n"), path);
+			exit(1);
+		}
+	} else {
+		fprintf(stderr, _("'%s' is not a block device or regular file\n"), path);
+		exit(1);
+	}
+
+	error = probe_contents(dev);
+	if (error)
+		exit(1);
 }
 
 void main_mkfs(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd;
 	struct mkfs_opts opts;
-	struct lgfs2_dev_info dinfo;
+	struct mkfs_dev dev;
 	int error;
 	unsigned char uuid[16];
-	int fd;
 
 	opts_init(&opts);
 	opts_get(argc, argv, &opts);
-
-	if (!opts.got_device) {
-		fprintf(stderr, _("No device specified. Use -h for help\n"));
-		exit(1);
-	}
-
-	fd = open(opts.device, O_RDWR | O_CLOEXEC);
-	if (fd < 0){
-		perror(opts.device);
-		exit(EXIT_FAILURE);
-	}
-
-	if (lgfs2_get_dev_info(fd, &dinfo) < 0) {
-		perror(opts.device);
-		exit(EXIT_FAILURE);
-	}
-
 	opts_check(&opts);
+
+	open_dev(opts.device, &dev);
+
+	if (S_ISREG(dev.stat.st_mode)) {
+		opts.got_bsize = 1; /* Use default block size for regular files */
+	}
+
 	warn_of_destruction(opts.device);
 
-	error = probe_contents(fd);
-	if (error)
-		exit(EXIT_FAILURE);
-
-	sbd_init(&sbd, &opts, &dinfo, fd);
+	sbd_init(&sbd, &opts, &dev);
 
 	if (opts.confirm && !opts.override)
 		are_you_sure();
 
-	if (!S_ISREG(dinfo.stat.st_mode) && opts.discard)
-		discard_blocks(fd, sbd.bsize * sbd.device.length, opts.debug);
+	if (!S_ISREG(dev.stat.st_mode) && opts.discard)
+		discard_blocks(dev.fd, sbd.bsize * sbd.device.length, opts.debug);
 
 	error = place_rgrps(&sbd, &opts);
 	if (error) {
@@ -770,18 +833,18 @@ void main_mkfs(int argc, char *argv[])
 	inode_put(&sbd.md.statfs);
 
 	gfs2_rgrp_free(&sbd.rgtree);
-	error = fsync(fd);
+	error = fsync(dev.fd);
 	if (error){
 		perror(opts.device);
 		exit(EXIT_FAILURE);
 	}
 
-	error = close(fd);
+	error = close(dev.fd);
 	if (error){
 		perror(opts.device);
 		exit(EXIT_FAILURE);
 	}
 
 	if (!opts.quiet)
-		print_results(&sbd, dinfo.size, &opts, uuid);
+		print_results(&sbd, dev.size, &opts, uuid);
 }
