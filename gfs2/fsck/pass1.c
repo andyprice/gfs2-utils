@@ -40,7 +40,8 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			  struct gfs2_buffer_head **bh, int h, void *private);
 static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
 			       int h, void *private);
-static int check_data(struct gfs2_inode *ip, uint64_t block, void *private);
+static int check_data(struct gfs2_inode *ip, uint64_t metablock,
+		      uint64_t block, void *private);
 static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
 			   void *private);
 static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
@@ -66,8 +67,8 @@ static int invalidate_metadata(struct gfs2_inode *ip, uint64_t block,
 			       void *private);
 static int invalidate_leaf(struct gfs2_inode *ip, uint64_t block,
 			   void *private);
-static int invalidate_data(struct gfs2_inode *ip, uint64_t block,
-			   void *private);
+static int invalidate_data(struct gfs2_inode *ip, uint64_t metablock,
+			   uint64_t block, void *private);
 static int invalidate_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 				  uint64_t parent,
 				  struct gfs2_buffer_head **bh,
@@ -382,17 +383,24 @@ static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
 	return undo_reference(ip, block, 0, private);
 }
 
-static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
+static int check_data(struct gfs2_inode *ip, uint64_t metablock,
+		      uint64_t block, void *private)
 {
 	uint8_t q;
 	struct block_count *bc = (struct block_count *) private;
 
 	if (!valid_block(ip->i_sbd, block)) {
 		log_err( _("inode %lld (0x%llx) has a bad data block pointer "
-			   "%lld (invalid or out of range)\n"),
+			   "%lld (0x%llx) (invalid or out of range) "),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)block);
+			 (unsigned long long)block, (unsigned long long)block);
+		if (metablock == ip->i_di.di_num.no_addr)
+			log_err("\n");
+		else
+			log_err(_("from metadata block %llu (0x%llx)\n"),
+				(unsigned long long)metablock,
+				(unsigned long long)metablock);
 		/* Mark the owner of this block with the bad_block
 		 * designator so we know to check it for out of range
 		 * blocks later */
@@ -405,12 +413,19 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 	q = block_type(block);
 	if (q != gfs2_block_free) {
 		log_err( _("Found duplicate %s block %llu (0x%llx) "
-			   "referenced as data by dinode %llu (0x%llx)\n"),
+			   "referenced as data by dinode %llu (0x%llx) "),
 			 block_type_string(q),
 			 (unsigned long long)block,
 			 (unsigned long long)block,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
+		if (metablock == ip->i_di.di_num.no_addr)
+			log_err("\n");
+		else
+			log_err(_("from metadata block %llu (0x%llx)\n"),
+				(unsigned long long)metablock,
+				(unsigned long long)metablock);
+
 		if (q != gfs2_meta_inval) {
 			log_info( _("Seems to be a normal duplicate; I'll "
 				    "sort it out in pass1b.\n"));
@@ -837,8 +852,8 @@ static int invalidate_leaf(struct gfs2_inode *ip, uint64_t block,
 	return mark_block_invalid(ip, block, ref_as_meta, _("leaf"));
 }
 
-static int invalidate_data(struct gfs2_inode *ip, uint64_t block,
-			   void *private)
+static int invalidate_data(struct gfs2_inode *ip, uint64_t metablock,
+			   uint64_t block, void *private)
 {
 	return mark_block_invalid(ip, block, ref_as_data, _("data"));
 }
@@ -926,8 +941,8 @@ static int rangecheck_leaf(struct gfs2_inode *ip, uint64_t block,
 	return rangecheck_block(ip, block, NULL, btype_leaf, private);
 }
 
-static int rangecheck_data(struct gfs2_inode *ip, uint64_t block,
-			   void *private)
+static int rangecheck_data(struct gfs2_inode *ip, uint64_t metablock,
+			   uint64_t block, void *private)
 {
 	return rangecheck_block(ip, block, NULL, btype_data, private);
 }

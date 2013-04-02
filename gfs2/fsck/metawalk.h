@@ -23,7 +23,8 @@ extern int delete_block(struct gfs2_inode *ip, uint64_t block,
 extern int delete_metadata(struct gfs2_inode *ip, uint64_t block,
 			   struct gfs2_buffer_head **bh, int h, void *private);
 extern int delete_leaf(struct gfs2_inode *ip, uint64_t block, void *private);
-extern int delete_data(struct gfs2_inode *ip, uint64_t block, void *private);
+extern int delete_data(struct gfs2_inode *ip, uint64_t metablock,
+		       uint64_t block, void *private);
 extern int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
 		       struct gfs2_buffer_head **bh, void *private);
 extern int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
@@ -76,8 +77,8 @@ struct metawalk_fxns {
 	int (*check_metalist) (struct gfs2_inode *ip, uint64_t block,
 			       struct gfs2_buffer_head **bh, int h,
 			       void *private);
-	int (*check_data) (struct gfs2_inode *ip, uint64_t block,
-			   void *private);
+	int (*check_data) (struct gfs2_inode *ip, uint64_t metablock,
+			   uint64_t block, void *private);
 	int (*check_eattr_indir) (struct gfs2_inode *ip, uint64_t block,
 				  uint64_t parent,
 				  struct gfs2_buffer_head **bh, void *private);

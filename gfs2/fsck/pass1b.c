@@ -31,7 +31,8 @@ struct dup_handler {
 static int check_leaf(struct gfs2_inode *ip, uint64_t block, void *private);
 static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			  struct gfs2_buffer_head **bh, int h, void *private);
-static int check_data(struct gfs2_inode *ip, uint64_t block, void *private);
+static int check_data(struct gfs2_inode *ip, uint64_t metablock,
+		      uint64_t block, void *private);
 static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 			     uint64_t parent, struct gfs2_buffer_head **bh,
 			     void *private);
@@ -88,7 +89,8 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 	return add_duplicate_ref(ip, block, ref_as_meta, 1, INODE_VALID);
 }
 
-static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
+static int check_data(struct gfs2_inode *ip, uint64_t metablock,
+		      uint64_t block, void *private)
 {
 	return add_duplicate_ref(ip, block, ref_as_data, 1, INODE_VALID);
 }
@@ -255,7 +257,8 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 	return 1;
 }
 
-static int clear_dup_data(struct gfs2_inode *ip, uint64_t block, void *private)
+static int clear_dup_data(struct gfs2_inode *ip, uint64_t metablock,
+			  uint64_t block, void *private)
 {
 	return clear_dup_metalist(ip, block, NULL, 0, private);
 }

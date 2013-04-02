@@ -1299,11 +1299,14 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
  *          2 (ENOENT) is there were too many bad pointers
  */
 static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
-		      uint64_t *ptr_start, char *ptr_end,
+		      struct gfs2_buffer_head *bh, int head_size,
 		      uint64_t *blks_checked)
 {
 	int error = 0, rc = 0;
 	uint64_t block, *ptr;
+	uint64_t *ptr_start = (uint64_t *)(bh->b_data + head_size);
+	char *ptr_end = (bh->b_data + ip->i_sbd->bsize);
+	uint64_t metablock = bh->b_blocknr;
 
 	/* If there isn't much pointer corruption check the pointers */
 	for (ptr = ptr_start ; (char *)ptr < ptr_end && !fsck_abort; ptr++) {
@@ -1318,7 +1321,7 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		   would defeat the rangecheck_block related functions in
 		   pass1. Therefore the individual check_data functions
 		   should do a range check. */
-		rc = pass->check_data(ip, block, pass->private);
+		rc = pass->check_data(ip, metablock, block, pass->private);
 		if (rc < 0)
 			return rc;
 		if (!error && rc)
@@ -1433,9 +1436,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		}
 
 		if (pass->check_data)
-			error = check_data(ip, pass, (uint64_t *)
-					   (bh->b_data + head_size),
-					   (bh->b_data + ip->i_sbd->bsize),
+			error = check_data(ip, pass, bh, head_size,
 					   &blks_checked);
 		if (pass->big_file_msg && ip->i_di.di_blocks > COMFORTABLE_BLKS)
 			pass->big_file_msg(ip, blks_checked);
@@ -1602,7 +1603,8 @@ int delete_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	return delete_block_if_notdup(ip, block, NULL, _("leaf"), private);
 }
 
-int delete_data(struct gfs2_inode *ip, uint64_t block, void *private)
+int delete_data(struct gfs2_inode *ip, uint64_t metablock,
+		uint64_t block, void *private)
 {
 	return delete_block_if_notdup(ip, block, NULL, _("data"), private);
 }
@@ -1663,7 +1665,8 @@ static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,
 	return 0;
 }
 
-static int alloc_data(struct gfs2_inode *ip, uint64_t block, void *private)
+static int alloc_data(struct gfs2_inode *ip, uint64_t metablock,
+		      uint64_t block, void *private)
 {
 	uint8_t q;
 	const char *desc = (const char *)private;
