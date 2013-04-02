@@ -1005,23 +1005,14 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 
 	error = set_ip_blockmap(ip, 1);
 	if (error == -EINVAL) {
-		/* We found a dinode that has an invalid mode, so we can't
-		   tell if it's a data file, directory or a socket.
-		   Regardless, we have to invalidate its metadata in case there
-		   are duplicate blocks referenced.  If we don't call
-		   check_metatree, the blocks it references will be deleted
-		   wholesale by pass2, and if any of those blocks are
-		   duplicates--referenced by another dinode for some reason--
-		   we will mark it free, even though it's in use.  In other
-		   words, we would introduce file system corruption. So we
-		   need to keep track of the fact that it's invalid and
-		   skip parts that we can't be sure of based on dinode type. */
-		log_debug("Invalid mode dinode found at block %lld (0x%llx): "
-			  "Invalidating all its metadata.\n",
-			  (unsigned long long)ip->i_di.di_num.no_addr,
-			  (unsigned long long)ip->i_di.di_num.no_addr);
-		check_metatree(ip, &invalidate_fxns);
-		check_inode_eattr(ip, &invalidate_fxns);
+		/* We found a dinode that has an invalid mode. At this point
+		   set_ip_blockmap returned an error, which means it never
+		   got inserted into the inode tree. Since we haven't even
+		   processed its metadata with pass1_fxns, none of its
+		   metadata will be flagged as metadata or data blocks yet.
+		   Therefore, we don't need to invalidate anything. */
+		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
+				  _("invalid mode"), gfs2_block_free);
 		return 0;
 	} else if (error)
 		goto bad_dinode;
