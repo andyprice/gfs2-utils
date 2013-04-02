@@ -1331,6 +1331,23 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 	return error;
 }
 
+static int hdr_size(struct gfs2_buffer_head *bh, int height)
+{
+	if (height > 1) {
+		if (gfs2_check_meta(bh, GFS2_METATYPE_IN))
+			return 0;
+		if (bh->sdp->gfs1)
+			return sizeof(struct gfs_indirect);
+		else
+			return sizeof(struct gfs2_meta_header);
+	}
+	/* if this isn't really a dinode, skip it */
+	if (gfs2_check_meta(bh, GFS2_METATYPE_DI))
+		return 0;
+
+	return sizeof(struct gfs2_dinode);
+}
+
 /**
  * check_metatree
  * @ip: inode structure in memory
@@ -1401,28 +1418,13 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		bh = osi_list_entry(list->next, struct gfs2_buffer_head,
 				    b_altlist);
 
-		if (height > 1) {
-			if (gfs2_check_meta(bh, GFS2_METATYPE_IN)) {
-				if (bh == ip->i_bh)
-					osi_list_del(&bh->b_altlist);
-				else
-					brelse(bh);
-				continue;
-			}
-			if (ip->i_sbd->gfs1)
-				head_size = sizeof(struct gfs_indirect);
+		head_size = hdr_size(bh, height);
+		if (!head_size) {
+			if (bh == ip->i_bh)
+				osi_list_del(&bh->b_altlist);
 			else
-				head_size = sizeof(struct gfs2_meta_header);
-		} else {
-			/* if this isn't really a dinode, skip it */
-			if (gfs2_check_meta(bh, GFS2_METATYPE_DI)) {
-				if (bh == ip->i_bh)
-					osi_list_del(&bh->b_altlist);
-				else
-					brelse(bh);
-				continue;
-			}
-			head_size = sizeof(struct gfs2_dinode);
+				brelse(bh);
+			continue;
 		}
 
 		if (pass->check_data)
