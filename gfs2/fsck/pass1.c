@@ -218,6 +218,7 @@ static int check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	/* Note if we've gotten this far, the block has already passed the
 	   check in metawalk: gfs2_check_meta(lbh, GFS2_METATYPE_LF).
 	   So we know it's a leaf block. */
+	bc->indir_count++;
 	q = block_type(block);
 	if (q != gfs2_block_free) {
 		log_err( _("Found duplicate block #%llu (0x%llx) referenced "
@@ -235,7 +236,6 @@ static int check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 			return -EEXIST;
 	}
 	fsck_blockmap_set(ip, block, _("directory leaf"), gfs2_leaf_blk);
-	bc->indir_count++;
 	return 0;
 }
 
@@ -401,6 +401,7 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 				  gfs2_bad_block);
 		return 1;
 	}
+	bc->data_count++; /* keep the count sane anyway */
 	q = block_type(block);
 	if (q != gfs2_block_free) {
 		log_err( _("Found duplicate %s block %llu (0x%llx) "
@@ -415,16 +416,11 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 				    "sort it out in pass1b.\n"));
 			add_duplicate_ref(ip, block, ref_as_data, 0,
 					  INODE_VALID);
-			/* If the prev ref was as data, this is likely a data
-			   block, so keep the block count for both refs. */
-			if (q == gfs2_block_used)
-				bc->data_count++;
 			return 1;
 		}
 		log_info( _("The block was invalid as metadata but might be "
 			    "okay as data.  I'll sort it out in pass1b.\n"));
 		add_duplicate_ref(ip, block, ref_as_data, 0, INODE_VALID);
-		bc->data_count++;
 		return 1;
 	}
 	/* In gfs1, rgrp indirect blocks are marked in the bitmap as "meta".
@@ -443,7 +439,6 @@ static int check_data(struct gfs2_inode *ip, uint64_t block, void *private)
 		fsck_blockmap_set(ip, block, _("jdata"), gfs2_jdata);
 	} else
 		fsck_blockmap_set(ip, block, _("data"), gfs2_block_used);
-	bc->data_count++;
 	return 0;
 }
 
