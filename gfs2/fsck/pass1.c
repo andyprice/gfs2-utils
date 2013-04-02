@@ -613,7 +613,11 @@ static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 		ip->i_di.di_blocks = 1 + bc->indir_count +
 			bc->data_count + bc->ea_count;
 		bmodified(ip->i_bh);
-		log_err( _("Block count fixed.\n"));
+		log_err(_("Block count fixed: 1+%lld+%lld+%lld = %lld.\n"),
+			(unsigned long long)bc->indir_count,
+			(unsigned long long)bc->data_count,
+			(unsigned long long)bc->ea_count,
+			(unsigned long long)ip->i_di.di_blocks);
 		return 1;
 	}
 	log_err( _("Block count not fixed.\n"));
