@@ -1383,7 +1383,7 @@ static int hdr_size(struct gfs2_buffer_head *bh, int height)
 int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	osi_list_t metalist[GFS2_MAX_META_HEIGHT];
-	osi_list_t *list;
+	osi_list_t *list, *tmp;
 	struct gfs2_buffer_head *bh;
 	uint32_t height = ip->i_di.di_height;
 	int  i, head_size;
@@ -1423,22 +1423,15 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	if (ip->i_di.di_blocks > COMFORTABLE_BLKS)
 		last_reported_fblock = -10000000;
 
-	while (!error && !osi_list_empty(list)) {
+	for (tmp = list->next; !error && tmp != list; tmp = tmp->next) {
 		if (fsck_abort) {
 			free_metalist(ip, &metalist[0]);
 			return 0;
 		}
-		bh = osi_list_entry(list->next, struct gfs2_buffer_head,
-				    b_altlist);
-
+		bh = osi_list_entry(tmp, struct gfs2_buffer_head, b_altlist);
 		head_size = hdr_size(bh, height);
-		if (!head_size) {
-			if (bh == ip->i_bh)
-				osi_list_del(&bh->b_altlist);
-			else
-				brelse(bh);
+		if (!head_size)
 			continue;
-		}
 
 		if (pass->check_data)
 			error = check_data(ip, pass, bh, head_size,
