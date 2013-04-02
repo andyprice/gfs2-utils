@@ -1322,10 +1322,15 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		   pass1. Therefore the individual check_data functions
 		   should do a range check. */
 		rc = pass->check_data(ip, metablock, block, pass->private);
+		if (!error && rc) {
+			error = rc;
+			log_info(_("\nUnrecoverable data block error %d on "
+				   "block %llu (0x%llx).\n"), rc,
+				 (unsigned long long)block,
+				 (unsigned long long)block);
+		}
 		if (rc < 0)
 			return rc;
-		if (!error && rc)
-			error = rc;
 		(*blks_checked)++;
 	}
 	return error;
