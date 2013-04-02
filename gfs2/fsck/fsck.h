@@ -117,7 +117,7 @@ extern int fsck_query(const char *format, ...)
 	__attribute__((format(printf,1,2)));
 extern struct dir_info *dirtree_find(uint64_t block);
 extern void dup_listent_delete(struct inode_with_dups *id);
-extern void dup_delete(struct duptree *b);
+extern void dup_delete(struct duptree *dt);
 extern void dirtree_delete(struct dir_info *b);
 
 /* FIXME: Hack to get this going for pass2 - this should be pulled out

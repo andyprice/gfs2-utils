@@ -179,14 +179,14 @@ struct duptree *dupfind(uint64_t block)
 	struct osi_node *node = dup_blocks.osi_node;
 
 	while (node) {
-		struct duptree *data = (struct duptree *)node;
+		struct duptree *dt = (struct duptree *)node;
 
-		if (block < data->block)
+		if (block < dt->block)
 			node = node->osi_left;
-		else if (block > data->block)
+		else if (block > dt->block)
 			node = node->osi_right;
 		else
-			return data;
+			return dt;
 	}
 	return NULL;
 }
@@ -955,15 +955,15 @@ int delete_block(struct gfs2_inode *ip, uint64_t block,
  */
 int find_remove_dup(struct gfs2_inode *ip, uint64_t block, const char *btype)
 {
-	struct duptree *d;
+	struct duptree *dt;
 	struct inode_with_dups *id;
 
-	d = dupfind(block);
-	if (!d)
+	dt = dupfind(block);
+	if (!dt)
 		return 0;
 
 	/* remove the inode reference id structure for this reference. */
-	id = find_dup_ref_inode(d, ip);
+	id = find_dup_ref_inode(dt, ip);
 	if (!id)
 		return 0;
 
@@ -973,14 +973,14 @@ int find_remove_dup(struct gfs2_inode *ip, uint64_t block, const char *btype)
 		 (unsigned long long)block, (unsigned long long)block,
 		 btype, (unsigned long long)ip->i_di.di_num.no_addr,
 		 (unsigned long long)ip->i_di.di_num.no_addr);
-	d->refs--; /* one less reference */
-	if (d->refs == 1) {
+	dt->refs--; /* one less reference */
+	if (dt->refs == 1) {
 		log_info( _("This leaves only one reference: it's "
 			    "no longer a duplicate.\n"));
-		dup_delete(d); /* not duplicate now */
+		dup_delete(dt); /* not duplicate now */
 	} else
 		log_info( _("%d block reference(s) remain.\n"),
-			  d->refs);
+			  dt->refs);
 	return 1; /* but the original ref still exists so do not free it. */
 }
 

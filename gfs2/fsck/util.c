@@ -234,7 +234,7 @@ int fsck_query(const char *format, ...)
 static struct duptree *gfs2_dup_set(uint64_t dblock, int create)
 {
 	struct osi_node **newn = &dup_blocks.osi_node, *parent = NULL;
-	struct duptree *data;
+	struct duptree *dt;
 
 	/* Figure out where to put new node */
 	while (*newn) {
@@ -251,24 +251,24 @@ static struct duptree *gfs2_dup_set(uint64_t dblock, int create)
 
 	if (!create)
 		return NULL;
-	data = malloc(sizeof(struct duptree));
-	if (data == NULL) {
+	dt = malloc(sizeof(struct duptree));
+	if (dt == NULL) {
 		log_crit( _("Unable to allocate duptree structure\n"));
 		return NULL;
 	}
 	dups_found++;
-	memset(data, 0, sizeof(struct duptree));
+	memset(dt, 0, sizeof(struct duptree));
 	/* Add new node and rebalance tree. */
-	data->block = dblock;
-	data->refs = 1; /* reference 1 is actually the reference we need to
-			   discover in pass1b. */
-	data->first_ref_found = 0;
-	osi_list_init(&data->ref_inode_list);
-	osi_list_init(&data->ref_invinode_list);
-	osi_link_node(&data->node, parent, newn);
-	osi_insert_color(&data->node, &dup_blocks);
+	dt->block = dblock;
+	dt->refs = 1; /* reference 1 is actually the reference we need to
+			 discover in pass1b. */
+	dt->first_ref_found = 0;
+	osi_list_init(&dt->ref_inode_list);
+	osi_list_init(&dt->ref_invinode_list);
+	osi_link_node(&dt->node, parent, newn);
+	osi_insert_color(&dt->node, &dup_blocks);
 
-	return data;
+	return dt;
 }
 
 /**
@@ -453,23 +453,23 @@ void dup_listent_delete(struct inode_with_dups *id)
 	free(id);
 }
 
-void dup_delete(struct duptree *b)
+void dup_delete(struct duptree *dt)
 {
 	struct inode_with_dups *id;
 	osi_list_t *tmp;
 
-	while (!osi_list_empty(&b->ref_invinode_list)) {
-		tmp = (&b->ref_invinode_list)->next;
+	while (!osi_list_empty(&dt->ref_invinode_list)) {
+		tmp = (&dt->ref_invinode_list)->next;
 		id = osi_list_entry(tmp, struct inode_with_dups, list);
 		dup_listent_delete(id);
 	}
-	while (!osi_list_empty(&b->ref_inode_list)) {
-		tmp = (&b->ref_inode_list)->next;
+	while (!osi_list_empty(&dt->ref_inode_list)) {
+		tmp = (&dt->ref_inode_list)->next;
 		id = osi_list_entry(tmp, struct inode_with_dups, list);
 		dup_listent_delete(id);
 	}
-	osi_erase(&b->node, &dup_blocks);
-	free(b);
+	osi_erase(&dt->node, &dup_blocks);
+	free(dt);
 }
 
 void dirtree_delete(struct dir_info *b)
