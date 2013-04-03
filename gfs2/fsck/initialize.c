@@ -66,7 +66,7 @@ static int block_mounters(struct gfs2_sbd *sdp, int block_em)
 	return 0;
 }
 
-void gfs2_dup_free(void)
+static void gfs2_dup_free(void)
 {
 	struct osi_node *n;
 	struct duptree *dt;

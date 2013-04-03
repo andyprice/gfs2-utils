@@ -19,7 +19,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 		      enum dup_ref_type reftype, int first, int inode_valid);
 extern struct inode_with_dups *find_dup_ref_inode(struct duptree *dt,
 						  struct gfs2_inode *ip);
-extern void dup_listent_delete(struct inode_with_dups *id);
+extern void dup_listent_delete(struct duptree *dt, struct inode_with_dups *id);
 
 extern const char *reftypes[ref_types + 1];
 
@@ -174,6 +174,7 @@ static inline uint32_t gfs_to_gfs2_mode(struct gfs2_inode *ip)
 	}
 }
 
+extern enum dup_ref_type get_ref_type(struct inode_with_dups *id);
 extern struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
 					  uint64_t *addl_mem_needed);
 extern void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il);

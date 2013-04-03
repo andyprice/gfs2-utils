@@ -950,7 +950,8 @@ int delete_block(struct gfs2_inode *ip, uint64_t block,
 
 /**
  * find_remove_dup - find out if this is a duplicate ref.  If so, remove it.
- * Returns: 0 if not a duplicate reference, 1 if it is.
+ *
+ * Returns: 1 if there are any remaining references to this block, else 0.
  */
 int find_remove_dup(struct gfs2_inode *ip, uint64_t block, const char *btype)
 {
@@ -964,41 +965,18 @@ int find_remove_dup(struct gfs2_inode *ip, uint64_t block, const char *btype)
 	/* remove the inode reference id structure for this reference. */
 	id = find_dup_ref_inode(dt, ip);
 	if (!id)
-		return 0;
+		goto more_refs;
 
-	dup_listent_delete(id);
-	log_err( _("Removing duplicate status of block %llu (0x%llx) "
-		   "referenced as %s by dinode %llu (0x%llx)\n"),
-		 (unsigned long long)block, (unsigned long long)block,
-		 btype, (unsigned long long)ip->i_di.di_num.no_addr,
-		 (unsigned long long)ip->i_di.di_num.no_addr);
-	dt->refs--; /* one less reference */
-	if (dt->refs == 1) {
-		log_info( _("This leaves only one reference: it's "
-			    "no longer a duplicate.\n"));
+	dup_listent_delete(dt, id);
+	if (dt->refs == 0) {
+		log_info( _("This was the last reference: it's no longer a "
+			    "duplicate.\n"));
 		dup_delete(dt); /* not duplicate now */
-	} else
-		log_info( _("%d block reference(s) remain.\n"),
-			  dt->refs);
-	return 1; /* but the original ref still exists so do not free it. */
-}
-
-/**
- * free_block_if_notdup - free blocks associated with an inode, but if it's a
- *                        duplicate, just remove that designation instead.
- * Returns: 1 if the block was freed, 0 if a duplicate reference was removed
- * Note: The return code is handled this way because there are places in
- *       metawalk.c that assume "1" means "change was made" and "0" means
- *       change was not made.
- */
-int free_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
-			 const char *btype)
-{
-	if (!find_remove_dup(ip, block, btype)) { /* not a dup */
-		fsck_blockmap_set(ip, block, btype, gfs2_block_free);
-		return meta_skip_further;
+		return 0;
 	}
-	return meta_is_good;
+more_refs:
+	log_info( _("%d block reference(s) remain.\n"), dt->refs);
+	return 1; /* references still exist so do not free the block. */
 }
 
 /**
@@ -1010,7 +988,8 @@ int free_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
  */
 static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 				  struct gfs2_buffer_head **bh,
-				  const char *btype, void *private)
+				  const char *btype, int *was_duplicate,
+				  void *private)
 {
 	uint8_t q;
 
@@ -1027,7 +1006,19 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
 		return meta_is_good;
 	}
-	return free_block_if_notdup(ip, block, btype);
+	if (find_remove_dup(ip, block, btype)) { /* a dup */
+		if (was_duplicate)
+			*was_duplicate = 1;
+		log_err( _("Not clearing duplicate reference in inode "
+			   "at block #%llu (0x%llx) to block #%llu (0x%llx) "
+			   "because it's referenced by another inode.\n"),
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)block, (unsigned long long)block);
+	} else {
+		fsck_blockmap_set(ip, block, btype, gfs2_block_free);
+	}
+	return meta_is_good;
 }
 
 /**
@@ -1197,7 +1188,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 	osi_list_t *prev_list, *cur_list, *tmp;
 	int h, head_size, iblk_type;
 	uint64_t *ptr, block;
-	int error = 0, err;
+	int error, was_duplicate, is_valid;
 
 	osi_list_add(&metabh->b_altlist, &mlp[0]);
 
@@ -1211,7 +1202,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 
 	/* if (<there are no indirect blocks to check>) */
 	if (height < 2)
-		return 0;
+		return meta_is_good;
 	for (h = 1; h < height; h++) {
 		if (h > 1) {
 			if (is_dir(&ip->i_di, ip->i_sbd->gfs1) &&
@@ -1243,7 +1234,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 			     ptr++) {
 				if (skip_this_pass || fsck_abort) {
 					free_metalist(ip, mlp);
-					return FSCK_OK;
+					return meta_is_good;
 				}
 				nbh = NULL;
 
@@ -1251,19 +1242,41 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 					continue;
 
 				block = be64_to_cpu(*ptr);
-				err = pass->check_metalist(ip, block, &nbh, h,
-							   pass->private);
+				was_duplicate = 0;
+				error = pass->check_metalist(ip, block, &nbh,
+							     h, &is_valid,
+							     &was_duplicate,
+							     pass->private);
 				/* check_metalist should hold any buffers
 				   it gets with "bread". */
-				if (err == meta_error) {
+				if (error == meta_error) {
 					stack;
-					error = err;
+					log_info(_("\nSerious metadata "
+						   "error on block %llu "
+						   "(0x%llx).\n"),
+						 (unsigned long long)block,
+						 (unsigned long long)block);
 					return error;
 				}
-				if (err == meta_skip_further) {
-					if (!error)
-						error = err;
-					log_debug( _("Skipping block %llu (0x%llx)\n"),
+				if (error == meta_skip_further) {
+					log_info(_("\nUnrecoverable metadata "
+						   "error on block %llu "
+						   "(0x%llx). Further metadata"
+						   " will be skipped.\n"),
+						 (unsigned long long)block,
+						 (unsigned long long)block);
+					return error;
+				}
+				if (!is_valid) {
+					log_debug( _("Skipping rejected block "
+						     "%llu (0x%llx)\n"),
+						   (unsigned long long)block,
+						   (unsigned long long)block);
+					continue;
+				}
+				if (was_duplicate) {
+					log_debug( _("Skipping duplicate %llu "
+						     "(0x%llx)\n"),
 						   (unsigned long long)block,
 						   (unsigned long long)block);
 					continue;
@@ -1590,59 +1603,127 @@ int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 }
 
 int delete_metadata(struct gfs2_inode *ip, uint64_t block,
-		    struct gfs2_buffer_head **bh, int h, void *private)
+		    struct gfs2_buffer_head **bh, int h, int *is_valid,
+		    int *was_duplicate, void *private)
 {
-	return delete_block_if_notdup(ip, block, bh, _("metadata"), private);
+	*is_valid = 1;
+	*was_duplicate = 0;
+	return delete_block_if_notdup(ip, block, bh, _("metadata"),
+				      was_duplicate, private);
 }
 
 int delete_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 {
-	return delete_block_if_notdup(ip, block, NULL, _("leaf"), private);
+	return delete_block_if_notdup(ip, block, NULL, _("leaf"), NULL,
+				      private);
 }
 
 int delete_data(struct gfs2_inode *ip, uint64_t metablock,
 		uint64_t block, void *private)
 {
-	return delete_block_if_notdup(ip, block, NULL, _("data"), private);
+	return delete_block_if_notdup(ip, block, NULL, _("data"), NULL,
+				      private);
+}
+
+static int del_eattr_generic(struct gfs2_inode *ip, uint64_t block,
+			     uint64_t parent, struct gfs2_buffer_head **bh,
+			     void *private, const char *eatype)
+{
+	int ret = 0;
+	int was_free = 0;
+	uint8_t q;
+
+	if (valid_block(ip->i_sbd, block)) {
+		q = block_type(block);
+		if (q == gfs2_block_free)
+			was_free = 1;
+		ret = delete_block_if_notdup(ip, block, NULL, eatype,
+					     NULL, private);
+		if (!ret) {
+			*bh = bread(ip->i_sbd, block);
+			if (!was_free)
+				ip->i_di.di_blocks--;
+			bmodified(ip->i_bh);
+		}
+	}
+	/* Even if it's a duplicate reference, we want to eliminate the
+	   reference itself, and adjust di_blocks accordingly. */
+	if (ip->i_di.di_eattr) {
+		if (block == ip->i_di.di_eattr)
+			ip->i_di.di_eattr = 0;
+		bmodified(ip->i_bh);
+	}
+	return ret;
 }
 
 int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
 		       struct gfs2_buffer_head **bh, void *private)
 {
-	int ret;
-
-	ret = delete_block_if_notdup(ip, block, NULL,
-				     _("indirect extended attribute"),
-				     private);
-	/* Even if it's a duplicate reference, we want to eliminate the
-	   reference itself, and adjust di_blocks accordingly. */
-	if (ip->i_di.di_eattr) {
-		ip->i_di.di_blocks--;
-		if (block == ip->i_di.di_eattr)
-			ip->i_di.di_eattr = 0;
-		bmodified(ip->i_bh);
-	}
-	return ret;
+	return del_eattr_generic(ip, block, parent, bh, private,
+				 _("extended attribute"));
 }
 
 int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
 		      struct gfs2_buffer_head **bh, void *private)
 {
-	int ret;
+	return del_eattr_generic(ip, block, parent, bh, private,
+				 _("indirect extended attribute"));
+}
 
-	ret = delete_block_if_notdup(ip, block, NULL, _("extended attribute"),
-				     private);
-	if (ip->i_di.di_eattr) {
-		ip->i_di.di_blocks--;
-		if (block == ip->i_di.di_eattr)
-			ip->i_di.di_eattr = 0;
-		bmodified(ip->i_bh);
+int delete_eattr_entry(struct gfs2_inode *ip, struct gfs2_buffer_head *leaf_bh,
+		       struct gfs2_ea_header *ea_hdr,
+		       struct gfs2_ea_header *ea_hdr_prev, void *private)
+{
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	char ea_name[256];
+	uint32_t avail_size;
+	int max_ptrs;
+
+	if (!ea_hdr->ea_name_len){
+		/* Skip this entry for now */
+		return 1;
 	}
-	return ret;
+
+	memset(ea_name, 0, sizeof(ea_name));
+	strncpy(ea_name, (char *)ea_hdr + sizeof(struct gfs2_ea_header),
+		ea_hdr->ea_name_len);
+
+	if (!GFS2_EATYPE_VALID(ea_hdr->ea_type) &&
+	   ((ea_hdr_prev) || (!ea_hdr_prev && ea_hdr->ea_type))){
+		/* Skip invalid entry */
+		return 1;
+	}
+
+	if (!ea_hdr->ea_num_ptrs)
+		return 0;
+
+	avail_size = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header);
+	max_ptrs = (be32_to_cpu(ea_hdr->ea_data_len) + avail_size - 1) /
+		avail_size;
+
+	if (max_ptrs > ea_hdr->ea_num_ptrs)
+		return 1;
+
+	log_debug( _("  Pointers Required: %d\n  Pointers Reported: %d\n"),
+		   max_ptrs, ea_hdr->ea_num_ptrs);
+
+	return 0;
+}
+
+int delete_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
+			  struct gfs2_buffer_head *leaf_bh,
+			  struct gfs2_ea_header *ea_hdr,
+			  struct gfs2_ea_header *ea_hdr_prev, void *private)
+{
+	uint64_t block = be64_to_cpu(*ea_data_ptr);
+
+	return delete_block_if_notdup(ip, block, NULL, _("extended attribute"),
+				      NULL, private);
 }
 
 static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,
-			  struct gfs2_buffer_head **bh, int h, void *private)
+			  struct gfs2_buffer_head **bh, int h, int *is_valid,
+			  int *was_duplicate, void *private)
 {
 	uint8_t q;
 	const char *desc = (const char *)private;
@@ -1650,6 +1731,8 @@ static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,
 	/* No need to range_check here--if it was added, it's in range. */
 	/* We can't check the bitmap here because this function is called
 	   after the bitmap has been set but before the blockmap has. */
+	*is_valid = 1;
+	*was_duplicate = 0;
 	*bh = bread(ip->i_sbd, block);
 	q = block_type(block);
 	if (blockmap_to_bitmap(q, ip->i_sbd->gfs1) == GFS2_BLKST_FREE) {

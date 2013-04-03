@@ -466,8 +466,39 @@ struct dir_info *dirtree_find(uint64_t block)
 	return NULL;
 }
 
-void dup_listent_delete(struct inode_with_dups *id)
+/* get_ref_type - figure out if all duplicate references from this inode
+   are the same type, and if so, return the type. */
+enum dup_ref_type get_ref_type(struct inode_with_dups *id)
 {
+	enum dup_ref_type t, i;
+	int found_type_with_ref;
+	int found_other_types;
+
+	for (t = ref_as_data; t < ref_types; t++) {
+		found_type_with_ref = 0;
+		found_other_types = 0;
+		for (i = ref_as_data; i < ref_types; i++) {
+			if (id->reftypecount[i]) {
+				if (t == i)
+					found_type_with_ref = 1;
+				else
+					found_other_types = 1;
+			}
+		}
+		if (found_type_with_ref)
+			return found_other_types ? ref_types : t;
+	}
+	return ref_types;
+}
+
+void dup_listent_delete(struct duptree *dt, struct inode_with_dups *id)
+{
+	log_err( _("Removing duplicate reference to block %llu (0x%llx) "
+		   "referenced as %s by dinode %llu (0x%llx)\n"),
+		 (unsigned long long)dt->block, (unsigned long long)dt->block,
+		 reftypes[get_ref_type(id)], (unsigned long long)id->block_no,
+		 (unsigned long long)id->block_no);
+	dt->refs--; /* one less reference */
 	if (id->name)
 		free(id->name);
 	osi_list_del(&id->list);
@@ -482,12 +513,12 @@ void dup_delete(struct duptree *dt)
 	while (!osi_list_empty(&dt->ref_invinode_list)) {
 		tmp = (&dt->ref_invinode_list)->next;
 		id = osi_list_entry(tmp, struct inode_with_dups, list);
-		dup_listent_delete(id);
+		dup_listent_delete(dt, id);
 	}
 	while (!osi_list_empty(&dt->ref_inode_list)) {
 		tmp = (&dt->ref_inode_list)->next;
 		id = osi_list_entry(tmp, struct inode_with_dups, list);
-		dup_listent_delete(id);
+		dup_listent_delete(dt, id);
 	}
 	osi_erase(&dt->node, &dup_blocks);
 	free(dt);

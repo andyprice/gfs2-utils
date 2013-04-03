@@ -24,7 +24,8 @@ extern int delete_block(struct gfs2_inode *ip, uint64_t block,
 		 struct gfs2_buffer_head **bh, const char *btype,
 		 void *private);
 extern int delete_metadata(struct gfs2_inode *ip, uint64_t block,
-			   struct gfs2_buffer_head **bh, int h, void *private);
+			   struct gfs2_buffer_head **bh, int h, int *is_valid,
+			   int *was_duplicate, void *private);
 extern int delete_leaf(struct gfs2_inode *ip, uint64_t block, void *private);
 extern int delete_data(struct gfs2_inode *ip, uint64_t metablock,
 		       uint64_t block, void *private);
@@ -32,6 +33,17 @@ extern int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block, uint64_t pa
 		       struct gfs2_buffer_head **bh, void *private);
 extern int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
 		      struct gfs2_buffer_head **bh, void *private);
+extern int delete_eattr_entry(struct gfs2_inode *ip,
+			      struct gfs2_buffer_head *leaf_bh,
+			      struct gfs2_ea_header *ea_hdr,
+			      struct gfs2_ea_header *ea_hdr_prev,
+			      void *private);
+extern int delete_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
+				 struct gfs2_buffer_head *leaf_bh,
+				 struct gfs2_ea_header *ea_hdr,
+				 struct gfs2_ea_header *ea_hdr_prev,
+				 void *private);
+
 extern int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 		       const char *btype, enum gfs2_mark_block mark,
 		       const char *caller, int line);
@@ -48,8 +60,6 @@ extern int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
 			  uint64_t *bn);
 extern int repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no, int lindex,
 		       int ref_count, const char *msg);
-extern int free_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
-				const char *btype);
 
 #define is_duplicate(dblock) ((dupfind(dblock)) ? 1 : 0)
 
@@ -83,8 +93,23 @@ struct metawalk_fxns {
 				 int ref_count, struct gfs2_buffer_head *lbh);
 	int (*check_leaf) (struct gfs2_inode *ip, uint64_t block,
 			   void *private);
+	/* parameters to the check_metalist sub-functions:
+	   ip: incore inode pointer
+	   block: block number of the metadata block to be checked
+	   bh: buffer_head to be returned
+	   h: height
+	   is_valid: returned as 1 if the metadata block is valid and should
+	             be added to the metadata list for further processing.
+	   was_duplicate: returns as 1 if the metadata block was determined
+	             to be a duplicate reference, in which case we want to
+		     skip adding it to the metadata list.
+	   private: Pointer to pass-specific data
+	   returns: 0 - everything is good, but there may be duplicates
+	            1 - skip further processing
+	*/
 	int (*check_metalist) (struct gfs2_inode *ip, uint64_t block,
 			       struct gfs2_buffer_head **bh, int h,
+			       int *is_valid, int *was_duplicate,
 			       void *private);
 	int (*check_data) (struct gfs2_inode *ip, uint64_t metablock,
 			   uint64_t block, void *private);

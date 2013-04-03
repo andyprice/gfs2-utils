@@ -169,59 +169,6 @@ static int check_file_type(uint8_t de_type, uint8_t blk_type, int gfs1)
 	return 0;
 }
 
-static int delete_eattr_entry (struct gfs2_inode *ip,
-			       struct gfs2_buffer_head *leaf_bh,
-			       struct gfs2_ea_header *ea_hdr,
-			       struct gfs2_ea_header *ea_hdr_prev,
-			       void *private)
-{
-	struct gfs2_sbd *sdp = ip->i_sbd;
-	char ea_name[256];
-
-	if (!ea_hdr->ea_name_len){
-		/* Skip this entry for now */
-		return 1;
-	}
-
-	memset(ea_name, 0, sizeof(ea_name));
-	strncpy(ea_name, (char *)ea_hdr + sizeof(struct gfs2_ea_header),
-		ea_hdr->ea_name_len);
-
-	if (!GFS2_EATYPE_VALID(ea_hdr->ea_type) &&
-	   ((ea_hdr_prev) || (!ea_hdr_prev && ea_hdr->ea_type))){
-		/* Skip invalid entry */
-		return 1;
-	}
-
-	if (ea_hdr->ea_num_ptrs){
-		uint32_t avail_size;
-		int max_ptrs;
-
-		avail_size = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header);
-		max_ptrs = (be32_to_cpu(ea_hdr->ea_data_len) + avail_size - 1) /
-			avail_size;
-
-		if (max_ptrs > ea_hdr->ea_num_ptrs)
-			return 1;
-		else {
-			log_debug( _("  Pointers Required: %d\n  Pointers Reported: %d\n"),
-					  max_ptrs, ea_hdr->ea_num_ptrs);
-		}
-	}
-	return 0;
-}
-
-static int delete_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
-				 struct gfs2_buffer_head *leaf_bh,
-				 struct gfs2_ea_header *ea_hdr,
-				 struct gfs2_ea_header *ea_hdr_prev,
-				 void *private)
-{
-	uint64_t block = be64_to_cpu(*ea_data_ptr);
-
-	return delete_metadata(ip, block, NULL, 0, private);
-}
-
 struct metawalk_fxns pass2_fxns_delete = {
 	.private = NULL,
 	.check_metalist = delete_metadata,
@@ -1836,12 +1783,5 @@ int pass2(struct gfs2_sbd *sdp)
 		}
 		fsck_inode_put(&ip); /* does a gfs2_dinode_out, brelse */
 	}
-	/* Now that we've deleted the inodes marked "bad" we can safely
-	   get rid of the duplicate block list.  If we do it any sooner,
-	   we won't discover that a given block is a duplicate and avoid
-	   deleting it from both inodes referencing it. Note: The other
-	   returns from this function are premature exits of the program
-	   and gfs2_block_list_destroy should get rid of the list for us. */
-	gfs2_dup_free();
 	return FSCK_OK;
 }

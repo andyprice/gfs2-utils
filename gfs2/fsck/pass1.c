@@ -37,7 +37,8 @@ struct block_count {
 
 static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private);
 static int check_metalist(struct gfs2_inode *ip, uint64_t block,
-			  struct gfs2_buffer_head **bh, int h, void *private);
+			  struct gfs2_buffer_head **bh, int h, int *is_valid,
+			  int *was_duplicate, void *private);
 static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
 			       int h, void *private);
 static int check_data(struct gfs2_inode *ip, uint64_t metablock,
@@ -64,6 +65,7 @@ static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 			      int leaf_pointer_errors, void *private);
 static int invalidate_metadata(struct gfs2_inode *ip, uint64_t block,
 			       struct gfs2_buffer_head **bh, int h,
+			       int *is_valid, int *was_duplicate,
 			       void *private);
 static int invalidate_leaf(struct gfs2_inode *ip, uint64_t block,
 			   void *private);
@@ -127,10 +129,13 @@ struct metawalk_fxns invalidate_fxns = {
  */
 static int resuscitate_metalist(struct gfs2_inode *ip, uint64_t block,
 				struct gfs2_buffer_head **bh, int h,
+				int *is_valid, int *was_duplicate,
 				void *private)
 {
 	struct block_count *bc = (struct block_count *)private;
 
+	*is_valid = 1;
+	*was_duplicate = 0;
 	*bh = NULL;
 	if (!valid_block(ip->i_sbd, block)){ /* blk outside of FS */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
@@ -139,7 +144,8 @@ static int resuscitate_metalist(struct gfs2_inode *ip, uint64_t block,
 			   "range) found in system inode %lld (0x%llx).\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
-		return meta_skip_further;
+		*is_valid = 0;
+		return meta_is_good;
 	}
 	if (fsck_system_inode(ip->i_sbd, block))
 		fsck_blockmap_set(ip, block, _("system file"), gfs2_indir_blk);
@@ -241,16 +247,19 @@ static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 }
 
 static int check_metalist(struct gfs2_inode *ip, uint64_t block,
-			  struct gfs2_buffer_head **bh, int h, void *private)
+			  struct gfs2_buffer_head **bh, int h, int *is_valid,
+			  int *was_duplicate, void *private)
 {
 	uint8_t q;
-	int found_dup = 0, iblk_type;
+	int iblk_type;
 	struct gfs2_buffer_head *nbh;
 	struct block_count *bc = (struct block_count *)private;
 	const char *blktypedesc;
 
 	*bh = NULL;
 
+	*was_duplicate = 0;
+	*is_valid = 0;
 	if (!valid_block(ip->i_sbd, block)) { /* blk outside of FS */
 		/* The bad dinode should be invalidated later due to
 		   "unrecoverable" errors.  The inode itself should be
@@ -282,12 +291,13 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr, q,
 			 block_type_string(q));
-		add_duplicate_ref(ip, block, ref_as_meta, 0, INODE_VALID);
-		found_dup = 1;
+		*was_duplicate = 1;
 	}
 	nbh = bread(ip->i_sbd, block);
 
-	if (gfs2_check_meta(nbh, iblk_type)){
+	*is_valid = (gfs2_check_meta(nbh, iblk_type) == 0);
+
+	if (!(*is_valid)) {
 		log_err( _("Inode %lld (0x%llx) has a bad indirect block "
 			   "pointer %lld (0x%llx) (points to something "
 			   "that is not %s).\n"),
@@ -295,31 +305,23 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)block,
 			 (unsigned long long)block, blktypedesc);
-		if (!found_dup) {
-			fsck_blockmap_set(ip, block, _("bad indirect"),
-					  gfs2_meta_inval);
-			brelse(nbh);
-			nbh = NULL;
-			return meta_skip_further;
-		}
 		brelse(nbh);
-		nbh = NULL;
-	} else /* blk check ok */
-		*bh = nbh;
+		return meta_skip_further;
+	}
 
 	bc->indir_count++;
-	if (found_dup) {
-		if (nbh) {
-			brelse(nbh);
-			nbh = NULL;
-			*bh = NULL;
-		}
-		return meta_skip_further; /* don't process the metadata again */
-	} else
-		fsck_blockmap_set(ip, block, _("indirect"),
-				  gfs2_indir_blk);
+	if (*was_duplicate) {
+		add_duplicate_ref(ip, block, ref_as_meta, 0,
+				  *is_valid ? INODE_VALID : INODE_INVALID);
+		brelse(nbh);
+	} else {
+		*bh = nbh;
+		fsck_blockmap_set(ip, block, _("indirect"), gfs2_indir_blk);
+	}
 
-	return meta_is_good;
+	if (*is_valid)
+		return meta_is_good;
+	return meta_skip_further;
 }
 
 /* undo_reference - undo previously processed data or metadata
@@ -354,7 +356,7 @@ static int undo_reference(struct gfs2_inode *ip, uint64_t block, int meta,
 			if (!id)
 				break;
 
-			dup_listent_delete(id);
+			dup_listent_delete(dt, id);
 		} while (id);
 
 		if (dt->refs) {
@@ -827,7 +829,8 @@ static int check_eattr_entries(struct gfs2_inode *ip,
  * delete_block_if_notdup.
  */
 static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
-			      enum dup_ref_type reftype, const char *btype)
+			      enum dup_ref_type reftype, const char *btype,
+			      int *is_valid, int *was_duplicate)
 {
 	uint8_t q;
 
@@ -838,11 +841,20 @@ static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
 	 * referenced elsewhere (duplicates) won't be flagged as such,
 	 * and as a result, they'll be freed when this dinode is deleted,
 	 * despite being used by another dinode as a valid block. */
-	if (!valid_block(ip->i_sbd, block))
+	if (is_valid)
+		*is_valid = 1;
+	if (was_duplicate)
+		*was_duplicate = 0;
+	if (!valid_block(ip->i_sbd, block)) {
+		if (is_valid)
+			*is_valid = 0;
 		return meta_is_good;
+	}
 
 	q = block_type(block);
 	if (q != gfs2_block_free) {
+		if (was_duplicate)
+			*was_duplicate = 1;
 		add_duplicate_ref(ip, block, reftype, 0, INODE_INVALID);
 		log_info( _("%s block %lld (0x%llx), part of inode "
 			    "%lld (0x%llx), was previously referenced so "
@@ -859,21 +871,27 @@ static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
 
 static int invalidate_metadata(struct gfs2_inode *ip, uint64_t block,
 			       struct gfs2_buffer_head **bh, int h,
+			       int *is_valid, int *was_duplicate,
 			       void *private)
 {
-	return mark_block_invalid(ip, block, ref_as_meta, _("metadata"));
+	*is_valid = 1;
+	*was_duplicate = 0;
+	return mark_block_invalid(ip, block, ref_as_meta, _("metadata"),
+				  is_valid, was_duplicate);
 }
 
 static int invalidate_leaf(struct gfs2_inode *ip, uint64_t block,
 			   void *private)
 {
-	return mark_block_invalid(ip, block, ref_as_meta, _("leaf"));
+	return mark_block_invalid(ip, block, ref_as_meta, _("leaf"),
+				  NULL, NULL);
 }
 
 static int invalidate_data(struct gfs2_inode *ip, uint64_t metablock,
 			   uint64_t block, void *private)
 {
-	return mark_block_invalid(ip, block, ref_as_data, _("data"));
+	return mark_block_invalid(ip, block, ref_as_data, _("data"),
+				  NULL, NULL);
 }
 
 static int invalidate_eattr_indir(struct gfs2_inode *ip, uint64_t block,
@@ -881,7 +899,8 @@ static int invalidate_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 				  struct gfs2_buffer_head **bh, void *private)
 {
 	return mark_block_invalid(ip, block, ref_as_ea,
-				  _("indirect extended attribute"));
+				  _("indirect extended attribute"),
+				  NULL, NULL);
 }
 
 static int invalidate_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
@@ -889,7 +908,8 @@ static int invalidate_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 				 void *private)
 {
 	return mark_block_invalid(ip, block, ref_as_ea,
-				  _("extended attribute"));
+				  _("extended attribute"),
+				  NULL, NULL);
 }
 
 /**
@@ -924,7 +944,7 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 			  (unsigned long long)ip->i_di.di_num.no_addr,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
 		if ((*bad_pointers) <= BAD_POINTER_TOLERANCE)
-			return meta_skip_further;
+			return meta_is_good;
 		else
 			return meta_error; /* Exits check_metatree quicker */
 	}
@@ -939,7 +959,7 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 			  (unsigned long long)ip->i_di.di_num.no_addr,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
 		if ((*bad_pointers) <= BAD_POINTER_TOLERANCE)
-			return meta_skip_further;
+			return meta_is_good;
 		else
 			return meta_error; /* Exits check_metatree quicker */
 	}
@@ -948,8 +968,11 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 
 static int rangecheck_metadata(struct gfs2_inode *ip, uint64_t block,
 			       struct gfs2_buffer_head **bh, int h,
+			       int *is_valid, int *was_duplicate,
 			       void *private)
 {
+	*is_valid = 1;
+	*was_duplicate = 0;
 	return rangecheck_block(ip, block, bh, btype_meta, private);
 }
 
@@ -1048,7 +1071,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 
 	/* We there was an error, we return 0 because we want fsck to continue
 	   and analyze the other dinodes as well. */
-	if (fsck_abort || error != 0)
+	if (fsck_abort)
 		return 0;
 
 	error = check_inode_eattr(ip, &pass1_fxns);
