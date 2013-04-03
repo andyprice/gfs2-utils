@@ -330,6 +330,28 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	if (dt->first_ref_found)
 		return meta_is_good;
 
+	/* Check for a previous reference to this duplicate */
+	id = find_dup_ref_inode(dt, ip);
+
+	/* We have to be careful here. The original referencing dinode may have
+	   deemed to be bad and deleted/freed in pass1. In that case, pass1b
+	   wouldn't discover the correct [deleted] original reference. In
+	   that case, we don't want to be confused and consider this second
+	   reference the same as the first. If we do, we'll never be able to
+	   resolve it. The first reference can't be the second reference. */
+	if (id && first && !dt->first_ref_found) {
+		log_info(_("Original reference to block %llu (0x%llx) was "
+			   "previously found to be bad and deleted.\n"),
+			 (unsigned long long)block,
+			 (unsigned long long)block);
+		log_info(_("I'll consider the reference from inode %llu "
+			   "(0x%llx) the first reference.\n"),
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr);
+		dt->first_ref_found = 1;
+		return meta_is_good;
+	}
+
 	/* The first time this is called from pass1 is actually the second
 	   reference.  When we go back in pass1b looking for the original
 	   reference, we don't want to increment the reference count because
@@ -341,8 +363,6 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 		dt->refs++;
 	}
 
-	/* Check for a previous reference to this duplicate */
-	id = find_dup_ref_inode(dt, ip);
 	if (id == NULL) {
 		/* Check for the inode on the invalid inode reference list. */
 		uint8_t q;
