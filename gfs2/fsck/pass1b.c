@@ -28,7 +28,7 @@ struct dup_handler {
 	int ref_count;
 };
 
-static int check_leaf(struct gfs2_inode *ip, uint64_t block, void *private);
+static int check_leaf_refs(struct gfs2_inode *ip, uint64_t block, void *private);
 static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			  struct gfs2_buffer_head **bh, int h, void *private);
 static int check_data(struct gfs2_inode *ip, uint64_t metablock,
@@ -56,7 +56,7 @@ static int find_dentry(struct gfs2_inode *ip, struct gfs2_dirent *de,
 
 struct metawalk_fxns find_refs = {
 	.private = NULL,
-	.check_leaf = check_leaf,
+	.check_leaf = check_leaf_refs,
 	.check_metalist = check_metalist,
 	.check_data = check_data,
 	.check_eattr_indir = check_eattr_indir,
@@ -78,7 +78,7 @@ struct metawalk_fxns find_dirents = {
 	.check_eattr_extentry = NULL,
 };
 
-static int check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
+static int check_leaf_refs(struct gfs2_inode *ip, uint64_t block, void *private)
 {
 	return add_duplicate_ref(ip, block, ref_as_meta, 1, INODE_VALID);
 }

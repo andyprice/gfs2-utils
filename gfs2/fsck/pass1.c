@@ -35,7 +35,7 @@ struct block_count {
 	uint64_t ea_count;
 };
 
-static int check_leaf(struct gfs2_inode *ip, uint64_t block, void *private);
+static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private);
 static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			  struct gfs2_buffer_head **bh, int h, void *private);
 static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
@@ -93,7 +93,7 @@ static int pass1_repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no,
 
 struct metawalk_fxns pass1_fxns = {
 	.private = NULL,
-	.check_leaf = check_leaf,
+	.check_leaf = p1check_leaf,
 	.check_metalist = check_metalist,
 	.check_data = check_data,
 	.check_eattr_indir = check_eattr_indir,
@@ -211,7 +211,7 @@ struct metawalk_fxns sysdir_fxns = {
 	.check_dentry = resuscitate_dentry,
 };
 
-static int check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
+static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 {
 	struct block_count *bc = (struct block_count *) private;
 	uint8_t q;

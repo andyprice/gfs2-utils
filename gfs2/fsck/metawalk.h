@@ -15,6 +15,9 @@ extern int check_dir(struct gfs2_sbd *sdp, uint64_t block,
 		     struct metawalk_fxns *pass);
 extern int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			    struct metawalk_fxns *pass);
+extern int check_leaf(struct gfs2_inode *ip, int lindex,
+		      struct metawalk_fxns *pass, uint64_t *leaf_no,
+		      struct gfs2_leaf *leaf, int *ref_count);
 extern int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 						   uint64_t dentryblock);
 extern int delete_block(struct gfs2_inode *ip, uint64_t block,

@@ -483,9 +483,8 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
  * Reads in the leaf block
  * Leaves the buffer around for further analysis (caller must brelse)
  */
-static int check_leaf(struct gfs2_inode *ip, int lindex,
-		      struct metawalk_fxns *pass,
-		      uint64_t *leaf_no, struct gfs2_leaf *leaf, int *ref_count)
+int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
+	       uint64_t *leaf_no, struct gfs2_leaf *leaf, int *ref_count)
 {
 	int error = 0, fix;
 	struct gfs2_buffer_head *lbh = NULL;
