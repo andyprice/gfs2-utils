@@ -399,9 +399,10 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	id->reftypecount[reftype]++;
 	id->dup_count++;
 	log_info( _("Found %d reference(s) to block %llu"
-		    " (0x%llx) as %s in inode #%llu (0x%llx)\n"),
+		    " (0x%llx) as %s in %s inode #%llu (0x%llx)\n"),
 		  id->dup_count, (unsigned long long)block,
 		  (unsigned long long)block, reftypes[reftype],
+		  inode_valid ? _("valid") : _("invalid"),
 		  (unsigned long long)ip->i_di.di_num.no_addr,
 		  (unsigned long long)ip->i_di.di_num.no_addr);
 	if (first)
