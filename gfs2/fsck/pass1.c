@@ -425,18 +425,32 @@ static int check_data(struct gfs2_inode *ip, uint64_t metablock,
 			log_err(_("from metadata block %llu (0x%llx)\n"),
 				(unsigned long long)metablock,
 				(unsigned long long)metablock);
-
+				
+		if (q >= gfs2_indir_blk && q <= gfs2_jdata) {
+			log_info(_("The block was processed earlier as valid "
+				   "metadata, so it can't possibly be "
+				   "data.\n"));
+			/* We still need to add a duplicate record here because
+			   when check_metatree tries to delete the inode, we
+			   can't have the "undo" functions freeing the block
+			   out from other the original referencing inode. */
+			add_duplicate_ref(ip, block, ref_as_data, 0,
+					  INODE_VALID);
+			return 1;
+		}
 		if (q != gfs2_meta_inval) {
 			log_info( _("Seems to be a normal duplicate; I'll "
 				    "sort it out in pass1b.\n"));
 			add_duplicate_ref(ip, block, ref_as_data, 0,
 					  INODE_VALID);
-			return 1;
+			/* This inode references the block as data. So if this
+			   all is validated, we want to keep this count. */
+			return 0;
 		}
 		log_info( _("The block was invalid as metadata but might be "
 			    "okay as data.  I'll sort it out in pass1b.\n"));
 		add_duplicate_ref(ip, block, ref_as_data, 0, INODE_VALID);
-		return 1;
+		return 0;
 	}
 	/* In gfs1, rgrp indirect blocks are marked in the bitmap as "meta".
 	   In gfs2, "meta" is only for dinodes. So here we dummy up the
