@@ -20,11 +20,13 @@
 
 #define MAX_FILENAME 256
 
-struct metawalk_fxns clear_eattrs = {
+struct metawalk_fxns pass2_fxns;
+
+struct metawalk_fxns delete_eattrs = {
 	.check_eattr_indir = delete_eattr_indir,
 	.check_eattr_leaf = delete_eattr_leaf,
-	.check_eattr_entry = clear_eattr_entry,
-	.check_eattr_extentry = clear_eattr_extentry,
+	.check_eattr_entry = delete_eattr_entry,
+	.check_eattr_extentry = delete_eattr_extentry,
 };
 
 /* Set children's parent inode in dir_info structure - ext2 does not set
@@ -599,7 +601,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			entry_ip = ip;
 		else
 			entry_ip = fsck_load_inode(sdp, entry->no_addr);
-		check_inode_eattr(entry_ip, &clear_eattrs);
+		check_inode_eattr(entry_ip, &delete_eattrs);
 		if (entry_ip != ip)
 			fsck_inode_put(&entry_ip);
 		return 1;
@@ -683,7 +685,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				entry_ip = ip;
 			else
 				entry_ip = fsck_load_inode(sdp, entry.no_addr);
-			check_inode_eattr(entry_ip, &clear_eattrs);
+			check_inode_eattr(entry_ip, &delete_eattrs);
 			if (entry_ip != ip)
 				fsck_inode_put(&entry_ip);
 			goto nuke_dentry;
@@ -714,7 +716,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				entry_ip = ip;
 			else
 				entry_ip = fsck_load_inode(sdp, entry.no_addr);
-			check_inode_eattr(entry_ip, &clear_eattrs);
+			check_inode_eattr(entry_ip, &delete_eattrs);
 			if (entry_ip != ip)
 				fsck_inode_put(&entry_ip);
 			goto nuke_dentry;
@@ -744,7 +746,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				entry_ip = ip;
 			else
 				entry_ip = fsck_load_inode(sdp, entry.no_addr);
-			check_inode_eattr(entry_ip, &clear_eattrs);
+			check_inode_eattr(entry_ip, &delete_eattrs);
 			if (entry_ip != ip)
 				fsck_inode_put(&entry_ip);
 
@@ -764,7 +766,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 				entry_ip = ip;
 			else
 				entry_ip = fsck_load_inode(sdp, entry.no_addr);
-			check_inode_eattr(entry_ip, &clear_eattrs);
+			check_inode_eattr(entry_ip, &delete_eattrs);
 			if (entry_ip != ip)
 				fsck_inode_put(&entry_ip);
 

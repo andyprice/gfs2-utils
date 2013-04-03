@@ -487,6 +487,8 @@ static int remove_inode_eattr(struct gfs2_inode *ip, struct block_count *bc)
 static int ask_remove_inode_eattr(struct gfs2_inode *ip,
 				  struct block_count *bc)
 {
+	if (ip->i_di.di_eattr == 0)
+		return 0; /* eattr was removed prior to this call */
 	log_err( _("Inode %lld (0x%llx) has unrecoverable Extended Attribute "
 		   "errors.\n"), (unsigned long long)ip->i_di.di_num.no_addr,
 		 (unsigned long long)ip->i_di.di_num.no_addr);
@@ -1074,11 +1076,13 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	if (fsck_abort)
 		return 0;
 
-	error = check_inode_eattr(ip, &pass1_fxns);
+	if (!error) {
+		error = check_inode_eattr(ip, &pass1_fxns);
 
-	if (error &&
-	    !(ip->i_di.di_flags & GFS2_DIF_EA_INDIRECT))
-		ask_remove_inode_eattr(ip, &bc);
+		if (error &&
+		    !(ip->i_di.di_flags & GFS2_DIF_EA_INDIRECT))
+			ask_remove_inode_eattr(ip, &bc);
+	}
 
 	if (ip->i_di.di_blocks != 
 		(1 + bc.indir_count + bc.data_count + bc.ea_count)) {

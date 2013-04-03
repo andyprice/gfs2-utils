@@ -12,6 +12,12 @@
 #include "util.h"
 #include "metawalk.h"
 
+struct metawalk_fxns pass1c_fxns_delete = {
+	.private = NULL,
+	.check_eattr_indir = delete_eattr_indir,
+	.check_eattr_leaf = delete_eattr_leaf,
+};
+
 static int remove_eattr_entry(struct gfs2_sbd *sdp,
 			      struct gfs2_buffer_head *leaf_bh,
 			      struct gfs2_ea_header *curr,
@@ -62,7 +68,7 @@ static int ask_remove_eattr_entry(struct gfs2_sbd *sdp,
 static int ask_remove_eattr(struct gfs2_inode *ip)
 {
 	if (query( _("Remove the bad Extended Attribute? (y/n) "))) {
-		ip->i_di.di_eattr = 0;
+		check_inode_eattr(ip, &pass1c_fxns_delete);
 		bmodified(ip->i_bh);
 		log_err( _("Bad Extended Attribute removed.\n"));
 		return 1;
