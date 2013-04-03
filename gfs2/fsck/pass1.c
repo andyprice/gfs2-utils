@@ -139,14 +139,14 @@ static int resuscitate_metalist(struct gfs2_inode *ip, uint64_t block,
 			   "range) found in system inode %lld (0x%llx).\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
-		return 1;
+		return meta_skip_further;
 	}
 	if (fsck_system_inode(ip->i_sbd, block))
 		fsck_blockmap_set(ip, block, _("system file"), gfs2_indir_blk);
 	else
 		check_n_fix_bitmap(ip->i_sbd, block, gfs2_indir_blk);
 	bc->indir_count++;
-	return 0;
+	return meta_is_good;
 }
 
 /*
@@ -263,7 +263,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			   (unsigned long long)ip->i_di.di_num.no_addr,
 			   (unsigned long long)ip->i_di.di_num.no_addr);
 
-		return 1;
+		return meta_skip_further;
 	}
 	if (is_dir(&ip->i_di, ip->i_sbd->gfs1) && h == ip->i_di.di_height) {
 		iblk_type = GFS2_METATYPE_JD;
@@ -300,7 +300,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 					  gfs2_meta_inval);
 			brelse(nbh);
 			nbh = NULL;
-			return 1;
+			return meta_skip_further;
 		}
 		brelse(nbh);
 		nbh = NULL;
@@ -314,12 +314,12 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			nbh = NULL;
 			*bh = NULL;
 		}
-		return 1; /* don't process the metadata again */
+		return meta_skip_further; /* don't process the metadata again */
 	} else
 		fsck_blockmap_set(ip, block, _("indirect"),
 				  gfs2_indir_blk);
 
-	return 0;
+	return meta_is_good;
 }
 
 /* undo_reference - undo previously processed data or metadata
@@ -825,7 +825,7 @@ static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
 	 * and as a result, they'll be freed when this dinode is deleted,
 	 * despite being used by another dinode as a valid block. */
 	if (!valid_block(ip->i_sbd, block))
-		return 0;
+		return meta_is_good;
 
 	q = block_type(block);
 	if (q != gfs2_block_free) {
@@ -837,10 +837,10 @@ static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
 			  (unsigned long long)block,
 			  (unsigned long long)ip->i_di.di_num.no_addr,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
-		return 0;
+		return meta_is_good;
 	}
 	fsck_blockmap_set(ip, block, btype, gfs2_meta_inval);
-	return 0;
+	return meta_is_good;
 }
 
 static int invalidate_metadata(struct gfs2_inode *ip, uint64_t block,
@@ -910,9 +910,9 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 			  (unsigned long long)ip->i_di.di_num.no_addr,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
 		if ((*bad_pointers) <= BAD_POINTER_TOLERANCE)
-			return ENOENT;
+			return meta_skip_further;
 		else
-			return -ENOENT; /* Exits check_metatree quicker */
+			return meta_error; /* Exits check_metatree quicker */
 	}
 	/* See how many duplicate blocks it has */
 	q = block_type(block);
@@ -925,11 +925,11 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 			  (unsigned long long)ip->i_di.di_num.no_addr,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
 		if ((*bad_pointers) <= BAD_POINTER_TOLERANCE)
-			return ENOENT;
+			return meta_skip_further;
 		else
-			return -ENOENT; /* Exits check_metatree quicker */
+			return meta_error; /* Exits check_metatree quicker */
 	}
-	return 0;
+	return meta_is_good;
 }
 
 static int rangecheck_metadata(struct gfs2_inode *ip, uint64_t block,

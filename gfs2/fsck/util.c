@@ -316,19 +316,19 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	struct duptree *dt;
 
 	if (!valid_block(ip->i_sbd, block))
-		return 0;
+		return meta_is_good;
 	/* If this is not the first reference (i.e. all calls from pass1) we
 	   need to create the duplicate reference. If this is pass1b, we want
 	   to ignore references that aren't found. */
 	dt = gfs2_dup_set(block, !first);
 	if (!dt)        /* If this isn't a duplicate */
-		return 0;
+		return meta_is_good;
 
 	/* If we found the duplicate reference but we've already discovered
 	   the first reference (in pass1b) and the other references in pass1,
 	   we don't need to count it, so just return. */
 	if (dt->first_ref_found)
-		return 0;
+		return meta_is_good;
 
 	/* The first time this is called from pass1 is actually the second
 	   reference.  When we go back in pass1b looking for the original
@@ -350,12 +350,12 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 		if (!(id = malloc(sizeof(*id)))) {
 			log_crit( _("Unable to allocate "
 				    "inode_with_dups structure\n"));
-			return -1;
+			return meta_error;
 		}
 		if (!(memset(id, 0, sizeof(*id)))) {
 			log_crit( _("Unable to zero inode_with_dups "
 				    "structure\n"));
-			return -1;
+			return meta_error;
 		}
 		id->block_no = ip->i_di.di_num.no_addr;
 		q = block_type(ip->i_di.di_num.no_addr);
@@ -389,7 +389,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	else
 		log_info( _("This brings the total to: %d duplicate "
 			    "references\n"), dt->refs);
-	return 0;
+	return meta_is_good;
 }
 
 struct dir_info *dirtree_insert(struct gfs2_inum inum)

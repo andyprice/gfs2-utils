@@ -996,9 +996,9 @@ int free_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 {
 	if (!find_remove_dup(ip, block, btype)) { /* not a dup */
 		fsck_blockmap_set(ip, block, btype, gfs2_block_free);
-		return 1;
+		return meta_skip_further;
 	}
-	return 0;
+	return meta_is_good;
 }
 
 /**
@@ -1015,7 +1015,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 	uint8_t q;
 
 	if (!valid_block(ip->i_sbd, block))
-		return -EFAULT;
+		return meta_error;
 
 	q = block_type(block);
 	if (q == gfs2_block_free) {
@@ -1025,7 +1025,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 			  (unsigned long long)block,
 			  (unsigned long long)ip->i_di.di_num.no_addr,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
-		return 0;
+		return meta_is_good;
 	}
 	return free_block_if_notdup(ip, block, btype);
 }
@@ -1255,12 +1255,12 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 							   pass->private);
 				/* check_metalist should hold any buffers
 				   it gets with "bread". */
-				if (err < 0) {
+				if (err == meta_error) {
 					stack;
 					error = err;
 					return error;
 				}
-				if (err > 0) {
+				if (err == meta_skip_further) {
 					if (!error)
 						error = err;
 					log_debug( _("Skipping block %llu (0x%llx)\n"),
@@ -1659,7 +1659,7 @@ static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,
 			  (unsigned long long)block);
 		gfs2_blockmap_set(bl, block, gfs2_indir_blk);
 	}
-	return 0;
+	return meta_is_good;
 }
 
 static int alloc_data(struct gfs2_inode *ip, uint64_t metablock,

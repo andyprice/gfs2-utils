@@ -215,7 +215,7 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 	struct duptree *dt;
 
 	if (!valid_block(ip->i_sbd, block))
-		return 0;
+		return meta_is_good;
 
 	/* This gets tricky. We're traversing a metadata tree trying to
 	   delete an inode based on it having a duplicate block reference
@@ -231,7 +231,7 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 	if (!dt) {
 		fsck_blockmap_set(ip, block, _("no longer valid"),
 				  gfs2_block_free);
-		return 0;
+		return meta_is_good;
 	}
 	/* This block, having failed the above test, is duplicated somewhere */
 	if (block == dh->dt->block) {
@@ -254,7 +254,7 @@ static int clear_dup_metalist(struct gfs2_inode *ip, uint64_t block,
 	   be mistakenly freed as "no longer valid" (in this function above)
 	   even though it's valid metadata for a different inode. Returning
 	   1 ensures that the metadata isn't processed again. */
-	return 1;
+	return meta_skip_further;
 }
 
 static int clear_dup_data(struct gfs2_inode *ip, uint64_t metablock,

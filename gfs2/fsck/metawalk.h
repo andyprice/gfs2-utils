@@ -56,6 +56,12 @@ extern int free_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 #define fsck_blockmap_set(ip, b, bt, m) _fsck_blockmap_set(ip, b, bt, m, \
 							   __FUNCTION__, __LINE__)
 
+enum meta_check_rc {
+	meta_error = -1,
+	meta_is_good = 0,
+	meta_skip_further = 1,
+};
+
 /* metawalk_fxns: function pointers to check various parts of the fs
  *
  * The functions should return -1 on fatal errors, 1 if the block
