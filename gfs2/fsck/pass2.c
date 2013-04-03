@@ -1050,6 +1050,66 @@ static int lost_leaf(struct gfs2_inode *ip, uint64_t *tbl, uint64_t leafno,
 	return 1;
 }
 
+static int basic_check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
+			      struct gfs2_dirent *prev_de,
+			      struct gfs2_buffer_head *bh, char *filename,
+			      uint32_t *count, int lindex, void *priv)
+{
+	uint8_t q = 0;
+	char tmp_name[MAX_FILENAME];
+	struct gfs2_inum entry;
+	struct dir_status *ds = (struct dir_status *) priv;
+	struct gfs2_dirent dentry, *de;
+	int error;
+
+	memset(&dentry, 0, sizeof(struct gfs2_dirent));
+	gfs2_dirent_in(&dentry, (char *)dent);
+	de = &dentry;
+
+	entry.no_addr = de->de_inum.no_addr;
+	entry.no_formal_ino = de->de_inum.no_formal_ino;
+
+	/* Start of checks */
+	memset(tmp_name, 0, MAX_FILENAME);
+	if (de->de_name_len < MAX_FILENAME)
+		strncpy(tmp_name, filename, de->de_name_len);
+	else
+		strncpy(tmp_name, filename, MAX_FILENAME - 1);
+
+	error = basic_dentry_checks(ip, dent, &entry, tmp_name, count, de,
+				    ds, &q, bh);
+	if (error) {
+		dirent2_del(ip, bh, prev_de, dent);
+		log_err( _("Bad directory entry '%s' cleared.\n"), tmp_name);
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+static int pass2_repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no,
+			     int lindex, int ref_count, const char *msg,
+			     void *private)
+{
+	return repair_leaf(ip, leaf_no, lindex, ref_count, msg);
+}
+
+/* The purpose of leafck_fxns is to provide a means for function fix_hashtable
+ * to do basic sanity checks on leaf blocks before manipulating them, for
+ * example, splitting them. If they're corrupt, splitting them or trying to
+ * move their contents can cause a segfault. We can't really use the standard
+ * pass2_fxns because that will do things we don't want. For example, it will
+ * find '.' and '..' and increment the directory link count, which would be
+ * done a second time when the dirent is really checked in pass2_fxns.
+ * We don't want it to do the "wrong leaf" thing, or set_parent_dir either.
+ * We just want a basic sanity check on pointers and lengths.
+ */
+struct metawalk_fxns leafck_fxns = {
+	.check_leaf_depth = check_leaf_depth,
+	.check_dentry = basic_check_dentry,
+	.repair_leaf = pass2_repair_leaf,
+};
+
 /* fix_hashtable - fix a corrupt hash table
  *
  * The main intent of this function is to sort out hash table problems.
@@ -1079,10 +1139,11 @@ static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
 			 int len, int *proper_len, int factor)
 {
 	struct gfs2_buffer_head *lbh;
-	struct gfs2_leaf *leaf;
+	struct gfs2_leaf leaf;
 	struct gfs2_dirent dentry, *de;
 	int changes = 0, error, i, extras, hash_index;
 	uint64_t new_leaf_blk;
+	uint64_t leaf_no;
 	uint32_t leaf_proper_start;
 
 	*proper_len = len;
@@ -1096,14 +1157,20 @@ static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
 		return 0;
 	}
 
+	memset(&leaf, 0, sizeof(leaf));
+	leaf_no = leafblk;
+	error = check_leaf(ip, lindex, &leafck_fxns, &leaf_no, &leaf, &len);
+	if (error) {
+		log_debug("Leaf repaired while fixing the hash table.\n");
+		error = 0;
+	}
 	lbh = bread(ip->i_sbd, leafblk);
-	leaf = (struct gfs2_leaf *)lbh->b_data;
 	/* If the leaf's depth is out of range for this dinode, it's obviously
 	   attached to the wrong dinode. Move the dirents to lost+found. */
-	if (be16_to_cpu(leaf->lf_depth) > ip->i_di.di_depth) {
+	if (leaf.lf_depth > ip->i_di.di_depth) {
 		log_err(_("This leaf block's depth (%d) is too big for this "
 			  "dinode's depth (%d)\n"),
-			be16_to_cpu(leaf->lf_depth), ip->i_di.di_depth);
+			leaf.lf_depth, ip->i_di.di_depth);
 		error = lost_leaf(ip, tbl, leafblk, len, lindex, lbh);
 		brelse(lbh);
 		return error;
@@ -1129,7 +1196,7 @@ static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
 	}
 
 	/* Calculate the proper number of pointers based on the leaf depth. */
-	*proper_len = 1 << (ip->i_di.di_depth - be16_to_cpu(leaf->lf_depth));
+	*proper_len = 1 << (ip->i_di.di_depth - leaf.lf_depth);
 
 	/* Look at the first dirent and check its hash value to see if it's
 	   at the proper starting offset. */
@@ -1162,7 +1229,7 @@ static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
 	   already at its maximum depth. */
 	if ((leaf_proper_start < proper_start) ||
 	    ((*proper_len > len || lindex > leaf_proper_start) &&
-	     be16_to_cpu(leaf->lf_depth) == ip->i_di.di_depth)) {
+	     leaf.lf_depth == ip->i_di.di_depth)) {
 		log_err(_("Leaf block should start at 0x%x, but it appears at "
 			  "0x%x in the hash table.\n"), leaf_proper_start,
 			proper_start);
@@ -1177,24 +1244,22 @@ static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
 	   later than they should, we can split the leaf to give it a smaller
 	   footprint in the hash table. */
 	if ((*proper_len > len || lindex > leaf_proper_start) &&
-	    ip->i_di.di_depth > be16_to_cpu(leaf->lf_depth)) {
+	    ip->i_di.di_depth > leaf.lf_depth) {
 		log_err(_("For depth %d, length %d, the proper start is: "
 			  "0x%x.\n"), factor, len, proper_start);
 		changes++;
 		new_leaf_blk = find_free_blk(ip->i_sbd);
 		dir_split_leaf(ip, lindex, leafblk, lbh);
 		/* re-read the leaf to pick up dir_split_leaf's changes */
-		gfs2_leaf_in(leaf, lbh);
-		*proper_len = 1 << (ip->i_di.di_depth -
-				    be16_to_cpu(leaf->lf_depth));
+		gfs2_leaf_in(&leaf, lbh);
+		*proper_len = 1 << (ip->i_di.di_depth - leaf.lf_depth);
 		log_err(_("Leaf block %llu (0x%llx) was split from length "
 			  "%d to %d\n"), (unsigned long long)leafblk,
 			(unsigned long long)leafblk, len, *proper_len);
 		if (*proper_len < 0) {
 			log_err(_("Programming error: proper_len=%d, "
 				  "di_depth = %d, lf_depth = %d.\n"),
-				*proper_len, ip->i_di.di_depth,
-				be16_to_cpu(leaf->lf_depth));
+				*proper_len, ip->i_di.di_depth, leaf.lf_depth);
 			exit(FSCK_ERROR);
 		}
 		log_err(_("New split-off leaf block was allocated at %lld "
@@ -1219,8 +1284,8 @@ static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
 	if (*proper_len < len) {
 		log_err(_("There are %d pointers, but leaf 0x%llx's "
 			  "depth, %d, only allows %d\n"),
-			len, (unsigned long long)leafblk,
-			be16_to_cpu(leaf->lf_depth), *proper_len);
+			len, (unsigned long long)leafblk, leaf.lf_depth,
+			*proper_len);
 	}
 	brelse(lbh);
 	/* At this point, lindex should be at the proper end of the pointers.
@@ -1420,13 +1485,6 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 	if (!error && changes)
 		error = 1;
 	return error;
-}
-
-static int pass2_repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no,
-			     int lindex, int ref_count, const char *msg,
-			     void *private)
-{
-	return repair_leaf(ip, leaf_no, lindex, ref_count, msg);
 }
 
 struct metawalk_fxns pass2_fxns = {
