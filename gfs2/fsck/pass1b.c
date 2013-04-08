@@ -146,7 +146,6 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 	enum dup_ref_type this_ref;
 	struct inode_info *ii;
 	int found_good_ref = 0;
-	uint64_t dup_block;
 	uint8_t q;
 
 	osi_list_foreach_safe(tmp, ref_list, x) {
@@ -228,7 +227,6 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 				 (unsigned long long)id->block_no,
 				 (unsigned long long)id->block_no);
 
-		dup_block = id->block_no;
 		ip = fsck_load_inode(sdp, id->block_no);
 		/* If we've already deleted this dinode, don't try to delete
 		   it again. That could free blocks that used to be duplicate
