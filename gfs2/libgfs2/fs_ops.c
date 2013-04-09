@@ -122,6 +122,7 @@ static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned int type, struct rgrp_
 	struct gfs2_rgrp *rg;
 	unsigned int block, bn = 0, x = 0, y = 0;
 	unsigned int state;
+	unsigned int release = 0;
 	struct gfs2_buffer_head *bh;
 
 	if (rl == NULL || rl->rg.rg_free == 0) {
@@ -129,8 +130,11 @@ static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned int type, struct rgrp_
 		return -1;
 	}
 
-	if (rl->bh[0] == NULL && gfs2_rgrp_read(sdp, rl) != 0)
-		return -1;
+	if (rl->bh[0] == NULL) {
+		if (gfs2_rgrp_read(sdp, rl) != 0)
+			return -1;
+		release = 1;
+	}
 
 	ri = &rl->ri;
 	rg = &rl->rg;
@@ -149,7 +153,7 @@ static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned int type, struct rgrp_
 
 	fprintf(stderr, "allocation is broken (1): %"PRIu64" %u\n",
 	    (uint64_t)rl->ri.ri_addr, rl->rg.rg_free);
-	return -1;
+	goto out_err;
 
 found:
 	if (bn >= ri->ri_bitbytes * GFS2_NBBY) {
@@ -157,7 +161,7 @@ found:
 		    " (0x%" PRIx64 ") Free:%u\n",
 		    bn, ri->ri_bitbytes * GFS2_NBBY, (uint64_t)rl->ri.ri_addr,
 		    (uint64_t)rl->ri.ri_addr, rl->rg.rg_free);
-		return -1;
+		goto out_err;
 	}
 
 	switch (type) {
@@ -171,7 +175,7 @@ found:
 		break;
 	default:
 		fprintf(stderr, "bad state\n");
-		return -1;
+		goto out_err;
 	}
 
 	bh->b_data[x] &= ~(0x03 << (GFS2_BIT_SIZE * y));
@@ -186,7 +190,14 @@ found:
 
 	sdp->blks_alloced++;
 	*blkno = ri->ri_data0 + bn;
+	if (release)
+		gfs2_rgrp_relse(rl);
 	return 0;
+out_err:
+	if (release)
+		gfs2_rgrp_relse(rl);
+	return -1;
+
 }
 
 /**
@@ -251,8 +262,6 @@ int lgfs2_dinode_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, uint64_t *b
 		return -1;
 
 	ret = blk_alloc_in_rg(sdp, DINODE, rgt, blkno);
-	gfs2_rgrp_relse(rgt);
-
 	if (ret == 0)
 		sdp->dinodes_alloced++;
 
