@@ -58,7 +58,8 @@ AC_PROG_LN_S
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 AC_PROG_LEX
-AC_PROG_YACC
+AC_CHECK_PROG([YACC], [bison], [bison -y])
+test x"$YACC" = x && AC_MSG_ERROR([bison not found])
 
 ## local helper functions
 
@@ -275,3 +276,5 @@ AC_CONFIG_FILES([Makefile
 		 ])
 
 AC_OUTPUT
+
+test x"$BUILD_TESTS" = x && AC_MSG_NOTICE([package 'check' not found; unit tests will not be built])

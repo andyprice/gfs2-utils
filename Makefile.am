@@ -16,11 +16,7 @@ if BUILD_GFS_CONTROLD
 DIR_GROUP		= group
 endif
 
-if BUILD_TESTS
-DIR_TESTS		= tests
-endif
-
-SUBDIRS			= po $(DIR_GROUP) gfs2 doc $(DIR_TESTS)
+SUBDIRS			= po $(DIR_GROUP) gfs2 doc tests
 
 install-exec-local:
 			$(INSTALL) -d $(DESTDIR)/$(LOGDIR)
