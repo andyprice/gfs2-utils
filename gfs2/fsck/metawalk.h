@@ -45,10 +45,12 @@ extern int delete_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 				 void *private);
 
 extern int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
-		       const char *btype, enum gfs2_mark_block mark,
-		       const char *caller, int line);
+			      const char *btype, enum gfs2_mark_block mark,
+			      int error_on_dinode,
+			      const char *caller, int line);
 extern int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
-		       enum gfs2_mark_block new_blockmap_state);
+			      int error_on_dinode,
+			      enum gfs2_mark_block new_blockmap_state);
 extern void reprocess_inode(struct gfs2_inode *ip, const char *desc);
 extern struct duptree *dupfind(uint64_t block);
 extern struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
@@ -63,8 +65,10 @@ extern int repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no, int lindex,
 
 #define is_duplicate(dblock) ((dupfind(dblock)) ? 1 : 0)
 
-#define fsck_blockmap_set(ip, b, bt, m) _fsck_blockmap_set(ip, b, bt, m, \
-							   __FUNCTION__, __LINE__)
+#define fsck_blockmap_set(ip, b, bt, m) \
+	_fsck_blockmap_set(ip, b, bt, m, 0, __FUNCTION__, __LINE__)
+#define fsck_blkmap_set_noino(ip, b, bt, m) \
+	_fsck_blockmap_set(ip, b, bt, m, 1, __FUNCTION__, __LINE__)
 
 enum meta_check_rc {
 	meta_error = -1,

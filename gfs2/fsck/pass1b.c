@@ -501,7 +501,7 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 				dup_delete(dh.dt);
 			/* Now fix the block type of the block in question. */
 			gfs2_blockmap_set(bl, dup_blk, gfs2_block_free);
-			check_n_fix_bitmap(sdp, dup_blk, gfs2_block_free);
+			check_n_fix_bitmap(sdp, dup_blk, 0, gfs2_block_free);
 		}
 	}
 	return 0;

@@ -1713,7 +1713,7 @@ int pass2(struct gfs2_sbd *sdp)
 			/* Can't use fsck_blockmap_set here because we don't
 			   have an inode in memory. */
 			gfs2_blockmap_set(bl, dirblk, gfs2_inode_invalid);
-			check_n_fix_bitmap(sdp, dirblk, gfs2_inode_invalid);
+			check_n_fix_bitmap(sdp, dirblk, 0, gfs2_inode_invalid);
 		}
 		ip = fsck_load_inode(sdp, dirblk);
 		if (!ds.dotdir) {

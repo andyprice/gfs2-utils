@@ -150,7 +150,7 @@ static int resuscitate_metalist(struct gfs2_inode *ip, uint64_t block,
 	if (fsck_system_inode(ip->i_sbd, block))
 		fsck_blockmap_set(ip, block, _("system file"), gfs2_indir_blk);
 	else
-		check_n_fix_bitmap(ip->i_sbd, block, gfs2_indir_blk);
+		check_n_fix_bitmap(ip->i_sbd, block, 0, gfs2_indir_blk);
 	bc->indir_count++;
 	return meta_is_good;
 }
@@ -204,7 +204,7 @@ static int resuscitate_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	if (fsck_system_inode(sdp, block))
 		fsck_blockmap_set(ip, block, _("system file"), dinode_type);
 	else
-		check_n_fix_bitmap(sdp, block, dinode_type);
+		check_n_fix_bitmap(sdp, block, 0, dinode_type);
 	/* Return the number of leaf entries so metawalk doesn't flag this
 	   leaf as having none. */
 	*count = be16_to_cpu(((struct gfs2_leaf *)bh->b_data)->lf_entries);
@@ -339,6 +339,8 @@ static int undo_reference(struct gfs2_inode *ip, uint64_t block, int meta,
 	struct block_count *bc = (struct block_count *)private;
 	struct duptree *dt;
 	struct inode_with_dups *id;
+	int old_bitmap_state = 0;
+	struct rgrp_tree *rgd;
 
 	if (!valid_block(ip->i_sbd, block)) { /* blk outside of FS */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
@@ -367,6 +369,12 @@ static int undo_reference(struct gfs2_inode *ip, uint64_t block, int meta,
 			return 1;
 		}
 	}
+	if (!meta) {
+		rgd = gfs2_blk2rgrpd(ip->i_sbd, block);
+		old_bitmap_state = lgfs2_get_bitmap(ip->i_sbd, block, rgd);
+		if (old_bitmap_state == GFS2_BLKST_DINODE)
+			return -1;
+	}
 	fsck_blockmap_set(ip, block,
 			  meta ? _("bad indirect") : _("referenced data"),
 			  gfs2_block_free);
@@ -383,6 +391,51 @@ static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
 			   void *private)
 {
 	return undo_reference(ip, block, 0, private);
+}
+
+/* blockmap_set_as_data - set block as 'data' in the blockmap, if not dinode
+ *
+ * This function tries to set a block that's referenced as data as 'data'
+ * in the fsck blockmap. But if that block is marked as 'dinode' in the
+ * rgrp bitmap, it does additional checks to see if it looks like a dinode.
+ * Note that previous checks were done for duplicate references, so this
+ * is checking for dinodes that we haven't processed yet.
+ */
+static int blockmap_set_as_data(struct gfs2_inode *ip, uint64_t block)
+{
+	int error;
+	struct gfs2_buffer_head *bh;
+	struct gfs2_dinode *di;
+
+	error = fsck_blkmap_set_noino(ip, block, _("data"),  gfs2_block_used);
+	if (!error)
+		return 0;
+
+	error = 0;
+	/* The bitmap says it's a dinode, but a block reference begs to differ.
+	   So which is it? */
+	bh = bread(ip->i_sbd, block);
+	if (gfs2_check_meta(bh, GFS2_METATYPE_DI) != 0)
+		goto out;
+
+	/* The meta header agrees it's a dinode. But it might be data in
+	   disguise, so do some extra checks. */
+	di = (struct gfs2_dinode *)bh->b_data;
+	if (be64_to_cpu(di->di_num.no_addr) != block)
+		goto out;
+
+	log_err(_("Inode %lld (0x%llx) has a reference to block %lld (0x%llx) "
+		  "as a data block, but it appears to be a dinode we "
+		  "haven't checked yet.\n"),
+		(unsigned long long)ip->i_di.di_num.no_addr,
+		(unsigned long long)ip->i_di.di_num.no_addr,
+		(unsigned long long)block, (unsigned long long)block);
+	error = -1;
+out:
+	if (!error)
+		fsck_blockmap_set(ip, block, _("data"),  gfs2_block_used);
+	brelse(bh);
+	return error;
 }
 
 static int check_data(struct gfs2_inode *ip, uint64_t metablock,
@@ -469,7 +522,7 @@ static int check_data(struct gfs2_inode *ip, uint64_t metablock,
 			 (unsigned long long)block, (unsigned long long)block);
 		fsck_blockmap_set(ip, block, _("jdata"), gfs2_jdata);
 	} else
-		fsck_blockmap_set(ip, block, _("data"), gfs2_block_used);
+		return blockmap_set_as_data(ip, block);
 	return 0;
 }
 
@@ -1199,7 +1252,7 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 				 (unsigned long long)iblock,
 				 (unsigned long long)iblock);
 			gfs2_blockmap_set(bl, iblock, gfs2_block_free);
-			check_n_fix_bitmap(sdp, iblock, gfs2_block_free);
+			check_n_fix_bitmap(sdp, iblock, 0, gfs2_block_free);
 			inode_put(sysinode);
 		}
 	}
@@ -1486,7 +1539,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 				   "%llu (0x%llx)\n"),
 				 (unsigned long long)block,
 				 (unsigned long long)block);
-			check_n_fix_bitmap(sdp, block, gfs2_block_free);
+			check_n_fix_bitmap(sdp, block, 0, gfs2_block_free);
 		} else if (handle_di(sdp, bh) < 0) {
 			stack;
 			brelse(bh);
@@ -1596,7 +1649,7 @@ int pass1(struct gfs2_sbd *sdp)
 			}
 			/* rgrps and bitmaps don't have bits to represent
 			   their blocks, so don't do this:
-			check_n_fix_bitmap(sdp, rgd->ri.ri_addr + i,
+			check_n_fix_bitmap(sdp, rgd->ri.ri_addr + i, 0,
 			gfs2_meta_rgrp);*/
 		}
 

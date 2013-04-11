@@ -275,7 +275,7 @@ int pass3(struct gfs2_sbd *sdp)
 					gfs2_blockmap_set(bl, di->dinode.no_addr,
 							  gfs2_block_free);
 					check_n_fix_bitmap(sdp, di->dinode.no_addr,
-							   gfs2_block_free);
+							   0, gfs2_block_free);
 					break;
 				} else
 					log_err( _("Unlinked directory with bad block remains\n"));
@@ -299,7 +299,7 @@ int pass3(struct gfs2_sbd *sdp)
 				   because we don't have ip */
 				gfs2_blockmap_set(bl, di->dinode.no_addr,
 						  gfs2_block_free);
-				check_n_fix_bitmap(sdp, di->dinode.no_addr,
+				check_n_fix_bitmap(sdp, di->dinode.no_addr, 0,
 						   gfs2_block_free);
 				log_err( _("The block was cleared\n"));
 				break;

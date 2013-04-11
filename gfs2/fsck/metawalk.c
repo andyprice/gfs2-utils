@@ -27,7 +27,7 @@
    is used to set the latter.  The two must be kept in sync, otherwise
    you'll get bitmap mismatches.  This function checks the status of the
    bitmap whenever the blockmap changes, and fixes it accordingly. */
-int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
+int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 		       enum gfs2_mark_block new_blockmap_state)
 {
 	int old_bitmap_state, new_bitmap_state;
@@ -49,6 +49,16 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
 			/* gfs1 descriptions: */
 			{"free", "data", "free meta", "metadata", "reserved"}};
 
+		if (error_on_dinode && old_bitmap_state == GFS2_BLKST_DINODE &&
+		    new_bitmap_state != GFS2_BLKST_FREE) {
+			log_debug(_("Reference as '%s' to block %llu (0x%llx) "
+				    "which was marked as dinode. Needs "
+				    "further investigation.\n"),
+				  allocdesc[sdp->gfs1][new_bitmap_state],
+				  (unsigned long long)blk,
+				  (unsigned long long)blk);
+			return 1;
+		}
 		/* Keep these messages as short as possible, or the output
 		   gets to be huge and unmanageable. */
 		log_err( _("Block %llu (0x%llx) was '%s', should be %s.\n"),
@@ -106,6 +116,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
  */
 int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 		       const char *btype, enum gfs2_mark_block mark,
+		       int error_on_dinode,
 		       const char *caller, int fline)
 {
 	int error;
@@ -164,9 +175,11 @@ int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 
 	/* First, check the rgrp bitmap against what we think it should be.
 	   If that fails, it's an invalid block--part of an rgrp. */
-	error = check_n_fix_bitmap(ip->i_sbd, bblock, mark);
+	error = check_n_fix_bitmap(ip->i_sbd, bblock, error_on_dinode, mark);
 	if (error) {
-		log_err( _("This block is not represented in the bitmap.\n"));
+		if (error < 0)
+			log_err( _("This block is not represented in the "
+				   "bitmap.\n"));
 		return error;
 	}
 
@@ -517,7 +530,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 
 	if (pass->check_leaf) {
 		error = pass->check_leaf(ip, *leaf_no, pass->private);
-		if (error) {
+		if (error == -EEXIST) {
 			log_info(_("Previous reference to leaf %lld (0x%llx) "
 				   "has already checked it; skipping.\n"),
 				 (unsigned long long)*leaf_no,
