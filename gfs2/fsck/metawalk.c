@@ -1325,7 +1325,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
  */
 static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		      struct gfs2_buffer_head *bh, int head_size,
-		      uint64_t *blks_checked)
+		      uint64_t *blks_checked, uint64_t *error_blk)
 {
 	int error = 0, rc = 0;
 	uint64_t block, *ptr;
@@ -1349,8 +1349,13 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		rc = pass->check_data(ip, metablock, block, pass->private);
 		if (!error && rc) {
 			error = rc;
-			log_info(_("\nUnrecoverable data block error %d on "
-				   "block %llu (0x%llx).\n"), rc,
+			log_info("\n");
+			if (rc < 0) {
+				*error_blk = block;
+				log_info(_("Unrecoverable "));
+			}
+			log_info(_("data block error %d on block %llu "
+				   "(0x%llx).\n"), rc,
 				 (unsigned long long)block,
 				 (unsigned long long)block);
 		}
@@ -1362,7 +1367,8 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 }
 
 static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
-			   uint64_t *ptr_start, char *ptr_end)
+			   uint64_t *ptr_start, char *ptr_end,
+			   uint64_t error_blk)
 {
 	int rc = 0;
 	uint64_t block, *ptr;
@@ -1375,6 +1381,8 @@ static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		if (skip_this_pass || fsck_abort)
 			return 1;
 		block =  be64_to_cpu(*ptr);
+		if (block == error_blk)
+			return 1;
 		rc = pass->undo_check_data(ip, block, pass->private);
 		if (rc < 0)
 			return rc;
@@ -1415,6 +1423,8 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	uint64_t blks_checked = 0;
 	int error, rc;
 	int metadata_clean = 0;
+	uint64_t error_blk = 0;
+	int hit_error_blk = 0;
 
 	if (!height && !is_dir(&ip->i_di, ip->i_sbd->gfs1))
 		return 0;
@@ -1460,7 +1470,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 
 		if (pass->check_data)
 			error = check_data(ip, pass, bh, head_size,
-					   &blks_checked);
+					   &blks_checked, &error_blk);
 		if (pass->big_file_msg && ip->i_di.di_blocks > COMFORTABLE_BLKS)
 			pass->big_file_msg(ip, blks_checked);
 	}
@@ -1498,12 +1508,20 @@ undo_metalist:
 							   i, pass->private);
 			else
 				rc = 0;
-			if (metadata_clean && rc == 0 && i == height - 1) {
+			if (metadata_clean && rc == 0 && i == height - 1 &&
+			    !hit_error_blk) {
 				head_size = hdr_size(bh, height);
-				if (head_size)
-					undo_check_data(ip, pass, (uint64_t *)
+				if (head_size) {
+					rc = undo_check_data(ip, pass,
+							     (uint64_t *)
 					      (bh->b_data + head_size),
-					      (bh->b_data + ip->i_sbd->bsize));
+					      (bh->b_data + ip->i_sbd->bsize),
+							     error_blk);
+					if (rc > 0) {
+						hit_error_blk = 1;
+						rc = 0;
+					}
+				}
 			}
 			if (bh == ip->i_bh)
 				osi_list_del(&bh->b_altlist);

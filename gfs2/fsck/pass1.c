@@ -462,7 +462,7 @@ static int check_data(struct gfs2_inode *ip, uint64_t metablock,
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
 				  _("bad (out of range) data"),
 				  gfs2_bad_block);
-		return 1;
+		return -1;
 	}
 	bc->data_count++; /* keep the count sane anyway */
 	q = block_type(block);
