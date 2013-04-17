@@ -70,6 +70,8 @@ int compute_constants(struct gfs2_sbd *sdp)
 	sdp->sd_hash_bsize = sdp->bsize / 2;
 	sdp->sd_hash_bsize_shift = sdp->sd_sb.sb_bsize_shift - 1;
 	sdp->sd_hash_ptrs = sdp->sd_hash_bsize / sizeof(uint64_t);
+	sdp->sd_blocks_per_bitmap = (sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header))
+	                             * GFS2_NBBY;
 
 	/*  Compute maximum reservation required to add a entry to a directory  */
 
