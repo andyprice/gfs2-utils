@@ -84,13 +84,8 @@ static int pass1_repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no,
 			     int lindex, int ref_count, const char *msg,
 			     void *private)
 {
-	struct block_count *bc = (struct block_count *)private;
-	int new_leaf_blks;
-
-	new_leaf_blks = repair_leaf(ip, leaf_no, lindex, ref_count, msg);
-	bc->indir_count += new_leaf_blks;
-
-	return new_leaf_blks;
+	repair_leaf(ip, leaf_no, lindex, ref_count, msg, 0);
+	return 0;
 }
 
 struct metawalk_fxns pass1_fxns = {

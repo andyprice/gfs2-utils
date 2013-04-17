@@ -1040,7 +1040,7 @@ static int pass2_repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no,
 			     int lindex, int ref_count, const char *msg,
 			     void *private)
 {
-	return repair_leaf(ip, leaf_no, lindex, ref_count, msg);
+	return repair_leaf(ip, leaf_no, lindex, ref_count, msg, 1);
 }
 
 /* The purpose of leafck_fxns is to provide a means for function fix_hashtable

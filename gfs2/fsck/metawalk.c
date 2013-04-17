@@ -1955,7 +1955,7 @@ int write_new_leaf(struct gfs2_inode *dip, int start_lindex, int num_copies,
  * leaf a bit, but it's better than deleting the whole directory,
  * which is what used to happen before. */
 int repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no, int lindex,
-		int ref_count, const char *msg)
+		int ref_count, const char *msg, int allow_alloc)
 {
 	int new_leaf_blks = 0, error, refs;
 	uint64_t bn = 0;
@@ -1968,6 +1968,35 @@ int repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no, int lindex,
 		 (unsigned long long)*leaf_no, msg);
 	if (!query( _("Attempt to patch around it? (y/n) "))) {
 		log_err( _("Bad leaf left in place.\n"));
+		goto out;
+	}
+	if (!allow_alloc) {
+		uint64_t *cpyptr;
+		char *padbuf;
+		int pad_size, i;
+
+		padbuf = malloc(ref_count * sizeof(uint64_t));
+		cpyptr = (uint64_t *)padbuf;
+		for (i = 0; i < ref_count; i++) {
+			*cpyptr = 0;
+			cpyptr++;
+		}
+		pad_size = ref_count * sizeof(uint64_t);
+		log_err(_("Writing zeros to the hash table of directory %lld "
+			  "(0x%llx) at index: 0x%x for 0x%x pointers.\n"),
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			lindex, ref_count);
+		if (ip->i_sbd->gfs1)
+			gfs1_writei(ip, padbuf, lindex * sizeof(uint64_t),
+				    pad_size);
+		else
+			gfs2_writei(ip, padbuf, lindex * sizeof(uint64_t),
+				    pad_size);
+		free(padbuf);
+		log_err( _("Directory Inode %llu (0x%llx) patched.\n"),
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr);
 		goto out;
 	}
 	/* We can only write leafs in quantities that are factors of

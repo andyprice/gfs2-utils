@@ -61,7 +61,7 @@ extern int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
 			  int num_copies, const char *before_or_after,
 			  uint64_t *bn);
 extern int repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no, int lindex,
-		       int ref_count, const char *msg);
+		       int ref_count, const char *msg, int allow_alloc);
 
 #define is_duplicate(dblock) ((dupfind(dblock)) ? 1 : 0)
 
