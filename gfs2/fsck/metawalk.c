@@ -473,11 +473,12 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 
 		if ((char *)dent + de.de_rec_len >= bh_end){
 			log_debug( _("Last entry processed for %lld->%lld "
-				     "(0x%llx->0x%llx).\n"),
+				     "(0x%llx->0x%llx), di_blocks=%llu.\n"),
 				   (unsigned long long)ip->i_di.di_num.no_addr,
 				   (unsigned long long)bh->b_blocknr,
 				   (unsigned long long)ip->i_di.di_num.no_addr,
-				   (unsigned long long)bh->b_blocknr);
+				   (unsigned long long)bh->b_blocknr,
+				   (unsigned long long)ip->i_di.di_blocks);
 			break;
 		}
 

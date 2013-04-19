@@ -370,9 +370,10 @@ static int wrong_leaf(struct gfs2_inode *ip, struct gfs2_inum *entry,
 		gfs2_get_leaf_nr(ip, hash_index, &real_leaf);
 		if (real_leaf != planned_leaf) {
 			log_err(_("The planned leaf was split. The new leaf "
-				  "is: %llu (0x%llx)"),
+				  "is: %llu (0x%llx). di_blocks=%llu\n"),
 				(unsigned long long)real_leaf,
-				(unsigned long long)real_leaf);
+				(unsigned long long)real_leaf,
+				(unsigned long long)ip->i_di.di_blocks);
 			fsck_blockmap_set(ip, real_leaf, _("split leaf"),
 					  gfs2_indir_blk);
 		}
@@ -1032,6 +1033,7 @@ static int basic_check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		log_err( _("Bad directory entry '%s' cleared.\n"), tmp_name);
 		return 1;
 	} else {
+		(*count)++;
 		return 0;
 	}
 }
@@ -1150,11 +1152,13 @@ static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
 	/* Look at the first dirent and check its hash value to see if it's
 	   at the proper starting offset. */
 	hash_index = hash_table_index(dentry.de_hash, ip);
+	/* Need to use len here, not *proper_len because the leaf block may
+	   be valid within the range, but starts too soon in the hash table. */
 	if (hash_index < lindex ||  hash_index > lindex + len) {
 		log_err(_("This leaf block has hash index %d, which is out of "
 			  "bounds for where it appears in the hash table "
 			  "(%d - %d)\n"),
-			hash_index, lindex, lindex + len);
+			hash_index, lindex, lindex + *proper_len);
 		error = lost_leaf(ip, tbl, leafblk, len, lindex, lbh);
 		brelse(lbh);
 		return error;
@@ -1291,6 +1295,8 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 	struct gfs2_buffer_head *lbh;
 	int factor;
 	uint32_t proper_start;
+	uint32_t next_proper_start;
+	int anomaly;
 
 	lindex = 0;
 	while (lindex < hsize) {
@@ -1299,9 +1305,22 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 		len = 1;
 		factor = 0;
 		leafblk = be64_to_cpu(tbl[lindex]);
+		next_proper_start = lindex;
+		anomaly = 0;
 		while (lindex + (len << 1) - 1 < hsize) {
 			if (be64_to_cpu(tbl[lindex + (len << 1) - 1]) !=
 			    leafblk)
+				break;
+			next_proper_start = (lindex & ~((len << 1) - 1));
+			if (lindex != next_proper_start)
+				anomaly = 1;
+			/* Check if there are other values written between
+			   here and the next factor. */
+			for (i = len; !anomaly && i + lindex < hsize &&
+				     i < (len << 1); i++)
+				if (be64_to_cpu(tbl[lindex + i]) != leafblk)
+					anomaly = 1;
+			if (anomaly)
 				break;
 			len <<= 1;
 			factor++;
@@ -1344,8 +1363,10 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 		proper_start = (lindex & ~(proper_len - 1));
 		if (lindex != proper_start) {
 			log_debug(_("lindex 0x%llx is not a proper starting "
-				    "point for this leaf: 0x%llx\n"),
+				    "point for leaf %llu (0x%llx): 0x%llx\n"),
 				  (unsigned long long)lindex,
+				  (unsigned long long)leafblk,
+				  (unsigned long long)leafblk,
 				  (unsigned long long)proper_start);
 			changes = fix_hashtable(ip, tbl, hsize, leafblk,
 						lindex, proper_start, len,
@@ -1368,9 +1389,11 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 		   depth, and adjust the hash table accordingly. */
 		if (len != proper_len) {
 			log_err(_("Length %d (0x%x) is not a proper length "
-				  "for this leaf. Valid boundary assumed to "
-				  "be %d (0x%x).\n"),
-				len, len, proper_len, proper_len);
+				  "for leaf %llu (0x%llx). Valid boundary "
+				  "assumed to be %d (0x%x).\n"), len, len,
+				(unsigned long long)leafblk,
+				(unsigned long long)leafblk,
+				proper_len, proper_len);
 			lbh = bread(ip->i_sbd, leafblk);
 			gfs2_leaf_in(&leaf, lbh);
 			if (gfs2_check_meta(lbh, GFS2_METATYPE_LF) ||
@@ -1419,8 +1442,10 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 			proper_len = 1 << (ip->i_di.di_depth - leaf.lf_depth);
 			if (proper_len != len) {
 				log_debug(_("Length 0x%x is not proper for "
-					    "this leaf: 0x%x"),
-					  len, proper_len);
+					    "leaf %llu (0x%llx): 0x%x"),
+					  len, (unsigned long long)leafblk,
+					  (unsigned long long)leafblk,
+					  proper_len);
 				changes = fix_hashtable(ip, tbl, hsize,
 							leafblk, lindex,
 							lindex, len,
