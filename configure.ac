@@ -278,4 +278,4 @@ AC_CONFIG_FILES([Makefile
 
 AC_OUTPUT
 
-test x"$BUILD_TESTS" = x && AC_MSG_NOTICE([package 'check' not found; unit tests will not be built])
+test x"$have_check" = "xyes" || AC_MSG_NOTICE([package 'check' not found; unit tests will not be built])
