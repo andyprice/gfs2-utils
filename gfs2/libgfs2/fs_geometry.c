@@ -207,7 +207,7 @@ void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 		rl->rg.rg_header.mh_format = GFS2_FORMAT_RG;
 		rl->rg.rg_free = rgblocks;
 
-		if (gfs2_compute_bitstructs(sdp, rl)) {
+		if (gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, rl)) {
 			fprintf(stderr, "%s: Unable to build resource groups "
 				"with these characteristics.\n", __FUNCTION__);
 			exit(-1);

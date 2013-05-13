@@ -1898,7 +1898,7 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 			rgd->bh[x] = bget(sdp, rgd->ri.ri_addr + x);
 			memset(rgd->bh[x]->b_data, 0, sdp->bsize);
 		}
-		if (gfs2_compute_bitstructs(sdp, rgd)) {
+		if (gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, rgd)) {
 			log_crit(_("gfs2_convert: Error converting bitmaps.\n"));
 			exit(-1);
 		}

@@ -606,7 +606,7 @@ static int place_rgrps(struct gfs2_sbd *sdp, const struct mkfs_opts *opts)
 
 		/* TODO: This call allocates buffer heads and bitmap pointers
 		 * in rgt. We really shouldn't need to do that. */
-		err = gfs2_compute_bitstructs(sdp, rgt);
+		err = gfs2_compute_bitstructs(sdp->bsize, rgt);
 		if (err != 0) {
 			fprintf(stderr, _("Could not compute bitmaps. "
 			        "Check resource group and block size options.\n"));

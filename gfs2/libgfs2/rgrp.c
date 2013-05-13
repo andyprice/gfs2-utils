@@ -12,11 +12,11 @@
 
 /**
  * gfs2_compute_bitstructs - Compute the bitmap sizes
- * @rgd: The resource group descriptor
- *
+ * bsize: Block size
+ * rgd: The resource group descriptor
  * Returns: 0 on success, -1 on error
  */
-int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
+int gfs2_compute_bitstructs(const uint32_t bsize, struct rgrp_tree *rgd)
 {
 	struct gfs2_bitmap *bits;
 	uint32_t length = rgd->ri.ri_length;
@@ -49,7 +49,7 @@ int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 			bits->bi_len = bytes;
 		}
 		else if (x == 0){
-			bytes = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_rgrp);
+			bytes = bsize - sizeof(struct gfs2_rgrp);
 			bits->bi_offset = sizeof(struct gfs2_rgrp);
 			bits->bi_start = 0;
 			bits->bi_len = bytes;
@@ -61,7 +61,7 @@ int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 			bits->bi_len = bytes;
 		}
 		else{
-			bytes = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header);
+			bytes = bsize - sizeof(struct gfs2_meta_header);
 			bits->bi_offset = sizeof(struct gfs2_meta_header);
 			bits->bi_start = rgd->ri.ri_bitbytes - bytes_left;
 			bits->bi_len = bytes;

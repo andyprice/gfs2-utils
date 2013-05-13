@@ -503,7 +503,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 				break; /* end of bitmap, so call it quits. */
 		} /* for subsequent bitmaps */
 		
-		gfs2_compute_bitstructs(sdp, calc_rgd);
+		gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, calc_rgd);
 		calc_rgd->ri.ri_data0 = calc_rgd->ri.ri_addr +
 			calc_rgd->ri.ri_length;
 		if (prev_rgd) {
@@ -732,7 +732,7 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
 		memcpy(&exp->rg, &rgd->rg, sizeof(exp->rg));
 		exp->bits = NULL;
 		exp->bh = NULL;
-		gfs2_compute_bitstructs(sdp, exp);
+		gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, exp);
 	}
 	sdp->rgrps = *num_rgs;
 	return 0;
@@ -948,7 +948,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 			}
 			else
 				log_err( _("rindex not fixed.\n"));
-			gfs2_compute_bitstructs(sdp, actual);
+			gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, actual);
 			rindex_modified = FALSE;
 		}
 		e = enext;

@@ -725,7 +725,7 @@ extern int gfs2_find_jhead(struct gfs2_inode *ip, struct gfs2_log_header *head);
 extern int clean_journal(struct gfs2_inode *ip, struct gfs2_log_header *head);
 
 /* rgrp.c */
-extern int gfs2_compute_bitstructs(struct gfs2_sbd *sdp, struct rgrp_tree *rgd);
+extern int gfs2_compute_bitstructs(const uint32_t bsize, struct rgrp_tree *rgd);
 extern struct rgrp_tree *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk);
 extern uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd);
 extern void gfs2_rgrp_relse(struct rgrp_tree *rgd);
