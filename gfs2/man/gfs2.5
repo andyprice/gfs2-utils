@@ -196,3 +196,190 @@ The GFS2 documentation has been split into a number of sections:
 \fBgfs2_tool\fP(8) Tool to manipulate a GFS2 file system (obsolete)
 \fBtunegfs2\fP(8) Tool to manipulate GFS2 superblocks
 
+.SH SETUP
+
+GFS2 clustering is driven by the dlm, which depends on dlm_controld to
+provide clustering from userspace.  dlm_controld clustering is built on
+corosync cluster/group membership and messaging.
+
+Follow these steps to manually configure and run gfs2/dlm/corosync.
+
+.B 1. create /etc/corosync/corosync.conf and copy to all nodes
+
+In this sample, replace cluster_name and IP addresses, and add nodes as
+needed.  If using only two nodes, uncomment the two_node line.
+See corosync.conf(5) for more information.
+
+.nf
+totem {
+        version: 2
+        secauth: off
+        cluster_name: abc
+}
+
+nodelist {
+        node {
+                ring0_addr: 10.10.10.1
+                nodeid: 1
+        }
+        node {
+                ring0_addr: 10.10.10.2
+                nodeid: 2
+        }
+        node {
+                ring0_addr: 10.10.10.3
+                nodeid: 3
+        }
+}
+
+quorum {
+        provider: corosync_votequorum
+#       two_node: 1
+}
+
+logging {
+        to_syslog: yes
+}
+.fi
+
+.PP
+
+.B 2. start corosync on all nodes
+
+.nf
+systemctl start corosync
+.fi
+
+Run corosync-quorumtool to verify that all nodes are listed.
+
+.PP
+
+.B 3. create /etc/dlm/dlm.conf and copy to all nodes
+
+.B *
+To use no fencing, use this line:
+
+.nf
+enable_fencing=0
+.fi
+
+.B *
+To use no fencing, but exercise fencing functions, use this line:
+
+.nf
+fence_all /bin/true
+.fi
+
+The "true" binary will be executed for all nodes and will succeed (exit 0)
+immediately.
+
+.B *
+To use manual fencing, use this line:
+
+.nf
+fence_all /bin/false
+.fi
+
+The "false" binary will be executed for all nodes and will fail (exit 1)
+immediately.
+
+When a node fails, manually run: dlm_tool fence_ack <nodeid>
+
+.B *
+To use stonith/pacemaker for fencing, use this line:
+
+.nf
+fence_all /usr/sbin/dlm_stonith
+.fi
+
+The "dlm_stonith" binary will be executed for all nodes.  If
+stonith/pacemaker systems are not available, dlm_stonith will fail and
+this config becomes the equivalent of the previous /bin/false config.
+
+.B *
+To use an APC power switch, use these lines:
+
+.nf
+device  apc /usr/sbin/fence_apc ipaddr=1.1.1.1 login=admin password=pw
+connect apc node=1 port=1
+connect apc node=2 port=2
+connect apc node=3 port=3
+.fi
+
+Other network switch based agents are configured similarly.
+
+.B *
+To use sanlock/watchdog fencing, use these lines:
+
+.nf
+device wd /usr/sbin/fence_sanlock path=/dev/fence/leases
+connect wd node=1 host_id=1
+connect wd node=2 host_id=2
+unfence wd
+.fi
+
+See fence_sanlock(8) for more information.
+
+.B *
+For other fencing configurations see dlm.conf(5) man page.
+
+.PP
+
+.B 4. start dlm_controld on all nodes
+
+.nf
+systemctl start dlm
+.fi
+
+Run "dlm_tool status" to verify that all nodes are listed.
+
+.PP
+
+.B 5. if using clvm, start clvmd on all nodes
+
+systemctl clvmd start
+
+.PP
+
+.B 6. make new gfs2 file systems
+
+mkfs.gfs2 -p lock_dlm -t cluster_name:fs_name -j num /path/to/storage
+
+The cluster_name must match the name used in step 1 above.
+The fs_name must be a unique name in the cluster.
+The -j option is the number of journals to create, there must
+be one for each node that will mount the fs.
+
+.PP
+
+.B 7. mount gfs2 file systems
+
+mount /path/to/storage /mountpoint
+
+Run "dlm_tool ls" to verify the nodes that have each fs mounted.
+
+.PP
+
+.B 8. shut down
+
+.nf
+umount -a -t gfs2
+systemctl clvmd stop
+systemctl dlm stop
+systemctl corosync stop
+.fi
+
+.PP
+
+.B More setup information:
+.br
+.BR dlm_controld (8),
+.br
+.BR dlm_tool (8),
+.br
+.BR dlm.conf (5),
+.br
+.BR corosync (8),
+.br
+.BR corosync.conf (5)
+.br
