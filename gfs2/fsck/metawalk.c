@@ -1530,6 +1530,11 @@ undo_metalist:
 				brelse(bh);
 		}
 	}
+	/* There may be leftover duplicate records, so we need to delete them.
+	   For example, if a metadata block was found to be a duplicate, we
+	   may not have added it to the metalist, which means it's not there
+	   to undo. */
+	delete_all_dups(ip);
 	/* Set the dinode as "bad" so it gets deleted */
 	fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
 			  _("corrupt"), gfs2_block_free);
