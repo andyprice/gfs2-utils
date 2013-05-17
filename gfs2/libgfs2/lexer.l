@@ -32,7 +32,9 @@ number			({decnumber}|{hexnumber})
 offset			\+{number}
 id			{letter}({letter}|{decdigit}|\.)*
 string			\'([^\']|\\\')*\'
-comment			\/\/.*\n
+ccomment		\/\/.*\n
+shcomment		\#.*\n
+comment			({ccomment}|{shcomment})
 whitespace		[ \t\r]+
 
 %%
