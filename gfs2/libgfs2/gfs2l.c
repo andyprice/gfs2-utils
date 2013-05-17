@@ -5,19 +5,23 @@
 
 static void usage(const char *cmd)
 {
-	fprintf(stderr, "Usage: %s -f <script_path> <fs_path>\n", cmd);
-	fprintf(stderr, "Use -f - for stdin\n");
+	printf("A language for modifying and querying a gfs2 file system.\n");
+	printf("Usage: %s [options] <fs_path>\n", cmd);
+	printf("Available options:\n");
+	printf("  -h                Print this help message and exit\n");
+	printf("  -f <script_path>  Path to script file or '-' for stdin\n");
 }
 
 struct cmdopts {
 	char *fspath;
 	FILE *src;
+	unsigned help:1;
 };
 
 static int getopts(int argc, char *argv[], struct cmdopts *opts)
 {
 	int opt;
-	while ((opt = getopt(argc, argv, "f:")) != -1) {
+	while ((opt = getopt(argc, argv, "f:h")) != -1) {
 		switch (opt) {
 		case 'f':
 			if (!strcmp("-", optarg)) {
@@ -30,14 +34,18 @@ static int getopts(int argc, char *argv[], struct cmdopts *opts)
 				}
 			}
 			break;
+		case 'h':
+			opts->help = 1;
+			return 0;
 		default:
-			usage(argv[0]);
+			fprintf(stderr, "Use -h for help\n");
 			return 1;
 		}
 	}
 
 	if (argc - optind != 1) {
 		usage(argv[0]);
+		fprintf(stderr, "Missing file system path. Use -h for help.\n");
 		return 1;
 	}
 
@@ -104,6 +112,11 @@ int main(int argc, char *argv[])
 
 	if (getopts(argc, argv, &opts)) {
 		exit(1);
+	}
+
+	if (opts.help) {
+		usage(argv[0]);
+		exit(0);
 	}
 
 	sdp = openfs(argv[optind]);
