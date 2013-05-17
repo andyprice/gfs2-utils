@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <string.h>
 #include "libgfs2.h"
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
@@ -815,6 +816,20 @@ const struct lgfs2_metadata *lgfs2_find_mtype(uint32_t mh_type, const unsigned v
 
 	do {
 		if ((m[n].versions & versions) && m[n].mh_type == mh_type)
+			return &m[n];
+		n++;
+	} while (n < lgfs2_metadata_size);
+
+	return NULL;
+}
+
+const struct lgfs2_metadata *lgfs2_find_mtype_name(const char *name, const unsigned versions)
+{
+	const struct lgfs2_metadata *m = lgfs2_metadata;
+	unsigned n = 0;
+
+	do {
+		if ((m[n].versions & versions) && !strcmp(m[n].name, name))
 			return &m[n];
 		n++;
 	} while (n < lgfs2_metadata_size);

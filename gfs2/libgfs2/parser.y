@@ -65,6 +65,12 @@ set_stmt:	TOK_SET blockspec structspec {
 			$2->ast_right = $3;
 			$$ = $1;
 		}
+		| TOK_SET blockspec typespec structspec {
+			$1->ast_right = $2;
+			$2->ast_right = $3;
+			$3->ast_right = $4;
+			$$ = $1;
+		}
 ;
 get_stmt:	TOK_GET blockspec { $1->ast_right = $2; $$ = $1; }
 		| TOK_GET blockspec TOK_STATE {
@@ -82,6 +88,11 @@ blockspec:	offset			{ $$ = $1; }
 offset:		blockspec TOK_OFFSET {
 			$2->ast_left = $1;
 			$$ = $2;
+		}
+;
+typespec:	identifier {
+			$1->ast_type = AST_EX_TYPESPEC;
+			$$ = $1;
 		}
 ;
 block_literal:	identifier		{ $$ = $1; }
@@ -107,6 +118,7 @@ path:		string			{
 		}
 ;
 structspec:	TOK_LBRACE fieldspecs TOK_RBRACE { $$ = $2; }
+structspec:	TOK_LBRACE TOK_RBRACE            { $$ = NULL; }
 ;
 fieldspecs:	fieldspecs TOK_COMMA fieldspec	{ $1->ast_left = $3; $$ = $1; }
 		| fieldspec			{ $$ = $1; }

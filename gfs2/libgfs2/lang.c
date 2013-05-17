@@ -27,6 +27,7 @@ const char* ast_type_string[] = {
 	[AST_EX_BLOCKSPEC] = "BLOCKSPEC",
 	[AST_EX_STRUCTSPEC] = "STRUCTSPEC",
 	[AST_EX_FIELDSPEC] = "FIELDSPEC",
+	[AST_EX_TYPESPEC] = "TYPESPEC",
 
 	// Keywords
 	[AST_KW_STATE] = "STATE",
@@ -64,6 +65,7 @@ static int ast_expr_init(struct ast_node *expr, ast_node_t type, const char *str
 	case AST_EX_BLOCKSPEC:
 	case AST_EX_STRUCTSPEC:
 	case AST_EX_FIELDSPEC:
+	case AST_EX_TYPESPEC:
 	case AST_KW_STATE:
 		break;
 	default:
@@ -173,7 +175,6 @@ static uint64_t ast_lookup_path(char *path, struct gfs2_sbd *sbd)
 		segment = strtok_r(NULL, "/", &c);
 	}
 
-	perror("Path lookup");
 	return 0;
 }
 
@@ -263,6 +264,8 @@ static uint64_t ast_lookup_block_num(struct ast_node *ast, struct gfs2_sbd *sbd)
 		bn = ast_lookup_block_num(ast->ast_left, sbd) + ast->ast_num;
 		break;
 	case AST_EX_ADDRESS:
+		if (gfs2_check_range(sbd, ast->ast_num))
+			break;
 		bn = ast->ast_num;
 		break;
 	case AST_EX_PATH:
@@ -284,6 +287,7 @@ static struct gfs2_buffer_head *ast_lookup_block(struct ast_node *node, struct g
 {
 	uint64_t bn = ast_lookup_block_num(node, sbd);
 	if (bn == 0) {
+		fprintf(stderr, "Block not found: %s\n", node->ast_text);
 		return NULL;
 	}
 
@@ -526,6 +530,23 @@ static int ast_field_set(struct gfs2_buffer_head *bh, const struct lgfs2_metafie
 	return AST_INTERP_INVAL;
 }
 
+static const struct lgfs2_metadata *lang_find_mtype(struct ast_node *node, struct gfs2_buffer_head *bh, unsigned ver)
+{
+	const struct lgfs2_metadata *mtype = NULL;
+
+	if (node->ast_type == AST_EX_TYPESPEC) {
+		mtype = lgfs2_find_mtype_name(node->ast_str, ver);
+		if (mtype == NULL)
+			fprintf(stderr, "Invalid block type: %s\n", node->ast_text);
+	} else {
+		mtype = lgfs2_find_mtype(lgfs2_get_block_type(bh), ver);
+		if (mtype == NULL)
+			fprintf(stderr, "Unrecognised block at: %s\n", node->ast_text);
+	}
+
+	return mtype;
+}
+
 /**
  * Interpret an assignment (set)
  */
@@ -536,9 +557,9 @@ static struct lgfs2_lang_result *ast_interp_set(struct lgfs2_lang_state *state,
 	struct ast_node *fieldspec;
 	struct ast_node *fieldname;
 	struct ast_node *fieldval;
-	uint32_t mh_type = 0;
 	int i = 0;
 	int ret = 0;
+	unsigned ver = sbd->gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2;
 
 	struct lgfs2_lang_result *result = calloc(1, sizeof(struct lgfs2_lang_result));
 	if (result == NULL) {
@@ -551,14 +572,20 @@ static struct lgfs2_lang_result *ast_interp_set(struct lgfs2_lang_state *state,
 		goto out_err;
 	}
 
-	mh_type = lgfs2_get_block_type(result->lr_bh);
-	if (mh_type == 0) {
+	result->lr_mtype = lang_find_mtype(lookup->ast_right, result->lr_bh, ver);
+	if (result->lr_mtype == NULL) {
+		fprintf(stderr, "Unrecognised block at: %s\n", lookup->ast_str);
 		goto out_err;
 	}
 
-	result->lr_mtype = lgfs2_find_mtype(mh_type, sbd->gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2);
-	if (result->lr_mtype == NULL) {
-		goto out_err;
+	if (lookup->ast_right->ast_type == AST_EX_TYPESPEC) {
+		struct gfs2_meta_header mh = {
+			.mh_magic = GFS2_MAGIC,
+			.mh_type = result->lr_mtype->mh_type,
+			.mh_format = result->lr_mtype->mh_format,
+		};
+		gfs2_meta_header_out(&mh, result->lr_bh->iov.iov_base);
+		lookup = lookup->ast_right;
 	}
 
 	for (fieldspec = lookup->ast_right;
