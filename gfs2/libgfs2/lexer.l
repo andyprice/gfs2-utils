@@ -32,6 +32,7 @@ number			({decnumber}|{hexnumber})
 offset			\+{number}
 id			{letter}({letter}|{decdigit}|\.)*
 string			\'([^\']|\\\')*\'
+path			\'\/([^\']|\\\')*\'
 ccomment		\/\/.*\n
 shcomment		\#.*\n
 comment			({ccomment}|{shcomment})
@@ -68,6 +69,10 @@ get			{
 			}
 state			{
 			P(STATE, AST_KW_STATE, yytext);
+			}
+{path}			{
+			yytext[yyleng-1] = '\0';
+			P(PATH, AST_EX_PATH, yytext + 1);
 			}
 {string}		{
 			yytext[yyleng-1] = '\0';

@@ -35,106 +35,106 @@ static int yyerror(struct lgfs2_lang_state *state, yyscan_t lexer, const char *e
 %token TOK_GET
 %token TOK_STATE
 %token TOK_STRING
+%token TOK_PATH
 %%
-script:		statements		{
-			state->ls_ast_root = $1;
-			state->ls_interp_curr = $1;
-		}
-		| statements TOK_SEMI	{
-			state->ls_ast_root = $1;
-			state->ls_interp_curr = $1;
-		}
+script:	statements {
+		state->ls_ast_root = $1;
+		state->ls_interp_curr = $1;
+	}
+	| statements TOK_SEMI {
+		state->ls_ast_root = $1;
+		state->ls_interp_curr = $1;
+	}
 ;
-statements:	statements TOK_SEMI statement	{
-			state->ls_ast_tail->ast_left = $3;
-			state->ls_ast_tail = $3;
-			$$ = $1;
-		}
-		| statement		{
-			if (state->ls_ast_tail == NULL)
-				state->ls_ast_tail = $1;
-			$$ = $1;
-		}
+statements: statements TOK_SEMI statement {
+		state->ls_ast_tail->ast_left = $3;
+		state->ls_ast_tail = $3;
+		$$ = $1;
+	}
+	| statement {
+		if (state->ls_ast_tail == NULL)
+			state->ls_ast_tail = $1;
+		$$ = $1;
+	}
 ;
-
-statement:	set_stmt		{ $$ = $1; }
-		| get_stmt		{ $$ = $1; }
+statement: set_stmt { $$ = $1;}
+	| get_stmt { $$ = $1; }
 ;
-set_stmt:	TOK_SET blockspec structspec {
-			$1->ast_right = $2;
-			$2->ast_right = $3;
-			$$ = $1;
-		}
-		| TOK_SET blockspec typespec structspec {
-			$1->ast_right = $2;
-			$2->ast_right = $3;
-			$3->ast_right = $4;
-			$$ = $1;
-		}
+set_stmt: TOK_SET blockspec structspec {
+		$1->ast_right = $2;
+		$2->ast_right = $3;
+		$$ = $1;
+	}
+	| TOK_SET blockspec typespec structspec {
+		$1->ast_right = $2;
+		$2->ast_right = $3;
+		$3->ast_right = $4;
+		$$ = $1;
+	}
 ;
-get_stmt:	TOK_GET blockspec { $1->ast_right = $2; $$ = $1; }
-		| TOK_GET blockspec TOK_STATE {
-			$1->ast_right = $2;
-			$2->ast_right = $3;
-			$$ = $1;
-		}
+get_stmt: TOK_GET blockspec {
+		$1->ast_right = $2; $$ = $1;
+	}
+	| TOK_GET blockspec TOK_STATE {
+		$1->ast_right = $2;
+		$2->ast_right = $3;
+		$$ = $1;
+	}
 ;
-blockspec:	offset			{ $$ = $1; }
-		| address		{ $$ = $1; }
-		| path			{ $$ = $1; }
-		| block_literal		{ $$ = $1; }
-		| subscript		{ $$ = $1; }
+blockspec: offset { $$ = $1; }
+	| address { $$ = $1; }
+	| path { $$ = $1; }
+	| block_literal { $$ = $1; }
+	| subscript { $$ = $1; }
 ;
-offset:		blockspec TOK_OFFSET {
-			$2->ast_left = $1;
-			$$ = $2;
-		}
+offset:	blockspec TOK_OFFSET {
+		$2->ast_left = $1;
+		$$ = $2;
+	}
 ;
-typespec:	identifier {
-			$1->ast_type = AST_EX_TYPESPEC;
-			$$ = $1;
-		}
+typespec: identifier {
+		$1->ast_type = AST_EX_TYPESPEC;
+		$$ = $1;
+	}
 ;
-block_literal:	identifier		{ $$ = $1; }
+block_literal: identifier { $$ = $1; }
 ;
-subscript:	block_literal TOK_LBRACKET index TOK_RBRACKET {
-			$4->ast_left = $1;
-			$1->ast_left = $3;
-			$$ = $4;
-		}
+subscript: block_literal TOK_LBRACKET index TOK_RBRACKET {
+		$4->ast_left = $1;
+		$1->ast_left = $3;
+		$$ = $4;
+	}
 ;
-index:		number			{ $$ = $1; }
-		| identifier		{ $$ = $1; }
+index: number { $$ = $1; }
+	| identifier { $$ = $1; }
 ;
-address:	number			{ $1->ast_type = AST_EX_ADDRESS; $$ = $1; }
+address: number {
+		$1->ast_type = AST_EX_ADDRESS;
+		$$ = $1;
+	 }
 ;
-path:		string			{
-			if (*($1->ast_str) != '/') {
-				fprintf(stderr, "Path doesn't begin with '/': %s\n", $1->ast_str);
-				YYABORT;
-			}
-			$1->ast_type = AST_EX_PATH;
-			$$ = $1;
-		}
+structspec: TOK_LBRACE fieldspecs TOK_RBRACE { $$ = $2; }
+	| TOK_LBRACE TOK_RBRACE { $$ = NULL; }
 ;
-structspec:	TOK_LBRACE fieldspecs TOK_RBRACE { $$ = $2; }
-structspec:	TOK_LBRACE TOK_RBRACE            { $$ = NULL; }
+fieldspecs: fieldspecs TOK_COMMA fieldspec {
+		$1->ast_left = $3;
+		$$ = $1;
+	}
+	| fieldspec { $$ = $1; }
 ;
-fieldspecs:	fieldspecs TOK_COMMA fieldspec	{ $1->ast_left = $3; $$ = $1; }
-		| fieldspec			{ $$ = $1; }
+fieldspec: identifier TOK_COLON fieldvalue {
+		$2->ast_right = $1;
+		$1->ast_right = $3;
+		$$ = $2;
+	}
 ;
-fieldspec:	identifier TOK_COLON fieldvalue {
-			$2->ast_right = $1;
-			$1->ast_right = $3;
-			$$ = $2;
-		}
+fieldvalue: number { $$ = $1; }
+	| string { $$ = $1; }
 ;
-fieldvalue:	number			{ $$ = $1; }
-		| string		{ $$ = $1; }
-;
-number:		TOK_NUMBER		{ $$ = $1; }
-string:		TOK_STRING		{ $$ = $1; }
-identifier:	TOK_ID			{ $$ = $1; }
+number: TOK_NUMBER { $$ = $1; }
+string: TOK_STRING { $$ = $1; }
+identifier: TOK_ID { $$ = $1; }
+path: TOK_PATH { $$ = $1; }
 %%
 
 /**
