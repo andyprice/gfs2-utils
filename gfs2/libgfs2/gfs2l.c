@@ -9,7 +9,7 @@ static void usage(const char *cmd)
 	printf("Usage: %s [options] <fs_path>\n", cmd);
 	printf("Available options:\n");
 	printf("  -h                Print this help message and exit\n");
-	printf("  -f <script_path>  Path to script file or '-' for stdin\n");
+	printf("  -f <script_path>  Path to script file or '-' for stdin (the default)\n");
 	printf("  -T                Print a list of gfs2 structure types and exit\n");
 	printf("  -F <type>         Print a list of fields belonging to a type and exit\n");
 }
@@ -55,12 +55,11 @@ static void print_fields(const char *name)
 static int getopts(int argc, char *argv[], struct cmdopts *opts)
 {
 	int opt;
+	opts->src = stdin;
 	while ((opt = getopt(argc, argv, "F:f:hT")) != -1) {
 		switch (opt) {
 		case 'f':
-			if (!strcmp("-", optarg)) {
-				opts->src = stdin;
-			} else {
+			if (strcmp("-", optarg)) {
 				opts->src = fopen(optarg, "r");
 				if (opts->src == NULL) {
 					perror("Failed to open source file");
