@@ -10,6 +10,8 @@ static void usage(const char *cmd)
 	printf("Available options:\n");
 	printf("  -h                Print this help message and exit\n");
 	printf("  -f <script_path>  Path to script file or '-' for stdin\n");
+	printf("  -T                Print a list of gfs2 structure types and exit\n");
+	printf("  -F <type>         Print a list of fields belonging to a type and exit\n");
 }
 
 struct cmdopts {
@@ -18,10 +20,42 @@ struct cmdopts {
 	unsigned help:1;
 };
 
+static int metastrcmp(const void *a, const void *b)
+{
+	const struct lgfs2_metadata *m1 = *(struct lgfs2_metadata **)a;
+	const struct lgfs2_metadata *m2 = *(struct lgfs2_metadata **)b;
+	return strcmp(m1->name, m2->name);
+}
+
+static void print_structs(void)
+{
+	const struct lgfs2_metadata *mlist[lgfs2_metadata_size];
+	int i;
+	for (i = 0; i < lgfs2_metadata_size; i++)
+		mlist[i] = &lgfs2_metadata[i];
+
+	qsort(mlist, lgfs2_metadata_size, sizeof(struct lgfs2_metadata *), metastrcmp);
+	for (i = 0; i < lgfs2_metadata_size; i++)
+		if (mlist[i]->mh_type != GFS2_METATYPE_NONE)
+			printf("%s\n", mlist[i]->name);
+}
+
+static void print_fields(const char *name)
+{
+	const struct lgfs2_metadata *m = lgfs2_find_mtype_name(name, LGFS2_MD_GFS1|LGFS2_MD_GFS2);
+	if (m != NULL) {
+		const struct lgfs2_metafield *fields = m->fields;
+		const unsigned nfields = m->nfields;
+		int i;
+		for (i = 0; i < nfields; i++)
+			printf("0x%.4x %s\n", fields[i].offset, fields[i].name);
+	}
+}
+
 static int getopts(int argc, char *argv[], struct cmdopts *opts)
 {
 	int opt;
-	while ((opt = getopt(argc, argv, "f:h")) != -1) {
+	while ((opt = getopt(argc, argv, "F:f:hT")) != -1) {
 		switch (opt) {
 		case 'f':
 			if (!strcmp("-", optarg)) {
@@ -34,6 +68,12 @@ static int getopts(int argc, char *argv[], struct cmdopts *opts)
 				}
 			}
 			break;
+		case 'T':
+			print_structs();
+			exit(0);
+		case 'F':
+			print_fields(optarg);
+			exit(0);
 		case 'h':
 			opts->help = 1;
 			return 0;
