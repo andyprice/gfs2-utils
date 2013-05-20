@@ -85,8 +85,8 @@ struct mkfs_opts {
 	unsigned qcsize;
 	unsigned jsize;
 	unsigned rgsize;
-	unsigned sunit;
-	unsigned swidth;
+	unsigned long sunit;
+	unsigned long swidth;
 	uint64_t fssize;
 	uint32_t journals;
 	const char *lockproto;
@@ -216,7 +216,7 @@ static long long cvtnum(unsigned int blocksize, unsigned int sectorsize, const c
         return -1LL;
 }
 
-static void parse_unsigned(struct mkfs_opts *opts, const char *key, const char *val, unsigned *n)
+static unsigned long parse_ulong(struct mkfs_opts *opts, const char *key, const char *val)
 {
 	long long l;
 	if (val == NULL || *val == '\0') {
@@ -224,11 +224,11 @@ static void parse_unsigned(struct mkfs_opts *opts, const char *key, const char *
 		exit(-1);
 	}
 	l = cvtnum(opts->bsize, 0, val);
-	if (l > UINT_MAX || l < 0) {
+	if (l > ULONG_MAX || l < 0) {
 		fprintf(stderr, _("Value of '%s' is invalid\n"), key);
 		exit(-1);
 	}
-	*n = (unsigned)l;
+	return (unsigned long)l;
 }
 
 static void opt_parse_extended(char *str, struct mkfs_opts *opts)
@@ -242,10 +242,10 @@ static void opt_parse_extended(char *str, struct mkfs_opts *opts)
 			exit(-1);
 		}
 		if (strcmp("sunit", key) == 0) {
-			parse_unsigned(opts, "sunit", val, &opts->sunit);
+			opts->sunit = parse_ulong(opts, "sunit", val);
 			opts->got_sunit = 1;
 		} else if (strcmp("swidth", key) == 0) {
-			parse_unsigned(opts, "swidth", val, &opts->swidth);
+			opts->swidth = parse_ulong(opts, "swidth", val);
 			opts->got_swidth = 1;
 		} else {
 			fprintf(stderr, _("Invalid option '%s'\n"), key);
@@ -495,6 +495,16 @@ static void opts_check(struct mkfs_opts *opts)
 	if (!opts->qcsize || opts->qcsize > 64)
 		die( _("bad quota change size\n"));
 
+	if ((opts->got_sunit && !opts->got_swidth) || (!opts->got_sunit && opts->got_swidth)) {
+		fprintf(stderr, _("Stripe unit and stripe width must be specified together\n"));
+		exit(1);
+	}
+
+	if (opts->got_sunit && (opts->swidth % opts->sunit)) {
+		fprintf(stderr, _("Stripe width (%lu) must be a multiple of stripe unit (%lu)\n"),
+				opts->swidth, opts->sunit);
+		exit(1);
+	}
 }
 
 static void print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
@@ -666,8 +676,8 @@ static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct mkfs_d
 		printf("  rgsize = %u\n", sdp->rgsize);
 		printf("  table = %s\n", sdp->locktable);
 		printf("  fssize = %"PRIu64"\n", opts->fssize);
-		printf("  sunit = %u\n", opts->sunit);
-		printf("  swidth = %u\n", opts->swidth);
+		printf("  sunit = %lu\n", opts->sunit);
+		printf("  swidth = %lu\n", opts->swidth);
 	}
 }
 
@@ -767,6 +777,22 @@ void main_mkfs(int argc, char *argv[])
 	opts_check(&opts);
 
 	open_dev(opts.device, &dev);
+	if (!opts.got_swidth) {
+		if (dev.optimal_io_size > 0)
+			opts.swidth = dev.optimal_io_size;
+		else
+			opts.swidth = dev.logical_sector_size;
+	}
+
+	if (!opts.got_sunit) {
+		if (dev.minimum_io_size > 0)
+			opts.sunit = dev.minimum_io_size;
+		else
+			opts.sunit = dev.logical_sector_size;
+	}
+
+	if (opts.debug)
+		printf("Resource group alignment: %"PRIu64" bytes\n", opts.swidth);
 
 	if (S_ISREG(dev.stat.st_mode)) {
 		opts.got_bsize = 1; /* Use default block size for regular files */
