@@ -11,6 +11,7 @@ config.guess
 config.log
 config.sub
 config.status
+config.rpath
 Makefile
 depcomp
 install-sh
@@ -50,3 +51,9 @@ po/Makevars.template
 po/POTFILES
 po/stamp-po
 po/remove-potcdate.sed
+po/Makefile.in.in
+po/Rules-quot
+po/boldquot.sed
+po/insert-header.sin
+po/quot.sed
+po/remove-potcdate.sin

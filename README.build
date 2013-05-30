@@ -38,14 +38,4 @@ To install gfs2-utils, run:
 
     make install
 
-There is also an alternative (experimental, but eventually will take over
-from the current build system) build system which requires only GNU make.
-To use that build system, simply run:
-
-make -f Makefile.new <target>
-
-Where <target> is all, install, etc.
-
-Both build systems are designed to run alongside each other for the time
-being.
-
+See also README.contributing for details on submitting patches.

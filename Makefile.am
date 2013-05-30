@@ -1,4 +1,4 @@
-EXTRA_DIST		= config.rpath m4/ChangeLog  autogen.sh
+EXTRA_DIST		= autogen.sh
 
 AUTOMAKE_OPTIONS	= foreign
 
