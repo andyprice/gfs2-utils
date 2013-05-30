@@ -1,4 +1,4 @@
-EXTRA_DIST		= autogen.sh
+EXTRA_DIST		= autogen.sh README.build
 
 AUTOMAKE_OPTIONS	= foreign
 
@@ -12,21 +12,7 @@ noinst_HEADERS		= make/copyright.cf
 
 ACLOCAL_AMFLAGS		= -I m4
 
-if BUILD_GFS_CONTROLD
-DIR_GROUP		= group
-endif
-
-SUBDIRS			= po $(DIR_GROUP) gfs2 doc tests
-
-install-exec-local:
-			$(INSTALL) -d $(DESTDIR)/$(LOGDIR)
-			$(INSTALL) -d $(DESTDIR)/$(CLUSTERVARRUN)
-			$(INSTALL) -d $(DESTDIR)/$(CLUSTERVARLIB)
-
-uninstall-local:
-			rmdir $(DESTDIR)/$(LOGDIR) || :;
-			rmdir $(DESTDIR)/$(CLUSTERVARRUN) || :;
-			rmdir $(DESTDIR)/$(CLUSTERVARLIB) || :;
+SUBDIRS			= po gfs2 doc tests
 
 maintainer-clean-local:
 	rm -rf m4

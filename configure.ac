@@ -9,7 +9,6 @@ LT_PREREQ([2.2.6])
 LT_INIT
 
 AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_SRCDIR([group/gfs_controld/config.c])
 AC_CONFIG_HEADERS([make/clusterautoconfig.h])
 
 AC_CANONICAL_HOST
@@ -89,36 +88,6 @@ AC_ARG_ENABLE([debug],
 	[  --enable-debug          enable debug build. ],
 	[ default="no" ])
 
-AC_ARG_ENABLE([gfs_controld],
-	[  --enable-gfs_controld   build gfs_controld. ],
-	[ default="no" ])
-
-AC_ARG_WITH([syslogfacility],
-	[  --syslogfacility=FACILITY
-                          cluster default syslog facility. ],
-	[ SYSLOGFACILITY="$withval" ],
-	[ SYSLOGFACILITY="LOG_LOCAL4" ])
-
-AC_ARG_WITH([sysloglevel],
-	[  --sysloglevel=LEVEL
-                          cluster default syslog level. ],
-	[ SYSLOGLEVEL="$withval" ],
-	[ SYSLOGLEVEL="LOG_INFO" ])
-
-# gfs_controld isn't required in the latest versions of cluster
-AM_CONDITIONAL([BUILD_GFS_CONTROLD], [test "x$enable_gfs_controld" = "xyes"])
-AS_IF([test "x$enable_gfs_controld" = "xyes"], [
-	PKG_CHECK_MODULES([corosync],[corosync])
-	PKG_CHECK_MODULES([cpg],[libcpg])
-	PKG_CHECK_MODULES([sackpt],[libSaCkpt])
-	PKG_CHECK_MODULES([logt],[liblogthread])
-	PKG_CHECK_MODULES([ccs],[libccs])
-	PKG_CHECK_MODULES([cfg],[libcfg])
-	PKG_CHECK_MODULES([fenced],[libfenced])
-	PKG_CHECK_MODULES([dlmcontrol],[libdlmcontrol])
-	PKG_CHECK_MODULES([quorum],[libquorum])
-])
-
 # We use the Check framework for unit tests
 PKG_CHECK_MODULES([check], [check >= 0.9.8],
                   [have_check=yes],
@@ -175,27 +144,6 @@ AC_HEADER_MAJOR
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_CHECK_FUNCS([ftruncate gettimeofday memset realpath rmdir select setlocale socket strcasecmp strchr strdup strerror strstr])
-
-## random vars
-
-LOGDIR=${localstatedir}/log/cluster
-CLUSTERVARRUN=${localstatedir}/run/cluster
-
-## do subst
-
-AC_SUBST([LOGDIR])
-AC_DEFINE_UNQUOTED([LOGDIR], "$(eval echo ${LOGDIR})",
-		   [Default logging directory])
-
-AC_SUBST([CLUSTERVARRUN])
-AC_DEFINE_UNQUOTED([CLUSTERVARRUN], "$(eval echo ${CLUSTERVARRUN})",
-		   [Default cluster var/run directory])
-
-AC_DEFINE_UNQUOTED([SYSLOGFACILITY], $(eval echo ${SYSLOGFACILITY}),
-		   [Default syslog facility])
-
-AC_DEFINE_UNQUOTED([SYSLOGLEVEL], $(eval echo ${SYSLOGLEVEL}),
-		   [Default syslog level])
 
 ## *FLAGS handling
 
@@ -255,12 +203,6 @@ CPPFLAGS="-I\$(top_builddir)/make -I\$(top_srcdir)/make \
 LDFLAGS="$ENV_LDFLAGS"
 
 AC_CONFIG_FILES([Makefile
-		 group/Makefile
-		 group/libgfscontrol/Makefile
-		 group/gfs_control/Makefile
-		 group/gfs_controld/Makefile
-		 group/man/Makefile
-		 group/include/Makefile
 		 gfs2/Makefile
 		 gfs2/include/Makefile
 		 gfs2/libgfs2/Makefile

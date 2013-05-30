@@ -44,8 +44,6 @@ gfs2/tune/tunegfs2
 tests/check_libgfs2
 tests/testvol
 tests/tests.log
-group/gfs_control/gfs_control
-group/gfs_controld/gfs_controld
 ABOUT-NLS
 po/Makevars.template
 po/POTFILES

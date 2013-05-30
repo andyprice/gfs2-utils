@@ -1,5 +1,6 @@
 TESTS_ENVIRONMENT	= TOPBUILDDIR=$(top_builddir)
 EXTRA_DIST		= tool_tests.sh
+CLEANFILES		= tests.log
 
 if BUILD_TESTS
 check_PROGRAMS		= check_libgfs2
