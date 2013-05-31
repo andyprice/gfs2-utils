@@ -251,7 +251,7 @@ uint64_t dinode_alloc(struct gfs2_sbd *sdp)
 int lgfs2_dinode_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, uint64_t *blkno)
 {
 	int ret;
-	struct rgrp_tree *rgt;
+	struct rgrp_tree *rgt = NULL;
 	struct osi_node *n = NULL;
 	for (n = osi_first(&sdp->rgtree); n; n = osi_next(n)) {
 		rgt = (struct rgrp_tree *)n;

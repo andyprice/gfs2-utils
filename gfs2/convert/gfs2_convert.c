@@ -1061,7 +1061,7 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 {
 	struct rgrp_tree *rgd;
 	struct osi_node *n, *next = NULL;
-	uint64_t block;
+	uint64_t block = 0;
 	struct gfs2_buffer_head *bh;
 	int first;
 	int error = 0;
