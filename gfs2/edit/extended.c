@@ -319,7 +319,7 @@ static int display_leaf(struct iinfo *ind)
 			break;
 		total_dirents++;
 		if (ind->ii[0].dirents >= 1) {
-			eol(5);
+			eol(3);
 			if (termlines) {
 				if (edit_row[dmode] >=0 &&
 				    line - start_line - 1 ==
@@ -330,9 +330,12 @@ static int display_leaf(struct iinfo *ind)
 					strcpy(edit_fmt, "%llx");
 				}
 			}
-			print_gfs2("%d. (%d). %lld (0x%llx): ",
+			print_gfs2("%d/%d [%08x] %lld/%lld (0x%llx/0x%llx): ",
 				   total_dirents, d + 1,
+				   ind->ii[0].dirent[d].dirent.de_hash,
+				   ind->ii[0].dirent[d].dirent.de_inum.no_formal_ino,
 				   ind->ii[0].dirent[d].block,
+				   ind->ii[0].dirent[d].dirent.de_inum.no_formal_ino,
 				   ind->ii[0].dirent[d].block);
 		}
 		print_inode_type(ind->ii[0].dirent[d].dirent.de_type);
