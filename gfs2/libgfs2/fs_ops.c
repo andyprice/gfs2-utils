@@ -237,12 +237,6 @@ uint64_t meta_alloc(struct gfs2_inode *ip)
 	return x;
 }
 
-uint64_t dinode_alloc(struct gfs2_sbd *sdp)
-{
-	sdp->dinodes_alloced++;
-	return blk_alloc_i(sdp, DINODE);
-}
-
 /**
  * Allocate a dinode block in a bitmap. In order to plan ahead we look for a
  * resource group with blksreq free blocks but only allocate the one dinode block.

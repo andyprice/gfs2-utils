@@ -19,8 +19,11 @@ int build_master(struct gfs2_sbd *sdp)
 	struct gfs2_inum inum;
 	uint64_t bn;
 	struct gfs2_buffer_head *bh;
+	int err = lgfs2_dinode_alloc(sdp, 1, &bn);
 
-	bn = dinode_alloc(sdp);
+	if (err != 0)
+		return -1;
+
 	inum.no_formal_ino = sdp->md.next_inum++;
 	inum.no_addr = bn;
 
@@ -425,8 +428,11 @@ int build_root(struct gfs2_sbd *sdp)
 	struct gfs2_inum inum;
 	uint64_t bn;
 	struct gfs2_buffer_head *bh;
+	int err = lgfs2_dinode_alloc(sdp, 1, &bn);
 
-	bn = dinode_alloc(sdp);
+	if (err != 0)
+		return -1;
+
 	inum.no_formal_ino = sdp->md.next_inum++;
 	inum.no_addr = bn;
 
