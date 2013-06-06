@@ -48,6 +48,37 @@ storage).
 This option prevents gfs2_mkfs from asking for confirmation before writing
 the filesystem.
 .TP
+\fB-o\fP
+Specify extended options. Multiple options can be separated by commas. Valid extended options are:
+.RS 1.0i
+.TP
+.BI help
+Display an extended options help summary, then exit.
+.TP
+.BI sunit= bytes
+This is used to specify the stripe unit for a RAID device or striped logical
+volume.  This option ensures that resource groups will be stripe unit aligned
+and overrides the stripe unit value obtained by probing the device. This value
+must be a multiple of the file system block size and must be specified with the
+.I swidth
+option.
+.TP
+.BI swidth= bytes
+This is used to specify the stripe width for a RAID device or striped logical
+volume.  This option ensures that resource groups will be stripe aligned and overrides the stripe width value obtained by probing the device. This value must be a multiple of the
+.I sunit
+option and must also be specified with it.
+.TP
+.BI align= [0|1]
+Disable or enable the alignment of resource groups. The default behaviour is to
+align resource groups to the stripe width and stripe unit values obtained from
+probing the device or specified with the
+.I swidth
+and
+.I sunit
+extended options.
+.RE
+.TP
 \fB-p\fP \fILockProtoName\fR 
 LockProtoName is the name of the  locking  protocol to use.  Acceptable
 locking protocols are \fIlock_dlm\fR (for shared storage) or if you are

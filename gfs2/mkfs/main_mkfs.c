@@ -57,7 +57,7 @@ static void print_usage(const char *prog_name)
 	    "-j", _("<number>"), _("Number of journals"),
 	    "-K", NULL,          _("Don't try to discard unused blocks"),
 	    "-O", NULL,          _("Don't ask for confirmation"),
-	    "-o", _("<key>[=<value>][,...]"), _("Specify extended options"),
+	    "-o", _("<key>[=<value>][,...]"), _("Specify extended options. See '-o help'."),
 	    "-p", _("<name>"),   _("Name of the locking protocol"),
 	    "-q", NULL,          _("Don't print anything"),
 	    "-r", _("<size>"),   _("Size of resource groups, in megabytes"),
@@ -74,9 +74,25 @@ static void print_usage(const char *prog_name)
 
 	for (i = 0; options[i] != NULL; i += 3) {
 		option = options[i];
-		param = options[i+1];
-		desc = options[i+2];
+		param = options[i + 1];
+		desc = options[i + 2];
 		printf("%3s %-22s %s\n", option, param ? param : "", desc);
+	}
+}
+
+static void print_ext_opts(void)
+{
+	int i;
+	const char *options[] = {
+		"help", _("Display this help, then exit"),
+		"swidth=N",  _("Specify the stripe width of the device, overriding probed values"),
+		"sunit=N", _("Specify the stripe unit of the device, overriding probed values"),
+		"align=[0|1]", _("Disable or enable alignment of resource groups"),
+		NULL, NULL
+	};
+	printf(_("Extended options:\n"));
+	for (i = 0; options[i] != NULL; i += 2) {
+		printf("%15s  %-22s\n", options[i], options[i + 1]);
 	}
 }
 
@@ -111,6 +127,7 @@ struct mkfs_opts {
 	unsigned expert:1;
 	unsigned debug:1;
 	unsigned confirm:1;
+	unsigned align:1;
 };
 
 /**
@@ -165,6 +182,7 @@ static void opts_init(struct mkfs_opts *opts)
 	opts->lockproto = "lock_dlm";
 	opts->locktable = "";
 	opts->confirm = 1;
+	opts->align = 1;
 }
 
 #ifndef BLKDISCARD
@@ -250,6 +268,18 @@ static unsigned long parse_ulong(struct mkfs_opts *opts, const char *key, const 
 	return (unsigned long)l;
 }
 
+static unsigned parse_bool(struct mkfs_opts *opts, const char *key, const char *val)
+{
+	if (strnlen(val, 2) == 1) {
+		if (*val == '0')
+			return 0;
+		if (*val == '1')
+			return 1;
+	}
+	fprintf(stderr, _("Option '%s' must be either 1 or 0\n"), key);
+	exit(-1);
+}
+
 static void opt_parse_extended(char *str, struct mkfs_opts *opts)
 {
 	char *opt;
@@ -266,6 +296,11 @@ static void opt_parse_extended(char *str, struct mkfs_opts *opts)
 		} else if (strcmp("swidth", key) == 0) {
 			opts->swidth = parse_ulong(opts, "swidth", val);
 			opts->got_swidth = 1;
+		} else if (strcmp("align", key) == 0) {
+			opts->align = parse_bool(opts, "align", val);
+		} else if (strcmp("help", key) == 0) {
+			print_ext_opts();
+			exit(0);
 		} else {
 			fprintf(stderr, _("Invalid option '%s'\n"), key);
 			exit(-1);
@@ -603,7 +638,7 @@ static uint64_t align_block(const uint64_t base, const uint64_t align)
 static void rgs_init(struct mkfs_rgs *rgs, struct mkfs_opts *opts, struct mkfs_dev *dev, struct gfs2_sbd *sdp)
 {
 	memset(rgs, 0, sizeof(*rgs));
-	if (opts->got_sunit) {
+	if (opts->align && opts->got_sunit) {
 		if ((opts->sunit % sdp->bsize) != 0) {
 			fprintf(stderr, _("Stripe unit (%lu) must be a multiple of block size (%u)\n"),
 			        opts->sunit, sdp->bsize);
@@ -616,7 +651,7 @@ static void rgs_init(struct mkfs_rgs *rgs, struct mkfs_opts *opts, struct mkfs_d
 			rgs->align = opts->swidth / sdp->bsize;
 			rgs->align_off = opts->sunit / sdp->bsize;
 		}
-	} else {
+	} else if (opts->align) {
 		if ((dev->minimum_io_size > dev->physical_sector_size) &&
 		    (dev->optimal_io_size > dev->physical_sector_size)) {
 			rgs->align = dev->optimal_io_size / sdp->bsize;
@@ -871,7 +906,11 @@ void main_mkfs(int argc, char *argv[])
 		printf("  fssize = %"PRIu64"\n", opts.fssize);
 		printf("  sunit = %lu\n", opts.sunit);
 		printf("  swidth = %lu\n", opts.swidth);
-		printf("  rgrp align = %lu+%lu blocks\n", rgs.align, rgs.align_off);
+		printf("  rgrp align = ");
+		if (opts.align)
+			printf("%lu+%lu blocks\n", rgs.align, rgs.align_off);
+		else
+			printf("(disabled)\n");
 	}
 
 	warn_of_destruction(opts.device);
