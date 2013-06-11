@@ -224,3 +224,182 @@ void gfs2_rgrp_free(struct osi_root *rgrp_tree)
 		free(rgd);
 	}
 }
+
+/**
+ * This structure is defined in libgfs2.h as an opaque type. It stores the
+ * constants and context required for creating resource groups from any point
+ * in an application.
+ */
+struct _lgfs2_rgrps {
+	struct osi_root root;
+	uint64_t nextaddr;
+	unsigned bsize;
+	unsigned long align;
+	unsigned long align_off;
+	unsigned long curr_offset;
+	uint64_t maxrgsz;
+	uint64_t minrgsz;
+	uint64_t devlen;
+	uint64_t count;
+	uint64_t blks_total;
+	uint32_t rgsize;
+};
+
+static uint64_t align_block(const uint64_t base, const uint64_t align)
+{
+	if ((align > 0) && ((base % align) > 0))
+		return (base - (base % align)) + align;
+	return base;
+}
+
+/**
+ * Create and initialise an empty set of resource groups
+ * bsize: The block size of the fs
+ * start: The block address of the first resource group
+ * devlen: The length of the device, in fs blocks
+ * rglen: Default rg size, in blocks
+ * al: The required alignment of the resource groups
+ * Returns an initialised lgfs2_rgrps_t or NULL if unsuccessful with errno set
+ */
+lgfs2_rgrps_t lgfs2_rgrps_init(unsigned bsize, uint64_t start, uint64_t devlen, uint32_t rglen, struct lgfs2_rgrp_align *al)
+{
+	lgfs2_rgrps_t rgs = calloc(1, sizeof(*rgs));
+	if (rgs == NULL)
+		return NULL;
+
+	rgs->bsize = bsize;
+	rgs->maxrgsz = (GFS2_MAX_RGSIZE << 20) / bsize;
+	rgs->minrgsz = (GFS2_MIN_RGSIZE << 20) / bsize;
+	rgs->rgsize = rglen;
+	rgs->devlen = devlen;
+	rgs->align = al->base;
+	rgs->align_off = al->offset;
+	memset(&rgs->root, 0, sizeof(rgs->root));
+	rgs->nextaddr = align_block(start, rgs->align);
+
+	return rgs;
+}
+
+/**
+ * Return the rindex structure relating to a a resource group.
+ */
+struct gfs2_rindex *lgfs2_rgrp_index(lgfs2_rgrp_t rg)
+{
+	return &rg->ri;
+}
+
+/**
+ * Return non-zero if there is space left for more resource groups or zero if not
+ */
+int lgfs2_rgrps_end(lgfs2_rgrps_t rgs)
+{
+	return (rgs->nextaddr == 0);
+}
+
+/**
+ * Returns the total resource group size, in blocks, required to give blksreq data blocks
+ */
+unsigned lgfs2_rgsize_for_data(uint64_t blksreq, unsigned bsize)
+{
+	const uint32_t blks_rgrp = GFS2_NBBY * (bsize - sizeof(struct gfs2_rgrp));
+	const uint32_t blks_meta = GFS2_NBBY * (bsize - sizeof(struct gfs2_meta_header));
+	unsigned bitblocks = 1;
+	if (blksreq > blks_rgrp)
+		bitblocks += ((blksreq - blks_rgrp) + blks_meta - 1) / blks_meta;
+	return bitblocks + blksreq;
+}
+
+// Temporary function to aid in API migration
+struct osi_node *lgfs2_rgrps_root(lgfs2_rgrps_t rgs)
+{
+	return rgs->root.osi_node;
+}
+
+/**
+ * Create a new resource group after the last resource group in a set.
+ * rgs: The set of resource groups
+ * rglen: The required length of the resource group. If its is 0 the default rgsize
+ *        passed to lgfs2_rgrps_init() is used.
+ * expand: Whether to expand the resource group when alignment would leave a gap.
+ * Returns the new resource group on success or NULL on failure.
+ */
+lgfs2_rgrp_t lgfs2_rgrp_append(lgfs2_rgrps_t rgs, uint32_t rglen, int expand)
+{
+	int err = 0;
+	lgfs2_rgrp_t rg = rgrp_insert(&rgs->root, rgs->nextaddr);
+	if (rg == NULL)
+		return NULL;
+
+	rgs->curr_offset += rgs->align_off;
+	if (rgs->curr_offset >= rgs->align)
+		rgs->curr_offset = 0;
+
+	if (rgs->rgsize > rglen)
+		rglen = rgs->rgsize;
+
+	rgs->nextaddr = align_block(rg->ri.ri_addr + rgs->rgsize, rgs->align) + rgs->curr_offset;
+	/* Use up gap left by alignment if possible */
+	if (expand && ((rgs->nextaddr - rg->ri.ri_addr) <= rgs->maxrgsz))
+		rglen = rgs->nextaddr - rg->ri.ri_addr;
+
+	if ((rgs->nextaddr + rgs->rgsize) > rgs->devlen) {
+		/* Squeeze the last 1 or 2 rgs into the remaining space */
+		if ((rgs->nextaddr < rgs->devlen) && ((rgs->devlen - rgs->nextaddr) >= rgs->minrgsz)) {
+			rgs->rgsize = rgs->devlen - rgs->nextaddr;
+		} else {
+			if (rgs->devlen - rg->ri.ri_addr <= rgs->maxrgsz)
+				rglen = rgs->devlen - rg->ri.ri_addr;
+			else
+				rglen = rgs->maxrgsz;
+			/* This is the last rg */
+			rgs->nextaddr = 0;
+		}
+	}
+
+	rg->ri.ri_length = rgblocks2bitblocks(rgs->bsize, rglen, &rg->ri.ri_data);
+	rg->ri.ri_data0 = rg->ri.ri_addr + rg->ri.ri_length;
+	rg->ri.ri_bitbytes = rg->ri.ri_data / GFS2_NBBY;
+	rg->rg.rg_header.mh_magic = GFS2_MAGIC;
+	rg->rg.rg_header.mh_type = GFS2_METATYPE_RG;
+	rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
+	rg->rg.rg_free = rg->ri.ri_data;
+
+	err = gfs2_compute_bitstructs(rgs->bsize, rg);
+	if (err != 0)
+		return NULL;
+	rgs->blks_total += rg->ri.ri_data;
+	rgs->count++;
+	return rg;
+}
+
+/**
+ * Write a resource group to a file descriptor.
+ * Returns 0 on success or non-zero on failure with errno set
+ */
+int lgfs2_rgrp_write(int fd, lgfs2_rgrp_t rg, unsigned bsize)
+{
+	ssize_t ret = 0;
+	size_t len = rg->ri.ri_length * bsize;
+	unsigned int i;
+	const struct gfs2_meta_header bmh = {
+		.mh_magic = GFS2_MAGIC,
+		.mh_type = GFS2_METATYPE_RB,
+		.mh_format = GFS2_FORMAT_RB,
+	};
+	char *buff = calloc(len, 1);
+	if (buff == NULL)
+		return -1;
+
+	gfs2_rgrp_out(&rg->rg, buff);
+	for (i = 1; i < rg->ri.ri_length; i++)
+		gfs2_meta_header_out(&bmh, buff + (i * bsize));
+
+	ret = pwrite(fd, buff, len, rg->ri.ri_addr * bsize);
+	if (ret != len) {
+		free(buff);
+		return -1;
+	}
+
+	free(buff);
+	return 0;
+}

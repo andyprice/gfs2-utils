@@ -189,6 +189,23 @@ struct rgrp_tree {
 	struct gfs2_buffer_head **bh;
 };
 
+struct lgfs2_rgrp_align {
+	uint64_t base;
+	uint64_t offset;
+};
+
+typedef struct rgrp_tree *lgfs2_rgrp_t;
+typedef struct _lgfs2_rgrps *lgfs2_rgrps_t;
+
+extern lgfs2_rgrps_t lgfs2_rgrps_init(unsigned bsize, uint64_t start, uint64_t devlen, uint32_t rglen, struct lgfs2_rgrp_align *al);
+extern unsigned lgfs2_rgsize_for_data(uint64_t blksreq, unsigned bsize);
+extern lgfs2_rgrp_t lgfs2_rgrp_append(lgfs2_rgrps_t rgs, uint32_t rglen, int expand);
+extern int lgfs2_rgrp_write(int fd, lgfs2_rgrp_t rg, unsigned bsize);
+extern int lgfs2_rgrps_end(lgfs2_rgrps_t rgs);
+extern struct gfs2_rindex *lgfs2_rgrp_index(lgfs2_rgrp_t rg);
+// Temporary function to aid API migration
+extern struct osi_node *lgfs2_rgrps_root(lgfs2_rgrps_t rgs) __attribute__((deprecated));
+
 struct gfs2_buffer_head {
 	osi_list_t b_altlist; /* alternate list */
 	uint64_t b_blocknr;

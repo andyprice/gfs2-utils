@@ -598,46 +598,12 @@ static void warn_of_destruction(const char *path)
 	free(abspath);
 }
 
-static int writerg(int fd, const struct rgrp_tree *rgt, const unsigned bsize)
+static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct mkfs_dev *dev, struct gfs2_sbd *sdp)
 {
-	ssize_t ret = 0;
-	unsigned int i;
-	const struct gfs2_meta_header bmh = {
-		.mh_magic = GFS2_MAGIC,
-		.mh_type = GFS2_METATYPE_RB,
-		.mh_format = GFS2_FORMAT_RB,
-	};
-	struct iovec iov = {
-		.iov_len = rgt->ri.ri_length * bsize,
-		.iov_base = calloc(rgt->ri.ri_length, bsize),
-	};
-	if (iov.iov_base == NULL)
-		return -1;
+	uint64_t rgsize = (opts->rgsize << 20) / sdp->bsize;
+	struct lgfs2_rgrp_align align = {.base = 0, .offset = 0};
+	lgfs2_rgrps_t rgs;
 
-	gfs2_rgrp_out(&rgt->rg, iov.iov_base);
-	for (i = 1; i < rgt->ri.ri_length; i++)
-		gfs2_meta_header_out(&bmh, (char *)iov.iov_base + (i * bsize));
-
-	ret = pwritev(fd, &iov, 1, rgt->ri.ri_addr * bsize);
-	if (ret != iov.iov_len) {
-		free(iov.iov_base);
-		return -1;
-	}
-
-	free(iov.iov_base);
-	return 0;
-}
-
-static uint64_t align_block(const uint64_t base, const uint64_t align)
-{
-	if ((align > 0) && ((base % align) > 0))
-		return (base - (base % align)) + align;
-	return base;
-}
-
-static void rgs_init(struct mkfs_rgs *rgs, struct mkfs_opts *opts, struct mkfs_dev *dev, struct gfs2_sbd *sdp)
-{
-	memset(rgs, 0, sizeof(*rgs));
 	if (opts->align && opts->got_sunit) {
 		if ((opts->sunit % sdp->bsize) != 0) {
 			fprintf(stderr, _("Stripe unit (%lu) must be a multiple of block size (%u)\n"),
@@ -648,112 +614,64 @@ static void rgs_init(struct mkfs_rgs *rgs, struct mkfs_opts *opts, struct mkfs_d
 			        opts->swidth, opts->sunit);
 			exit(1);
 		} else {
-			rgs->align = opts->swidth / sdp->bsize;
-			rgs->align_off = opts->sunit / sdp->bsize;
+			align.base = opts->swidth / sdp->bsize;
+			align.offset = opts->sunit / sdp->bsize;
 		}
 	} else if (opts->align) {
 		if ((dev->minimum_io_size > dev->physical_sector_size) &&
 		    (dev->optimal_io_size > dev->physical_sector_size)) {
-			rgs->align = dev->optimal_io_size / sdp->bsize;
-			rgs->align_off = dev->minimum_io_size / sdp->bsize;
-		}
-	}
-	rgs->bsize = sdp->bsize;
-	rgs->maxrgsz = (GFS2_MAX_RGSIZE << 20) / sdp->bsize;
-	rgs->minrgsz = (GFS2_MIN_RGSIZE << 20) / sdp->bsize;
-	rgs->nextaddr = align_block(sdp->sb_addr + 1, rgs->align);
-	rgs->rgsize = (sdp->rgsize << 20) / sdp->bsize;
-	rgs->devlen = sdp->device.length;
-	rgs->root = &sdp->rgtree;
-}
-
-static unsigned rgsize_for_data(uint64_t blksreq, unsigned bsize)
-{
-        const uint32_t blks_rgrp = GFS2_NBBY * (bsize - sizeof(struct gfs2_rgrp));
-        const uint32_t blks_meta = GFS2_NBBY * (bsize - sizeof(struct gfs2_meta_header));
-	unsigned bitblocks = 1;
-	if (blksreq > blks_rgrp)
-		bitblocks += ((blksreq - blks_rgrp) + blks_meta - 1) / blks_meta;
-	return bitblocks + blksreq;
-}
-
-static struct rgrp_tree *rg_append(struct mkfs_rgs *rgs, const struct mkfs_opts *opts, uint64_t freerq)
-{
-	int err = 0;
-	uint64_t length = rgsize_for_data(freerq, rgs->bsize);
-	struct rgrp_tree *rgt = rgrp_insert(rgs->root, rgs->nextaddr);
-	if (rgt == NULL)
-		return NULL;
-
-	rgs->curr_offset += rgs->align_off;
-	if (rgs->curr_offset >= rgs->align)
-		rgs->curr_offset = 0;
-
-	if (rgs->rgsize > length)
-		length = rgs->rgsize;
-
-	rgs->nextaddr = align_block(rgt->ri.ri_addr + rgs->rgsize, rgs->align) + rgs->curr_offset;
-	/* Use up gap left by alignment if possible */
-	if (!opts->got_rgsize && ((rgs->nextaddr - rgt->ri.ri_addr) <= rgs->maxrgsz))
-		length = rgs->nextaddr - rgt->ri.ri_addr;
-
-	if ((rgs->nextaddr + rgs->rgsize) > rgs->devlen) {
-		/* Squeeze the last 1 or 2 rgs into the remaining space */
-		if ((rgs->nextaddr < rgs->devlen) && ((rgs->devlen - rgs->nextaddr) >= rgs->minrgsz)) {
-			rgs->rgsize = rgs->devlen - rgs->nextaddr;
-		} else {
-			if (rgs->devlen - rgt->ri.ri_addr <= rgs->maxrgsz)
-				length = rgs->devlen - rgt->ri.ri_addr;
-			else
-				length = rgs->maxrgsz;
-			/* This is the last rg */
-			rgs->nextaddr = 0;
+			align.base = dev->optimal_io_size / sdp->bsize;
+			align.offset = dev->minimum_io_size / sdp->bsize;
 		}
 	}
 
-	rgt->ri.ri_length = rgblocks2bitblocks(rgs->bsize, length, &rgt->ri.ri_data);
-	rgt->ri.ri_data0 = rgt->ri.ri_addr + rgt->ri.ri_length;
-	rgt->ri.ri_bitbytes = rgt->ri.ri_data / GFS2_NBBY;
-	rgt->rg.rg_header.mh_magic = GFS2_MAGIC;
-	rgt->rg.rg_header.mh_type = GFS2_METATYPE_RG;
-	rgt->rg.rg_header.mh_format = GFS2_FORMAT_RG;
-	rgt->rg.rg_free = rgt->ri.ri_data;
+	rgs = lgfs2_rgrps_init(sdp->bsize, sdp->sb_addr + 1, sdp->device.length, rgsize, &align);
+	if (rgs == NULL) {
+		perror(_("Could not initialise resource groups"));
+		exit(-1);
+	}
 
 	if (opts->debug) {
-		gfs2_rindex_print(&rgt->ri);
-		printf(" offset: %"PRIu64"\n", rgs->curr_offset);
+		printf("  rgrp align = ");
+		if (opts->align)
+			printf("%lu+%lu blocks\n", align.base, align.offset);
+		else
+			printf("(disabled)\n");
 	}
 
-	err = gfs2_compute_bitstructs(rgs->bsize, rgt);
-	if (err != 0) {
-		fprintf(stderr, _("Could not compute bitmaps. "
-			"Check resource group and block size options.\n"));
-		return NULL;
-	}
-	rgs->blks_total += rgt->ri.ri_data;
-	rgs->count++;
-	return rgt;
+	return rgs;
 }
 
-static uint64_t place_rgrps(struct mkfs_rgs *rgs, int fd, const struct mkfs_opts *opts, const struct mkfs_dev *dev)
+static uint64_t place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts, const struct mkfs_dev *dev)
 {
 	int err = 0;
-	struct rgrp_tree *rgt = NULL;
+	lgfs2_rgrp_t rg = NULL;
+	struct gfs2_rindex *ri = NULL;
 
-	while (rgs->nextaddr > 0) {
-		rgt = rg_append(rgs, opts, 0);
-		if (rgt == NULL) {
+	while (!lgfs2_rgrps_end(rgs)) {
+		rg = lgfs2_rgrp_append(rgs, 0, !opts->got_rgsize);
+		if (rg == NULL) {
 			perror(_("Failed to create resource group"));
 			return 0;
 		}
-		err = writerg(fd, rgt, rgs->bsize);
+		err = lgfs2_rgrp_write(sdp->device_fd, rg, sdp->bsize);
 		if (err != 0) {
 			perror(_("Failed to write resource group"));
 			return 0;
 		}
+		ri = lgfs2_rgrp_index(rg);
+		if (opts->debug) {
+			gfs2_rindex_print(ri);
+			printf("\n");
+		}
+		sdp->blks_total += ri->ri_data;
+		sdp->rgrps++;
 	}
 
-	return rgt->ri.ri_data0 + rgt->ri.ri_data;
+	if (ri == NULL)
+		return 0;
+	else
+		return ri->ri_data0 + ri->ri_data;
 }
 
 static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct mkfs_dev *dev, unsigned bsize)
@@ -875,7 +793,7 @@ void main_mkfs(int argc, char *argv[])
 	struct gfs2_sbd sbd;
 	struct mkfs_opts opts;
 	struct mkfs_dev dev;
-	struct mkfs_rgs rgs;
+	lgfs2_rgrps_t rgs;
 	int error;
 	unsigned char uuid[16];
 	unsigned bsize;
@@ -892,8 +810,6 @@ void main_mkfs(int argc, char *argv[])
 	}
 
 	sbd_init(&sbd, &opts, &dev, bsize);
-	rgs_init(&rgs, &opts, &dev, &sbd);
-
 	if (opts.debug) {
 		printf(_("File system options:\n"));
 		printf("  bsize = %u\n", sbd.bsize);
@@ -906,13 +822,8 @@ void main_mkfs(int argc, char *argv[])
 		printf("  fssize = %"PRIu64"\n", opts.fssize);
 		printf("  sunit = %lu\n", opts.sunit);
 		printf("  swidth = %lu\n", opts.swidth);
-		printf("  rgrp align = ");
-		if (opts.align)
-			printf("%lu+%lu blocks\n", rgs.align, rgs.align_off);
-		else
-			printf("(disabled)\n");
 	}
-
+	rgs = rgs_init(&opts, &dev, &sbd);
 	warn_of_destruction(opts.device);
 
 	if (opts.confirm && !opts.override)
@@ -921,13 +832,12 @@ void main_mkfs(int argc, char *argv[])
 	if (!S_ISREG(dev.stat.st_mode) && opts.discard)
 		discard_blocks(dev.fd, dev.size, opts.debug);
 
-	sbd.fssize = place_rgrps(&rgs, sbd.device_fd, &opts, &dev);
+	sbd.fssize = place_rgrps(&sbd, rgs, &opts, &dev);
 	if (sbd.fssize == 0) {
 		fprintf(stderr, _("Failed to build resource groups\n"));
 		exit(1);
 	}
-	sbd.blks_total = rgs.blks_total;
-	sbd.rgrps = rgs.count;
+	sbd.rgtree.osi_node = lgfs2_rgrps_root(rgs); // Temporary
 	build_root(&sbd);
 	build_master(&sbd);
 	error = build_jindex(&sbd);
