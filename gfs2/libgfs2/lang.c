@@ -421,6 +421,7 @@ static struct lgfs2_lang_result *ast_interp_get(struct lgfs2_lang_state *state,
 	} else if (ast->ast_right->ast_right->ast_type == AST_KW_STATE) {
 		result->lr_blocknr = ast_lookup_block_num(ast->ast_right, sbd);
 		if (result->lr_blocknr == 0) {
+			free(result);
 			return NULL;
 		}
 		result->lr_state = ast_get_bitstate(result->lr_blocknr, sbd);
