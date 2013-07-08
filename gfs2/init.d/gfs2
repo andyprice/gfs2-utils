@@ -68,7 +68,7 @@ fi
 # This script's behavior is modeled closely after the netfs script.  
 #
 GFS2FSTAB=$(LC_ALL=C awk '!/^#/ && $3 == "gfs2" && $4 !~ /noauto/ { print $2 }' /etc/fstab)
-GFS2MTAB=$(LC_ALL=C awk '!/^#/ && $3 == "gfs2" && $2 != "/" { print $2 }' /proc/mounts)
+GFS2MTAB=$(LC_ALL=C awk '!/^#/ && $3 == "gfs2" && $2 != "/" { print $2 }' /proc/mounts | sort -r)
 
 if [ -z "$GFS2FSTAB" ]; then
 	echo "GFS2: no entries found in /etc/fstab"
