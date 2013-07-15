@@ -168,7 +168,6 @@ char generic_interrupt(const char *caller, const char *where,
 int fsck_query(const char *format, ...)
 {
 	va_list args;
-	const char *transform;
 	char response;
 	int ret = 0;
 
@@ -184,8 +183,7 @@ int fsck_query(const char *format, ...)
 	opts.query = TRUE;
 	while (1) {
 		va_start(args, format);
-		transform = _(format);
-		vprintf(transform, args);
+		vprintf(format, args);
 		va_end(args);
 
 		/* Make sure query is printed out */
