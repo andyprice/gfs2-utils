@@ -276,6 +276,9 @@ static int check_leaf_depth(struct gfs2_inode *ip, uint64_t leaf_no,
 		factor++;
 		divisor >>= 1;
 	}
+	if (ip->i_di.di_depth < factor) /* can't be fixed--leaf must be on the
+					   wrong dinode. */
+		return -1;
 	correct_depth = ip->i_di.di_depth - factor;
 	if (cur_depth == correct_depth)
 		return 0;
