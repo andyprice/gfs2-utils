@@ -1278,6 +1278,108 @@ static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
 	return changes;
 }
 
+/* check_hash_tbl_dups - check for the same leaf in multiple places */
+static int check_hash_tbl_dups(struct gfs2_inode *ip, uint64_t *tbl,
+			       unsigned hsize, int lindex, int len)
+{
+	int l, len2;
+	uint64_t leafblk, leaf_no;
+	struct gfs2_buffer_head *lbh;
+	struct gfs2_leaf leaf;
+	struct gfs2_dirent dentry, *de;
+	int hash_index; /* index into the hash table based on the hash */
+
+	leafblk = be64_to_cpu(tbl[lindex]);
+	for (l = 0; l < hsize; l++) {
+		if (l == lindex) { /* skip the valid reference */
+			l += len - 1;
+			continue;
+		}
+		if (be64_to_cpu(tbl[l]) != leafblk)
+			continue;
+
+		for (len2 = 0; l + len2 < hsize; len2++) {
+			if (l + len2 == lindex)
+				break;
+			if (be64_to_cpu(tbl[l + len2]) != leafblk)
+				break;
+		}
+		log_err(_("Dinode %llu (0x%llx) has duplicate leaf pointers "
+			  "to block %llu (0x%llx) at offsets %u (0x%x) "
+			  "(for 0x%x) and %u (0x%x) (for 0x%x)\n"),
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)leafblk,
+			(unsigned long long)leafblk, lindex, lindex, len,
+			l, l, len2);
+
+		/* See which set of references is valid: the one passed in
+		   or the duplicate we found. */
+		memset(&leaf, 0, sizeof(leaf));
+		leaf_no = leafblk;
+		if (!valid_block(ip->i_sbd, leaf_no)) /* Checked later */
+			continue;
+
+		lbh = bread(ip->i_sbd, leafblk);
+		if (gfs2_check_meta(lbh, GFS2_METATYPE_LF)) { /* Chked later */
+			brelse(lbh);
+			continue;
+		}
+
+		memset(&dentry, 0, sizeof(struct gfs2_dirent));
+		de = (struct gfs2_dirent *)(lbh->b_data +
+					    sizeof(struct gfs2_leaf));
+		gfs2_dirent_in(&dentry, (char *)de);
+		hash_index = hash_table_index(dentry.de_hash, ip);
+		brelse(lbh);
+		/* check the duplicate ref first */
+		if (hash_index < l ||  hash_index > l + len2) {
+			log_err(_("This leaf block has hash index %d, which "
+				  "is out of bounds for lindex (%d - %d)\n"),
+				hash_index, l, l + len2);
+			if (!query( _("Fix the hash table? (y/n) "))) {
+				log_err(_("Hash table not fixed.\n"));
+				return 0;
+			}
+			/* Adjust the ondisk block count. The original value
+			   may have been correct without the duplicates but
+			   pass1 would have counted them and adjusted the
+			   count to include them. So we must subtract them. */
+			ip->i_di.di_blocks--;
+			bmodified(ip->i_bh);
+			pad_with_leafblks(ip, tbl, l, len2);
+		} else {
+			log_debug(_("Hash index 0x%x is the proper "
+				    "reference to leaf 0x%llx.\n"),
+				  l, (unsigned long long)leafblk);
+		}
+		/* Check the original ref: both references might be bad.
+		   If both were bad, just return and if we encounter it
+		   again, we'll treat it as new. If the original ref is not
+		   bad, keep looking for (and fixing) other instances. */
+		if (hash_index < lindex ||  hash_index > lindex + len) {
+			log_err(_("This leaf block has hash index %d, which "
+				  "is out of bounds for lindex (%d - %d).\n"),
+				hash_index, lindex, lindex + len);
+			if (!query( _("Fix the hash table? (y/n) "))) {
+				log_err(_("Hash table not fixed.\n"));
+				return 0;
+			}
+			ip->i_di.di_blocks--;
+			bmodified(ip->i_bh);
+			pad_with_leafblks(ip, tbl, lindex, len);
+			/* At this point we know both copies are bad, so we
+			   return to start fresh */
+			return -EFAULT;
+		} else {
+			log_debug(_("Hash index 0x%x is the proper "
+				    "reference to leaf 0x%llx.\n"),
+				  lindex, (unsigned long long)leafblk);
+		}
+	}
+	return 0;
+}
+
 /* check_hash_tbl - check that the hash table is sane
  *
  * We've got to make sure the hash table is sane. Each leaf needs to
@@ -1372,6 +1474,10 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 			lindex += proper_len;
 			continue;
 		}
+
+		if (check_hash_tbl_dups(ip, tbl, hsize, lindex, len))
+			continue;
+
 		/* Make sure they call on proper leaf-split boundaries. This
 		   is the calculation used by the kernel, and dir_split_leaf */
 		proper_start = (lindex & ~(proper_len - 1));
