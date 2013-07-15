@@ -391,7 +391,18 @@ static int wrong_leaf(struct gfs2_inode *ip, struct gfs2_inum *entry,
 		   leaf, but that leaf has already been processed. So we have
 		   to nuke the dent from this leaf when we return, but we
 		   still need to do the "good dent" accounting. */
-		error = incr_link_count(*entry, ip, _("valid reference"));
+		if (de->de_type == (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR)) {
+			error = set_parent_dir(sdp, de->de_inum,
+					       ip->i_di.di_num);
+			if (error > 0)
+				/* This is a bit of a kludge, but returning 0
+				   in this case causes the caller to go through
+				   function set_parent_dir a second time and
+				   deal properly with the hard link. */
+				return 0;
+		}
+		error = incr_link_count(*entry, ip,
+					_("moved valid reference"));
 		if (error > 0 &&
 		    bad_formal_ino(ip, dent, *entry, tmp_name, q, de, bh) == 1)
 			return 1; /* nuke it */
