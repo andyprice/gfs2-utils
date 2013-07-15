@@ -22,6 +22,7 @@
 
 struct gfs2_options opts = {0};
 struct gfs2_inode *lf_dip = NULL; /* Lost and found directory inode */
+int lf_was_created = 0;
 struct gfs2_bmap *bl = NULL;
 uint64_t last_fs_block, last_reported_block = -1;
 int64_t last_reported_fblock = -1000000;

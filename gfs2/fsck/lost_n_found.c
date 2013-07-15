@@ -132,6 +132,7 @@ void make_sure_lf_exists(struct gfs2_inode *ip)
 
 	q = block_type(lf_dip->i_di.di_num.no_addr);
 	if (q != gfs2_inode_dir) {
+		lf_was_created = 1;
 		/* This is a new lost+found directory, so set its block type
 		   and increment link counts for the directories */
 		/* FIXME: i'd feel better about this if fs_mkdir returned

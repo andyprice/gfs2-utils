@@ -1683,6 +1683,14 @@ int pass2(struct gfs2_sbd *sdp)
 		if (q != gfs2_inode_dir)
 			continue;
 
+		/* If we created lost+found, its links should have been
+		   properly adjusted, so don't check it. */
+		if (lf_was_created &&
+		    (dirblk == lf_dip->i_di.di_num.no_addr)) {
+			log_debug(_("Pass2 skipping the new lost+found.\n"));
+			continue;
+		}
+
 		log_debug( _("Checking directory inode at block %llu (0x%llx)\n"),
 			  (unsigned long long)dirblk, (unsigned long long)dirblk);
 

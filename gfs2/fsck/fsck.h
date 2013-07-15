@@ -131,6 +131,7 @@ struct gfs2_options {
 
 extern struct gfs2_options opts;
 extern struct gfs2_inode *lf_dip; /* Lost and found directory inode */
+extern int lf_was_created;
 extern struct gfs2_bmap *bl;
 extern uint64_t last_fs_block, last_reported_block;
 extern int64_t last_reported_fblock;
