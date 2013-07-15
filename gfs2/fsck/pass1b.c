@@ -368,11 +368,11 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 	/* If there's still a last remaining reference, and it's a valid
 	   reference, use it to determine the correct block type for our
 	   blockmap and bitmap. */
-	if (dh.ref_count == 1 && !osi_list_empty(&dt->ref_inode_list)) {
+	if (dh.ref_inode_count == 1 && !osi_list_empty(&dt->ref_inode_list)) {
 		uint8_t q;
 
 		log_notice( _("Block %llu (0x%llx) has only one remaining "
-			      "valid reference.\n"),
+			      "valid inode referencing it.\n"),
 			    (unsigned long long)dup_blk,
 			    (unsigned long long)dup_blk);
 		/* If we're down to a single reference (and not all references
