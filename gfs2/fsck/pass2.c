@@ -1423,7 +1423,7 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 				continue;
 
 			log_err(_("Dinode %llu (0x%llx) has a hash table "
-				  "inconsistency at index %d (0x%d) for %d\n"),
+				  "inconsistency at index %d (0x%x) for %d\n"),
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				(unsigned long long)ip->i_di.di_num.no_addr,
 				i, i, len);
@@ -1442,7 +1442,7 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 			proper_len = 1 << (ip->i_di.di_depth - leaf.lf_depth);
 			if (proper_len != len) {
 				log_debug(_("Length 0x%x is not proper for "
-					    "leaf %llu (0x%llx): 0x%x"),
+					    "leaf %llu (0x%llx): 0x%x\n"),
 					  len, (unsigned long long)leafblk,
 					  (unsigned long long)leafblk,
 					  proper_len);
