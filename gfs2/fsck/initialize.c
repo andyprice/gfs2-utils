@@ -33,6 +33,7 @@ static int was_mounted_ro = 0;
 static uint64_t possible_root = HIGHEST_BLOCK;
 static struct master_dir fix_md;
 static unsigned long long blks_2free = 0;
+extern int sb_fixed;
 
 /**
  * block_mounters
@@ -828,58 +829,6 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	return -1;
 }
 
-static int get_lockproto_table(struct gfs2_sbd *sdp)
-{
-	FILE *fp;
-	char line[PATH_MAX];
-	char *cluname, *end;
-	const char *fsname, *cfgfile = "/etc/cluster/cluster.conf";
-
-	memset(sdp->lockproto, 0, sizeof(sdp->lockproto));
-	memset(sdp->locktable, 0, sizeof(sdp->locktable));
-	fp = fopen(cfgfile, "rt");
-	if (!fp) {
-		/* no cluster.conf; must be a stand-alone file system */
-		strcpy(sdp->lockproto, "lock_nolock");
-		log_warn(_("Lock protocol determined to be: lock_nolock\n"));
-		log_warn(_("Stand-alone file system: No need for a lock "
-			   "table.\n"));
-		return 0;
-	}
-	/* We found a cluster.conf so assume it's a clustered file system */
-	log_warn(_("Lock protocol assumed to be: " GFS2_DEFAULT_LOCKPROTO
-		   "\n"));
-	strcpy(sdp->lockproto, GFS2_DEFAULT_LOCKPROTO);
-
-	while (fgets(line, sizeof(line) - 1, fp)) {
-		cluname = strstr(line,"<cluster name=");
-		if (cluname) {
-			cluname += 15;
-			end = strchr(cluname,'"');
-			if (end)
-				*end = '\0';
-			break;
-		}
-	}
-	if (cluname == NULL || end == NULL || end - cluname < 1) {
-		log_err(_("Error: Unable to determine cluster name from %s\n"),
-		                                                      cfgfile);
-	} else {
-		fsname = strrchr(opts.device, '/');
-		if (fsname)
-			fsname++;
-		else
-			fsname = "repaired";
-		snprintf(sdp->locktable, sizeof(sdp->locktable), "%.*s:%.16s",
-		         (int)(sizeof(sdp->locktable) - strlen(fsname) - 2),
-		         cluname, fsname);
-		log_warn(_("Lock table determined to be: %s\n"),
-			 sdp->locktable);
-	}
-	fclose(fp);
-	return 0;
-}
-
 /**
  * is_journal_copy - Is this a "real" dinode or a copy inside a journal?
  * A real dinode will be located at the block number in its no_addr.
@@ -1256,7 +1205,8 @@ static int sb_repair(struct gfs2_sbd *sdp)
 		}
 	}
 	/* Step 3 - Rebuild the lock protocol and file system table name */
-	get_lockproto_table(sdp);
+	strcpy(sdp->lockproto, GFS2_DEFAULT_LOCKPROTO);
+	strcpy(sdp->locktable, "unknown");
 	if (query(_("Okay to fix the GFS2 superblock? (y/n)"))) {
 		log_info(_("Found system master directory at: 0x%llx\n"),
 			 sdp->sd_sb.sb_master_dir.no_addr);
@@ -1280,6 +1230,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 		build_sb(sdp, uuid);
 		inode_put(&sdp->md.rooti);
 		inode_put(&sdp->master_dir);
+		sb_fixed = 1;
 	} else {
 		log_crit(_("GFS2 superblock not fixed; fsck cannot proceed "
 			   "without a valid superblock.\n"));

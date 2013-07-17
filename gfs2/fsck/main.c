@@ -37,6 +37,7 @@ struct osi_root dirtree = (struct osi_root) { NULL, };
 struct osi_root inodetree = (struct osi_root) { NULL, };
 int dups_found = 0, dups_found_first = 0;
 struct gfs_sb *sbd1 = NULL;
+int sb_fixed = 0;
 
 /* This function is for libgfs2's sake.                                      */
 void print_it(const char *label, const char *fmt, const char *fmt2, ...)
@@ -316,6 +317,9 @@ int main(int argc, char **argv)
 		log_notice( _("Writing changes to disk\n"));
 	fsync(sdp->device_fd);
 	destroy(sdp);
+	if (sb_fixed)
+		log_warn(_("Superblock was reset. Use tunegfs2 to manually "
+		           "set lock table before mounting.\n"));
 	log_notice( _("gfs2_fsck complete\n"));
 
 	if (!error) {
