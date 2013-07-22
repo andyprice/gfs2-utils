@@ -1365,7 +1365,7 @@ static int reconstruct_journals(struct gfs2_sbd *sdp)
 	struct gfs_jindex ji;
 	char buf[sizeof(struct gfs_jindex)];
 
-	log_err("Clearing GFS journals (this may take a while)\n");
+	log_err(_("Clearing GFS journals (this may take a while)\n"));
 	for (i = 0; i < sdp->md.journals; i++) {
 		count = gfs2_readi(sdp->md.jiinode, buf,
 				   i * sizeof(struct gfs_jindex),
@@ -1378,7 +1378,7 @@ static int reconstruct_journals(struct gfs2_sbd *sdp)
 		if (reconstruct_single_journal(sdp, i, ji.ji_nsegment))
 			return -1;
 	}
-	log_err("\nJournals cleared.\n");
+	log_err(_("\nJournals cleared.\n"));
 	return 0;
 }
 

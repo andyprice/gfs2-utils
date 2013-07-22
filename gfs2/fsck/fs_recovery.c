@@ -650,7 +650,7 @@ int ji_update(struct gfs2_sbd *sdp)
 
 	if (!(sdp->md.journal = calloc(sdp->md.journals,
 				       sizeof(struct gfs2_inode *)))) {
-		log_err("Unable to allocate journal index\n");
+		log_err(_("Unable to allocate journal index\n"));
 		return -1;
 	}
 	memset(journal_name, 0, sizeof(*journal_name));
@@ -662,8 +662,8 @@ int ji_update(struct gfs2_sbd *sdp)
 			if (!error)
 				break;
 			if (error != sizeof(struct gfs_jindex)){
-				log_err("An error occurred while reading the"
-					" journal index file.\n");
+				log_err(_("An error occurred while reading the"
+					" journal index file.\n"));
 				return -1;
 			}
 			gfs_jindex_in(&ji, buf);
