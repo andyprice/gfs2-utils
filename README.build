@@ -12,17 +12,8 @@ Plus the following libraries:
     bison
     flex
     zlib
+    libblkid
     check (optional, enables the test suite)
-
-By default gfs_controld is not built as it is not required in Fedora 17 and
-later and cannot build on it. To re-enable it for older systems, use
---enable-gfs_controld when running the configure script (see below). The
-library dependencies for gfs_controld are only required when this option is
-given. The extra libraries upon which gfs_controld depends are:
-
-   clusterlib
-   corosynclib
-   openaislib
 
 To build gfs2-utils, run the following commands:
 
@@ -38,4 +29,4 @@ To install gfs2-utils, run:
 
     make install
 
-See also README.contributing for details on submitting patches.
+See also doc/README.contributing for details on submitting patches.
