@@ -1238,9 +1238,12 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 		for (tmp = prev_list->next; tmp != prev_list; tmp = tmp->next){
 			bh = osi_list_entry(tmp, struct gfs2_buffer_head,
 					    b_altlist);
+			if (gfs2_check_meta(bh, iblk_type)) {
+				if (pass->invalid_meta_is_fatal)
+					return meta_error;
 
-			if (gfs2_check_meta(bh, iblk_type))
 				continue;
+			}
 
 			/* Now check the metadata itself */
 			for (ptr = (uint64_t *)(bh->b_data + head_size);
@@ -1286,6 +1289,9 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 						     "%llu (0x%llx)\n"),
 						   (unsigned long long)block,
 						   (unsigned long long)block);
+					if (pass->invalid_meta_is_fatal)
+						return meta_error;
+
 					continue;
 				}
 				if (was_duplicate) {
@@ -1300,6 +1306,9 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 						     "%lld (0x%llx)\n"),
 						   (unsigned long long)block,
 						   (unsigned long long)block);
+					if (pass->invalid_meta_is_fatal)
+						return meta_error;
+
 					continue;
 				}
 				if (!nbh)
