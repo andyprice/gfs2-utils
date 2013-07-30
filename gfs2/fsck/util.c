@@ -579,6 +579,8 @@ int gfs2_blockmap_set(struct gfs2_bmap *bmap, uint64_t bblock,
 	static unsigned char *byte;
 	static uint64_t b;
 
+	if (!bmap)
+		return 0;
 	if (bblock > bmap->size)
 		return -1;
 

@@ -12,6 +12,7 @@
 #include "fsck.h"
 #include "fs_recovery.h"
 #include "libgfs2.h"
+#include "metawalk.h"
 #include "util.h"
 
 #define JOURNAL_NAME_SIZE 16
@@ -559,6 +560,63 @@ reinit:
 	return error;
 }
 
+/* We can't use the rangecheck function from pass1 because we haven't gone
+ * through initialization properly yet. */
+static int rangecheck_jblock(struct gfs2_inode *ip, uint64_t block)
+{
+	if((block > ip->i_sbd->fssize) || (block <= ip->i_sbd->sb_addr)) {
+		log_info( _("Bad block pointer (out of range) found in "
+			    "journal inode %lld (0x%llx).\n"),
+			  (unsigned long long)ip->i_di.di_num.no_addr,
+			  (unsigned long long)ip->i_di.di_num.no_addr);
+		return meta_error; /* Exits check_metatree quicker */
+	}
+	return meta_is_good;
+}
+
+static int rangecheck_jmeta(struct gfs2_inode *ip, uint64_t block,
+			       struct gfs2_buffer_head **bh, int h,
+			       int *is_valid, int *was_duplicate,
+			       void *private)
+{
+	int rc;
+
+	*bh = NULL;
+	*was_duplicate = 0;
+	*is_valid = 0;
+	rc = rangecheck_jblock(ip, block);
+	if (rc == meta_is_good) {
+		*bh = bread(ip->i_sbd, block);
+		*is_valid = (gfs2_check_meta(*bh, GFS2_METATYPE_IN) == 0);
+		if (!(*is_valid)) {
+			log_err( _("Journal at block %lld (0x%llx) has a bad "
+				   "indirect block pointer %lld (0x%llx) "
+				   "(points to something that is not an "
+				   "indirect block).\n"),
+				 (unsigned long long)ip->i_di.di_num.no_addr,
+				 (unsigned long long)ip->i_di.di_num.no_addr,
+				 (unsigned long long)block,
+				 (unsigned long long)block);
+			brelse(*bh);
+			return meta_skip_further;
+		}
+	}
+	return rc;
+}
+
+static int rangecheck_jdata(struct gfs2_inode *ip, uint64_t metablock,
+			   uint64_t block, void *private)
+{
+	return rangecheck_jblock(ip, block);
+}
+
+struct metawalk_fxns rangecheck_journal = {
+	.private = NULL,
+	.invalid_meta_is_fatal = 1,
+	.check_metalist = rangecheck_jmeta,
+	.check_data = rangecheck_jdata,
+};
+
 /*
  * replay_journals - replay the journals
  * sdp: the super block
@@ -583,9 +641,39 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 	sdp->jsize = GFS2_DEFAULT_JSIZE;
 
 	for(i = 0; i < sdp->md.journals; i++) {
+		if (sdp->md.journal[i]) {
+			struct rgrp_tree rgd;
+			struct gfs2_bitmap bits;
+
+			/* The real rgrp tree hasn't been built at this point,
+			 * so we need to dummy one up that covers the whole
+			 * file system so basic functions in check_metatree
+			 * don't segfault. */
+			rgd.start = sdp->sb_addr + 1;
+			rgd.length = 1;
+			rgd.bh = NULL;
+			bits.bi_start = 0;
+			bits.bi_len = sdp->fssize / GFS2_NBBY;
+			rgd.bits = &bits;
+			rgd.ri.ri_addr = sdp->sb_addr + 1;
+			rgd.ri.ri_length = 1;
+			rgd.ri.ri_data0 = sdp->sb_addr + 2;
+			rgd.ri.ri_data = sdp->fssize - (sdp->sb_addr + 2);
+
+			sdp->rgtree.osi_node = (struct osi_node *)&rgd;
+			error = check_metatree(sdp->md.journal[i],
+					       &rangecheck_journal);
+			sdp->rgtree.osi_node = NULL;
+			if (error)
+				/* Don't use fsck_inode_put here because it's a
+				   system file and we need to dismantle it. */
+				inode_put(&sdp->md.journal[i]);
+			error = 0; /* bad journal is non-fatal */
+		}
 		if (!sdp->md.journal[i]) {
 			log_err(_("File system journal \"journal%d\" is "
-				  "missing: pass1 will try to recreate it.\n"),
+				  "missing or corrupt: pass1 will try to "
+				  "recreate it.\n"),
 				i);
 			continue;
 		}
