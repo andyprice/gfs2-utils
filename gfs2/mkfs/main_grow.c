@@ -323,6 +323,7 @@ main_grow(int argc, char *argv[])
 	int rgcount, rindex_fd;
 	char rindex_name[PATH_MAX];
 	int error = EXIT_SUCCESS;
+	int ro_mnt = 0;
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	sdp->bsize = GFS2_DEFAULT_BSIZE;
@@ -336,17 +337,20 @@ main_grow(int argc, char *argv[])
 		int sane;
 		struct rgrp_tree *last_rgrp;
 
+		strncpy(sdp->device_name, argv[optind], PATH_MAX - 1);
 		sdp->path_name = argv[optind++];
+
+		if ((!is_pathname_mounted(sdp->path_name, sdp->device_name, &ro_mnt))) {
+			perror(sdp->path_name);
+			exit(EXIT_FAILURE);
+		}
+
 		sdp->path_fd = open(sdp->path_name, O_RDONLY | O_CLOEXEC);
 		if (sdp->path_fd < 0){
 			perror(sdp->path_name);
 			exit(EXIT_FAILURE);
 		}
 
-		if (check_for_gfs2(sdp)) {
-			perror(sdp->path_name);
-			exit(EXIT_FAILURE);
-		}
 		sdp->device_fd = open(sdp->device_name,
 				      (test ? O_RDONLY : O_RDWR) | O_CLOEXEC);
 		if (sdp->device_fd < 0){

@@ -491,6 +491,7 @@ void main_jadd(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd, *sdp = &sbd;
 	unsigned int total;
+	int ro_mnt = 0;
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	sdp->jsize = GFS2_DEFAULT_JSIZE;
@@ -506,7 +507,7 @@ void main_jadd(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (check_for_gfs2(sdp)) {
+	if (!is_pathname_mounted(sdp->path_name, sdp->device_name, &ro_mnt)) {
 		perror(sdp->path_name);
 		exit(EXIT_FAILURE);
 	}
