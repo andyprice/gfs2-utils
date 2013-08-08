@@ -99,7 +99,7 @@ int compute_constants(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-int is_pathname_mounted(struct gfs2_sbd *sdp, int *ro_mount)
+int is_pathname_mounted(char *path_name, char *device_name, int *ro_mount)
 {
 	FILE *fp;
 	struct mntent *mnt;
@@ -112,7 +112,7 @@ int is_pathname_mounted(struct gfs2_sbd *sdp, int *ro_mount)
 		perror("open: /proc/mounts");
 		return 0;
 	}
-	if (stat(sdp->path_name, &st_buf) == 0) {
+	if (stat(path_name, &st_buf) == 0) {
 		if (S_ISBLK(st_buf.st_mode)) {
 #ifndef __GNU__ /* The GNU hurd is broken with respect to stat devices */
 			file_rdev = st_buf.st_rdev;
@@ -124,12 +124,12 @@ int is_pathname_mounted(struct gfs2_sbd *sdp, int *ro_mount)
 	}
 	while ((mnt = getmntent (fp)) != NULL) {
 		/* Check if they specified the device instead of mnt point */
-		if (strcmp(sdp->device_name, mnt->mnt_fsname) == 0) {
-			strcpy(sdp->path_name, mnt->mnt_dir); /* fix it */
+		if (strcmp(device_name, mnt->mnt_fsname) == 0) {
+			strcpy(path_name, mnt->mnt_dir); /* fix it */
 			break;
 		}
-		if (strcmp(sdp->path_name, mnt->mnt_dir) == 0) {
-			strcpy(sdp->device_name, mnt->mnt_fsname); /* fix it */
+		if (strcmp(path_name, mnt->mnt_dir) == 0) {
+			strcpy(device_name, mnt->mnt_fsname); /* fix it */
 			break;
 		}
 		if (stat(mnt->mnt_fsname, &st_buf) == 0) {
@@ -158,36 +158,6 @@ int is_pathname_mounted(struct gfs2_sbd *sdp, int *ro_mount)
 	if (hasmntopt(mnt, MNTOPT_RO))
                *ro_mount = 1;
 	return 1; /* mounted */
-}
-
-int is_gfs2(struct gfs2_sbd *sdp)
-{
-	int fd, rc;
-	struct gfs2_sb sb;
-
-	fd = open(sdp->device_name, O_RDWR);
-	if (fd < 0)
-		return 0;
-
-	rc = 0;
-	if (lseek(fd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK, SEEK_SET) >= 0 &&
-	    read(fd, &sb, sizeof(sb)) == sizeof(sb) &&
-	    be32_to_cpu(sb.sb_header.mh_magic) == GFS2_MAGIC &&
-	    be32_to_cpu(sb.sb_header.mh_type) == GFS2_METATYPE_SB)
-		rc = 1;
-	close(fd);
-	return rc;
-}
-
-int check_for_gfs2(struct gfs2_sbd *sdp)
-{
-	int ro;
-
-	if (!is_pathname_mounted(sdp, &ro))
-		return -1;
-	if (!is_gfs2(sdp))
-		return -1;
-	return 0;
 }
 
 static int lock_for_admin(struct gfs2_sbd *sdp)

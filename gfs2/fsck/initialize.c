@@ -1491,7 +1491,7 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 		strncpy(sdp->device_name, opts.device,
 			sizeof(sdp->device_name));
 		sdp->path_name = sdp->device_name; /* This gets overwritten */
-		is_mounted = is_pathname_mounted(sdp, &ro);
+		is_mounted = is_pathname_mounted(sdp->path_name, sdp->device_name, &ro);
 		/* If the device is busy, but not because it's mounted, fail.
 		   This protects against cases where the file system is LVM
 		   and perhaps mounted on a different node. */
