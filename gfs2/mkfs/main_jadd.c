@@ -529,6 +529,10 @@ void main_jadd(int argc, char *argv[])
 	for (sdp->md.journals = sdp->orig_journals; 
 	     sdp->md.journals < total;
 	     sdp->md.journals++) {
+		if (metafs_interrupted) {
+			cleanup_metafs(&sbd);
+			exit(130);
+		}
 		add_ir(sdp);
 		add_sc(sdp);
 		add_qc(sdp);

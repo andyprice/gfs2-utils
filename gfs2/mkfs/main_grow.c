@@ -372,10 +372,13 @@ main_grow(int argc, char *argv[])
 			perror(_("Bad constants (1)"));
 			exit(EXIT_FAILURE);
 		}
-		if (read_sb(sdp) < 0)
-			die( _("Error reading superblock.\n"));
+		if (read_sb(sdp) < 0) {
+			fprintf(stderr, _("Error reading superblock.\n"));
+			exit(EXIT_FAILURE);
+		}
 		if (sdp->gfs1) {
-			die( _("cannot grow gfs1 filesystem\n"));
+			fprintf(stderr, _("cannot grow gfs1 filesystem\n"));
+			exit(EXIT_FAILURE);
 		}
 		fix_device_geometry(sdp);
 		if (mount_gfs2_meta(sdp)) {
@@ -387,7 +390,8 @@ main_grow(int argc, char *argv[])
 		rindex_fd = open(rindex_name, (test ? O_RDONLY : O_RDWR) | O_CLOEXEC);
 		if (rindex_fd < 0) {
 			cleanup_metafs(sdp);
-			die( _("GFS2 rindex not found.  Please run fsck.gfs2.\n"));
+			perror(_("GFS2 rindex not found. Please run fsck.gfs2.\n"));
+			exit(EXIT_FAILURE);
 		}
 		/* Get master dinode */
 		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_sb.sb_master_dir.no_addr);
@@ -402,6 +406,8 @@ main_grow(int argc, char *argv[])
 		/* we're only going to write out new RG information after   */
 		/* the existing RGs, and only write to the index at EOF.    */
 		ri_update(sdp, rindex_fd, &rgcount, &sane);
+		if (metafs_interrupted)
+			goto out;
 		fssize = filesystem_size(sdp);
 		if (!sdp->rgtree.osi_node) {
 			log_err(_("Error: No resource groups found.\n"));
@@ -424,10 +430,16 @@ main_grow(int argc, char *argv[])
 		} else {
 			int old_rg_count;
 
+			if (metafs_interrupted)
+				goto out;
 			compute_rgrp_layout(sdp, &sdp->rgtree, TRUE);
+			if (metafs_interrupted)
+				goto out;
 			debug_print_rgrps(sdp, &sdp->rgtree);
 			print_info(sdp);
 			initialize_new_portion(sdp, &old_rg_count);
+			if (metafs_interrupted)
+				goto out;
 			fix_rindex(sdp, rindex_fd, old_rg_count);
 		}
 	out:
@@ -439,6 +451,7 @@ main_grow(int argc, char *argv[])
 	}
 	close(sdp->path_fd);
 	sync();
-	log_notice( _("gfs2_grow complete.\n"));
+	if (!metafs_interrupted)
+		log_notice( _("gfs2_grow complete.\n"));
 	exit(error);
 }

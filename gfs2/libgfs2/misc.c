@@ -18,12 +18,15 @@
 #include <sys/sysmacros.h>
 #include <mntent.h>
 #include <sys/time.h>
+#include <signal.h>
 
 #include "libgfs2.h"
 
 #define PAGE_SIZE (4096)
 #define SYS_BASE "/sys/fs/gfs2" /* FIXME: Look in /proc/mounts to find this */
 #define DIV_RU(x, y) (((x) + (y) - 1) / (y))
+
+int metafs_interrupted = 0;
 
 int compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
 	uint32_t *maxheight, uint32_t bsize1, int diptrs, int inptrs)
@@ -179,10 +182,15 @@ static int lock_for_admin(struct gfs2_sbd *sdp)
 	return 0;
 }
 
+static void sighandler(int error)
+{
+	metafs_interrupted = 1;
+}
 
 int mount_gfs2_meta(struct gfs2_sbd *sdp)
 {
 	int ret;
+	struct sigaction sa = {	.sa_handler = &sighandler };
 
 	memset(sdp->metafs_path, 0, PATH_MAX);
 	snprintf(sdp->metafs_path, PATH_MAX - 1, "/tmp/.gfs2meta.XXXXXX");
@@ -190,6 +198,15 @@ int mount_gfs2_meta(struct gfs2_sbd *sdp)
 	if(!mkdtemp(sdp->metafs_path))
 		return -1;
 
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGILL, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGHUP, &sa, NULL);
+	sigaction(SIGABRT, &sa, NULL);
+	sigaction(SIGSEGV, &sa, NULL);
+	sigaction(SIGCONT, &sa, NULL);
+	sigaction(SIGUSR1, &sa, NULL);
+	sigaction(SIGUSR2, &sa, NULL);
 	ret = mount(sdp->path_name, sdp->metafs_path, "gfs2meta", 0, NULL);
 	if (ret) {
 		rmdir(sdp->metafs_path);
@@ -203,6 +220,7 @@ int mount_gfs2_meta(struct gfs2_sbd *sdp)
 void cleanup_metafs(struct gfs2_sbd *sdp)
 {
 	int ret;
+	struct sigaction sa = {	.sa_handler = SIG_DFL };
 
 	if (sdp->metafs_fd <= 0)
 		return;
@@ -215,6 +233,16 @@ void cleanup_metafs(struct gfs2_sbd *sdp)
 			sdp->metafs_path, strerror(errno));
 	else
 		rmdir(sdp->metafs_path);
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGILL, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGHUP, &sa, NULL);
+	sigaction(SIGABRT, &sa, NULL);
+	sigaction(SIGSEGV, &sa, NULL);
+	sigaction(SIGCONT, &sa, NULL);
+	sigaction(SIGUSR1, &sa, NULL);
+	sigaction(SIGUSR2, &sa, NULL);
+	metafs_interrupted = 0;
 }
 
 int set_sysfs(const char *fsname, const char *filename, const char *val)
