@@ -713,6 +713,8 @@ extern void increase_verbosity(void);
 extern void decrease_verbosity(void);
 /* misc.c */
 
+extern int metafs_interrupted;
+
 extern int compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
 		uint32_t *maxheight, uint32_t bsize1, int diptrs, int inptrs);
 extern int compute_constants(struct gfs2_sbd *sdp);
