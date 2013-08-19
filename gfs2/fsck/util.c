@@ -534,15 +534,10 @@ static int gfs2_blockmap_create(struct gfs2_bmap *bmap, uint64_t size)
 
 	/* Have to add 1 to BLOCKMAP_SIZE since it's 0-based and mallocs
 	 * must be 1-based */
-	bmap->mapsize = BLOCKMAP_SIZE4(size);
+	bmap->mapsize = BLOCKMAP_SIZE4(size) + 1;
 
-	if (!(bmap->map = malloc(sizeof(char) * bmap->mapsize)))
+	if (!(bmap->map = calloc(bmap->mapsize, sizeof(char))))
 		return -ENOMEM;
-	if (!memset(bmap->map, 0, sizeof(char) * bmap->mapsize)) {
-		free(bmap->map);
-		bmap->map = NULL;
-		return -ENOMEM;
-	}
 	return 0;
 }
 
