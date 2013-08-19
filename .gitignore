@@ -44,7 +44,13 @@ gfs2/tune/tunegfs2
 test-driver
 tests/check_libgfs2
 tests/testvol
-tests/tests.log
+tests/testsuite.log
+tests/testsuite.dir
+tests/testsuite.trs
+tests/atconfig
+tests/atlocal
+tests/package.m4
+tests/testsuite
 ABOUT-NLS
 po/Makevars.template
 po/POTFILES

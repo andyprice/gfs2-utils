@@ -203,6 +203,7 @@ CPPFLAGS="-I\$(top_builddir)/make -I\$(top_srcdir)/make \
 	  -I. $ENV_CPPFLAGS"
 LDFLAGS="$ENV_LDFLAGS"
 
+AC_CONFIG_TESTDIR([tests], [gfs2/libgfs2:gfs2/mkfs:gfs2/fsck:gfs2/edit:gfs2/convert:gfs2/tune:tests])
 AC_CONFIG_FILES([Makefile
 		 gfs2/Makefile
 		 gfs2/include/Makefile
@@ -216,6 +217,7 @@ AC_CONFIG_FILES([Makefile
 		 gfs2/scripts/Makefile
 		 doc/Makefile
 		 tests/Makefile
+		 tests/atlocal
 		 po/Makefile.in
 		 ])
 

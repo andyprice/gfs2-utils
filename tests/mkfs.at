@@ -1,0 +1,64 @@
+AT_TESTED([mkfs.gfs2])
+AT_BANNER([mkfs.gfs2 tests])
+
+AT_SETUP([Locking protocol validation])
+AT_CHECK([mkfs.gfs2 -O -p badprotocol $GFS_TGT], 255, [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Resource group size validation])
+AT_CHECK([mkfs.gfs2 -O -p lock_nolock -r 31 $GFS_TGT], 255, [ignore], [ignore])
+AT_CHECK([mkfs.gfs2 -O -p lock_nolock -r 2049 $GFS_TGT], 255, [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Journal size validation])
+AT_CHECK([mkfs.gfs2 -O -p lock_nolock -J 7 $GFS_TGT], 255, [ignore], [ignore])
+AT_CHECK([mkfs.gfs2 -O -p lock_nolock -J 1025 $GFS_TGT], 255, [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Block count validation])
+GFS_TGT_REGEN
+AT_CHECK([mkfs.gfs2 -O -p lock_nolock -b 512 $GFS_TGT $(($(gfs_max_blocks 512)+1))], 255, [ignore], [ignore])
+AT_CHECK([mkfs.gfs2 -O -p lock_nolock -b 4096 $GFS_TGT $(($(gfs_max_blocks 4096)+1))], 255, [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Quota change file size validation])
+AT_CHECK([mkfs.gfs2 -O -p lock_nolock -c 0 $GFS_TGT], 255, [ignore], [ignore])
+AT_CHECK([mkfs.gfs2 -O -p lock_nolock -c 65 $GFS_TGT], 255, [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Locking protocols])
+GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock $GFS_TGT])
+GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_dlm -t foo:bar $GFS_TGT])
+AT_CLEANUP
+
+AT_SETUP([Max. blocks, min. block size])
+GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock -b 512 $GFS_TGT $(gfs_max_blocks 512)])
+AT_CLEANUP
+
+AT_SETUP([Max. blocks, max. block size])
+GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock -b 4096 $GFS_TGT $(util_max_blocks 4096)])
+AT_CLEANUP
+
+AT_SETUP([Max. resource group size])
+GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock -r 2048 $GFS_TGT])
+AT_CLEANUP
+
+AT_SETUP([Min. resource group size])
+GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock -r 32 $GFS_TGT])
+AT_CLEANUP
+
+AT_SETUP([Max. journal size])
+GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock -J 1024 $GFS_TGT])
+AT_CLEANUP
+
+AT_SETUP([Min. journal size])
+GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock -J 8 $GFS_TGT])
+AT_CLEANUP
+
+AT_SETUP([Max. quota change file size])
+GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock -c 64 $GFS_TGT])
+AT_CLEANUP
+
+AT_SETUP([Min. quota change file size])
+GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock -c 1 $GFS_TGT])
+AT_CLEANUP
