@@ -68,10 +68,6 @@ __BEGIN_DECLS
 
 #endif  /*  __BYTE_ORDER == __LITTLE_ENDIAN  */
 
-#define BLOCKMAP_SIZE4(size) (size >> 1)
-#define BLOCKMAP_BYTE_OFFSET4(x) ((x & 0x0000000000000001) << 2)
-#define BLOCKMAP_MASK4 (0xf)
-
 enum lgfs2_meta_type {
 	LGFS2_MT_GFS2_SB = 0,
 	LGFS2_MT_GFS_SB = 1,
