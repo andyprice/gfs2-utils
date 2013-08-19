@@ -23,6 +23,10 @@ extern void dup_listent_delete(struct duptree *dt, struct inode_with_dups *id);
 
 extern const char *reftypes[ref_types + 1];
 
+#define BLOCKMAP_SIZE4(size) ((size) >> 1)
+#define BLOCKMAP_BYTE_OFFSET4(x) (((x) & 0x0000000000000001) << 2)
+#define BLOCKMAP_MASK4 (0xf)
+
 static inline uint8_t block_type(uint64_t bblock)
 {
 	static unsigned char *byte;
