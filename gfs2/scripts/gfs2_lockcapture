@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 """
 The script "gfs2_lockcapture" will capture locking information from GFS2 file
 systems and DLM.
@@ -13,7 +13,7 @@ import os
 import os.path
 import logging
 import logging.handlers
-from optparse import OptionParser, Option
+from optparse import OptionParser, Option, SUPPRESS_HELP
 import time
 import platform
 import shutil
@@ -34,7 +34,7 @@ import tarfile
 sure only 1 instance of this script is running at any time.
 @type PATH_TO_PID_FILENAME: String
 """
-VERSION_NUMBER = "0.9-7"
+VERSION_NUMBER = "0.9-8"
 MAIN_LOGGER_NAME = "%s" %(os.path.basename(sys.argv[0]))
 PATH_TO_DEBUG_DIR="/sys/kernel/debug"
 PATH_TO_PID_FILENAME = "/var/run/%s.pid" %(os.path.basename(sys.argv[0]))
@@ -190,12 +190,11 @@ def runCommand(command, listOfCommandOptions, standardOut=subprocess.PIPE, stand
         commandOptionString = ""
         for option in listOfCommandOptions:
             commandOptionString += "%s " %(option)
-        message = "An error occurred running the command: $ %s %s\n" %(command, commandOptionString)
-        if (len(stdout) > 0):
-            message += stdout
-        message += "\n"
-        if (len(stderr) > 0):
-            message += stderr
+        message = "An error occurred running the command: $ %s %s" %(command, commandOptionString)
+        if (len(stdout.rstrip()) > 0):
+            message += "\n%s" %(stdout.rstrip())
+        if (len(stderr.rstrip()) > 0):
+            message += "\n%s" %(stderr.rstrip())
         logging.getLogger(MAIN_LOGGER_NAME).error(message)
     return False
 
@@ -232,12 +231,11 @@ def runCommandOutput(command, listOfCommandOptions, standardOut=subprocess.PIPE,
         commandOptionString = ""
         for option in listOfCommandOptions:
             commandOptionString += "%s " %(option)
-        message = "An error occurred running the command: $ %s %s\n" %(command, commandOptionString)
-        if (len(stdout) > 0):
-            message += stdout
-        message += "\n"
-        if (len(stderr) > 0):
-            message += stderr
+        message = "An error occurred running the command: $ %s %s" %(command, commandOptionString)
+        if (len(stdout.rstrip()) > 0):
+            message += "\n%s" %(stdout.rstrip())
+        if (len(stderr.rstrip()) > 0):
+            message += "\n%s" %(stderr.rstrip())
         logging.getLogger(MAIN_LOGGER_NAME).error(message)
         return None
     return stdout.strip().rstrip()
@@ -790,12 +788,11 @@ def getLabelMapForMountedFilesystems(clusterName, listOfMountedFilesystems):
 # #####################################################################
 # Gather output from command functions
 # #####################################################################
-def gatherGeneralInformation(pathToDSTDir):
+def gatherHostData(pathToDSTDir):
     """
     This function will gather general information about the cluster and write
     the results to a file. The following data will be captured: hostname, date,
-    uname -a, uptime, contents of /proc/mounts, and ps h -AL -o tid,s,cmd.
-
+    uname -a, uptime.
 
     @param pathToDSTDir: This is the path to directory where the files will be
     written to.
@@ -811,19 +808,16 @@ def gatherGeneralInformation(pathToDSTDir):
         systemString += "UPTIME=%s" %(stdout)
     writeToFile(os.path.join(pathToDSTDir, "hostinformation.txt"), systemString, createFile=True)
 
-    # Copy misc files
-    pathToSrcFile = "/proc/mounts"
-    copyFile(pathToSrcFile, os.path.join(pathToDSTDir, pathToSrcFile.strip("/")))
-    pathToSrcFile = "/proc/slabinfo"
-    copyFile(pathToSrcFile, os.path.join(pathToDSTDir, pathToSrcFile.strip("/")))
+def gatherDiagnosticData(pathToDSTDir):
+    """
+    This function will gather general information about the cluster and write (or
+    copy) the results to a file.
 
-    # Copy the DLM hash table sizes:
-    pathToHashTableFiles = ["/sys/kernel/config/dlm/cluster/lkbtbl_size", "/sys/kernel/config/dlm/cluster/dirtbl_size",
-                            "/sys/kernel/config/dlm/cluster/rsbtbl_size"]
-    for pathToSrcFile in pathToHashTableFiles:
-        if (os.path.exists(pathToSrcFile)):
-            copyFile(pathToSrcFile, os.path.join(pathToDSTDir, pathToSrcFile.strip("/")))
+    @param pathToDSTDir: This is the path to directory where the files will be
+    written to.
+    @type pathToDSTDir: String
 
+    """
     # Get "ps -eo user,pid,%cpu,%mem,vsz,rss,tty,stat,start,time,comm,wchan" data.
     # Get " ps h -AL -o tid,s,cmd
     command = "ps"
@@ -837,23 +831,34 @@ def gatherGeneralInformation(pathToDSTDir):
         message = "There was an error writing the command output for %s to the file %s." %(command, pathToCommandOutput)
         logging.getLogger(MAIN_LOGGER_NAME).error(message)
 
+    # Copy misc files
+    pathToSrcFile = "/proc/mounts"
+    copyFile(pathToSrcFile, os.path.join(pathToDSTDir, pathToSrcFile.strip("/")))
+    pathToSrcFile = "/proc/slabinfo"
+    copyFile(pathToSrcFile, os.path.join(pathToDSTDir, pathToSrcFile.strip("/")))
+
+    # Copy the DLM hash table sizes:
+    pathToHashTableFiles = ["/sys/kernel/config/dlm/cluster/lkbtbl_size", "/sys/kernel/config/dlm/cluster/dirtbl_size",
+                            "/sys/kernel/config/dlm/cluster/rsbtbl_size"]
+    for pathToSrcFile in pathToHashTableFiles:
+        if (os.path.exists(pathToSrcFile)):
+            copyFile(pathToSrcFile, os.path.join(pathToDSTDir, pathToSrcFile.strip("/")))
+
+def gatherOptionalDiagnosticData(pathToDSTDir):
+    """
+    This function will gather optional information about the cluster and write
+    the results to a file.
+
+    @param pathToDSTDir: This is the path to directory where the files will be
+    written to.
+    @type pathToDSTDir: String
+    """
     # Get df -h ouput
     command = "df"
     pathToCommandOutput = os.path.join(pathToDSTDir, "df-h.cmd")
     try:
         fout = open(pathToCommandOutput, "w")
         runCommand(command, ["-h"], standardOut=fout)
-        fout.close()
-    except IOError:
-        message = "There was an error writing the command output for %s to the file %s." %(command, pathToCommandOutput)
-        logging.getLogger(MAIN_LOGGER_NAME).error(message)
-
-    # Get lsof ouput
-    command = "lsof"
-    pathToCommandOutput = os.path.join(pathToDSTDir, "lsof.cmd")
-    try:
-        fout = open(pathToCommandOutput, "w")
-        runCommand(command, [], standardOut=fout)
         fout.close()
     except IOError:
         message = "There was an error writing the command output for %s to the file %s." %(command, pathToCommandOutput)
@@ -1089,13 +1094,18 @@ def __getOptions(version) :
                          dest="disableProcessGather",
                          help="the gathering of process information will be disabled",
                          default=False)
+    cmdParser.add_option("-m", "--diagnostic_data",
+                         action="store_true",
+                         dest="enableDiagnosticData",
+                         help=SUPPRESS_HELP,
+                         default=False)
     cmdParser.add_option("-o", "--path_to_output_dir",
                          action="store",
                          dest="pathToOutputDir",
                          help="the directory where all the collect data will be stored",
                          type="string",
                          metavar="<output directory>",
-                         default="")
+                         default="/tmp")
     cmdParser.add_option("-r", "--num_of_runs",
                          action="store",
                          dest="numberOfRuns",
@@ -1154,15 +1164,13 @@ class OptionParserExtended(OptionParser):
 
         examplesMessage += "\nIt will do 3 runs of gathering the lockdump information in 10 second intervals for only the"
         examplesMessage += "\nGFS2 filesystems with the names myGFS2vol2,myGFS2vol1. Then it will archive and compress"
-        examplesMessage += "\nthe data collected in the output directory:"
-        examplesMessage += "\n/tmp/cluster42-gfs2_lockcapture and all the questions will be answered with yes.\n"
-        examplesMessage += "\n# %s -r 3 -s 10 -n myGFS2vol2,myGFS2vol1 -o /tmp/cluster42-gfs2_lockcapture -y\n" %(self.__commandName)
+        examplesMessage += "\nthe data collected in the output directory /tmp and all the questions will be answered with yes.\n"
+        examplesMessage += "\n# %s -r 3 -s 10 -n myGFS2vol2,myGFS2vol1 -o /tmp -y\n" %(self.__commandName)
 
         examplesMessage += "\nIt will do 2 runs of gathering the lockdump information in 25 second intervals for all the"
         examplesMessage += "\nmounted GFS2 filesystems. The gathering process data will be disabled. Then it will archive and compress"
-        examplesMessage += "\nthe data collected in the output directory:"
-        examplesMessage += "\n/tmp/cluster42-gfs2_lockcapture and all the questions will be answered with yes.\n"
-        examplesMessage += "\n# %s -r 2 -s 25 -P -o /tmp/cluster42-gfs2_lockcapture\n" %(self.__commandName)
+        examplesMessage += "\nthe data collected in the output directory: /tmp and all the questions will be answered with yes.\n"
+        examplesMessage += "\n# %s -r 2 -s 25 -P -o /tmp\n" %(self.__commandName)
         OptionParser.print_help(self)
         print examplesMessage
 
@@ -1264,7 +1272,7 @@ if __name__ == "__main__":
             message = "Debugging has been enabled."
             logging.getLogger(MAIN_LOGGER_NAME).debug(message)
         if (cmdLineOpts.disableLoggingToConsole):
-            logging.disable(logging.CRITICAL)
+            streamHandler.setLevel(logging.CRITICAL)
         # #######################################################################
         # Check to see if pid file exists and error if it does.
         # #######################################################################
@@ -1305,7 +1313,7 @@ if __name__ == "__main__":
         # #######################################################################
         # Verify they want to continue because this script will trigger sysrq events.
         # #######################################################################
-        if (not cmdLineOpts.disableQuestions):
+        if (not cmdLineOpts.disableQuestions and not cmdLineOpts.disableProcessGather):
             valid = {"yes":True, "y":True, "no":False, "n":False}
             question = "This script will trigger a sysrq -t event or collect the data for each pid directory located in /proc for each run. Are you sure you want to continue?"
             prompt = " [y/n] "
@@ -1326,14 +1334,11 @@ if __name__ == "__main__":
         # Create the output directory to verify it can be created before
         # proceeding unless it is already created from a previous run data needs
         # to be analyzed. Probably could add more debugging on if file or dir.
-        # #######################################################################
-        pathToOutputDir = cmdLineOpts.pathToOutputDir
-        if (not len(pathToOutputDir) > 0):
-            pathToOutputDir = "%s" %(os.path.join("/tmp", "%s-%s" %(time.strftime("%Y-%m-%d_%H%M%S"), os.path.basename(sys.argv[0]))))
-        # #######################################################################
+
         # Backup any existing directory with same name as current output
         # directory.
         # #######################################################################
+        pathToOutputDir = "%s" %(os.path.join(cmdLineOpts.pathToOutputDir, "%s-%s" %(os.path.basename(sys.argv[0]), time.strftime("%Y-%m-%d"))))
         if (backupOutputDirectory(pathToOutputDir)):
             message = "This directory that will be used to capture all the data: %s" %(pathToOutputDir)
             logging.getLogger(MAIN_LOGGER_NAME).info(message)
@@ -1388,38 +1393,13 @@ if __name__ == "__main__":
             logging.getLogger(MAIN_LOGGER_NAME).status(message)
 
             # Gather various bits of data from the clusternode.
-            message = "Pass (%d/%d): Gathering general information about the host." %(i, cmdLineOpts.numberOfRuns)
+            message = "Pass (%d/%d): Gathering simple data about the host." %(i, cmdLineOpts.numberOfRuns)
             logging.getLogger(MAIN_LOGGER_NAME).debug(message)
-            gatherGeneralInformation(pathToOutputRunDir)
+            gatherHostData(pathToOutputRunDir)
             # Write the clusternode name and id to the general information file.
             writeToFile(os.path.join(pathToOutputRunDir, "hostinformation.txt"),
                         "NODE_NAME=%s\nNODE_ID=%d" %(clusternode.getClusterNodeName(), clusternode.getClusterNodeID()),
                         appendToFile=True, createFile=True)
-
-            # Going to sleep for 2 seconds, so that TIMESTAMP should be in the
-            # past in the logs so that capturing sysrq data will be guaranteed.
-            time.sleep(2)
-
-            # If enabled then gather the process data.
-            if (not cmdLineOpts.disableProcessGather):
-                # Gather the backtraces for all the pids, by grabbing the /proc/<pid
-                # number> or triggering sysrq events to capture task bask traces
-                # from log.
-                # Gather the data in the /proc/<pid> directory if the file
-                # </proc/<pid>/stack exists. If file exists we will not trigger
-                # sysrq events.
-
-                # Should I gather anyhow and only capture sysrq if needed.
-                pathToPidData = "/proc"
-                if (isProcPidStackEnabled(pathToPidData)):
-                    message = "Pass (%d/%d): Triggering the capture of all pid directories in %s." %(i, cmdLineOpts.numberOfRuns, pathToPidData)
-                    logging.getLogger(MAIN_LOGGER_NAME).debug(message)
-                    gatherPidData(pathToPidData, os.path.join(pathToOutputRunDir, pathToPidData.strip("/")))
-                else:
-                    message = "Pass (%d/%d): Triggering the sysrq events for the host since stack was not captured in pid directory." %(i, cmdLineOpts.numberOfRuns)
-                    logging.getLogger(MAIN_LOGGER_NAME).debug(message)
-                    triggerSysRQEvents()
-
             # #######################################################################
             # Gather the DLM data and lock-dumps
             # #######################################################################
@@ -1444,16 +1424,55 @@ if __name__ == "__main__":
             logging.getLogger(MAIN_LOGGER_NAME).debug(message)
             if(gatherGFS2LockDumps(pathToOutputRunDir, clusternode.getMountedGFS2FilesystemNames())):
                 exitCode = 0
+            # If enabled then gather the process data. This will be included even if -R option is enabled.
+            if (not cmdLineOpts.disableProcessGather):
+                # Gather the backtraces for all the pids, by grabbing the /proc/<pid
+                # number> or triggering sysrq events to capture task bask traces
+                # from log.
+                # Gather the data in the /proc/<pid> directory if the file
+                # </proc/<pid>/stack exists. If file exists we will not trigger
+                # sysrq events.
+
+                # Should I gather anyhow and only capture sysrq if needed.
+                pathToPidData = "/proc"
+                if (isProcPidStackEnabled(pathToPidData)):
+                    message = "Pass (%d/%d): Triggering the capture of all pid directories in %s." %(i, cmdLineOpts.numberOfRuns, pathToPidData)
+                    logging.getLogger(MAIN_LOGGER_NAME).debug(message)
+                    gatherPidData(pathToPidData, os.path.join(pathToOutputRunDir, pathToPidData.strip("/")))
+                else:
+                    message = "Pass (%d/%d): Triggering the sysrq events for the host since stack was not captured in pid directory." %(i, cmdLineOpts.numberOfRuns)
+                    logging.getLogger(MAIN_LOGGER_NAME).debug(message)
+                    triggerSysRQEvents()
+
             # Gather log files
             message = "Pass (%d/%d): Gathering the log files for the host." %(i, cmdLineOpts.numberOfRuns)
             logging.getLogger(MAIN_LOGGER_NAME).debug(message)
             gatherLogs(os.path.join(pathToOutputRunDir, "logs"))
+
+            # Gather diagnostic data
+            message = "Pass (%d/%d): Gathering diagnostic data about the host." %(i, cmdLineOpts.numberOfRuns)
+            logging.getLogger(MAIN_LOGGER_NAME).debug(message)
+            gatherDiagnosticData(pathToOutputRunDir)
+            if (cmdLineOpts.enableDiagnosticData):
+                # Gather diagnostic data
+                message = "Pass (%d/%d): Gathering optional diagnostic data about the host." %(i, cmdLineOpts.numberOfRuns)
+                logging.getLogger(MAIN_LOGGER_NAME).debug(message)
+                gatherOptionalDiagnosticData(pathToOutputRunDir)
+
+            # #######################################################################
+            # Sleep for X seconds between runs
+            # #######################################################################
             # Sleep between each run if secondsToSleep is greater than or equal
-            # to 0 and current run is not the last run.
-            if ((cmdLineOpts.secondsToSleep >= 0) and (i < (cmdLineOpts.numberOfRuns))):
-                message = "The script will sleep for %d seconds between each run of capturing the lockdump data." %(cmdLineOpts.secondsToSleep)
+            # to 0 and current run is not the last run. Add 2 seconds to each sleep so
+            # that we know that there is a timestamp difference in logs between runs.
+            # The minimal sleep is 2 seconds.
+            secondsToSleep = cmdLineOpts.secondsToSleep + 2
+            if (secondsToSleep < 2):
+                secondsToSleep = 2
+            if (i < cmdLineOpts.numberOfRuns):
+                message = "The script will sleep for %d seconds between each run of capturing the lockdump data." %(secondsToSleep)
                 logging.getLogger(MAIN_LOGGER_NAME).info(message)
-                time.sleep(cmdLineOpts.secondsToSleep)
+                time.sleep(secondsToSleep)
             # Remove the handler:
             logging.getLogger(MAIN_LOGGER_NAME).removeHandler(currentRunFileHandler)
 
