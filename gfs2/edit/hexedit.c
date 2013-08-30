@@ -592,6 +592,8 @@ int display_block_type(int from_restore)
 	}
 	if (block == RGLIST_DUMMY_BLOCK)
 		print_gfs2("RG List       ");
+	else if (block == JOURNALS_DUMMY_BLOCK)
+		print_gfs2("Journal Status:      ");
 	else
 		print_gfs2("%lld    (0x%llx)", block, block);
 	if (termlines) {
@@ -605,6 +607,9 @@ int display_block_type(int from_restore)
 		ret_type = GFS2_METATYPE_RG;
 		struct_len = sbd.gfs1 ? sizeof(struct gfs_rgrp) :
 			sizeof(struct gfs2_rgrp);
+	} else if (block == JOURNALS_DUMMY_BLOCK) {
+		ret_type = GFS2_METATYPE_DI;
+		struct_len = 0;
 	} else {
 		ret_type = get_block_type(bh);
 		switch (ret_type) {
@@ -777,6 +782,8 @@ int display_block_type(int from_restore)
 		print_gfs2("-------------- Master directory -----------------");
 	else if (!sbd.gfs1 && block == RGLIST_DUMMY_BLOCK)
 		print_gfs2("------------------ RG List ----------------------");
+	else if (!sbd.gfs1 && block == JOURNALS_DUMMY_BLOCK)
+		print_gfs2("-------------------- Journal List --------------------");
 	else {
 		if (sbd.gfs1) {
 			if (block == sbd1->sb_rindex_di.no_addr)
@@ -1215,6 +1222,7 @@ static int block_has_extended_info(void)
 	if (has_indirect_blocks() ||
 	    block_is_rindex() ||
 	    block_is_rgtree() ||
+	    block_is_journals() ||
 	    block_is_jindex() ||
 	    block_is_inum_file() ||
 	    block_is_statfs_file() ||
@@ -1334,6 +1342,11 @@ int display(int identify_only)
 			blk = sbd1->sb_rindex_di.no_addr;
 		else
 			blk = masterblock("rindex");
+	} else if (block == JOURNALS_DUMMY_BLOCK) {
+		if (sbd.gfs1)
+			blk = sbd1->sb_jindex_di.no_addr;
+		else
+			blk = masterblock("jindex");
 	} else
 		blk = block;
 	if (termlines) {
@@ -1400,6 +1413,7 @@ int display(int identify_only)
 	else if (gfs2_struct_type == GFS2_METATYPE_LF) { /* directory leaf */
 		do_leaf_extended(bh->b_data, indirect);
 	}
+
 	last_entry_onscreen[dmode] = 0;
 	if (dmode == EXTENDED_MODE && !block_has_extended_info())
 		dmode = HEX_MODE;
@@ -1415,9 +1429,10 @@ int display(int identify_only)
 	if (dmode == HEX_MODE)          /* if hex display mode           */
 		hexdump(dev_offset, (gfs2_struct_type == GFS2_METATYPE_DI)?
 			struct_len + di.di_size:sbd.bsize);
-	else if (dmode == GFS2_MODE)    /* if structure display          */
-		display_gfs2();            /* display the gfs2 structure    */
-	else
+	else if (dmode == GFS2_MODE) { /* if structure display */
+		if (block != JOURNALS_DUMMY_BLOCK)
+			display_gfs2();       /* display the gfs2 structure */
+	} else
 		display_extended();        /* display extended blocks       */
 	/* No else here because display_extended can switch back to hex mode */
 	if (termlines)
@@ -1748,6 +1763,8 @@ uint64_t check_keywords(const char *kword)
 
 		rgnum = atoi(kword + 3);
 		blk = get_rg_addr(rgnum);
+	} else if (!strncmp(kword, "journals", 8)) {
+		blk = JOURNALS_DUMMY_BLOCK;
 	} else if (!strncmp(kword, "journal", 7) && isdigit(kword[7])) {
 		uint64_t j_size;
 
@@ -1783,7 +1800,8 @@ static uint64_t goto_block(void)
 			temp_blk = block + delta;
 		}
 
-		if (temp_blk == RGLIST_DUMMY_BLOCK || temp_blk < max_block) {
+		if (temp_blk == RGLIST_DUMMY_BLOCK ||
+		    temp_blk == JOURNALS_DUMMY_BLOCK || temp_blk < max_block) {
 			offset = 0;
 			block = temp_blk;
 			push_block(block);
@@ -2832,6 +2850,7 @@ static void usage(void)
 	fprintf(stderr,"     master - prints the master directory.\n");
 	fprintf(stderr,"     root - prints the root directory.\n");
 	fprintf(stderr,"     jindex - prints the journal index directory.\n");
+	fprintf(stderr,"     journals - prints the journal status.\n");
 	fprintf(stderr,"     per_node - prints the per_node directory.\n");
 	fprintf(stderr,"     inum - prints the inum file.\n");
 	fprintf(stderr,"     statfs - prints the statfs file.\n");

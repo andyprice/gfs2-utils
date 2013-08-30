@@ -25,6 +25,7 @@ enum dsp_mode { HEX_MODE = 0, GFS2_MODE = 1, EXTENDED_MODE = 2, INIT_MODE = 3 };
 		print_it("  "#member, fmt, fmt2, struct->member);	\
 	} while (FALSE);
 #define RGLIST_DUMMY_BLOCK -2
+#define JOURNALS_DUMMY_BLOCK -3
 
 extern struct gfs2_sb sb;
 extern uint64_t block;
@@ -117,6 +118,13 @@ extern enum dsp_mode dmode;
 static inline int block_is_rgtree(void)
 {
 	if (block == RGLIST_DUMMY_BLOCK)
+		return TRUE;
+	return FALSE;
+}
+
+static inline int block_is_journals(void)
+{
+	if (block == JOURNALS_DUMMY_BLOCK)
 		return TRUE;
 	return FALSE;
 }
