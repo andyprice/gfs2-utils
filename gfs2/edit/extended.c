@@ -439,7 +439,7 @@ static void gfs_jindex_print(struct gfs_jindex *ji)
         pv(ji, ji_pad, "%u", "0x%x");
 }
 
-static int print_jindex(struct gfs2_inode *dij)
+static int print_gfs_jindex(struct gfs2_inode *dij)
 {
 	int error, start_line;
 	struct gfs_jindex ji;
@@ -477,6 +477,35 @@ static int print_jindex(struct gfs2_inode *dij)
 	}
 	end_row[dmode] = print_entry_ndx;
 	return error;
+}
+
+static int print_gfs2_jindex(void)
+{
+	int d, error;
+	struct gfs2_log_header head;
+	struct gfs2_inode *ip;
+
+	for (d = 0; d < indirect->ii[0].dirents; d++) {
+		if (strncmp(indirect->ii[0].dirent[d].filename, "journal", 7))
+			continue;
+		ip = lgfs2_inode_read(&sbd, indirect->ii[0].dirent[d].block);
+		print_gfs2("%s: 0x%-5x %dMB ",
+			   indirect->ii[0].dirent[d].filename,
+			   indirect->ii[0].dirent[d].block,
+			   ip->i_di.di_size / 1048576);
+		error = gfs2_find_jhead(ip, &head);
+		if (error) {
+			print_gfs2("corrupt.");
+		} else {
+			if (head.lh_flags & GFS2_LOG_HEAD_UNMOUNT)
+				print_gfs2("clean.");
+			else
+				print_gfs2("dirty.");
+		}
+		eol(0);
+		inode_put(&ip);
+	}
+	return 0;
 }
 
 static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
@@ -630,8 +659,13 @@ int display_extended(void)
 		parse_rindex(tmp_inode, TRUE);
 		inode_put(&tmp_inode);
 		brelse(tmp_bh);
-	}
-	else if (has_indirect_blocks() && !indirect_blocks &&
+	} else if (block_is_journals()) {
+		if (sbd.gfs1)
+			block = sbd1->sb_jindex_di.no_addr;
+		else
+			block = masterblock("jindex");
+		print_gfs2_jindex();
+	} else if (has_indirect_blocks() && !indirect_blocks &&
 		 !display_leaf(indirect))
 		return -1;
 	else if (display_indirect(indirect, indirect_blocks, 0, 0) == 0)
@@ -647,13 +681,12 @@ int display_extended(void)
 		parse_rindex(tmp_inode, FALSE);
 		inode_put(&tmp_inode);
 		brelse(tmp_bh);
-	}
-	else if (block_is_jindex()) {
+	} else if (block_is_jindex()) {
 		tmp_bh = bread(&sbd, block);
 		tmp_inode = lgfs2_inode_get(&sbd, tmp_bh);
 		if (tmp_inode == NULL)
 			return -1;
-		print_jindex(tmp_inode);
+		print_gfs_jindex(tmp_inode);
 		inode_put(&tmp_inode);
 		brelse(tmp_bh);
 	}
