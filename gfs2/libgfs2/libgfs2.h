@@ -770,6 +770,10 @@ extern int do_init_statfs(struct gfs2_sbd *sdp);
 extern int gfs2_check_meta(struct gfs2_buffer_head *bh, int type);
 extern unsigned lgfs2_bm_scan(struct rgrp_tree *rgd, unsigned idx,
 			      uint64_t *buf, uint8_t state);
+extern int build_inum_range(struct gfs2_inode *per_node, unsigned int j);
+extern int build_statfs_change(struct gfs2_inode *per_node, unsigned int j);
+extern int build_quota_change(struct gfs2_inode *per_node, unsigned int j);
+
 /* super.c */
 extern int check_sb(struct gfs2_sb *sb);
 extern int read_sb(struct gfs2_sbd *sdp);

@@ -1595,6 +1595,116 @@ struct metawalk_fxns pass2_fxns = {
 	.repair_leaf = pass2_repair_leaf,
 };
 
+static int check_metalist_qc(struct gfs2_inode *ip, uint64_t block,
+			     struct gfs2_buffer_head **bh, int h,
+			     int *is_valid, int *was_duplicate, void *private)
+{
+	*was_duplicate = 0;
+	*is_valid = 1;
+	*bh = bread(ip->i_sbd, block);
+	return meta_is_good;
+}
+
+static int check_data_qc(struct gfs2_inode *ip, uint64_t metablock,
+			 uint64_t block, void *private)
+{
+	struct gfs2_buffer_head *bh;
+
+	/* At this point, basic data block checks have already been done,
+	   so we only need to make sure they're QC blocks. */
+	if (!valid_block(ip->i_sbd, block))
+		return -1;
+
+	bh = bread(ip->i_sbd, block);
+	if (gfs2_check_meta(bh, GFS2_METATYPE_QC) != 0) {
+		log_crit(_("Error: quota_change block at %lld (0x%llx) is "
+			   "the wrong metadata type.\n"),
+			 (unsigned long long)block, (unsigned long long)block);
+		brelse(bh);
+		return -1;
+	}
+	brelse(bh);
+	return 0;
+}
+
+struct metawalk_fxns quota_change_fxns = {
+	.check_metalist = check_metalist_qc,
+	.check_data = check_data_qc,
+};
+
+/* check_pernode_for - verify a file within the system per_node directory
+ * @x - index number X
+ * @per_node - pointer to the per_node inode
+ * @fn - system file name
+ * @filelen - the file length the system file needs to be
+ * @multiple - the file length must be a multiple (versus the exact value)
+ * @pass - a metawalk function for checking the data blocks (if any)
+ * @builder - a rebuild function for the file
+ *
+ * Returns: 0 if all went well, else error. */
+static int check_pernode_for(int x, struct gfs2_inode *pernode, const char *fn,
+			     unsigned long long filelen, int multiple,
+			     struct metawalk_fxns *pass,
+			     int builder(struct gfs2_inode *per_node,
+					 unsigned int j))
+{
+	struct gfs2_inode *ip;
+	int error, valid_size = 1;
+
+	log_debug(_("Checking system file %s\n"), fn);
+	error = gfs2_lookupi(pernode, fn, strlen(fn), &ip);
+	if (error) {
+		log_err(_("System file %s is missing.\n"), fn);
+		if (!query( _("Rebuild the system file? (y/n) ")))
+			return 0;
+		goto build_it;
+	}
+	if (!ip->i_di.di_size)
+		valid_size = 0;
+	else if (!multiple && ip->i_di.di_size != filelen)
+		valid_size = 0;
+	else if (multiple && (ip->i_di.di_size % filelen))
+		valid_size = 0;
+	if (!valid_size) {
+		log_err(_("System file %s has an invalid size. Is %llu, "
+			  "should be %llu.\n"), fn, ip->i_di.di_size, filelen);
+		if (!query( _("Rebuild the system file? (y/n) ")))
+			goto out_good;
+		fsck_inode_put(&ip);
+		goto build_it;
+	}
+	if (pass) {
+		error = check_metatree(ip, pass);
+		if (!error)
+			goto out_good;
+		log_err(_("System file %s has bad contents.\n"), fn);
+		if (!query( _("Delete and rebuild the system file? (y/n) ")))
+			goto out_good;
+		check_metatree(ip, &pass2_fxns_delete);
+		fsck_inode_put(&ip);
+		gfs2_dirent_del(pernode, fn, strlen(fn));
+		goto build_it;
+	}
+out_good:
+	fsck_inode_put(&ip);
+	return 0;
+
+build_it:
+	if (builder(pernode, x)) {
+		log_err(_("Error building %s\n"), fn);
+		return -1;
+	}
+	error = gfs2_lookupi(pernode, fn, strlen(fn), &ip);
+	if (error) {
+		log_err(_("Error rebuilding %s.\n"), fn);
+		return -1;
+	}
+	fsck_blockmap_set(ip, ip->i_di.di_num.no_addr, fn, gfs2_inode_file);
+	reprocess_inode(ip, fn);
+	log_err(_("System file %s rebuilt.\n"), fn);
+	goto out_good;
+}
+
 /* Check system directory inode                                           */
 /* Should work for all system directories: root, master, jindex, per_node */
 static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
@@ -1707,7 +1817,26 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 				sysinode->i_di.di_num.no_addr);
 		}
 	}
-	return 0;
+	error = 0;
+	if (sysinode == sysinode->i_sbd->md.pinode) {
+		int j;
+		char fn[64];
+
+		/* Make sure all the per_node files are there, and valid */
+		for (j = 0; j < sysinode->i_sbd->md.journals; j++) {
+			sprintf(fn, "inum_range%d", j);
+			error += check_pernode_for(j, sysinode, fn, 16, 0,
+						   NULL, build_inum_range);
+			sprintf(fn, "statfs_change%d", j);
+			error += check_pernode_for(j, sysinode, fn, 24, 0,
+						   NULL, build_statfs_change);
+			sprintf(fn, "quota_change%d", j);
+			error += check_pernode_for(j, sysinode, fn, 1048576, 1,
+						   &quota_change_fxns,
+						   build_quota_change);
+		}
+	}
+	return error;
 }
 
 /**

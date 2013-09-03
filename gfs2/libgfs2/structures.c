@@ -180,7 +180,7 @@ int build_jindex(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-static int build_inum_range(struct gfs2_inode *per_node, unsigned int j)
+int build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 {
 	struct gfs2_sbd *sdp = per_node->i_sbd;
 	char name[256];
@@ -204,7 +204,7 @@ static int build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 	return 0;
 }
 
-static int build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
+int build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 {
 	struct gfs2_sbd *sdp = per_node->i_sbd;
 	char name[256];
@@ -228,7 +228,7 @@ static int build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 	return 0;
 }
 
-static int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
+int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 {
 	struct gfs2_sbd *sdp = per_node->i_sbd;
 	struct gfs2_meta_header mh;
