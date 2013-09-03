@@ -119,6 +119,7 @@ int read_sb(struct gfs2_sbd *sdp)
 	sdp->sb_addr = GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sdp->bsize;
 	sdp->sd_blocks_per_bitmap = (sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header))
 	                             * GFS2_NBBY;
+	sdp->qcsize = GFS2_DEFAULT_QCSIZE;
 
 	return 0;
 }
