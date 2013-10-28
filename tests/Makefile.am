@@ -40,6 +40,7 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 TESTSUITE_AT = \
 	testsuite.at \
 	mkfs.at \
+	fsck.at \
 	libgfs2.at
 
 TESTSUITE = $(srcdir)/testsuite
