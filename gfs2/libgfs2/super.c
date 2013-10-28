@@ -88,7 +88,7 @@ int read_sb(struct gfs2_sbd *sdp)
 	sdp->sd_hash_ptrs = sdp->sd_hash_bsize / sizeof(uint64_t);
 	sdp->sd_heightsize[0] = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_dinode);
 	sdp->sd_heightsize[1] = sdp->sd_sb.sb_bsize * sdp->sd_diptrs;
-	for (x = 2; ; x++){
+	for (x = 2; x <= GFS2_MAX_META_HEIGHT; x++){
 		space = sdp->sd_heightsize[x - 1] * sdp->sd_inptrs;
 		/* FIXME: Do we really need this first check?? */
 		if (space / sdp->sd_inptrs != sdp->sd_heightsize[x - 1] ||

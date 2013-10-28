@@ -9,8 +9,17 @@ m4_define([GFS_FSCK_CHECK],
 AT_CHECK($1, 0, [ignore], [ignore])
 AT_CHECK([fsck.gfs2 -n $GFS_TGT], 0, [ignore], [ignore])])
 
+# Regenerate, mkfs, modify fs with gfs2l, fsck
+m4_define([GFS_LANG_CHECK],
+[GFS_TGT_REGEN
+AT_CHECK($1, 0, [ignore], [ignore])
+AT_CHECK([echo "$2" | gfs2l ${GFS_TGT}], 0, [ignore], [ignore])
+AT_CHECK([fsck.gfs2 -y $GFS_TGT], 1, [ignore], [ignore])
+AT_CHECK([fsck.gfs2 -n $GFS_TGT], 0, [ignore], [ignore])])
+
 AT_INIT([])
 AT_COLOR_TESTS
 
 m4_include([mkfs.at])
+m4_include([fsck.at])
 m4_include([libgfs2.at])
