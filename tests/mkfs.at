@@ -31,6 +31,13 @@ GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock $GFS_TGT])
 GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_dlm -t foo:bar $GFS_TGT])
 AT_CLEANUP
 
+AT_SETUP([Valid block sizes 512-4096])
+GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock -b 512 $GFS_TGT])
+GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock -b 1024 $GFS_TGT])
+GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock -b 2048 $GFS_TGT])
+GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock -b 4096 $GFS_TGT])
+AT_CLEANUP
+
 AT_SETUP([Max. blocks, min. block size])
 GFS_FSCK_CHECK([mkfs.gfs2 -O -p lock_nolock -b 512 $GFS_TGT $(gfs_max_blocks 512)])
 AT_CLEANUP
