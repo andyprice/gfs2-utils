@@ -22,7 +22,7 @@ libgfs2_la_CPPFLAGS	= -D_FILE_OFFSET_BITS=64 \
 			  -I$(top_srcdir)/gfs2/include
 
 gfs2l_SOURCES		= gfs2l.c
-gfs2l_CPPFLAGS		= -I$(top_srcdir)/gfs2/include
+gfs2l_CPPFLAGS		= -I$(top_srcdir)/gfs2/include -D_FILE_OFFSET_BITS=64
 gfs2l_LDADD		= libgfs2.la
 
 # Autotools can't handle header files output by flex so we have to generate it manually
