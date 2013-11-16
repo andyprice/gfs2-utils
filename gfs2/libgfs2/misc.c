@@ -163,6 +163,100 @@ int is_pathname_mounted(char *path_name, char *device_name, int *ro_mount)
 	return 1; /* mounted */
 }
 
+/* Returns 0 if fd1 and fd2 refer to the same device/file, 1 otherwise, or -1 on error */
+static int fdcmp(int fd1, int fd2)
+{
+	struct stat st1, st2;
+	if ((fstat(fd1, &st1) != 0) || (fstat(fd2, &st2) != 0))
+		return -1;
+	if (S_ISBLK(st1.st_mode) && S_ISBLK(st2.st_mode)) {
+		if (st1.st_rdev == st2.st_rdev) {
+			return 0;
+		}
+	} else if ((st1.st_dev == st2.st_dev) && (st1.st_ino == st2.st_ino)) {
+			return 0;
+	}
+	return 1;
+}
+
+int lgfs2_open_mnt(const char *path, int dirflags, int *dirfd, int devflags, int *devfd, struct mntent **mnt)
+{
+	FILE *fp = setmntent("/proc/mounts", "r");
+	if (fp == NULL) {
+		perror("open: /proc/mounts");
+		return 1;
+	}
+	/* Assume path is mount point until we know better. */
+	*dirfd = open(path, dirflags);
+	if (*dirfd < 0)
+		return 1;
+
+	while ((*mnt = getmntent(fp)) != NULL) {
+		int fd;
+		if (strcmp((*mnt)->mnt_type, "gfs2") != 0)
+			continue;
+		*devfd = open((*mnt)->mnt_fsname, devflags);
+		/* Defer checking *devfd until later: whether it's ok to ignore
+		 * the error depends on whether we find the mount point. */
+
+		if (strcmp(path, (*mnt)->mnt_dir) == 0)
+			break;
+		if (strcmp(path, (*mnt)->mnt_fsname) == 0 || fdcmp(*dirfd, *devfd) == 0) {
+			/* We have a match but our above assumption was
+			   incorrect and *dirfd is actually the device. */
+			close(*dirfd);
+			*dirfd = open((*mnt)->mnt_dir, dirflags);
+			break;
+		}
+
+		fd = open((*mnt)->mnt_dir, dirflags);
+		if (fd >= 0) {
+			int diff = fdcmp(*dirfd, fd);
+			close(fd);
+			if (diff == 0)
+				break;
+		}
+		if (*devfd >= 0)
+			close(*devfd);
+	}
+	endmntent(fp);
+	if (*mnt == NULL) {
+		close(*dirfd);
+		return 0; /* Success. Answer is no. Both fds closed. */
+	}
+	if (*dirfd < 0) {
+		close(*devfd);
+		return 1;
+	}
+	if (*devfd < 0) {
+		close(*dirfd);
+		return 1;
+	}
+	return 0; /* Success. Answer is yes. Both fds open. */
+}
+
+int lgfs2_open_mnt_dev(const char *path, int flags, struct mntent **mnt)
+{
+	int dirfd = -1;
+	int devfd = -1;
+	if (lgfs2_open_mnt(path, O_RDONLY, &dirfd, flags, &devfd, mnt) != 0)
+		return -1;
+	if (*mnt != NULL)
+		close(dirfd);
+	return devfd;
+}
+
+int lgfs2_open_mnt_dir(const char *path, int flags, struct mntent **mnt)
+{
+	int dirfd = -1;
+	int devfd = -1;
+	if (lgfs2_open_mnt(path, flags, &dirfd, O_RDONLY, &devfd, mnt) != 0)
+		return -1;
+	if (*mnt != NULL)
+		close(devfd);
+	return dirfd;
+}
+
 static int lock_for_admin(struct gfs2_sbd *sdp)
 {
 	int error;
