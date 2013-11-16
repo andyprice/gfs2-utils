@@ -1475,8 +1475,7 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 
 	sdp->device_fd = open(opts.device, open_flag);
 	if (sdp->device_fd < 0) {
-		int is_mounted, ro;
-
+		struct mntent *mnt;
 		if (open_flag == O_RDONLY || errno != EBUSY) {
 			log_crit( _("Unable to open device: %s\n"),
 				  opts.device);
@@ -1485,30 +1484,23 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 		/* We can't open it EXCL.  It may be already open rw (in which
 		   case we want to deny them access) or it may be mounted as
 		   the root file system at boot time (in which case we need to
-		   allow it.)  We use is_pathname_mounted here even though
-		   we're specifying a device name, not a path name.  The
-		   function checks for device as well. */
-		strncpy(sdp->device_name, opts.device,
-			sizeof(sdp->device_name));
-		sdp->path_name = sdp->device_name; /* This gets overwritten */
-		is_mounted = is_pathname_mounted(sdp->path_name, sdp->device_name, &ro);
-		/* If the device is busy, but not because it's mounted, fail.
+		   allow it.)
+		   If the device is busy, but not because it's mounted, fail.
 		   This protects against cases where the file system is LVM
-		   and perhaps mounted on a different node. */
-		if (!is_mounted)
+		   and perhaps mounted on a different node.
+		   Try opening without O_EXCL. */
+		sdp->device_fd = lgfs2_open_mnt_dev(opts.device, O_RDWR, &mnt);
+		if (sdp->device_fd < 0)
 			goto mount_fail;
 		/* If the device is mounted, but not mounted RO, fail.  This
 		   protects them against cases where the file system is
 		   mounted RW, but still allows us to check our own root
 		   file system. */
-		if (!ro)
-			goto mount_fail;
+		if (!hasmntopt(mnt, MNTOPT_RO))
+			goto close_fail;
 		/* The device is mounted RO, so it's likely our own root
 		   file system.  We can only do so much to protect the users
-		   from themselves.  Try opening without O_EXCL. */
-		if ((sdp->device_fd = open(opts.device, O_RDWR)) < 0)
-			goto mount_fail;
-
+		   from themselves. */
 		was_mounted_ro = 1;
 	}
 
@@ -1591,6 +1583,8 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 
 	return FSCK_OK;
 
+close_fail:
+	close(sdp->device_fd);
 mount_fail:
 	log_crit( _("Device %s is busy.\n"), opts.device);
 	return FSCK_USAGE;
