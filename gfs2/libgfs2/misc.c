@@ -102,67 +102,6 @@ int compute_constants(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-int is_pathname_mounted(char *path_name, char *device_name, int *ro_mount)
-{
-	FILE *fp;
-	struct mntent *mnt;
-	dev_t file_dev=0, file_rdev=0;
-	ino_t file_ino=0;
-	struct stat st_buf;
-
-	*ro_mount = 0;
-	if ((fp = setmntent("/proc/mounts", "r")) == NULL) {
-		perror("open: /proc/mounts");
-		return 0;
-	}
-	if (stat(path_name, &st_buf) == 0) {
-		if (S_ISBLK(st_buf.st_mode)) {
-#ifndef __GNU__ /* The GNU hurd is broken with respect to stat devices */
-			file_rdev = st_buf.st_rdev;
-#endif  /* __GNU__ */
-		} else {
-			file_dev = st_buf.st_dev;
-			file_ino = st_buf.st_ino;
-		}
-	}
-	while ((mnt = getmntent (fp)) != NULL) {
-		/* Check if they specified the device instead of mnt point */
-		if (strcmp(device_name, mnt->mnt_fsname) == 0) {
-			strcpy(path_name, mnt->mnt_dir); /* fix it */
-			break;
-		}
-		if (strcmp(path_name, mnt->mnt_dir) == 0) {
-			strcpy(device_name, mnt->mnt_fsname); /* fix it */
-			break;
-		}
-		if (stat(mnt->mnt_fsname, &st_buf) == 0) {
-			if (S_ISBLK(st_buf.st_mode)) {
-#ifndef __GNU__
-				if (file_rdev && (file_rdev == st_buf.st_rdev))
-					break;
-#endif  /* __GNU__ */
-			} else {
-				if (file_dev && ((file_dev == st_buf.st_dev) &&
-						 (file_ino == st_buf.st_ino)))
-					break;
-			}
-		}
-	}
-	endmntent (fp);
-	if (mnt == NULL)
-		return 0;
-	if (stat(mnt->mnt_dir, &st_buf) < 0) {
-		if (errno == ENOENT)
-			return 0;
-	}
-	/* Can't trust fstype because / has "rootfs". */
-	if (file_rdev && (st_buf.st_dev != file_rdev))
-		return 0;
-	if (hasmntopt(mnt, MNTOPT_RO))
-               *ro_mount = 1;
-	return 1; /* mounted */
-}
-
 /* Returns 0 if fd1 and fd2 refer to the same device/file, 1 otherwise, or -1 on error */
 static int fdcmp(int fd1, int fd2)
 {
