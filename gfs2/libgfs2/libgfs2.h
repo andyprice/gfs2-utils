@@ -715,7 +715,6 @@ extern int metafs_interrupted;
 extern int compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
 		uint32_t *maxheight, uint32_t bsize1, int diptrs, int inptrs);
 extern int compute_constants(struct gfs2_sbd *sdp);
-extern int is_pathname_mounted(char *path_name, char *device_name, int *ro_mount);
 extern int lgfs2_open_mnt(const char *path, int dirflags, int *dirfd, int devflags, int *devfd, struct mntent **mnt);
 extern int lgfs2_open_mnt_dev(const char *path, int flags, struct mntent **mnt);
 extern int lgfs2_open_mnt_dir(const char *path, int flags, struct mntent **mnt);
