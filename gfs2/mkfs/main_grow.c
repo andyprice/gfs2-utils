@@ -323,7 +323,7 @@ main_grow(int argc, char *argv[])
 	int rgcount, rindex_fd;
 	char rindex_name[PATH_MAX];
 	int error = EXIT_SUCCESS;
-	int ro_mnt = 0;
+	int devflags = (test ? O_RDONLY : O_RDWR) | O_CLOEXEC;
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	sdp->bsize = GFS2_DEFAULT_BSIZE;
@@ -333,30 +333,23 @@ main_grow(int argc, char *argv[])
 	sdp->md.journals = 1;
 	decode_arguments(argc, argv, sdp);
 	
-	while ((argc - optind) > 0) {
+	for(; (argc - optind) > 0; optind++) {
 		int sane;
+		struct mntent *mnt;
 		struct rgrp_tree *last_rgrp;
 
-		strncpy(sdp->device_name, argv[optind], PATH_MAX - 1);
-		sdp->path_name = argv[optind++];
-
-		if ((!is_pathname_mounted(sdp->path_name, sdp->device_name, &ro_mnt))) {
-			perror(sdp->path_name);
+		error = lgfs2_open_mnt(argv[optind], O_RDONLY|O_CLOEXEC, &sdp->path_fd,
+		                                       devflags, &sdp->device_fd, &mnt);
+		if (error != 0) {
+			fprintf(stderr, _("Error looking up mount '%s': %s\n"), argv[optind], strerror(errno));
 			exit(EXIT_FAILURE);
 		}
-
-		sdp->path_fd = open(sdp->path_name, O_RDONLY | O_CLOEXEC);
-		if (sdp->path_fd < 0){
-			perror(sdp->path_name);
-			exit(EXIT_FAILURE);
+		if (mnt == NULL) {
+			fprintf(stderr, _("%s: not a mounted gfs2 file system\n"), argv[optind]);
+			continue;
 		}
-
-		sdp->device_fd = open(sdp->device_name,
-				      (test ? O_RDONLY : O_RDWR) | O_CLOEXEC);
-		if (sdp->device_fd < 0){
-			perror(sdp->device_name);
-			exit(EXIT_FAILURE);
-		}
+		sdp->path_name = mnt->mnt_dir;
+		strncpy(sdp->device_name, mnt->mnt_fsname, PATH_MAX - 1);
 
 		if (lgfs2_get_dev_info(sdp->device_fd, &sdp->dinfo) < 0) {
 			perror(sdp->device_name);

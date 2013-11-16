@@ -490,8 +490,8 @@ add_j(struct gfs2_sbd *sdp)
 void main_jadd(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd, *sdp = &sbd;
+	struct mntent *mnt;
 	unsigned int total;
-	int ro_mnt = 0;
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	sdp->jsize = GFS2_DEFAULT_JSIZE;
@@ -500,17 +500,18 @@ void main_jadd(int argc, char *argv[])
 
 	decode_arguments(argc, argv, sdp);
 	verify_arguments(sdp);
-	
-	sdp->path_fd = open(sdp->path_name, O_RDONLY | O_CLOEXEC);
-	if (sdp->path_fd < 0){
-		perror(sdp->path_name);
-		exit(EXIT_FAILURE);
-	}
 
-	if (!is_pathname_mounted(sdp->path_name, sdp->device_name, &ro_mnt)) {
-		perror(sdp->path_name);
+	sbd.path_fd = lgfs2_open_mnt_dir(sbd.path_name, O_RDONLY|O_CLOEXEC, &mnt);
+	if (sbd.path_fd < 0) {
+		fprintf(stderr, _("Error looking up mount '%s': %s\n"), sbd.path_name, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+	if (mnt == NULL) {
+		fprintf(stderr, _("%s: not a mounted gfs2 file system\n"), sbd.path_name);
+		exit(EXIT_FAILURE);
+	}
+	sbd.path_name = mnt->mnt_dir;
+	strncpy(sbd.device_name, mnt->mnt_fsname, PATH_MAX - 1);
 
 	gather_info(sdp);
 
