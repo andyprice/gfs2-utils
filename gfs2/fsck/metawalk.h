@@ -94,6 +94,7 @@ enum meta_check_rc {
 struct metawalk_fxns {
 	void *private;
 	int invalid_meta_is_fatal;
+	int readahead;
 	int (*check_leaf_depth) (struct gfs2_inode *ip, uint64_t leaf_no,
 				 int ref_count, struct gfs2_buffer_head *lbh);
 	int (*check_leaf) (struct gfs2_inode *ip, uint64_t block,
