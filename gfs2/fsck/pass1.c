@@ -1054,6 +1054,7 @@ static int rangecheck_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 
 struct metawalk_fxns rangecheck_fxns = {
         .private = NULL,
+	.readahead = 1,
         .check_metalist = rangecheck_metadata,
         .check_data = rangecheck_data,
         .check_leaf = rangecheck_leaf,
