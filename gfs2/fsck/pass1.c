@@ -1440,6 +1440,10 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 	struct gfs2_inode *ip;
 	uint8_t q;
 
+	/* Issue read-ahead for all dinodes in this bitmap */
+	for (i = 0; i < n; i++)
+		posix_fadvise(sdp->device_fd, ibuf[i] * sdp->bsize, sdp->bsize,
+			      POSIX_FADV_WILLNEED);
 	for (i = 0; i < n; i++) {
 		int is_inode;
 		uint32_t check_magic;
