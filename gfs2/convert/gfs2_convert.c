@@ -1629,13 +1629,13 @@ static int init(struct gfs2_sbd *sbp)
 		sizeof(uint64_t);
 	sbp->sd_jbsize = sbp->bsize - sizeof(struct gfs2_meta_header);
 	brelse(bh);
-	if (compute_heightsize(sbp, sbp->sd_heightsize, &sbp->sd_max_height,
+	if (compute_heightsize(sbp->bsize, sbp->sd_heightsize, &sbp->sd_max_height,
 				sbp->bsize, sbp->sd_diptrs, sbp->sd_inptrs)) {
 		log_crit(_("Error: Bad constants (1)\n"));
 		exit(-1);
 	}
 
-	if (compute_heightsize(sbp, sbp->sd_jheightsize, &sbp->sd_max_jheight,
+	if (compute_heightsize(sbp->bsize, sbp->sd_jheightsize, &sbp->sd_max_jheight,
 				sbp->sd_jbsize, sbp->sd_diptrs, sbp->sd_inptrs)) {
 		log_crit(_("Error: Bad constants (1)\n"));
 		exit(-1);
@@ -1646,13 +1646,13 @@ static int init(struct gfs2_sbd *sbp)
 	gfs2_inptrs = (sbp->bsize - sizeof(struct gfs2_meta_header)) /
                 sizeof(uint64_t); /* How many ptrs can we fit on a block? */
 	memset(gfs2_heightsize, 0, sizeof(gfs2_heightsize));
-	if (compute_heightsize(sbp, gfs2_heightsize, &gfs2_max_height,
+	if (compute_heightsize(sbp->bsize, gfs2_heightsize, &gfs2_max_height,
 				sbp->bsize, sbp->sd_diptrs, gfs2_inptrs)) {
 		log_crit(_("Error: Bad constants (1)\n"));
 		exit(-1);
 	}
 	memset(gfs2_jheightsize, 0, sizeof(gfs2_jheightsize));
-	if (compute_heightsize(sbp, gfs2_jheightsize, &gfs2_max_jheight,
+	if (compute_heightsize(sbp->bsize, gfs2_jheightsize, &gfs2_max_jheight,
 				sbp->sd_jbsize, sbp->sd_diptrs, gfs2_inptrs)) {
 		log_crit(_("Error: Bad constants (1)\n"));
 		exit(-1);

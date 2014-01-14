@@ -712,7 +712,7 @@ extern void decrease_verbosity(void);
 
 extern int metafs_interrupted;
 
-extern int compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
+extern int compute_heightsize(unsigned bsize, uint64_t *heightsize,
 		uint32_t *maxheight, uint32_t bsize1, int diptrs, int inptrs);
 extern int compute_constants(struct gfs2_sbd *sdp);
 extern int lgfs2_open_mnt(const char *path, int dirflags, int *dirfd, int devflags, int *devfd, struct mntent **mnt);
