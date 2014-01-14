@@ -80,7 +80,7 @@ void build_sb(struct gfs2_sbd *sdp, const unsigned char *uuid)
 	}
 }
 
-int write_journal(struct gfs2_sbd *sdp, unsigned int j, unsigned int blocks)
+int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 {
 	struct gfs2_log_header lh;
 	unsigned int x;
@@ -90,9 +90,8 @@ int write_journal(struct gfs2_sbd *sdp, unsigned int j, unsigned int blocks)
 
 	/* Build the height up so our journal blocks will be contiguous and */
 	/* not broken up by indirect block pages.                           */
-	height = calc_tree_height(sdp->md.journal[j],
-				  (blocks + 1) * sdp->bsize);
-	build_height(sdp->md.journal[j], height);
+	height = calc_tree_height(jnl, (blocks + 1) * bsize);
+	build_height(jnl, height);
 
 	memset(&lh, 0, sizeof(struct gfs2_log_header));
 	lh.lh_header.mh_magic = GFS2_MAGIC;
@@ -101,20 +100,18 @@ int write_journal(struct gfs2_sbd *sdp, unsigned int j, unsigned int blocks)
 	lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
 
 	for (x = 0; x < blocks; x++) {
-		struct gfs2_buffer_head *bh = get_file_buf(sdp->md.journal[j],
-							   x, TRUE);
+		struct gfs2_buffer_head *bh = get_file_buf(jnl, x, TRUE);
 		if (!bh)
 			return -1;
 		bmodified(bh);
 		brelse(bh);
 	}
 	for (x = 0; x < blocks; x++) {
-		struct gfs2_buffer_head *bh = get_file_buf(sdp->md.journal[j],
-							   x, FALSE);
+		struct gfs2_buffer_head *bh = get_file_buf(jnl, x, FALSE);
 		if (!bh)
 			return -1;
 
-		memset(bh->b_data, 0, sdp->bsize);
+		memset(bh->b_data, 0, bsize);
 		lh.lh_sequence = seq;
 		lh.lh_blkno = x;
 		gfs2_log_header_out(&lh, bh);
@@ -128,10 +125,6 @@ int write_journal(struct gfs2_sbd *sdp, unsigned int j, unsigned int blocks)
 			seq = 0;
 	}
 
-	if (sdp->debug) {
-		printf("\nJournal %u:\n", j);
-		gfs2_dinode_print(&sdp->md.journal[j]->i_di);
-	}
 	return 0;
 }
 
@@ -146,7 +139,7 @@ int build_journal(struct gfs2_sbd *sdp, int j, struct gfs2_inode *jindex)
 	if (sdp->md.journal[j] == NULL) {
 		return errno;
 	}
-	ret = write_journal(sdp, j,
+	ret = write_journal(sdp->md.journal[j], sdp->bsize,
 			    sdp->jsize << 20 >> sdp->sd_sb.sb_bsize_shift);
 	return ret;
 }
