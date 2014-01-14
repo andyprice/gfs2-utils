@@ -28,10 +28,10 @@
 
 int metafs_interrupted = 0;
 
-int compute_heightsize(struct gfs2_sbd *sdp, uint64_t *heightsize,
+int compute_heightsize(unsigned bsize, uint64_t *heightsize,
 	uint32_t *maxheight, uint32_t bsize1, int diptrs, int inptrs)
 {
-	heightsize[0] = sdp->bsize - sizeof(struct gfs2_dinode);
+	heightsize[0] = bsize - sizeof(struct gfs2_dinode);
 	heightsize[1] = bsize1 * diptrs;
 	for (*maxheight = 2;; (*maxheight)++) {
 		uint64_t space, d;
@@ -91,11 +91,11 @@ int compute_constants(struct gfs2_sbd *sdp)
 
 	sdp->sd_max_dirres = hash_blocks + ind_blocks + leaf_blocks;
 
-	if (compute_heightsize(sdp, sdp->sd_heightsize, &sdp->sd_max_height,
+	if (compute_heightsize(sdp->bsize, sdp->sd_heightsize, &sdp->sd_max_height,
 				sdp->bsize, sdp->sd_diptrs, sdp->sd_inptrs)) {
 		return -1;
 	}
-	if (compute_heightsize(sdp, sdp->sd_jheightsize, &sdp->sd_max_jheight,
+	if (compute_heightsize(sdp->bsize, sdp->sd_jheightsize, &sdp->sd_max_jheight,
 				sdp->sd_jbsize, sdp->sd_diptrs, sdp->sd_inptrs)) {
 		return -1;
 	}
