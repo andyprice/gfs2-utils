@@ -552,7 +552,7 @@ out:
 	log_info( _("jid=%u: Failed\n"), j);
 reinit:
 	if (query( _("Do you want to clear the journal instead? (y/n)")))
-		error = write_journal(sdp, j,
+		error = write_journal(sdp->md.journal[j], sdp->bsize,
 				      sdp->md.journal[j]->i_di.di_size /
 				      sdp->sd_sb.sb_bsize);
 	else

@@ -2024,7 +2024,7 @@ static int conv_build_jindex(struct gfs2_sbd *sdp)
 		sprintf(name, "journal%u", j);
 		sdp->md.journal[j] = createi(sdp->md.jiinode, name, S_IFREG |
 					     0600, GFS2_DIF_SYSTEM);
-		write_journal(sdp, j,
+		write_journal(sdp->md.journal[j], sdp->bsize,
 			      sdp->jsize << 20 >> sdp->sd_sb.sb_bsize_shift);
 		inode_put(&sdp->md.journal[j]);
 		printf(_("done.\n"));

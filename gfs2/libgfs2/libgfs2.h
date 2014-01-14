@@ -496,8 +496,7 @@ extern int gfs2_dirent_next(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 extern void build_height(struct gfs2_inode *ip, int height);
 extern void unstuff_dinode(struct gfs2_inode *ip);
 extern unsigned int calc_tree_height(struct gfs2_inode *ip, uint64_t size);
-extern int write_journal(struct gfs2_sbd *sdp, unsigned int j,
-			 unsigned int blocks);
+extern int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned blocks);
 
 /* gfs1.c - GFS1 backward compatibility structures and functions */
 
