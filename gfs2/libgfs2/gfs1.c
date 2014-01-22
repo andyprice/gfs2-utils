@@ -57,12 +57,7 @@ void gfs1_lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	if (!create)
 		return;
 
-	if (height == ip->i_di.di_height - 1&&
-	    !(S_ISDIR(ip->i_di.di_mode)))
-		*block = data_alloc(ip);
-	else
-		*block = meta_alloc(ip);
-
+	*block = meta_alloc(ip);
 	*ptr = cpu_to_be64(*block);
 	bmodified(bh);
 	ip->i_di.di_blocks++;

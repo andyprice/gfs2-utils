@@ -14,10 +14,6 @@
 #include <linux/types.h>
 #include "libgfs2.h"
 
-#define DATA (1)
-#define META (2)
-#define DINODE (3)
-
 static __inline__ uint64_t *metapointer(struct gfs2_buffer_head *bh,
 					unsigned int height,
 					struct metapath *mp)
@@ -116,88 +112,57 @@ void inode_put(struct gfs2_inode **ip_in)
 	*ip_in = NULL; /* make sure the memory isn't accessed again */
 }
 
-static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned int type, struct rgrp_tree *rl, uint64_t *blkno)
+static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned state, struct rgrp_tree *rgd, uint64_t *blkno)
 {
-	struct gfs2_rindex *ri;
-	struct gfs2_rgrp *rg;
-	unsigned int block, bn = 0, x = 0, y = 0;
-	unsigned int state;
 	unsigned int release = 0;
-	struct gfs2_buffer_head *bh;
+	unsigned int bm;
+	int error = -1;
 
-	if (rl == NULL || rl->rg.rg_free == 0) {
+	if (rgd == NULL || rgd->rg.rg_free == 0) {
 		errno = ENOSPC;
 		return -1;
 	}
 
-	if (rl->bh[0] == NULL) {
-		if (gfs2_rgrp_read(sdp, rl) != 0)
+	if (rgd->bh[0] == NULL) {
+		if (gfs2_rgrp_read(sdp, rgd))
 			return -1;
 		release = 1;
 	}
 
-	ri = &rl->ri;
-	rg = &rl->rg;
-	for (block = 0; block < ri->ri_length; block++) {
-		bh = rl->bh[block];
-		x = (block) ? sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_rgrp);
+	*blkno = 0;
+	for (bm = 0; bm < rgd->ri.ri_length; bm++) {
+		unsigned long blk = 0;
+		struct gfs2_bitmap *bits = &rgd->bits[bm];
 
-		for (; x < sdp->bsize; x++)
-			for (y = 0; y < GFS2_NBBY; y++) {
-				state = (bh->b_data[x] >> (GFS2_BIT_SIZE * y)) & 0x03;
-				if (state == GFS2_BLKST_FREE)
-					goto found;
-				bn++;
-			}
+		blk = gfs2_bitfit((unsigned char *)rgd->bh[bm]->b_data + bits->bi_offset,
+		                  bits->bi_len, blk, GFS2_BLKST_FREE);
+		if (blk != BFITNOENT) {
+			*blkno = blk + (bits->bi_start * GFS2_NBBY) + rgd->ri.ri_data0;
+			break;
+		}
 	}
 
-	fprintf(stderr, "allocation is broken (1): %"PRIu64" %u\n",
-	    (uint64_t)rl->ri.ri_addr, rl->rg.rg_free);
-	goto out_err;
+	if (*blkno == 0)
+		goto out;
 
-found:
-	if (bn >= ri->ri_bitbytes * GFS2_NBBY) {
-		fprintf(stderr, "allocation is broken (2): bn: %u %u rgrp: %"PRIu64
-		    " (0x%" PRIx64 ") Free:%u\n",
-		    bn, ri->ri_bitbytes * GFS2_NBBY, (uint64_t)rl->ri.ri_addr,
-		    (uint64_t)rl->ri.ri_addr, rl->rg.rg_free);
-		goto out_err;
-	}
+	error = gfs2_set_bitmap(sdp, *blkno, state);
+	if (error)
+		goto out;
 
-	switch (type) {
-	case DATA:
-	case META:
-		state = GFS2_BLKST_USED;
-		break;
-	case DINODE:
-		state = GFS2_BLKST_DINODE;
-		rg->rg_dinodes++;
-		break;
-	default:
-		fprintf(stderr, "bad state\n");
-		goto out_err;
-	}
+	if (state == GFS2_BLKST_DINODE)
+		rgd->rg.rg_dinodes++;
 
-	bh->b_data[x] &= ~(0x03 << (GFS2_BIT_SIZE * y));
-	bh->b_data[x] |= state << (GFS2_BIT_SIZE * y);
-	rg->rg_free--;
-
-	bmodified(bh);
+	rgd->rg.rg_free--;
 	if (sdp->gfs1)
-		gfs_rgrp_out((struct gfs_rgrp *)rg, rl->bh[0]);
+		gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bh[0]);
 	else
-		gfs2_rgrp_out_bh(rg, rl->bh[0]);
+		gfs2_rgrp_out_bh(&rgd->rg, rgd->bh[0]);
 
 	sdp->blks_alloced++;
-	*blkno = ri->ri_data0 + bn;
+out:
 	if (release)
-		gfs2_rgrp_relse(rl);
-	return 0;
-out_err:
-	if (release)
-		gfs2_rgrp_relse(rl);
-	return -1;
-
+		gfs2_rgrp_relse(rgd);
+	return error;
 }
 
 /**
@@ -219,19 +184,10 @@ static uint64_t blk_alloc_i(struct gfs2_sbd *sdp, unsigned int type)
 	return blkno;
 }
 
-uint64_t data_alloc(struct gfs2_inode *ip)
-{
-	uint64_t x;
-	x = blk_alloc_i(ip->i_sbd, DATA);
-	ip->i_di.di_goal_data = x;
-	bmodified(ip->i_bh);
-	return x;
-}
-
 uint64_t meta_alloc(struct gfs2_inode *ip)
 {
 	uint64_t x;
-	x = blk_alloc_i(ip->i_sbd, META);
+	x = blk_alloc_i(ip->i_sbd, GFS2_BLKST_USED);
 	ip->i_di.di_goal_meta = x;
 	bmodified(ip->i_bh);
 	return x;
@@ -255,7 +211,7 @@ int lgfs2_dinode_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, uint64_t *b
 	if (rgt == NULL)
 		return -1;
 
-	ret = blk_alloc_in_rg(sdp, DINODE, rgt, blkno);
+	ret = blk_alloc_in_rg(sdp, GFS2_BLKST_DINODE, rgt, blkno);
 	if (ret == 0)
 		sdp->dinodes_alloced++;
 
@@ -305,7 +261,7 @@ void unstuff_dinode(struct gfs2_inode *ip)
 
 			brelse(bh);
 		} else {
-			block = data_alloc(ip);
+			block = meta_alloc(ip);
 			bh = bget(sdp, block);
 
 			buffer_copy_tail(sdp, bh, 0,
@@ -421,12 +377,7 @@ void lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	if (!create)
 		return;
 
-	if (height == ip->i_di.di_height - 1&&
-	    !(S_ISDIR(ip->i_di.di_mode)))
-		*block = data_alloc(ip);
-	else
-		*block = meta_alloc(ip);
-
+	*block = meta_alloc(ip);
 	*ptr = cpu_to_be64(*block);
 	bmodified(bh);
 	ip->i_di.di_blocks++;
