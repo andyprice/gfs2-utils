@@ -112,24 +112,16 @@ void inode_put(struct gfs2_inode **ip_in)
 	*ip_in = NULL; /* make sure the memory isn't accessed again */
 }
 
-static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned state, struct rgrp_tree *rgd, uint64_t *blkno)
+static uint64_t find_free_block(struct rgrp_tree *rgd)
 {
-	unsigned int release = 0;
-	unsigned int bm;
-	int error = -1;
+	unsigned bm;
+	uint64_t blkno = 0;
 
 	if (rgd == NULL || rgd->rg.rg_free == 0) {
 		errno = ENOSPC;
-		return -1;
+		return 0;
 	}
 
-	if (rgd->bh[0] == NULL) {
-		if (gfs2_rgrp_read(sdp, rgd))
-			return -1;
-		release = 1;
-	}
-
-	*blkno = 0;
 	for (bm = 0; bm < rgd->ri.ri_length; bm++) {
 		unsigned long blk = 0;
 		struct gfs2_bitmap *bits = &rgd->bits[bm];
@@ -137,17 +129,20 @@ static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned state, struct rgrp_tre
 		blk = gfs2_bitfit((unsigned char *)rgd->bh[bm]->b_data + bits->bi_offset,
 		                  bits->bi_len, blk, GFS2_BLKST_FREE);
 		if (blk != BFITNOENT) {
-			*blkno = blk + (bits->bi_start * GFS2_NBBY) + rgd->ri.ri_data0;
+			blkno = blk + (bits->bi_start * GFS2_NBBY) + rgd->ri.ri_data0;
 			break;
 		}
 	}
+	return blkno;
+}
 
-	if (*blkno == 0)
-		goto out;
+static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned state, struct rgrp_tree *rgd, uint64_t blkno)
+{
+	if (blkno == 0)
+		return -1;
 
-	error = gfs2_set_bitmap(sdp, *blkno, state);
-	if (error)
-		goto out;
+	if (gfs2_set_bitmap(sdp, blkno, state))
+		return -1;
 
 	if (state == GFS2_BLKST_DINODE)
 		rgd->rg.rg_dinodes++;
@@ -159,50 +154,22 @@ static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned state, struct rgrp_tre
 		gfs2_rgrp_out_bh(&rgd->rg, rgd->bh[0]);
 
 	sdp->blks_alloced++;
-out:
-	if (release)
-		gfs2_rgrp_relse(rgd);
-	return error;
+	return 0;
 }
 
 /**
- * Do not use this function, it's only here until we can kill it.
- * Use blk_alloc_in_rg directly instead.
- */
-static uint64_t blk_alloc_i(struct gfs2_sbd *sdp, unsigned int type)
-{
-	int ret;
-	uint64_t blkno = 0;
-	struct osi_node *n = NULL;
-	for (n = osi_first(&sdp->rgtree); n; n = osi_next(n)) {
-		if (((struct rgrp_tree *)n)->rg.rg_free)
-			break;
-	}
-	ret = blk_alloc_in_rg(sdp, type, (struct rgrp_tree *)n, &blkno);
-	if (ret != 0) /* Do what the old blk_alloc_i did */
-		exit(1);
-	return blkno;
-}
-
-uint64_t meta_alloc(struct gfs2_inode *ip)
-{
-	uint64_t x;
-	x = blk_alloc_i(ip->i_sbd, GFS2_BLKST_USED);
-	ip->i_di.di_goal_meta = x;
-	bmodified(ip->i_bh);
-	return x;
-}
-
-/**
- * Allocate a dinode block in a bitmap. In order to plan ahead we look for a
- * resource group with blksreq free blocks but only allocate the one dinode block.
+ * Allocate a block in a bitmap. In order to plan ahead we look for a
+ * resource group with blksreq free blocks but only allocate the one block.
  * Returns 0 on success with the allocated block number in *blkno or non-zero otherwise.
  */
-int lgfs2_dinode_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, uint64_t *blkno)
+static int block_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, int state, uint64_t *blkno)
 {
 	int ret;
+	int release = 0;
 	struct rgrp_tree *rgt = NULL;
 	struct osi_node *n = NULL;
+	uint64_t bn = 0;
+
 	for (n = osi_first(&sdp->rgtree); n; n = osi_next(n)) {
 		rgt = (struct rgrp_tree *)n;
 		if (rgt->rg.rg_free >= blksreq)
@@ -211,10 +178,35 @@ int lgfs2_dinode_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, uint64_t *b
 	if (rgt == NULL)
 		return -1;
 
-	ret = blk_alloc_in_rg(sdp, GFS2_BLKST_DINODE, rgt, blkno);
+	if (rgt->bh[0] == NULL) {
+		if (gfs2_rgrp_read(sdp, rgt))
+			return -1;
+		release = 1;
+	}
+
+	bn = find_free_block(rgt);
+	ret = blk_alloc_in_rg(sdp, state, rgt, bn);
+	if (release)
+		gfs2_rgrp_relse(rgt);
+	*blkno = bn;
+	return ret;
+}
+
+int lgfs2_dinode_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, uint64_t *blkno)
+{
+	int ret = block_alloc(sdp, blksreq, GFS2_BLKST_DINODE, blkno);
 	if (ret == 0)
 		sdp->dinodes_alloced++;
+	return ret;
+}
 
+int lgfs2_meta_alloc(struct gfs2_inode *ip, uint64_t *blkno)
+{
+	int ret = block_alloc(ip->i_sbd, 1, GFS2_BLKST_USED, blkno);
+	if (ret == 0) {
+		ip->i_di.di_goal_meta = *blkno;
+		bmodified(ip->i_bh);
+	}
 	return ret;
 }
 
@@ -245,10 +237,11 @@ void unstuff_dinode(struct gfs2_inode *ip)
 	int isdir = S_ISDIR(ip->i_di.di_mode) || is_gfs_dir(&ip->i_di);
 
 	if (ip->i_di.di_size) {
+		if (lgfs2_meta_alloc(ip, &block))
+			exit(1);
 		if (isdir) {
 			struct gfs2_meta_header mh;
 
-			block = meta_alloc(ip);
 			bh = bget(sdp, block);
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_JD;
@@ -261,7 +254,6 @@ void unstuff_dinode(struct gfs2_inode *ip)
 
 			brelse(bh);
 		} else {
-			block = meta_alloc(ip);
 			bh = bget(sdp, block);
 
 			buffer_copy_tail(sdp, bh, 0,
@@ -325,7 +317,8 @@ void build_height(struct gfs2_inode *ip, int height)
 		if (new_block) {
 			struct gfs2_meta_header mh;
 
-			block = meta_alloc(ip);
+			if (lgfs2_meta_alloc(ip, &block))
+				exit(1);
 			bh = bget(sdp, block);
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_IN;
@@ -377,7 +370,8 @@ void lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	if (!create)
 		return;
 
-	*block = meta_alloc(ip);
+	if (lgfs2_meta_alloc(ip, block))
+		return;
 	*ptr = cpu_to_be64(*block);
 	bmodified(bh);
 	ip->i_di.di_blocks++;
@@ -871,7 +865,8 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
 	int x, moved = FALSE;
 	int count;
 
-	bn = meta_alloc(dip);
+	if (lgfs2_meta_alloc(dip, &bn))
+		exit(1);
 	nbh = bget(dip->i_sbd, bn);
 	{
 		struct gfs2_meta_header mh;
@@ -1134,7 +1129,8 @@ restart:
 			} else {
 				struct gfs2_meta_header mh;
 
-				bn = meta_alloc(dip);
+				if (lgfs2_meta_alloc(dip, &bn))
+					exit(1);
 				nbh = bget(dip->i_sbd, bn);
 				mh.mh_magic = GFS2_MAGIC;
 				mh.mh_type = GFS2_METATYPE_LF;
@@ -1183,7 +1179,8 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 	uint32_t x;
 	uint64_t *lp, bn;
 
-	bn = meta_alloc(dip);
+	if (lgfs2_meta_alloc(dip, &bn))
+		exit(1);
 	bh = bget(sdp, bn);
 	{
 		struct gfs2_meta_header mh;

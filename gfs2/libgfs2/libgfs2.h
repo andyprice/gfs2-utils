@@ -448,7 +448,7 @@ extern struct gfs2_inode *is_system_inode(struct gfs2_sbd *sdp,
 					  uint64_t block);
 extern void inode_put(struct gfs2_inode **ip);
 extern uint64_t data_alloc(struct gfs2_inode *ip);
-extern uint64_t meta_alloc(struct gfs2_inode *ip);
+extern int lgfs2_meta_alloc(struct gfs2_inode *ip, uint64_t *blkno);
 extern int lgfs2_dinode_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, uint64_t *blkno);
 extern int gfs2_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
 		      unsigned int size);

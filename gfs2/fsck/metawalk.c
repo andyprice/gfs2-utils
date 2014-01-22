@@ -1912,7 +1912,12 @@ int write_new_leaf(struct gfs2_inode *dip, int start_lindex, int num_copies,
 	}
 
 	/* allocate and write out a new leaf block */
-	*bn = meta_alloc(dip);
+	if (lgfs2_meta_alloc(dip, bn)) {
+		log_err( _("Error: allocation failed while fixing directory leaf "
+			   "pointers.\n"));
+		free(padbuf);
+		return -1;
+	}
 	fsck_blockmap_set(dip, *bn, _("directory leaf"), gfs2_leaf_blk);
 	log_err(_("A new directory leaf was allocated at block %lld "
 		  "(0x%llx) to fill the %d (0x%x) pointer gap %s the existing "
