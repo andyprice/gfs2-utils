@@ -437,7 +437,7 @@ extern void build_rgrps(struct gfs2_sbd *sdp, int write);
 #define IS_LEAF     (1)
 #define IS_DINODE   (2)
 
-extern struct metapath *find_metapath(struct gfs2_inode *ip, uint64_t block);
+extern void find_metapath(struct gfs2_inode *ip, uint64_t block, struct metapath *mp);
 extern void lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			 unsigned int height, struct metapath *mp,
 			 int create, int *new, uint64_t *block);

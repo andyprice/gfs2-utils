@@ -393,24 +393,16 @@ void build_height(struct gfs2_inode *ip, int height)
 	}
 }
 
-struct metapath *find_metapath(struct gfs2_inode *ip, uint64_t block)
+void find_metapath(struct gfs2_inode *ip, uint64_t block, struct metapath *mp)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct metapath *mp;
-	uint64_t b = block;
-	unsigned int i;
+	const uint32_t inptrs = ip->i_sbd->sd_inptrs;
+	unsigned int i = ip->i_di.di_height;
 
-	mp = calloc(1, sizeof(struct metapath));
-	if (mp == NULL) {
-		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
-		exit(-1);
+	memset(mp, 0, sizeof(struct metapath));
+	while (i--) {
+		mp->mp_list[i] = block % inptrs;
+		block /= inptrs;
 	}
-	for (i = ip->i_di.di_height; i--;) {
-		mp->mp_list[i] = b % sdp->sd_inptrs;
-		b /= sdp->sd_inptrs;
-	}
-
-	return mp;
 }
 
 void lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
@@ -448,7 +440,7 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct gfs2_buffer_head *bh;
-	struct metapath *mp;
+	struct metapath mp;
 	int create = *new;
 	unsigned int bsize;
 	unsigned int height;
@@ -479,17 +471,17 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 		build_height(ip, height);
 	}
 
-	mp = find_metapath(ip, lblock);
+	find_metapath(ip, lblock, &mp);
 	end_of_metadata = ip->i_di.di_height - 1;
 
 	bh = ip->i_bh;
 
 	for (x = 0; x < end_of_metadata; x++) {
-		lookup_block(ip, bh, x, mp, create, new, dblock);
+		lookup_block(ip, bh, x, &mp, create, new, dblock);
 		if (bh != ip->i_bh)
 			brelse(bh);
 		if (!*dblock)
-			goto out;
+			return;
 
 		if (*new) {
 			struct gfs2_meta_header mh;
@@ -507,7 +499,7 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 	}
 
 	if (!prealloc)
-		lookup_block(ip, bh, end_of_metadata, mp, create, new, dblock);
+		lookup_block(ip, bh, end_of_metadata, &mp, create, new, dblock);
 
 	if (extlen && *dblock) {
 		*extlen = 1;
@@ -519,8 +511,8 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 
 			nptrs = (end_of_metadata) ? sdp->sd_inptrs : sdp->sd_diptrs;
 
-			while (++mp->mp_list[end_of_metadata] < nptrs) {
-				lookup_block(ip, bh, end_of_metadata, mp, FALSE, &tmp_new,
+			while (++mp.mp_list[end_of_metadata] < nptrs) {
+				lookup_block(ip, bh, end_of_metadata, &mp, FALSE, &tmp_new,
 							 &tmp_dblock);
 
 				if (*dblock + *extlen != tmp_dblock)
@@ -533,9 +525,6 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 
 	if (bh != ip->i_bh)
 		brelse(bh);
-
- out:
-	free(mp);
 }
 
 static void
