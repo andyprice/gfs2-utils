@@ -171,7 +171,7 @@ uint32_t rgblocks2bitblocks(const unsigned int bsize, const uint32_t rgblocks, u
  * If fd > 0, write the data to the given file handle.
  * Otherwise, use gfs2 buffering in buf.c.
  */
-void build_rgrps(struct gfs2_sbd *sdp, int do_write)
+int build_rgrps(struct gfs2_sbd *sdp, int do_write)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rl;
@@ -207,11 +207,8 @@ void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 		rl->rg.rg_header.mh_format = GFS2_FORMAT_RG;
 		rl->rg.rg_free = rgblocks;
 
-		if (gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, rl)) {
-			fprintf(stderr, "%s: Unable to build resource groups "
-				"with these characteristics.\n", __FUNCTION__);
-			exit(-1);
-		}
+		if (gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, rl))
+			return -1;
 
 		if (do_write) {
 			for (x = 0; x < bitblocks; x++) {
@@ -231,4 +228,5 @@ void build_rgrps(struct gfs2_sbd *sdp, int do_write)
 		sdp->blks_total += rgblocks;
 		sdp->fssize = ri->ri_data0 + ri->ri_data;
 	}
+	return 0;
 }
