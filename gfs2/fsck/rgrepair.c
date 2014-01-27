@@ -654,7 +654,10 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 	/* Compute the default resource group layout as mkfs would have done */
 	compute_rgrp_layout(sdp, &sdp->rgcalc, TRUE);
 	debug_print_rgrps(sdp, &sdp->rgcalc);
-	build_rgrps(sdp, FALSE); /* FALSE = calc but don't write to disk. */
+	if (build_rgrps(sdp, FALSE)) { /* FALSE = calc but don't write to disk. */
+		fprintf(stderr, _("Failed to build resource groups\n"));
+		exit(-1);
+	}
 	log_debug( _("fs_total_size = 0x%llx blocks.\n"),
 		  (unsigned long long)sdp->device.length);
 	log_warn( _("L3: number of rgs in the index = %d.\n"), *num_rgs);

@@ -181,7 +181,10 @@ static void initialize_new_portion(struct gfs2_sbd *sdp, int *old_rg_count)
 	discard_blocks(sdp->device_fd, rl->start * sdp->bsize,
 		       (sdp->device.length - rl->start) * sdp->bsize);
 	/* Build the remaining resource groups */
-	build_rgrps(sdp, !test);
+	if (build_rgrps(sdp, !test)) {
+		fprintf(stderr, _("Failed to build resource groups\n"));
+		exit(-1);
+	}
 
 	inode_put(&sdp->md.riinode);
 	inode_put(&sdp->master_dir);

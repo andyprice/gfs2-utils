@@ -431,7 +431,7 @@ extern uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev,
 			       int rgsize_specified);
 extern void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree,
 				int rgsize_specified);
-extern void build_rgrps(struct gfs2_sbd *sdp, int write);
+extern int build_rgrps(struct gfs2_sbd *sdp, int write);
 
 /* fs_ops.c */
 #define IS_LEAF     (1)
