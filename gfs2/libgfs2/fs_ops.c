@@ -835,24 +835,6 @@ void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t lindex,
 	*leaf_out = be64_to_cpu(leaf_no);
 }
 
-void gfs2_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out)
-{
-	uint64_t leaf_no;
-	int count;
-
-	if (dip->i_sbd->gfs1) {
-		gfs_put_leaf_nr(dip, inx, leaf_out);
-		return;
-	}
-	leaf_no = cpu_to_be64(leaf_out);
-	count = gfs2_writei(dip, (char *)&leaf_no, inx * sizeof(uint64_t),
-			    sizeof(uint64_t));
-	if (count != sizeof(uint64_t)) {
-		fprintf(stderr, "gfs2_put_leaf_nr:  Bad internal write.\n");
-		exit(1);
-	}
-}
-
 void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
 		    struct gfs2_buffer_head *obh)
 {

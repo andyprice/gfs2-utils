@@ -481,7 +481,6 @@ extern void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 		      uint64_t *dblock, uint32_t *extlen, int prealloc);
 extern void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t index,
 			     uint64_t *leaf_out);
-extern void gfs2_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx, uint64_t leaf_out);
 extern void dir_split_leaf(struct gfs2_inode *dip, uint32_t start,
 			   uint64_t leaf_no, struct gfs2_buffer_head *obh);
 extern void gfs2_free_block(struct gfs2_sbd *sdp, uint64_t block);
@@ -670,8 +669,6 @@ extern struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp,
 extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
 extern void gfs_rgrp_in(struct gfs_rgrp *rg, struct gfs2_buffer_head *bh);
 extern void gfs_rgrp_out(struct gfs_rgrp *rg, struct gfs2_buffer_head *bh);
-extern void gfs_put_leaf_nr(struct gfs2_inode *dip, uint32_t inx,
-			    uint64_t leaf_out);
 
 /* gfs2_log.c */
 
@@ -721,7 +718,6 @@ extern int find_gfs2_meta(struct gfs2_sbd *sdp);
 extern int dir_exists(const char *dir);
 extern int mount_gfs2_meta(struct gfs2_sbd *sdp);
 extern void cleanup_metafs(struct gfs2_sbd *sdp);
-extern int set_sysfs(const char *fsname, const char *filename, const char *val);
 extern int is_fsname(char *name);
 extern void get_random_bytes(void *buf, int nbytes);
 

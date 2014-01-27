@@ -23,7 +23,6 @@
 #include "libgfs2.h"
 
 #define PAGE_SIZE (4096)
-#define SYS_BASE "/sys/fs/gfs2" /* FIXME: Look in /proc/mounts to find this */
 #define DIV_RU(x, y) (((x) + (y) - 1) / (y))
 
 int metafs_interrupted = 0;
@@ -276,33 +275,6 @@ void cleanup_metafs(struct gfs2_sbd *sdp)
 	sigaction(SIGUSR1, &sa, NULL);
 	sigaction(SIGUSR2, &sa, NULL);
 	metafs_interrupted = 0;
-}
-
-int set_sysfs(const char *fsname, const char *filename, const char *val)
-{
-	char path[PATH_MAX];
-	int fd, rv, len;
-
-	len = strlen(val) + 1;
-	if (len > PAGE_SIZE) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	memset(path, 0, PATH_MAX);
-	snprintf(path, PATH_MAX - 1, "%s/%s/%s", SYS_BASE, fsname, filename);
-
-	fd = open(path, O_WRONLY);
-	if (fd < 0)
-		return -1;
-
-	rv = write(fd, val, len);
-	if (rv != len) {
-		close(fd);
-		return -1;
-	}
-	close(fd);
-	return 0;
 }
 
 /*

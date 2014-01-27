@@ -12,7 +12,6 @@
 #include "libgfs2.h"
 #include "fsck.h"
 #include "util.h"
-#include "eattr.h"
 #include "metawalk.h"
 #include "link.h"
 #include "lost_n_found.h"
