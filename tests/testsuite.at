@@ -22,4 +22,5 @@ AT_COLOR_TESTS
 
 m4_include([mkfs.at])
 m4_include([fsck.at])
+m4_include([edit.at])
 m4_include([libgfs2.at])

@@ -736,7 +736,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		gfs1_ri_update(&sbd, 0, &rgcount, 0);
 	else
 		ri_update(&sbd, 0, &rgcount, &sane);
-	printf("Done. File system size: %s\n\n", anthropomorphize(sbd.fssize));
+	printf("Done. File system size: %s\n\n", anthropomorphize(sbd.fssize * sbd.bsize));
 	fflush(stdout);
 
 	get_journal_inode_blocks();

@@ -41,6 +41,7 @@ TESTSUITE_AT = \
 	testsuite.at \
 	mkfs.at \
 	fsck.at \
+	edit.at \
 	libgfs2.at
 
 TESTSUITE = $(srcdir)/testsuite
