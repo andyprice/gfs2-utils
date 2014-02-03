@@ -88,25 +88,6 @@ const char *block_type_str[15] = {
 	"Quota Change",
 };
 
-struct gfs1_rgrp {
-        struct gfs2_meta_header rg_header;
-
-        uint32_t rg_flags;      /* ?? */
-
-        uint32_t rg_free;       /* Number (qty) of free data blocks */
-
-        /* Dinodes are USEDMETA, but are handled separately from other METAs */
-        uint32_t rg_useddi;     /* Number (qty) of dinodes (used or free) */
-        uint32_t rg_freedi;     /* Number (qty) of unused (free) dinodes */
-        struct gfs2_inum rg_freedi_list; /* 1st block in chain of free dinodes */
-
-        /* These META statistics do not include dinodes (used or free) */
-        uint32_t rg_usedmeta;   /* Number (qty) of used metadata blocks */
-        uint32_t rg_freemeta;   /* Number (qty) of unused metadata blocks */
-
-        char rg_reserved[64];
-};
-
 void eol(int col) /* end of line */
 {
 	if (termlines) {
@@ -443,9 +424,9 @@ static void gfs2_sb_print2(struct gfs2_sb *sbp2)
 /**
  * gfs1_rgrp_in - read in a gfs1 rgrp
  */
-static void gfs1_rgrp_in(struct gfs1_rgrp *rgrp, struct gfs2_buffer_head *rbh)
+static void gfs1_rgrp_in(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh)
 {
-        struct gfs1_rgrp *str = (struct gfs1_rgrp *)rbh->b_data;
+        struct gfs_rgrp *str = (struct gfs_rgrp *)rbh->b_data;
 
         gfs2_meta_header_in(&rgrp->rg_header, rbh);
         rgrp->rg_flags = be32_to_cpu(str->rg_flags);
@@ -461,7 +442,7 @@ static void gfs1_rgrp_in(struct gfs1_rgrp *rgrp, struct gfs2_buffer_head *rbh)
 /**
  * gfs_rgrp_print - Print out a resource group header
  */
-static void gfs1_rgrp_print(struct gfs1_rgrp *rg)
+static void gfs1_rgrp_print(struct gfs_rgrp *rg)
 {
         gfs2_meta_header_print(&rg->rg_header);
         pv(rg, rg_flags, "%u", "0x%x");
@@ -507,7 +488,7 @@ int display_gfs2(void)
 
 		case GFS2_METATYPE_RG:
 			if (sbd.gfs1) {
-				struct gfs1_rgrp rg1;
+				struct gfs_rgrp rg1;
 
 				gfs1_rgrp_in(&rg1, bh);
 				gfs1_rgrp_print(&rg1);
