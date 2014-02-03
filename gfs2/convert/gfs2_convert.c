@@ -69,57 +69,6 @@
 
 #define DIV_RU(x, y) (((x) + (y) - 1) / (y))
 
-struct gfs1_rgrp {
-	struct gfs2_meta_header rg_header; /* hasn't changed from gfs1 to 2 */
-	uint32_t rg_flags;
-	uint32_t rg_free;       /* Number (qty) of free data blocks */
-	/* Dinodes are USEDMETA, but are handled separately from other METAs */
-	uint32_t rg_useddi;     /* Number (qty) of dinodes (used or free) */
-	uint32_t rg_freedi;     /* Number (qty) of unused (free) dinodes */
-	struct gfs2_inum rg_freedi_list; /* hasn't changed from gfs1 to 2 */
-	/* These META statistics do not include dinodes (used or free) */
-	uint32_t rg_usedmeta;   /* Number (qty) of used metadata blocks */
-	uint32_t rg_freemeta;   /* Number (qty) of unused metadata blocks */
-	char rg_reserved[64];
-};
-
-struct gfs1_jindex {
-	uint64_t ji_addr;       /* starting block of the journal */
-	uint32_t ji_nsegment;   /* number (quantity) of segments in journal */
-	uint32_t ji_pad;
-
-	char ji_reserved[64];
-};
-
-struct gfs1_sb {
-	/*  Order is important; need to be able to read old superblocks
-		in order to support on-disk version upgrades */
-	struct gfs2_meta_header sb_header;
-
-	uint32_t sb_fs_format;         /* GFS_FORMAT_FS (on-disk version) */
-	uint32_t sb_multihost_format;  /* GFS_FORMAT_MULTI */
-	uint32_t sb_flags;             /* ?? */
-
-	uint32_t sb_bsize;             /* fundamental FS block size in bytes */
-	uint32_t sb_bsize_shift;       /* log2(sb_bsize) */
-	uint32_t sb_seg_size;          /* Journal segment size in FS blocks */
-
-	/* These special inodes do not appear in any on-disk directory. */
-	struct gfs2_inum sb_jindex_di;  /* journal index inode */
-	struct gfs2_inum sb_rindex_di;  /* resource group index inode */
-	struct gfs2_inum sb_root_di;    /* root directory inode */
-	
-	/* Default inter-node locking protocol (lock module) and namespace */
-	char sb_lockproto[GFS2_LOCKNAME_LEN]; /* lock protocol name */
-	char sb_locktable[GFS2_LOCKNAME_LEN]; /* unique name for this FS */
-	
-	/* More special inodes */
-	struct gfs2_inum sb_quota_di;   /* quota inode */
-	struct gfs2_inum sb_license_di; /* license inode */
-
-	char sb_reserved[96];
-};
-
 struct inode_dir_block {
 	osi_list_t list;
 	uint64_t di_addr;
@@ -146,7 +95,7 @@ struct gfs2_options {
 	unsigned int query:1;
 };
 
-struct gfs1_sb  raw_gfs1_ondisk_sb;
+struct gfs_sb  raw_gfs1_ondisk_sb;
 struct gfs2_sbd sb2;
 char device[256];
 struct inode_block dirs_to_fix;  /* linked list of directories to fix */
@@ -156,7 +105,7 @@ struct timeval tv;
 uint64_t dirs_fixed;
 uint64_t cdpns_fixed;
 uint64_t dirents_fixed;
-struct gfs1_jindex *sd_jindex = NULL;    /* gfs1 journal index in memory */
+struct gfs_jindex *sd_jindex = NULL;    /* gfs1 journal index in memory */
 int gfs2_inptrs;
 uint64_t gfs2_heightsize[GFS2_MAX_META_HEIGHT];
 uint64_t gfs2_jheightsize[GFS2_MAX_META_HEIGHT];
@@ -214,7 +163,7 @@ static int convert_rgs(struct gfs2_sbd *sbp)
 {
 	struct rgrp_tree *rgd;
 	struct osi_node *n, *next = NULL;
-	struct gfs1_rgrp *rgd1;
+	struct gfs_rgrp *rgd1;
 	int rgs = 0;
 
 	/* --------------------------------- */
@@ -224,7 +173,7 @@ static int convert_rgs(struct gfs2_sbd *sbp)
 		next = osi_next(n);
 		rgd = (struct rgrp_tree *)n;
 
-		rgd1 = (struct gfs1_rgrp *)&rgd->rg; /* recast as gfs1 structure */
+		rgd1 = (struct gfs_rgrp *)&rgd->rg; /* recast as gfs1 structure */
 		/* rg_freemeta is a gfs1 structure, so libgfs2 doesn't know to */
 		/* convert from be to cpu. We must do it now. */
 		rgd->rg.rg_free = rgd1->rg_free + be32_to_cpu(rgd1->rg_freemeta);
@@ -1481,9 +1430,9 @@ static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 /* ------------------------------------------------------------------------- */
 /* Fetch gfs1 jindex structure from buffer                                   */
 /* ------------------------------------------------------------------------- */
-static void gfs1_jindex_in(struct gfs1_jindex *jindex, char *buf)
+static void gfs1_jindex_in(struct gfs_jindex *jindex, char *buf)
 {
-	struct gfs1_jindex *str = (struct gfs1_jindex *)buf;
+	struct gfs_jindex *str = (struct gfs_jindex *)buf;
 
 	jindex->ji_addr = be64_to_cpu(str->ji_addr);
 	jindex->ji_nsegment = be32_to_cpu(str->ji_nsegment);
@@ -1497,18 +1446,18 @@ static void gfs1_jindex_in(struct gfs1_jindex *jindex, char *buf)
 static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip = sdp->md.jiinode;
-	char buf[sizeof(struct gfs1_jindex)];
+	char buf[sizeof(struct gfs_jindex)];
 	unsigned int j;
 	int error=0;
 	unsigned int tmp_mode = 0;
 
-	if(ip->i_di.di_size % sizeof(struct gfs1_jindex) != 0){
+	if(ip->i_di.di_size % sizeof(struct gfs_jindex) != 0){
 		log_crit(_("The size reported in the journal index"
 				" inode is not a\n"
 				"\tmultiple of the size of a journal index.\n"));
 		return -1;
 	}
-	if(!(sd_jindex = (struct gfs1_jindex *)malloc(ip->i_di.di_size))) {
+	if(!(sd_jindex = (struct gfs_jindex *)malloc(ip->i_di.di_size))) {
 		log_crit(_("Unable to allocate journal index\n"));
 		return -1;
 	}
@@ -1525,13 +1474,13 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 	ip->i_di.di_mode &= ~S_IFMT;
 	ip->i_di.di_mode |= S_IFDIR;
 	for (j = 0; ; j++) {
-		struct gfs1_jindex *journ;
+		struct gfs_jindex *journ;
 
-		error = gfs2_readi(ip, buf, j * sizeof(struct gfs1_jindex),
-						   sizeof(struct gfs1_jindex));
+		error = gfs2_readi(ip, buf, j * sizeof(struct gfs_jindex),
+						   sizeof(struct gfs_jindex));
 		if(!error)
 			break;
-		if (error != sizeof(struct gfs1_jindex)){
+		if (error != sizeof(struct gfs_jindex)){
 			log_crit(_("An error occurred while reading the"
 					" journal index file.\n"));
 			goto fail;
@@ -1541,7 +1490,7 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 		sdp->jsize = (journ->ji_nsegment * 16 * sdp->bsize) >> 20;
 	}
 	ip->i_di.di_mode = tmp_mode;
-	if(j * sizeof(struct gfs1_jindex) != ip->i_di.di_size){
+	if(j * sizeof(struct gfs_jindex) != ip->i_di.di_size){
 		log_crit(_("journal inode size invalid\n"));
 		goto fail;
 	}
@@ -1596,8 +1545,8 @@ static int init(struct gfs2_sbd *sbp)
 	}
 
 	bh = bread(sbp, GFS2_SB_ADDR >> sbp->sd_fsb2bb_shift);
-	memcpy(&raw_gfs1_ondisk_sb, (struct gfs1_sb *)bh->b_data,
-		   sizeof(struct gfs1_sb));
+	memcpy(&raw_gfs1_ondisk_sb, (struct gfs_sb *)bh->b_data,
+		   sizeof(struct gfs_sb));
 	gfs2_sb_in(&sbp->sd_sb, bh);
 
 	jindex_addr = be64_to_cpu(raw_gfs1_ondisk_sb.sb_jindex_di.no_addr);
@@ -1824,7 +1773,7 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 {
 	int error = 0;
 	int j, x;
-	struct gfs1_jindex *jndx;
+	struct gfs_jindex *jndx;
 	struct rgrp_tree *rgd, *rgdhigh;
 	struct osi_node *n, *next = NULL;
 	struct gfs2_meta_header mh;
