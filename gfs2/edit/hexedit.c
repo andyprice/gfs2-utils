@@ -219,7 +219,15 @@ static int gfs2_leaf_printval(struct gfs2_leaf *lf, const char *strfield)
 	checkprint(strfield, lf, lf_entries);
 	checkprint(strfield, lf, lf_dirent_format);
 	checkprint(strfield, lf, lf_next);
+#ifdef GFS2_HAS_LEAF_HINTS
+	checkprint(strfield, lf, lf_inode);
+	checkprint(strfield, lf, lf_dist);
+	checkprint(strfield, lf, lf_nsec);
+	checkprint(strfield, lf, lf_sec);
+	checkprints(strfield, lf, lf_reserved2);
+#else
 	checkprints(strfield, lf, lf_reserved);
+#endif
 
 	return -1;
 }
@@ -231,6 +239,12 @@ static int gfs2_leaf_assignval(struct gfs2_leaf *lf, const char *strfield,
 	checkassign(strfield, lf, lf_entries, value);
 	checkassign(strfield, lf, lf_dirent_format, value);
 	checkassign(strfield, lf, lf_next, value);
+#ifdef GFS2_HAS_LEAF_HINTS
+	checkassign(strfield, lf, lf_inode, value);
+	checkassign(strfield, lf, lf_dist, value);
+	checkassign(strfield, lf, lf_nsec, value);
+	checkassign(strfield, lf, lf_sec, value);
+#endif
 
 	return -1;
 }

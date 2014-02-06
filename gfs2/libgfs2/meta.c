@@ -317,7 +317,15 @@ F(lf_depth)
 F(lf_entries)
 F(lf_dirent_format)
 F(lf_next)
+#ifdef GFS2_HAS_LEAF_HINTS
+FP(lf_inode, .points_to = (1 << LGFS2_MT_GFS2_DINODE))
+F(lf_dist)
+F(lf_nsec, .flags = LGFS2_MFF_NSECS)
+F(lf_sec, .flags = LGFS2_MFF_SECS)
+RF(lf_reserved2)
+#else
 RF(lf_reserved)
+#endif
 };
 
 #undef STRUCT

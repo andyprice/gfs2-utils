@@ -78,10 +78,7 @@ struct indirect_info {
 	int height;
 	uint64_t block;
 	uint32_t dirents;
-	uint16_t lf_depth;
-	uint16_t lf_entries;
-	uint32_t lf_dirent_format;
-	uint64_t lf_next;
+	struct gfs2_leaf lf;
 	struct metapath mp;
 	struct gfs2_dirents dirent[64];
 };
