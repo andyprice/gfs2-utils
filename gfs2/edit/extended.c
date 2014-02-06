@@ -296,8 +296,18 @@ static void print_inode_type(__be16 de_type)
 	}
 }
 
+#ifdef GFS2_HAS_LEAF_HINTS
+#define LEAF_HINT_FMTS "lf_inode: 0x%"PRIx64", lf_dist: %"PRIu32", " \
+                       "lf_nsec: %"PRIu32", lf_sec: %"PRIu64", "
+#define LEAF_HINT_FIELDS(lp) lp->lf_inode, lp->lf_dist, lp->lf_nsec, lp->lf_sec,
+#else
+#define LEAF_HINT_FMTS
+#define LEAF_HINT_FIELDS(lp)
+#endif
+
 static int display_leaf(struct iinfo *ind)
 {
+	struct gfs2_leaf *leaf = &ind->ii[0].lf;
 	int start_line, total_dirents = start_row[dmode];
 	int d;
 
@@ -305,11 +315,13 @@ static int display_leaf(struct iinfo *ind)
 	if (gfs2_struct_type == GFS2_METATYPE_SB)
 		print_gfs2("The superblock has 2 directories");
 	else
-		print_gfs2("Directory block: lf_depth:%d, lf_entries:%d,"
+		print_gfs2("Directory block: lf_depth:%d, lf_entries:%d, "
+		           LEAF_HINT_FMTS
 			   "fmt:%d next=0x%llx (%d dirents).",
-			   ind->ii[0].lf_depth, ind->ii[0].lf_entries,
-			   ind->ii[0].lf_dirent_format,
-			   ind->ii[0].lf_next,
+			   leaf->lf_depth, leaf->lf_entries,
+		           LEAF_HINT_FIELDS(leaf)
+			   leaf->lf_dirent_format,
+			   leaf->lf_next,
 			   ind->ii[0].dirents);
 
 	start_line = line;

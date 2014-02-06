@@ -322,17 +322,12 @@ uint64_t do_leaf_extended(char *dlebuf, struct iinfo *indir)
 {
 	int x, i;
 	struct gfs2_dirent de;
-	struct gfs2_leaf leaf;
 	struct gfs2_buffer_head tbh; /* kludge */
 
 	x = 0;
 	memset(indir, 0, sizeof(*indir));
 	tbh.b_data = dlebuf;
-	gfs2_leaf_in(&leaf, &tbh);
-	indir->ii[0].lf_depth = leaf.lf_depth;
-	indir->ii[0].lf_entries = leaf.lf_entries;
-	indir->ii[0].lf_dirent_format = leaf.lf_dirent_format;
-	indir->ii[0].lf_next = leaf.lf_next;
+	gfs2_leaf_in(&indir->ii[0].lf, &tbh);
 	/* Directory Entries: */
 	for (i = sizeof(struct gfs2_leaf); i < sbd.bsize;
 	     i += de.de_rec_len) {
@@ -353,7 +348,7 @@ uint64_t do_leaf_extended(char *dlebuf, struct iinfo *indir)
 		if (de.de_rec_len <= sizeof(struct gfs2_dirent))
 			break;
 	}
-	return leaf.lf_next;
+	return indir->ii[0].lf.lf_next;
 }
 
 static void do_eattr_extended(struct gfs2_buffer_head *ebh)

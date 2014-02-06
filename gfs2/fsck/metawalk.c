@@ -657,7 +657,6 @@ static void dir_leaf_reada(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize)
 static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	int error = 0;
-	struct gfs2_leaf leaf;
 	unsigned hsize = (1 << ip->i_di.di_depth);
 	uint64_t leaf_no, leaf_next;
 	uint64_t first_ok_leaf, orig_di_blocks;
@@ -767,6 +766,7 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 
 		chained_leaf = 0;
 		do {
+			struct gfs2_leaf leaf;
 			if (fsck_abort) {
 				free(tbl);
 				posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
