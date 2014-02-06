@@ -724,7 +724,6 @@ extern int mount_gfs2_meta(struct gfs2_sbd *sdp);
 extern void cleanup_metafs(struct gfs2_sbd *sdp);
 extern int set_sysfs(const char *fsname, const char *filename, const char *val);
 extern int is_fsname(char *name);
-extern void get_random_bytes(void *buf, int nbytes);
 
 /* recovery.c */
 extern void gfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk);
@@ -758,7 +757,8 @@ static inline unsigned int rgrp_size(struct rgrp_tree *rgrp)
 
 /* structures.c */
 extern int build_master(struct gfs2_sbd *sdp);
-extern void build_sb(struct gfs2_sbd *sdp, const unsigned char *uuid);
+extern void lgfs2_sb_init(struct gfs2_sb *sb, unsigned bsize);
+extern int lgfs2_sb_write(const struct gfs2_sb *sb, int fd, const unsigned bsize);
 extern int build_journal(struct gfs2_sbd *sdp, int j,
 			 struct gfs2_inode *jindex);
 extern int build_jindex(struct gfs2_sbd *sdp);
@@ -794,14 +794,14 @@ extern void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 /* Translation functions */
 
 extern void gfs2_inum_in(struct gfs2_inum *no, char *buf);
-extern void gfs2_inum_out(struct gfs2_inum *no, char *buf);
+extern void gfs2_inum_out(const struct gfs2_inum *no, char *buf);
 extern void gfs2_meta_header_in(struct gfs2_meta_header *mh,
 				struct gfs2_buffer_head *bh);
 extern void gfs2_meta_header_out(const struct gfs2_meta_header *mh, char *buf);
 extern void gfs2_meta_header_out_bh(const struct gfs2_meta_header *mh,
                                     struct gfs2_buffer_head *bh);
 extern void gfs2_sb_in(struct gfs2_sb *sb, struct gfs2_buffer_head *bh);
-extern void gfs2_sb_out(struct gfs2_sb *sb, struct gfs2_buffer_head *bh);
+extern void gfs2_sb_out(const struct gfs2_sb *sb, char *buf);
 extern void gfs2_rindex_in(struct gfs2_rindex *ri, char *buf);
 extern void gfs2_rindex_out(struct gfs2_rindex *ri, char *buf);
 extern void gfs2_rgrp_in(struct gfs2_rgrp *rg, struct gfs2_buffer_head *bh);

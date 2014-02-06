@@ -48,7 +48,7 @@ void gfs2_inum_in(struct gfs2_inum *no, char *buf)
 	CPIN_64(no, str, no_addr);
 }
 
-void gfs2_inum_out(struct gfs2_inum *no, char *buf)
+void gfs2_inum_out(const struct gfs2_inum *no, char *buf)
 {
 	struct gfs2_inum *str = (struct gfs2_inum *)buf;
 
@@ -124,11 +124,11 @@ void gfs2_sb_in(struct gfs2_sb *sb, struct gfs2_buffer_head *bh)
 #endif
 }
 
-void gfs2_sb_out(struct gfs2_sb *sb, struct gfs2_buffer_head *bh)
+void gfs2_sb_out(const struct gfs2_sb *sb, char *buf)
 {
-	struct gfs2_sb *str = (struct gfs2_sb *)bh->b_data;
+	struct gfs2_sb *str = (struct gfs2_sb *)buf;
 
-	gfs2_meta_header_out_bh(&sb->sb_header, bh);
+	gfs2_meta_header_out(&sb->sb_header, buf);
 
 	CPOUT_32(sb, str, sb_fs_format);
 	CPOUT_32(sb, str, sb_multihost_format);
@@ -144,7 +144,6 @@ void gfs2_sb_out(struct gfs2_sb *sb, struct gfs2_buffer_head *bh)
 #ifdef GFS2_HAS_UUID
 	memcpy(str->sb_uuid, sb->sb_uuid, 16);
 #endif
-	bmodified(bh);
 }
 
 const char *str_uuid(const unsigned char *uuid)

@@ -60,7 +60,7 @@ static int block_mounters(struct gfs2_sbd *sdp, int block_em)
 		}
 	}
 
-	if (write_sb(sdp)) {
+	if (lgfs2_sb_write(&sdp->sd_sb, sdp->device_fd, sdp->bsize)) {
 		stack;
 		return -1;
 	}
@@ -1130,7 +1130,6 @@ static int sb_repair(struct gfs2_sbd *sdp)
 {
 	uint64_t half;
 	uint32_t known_bsize = 0;
-	unsigned char uuid[16];
 	int error = 0;
 
 	memset(&fix_md, 0, sizeof(fix_md));
@@ -1205,9 +1204,8 @@ static int sb_repair(struct gfs2_sbd *sdp)
 		}
 	}
 	/* Step 3 - Rebuild the lock protocol and file system table name */
-	strcpy(sdp->lockproto, GFS2_DEFAULT_LOCKPROTO);
-	strcpy(sdp->locktable, "unknown");
 	if (query(_("Okay to fix the GFS2 superblock? (y/n)"))) {
+		struct gfs2_sb sb;
 		log_info(_("Found system master directory at: 0x%llx\n"),
 			 sdp->sd_sb.sb_master_dir.no_addr);
 		sdp->master_dir = lgfs2_inode_read(sdp,
@@ -1226,8 +1224,12 @@ static int sb_repair(struct gfs2_sbd *sdp)
 			log_crit(_("Error reading root inode: %s\n"), strerror(errno));
 			return -1;
 		}
-		get_random_bytes(uuid, sizeof(uuid));
-		build_sb(sdp, uuid);
+		lgfs2_sb_init(&sb, sdp->bsize);
+		strcpy(sb.sb_lockproto, GFS2_DEFAULT_LOCKPROTO);
+		strcpy(sb.sb_locktable, "unknown");
+		sb.sb_master_dir = sdp->master_dir->i_di.di_num;
+		sb.sb_root_dir = sdp->md.rooti->i_di.di_num;
+		lgfs2_sb_write(&sb, sdp->device_fd, sdp->bsize);
 		inode_put(&sdp->md.rooti);
 		inode_put(&sdp->master_dir);
 		sb_fixed = 1;

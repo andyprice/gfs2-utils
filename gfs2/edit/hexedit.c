@@ -2132,7 +2132,8 @@ static void process_field(const char *field, const char *nstr)
 				gfs2_sb_assigns(&lsb, field, nstr);
 			else
 				gfs2_sb_assignval(&lsb, field, newval);
-			gfs2_sb_out(&lsb, rbh);
+			gfs2_sb_out(&lsb, rbh->b_data);
+			bmodified(rbh);
 			if (!termlines)
 				gfs2_sb_printval(&lsb, field);
 		} else {

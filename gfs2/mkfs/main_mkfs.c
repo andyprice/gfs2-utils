@@ -569,8 +569,8 @@ static void print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
 	       (unsigned long long)sdp->fssize, _("blocks"));
 	printf("%-27s%u\n", _("Journals:"), sdp->md.journals);
 	printf("%-27s%llu\n", _("Resource groups:"), (unsigned long long)sdp->rgrps);
-	printf("%-27s\"%s\"\n", _("Locking protocol:"), sdp->lockproto);
-	printf("%-27s\"%s\"\n", _("Lock table:"), sdp->locktable);
+	printf("%-27s\"%s\"\n", _("Locking protocol:"), opts->lockproto);
+	printf("%-27s\"%s\"\n", _("Lock table:"), opts->locktable);
 	/* Translators: "UUID" = universally unique identifier. */
 	printf("%-27s%s\n", _("UUID:"), str_uuid(uuid));
 }
@@ -701,8 +701,6 @@ static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct mkfs_d
 		/* TODO: Check if the fssize is too small, somehow */
 		sdp->device.length = opts->fssize;
 	}
-	strcpy(sdp->lockproto, opts->lockproto);
-	strcpy(sdp->locktable, opts->locktable);
 }
 
 static int probe_contents(struct mkfs_dev *dev)
@@ -791,11 +789,11 @@ static void open_dev(const char *path, struct mkfs_dev *dev)
 void main_mkfs(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd;
+	struct gfs2_sb sb;
 	struct mkfs_opts opts;
 	struct mkfs_dev dev;
 	lgfs2_rgrps_t rgs;
 	int error;
-	unsigned char uuid[16];
 	unsigned bsize;
 
 	opts_init(&opts);
@@ -810,15 +808,16 @@ void main_mkfs(int argc, char *argv[])
 	}
 
 	sbd_init(&sbd, &opts, &dev, bsize);
+	lgfs2_sb_init(&sb, bsize);
 	if (opts.debug) {
 		printf(_("File system options:\n"));
 		printf("  bsize = %u\n", sbd.bsize);
 		printf("  qcsize = %u\n", sbd.qcsize);
 		printf("  jsize = %u\n", sbd.jsize);
 		printf("  journals = %u\n", sbd.md.journals);
-		printf("  proto = %s\n", sbd.lockproto);
+		printf("  proto = %s\n", opts.lockproto);
+		printf("  table = %s\n", opts.locktable);
 		printf("  rgsize = %u\n", sbd.rgsize);
-		printf("  table = %s\n", sbd.locktable);
 		printf("  fssize = %"PRIu64"\n", opts.fssize);
 		printf("  sunit = %lu\n", opts.sunit);
 		printf("  swidth = %lu\n", opts.swidth);
@@ -838,8 +837,13 @@ void main_mkfs(int argc, char *argv[])
 		exit(1);
 	}
 	sbd.rgtree.osi_node = lgfs2_rgrps_root(rgs); // Temporary
+
 	build_root(&sbd);
+	sb.sb_root_dir = sbd.md.rooti->i_di.di_num;
+
 	build_master(&sbd);
+	sb.sb_master_dir = sbd.master_dir->i_di.di_num;
+
 	error = build_jindex(&sbd);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "jindex", strerror(errno));
@@ -872,8 +876,9 @@ void main_mkfs(int argc, char *argv[])
 		fprintf(stderr, _("Error building '%s': %s\n"), "quota", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	get_random_bytes(uuid, sizeof(uuid));
-	build_sb(&sbd, uuid);
+
+	strcpy(sb.sb_lockproto, opts.lockproto);
+	strcpy(sb.sb_locktable, opts.locktable);
 
 	do_init_inum(&sbd);
 	do_init_statfs(&sbd);
@@ -884,6 +889,13 @@ void main_mkfs(int argc, char *argv[])
 	inode_put(&sbd.md.statfs);
 
 	gfs2_rgrp_free(&sbd.rgtree);
+
+	error = lgfs2_sb_write(&sb, dev.fd, sbd.bsize);
+	if (error) {
+		perror(_("Failed to write superblock\n"));
+		exit(EXIT_FAILURE);
+	}
+
 	error = fsync(dev.fd);
 	if (error){
 		perror(opts.device);
@@ -897,5 +909,5 @@ void main_mkfs(int argc, char *argv[])
 	}
 
 	if (!opts.quiet)
-		print_results(&sbd, dev.size, &opts, uuid);
+		print_results(&sbd, dev.size, &opts, sb.sb_uuid);
 }
