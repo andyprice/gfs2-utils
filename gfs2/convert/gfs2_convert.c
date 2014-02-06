@@ -2323,7 +2323,8 @@ int main(int argc, char **argv)
 		bh = bread(&sb2, sb2.sb_addr);
 		sb2.sd_sb.sb_fs_format = GFS2_FORMAT_FS;
 		sb2.sd_sb.sb_multihost_format = GFS2_FORMAT_MULTI;
-		gfs2_sb_out(&sb2.sd_sb, bh);
+		gfs2_sb_out(&sb2.sd_sb, bh->b_data);
+		bmodified(bh);
 		brelse(bh);
 
 		error = fsync(sb2.device_fd);

@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <linux/types.h>
+#include <sys/time.h>
 
 #include "libgfs2.h"
 
@@ -41,43 +42,102 @@ int build_master(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-void build_sb(struct gfs2_sbd *sdp, const unsigned char *uuid)
-{
-	unsigned int x;
-	struct gfs2_buffer_head *bh;
-	struct gfs2_sb sb;
-
-	/* Zero out the beginning of the device up to the superblock */
-	for (x = 0; x < sdp->sb_addr; x++) {
-		bh = bget(sdp, x);
-		memset(bh->b_data, 0, sdp->bsize);
-		bmodified(bh);
-		brelse(bh);
-	}
-
-	memset(&sb, 0, sizeof(struct gfs2_sb));
-	sb.sb_header.mh_magic = GFS2_MAGIC;
-	sb.sb_header.mh_type = GFS2_METATYPE_SB;
-	sb.sb_header.mh_format = GFS2_FORMAT_SB;
-	sb.sb_fs_format = GFS2_FORMAT_FS;
-	sb.sb_multihost_format = GFS2_FORMAT_MULTI;
-	sb.sb_bsize = sdp->bsize;
-	sb.sb_bsize_shift = ffs(sdp->bsize) - 1;
-	sb.sb_master_dir = sdp->master_dir->i_di.di_num;
-	sb.sb_root_dir = sdp->md.rooti->i_di.di_num;
-	strcpy(sb.sb_lockproto, sdp->lockproto);
-	strcpy(sb.sb_locktable, sdp->locktable);
 #ifdef GFS2_HAS_UUID
-	memcpy(sb.sb_uuid, uuid, sizeof(sb.sb_uuid));
-#endif
-	bh = bget(sdp, sdp->sb_addr);
-	gfs2_sb_out(&sb, bh);
-	brelse(bh);
+/**
+ * Generate a series of random bytes using /dev/urandom.
+ * Modified from original code in gen_uuid.c in e2fsprogs/lib
+ */
+static void get_random_bytes(void *buf, int nbytes)
+{
+	int i, n = nbytes, fd;
+	int lose_counter = 0;
+	unsigned char *cp = (unsigned char *) buf;
+	struct timeval	tv;
 
-	if (sdp->debug) {
-		printf("\nSuper Block:\n");
-		gfs2_sb_print(&sb);
+	gettimeofday(&tv, 0);
+	fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
+	srand((getpid() << 16) ^ getuid() ^ tv.tv_sec ^ tv.tv_usec);
+	/* Crank the random number generator a few times */
+	gettimeofday(&tv, 0);
+	for (i = (tv.tv_sec ^ tv.tv_usec) & 0x1F; i > 0; i--)
+		rand();
+	if (fd >= 0) {
+		while (n > 0) {
+			i = read(fd, cp, n);
+			if (i <= 0) {
+				if (lose_counter++ > 16)
+					break;
+				continue;
+			}
+			n -= i;
+			cp += i;
+			lose_counter = 0;
+		}
+		close(fd);
 	}
+
+	/*
+	 * We do this all the time, but this is the only source of
+	 * randomness if /dev/random/urandom is out to lunch.
+	 */
+	for (cp = buf, i = 0; i < nbytes; i++)
+		*cp++ ^= (rand() >> 7) & 0xFF;
+
+	return;
+}
+#endif
+
+/**
+ * Initialise a gfs2_sb structure with sensible defaults.
+ */
+void lgfs2_sb_init(struct gfs2_sb *sb, unsigned bsize)
+{
+	memset(sb, 0, sizeof(struct gfs2_sb));
+	sb->sb_header.mh_magic = GFS2_MAGIC;
+	sb->sb_header.mh_type = GFS2_METATYPE_SB;
+	sb->sb_header.mh_format = GFS2_FORMAT_SB;
+	sb->sb_fs_format = GFS2_FORMAT_FS;
+	sb->sb_multihost_format = GFS2_FORMAT_MULTI;
+	sb->sb_bsize = bsize;
+	sb->sb_bsize_shift = ffs(bsize) - 1;
+#ifdef GFS2_HAS_UUID
+	get_random_bytes(&sb->sb_uuid, sizeof(sb->sb_uuid));
+#endif
+}
+
+int lgfs2_sb_write(const struct gfs2_sb *sb, int fd, const unsigned bsize)
+{
+	int i, err = -1;
+	struct iovec *iov;
+	const size_t sb_addr = GFS2_SB_ADDR * GFS2_BASIC_BLOCK / bsize;
+	const size_t len = sb_addr + 1;
+
+	/* We only need 2 blocks: one for zeroing and a second for the superblock */
+	char *buf = calloc(2, bsize);
+	if (buf == NULL)
+		return -1;
+
+	iov = malloc(len * sizeof(*iov));
+	if (iov == NULL)
+		goto out_buf;
+
+	for (i = 0; i < len; i++) {
+		iov[i].iov_base = buf;
+		iov[i].iov_len = bsize;
+	}
+
+	gfs2_sb_out(sb, buf + bsize);
+	iov[sb_addr].iov_base = buf + bsize;
+
+	if (pwritev(fd, iov, len, 0) < (len * bsize))
+		goto out_iov;
+
+	err = 0;
+out_iov:
+	free(iov);
+out_buf:
+	free(buf);
+	return err;
 }
 
 int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)

@@ -309,15 +309,3 @@ int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet)
 
 	return __ri_update(sdp, fd, rgcount, &sane, quiet);
 }
-
-int write_sb(struct gfs2_sbd *sbp)
-{
-	struct gfs2_buffer_head *bh;
-
-	bh = bread(sbp, GFS2_SB_ADDR >> sbp->sd_fsb2bb_shift);
-	gfs2_sb_out(&sbp->sd_sb, bh);
-	brelse(bh);
-	fsync(sbp->device_fd); /* make sure the change gets to disk ASAP */
-	return 0;
-}
-
