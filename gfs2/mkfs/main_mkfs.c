@@ -555,24 +555,25 @@ static void opts_check(struct mkfs_opts *opts)
 	}
 }
 
-static void print_results(struct gfs2_sbd *sdp, uint64_t real_device_size,
-                          struct mkfs_opts *opts, unsigned char uuid[16])
+static void print_results(struct gfs2_sb *sb, struct mkfs_dev *dev, struct mkfs_opts *opts,
+                          uint64_t rgrps, uint64_t fssize)
 {
 	printf("%-27s%s\n", _("Device:"), opts->device);
-	printf("%-27s%u\n", _("Block size:"), sdp->bsize);
-	printf("%-27s%.2f %s (%llu %s)\n", _("Device size:"),
+	printf("%-27s%u\n", _("Block size:"), sb->sb_bsize);
+	printf("%-27s%.2f %s (%"PRIu64" %s)\n", _("Device size:"),
 	       /* Translators: "GB" here means "gigabytes" */
-	       real_device_size / ((float)(1 << 30)), _("GB"),
-	       (unsigned long long)real_device_size / sdp->bsize, _("blocks"));
-	printf("%-27s%.2f %s (%llu %s)\n", _("Filesystem size:"),
-	       sdp->fssize / ((float)(1 << 30)) * sdp->bsize, _("GB"),
-	       (unsigned long long)sdp->fssize, _("blocks"));
-	printf("%-27s%u\n", _("Journals:"), sdp->md.journals);
-	printf("%-27s%llu\n", _("Resource groups:"), (unsigned long long)sdp->rgrps);
+	       (dev->size / ((float)(1 << 30))), _("GB"),
+	       (dev->size / sb->sb_bsize), _("blocks"));
+	printf("%-27s%.2f %s (%"PRIu64" %s)\n", _("Filesystem size:"),
+	       (fssize / ((float)(1 << 30)) * sb->sb_bsize), _("GB"), fssize, _("blocks"));
+	printf("%-27s%u\n", _("Journals:"), opts->journals);
+	printf("%-27s%"PRIu64"\n", _("Resource groups:"), rgrps);
 	printf("%-27s\"%s\"\n", _("Locking protocol:"), opts->lockproto);
 	printf("%-27s\"%s\"\n", _("Lock table:"), opts->locktable);
+#ifdef GFS2_HAS_UUID
 	/* Translators: "UUID" = universally unique identifier. */
-	printf("%-27s%s\n", _("UUID:"), str_uuid(uuid));
+	printf("%-27s%s\n", _("UUID:"), str_uuid(sb->sb_uuid));
+#endif
 }
 
 static void warn_of_destruction(const char *path)
@@ -909,5 +910,5 @@ void main_mkfs(int argc, char *argv[])
 	}
 
 	if (!opts.quiet)
-		print_results(&sbd, dev.size, &opts, sb.sb_uuid);
+		print_results(&sb, &dev, &opts, sbd.rgrps, sbd.fssize);
 }
