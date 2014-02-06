@@ -104,10 +104,12 @@ static int gfs2_sb_printval(struct gfs2_sb *lsb, const char *strfield)
 	checkprints(strfield, lsb, sb_locktable);
 	checkprint(strfield, lsb, __pad3.no_addr);
 	checkprint(strfield, lsb, __pad4.no_addr);
+#ifdef GFS2_HAS_UUID
 	if (strcmp(strfield, "sb_uuid") == 0) {
 		printf("%s\n", str_uuid(lsb->sb_uuid));
 		return 0;
 	}
+#endif
 
 	return -1;
 }
@@ -135,8 +137,9 @@ static int gfs2_sb_assigns(struct gfs2_sb *lsb, const char *strfield,
 {
 	checkassigns(strfield, lsb, sb_lockproto, val);
 	checkassigns(strfield, lsb, sb_locktable, val);
+#ifdef GFS2_HAS_UUID
 	checkassigns(strfield, lsb, sb_uuid, val);
-
+#endif
 	return -1;
 }
 

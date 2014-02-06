@@ -124,8 +124,9 @@ static int is_gfs2(const struct tunegfs2 *tfs)
 int print_super(const struct tunegfs2 *tfs)
 {
 	printf(_("File system volume name: %s\n"), tfs->sb->sb_locktable);
-	if (is_gfs2(tfs))
-		printf(_("File system UUID: %s\n"), uuid2str(tfs->sb->sb_uuid));
+#ifdef GFS2_HAS_UUID
+	printf(_("File system UUID: %s\n"), uuid2str(tfs->sb->sb_uuid));
+#endif
 	printf( _("File system magic number: 0x%X\n"), be32_to_cpu(tfs->sb->sb_header.mh_magic));
 	printf(_("Block size: %d\n"), be32_to_cpu(tfs->sb->sb_bsize));
 	printf(_("Block shift: %d\n"), be32_to_cpu(tfs->sb->sb_bsize_shift));
