@@ -151,25 +151,6 @@ struct mkfs_dev {
 	unsigned int got_topol:1;
 };
 
-/**
- * A representation of the state of resource group calculation. Allows mkfs to create
- * resource groups at any point instead of creating them all in one batch.
- */
-struct mkfs_rgs {
-	struct osi_root *root;
-	uint64_t nextaddr;
-	unsigned bsize;
-	unsigned long align;
-	unsigned long align_off;
-	unsigned long curr_offset;
-	uint64_t maxrgsz;
-	uint64_t minrgsz;
-	uint64_t devlen;
-	uint64_t rgsize;
-	uint64_t count;
-	uint64_t blks_total;
-};
-
 static void opts_init(struct mkfs_opts *opts)
 {
 	memset(opts, 0, sizeof(*opts));
