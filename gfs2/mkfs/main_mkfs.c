@@ -96,6 +96,28 @@ static void print_ext_opts(void)
 	}
 }
 
+/**
+ * Values probed by libblkid:
+ *  alignment_offset: offset, in bytes, of the start of the dev from its natural alignment
+ *  logical_sector_size: smallest addressable unit
+ *  minimum_io_size: device's preferred unit of I/O. RAID stripe unit.
+ *  optimal_io_size: biggest I/O we can submit without incurring a penalty. RAID stripe width.
+ *  physical_sector_size: the smallest unit we can write atomically
+ */
+struct mkfs_dev {
+	int fd;
+	const char *path;
+	struct stat stat;
+	uint64_t size;
+	unsigned long alignment_offset;
+	unsigned long logical_sector_size;
+	unsigned long minimum_io_size;
+	unsigned long optimal_io_size;
+	unsigned long physical_sector_size;
+
+	unsigned int got_topol:1;
+};
+
 struct mkfs_opts {
 	unsigned bsize;
 	unsigned qcsize;
@@ -107,7 +129,7 @@ struct mkfs_opts {
 	uint32_t journals;
 	const char *lockproto;
 	const char *locktable;
-	const char *device;
+	struct mkfs_dev dev;
 	unsigned discard:1;
 
 	unsigned got_bsize:1;
@@ -128,27 +150,6 @@ struct mkfs_opts {
 	unsigned debug:1;
 	unsigned confirm:1;
 	unsigned align:1;
-};
-
-/**
- * Values probed by libblkid:
- *  alignment_offset: offset, in bytes, of the start of the dev from its natural alignment
- *  logical_sector_size: smallest addressable unit
- *  minimum_io_size: device's preferred unit of I/O. RAID stripe unit.
- *  optimal_io_size: biggest I/O we can submit without incurring a penalty. RAID stripe width.
- *  physical_sector_size: the smallest unit we can write atomically
- */
-struct mkfs_dev {
-	int fd;
-	struct stat stat;
-	uint64_t size;
-	unsigned long alignment_offset;
-	unsigned long logical_sector_size;
-	unsigned long minimum_io_size;
-	unsigned long optimal_io_size;
-	unsigned long physical_sector_size;
-
-	unsigned int got_topol:1;
 };
 
 static void opts_init(struct mkfs_opts *opts)
@@ -362,7 +363,7 @@ static void opts_get(int argc, char *argv[], struct mkfs_opts *opts)
 			if (strcmp(optarg, "gfs2") == 0)
 				continue;
 			if (!opts->got_device) {
-				opts->device = optarg;
+				opts->dev.path = optarg;
 				opts->got_device = 1;
 			} else if (!opts->got_fssize && isdigit(optarg[0])) {
 				opts->fssize = atol(optarg);
@@ -457,10 +458,11 @@ static void are_you_sure(void)
 		free(line);
 }
 
-static unsigned choose_blocksize(struct mkfs_opts *opts, const struct mkfs_dev *dev)
+static unsigned choose_blocksize(struct mkfs_opts *opts)
 {
 	unsigned int x;
 	unsigned int bsize = opts->bsize;
+	struct mkfs_dev *dev = &opts->dev;
 
 	if (dev->got_topol && opts->debug) {
 		printf("alignment_offset: %lu\n", dev->alignment_offset);
@@ -536,15 +538,14 @@ static void opts_check(struct mkfs_opts *opts)
 	}
 }
 
-static void print_results(struct gfs2_sb *sb, struct mkfs_dev *dev, struct mkfs_opts *opts,
-                          uint64_t rgrps, uint64_t fssize)
+static void print_results(struct gfs2_sb *sb, struct mkfs_opts *opts, uint64_t rgrps, uint64_t fssize)
 {
-	printf("%-27s%s\n", _("Device:"), opts->device);
+	printf("%-27s%s\n", _("Device:"), opts->dev.path);
 	printf("%-27s%u\n", _("Block size:"), sb->sb_bsize);
 	printf("%-27s%.2f %s (%"PRIu64" %s)\n", _("Device size:"),
 	       /* Translators: "GB" here means "gigabytes" */
-	       (dev->size / ((float)(1 << 30))), _("GB"),
-	       (dev->size / sb->sb_bsize), _("blocks"));
+	       (opts->dev.size / ((float)(1 << 30))), _("GB"),
+	       (opts->dev.size / sb->sb_bsize), _("blocks"));
 	printf("%-27s%.2f %s (%"PRIu64" %s)\n", _("Filesystem size:"),
 	       (fssize / ((float)(1 << 30)) * sb->sb_bsize), _("GB"), fssize, _("blocks"));
 	printf("%-27s%u\n", _("Journals:"), opts->journals);
@@ -580,7 +581,7 @@ static void warn_of_destruction(const char *path)
 	free(abspath);
 }
 
-static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct mkfs_dev *dev, struct gfs2_sbd *sdp)
+static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 {
 	uint64_t rgsize = (opts->rgsize << 20) / sdp->bsize;
 	struct lgfs2_rgrp_align align = {.base = 0, .offset = 0};
@@ -600,10 +601,10 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct mkfs_dev *dev, stru
 			align.offset = opts->sunit / sdp->bsize;
 		}
 	} else if (opts->align) {
-		if ((dev->minimum_io_size > dev->physical_sector_size) &&
-		    (dev->optimal_io_size > dev->physical_sector_size)) {
-			align.base = dev->optimal_io_size / sdp->bsize;
-			align.offset = dev->minimum_io_size / sdp->bsize;
+		if ((opts->dev.minimum_io_size > opts->dev.physical_sector_size) &&
+		    (opts->dev.optimal_io_size > opts->dev.physical_sector_size)) {
+			align.base = opts->dev.optimal_io_size / sdp->bsize;
+			align.offset = opts->dev.minimum_io_size / sdp->bsize;
 		}
 	}
 
@@ -624,7 +625,7 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct mkfs_dev *dev, stru
 	return rgs;
 }
 
-static uint64_t place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts, const struct mkfs_dev *dev)
+static uint64_t place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts)
 {
 	int err = 0;
 	lgfs2_rgrp_t rg = NULL;
@@ -656,7 +657,7 @@ static uint64_t place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs
 		return ri->ri_data0 + ri->ri_data;
 }
 
-static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct mkfs_dev *dev, unsigned bsize)
+static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsize)
 {
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	sdp->time = time(NULL);
@@ -665,20 +666,20 @@ static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct mkfs_d
 	sdp->qcsize = opts->qcsize;
 	sdp->jsize = opts->jsize;
 	sdp->md.journals = opts->journals;
-	sdp->device_fd = dev->fd;
+	sdp->device_fd = opts->dev.fd;
 	sdp->bsize = bsize;
 
 	if (compute_constants(sdp)) {
 		perror(_("Failed to compute file system constants"));
 		exit(1);
 	}
-	sdp->device.length = dev->size / sdp->bsize;
+	sdp->device.length = opts->dev.size / sdp->bsize;
 	if (opts->got_fssize) {
 		if (opts->fssize > sdp->device.length) {
 			fprintf(stderr, _("Specified size is bigger than the device."));
 			die("%s %.2f %s (%"PRIu64" %s)\n", _("Device size:"),
-			       dev->size / ((float)(1 << 30)), _("GB"),
-			       dev->size / sdp->bsize, _("blocks"));
+			       opts->dev.size / ((float)(1 << 30)), _("GB"),
+			       opts->dev.size / sdp->bsize, _("blocks"));
 		}
 		/* TODO: Check if the fssize is too small, somehow */
 		sdp->device.length = opts->fssize;
@@ -733,20 +734,19 @@ static int probe_contents(struct mkfs_dev *dev)
 	return 0;
 }
 
-static void open_dev(const char *path, struct mkfs_dev *dev)
+static void open_dev(struct mkfs_dev *dev)
 {
 	int error;
 
-	memset(dev, 0, sizeof(*dev));
-	dev->fd = open(path, O_RDWR | O_CLOEXEC);
+	dev->fd = open(dev->path, O_RDWR | O_CLOEXEC);
 	if (dev->fd < 0) {
-		perror(path);
+		perror(dev->path);
 		exit(1);
 	}
 
 	error = fstat(dev->fd, &dev->stat);
 	if (error < 0) {
-		perror(path);
+		perror(dev->path);
 		exit(1);
 	}
 
@@ -755,11 +755,11 @@ static void open_dev(const char *path, struct mkfs_dev *dev)
 	} else if (S_ISBLK(dev->stat.st_mode)) {
 		dev->size = lseek(dev->fd, 0, SEEK_END);
 		if (dev->size < 1) {
-			fprintf(stderr, _("Device '%s' is too small\n"), path);
+			fprintf(stderr, _("Device '%s' is too small\n"), dev->path);
 			exit(1);
 		}
 	} else {
-		fprintf(stderr, _("'%s' is not a block device or regular file\n"), path);
+		fprintf(stderr, _("'%s' is not a block device or regular file\n"), dev->path);
 		exit(1);
 	}
 
@@ -773,7 +773,6 @@ void main_mkfs(int argc, char *argv[])
 	struct gfs2_sbd sbd;
 	struct gfs2_sb sb;
 	struct mkfs_opts opts;
-	struct mkfs_dev dev;
 	lgfs2_rgrps_t rgs;
 	int error;
 	unsigned bsize;
@@ -782,14 +781,14 @@ void main_mkfs(int argc, char *argv[])
 	opts_get(argc, argv, &opts);
 	opts_check(&opts);
 
-	open_dev(opts.device, &dev);
-	bsize = choose_blocksize(&opts, &dev);
+	open_dev(&opts.dev);
+	bsize = choose_blocksize(&opts);
 
-	if (S_ISREG(dev.stat.st_mode)) {
+	if (S_ISREG(opts.dev.stat.st_mode)) {
 		opts.got_bsize = 1; /* Use default block size for regular files */
 	}
 
-	sbd_init(&sbd, &opts, &dev, bsize);
+	sbd_init(&sbd, &opts, bsize);
 	lgfs2_sb_init(&sb, bsize);
 	if (opts.debug) {
 		printf(_("File system options:\n"));
@@ -804,16 +803,16 @@ void main_mkfs(int argc, char *argv[])
 		printf("  sunit = %lu\n", opts.sunit);
 		printf("  swidth = %lu\n", opts.swidth);
 	}
-	rgs = rgs_init(&opts, &dev, &sbd);
-	warn_of_destruction(opts.device);
+	rgs = rgs_init(&opts, &sbd);
+	warn_of_destruction(opts.dev.path);
 
 	if (opts.confirm && !opts.override)
 		are_you_sure();
 
-	if (!S_ISREG(dev.stat.st_mode) && opts.discard)
-		discard_blocks(dev.fd, dev.size, opts.debug);
+	if (!S_ISREG(opts.dev.stat.st_mode) && opts.discard)
+		discard_blocks(opts.dev.fd, opts.dev.size, opts.debug);
 
-	sbd.fssize = place_rgrps(&sbd, rgs, &opts, &dev);
+	sbd.fssize = place_rgrps(&sbd, rgs, &opts);
 	if (sbd.fssize == 0) {
 		fprintf(stderr, _("Failed to build resource groups\n"));
 		exit(1);
@@ -872,24 +871,24 @@ void main_mkfs(int argc, char *argv[])
 
 	gfs2_rgrp_free(&sbd.rgtree);
 
-	error = lgfs2_sb_write(&sb, dev.fd, sbd.bsize);
+	error = lgfs2_sb_write(&sb, opts.dev.fd, sbd.bsize);
 	if (error) {
 		perror(_("Failed to write superblock\n"));
 		exit(EXIT_FAILURE);
 	}
 
-	error = fsync(dev.fd);
+	error = fsync(opts.dev.fd);
 	if (error){
-		perror(opts.device);
+		perror(opts.dev.path);
 		exit(EXIT_FAILURE);
 	}
 
-	error = close(dev.fd);
+	error = close(opts.dev.fd);
 	if (error){
-		perror(opts.device);
+		perror(opts.dev.path);
 		exit(EXIT_FAILURE);
 	}
 
 	if (!opts.quiet)
-		print_results(&sb, &dev, &opts, sbd.rgrps, sbd.fssize);
+		print_results(&sb, &opts, sbd.rgrps, sbd.fssize);
 }
