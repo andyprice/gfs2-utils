@@ -273,6 +273,24 @@ void unstuff_dinode(struct gfs2_inode *ip)
 	ip->i_di.di_height = 1;
 }
 
+/**
+ * Calculate the total number of blocks required by a file containing 'bytes' bytes of data.
+ */
+uint64_t lgfs2_space_for_data(const struct gfs2_sbd *sdp, const unsigned bsize, const uint64_t bytes)
+{
+	uint64_t blks = (bytes + bsize - 1) / bsize;
+	uint64_t ptrs = blks;
+
+	if (bytes <= bsize - sizeof(struct gfs2_dinode))
+		return 1;
+
+	while (ptrs > sdp->sd_diptrs) {
+		ptrs = (ptrs + sdp->sd_inptrs - 1) / sdp->sd_inptrs;
+		blks += ptrs;
+	}
+	return blks + 1;
+}
+
 unsigned int calc_tree_height(struct gfs2_inode *ip, uint64_t size)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
