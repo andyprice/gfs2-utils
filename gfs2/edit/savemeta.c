@@ -543,7 +543,11 @@ static void save_inode_data(struct metafd *mfd)
 		int li;
 
 		for (li = 0; li < (1 << inode->i_di.di_depth); li++) {
-			gfs2_get_leaf_nr(inode, li, &leaf_no);
+			if (!lgfs2_get_leaf_ptr(inode, li, &leaf_no)) {
+				fprintf(stderr, "Could not read leaf index %d in dinode %"PRIu64"\n", li,
+				        (uint64_t)inode->i_di.di_num.no_addr);
+				exit(-1);
+			}
 			if (leaf_no == old_leaf ||
 			    gfs2_check_range(&sbd, leaf_no) != 0)
 				continue;

@@ -369,7 +369,10 @@ static int wrong_leaf(struct gfs2_inode *ip, struct gfs2_inum *entry,
 		    de->de_type) == 0) {
 		log_err(_("The misplaced directory entry was moved to a "
 			  "valid leaf block.\n"));
-		gfs2_get_leaf_nr(ip, hash_index, &real_leaf);
+		if (!lgfs2_get_leaf_ptr(ip, hash_index, &real_leaf)) {
+			log_err(_("Could not read leaf %d in dinode %"PRIu64": %s\n"), hash_index,
+			        (uint64_t)ip->i_di.di_num.no_addr, strerror(errno));
+		}
 		if (real_leaf != planned_leaf) {
 			log_err(_("The planned leaf was split. The new leaf "
 				  "is: %llu (0x%llx). di_blocks=%llu\n"),
