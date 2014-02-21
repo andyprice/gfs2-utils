@@ -479,8 +479,7 @@ extern int gfs2_dirent_del(struct gfs2_inode *dip, const char *filename,
 			   int filename_len);
 extern void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 		      uint64_t *dblock, uint32_t *extlen, int prealloc);
-extern void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t index,
-			     uint64_t *leaf_out);
+extern int lgfs2_get_leaf_ptr(struct gfs2_inode *dip, uint32_t index, uint64_t *ptr) __attribute__((warn_unused_result));
 extern void dir_split_leaf(struct gfs2_inode *dip, uint32_t start,
 			   uint64_t leaf_no, struct gfs2_buffer_head *obh);
 extern void gfs2_free_block(struct gfs2_sbd *sdp, uint64_t block);

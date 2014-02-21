@@ -25,7 +25,7 @@ static __inline__ uint64_t *metapointer(struct gfs2_buffer_head *bh,
 }
 
 /* Detect directory is a stuffed inode */
-static int inode_is_stuffed(struct gfs2_inode *ip)
+static int inode_is_stuffed(const struct gfs2_inode *ip)
 {
 	return !ip->i_di.di_height;
 }
@@ -819,20 +819,15 @@ void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 	prev->de_rec_len = cpu_to_be16(prev_rec_len);
 }
 
-void gfs2_get_leaf_nr(struct gfs2_inode *dip, uint32_t lindex,
-		      uint64_t *leaf_out)
+int lgfs2_get_leaf_ptr(struct gfs2_inode *dip, const uint32_t lindex, uint64_t *ptr)
 {
 	uint64_t leaf_no;
-	int count;
+	int count = gfs2_readi(dip, (char *)&leaf_no, lindex * sizeof(uint64_t), sizeof(uint64_t));
+	if (count != sizeof(uint64_t))
+		return -1;
 
-	count = gfs2_readi(dip, (char *)&leaf_no, lindex * sizeof(uint64_t),
-			   sizeof(uint64_t));
-	if (count != sizeof(uint64_t)) {
-		fprintf(stderr, "gfs2_get_leaf_nr:  Bad internal read.\n");
-		exit(1);
-	}
-
-	*leaf_out = be64_to_cpu(leaf_no);
+	*ptr = be64_to_cpu(leaf_no);
+	return 0;
 }
 
 void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
@@ -1034,13 +1029,15 @@ int gfs2_get_leaf(struct gfs2_inode *dip, uint64_t leaf_no,
  * Returns: 0 on success, error code otherwise
  */
 
-static int get_first_leaf(struct gfs2_inode *dip, uint32_t lindex,
-			  struct gfs2_buffer_head **bh_out)
+static int get_first_leaf(struct gfs2_inode *dip, uint32_t lindex, struct gfs2_buffer_head **bh_out)
 {
 	uint64_t leaf_no;
 
-	gfs2_get_leaf_nr(dip, lindex, &leaf_no);
+	if (lgfs2_get_leaf_ptr(dip, lindex, &leaf_no) != 0)
+		return -1;
 	*bh_out = bread(dip->i_sbd, leaf_no);
+	if (*bh_out == NULL)
+		return -1;
 	return 0;
 }
 
@@ -1085,7 +1082,9 @@ restart:
 	else
 		lindex = 0;
 
-	gfs2_get_leaf_nr(dip, lindex, &leaf_no);
+	err = lgfs2_get_leaf_ptr(dip, lindex, &leaf_no);
+	if (err)
+		return err;
 
 	for (;;) {
 		bh = bread(dip->i_sbd, leaf_no);
@@ -1630,7 +1629,9 @@ static int dir_e_del(struct gfs2_inode *dip, const char *filename, int len)
 	lindex = (1 << (dip->i_di.di_depth))-1;
 
 	for(; (lindex >= 0) && !found; lindex--){
-		gfs2_get_leaf_nr(dip, lindex, &leaf_no);
+		error = lgfs2_get_leaf_ptr(dip, lindex, &leaf_no);
+		if (error)
+			return error;
 
 		while(leaf_no && !found){
 			bh = bread(dip->i_sbd, leaf_no);
