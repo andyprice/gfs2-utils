@@ -154,7 +154,7 @@ static int check_statfs(struct gfs2_sbd *sdp)
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgd;
 	struct gfs2_rindex *ri;
-	struct gfs2_statfs_change sc;
+	struct gfs2_statfs_change sc = {0,};
 	char buf[sizeof(struct gfs2_statfs_change)];
 	int count;
 

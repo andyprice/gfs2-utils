@@ -397,12 +397,12 @@ static int save_block(int fd, struct metafd *mfd, uint64_t blk)
  */
 static void save_ea_block(struct metafd *mfd, struct gfs2_buffer_head *metabh)
 {
-	int i, e, ea_len = sbd.bsize;
+	int e;
 	struct gfs2_ea_header ea;
 
-	for (e = sizeof(struct gfs2_meta_header); e < sbd.bsize; e += ea_len) {
+	for (e = sizeof(struct gfs2_meta_header); e < sbd.bsize; e += ea.ea_rec_len) {
 		uint64_t blk, *b;
-		int charoff;
+		int charoff, i;
 
 		gfs2_ea_header_in(&ea, metabh->b_data + e);
 		for (i = 0; i < ea.ea_num_ptrs; i++) {
@@ -417,7 +417,6 @@ static void save_ea_block(struct metafd *mfd, struct gfs2_buffer_head *metabh)
 		}
 		if (!ea.ea_rec_len)
 			break;
-		ea_len = ea.ea_rec_len;
 	}
 }
 

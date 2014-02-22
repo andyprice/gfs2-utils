@@ -172,6 +172,7 @@ int main(int argc, char *argv[])
 	ret = lgfs2_lang_parsef(state, opts.src);
 	if (ret != 0) {
 		fprintf(stderr, "Parse failed\n");
+		free(opts.fspath);
 		return ret;
 	}
 
