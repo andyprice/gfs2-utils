@@ -1413,7 +1413,6 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 	struct gfs2_buffer_head *lbh;
 	int factor;
 	uint32_t proper_start;
-	uint32_t next_proper_start;
 	int anomaly;
 
 	lindex = 0;
@@ -1423,9 +1422,9 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 		len = 1;
 		factor = 0;
 		leafblk = be64_to_cpu(tbl[lindex]);
-		next_proper_start = lindex;
 		anomaly = 0;
 		while (lindex + (len << 1) - 1 < hsize) {
+			uint32_t next_proper_start;
 			if (be64_to_cpu(tbl[lindex + (len << 1) - 1]) !=
 			    leafblk)
 				break;
@@ -1714,9 +1713,6 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 {
 	uint64_t iblock = 0, cur_blks;
 	struct dir_status ds = {0};
-	char *filename;
-	int filename_len;
-	char tmp_name[256];
 	int error = 0;
 
 	log_info( _("Checking system directory inode '%s'\n"), dirname);
@@ -1761,30 +1757,12 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		log_err( _("No '.' entry found for %s directory.\n"), dirname);
 		if (query( _("Is it okay to add '.' entry? (y/n) "))) {
 			cur_blks = sysinode->i_di.di_blocks;
-			sprintf(tmp_name, ".");
-			filename_len = strlen(tmp_name); /* no trailing NULL */
-			if (!(filename = malloc(sizeof(char) * filename_len))) {
-				log_err( _("Unable to allocate name string\n"));
-				stack;
-				return -1;
-			}
-			if (!(memset(filename, 0, sizeof(char) *
-				    filename_len))) {
-				log_err( _("Unable to zero name string\n"));
-				stack;
-				free(filename);
-				return -1;
-			}
-			memcpy(filename, tmp_name, filename_len);
 			log_warn( _("Adding '.' entry\n"));
-			error = dir_add(sysinode, filename, filename_len,
-					&(sysinode->i_di.di_num),
-					(sysinode->i_sbd->gfs1 ?
-					 GFS_FILE_DIR : DT_DIR));
+			error = dir_add(sysinode, ".", 1, &(sysinode->i_di.di_num),
+			                (sysinode->i_sbd->gfs1 ? GFS_FILE_DIR : DT_DIR));
 			if (error) {
-				log_err(_("Error adding directory %s: %s\n"),
-				        filename, strerror(errno));
-				free(filename);
+				log_err(_("Error adding directory %s: %s\n"), "'.'",
+				         strerror(errno));
 				return -errno;
 			}
 			if (cur_blks != sysinode->i_di.di_blocks)
@@ -1793,7 +1771,6 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 			incr_link_count(sysinode->i_di.di_num, sysinode,
 					"sysinode \".\"");
 			ds.entry_count++;
-			free(filename);
 		} else
 			log_err( _("The directory was not fixed.\n"));
 	}
@@ -1874,9 +1851,6 @@ int pass2(struct gfs2_sbd *sdp)
 	uint8_t q;
 	struct dir_status ds = {0};
 	struct gfs2_inode *ip;
-	char *filename;
-	int filename_len;
-	char tmp_name[256];
 	int error = 0;
 
 	/* Check all the system directory inodes. */
@@ -2007,31 +1981,12 @@ int pass2(struct gfs2_sbd *sdp)
 				(unsigned long long)dirblk);
 
 			if (query( _("Is it okay to add '.' entry? (y/n) "))) {
-				sprintf(tmp_name, ".");
-				filename_len = strlen(tmp_name); /* no trailing
-								    NULL */
-				if (!(filename = malloc(sizeof(char) *
-						       filename_len))) {
-					log_err(_("Unable to allocate name\n"));
-					stack;
-					return FSCK_ERROR;
-				}
-				if (!memset(filename, 0, sizeof(char) *
-					   filename_len)) {
-					log_err( _("Unable to zero name\n"));
-					stack;
-					return FSCK_ERROR;
-				}
-				memcpy(filename, tmp_name, filename_len);
-
 				cur_blks = ip->i_di.di_blocks;
-				error = dir_add(ip, filename, filename_len,
-						&(ip->i_di.di_num),
-						(sdp->gfs1 ? GFS_FILE_DIR :
-						 DT_DIR));
+				error = dir_add(ip, ".", 1, &(ip->i_di.di_num),
+						(sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 				if (error) {
-					log_err(_("Error adding directory %s: %s\n"),
-					        filename, strerror(errno));
+					log_err(_("Error adding directory %s: %s\n"), "'.'",
+					        strerror(errno));
 					return -errno;
 				}
 				if (cur_blks != ip->i_di.di_blocks) {
@@ -2047,7 +2002,6 @@ int pass2(struct gfs2_sbd *sdp)
 				incr_link_count(ip->i_di.di_num, ip,
 						_("\". (itself)\""));
 				ds.entry_count++;
-				free(filename);
 				log_err( _("The directory was fixed.\n"));
 			} else {
 				log_err( _("The directory was not fixed.\n"));

@@ -46,13 +46,9 @@ struct inode_info *inodetree_insert(struct gfs2_inum di_num)
 			return cur;
 	}
 
-	data = malloc(sizeof(struct inode_info));
+	data = calloc(1, sizeof(struct inode_info));
 	if (!data) {
 		log_crit( _("Unable to allocate inode_info structure\n"));
-		return NULL;
-	}
-	if (!memset(data, 0, sizeof(struct inode_info))) {
-		log_crit( _("Error while zeroing inode_info structure\n"));
 		return NULL;
 	}
 	/* Add new node and rebalance tree. */

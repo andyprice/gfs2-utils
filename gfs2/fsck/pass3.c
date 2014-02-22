@@ -19,8 +19,9 @@
 static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 			    uint64_t olddotdot, uint64_t block)
 {
-	char *filename;
-	int filename_len, err;
+	const char *filename = "..";
+	int filename_len = 2;
+	int err;
 	struct gfs2_inode *ip, *pip;
 	uint64_t cur_blks;
 
@@ -33,22 +34,6 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 	 * '..' entry for this directory in
 	 * this case? */
 
-	filename_len = strlen("..");
-	if (!(filename = malloc((sizeof(char) * filename_len) + 1))) {
-		log_err( _("Unable to allocate name\n"));
-		fsck_inode_put(&ip);
-		fsck_inode_put(&pip);
-		stack;
-		return -1;
-	}
-	if (!memset(filename, 0, (sizeof(char) * filename_len) + 1)) {
-		log_err( _("Unable to zero name\n"));
-		fsck_inode_put(&ip);
-		fsck_inode_put(&pip);
-		stack;
-		return -1;
-	}
-	memcpy(filename, "..", filename_len);
 	if (gfs2_dirent_del(ip, filename, filename_len))
 		log_warn( _("Unable to remove \"..\" directory entry.\n"));
 	else
@@ -72,7 +57,6 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 	incr_link_count(pip->i_di.di_num, ip, _("new \"..\""));
 	fsck_inode_put(&ip);
 	fsck_inode_put(&pip);
-	free(filename);
 	return 0;
 }
 

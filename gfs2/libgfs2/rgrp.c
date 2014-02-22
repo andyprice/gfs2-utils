@@ -182,10 +182,8 @@ struct rgrp_tree *rgrp_insert(struct osi_root *rgtree, uint64_t rgblock)
 			return cur;
 	}
 
-	data = malloc(sizeof(struct rgrp_tree));
+	data = calloc(1, sizeof(struct rgrp_tree));
 	if (!data)
-		return NULL;
-	if (!memset(data, 0, sizeof(struct rgrp_tree)))
 		return NULL;
 	/* Add new node and rebalance tree. */
 	data->ri.ri_addr = rgblock;

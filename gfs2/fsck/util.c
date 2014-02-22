@@ -365,14 +365,9 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 		/* Check for the inode on the invalid inode reference list. */
 		uint8_t q;
 
-		if (!(id = malloc(sizeof(*id)))) {
-			log_crit( _("Unable to allocate "
-				    "inode_with_dups structure\n"));
-			return meta_error;
-		}
-		if (!(memset(id, 0, sizeof(*id)))) {
-			log_crit( _("Unable to zero inode_with_dups "
-				    "structure\n"));
+		id = calloc(1, sizeof(*id));
+		if (!id) {
+			log_crit( _("Unable to allocate inode_with_dups structure\n"));
 			return meta_error;
 		}
 		id->block_no = ip->i_di.di_num.no_addr;
@@ -429,13 +424,9 @@ struct dir_info *dirtree_insert(struct gfs2_inum inum)
 			return cur;
 	}
 
-	data = malloc(sizeof(struct dir_info));
+	data = calloc(1, sizeof(struct dir_info));
 	if (!data) {
 		log_crit( _("Unable to allocate dir_info structure\n"));
-		return NULL;
-	}
-	if (!memset(data, 0, sizeof(struct dir_info))) {
-		log_crit( _("Error while zeroing dir_info structure\n"));
 		return NULL;
 	}
 	/* Add new node and rebalance tree. */
@@ -555,8 +546,8 @@ struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
 	struct gfs2_bmap *il;
 
 	*addl_mem_needed = 0L;
-	il = malloc(sizeof(*il));
-	if (!il || !memset(il, 0, sizeof(*il)))
+	il = calloc(1, sizeof(*il));
+	if (!il)
 		return NULL;
 
 	if (gfs2_blockmap_create(il, size)) {

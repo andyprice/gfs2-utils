@@ -327,7 +327,6 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 			rgrp_dist++;
 		}
 		if (found) {
-			block = next_block;
 			log_info( _("rgrp found at 0x%llx, length=%d, "
 				    "used=%llu, free=%d\n"),
 				  prevrgd->ri.ri_addr, length,
@@ -442,7 +441,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 	uint64_t first_rg_dist, initial_first_rg_dist;
 	struct rgrp_tree *calc_rgd, *prev_rgd;
 	int number_of_rgs, rgi;
-	int rg_was_fnd = FALSE, corrupt_rgs = 0, bitmap_was_fnd;
+	int rg_was_fnd = FALSE, corrupt_rgs = 0;
 
 	sdp->rgcalc.osi_node = NULL;
 	initial_first_rg_dist = first_rg_dist = sdp->sb_addr + 1;
@@ -489,13 +488,10 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 		/* ------------------------------------------------ */
 		/* Now go through and count the bitmaps for this RG */
 		/* ------------------------------------------------ */
-		bitmap_was_fnd = FALSE;
-		for (fwd_block = blk + 1;
-		     fwd_block < sdp->device.length; 
-		     fwd_block++) {
+		for (fwd_block = blk + 1; fwd_block < sdp->device.length; fwd_block++) {
+			int bitmap_was_fnd;
 			bh = bread(sdp, fwd_block);
-			bitmap_was_fnd =
-				(!gfs2_check_meta(bh, GFS2_METATYPE_RB));
+			bitmap_was_fnd = !gfs2_check_meta(bh, GFS2_METATYPE_RB);
 			brelse(bh);
 			if (bitmap_was_fnd) /* if a bitmap */
 				calc_rgd->ri.ri_length++;
