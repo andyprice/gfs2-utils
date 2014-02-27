@@ -1583,7 +1583,7 @@ static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int pri
 	struct osi_node *next = NULL;
 	uint64_t blk, errblk;
 	int first = 1, found = 0;
-	struct rgrp_tree *rgd;
+	struct rgrp_tree *rgd = NULL;
 	struct gfs2_rindex *ri;
 
 	blk = 0;
@@ -1726,7 +1726,7 @@ uint64_t check_keywords(const char *kword)
 		blk = get_rg_addr(rgnum);
 	} else if (!strncmp(kword, "journals", 8)) {
 		blk = JOURNALS_DUMMY_BLOCK;
-	} else if (!strncmp(kword, "journal", 7) && isdigit(kword[7])) {
+	} else if (strlen(kword) > 7 && !strncmp(kword, "journal", 7) && isdigit(kword[7])) {
 		uint64_t j_size;
 
 		blk = find_journal_block(kword, &j_size);
@@ -1837,8 +1837,7 @@ static void hex_edit(int *exitch)
 					ch += (estring[i+1] - 'A' + 0x0a);
 				bh->b_data[offset + hexoffset] = ch;
 			}
-			lseek(sbd.device_fd, dev_offset, SEEK_SET);
-			if (write(sbd.device_fd, bh->b_data, sbd.bsize) !=
+			if (pwrite(sbd.device_fd, bh->b_data, sbd.bsize, dev_offset) !=
 			    sbd.bsize) {
 				fprintf(stderr, "write error: %s from %s:%d: "
 					"offset %lld (0x%llx)\n",
@@ -2676,8 +2675,10 @@ static void parameterpass1(int argc, char *argv[], int i)
 		termlines = 0;
 	else if (!strcasecmp(argv[i], "-x"))
 		dmode = HEX_MODE;
-	else if (!device[0] && strchr(argv[i],'/'))
-		strcpy(device, argv[i]);
+	else if (!device[0] && strchr(argv[i],'/')) {
+		strncpy(device, argv[i], NAME_MAX-1);
+		device[NAME_MAX-1] = '\0';
+	}
 }
 
 /* ------------------------------------------------------------------------ */

@@ -98,16 +98,6 @@ static void check_journal_wrap(uint64_t seq, uint64_t *highest_seq)
 	*highest_seq = seq;
 }
 
-static int is_meta(struct gfs2_buffer_head *lbh)
-{
-	uint32_t check_magic = ((struct gfs2_meta_header *)(lbh->b_data))->mh_magic;
-
-	check_magic = be32_to_cpu(check_magic);
-	if (check_magic == GFS2_MAGIC)
-		return 1;
-	return 0;
-}
-
 /**
  * fsck_readi - same as libgfs2's gfs2_readi, but sets absolute block #
  *              of the first bit of data read.
@@ -115,16 +105,20 @@ static int is_meta(struct gfs2_buffer_head *lbh)
 static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
 	       unsigned int size, uint64_t *abs_block)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct gfs2_sbd *sdp;
 	struct gfs2_buffer_head *lbh;
 	uint64_t lblock, dblock;
 	unsigned int o;
 	uint32_t extlen = 0;
 	unsigned int amount;
 	int not_new = 0;
-	int isdir = !!(S_ISDIR(ip->i_di.di_mode));
+	int isdir;
 	int copied = 0;
 
+	if (ip == NULL)
+		return 0;
+	sdp = ip->i_sbd;
+	isdir = !!(S_ISDIR(ip->i_di.di_mode));
 	*abs_block = 0;
 	if (roffset >= ip->i_di.di_size)
 		return 0;
@@ -287,9 +281,9 @@ static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 	}
 	if (prnt)
 		eol(0);
-	if (!found_tblk || !is_meta_ld)
+	if (tblk_off && (!found_tblk || !is_meta_ld))
 		*tblk_off = 0;
-	if (!found_bblk || !is_meta_ld)
+	if (bblk_off && (!found_bblk || !is_meta_ld))
 		*bblk_off = 0;
 	return bcount;
 }
@@ -443,7 +437,7 @@ void dump_journal(const char *journal, int tblk)
 {
 	struct gfs2_buffer_head *j_bh = NULL, dummy_bh;
 	uint64_t jblock, j_size, jb, abs_block, saveblk, wrappt = 0;
-	int error, start_line, journal_num;
+	int start_line, journal_num;
 	struct gfs2_inode *j_inode = NULL;
 	int ld_blocks = 0, offset_from_ld = 0;
 	uint64_t tblk_off = 0, bblk_off = 0, bitblk = 0;
@@ -454,7 +448,6 @@ void dump_journal(const char *journal, int tblk)
 
 	start_line = line;
 	lines_per_row[dmode] = 1;
-	error = 0;
 	journal_num = atoi(journal + 7);
 	print_gfs2("Dumping journal #%d.", journal_num);
 	if (tblk) {
@@ -518,6 +511,7 @@ void dump_journal(const char *journal, int tblk)
 
 	for (jb = 0; jb < j_size; jb += (sbd.gfs1 ? 1 : sbd.bsize)) {
 		int is_pertinent = 1;
+		uint32_t block_type = 0;
 
 		if (sbd.gfs1) {
 			if (j_bh)
@@ -526,7 +520,7 @@ void dump_journal(const char *journal, int tblk)
 			j_bh = bread(&sbd, abs_block);
 			dummy_bh.b_data = j_bh->b_data;
 		} else {
-			error = fsck_readi(j_inode, (void *)jbuf,
+			int error = fsck_readi(j_inode, (void *)jbuf,
 					   ((jb + wrappt) % j_size),
 					   sbd.bsize, &abs_block);
 			if (!error) /* end of file */
@@ -534,14 +528,14 @@ void dump_journal(const char *journal, int tblk)
 			dummy_bh.b_data = jbuf;
 		}
 		offset_from_ld++;
-		if (get_block_type(&dummy_bh, NULL) == GFS2_METATYPE_LD) {
+		block_type = get_block_type(&dummy_bh, NULL);
+		if (block_type == GFS2_METATYPE_LD) {
 			ld_blocks = process_ld(abs_block, wrappt, j_size, jb,
 					       &dummy_bh, tblk, &tblk_off,
 					       bitblk, rgd, &is_pertinent,
 					       &bblk_off, ld_blk_refs);
 			offset_from_ld = 0;
-		} else if (!tblk &&
-			   get_block_type(&dummy_bh, NULL) == GFS2_METATYPE_LH) {
+		} else if (!tblk && block_type == GFS2_METATYPE_LH) {
 			struct gfs2_log_header lh;
 			struct gfs_log_header lh1;
 
@@ -577,7 +571,7 @@ void dump_journal(const char *journal, int tblk)
 						    sbd.bsize), start_line,
 						   tblk, &tblk_off, 0, rgd,
 						   0, 1, NULL, 1, NULL);
-		} else if (!is_meta(&dummy_bh)) {
+		} else if (block_type == 0) {
 			continue;
 		}
 		/* Check if this metadata block references the block we're

@@ -391,9 +391,8 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 		return;
 	}
 	while (thisblk) {
-		lseek(sbd.device_fd, thisblk * sbd.bsize, SEEK_SET);
 		/* read in the desired block */
-		if (read(sbd.device_fd, tmpbuf, sbd.bsize) != sbd.bsize) {
+		if (pread(sbd.device_fd, tmpbuf, sbd.bsize, thisblk * sbd.bsize) != sbd.bsize) {
 			fprintf(stderr, "bad read: %s from %s:%d: block %lld "
 				"(0x%llx)\n", strerror(errno), __FUNCTION__,
 				__LINE__,
@@ -446,7 +445,6 @@ static int print_gfs_jindex(struct gfs2_inode *dij)
 	char jbuf[sizeof(struct gfs_jindex)];
 
 	start_line = line;
-	error = 0;
 	print_gfs2("Journal index entries found: %d.",
 		   dij->i_di.di_size / sizeof(struct gfs_jindex));
 	eol(0);
@@ -516,7 +514,6 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 	char highlighted_addr[32];
 
 	start_line = line;
-	error = 0;
 	print_gfs2("RG index entries found: %d.", dip->i_di.di_size /
 		   sizeof(struct gfs2_rindex));
 	eol(0);

@@ -38,7 +38,6 @@ char efield[64];
 int edit_mode = 0;
 int edit_row[DMODES], edit_col[DMODES];
 int edit_size[DMODES], last_entry_onscreen[DMODES];
-char edit_fmt[80];
 enum dsp_mode dmode = HEX_MODE; /* display mode */
 uint64_t block = 0;
 int blockhist = 0;
@@ -201,9 +200,11 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 		if (termlines) {
 			refresh();
 			if (line == (edit_row[dmode] * lines_per_row[dmode]) + 4) {
-				strcpy(efield, label + 2); /* it's indented */
+				strncpy(efield, label + 2, 63); /* it's indented */
+				efield[63] = '\0';
 				strcpy(estring, tmp_string);
-				strcpy(edit_fmt, fmt);
+				strncpy(edit_fmt, fmt, 79);
+				edit_fmt[79] = '\0';
 				edit_size[dmode] = strlen(estring);
 				COLORS_NORMAL;
 			}
