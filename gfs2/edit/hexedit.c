@@ -578,69 +578,15 @@ static void print_usage(void)
 /* ------------------------------------------------------------------------ */
 uint32_t get_block_type(const struct gfs2_buffer_head *lbh, int *structlen)
 {
-	const struct gfs2_meta_header *mh = lbh->iov.iov_base;
-	uint32_t ty;
+	uint32_t ty = lgfs2_get_block_type(lbh);
 
-	if (!be32_to_cpu(mh->mh_magic) == GFS2_MAGIC)
-		return 0;
-
-	ty = be32_to_cpu(mh->mh_type);
-	if (structlen == NULL)
-		return ty;
-	switch (ty) {
-	case GFS2_METATYPE_SB:   /* 1 */
-		if (sbd.gfs1)
-			*structlen = sizeof(struct gfs_sb);
+	if (ty != 0 && structlen != NULL) {
+		unsigned ver = sbd.gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2;
+		const struct lgfs2_metadata *mtype = lgfs2_find_mtype(ty, ver);
+		if (mtype != NULL)
+			*structlen = mtype->size;
 		else
-			*structlen = sizeof(struct gfs2_sb);
-		break;
-	case GFS2_METATYPE_RG:   /* 2 */
-		*structlen = sizeof(struct gfs2_rgrp);
-		break;
-	case GFS2_METATYPE_RB:   /* 3 */
-		*structlen = sizeof(struct gfs2_meta_header);
-		break;
-	case GFS2_METATYPE_DI:   /* 4 */
-		*structlen = sizeof(struct gfs2_dinode);
-		break;
-	case GFS2_METATYPE_IN:   /* 5 */
-		if (sbd.gfs1)
-			*structlen = sizeof(struct gfs_indirect);
-		else
-			*structlen = sizeof(struct gfs2_meta_header);
-		break;
-	case GFS2_METATYPE_LF:   /* 6 */
-		*structlen = sizeof(struct gfs2_leaf);
-		break;
-	case GFS2_METATYPE_JD:
-		*structlen = sizeof(struct gfs2_meta_header);
-		break;
-	case GFS2_METATYPE_LH:
-		*structlen = sizeof(struct gfs2_log_header);
-		break;
-	case GFS2_METATYPE_LD:
-		if (sbd.gfs1)
-			*structlen = sizeof(struct gfs_log_descriptor);
-		else
-			*structlen = sizeof(struct gfs2_log_descriptor);
-		break;
-	case GFS2_METATYPE_EA:
-		*structlen = sizeof(struct gfs2_meta_header) +
-			sizeof(struct gfs2_ea_header);
-		break;
-	case GFS2_METATYPE_ED:
-		*structlen = sizeof(struct gfs2_meta_header) +
-			sizeof(struct gfs2_ea_header);
-		break;
-	case GFS2_METATYPE_LB:
-		*structlen = sizeof(struct gfs2_meta_header);
-		break;
-	case GFS2_METATYPE_QC:
-		*structlen = sizeof(struct gfs2_quota_change);
-		break;
-	default:
-		*structlen = sbd.bsize;
-		break;
+			*structlen = sbd.bsize;
 	}
 	return ty;
 }
