@@ -67,6 +67,7 @@ extern const char *block_type_str[15];
 extern int dsplines;
 extern int dsp_lines[DMODES];
 extern int combined_display;
+extern int details;
 
 struct gfs2_dirents {
 	uint64_t block;
@@ -236,5 +237,6 @@ extern uint64_t check_keywords(const char *kword);
 extern uint64_t masterblock(const char *fn);
 extern void gfs_rgrp_print(struct gfs_rgrp *rg);
 extern int has_indirect_blocks(void);
+extern uint32_t get_block_type(const struct gfs2_buffer_head *lbh);
 
 #endif /* __HEXVIEW_DOT_H__ */
