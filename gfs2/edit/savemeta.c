@@ -662,7 +662,7 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 		 * If we don't, we may run into metadata allocation issues. */
 		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_UNLINKED);
 		for (j = 0; j < m; j++) {
-			blktype = save_block(sbd.device_fd, mfd, block);
+			save_block(sbd.device_fd, mfd, block);
 		}
 	}
 	free(ibuf);
@@ -933,6 +933,7 @@ static int restore_data(int fd, gzFile gzin_fd, int printblocksonly,
 			if (printblocksonly > 1 && printblocksonly == block) {
 				block_in_mem = block;
 				display(0, 0, 0, 0);
+				bh = NULL;
 				return 0;
 			} else if (printblocksonly == 1) {
 				print_gfs2("%d (l=0x%x): ", blks_saved,
@@ -944,19 +945,10 @@ static int restore_data(int fd, gzFile gzin_fd, int printblocksonly,
 			if (savedata->blk >= sbd.fssize) {
 				printf("\nOut of space on the destination "
 				       "device; quitting.\n");
+				bh = NULL;
 				break;
 			}
-			if (lseek(fd, savedata->blk * sbd.bsize, SEEK_SET) !=
-			    savedata->blk * sbd.bsize) {
-				fprintf(stderr, "bad seek: %s from %s:"
-					"%d: block %lld (0x%llx)\n",
-					strerror(errno), __FUNCTION__,
-					__LINE__,
-					(unsigned long long)savedata->blk,
-					(unsigned long long)savedata->blk);
-				exit(-1);
-			}
-			if (write(fd, savedata->buf, sbd.bsize) != sbd.bsize) {
+			if (pwrite(fd, savedata->buf, sbd.bsize, savedata->blk * sbd.bsize) != sbd.bsize) {
 				fprintf(stderr, "write error: %s from "
 					"%s:%d: block %lld (0x%llx)\n",
 					strerror(errno), __FUNCTION__,
@@ -970,6 +962,8 @@ static int restore_data(int fd, gzFile gzin_fd, int printblocksonly,
 				fsync(fd);
 		}
 		blks_saved++;
+		/* Don't leave a dangling reference to our local dummy_bh */
+		bh = NULL;
 	}
 	if (!printblocksonly && !find_highblk)
 		warm_fuzzy_stuff(sbd.fssize, TRUE);
