@@ -45,8 +45,6 @@ int details = 0;
 long int gziplevel = 9;
 static int termcols;
 
-int display(int identify_only);
-
 /* for assigning numeric fields: */
 #define checkassign(strfield, struct, member, value) do {		\
 		if (strcmp(#member, strfield) == 0) {			\
@@ -578,14 +576,73 @@ static void print_usage(void)
 /* returns: metatype if block is a GFS2 structure block type                */
 /*          0 if block is not a GFS2 structure                              */
 /* ------------------------------------------------------------------------ */
-uint32_t get_block_type(const struct gfs2_buffer_head *lbh)
+uint32_t get_block_type(const struct gfs2_buffer_head *lbh, int *structlen)
 {
 	const struct gfs2_meta_header *mh = lbh->iov.iov_base;
+	uint32_t ty;
 
-	if (be32_to_cpu(mh->mh_magic) == GFS2_MAGIC)
-		return be32_to_cpu(mh->mh_type);
+	if (!be32_to_cpu(mh->mh_magic) == GFS2_MAGIC)
+		return 0;
 
-	return 0;
+	ty = be32_to_cpu(mh->mh_type);
+	if (structlen == NULL)
+		return ty;
+	switch (ty) {
+	case GFS2_METATYPE_SB:   /* 1 */
+		if (sbd.gfs1)
+			*structlen = sizeof(struct gfs_sb);
+		else
+			*structlen = sizeof(struct gfs2_sb);
+		break;
+	case GFS2_METATYPE_RG:   /* 2 */
+		*structlen = sizeof(struct gfs2_rgrp);
+		break;
+	case GFS2_METATYPE_RB:   /* 3 */
+		*structlen = sizeof(struct gfs2_meta_header);
+		break;
+	case GFS2_METATYPE_DI:   /* 4 */
+		*structlen = sizeof(struct gfs2_dinode);
+		break;
+	case GFS2_METATYPE_IN:   /* 5 */
+		if (sbd.gfs1)
+			*structlen = sizeof(struct gfs_indirect);
+		else
+			*structlen = sizeof(struct gfs2_meta_header);
+		break;
+	case GFS2_METATYPE_LF:   /* 6 */
+		*structlen = sizeof(struct gfs2_leaf);
+		break;
+	case GFS2_METATYPE_JD:
+		*structlen = sizeof(struct gfs2_meta_header);
+		break;
+	case GFS2_METATYPE_LH:
+		*structlen = sizeof(struct gfs2_log_header);
+		break;
+	case GFS2_METATYPE_LD:
+		if (sbd.gfs1)
+			*structlen = sizeof(struct gfs_log_descriptor);
+		else
+			*structlen = sizeof(struct gfs2_log_descriptor);
+		break;
+	case GFS2_METATYPE_EA:
+		*structlen = sizeof(struct gfs2_meta_header) +
+			sizeof(struct gfs2_ea_header);
+		break;
+	case GFS2_METATYPE_ED:
+		*structlen = sizeof(struct gfs2_meta_header) +
+			sizeof(struct gfs2_ea_header);
+		break;
+	case GFS2_METATYPE_LB:
+		*structlen = sizeof(struct gfs2_meta_header);
+		break;
+	case GFS2_METATYPE_QC:
+		*structlen = sizeof(struct gfs2_quota_change);
+		break;
+	default:
+		*structlen = sbd.bsize;
+		break;
+	}
+	return ty;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -629,78 +686,52 @@ int display_block_type(int from_restore)
 		ret_type = GFS2_METATYPE_DI;
 		struct_len = 0;
 	} else {
-		ret_type = get_block_type(bh);
+		ret_type = get_block_type(bh, &struct_len);
 		switch (ret_type) {
 		case GFS2_METATYPE_SB:   /* 1 */
 			print_gfs2("(superblock)");
-			if (sbd.gfs1)
-				struct_len = sizeof(struct gfs_sb);
-			else
-				struct_len = sizeof(struct gfs2_sb);
 			break;
 		case GFS2_METATYPE_RG:   /* 2 */
 			print_gfs2("(rsrc grp hdr)");
-			struct_len = sizeof(struct gfs2_rgrp);
 			break;
 		case GFS2_METATYPE_RB:   /* 3 */
 			print_gfs2("(rsrc grp bitblk)");
-			struct_len = sizeof(struct gfs2_meta_header);
 			break;
 		case GFS2_METATYPE_DI:   /* 4 */
 			print_gfs2("(disk inode)");
-			struct_len = sizeof(struct gfs2_dinode);
 			break;
 		case GFS2_METATYPE_IN:   /* 5 */
 			print_gfs2("(indir blklist)");
-			if (sbd.gfs1)
-				struct_len = sizeof(struct gfs_indirect);
-			else
-				struct_len = sizeof(struct gfs2_meta_header);
 			break;
 		case GFS2_METATYPE_LF:   /* 6 */
 			print_gfs2("(directory leaf)");
-			struct_len = sizeof(struct gfs2_leaf);
 			break;
 		case GFS2_METATYPE_JD:
 			print_gfs2("(journal data)");
-			struct_len = sizeof(struct gfs2_meta_header);
 			break;
 		case GFS2_METATYPE_LH:
 			print_gfs2("(log header)");
-			struct_len = sizeof(struct gfs2_log_header);
 			break;
 		case GFS2_METATYPE_LD:
 		 	print_gfs2("(log descriptor)");
-			if (sbd.gfs1)
-				struct_len = sizeof(struct gfs_log_descriptor);
-			else
-				struct_len =
-					sizeof(struct gfs2_log_descriptor);
 			break;
 		case GFS2_METATYPE_EA:
 			print_gfs2("(extended attr hdr)");
-			struct_len = sizeof(struct gfs2_meta_header) +
-				sizeof(struct gfs2_ea_header);
 			break;
 		case GFS2_METATYPE_ED:
 			print_gfs2("(extended attr data)");
-			struct_len = sizeof(struct gfs2_meta_header) +
-				sizeof(struct gfs2_ea_header);
 			break;
 		case GFS2_METATYPE_LB:
 			print_gfs2("(log buffer)");
-			struct_len = sizeof(struct gfs2_meta_header);
 			break;
 		case GFS2_METATYPE_QC:
 			print_gfs2("(quota change)");
-			struct_len = sizeof(struct gfs2_quota_change);
 			break;
 		case 0:
 			struct_len = sbd.bsize;
 			break;
 		default:
 			print_gfs2("(wtf?)");
-			struct_len = sbd.bsize;
 			break;
 		}
 	}
@@ -855,18 +886,26 @@ static const struct lgfs2_metadata *find_mtype(uint32_t mtype, const unsigned ve
 /* ------------------------------------------------------------------------ */
 /* hexdump - hex dump the filesystem block to the screen                    */
 /* ------------------------------------------------------------------------ */
-static int hexdump(uint64_t startaddr, int len)
+static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
+		   uint64_t flagref)
 {
-	const unsigned char *pointer,*ptr2;
+	const unsigned char *pointer, *ptr2;
 	int i;
 	uint64_t l;
 	const char *lpBuffer = bh->b_data;
+	const char *zeros_strt = lpBuffer + sbd.bsize;
 	int print_field, cursor_line;
-	const uint32_t block_type = get_block_type(bh);
+	const uint32_t block_type = get_block_type(bh, NULL);
+	uint64_t *ref;
 
 	strcpy(edit_fmt,"%02x");
 	pointer = (unsigned char *)lpBuffer + offset;
 	ptr2 = (unsigned char *)lpBuffer + offset;
+	ref = (uint64_t *)lpBuffer + offset;
+	if (trunc_zeros) {
+		while (zeros_strt > lpBuffer && (*(zeros_strt - 1) == 0))
+			zeros_strt--;
+	}
 	l = offset;
 	print_entry_ndx = 0;
 	while (((termlines && line < termlines &&
@@ -997,9 +1036,20 @@ static int hexdump(uint64_t startaddr, int len)
 		}
 		if (line - 3 > last_entry_onscreen[dmode])
 			last_entry_onscreen[dmode] = line - 3;
+		if (flagref && be64_to_cpu(*ref) == flagref)
+			print_gfs2("<------------------------- ref to 0x%llx",
+				   flagref);
+		ref++;
+		if (flagref && be64_to_cpu(*ref) == flagref)
+			print_gfs2("<------------------------- ref to 0x%llx",
+				   flagref);
+		ref++;
 		eol(0);
-		l+=16;
+		l += 16;
 		print_entry_ndx++;
+		/* This should only happen if trunc_zeros is specified: */
+		if ((const char *)pointer >= zeros_strt)
+			break;
 	} /* while */
 	if (sbd.gfs1) {
 		COLORS_NORMAL;
@@ -1351,7 +1401,7 @@ static void read_master_dir(void)
 /* ------------------------------------------------------------------------ */
 /* display                                                                  */
 /* ------------------------------------------------------------------------ */
-int display(int identify_only)
+int display(int identify_only, int trunc_zeros, uint64_t flagref)
 {
 	uint64_t blk;
 
@@ -1446,7 +1496,8 @@ int display(int identify_only)
 	}
 	if (dmode == HEX_MODE)          /* if hex display mode           */
 		hexdump(dev_offset, (gfs2_struct_type == GFS2_METATYPE_DI)?
-			struct_len + di.di_size:sbd.bsize);
+		        struct_len + di.di_size:sbd.bsize, trunc_zeros,
+		        flagref);
 	else if (dmode == GFS2_MODE) { /* if structure display */
 		if (block != JOURNALS_DUMMY_BLOCK)
 			display_gfs2();       /* display the gfs2 structure */
@@ -1970,7 +2021,7 @@ static void find_print_block_type(void)
 
 	tblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
 	lbh = bread(&sbd, tblock);
-	type = get_block_type(lbh);
+	type = get_block_type(lbh, NULL);
 	print_block_type(tblock, type, "");
 	brelse(lbh);
 	gfs2_rgrp_free(&sbd.rgtree);
@@ -2104,7 +2155,7 @@ static void process_field(const char *field, const char *nstr)
 		setstring = 1;
 	fblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
 	rbh = bread(&sbd, fblock);
-	type = get_block_type(rbh);
+	type = get_block_type(rbh, NULL);
 	switch (type) {
 	case GFS2_METATYPE_SB:
 		gfs2_sb_in(&lsb, rbh);
@@ -2251,7 +2302,7 @@ static void interactive_mode(void)
 	Quit = FALSE;
 	editing = FALSE;
 	while (!Quit) {
-		display(FALSE);
+		display(FALSE, 0, 0);
 		if (editing) {
 			if (edit_row[dmode] == -1)
 				block = goto_block();
@@ -2720,9 +2771,16 @@ static void process_parameters(int argc, char *argv[], int pass)
 		if (termlines || strchr(argv[i],'/')) /* if print or slash */
 			continue;
 			
-		if (!strncmp(argv[i], "journal", 7) &&
-		    isdigit(argv[i][7])) {
-			dump_journal(argv[i]);
+		if (!strncmp(argv[i], "journal", 7) && isdigit(argv[i][7])) {
+			int blk = 0;
+
+			if (i < argc - 1 && isdigit(argv[i + 1][0])) {
+				if (argv[i + 1][0]=='0' && argv[i + 1][1]=='x')
+					sscanf(argv[i + 1], "%x", &blk);
+				else
+					blk = atoi(argv[i + 1]);
+			}
+			dump_journal(argv[i], blk);
 			continue;
 		}
 		keyword_blk = check_keywords(argv[i]);
@@ -2926,7 +2984,7 @@ int main(int argc, char *argv[])
 			block = blockstack[i + 1].block;
 			if (!block)
 				break;
-			display(identify);
+			display(identify, 0, 0);
 			if (!identify) {
 				display_extended();
 				printf("-------------------------------------" \

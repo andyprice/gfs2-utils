@@ -68,6 +68,7 @@ extern int dsplines;
 extern int dsp_lines[DMODES];
 extern int combined_display;
 extern int details;
+extern const char *allocdesc[2][5];
 
 struct gfs2_dirents {
 	uint64_t block;
@@ -232,11 +233,12 @@ extern void gfs_dinode_in(struct gfs_dinode *di, struct gfs2_buffer_head *bh);
 extern void savemeta(char *out_fn, int saveoption, int gziplevel);
 extern void restoremeta(const char *in_fn, const char *out_device,
 			uint64_t printblocksonly);
-extern int display(int identify_only);
+extern int display(int identify_only, int trunc_zeros, uint64_t flagref);
 extern uint64_t check_keywords(const char *kword);
 extern uint64_t masterblock(const char *fn);
 extern void gfs_rgrp_print(struct gfs_rgrp *rg);
 extern int has_indirect_blocks(void);
-extern uint32_t get_block_type(const struct gfs2_buffer_head *lbh);
+extern uint32_t get_block_type(const struct gfs2_buffer_head *lbh,
+			       int *structlen);
 
 #endif /* __HEXVIEW_DOT_H__ */
