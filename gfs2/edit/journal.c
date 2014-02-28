@@ -204,7 +204,8 @@ static int ld_is_pertinent(const uint64_t *b, const char *end, uint64_t tblk,
 static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 			 uint64_t tblk, uint64_t *tblk_off, uint64_t bitblk,
 			 struct rgrp_tree *rgd, uint64_t abs_block, int prnt,
-			 uint64_t *bblk_off, int is_meta_ld)
+			 uint64_t *bblk_off, int is_meta_ld,
+			 uint64_t ld_blk_refs[])
 {
 	int bcount = 0, found_tblk = 0, found_bblk = 0;
 	static char str[256];
@@ -222,6 +223,8 @@ static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 				eol(0);
 				print_gfs2("                    ");
 			}
+			if (ld_blk_refs)
+				ld_blk_refs[bcount] = be64_to_cpu(*b);
 			bcount++;
 			if (prnt) {
 				sprintf(str, "0x%llx",
@@ -345,7 +348,8 @@ static uint64_t find_wrap_pt(struct gfs2_inode *j_inode, char *jbuf,
 static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 		      uint64_t jb, struct gfs2_buffer_head *dummy_bh, int tblk,
 		      uint64_t *tblk_off, uint64_t bitblk,
-		      struct rgrp_tree *rgd, int *prnt, uint64_t *bblk_off)
+		      struct rgrp_tree *rgd, int *prnt, uint64_t *bblk_off,
+		      uint64_t ld_blk_refs[])
 {
 	uint64_t *b;
 	struct gfs2_log_descriptor ld;
@@ -393,7 +397,7 @@ static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 		is_meta_ld = 1;
 	ld_blocks -= print_ld_blks(b, (dummy_bh->b_data + sbd.bsize), line,
 				   tblk, tblk_off, bitblk, rgd, abs_block,
-				   *prnt, bblk_off, is_meta_ld);
+				   *prnt, bblk_off, is_meta_ld, ld_blk_refs);
 
 	return ld_blocks;
 }
@@ -406,15 +410,19 @@ static int meta_has_ref(uint64_t abs_block, int tblk)
 	struct gfs2_buffer_head *mbh;
 	int structlen, ty, has_ref = 0;
 	uint64_t *b;
+	struct gfs2_dinode *dinode;
 
 	mbh = bread(&sbd, abs_block);
 	ty = get_block_type(mbh, &structlen);
-	b = (uint64_t *)(mbh->b_data + structlen);
-	while (ty && (char *)b < mbh->b_data + sbd.bsize) {
-		if (be64_to_cpu(*b) == tblk) {
+	if (ty == GFS2_METATYPE_DI) {
+		dinode = (struct gfs2_dinode *)mbh->b_data;
+		if (be64_to_cpu(dinode->di_eattr) == tblk)
 			has_ref = 1;
-			break;
-		}
+	}
+	b = (uint64_t *)(mbh->b_data + structlen);
+	while (!has_ref && ty && (char *)b < mbh->b_data + sbd.bsize) {
+		if (be64_to_cpu(*b) == tblk)
+			has_ref = 1;
 		b++;
 	}
 	brelse(mbh);
@@ -442,6 +450,7 @@ void dump_journal(const char *journal, int tblk)
 	uint64_t highest_seq = 0;
 	char *jbuf = NULL;
 	struct rgrp_tree *rgd = NULL;
+	uint64_t ld_blk_refs[503]; /* The most blks a LD can have */
 
 	start_line = line;
 	lines_per_row[dmode] = 1;
@@ -529,7 +538,7 @@ void dump_journal(const char *journal, int tblk)
 			ld_blocks = process_ld(abs_block, wrappt, j_size, jb,
 					       &dummy_bh, tblk, &tblk_off,
 					       bitblk, rgd, &is_pertinent,
-					       &bblk_off);
+					       &bblk_off, ld_blk_refs);
 			offset_from_ld = 0;
 		} else if (!tblk &&
 			   get_block_type(&dummy_bh, NULL) == GFS2_METATYPE_LH) {
@@ -567,20 +576,22 @@ void dump_journal(const char *journal, int tblk)
 						   (dummy_bh.b_data +
 						    sbd.bsize), start_line,
 						   tblk, &tblk_off, 0, rgd,
-						   0, 1, NULL, 1);
+						   0, 1, NULL, 1, NULL);
 		} else if (!is_meta(&dummy_bh)) {
 			continue;
 		}
 		/* Check if this metadata block references the block we're
 		   trying to trace. */
-		if (details ||
-		    (is_pertinent && tblk &&
+		if (details || (tblk && ((is_pertinent &&
 		     ((tblk_off && offset_from_ld == tblk_off) ||
 		      (bblk_off && offset_from_ld == bblk_off))) ||
-		    meta_has_ref(abs_block, tblk)) {
+		     meta_has_ref(abs_block, tblk)))) {
 			saveblk = block;
 			block = abs_block;
-			display(0, tblk ? 1 : 0, tblk);
+			if (tblk)
+				display(0, 1, tblk, ld_blk_refs[offset_from_ld]);
+			else
+				display(0, 0, 0, 0);
 			block = saveblk;
 		}
 	}

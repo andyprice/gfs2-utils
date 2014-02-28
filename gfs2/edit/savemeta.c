@@ -932,7 +932,7 @@ static int restore_data(int fd, gzFile gzin_fd, int printblocksonly,
 			block = savedata->blk;
 			if (printblocksonly > 1 && printblocksonly == block) {
 				block_in_mem = block;
-				display(0, 0, 0);
+				display(0, 0, 0, 0);
 				return 0;
 			} else if (printblocksonly == 1) {
 				print_gfs2("%d (l=0x%x): ", blks_saved,
