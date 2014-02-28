@@ -58,6 +58,7 @@ AC_PROG_LN_S
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 AC_PROG_LEX
+test "$LEX" != "flex" && AC_MSG_ERROR([flex not found])
 AC_CHECK_PROG([YACC], [bison], [bison -y])
 test x"$YACC" = x && AC_MSG_ERROR([bison not found])
 
