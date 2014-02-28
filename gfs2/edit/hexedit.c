@@ -833,7 +833,7 @@ static const struct lgfs2_metadata *find_mtype(uint32_t mtype, const unsigned ve
 /* hexdump - hex dump the filesystem block to the screen                    */
 /* ------------------------------------------------------------------------ */
 static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
-		   uint64_t flagref)
+		   uint64_t flagref, uint64_t ref_blk)
 {
 	const unsigned char *pointer, *ptr2;
 	int i;
@@ -983,12 +983,12 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 		if (line - 3 > last_entry_onscreen[dmode])
 			last_entry_onscreen[dmode] = line - 3;
 		if (flagref && be64_to_cpu(*ref) == flagref)
-			print_gfs2("<------------------------- ref to 0x%llx",
-				   flagref);
+			print_gfs2("<------------------------- ref in 0x%llx "
+				   "to 0x%llx", ref_blk, flagref);
 		ref++;
 		if (flagref && be64_to_cpu(*ref) == flagref)
-			print_gfs2("<------------------------- ref to 0x%llx",
-				   flagref);
+			print_gfs2("<------------------------- ref in 0x%llx "
+				   "to 0x%llx", ref_blk, flagref);
 		ref++;
 		eol(0);
 		l += 16;
@@ -1347,7 +1347,8 @@ static void read_master_dir(void)
 /* ------------------------------------------------------------------------ */
 /* display                                                                  */
 /* ------------------------------------------------------------------------ */
-int display(int identify_only, int trunc_zeros, uint64_t flagref)
+int display(int identify_only, int trunc_zeros, uint64_t flagref,
+	    uint64_t ref_blk)
 {
 	uint64_t blk;
 
@@ -1443,7 +1444,7 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref)
 	if (dmode == HEX_MODE)          /* if hex display mode           */
 		hexdump(dev_offset, (gfs2_struct_type == GFS2_METATYPE_DI)?
 		        struct_len + di.di_size:sbd.bsize, trunc_zeros,
-		        flagref);
+		        flagref, ref_blk);
 	else if (dmode == GFS2_MODE) { /* if structure display */
 		if (block != JOURNALS_DUMMY_BLOCK)
 			display_gfs2();       /* display the gfs2 structure */
@@ -2248,7 +2249,7 @@ static void interactive_mode(void)
 	Quit = FALSE;
 	editing = FALSE;
 	while (!Quit) {
-		display(FALSE, 0, 0);
+		display(FALSE, 0, 0, 0);
 		if (editing) {
 			if (edit_row[dmode] == -1)
 				block = goto_block();
@@ -2930,7 +2931,7 @@ int main(int argc, char *argv[])
 			block = blockstack[i + 1].block;
 			if (!block)
 				break;
-			display(identify, 0, 0);
+			display(identify, 0, 0, 0);
 			if (!identify) {
 				display_extended();
 				printf("-------------------------------------" \

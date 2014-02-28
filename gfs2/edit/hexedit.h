@@ -233,7 +233,8 @@ extern void gfs_dinode_in(struct gfs_dinode *di, struct gfs2_buffer_head *bh);
 extern void savemeta(char *out_fn, int saveoption, int gziplevel);
 extern void restoremeta(const char *in_fn, const char *out_device,
 			uint64_t printblocksonly);
-extern int display(int identify_only, int trunc_zeros, uint64_t flagref);
+extern int display(int identify_only, int trunc_zeros, uint64_t flagref,
+		   uint64_t ref_blk);
 extern uint64_t check_keywords(const char *kword);
 extern uint64_t masterblock(const char *fn);
 extern void gfs_rgrp_print(struct gfs_rgrp *rg);
