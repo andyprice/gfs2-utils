@@ -573,10 +573,13 @@ void dump_journal(const char *journal, int tblk)
 				check_journal_wrap(lh.lh_sequence,
 						   &highest_seq);
 				print_gfs2("0x%llx (j+%4llx): Log header: Seq"
-					   ": 0x%x, tail: 0x%x, blk: 0x%x",
+					   ": 0x%x, tail: 0x%x, blk: 0x%x%s",
 					   abs_block, ((jb + wrappt) % j_size)
 					   / sbd.bsize, lh.lh_sequence,
-					   lh.lh_tail, lh.lh_blkno);
+					   lh.lh_tail, lh.lh_blkno,
+					   lh.lh_flags ==
+					   GFS2_LOG_HEAD_UNMOUNT ?
+					   " [UNMOUNTED]" : "");
 			}
 			eol(0);
 		} else if (sbd.gfs1 && ld_blocks > 0) {
