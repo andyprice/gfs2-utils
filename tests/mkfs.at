@@ -54,6 +54,10 @@ AT_SETUP([Min. resource group size])
 GFS_FSCK_CHECK([$GFS_MKFS -p lock_nolock -r 32 $GFS_TGT])
 AT_CLEANUP
 
+AT_SETUP([Max. resource group size, min. block size])
+GFS_FSCK_CHECK([$GFS_MKFS -p lock_nolock -r 2048 -b 512 $GFS_TGT])
+AT_CLEANUP
+
 AT_SETUP([Max. journal size])
 GFS_FSCK_CHECK([$GFS_MKFS -p lock_nolock -J 1024 $GFS_TGT])
 AT_CLEANUP
