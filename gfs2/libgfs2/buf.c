@@ -15,6 +15,14 @@
 
 #include "libgfs2.h"
 
+#ifndef IOV_MAX
+  #ifdef UIO_MAXIOV
+    #define IOV_MAX UIO_MAXIOV
+  #else
+    #define IOV_MAX (1024)
+  #endif
+#endif
+
 struct gfs2_buffer_head *bget(struct gfs2_sbd *sdp, uint64_t num)
 {
 	struct gfs2_buffer_head *bh;
@@ -34,31 +42,34 @@ struct gfs2_buffer_head *bget(struct gfs2_sbd *sdp, uint64_t num)
 int __breadm(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhs, size_t n,
 	     uint64_t block, int line, const char *caller)
 {
-	struct iovec *iov = alloca(n * sizeof(struct iovec));
+	size_t v = (n < IOV_MAX) ? n : IOV_MAX;
+	struct iovec *iov = alloca(v * sizeof(struct iovec));
 	struct iovec *iovbase = iov;
-	uint64_t b = block;
-	size_t size = 0;
-	size_t i;
-	int ret;
+	size_t i = 0;
 
-	for (i = 0; i < n; i++) {
-		bhs[i] = bget(sdp, b++);
-		if (bhs[i] == NULL)
-			return -1;
-		*iov++ = bhs[i]->iov;
-		size += bhs[i]->iov.iov_len;
+	while (i < n) {
+		int j;
+		ssize_t ret;
+		ssize_t size = 0;
+
+		for (j = 0; (i + j < n) && (j < IOV_MAX); j++) {
+			bhs[i + j] = bget(sdp, block + i + j);
+			if (bhs[i + j] == NULL)
+				return -1;
+			iov[j] = bhs[i + j]->iov;
+			size += bhs[i + j]->iov.iov_len;
+		}
+
+		ret = preadv(sdp->device_fd, iovbase, j, (block + i) * sdp->bsize);
+		if (ret != size) {
+			fprintf(stderr, "bad read: %s from %s:%d: block %llu (0x%llx) "
+					"count: %d size: %zd ret: %zd\n", strerror(errno),
+					caller, line, (unsigned long long)block,
+					(unsigned long long)block, j, size, ret);
+			exit(-1);
+		}
+		i += j;
 	}
-
-	ret = preadv(sdp->device_fd, iovbase, n, block * sdp->bsize);
-
-	if (ret != size) {
-		fprintf(stderr, "bad read: %s from %s:%d: block "
-				"%llu (0x%llx)\n", strerror(errno),
-				caller, line, (unsigned long long)block,
-				(unsigned long long)block);
-		exit(-1);
-	}
-
 	return 0;
 }
 
