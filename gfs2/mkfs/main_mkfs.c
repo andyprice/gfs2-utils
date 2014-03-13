@@ -160,7 +160,7 @@ static void opts_init(struct mkfs_opts *opts)
 	opts->bsize = GFS2_DEFAULT_BSIZE;
 	opts->jsize = GFS2_DEFAULT_JSIZE;
 	opts->qcsize = GFS2_DEFAULT_QCSIZE;
-	opts->rgsize = GFS2_DEFAULT_RGSIZE;
+	opts->rgsize = GFS2_MAX_RGSIZE;
 	opts->lockproto = "lock_dlm";
 	opts->locktable = "";
 	opts->confirm = 1;
@@ -583,9 +583,9 @@ static void warn_of_destruction(const char *path)
 
 static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 {
-	uint64_t rgsize = (opts->rgsize << 20) / sdp->bsize;
-	struct lgfs2_rgrp_align align = {.base = 0, .offset = 0};
 	lgfs2_rgrps_t rgs;
+	uint64_t al_base = 0;
+	uint64_t al_off = 0;
 
 	if (opts->align && opts->got_sunit) {
 		if ((opts->sunit % sdp->bsize) != 0) {
@@ -597,18 +597,18 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 			        opts->swidth, opts->sunit);
 			exit(1);
 		} else {
-			align.base = opts->swidth / sdp->bsize;
-			align.offset = opts->sunit / sdp->bsize;
+			al_base = opts->swidth / sdp->bsize;
+			al_off = opts->sunit / sdp->bsize;
 		}
 	} else if (opts->align) {
 		if ((opts->dev.minimum_io_size > opts->dev.physical_sector_size) &&
 		    (opts->dev.optimal_io_size > opts->dev.physical_sector_size)) {
-			align.base = opts->dev.optimal_io_size / sdp->bsize;
-			align.offset = opts->dev.minimum_io_size / sdp->bsize;
+			al_base = opts->dev.optimal_io_size / sdp->bsize;
+			al_off = opts->dev.minimum_io_size / sdp->bsize;
 		}
 	}
 
-	rgs = lgfs2_rgrps_init(sdp->bsize, sdp->sb_addr + 1, sdp->device.length, rgsize, &align);
+	rgs = lgfs2_rgrps_init(sdp->bsize, sdp->device.length, al_base, al_off);
 	if (rgs == NULL) {
 		perror(_("Could not initialise resource groups"));
 		exit(-1);
@@ -617,7 +617,7 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 	if (opts->debug) {
 		printf("  rgrp align = ");
 		if (opts->align)
-			printf("%lu+%lu blocks\n", align.base, align.offset);
+			printf("%lu+%lu blocks\n", al_base, al_off);
 		else
 			printf("(disabled)\n");
 	}
@@ -625,36 +625,71 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 	return rgs;
 }
 
-static uint64_t place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts)
+static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, uint64_t rgaddr, uint32_t len, uint64_t *next)
 {
 	int err = 0;
 	lgfs2_rgrp_t rg = NULL;
 	struct gfs2_rindex *ri = NULL;
 
-	while (!lgfs2_rgrps_end(rgs)) {
-		rg = lgfs2_rgrp_append(rgs, 0, !opts->got_rgsize);
-		if (rg == NULL) {
-			perror(_("Failed to create resource group"));
-			return 0;
-		}
-		err = lgfs2_rgrp_write(sdp->device_fd, rg, sdp->bsize);
-		if (err != 0) {
-			perror(_("Failed to write resource group"));
-			return 0;
-		}
-		ri = lgfs2_rgrp_index(rg);
-		if (opts->debug) {
-			gfs2_rindex_print(ri);
-			printf("\n");
-		}
-		sdp->blks_total += ri->ri_data;
-		sdp->rgrps++;
+	rg = lgfs2_rgrp_append(rgs, rgaddr, len, next);
+	if (rg == NULL) {
+		if (errno == ENOSPC)
+			return 1;
+		perror(_("Failed to create resource group"));
+		return -1;
+	}
+	err = lgfs2_rgrp_write(rgs, sdp->device_fd, rg);
+	if (err != 0) {
+		perror(_("Failed to write resource group"));
+		return -1;
+	}
+	ri = lgfs2_rgrp_index(rg);
+	if (sdp->debug) {
+		gfs2_rindex_print(ri);
+		printf("\n");
+	}
+	sdp->blks_total += ri->ri_data;
+	sdp->fssize = ri->ri_data0 + ri->ri_data;
+	sdp->rgrps++;
+	return 0;
+}
+
+static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts)
+{
+	uint64_t jfsize = lgfs2_space_for_data(sdp, sdp->bsize, opts->jsize << 20);
+	uint32_t jrgsize = lgfs2_rgsize_for_data(jfsize, sdp->bsize);
+	uint64_t rgaddr = lgfs2_rgrp_align_addr(rgs, sdp->sb_addr + 1);
+	uint32_t rgsize = lgfs2_rgrps_plan(rgs, sdp->device.length - rgaddr, ((opts->rgsize << 20) / sdp->bsize));
+	unsigned j;
+
+	if (rgsize >= jrgsize)
+		jrgsize = rgsize;
+
+	if (rgsize < ((GFS2_MIN_RGSIZE << 20) / sdp->bsize)) {
+		fprintf(stderr, _("Resource group size is too small\n"));
+		return -1;
+	} else if (rgsize < ((GFS2_DEFAULT_RGSIZE << 20) / sdp->bsize)) {
+		fprintf(stderr, _("Warning: small resource group size could impact performance\n"));
 	}
 
-	if (ri == NULL)
-		return 0;
-	else
-		return ri->ri_data0 + ri->ri_data;
+	for (j = 0; j < opts->journals; j++) {
+		int result = place_rgrp(sdp, rgs, rgaddr, jrgsize, NULL);
+		if (result != 0)
+			return result;
+		rgaddr = rgaddr + jrgsize;
+	}
+
+	if (rgsize != jrgsize)
+		lgfs2_rgrps_plan(rgs, sdp->device.length - rgaddr, ((opts->rgsize << 20) / sdp->bsize));
+
+	while (1) {
+		int result = place_rgrp(sdp, rgs, rgaddr, 0, &rgaddr);
+		if (result < 0)
+			return result;
+		if (result > 0)
+			break; /* Done */
+	}
+	return 0;
 }
 
 static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsize)
@@ -668,6 +703,7 @@ static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsiz
 	sdp->md.journals = opts->journals;
 	sdp->device_fd = opts->dev.fd;
 	sdp->bsize = bsize;
+	sdp->debug = opts->debug;
 
 	if (compute_constants(sdp)) {
 		perror(_("Failed to compute file system constants"));
@@ -812,8 +848,8 @@ void main_mkfs(int argc, char *argv[])
 	if (!S_ISREG(opts.dev.stat.st_mode) && opts.discard)
 		discard_blocks(opts.dev.fd, opts.dev.size, opts.debug);
 
-	sbd.fssize = place_rgrps(&sbd, rgs, &opts);
-	if (sbd.fssize == 0) {
+	error = place_rgrps(&sbd, rgs, &opts);
+	if (error) {
 		fprintf(stderr, _("Failed to build resource groups\n"));
 		exit(1);
 	}
