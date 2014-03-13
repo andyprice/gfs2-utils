@@ -186,19 +186,16 @@ struct rgrp_tree {
 	struct gfs2_buffer_head **bh;
 };
 
-struct lgfs2_rgrp_align {
-	uint64_t base;
-	uint64_t offset;
-};
-
 typedef struct rgrp_tree *lgfs2_rgrp_t;
 typedef struct _lgfs2_rgrps *lgfs2_rgrps_t;
 
-extern lgfs2_rgrps_t lgfs2_rgrps_init(unsigned bsize, uint64_t start, uint64_t devlen, uint32_t rglen, struct lgfs2_rgrp_align *al);
+extern lgfs2_rgrps_t lgfs2_rgrps_init(unsigned bsize, uint64_t devlen, uint64_t align, uint64_t offset);
+extern uint64_t lgfs2_rgrp_align_addr(const lgfs2_rgrps_t rgs, uint64_t addr);
+extern uint32_t lgfs2_rgrp_align_len(const lgfs2_rgrps_t rgs, uint32_t len);
 extern unsigned lgfs2_rgsize_for_data(uint64_t blksreq, unsigned bsize);
-extern lgfs2_rgrp_t lgfs2_rgrp_append(lgfs2_rgrps_t rgs, uint32_t rglen, int expand);
-extern int lgfs2_rgrp_write(int fd, lgfs2_rgrp_t rg, unsigned bsize);
-extern int lgfs2_rgrps_end(lgfs2_rgrps_t rgs);
+extern uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgtsize);
+extern lgfs2_rgrp_t lgfs2_rgrp_append(lgfs2_rgrps_t rgs, uint64_t addr, uint32_t rglen, uint64_t *nextaddr);
+extern int lgfs2_rgrp_write(lgfs2_rgrps_t rgs, int fd, lgfs2_rgrp_t rg);
 extern struct gfs2_rindex *lgfs2_rgrp_index(lgfs2_rgrp_t rg);
 // Temporary function to aid API migration
 extern struct osi_node *lgfs2_rgrps_root(lgfs2_rgrps_t rgs) __attribute__((deprecated));
@@ -350,7 +347,6 @@ struct metapath {
 
 #define GFS2_EXP_MIN_RGSIZE         (1)
 #define GFS2_MIN_RGSIZE             (32)
-/* Look at this!  Why can't we go bigger than 2GB? */
 #define GFS2_MAX_RGSIZE             (2048)
 
 /* meta.c */

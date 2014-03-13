@@ -223,6 +223,11 @@ void gfs2_rgrp_free(struct osi_root *rgrp_tree)
 	}
 }
 
+struct rgplan {
+	uint32_t num;
+	uint32_t len;
+};
+
 /**
  * This structure is defined in libgfs2.h as an opaque type. It stores the
  * constants and context required for creating resource groups from any point
@@ -230,17 +235,11 @@ void gfs2_rgrp_free(struct osi_root *rgrp_tree)
  */
 struct _lgfs2_rgrps {
 	struct osi_root root;
-	uint64_t nextaddr;
+	struct rgplan plan[2];
 	unsigned bsize;
 	unsigned long align;
 	unsigned long align_off;
-	unsigned long curr_offset;
-	uint64_t maxrgsz;
-	uint64_t minrgsz;
 	uint64_t devlen;
-	uint64_t count;
-	uint64_t blks_total;
-	uint32_t rgsize;
 };
 
 static uint64_t align_block(const uint64_t base, const uint64_t align)
@@ -251,29 +250,121 @@ static uint64_t align_block(const uint64_t base, const uint64_t align)
 }
 
 /**
+ * Calculate the aligned block address of a resource group.
+ * rgs: The resource groups handle
+ * base: The base address of the first resource group address, in blocks
+ * Returns the aligned address of the first resource group.
+ */
+uint64_t lgfs2_rgrp_align_addr(const lgfs2_rgrps_t rgs, uint64_t addr)
+{
+	return align_block(addr, rgs->align);
+}
+
+/**
+ * Calculate the aligned relative address of the next resource group (and thus
+ * the aligned length of this one).
+ * rgs: The resource groups handle
+ * base: The base length of the current resource group, in blocks
+ * Returns the length of the resource group (the aligned relative address of
+ * the next one)
+ */
+uint32_t lgfs2_rgrp_align_len(const lgfs2_rgrps_t rgs, uint32_t len)
+{
+	return align_block(len, rgs->align) + rgs->align_off;
+}
+
+/**
+ * Plan the sizes of resource groups for remaining free space, based on a
+ * target maximum size. In order to make best use of the space while keeping
+ * the resource groups aligned appropriately we need to either reduce the
+ * length of every resource group or of a subset of the resource groups, so
+ * we're left with either one or two resource group sizes. We keep track of
+ * both of these and the numbers of each size of resource group inside the
+ * resource groups descriptor.
+ * rgs: The resource groups descriptor
+ * space: The number of remaining blocks to be allocated
+ * tgtsize: The target resource group size in blocks
+ * Returns the larger of the calculated resource group sizes or 0 if the
+ * smaller would be less than GFS2_MIN_RGSIZE.
+ */
+uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgtsize)
+{
+	uint32_t maxlen = (GFS2_MAX_RGSIZE << 20) / rgs->bsize;
+	uint32_t minlen = (GFS2_MIN_RGSIZE << 20) / rgs->bsize;
+
+	/* Apps should already have checked that the rg size is <=
+	   GFS2_MAX_RGSIZE but just in case alignment pushes it over we clamp
+	   it back down while calculating the initial rgrp length.  */
+	do {
+		rgs->plan[0].len = lgfs2_rgrp_align_len(rgs, tgtsize);
+		tgtsize -= (rgs->align + 1);
+	} while (rgs->plan[0].len > maxlen);
+
+	rgs->plan[0].num = space / rgs->plan[0].len;
+
+	if ((space - (rgs->plan[0].num * rgs->plan[0].len)) > rgs->align) {
+		unsigned adj = (rgs->align > 0) ? rgs->align : 1;
+
+		/* Spread the adjustment required to fit a new rgrp at the end
+		   over all of the rgrps so that we don't end with a single
+		   tiny one.  */
+		while (((rgs->plan[0].len - adj) * (rgs->plan[0].num + 1)) >= space)
+			rgs->plan[0].len -= adj;
+
+		/* We've adjusted the size of the rgrps down as far as we can
+		   without leaving a large gap at the end of the device now,
+		   but we still need to reduce the size of some rgrps in order
+		   to make everything fit, so we use the second rgplan to
+		   specify a second length for a subset of the resource groups.
+		   If plan[0].len already divides the space with no remainder,
+		   plan[1].num will stay 0 and it won't be used.  */
+		rgs->plan[1].len = rgs->plan[0].len - adj;
+		rgs->plan[1].num = 0;
+
+		while (((rgs->plan[0].len * rgs->plan[0].num) +
+		        (rgs->plan[1].len * rgs->plan[1].num)) > space) {
+			/* Total number of rgrps stays constant now. We just
+			   need to shift some weight around */
+			rgs->plan[0].num--;
+			rgs->plan[1].num++;
+		}
+	}
+
+	/* Once we've reached this point,
+	   (plan[0].num * plan[0].len) + (plan[1].num * plan[1].len)
+	   will be less than one adjustment smaller than 'space'.  */
+
+	if (rgs->plan[0].len < minlen)
+		return 0;
+
+	return rgs->plan[0].len;
+}
+
+/**
  * Create and initialise an empty set of resource groups
  * bsize: The block size of the fs
- * start: The block address of the first resource group
  * devlen: The length of the device, in fs blocks
- * rglen: Default rg size, in blocks
- * al: The required alignment of the resource groups
+ * align: The required stripe alignment of the resource groups. Must be a multiple of 'offset'.
+ * offset: The required stripe offset of the resource groups
  * Returns an initialised lgfs2_rgrps_t or NULL if unsuccessful with errno set
  */
-lgfs2_rgrps_t lgfs2_rgrps_init(unsigned bsize, uint64_t start, uint64_t devlen, uint32_t rglen, struct lgfs2_rgrp_align *al)
+lgfs2_rgrps_t lgfs2_rgrps_init(unsigned bsize, uint64_t devlen, uint64_t align, uint64_t offset)
 {
-	lgfs2_rgrps_t rgs = calloc(1, sizeof(*rgs));
+	lgfs2_rgrps_t rgs;
+
+	errno = EINVAL;
+	if (offset != 0 && (align % offset) != 0)
+		return NULL;
+
+	rgs = calloc(1, sizeof(*rgs));
 	if (rgs == NULL)
 		return NULL;
 
 	rgs->bsize = bsize;
-	rgs->maxrgsz = (GFS2_MAX_RGSIZE << 20) / bsize;
-	rgs->minrgsz = (GFS2_MIN_RGSIZE << 20) / bsize;
-	rgs->rgsize = rglen;
 	rgs->devlen = devlen;
-	rgs->align = al->base;
-	rgs->align_off = al->offset;
+	rgs->align = align;
+	rgs->align_off = offset;
 	memset(&rgs->root, 0, sizeof(rgs->root));
-	rgs->nextaddr = align_block(start, rgs->align);
 
 	return rgs;
 }
@@ -284,14 +375,6 @@ lgfs2_rgrps_t lgfs2_rgrps_init(unsigned bsize, uint64_t start, uint64_t devlen, 
 struct gfs2_rindex *lgfs2_rgrp_index(lgfs2_rgrp_t rg)
 {
 	return &rg->ri;
-}
-
-/**
- * Return non-zero if there is space left for more resource groups or zero if not
- */
-int lgfs2_rgrps_end(lgfs2_rgrps_t rgs)
-{
-	return (rgs->nextaddr == 0);
 }
 
 /**
@@ -316,43 +399,38 @@ struct osi_node *lgfs2_rgrps_root(lgfs2_rgrps_t rgs)
 /**
  * Create a new resource group after the last resource group in a set.
  * rgs: The set of resource groups
- * rglen: The required length of the resource group. If its is 0 the default rgsize
- *        passed to lgfs2_rgrps_init() is used.
- * expand: Whether to expand the resource group when alignment would leave a gap.
- * Returns the new resource group on success or NULL on failure.
+ * addr: The address at which to place this resource group
+ * rglen: The required length of the resource group, in fs blocks.
+ * Returns the new resource group on success or NULL on failure with errno set.
+ * If errno is ENOSPC on a NULL return from this function, it could be
+ * interpreted as 'finished' unless you expected there to be enough space on
+ * the device for the resource group.
  */
-lgfs2_rgrp_t lgfs2_rgrp_append(lgfs2_rgrps_t rgs, uint32_t rglen, int expand)
+lgfs2_rgrp_t lgfs2_rgrp_append(lgfs2_rgrps_t rgs, uint64_t addr, uint32_t rglen, uint64_t *nextaddr)
 {
 	int err = 0;
-	lgfs2_rgrp_t rg = rgrp_insert(&rgs->root, rgs->nextaddr);
-	if (rg == NULL)
-		return NULL;
+	lgfs2_rgrp_t rg;
 
-	rgs->curr_offset += rgs->align_off;
-	if (rgs->curr_offset >= rgs->align)
-		rgs->curr_offset = 0;
-
-	if (rgs->rgsize > rglen)
-		rglen = rgs->rgsize;
-
-	rgs->nextaddr = align_block(rg->ri.ri_addr + rgs->rgsize, rgs->align) + rgs->curr_offset;
-	/* Use up gap left by alignment if possible */
-	if (expand && ((rgs->nextaddr - rg->ri.ri_addr) <= rgs->maxrgsz))
-		rglen = rgs->nextaddr - rg->ri.ri_addr;
-
-	if ((rgs->nextaddr + rgs->rgsize) > rgs->devlen) {
-		/* Squeeze the last 1 or 2 rgs into the remaining space */
-		if ((rgs->nextaddr < rgs->devlen) && ((rgs->devlen - rgs->nextaddr) >= rgs->minrgsz)) {
-			rgs->rgsize = rgs->devlen - rgs->nextaddr;
+	if (rglen == 0) {
+		if (rgs->plan[0].num > 0) {
+			rglen = rgs->plan[0].len;
+			rgs->plan[0].num--;
+		} else if (rgs->plan[1].num > 0) {
+			rglen = rgs->plan[1].len;
+			rgs->plan[1].num--;
 		} else {
-			if (rgs->devlen - rg->ri.ri_addr <= rgs->maxrgsz)
-				rglen = rgs->devlen - rg->ri.ri_addr;
-			else
-				rglen = rgs->maxrgsz;
-			/* This is the last rg */
-			rgs->nextaddr = 0;
+			errno = ENOSPC;
+			return NULL;
 		}
 	}
+	if (addr + rglen > rgs->devlen) {
+		errno = ENOSPC;
+		return NULL;
+	}
+
+	rg = rgrp_insert(&rgs->root, addr);
+	if (rg == NULL)
+		return NULL;
 
 	rg->ri.ri_length = rgblocks2bitblocks(rgs->bsize, rglen, &rg->ri.ri_data);
 	rg->ri.ri_data0 = rg->ri.ri_addr + rg->ri.ri_length;
@@ -361,12 +439,12 @@ lgfs2_rgrp_t lgfs2_rgrp_append(lgfs2_rgrps_t rgs, uint32_t rglen, int expand)
 	rg->rg.rg_header.mh_type = GFS2_METATYPE_RG;
 	rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
 	rg->rg.rg_free = rg->ri.ri_data;
-
 	err = gfs2_compute_bitstructs(rgs->bsize, rg);
 	if (err != 0)
 		return NULL;
-	rgs->blks_total += rg->ri.ri_data;
-	rgs->count++;
+
+	if (nextaddr)
+		*nextaddr = rg->ri.ri_addr + rglen;
 	return rg;
 }
 
@@ -374,10 +452,10 @@ lgfs2_rgrp_t lgfs2_rgrp_append(lgfs2_rgrps_t rgs, uint32_t rglen, int expand)
  * Write a resource group to a file descriptor.
  * Returns 0 on success or non-zero on failure with errno set
  */
-int lgfs2_rgrp_write(int fd, lgfs2_rgrp_t rg, unsigned bsize)
+int lgfs2_rgrp_write(const lgfs2_rgrps_t rgs, int fd, const lgfs2_rgrp_t rg)
 {
 	ssize_t ret = 0;
-	size_t len = rg->ri.ri_length * bsize;
+	size_t len = rg->ri.ri_length * rgs->bsize;
 	unsigned int i;
 	const struct gfs2_meta_header bmh = {
 		.mh_magic = GFS2_MAGIC,
@@ -390,9 +468,9 @@ int lgfs2_rgrp_write(int fd, lgfs2_rgrp_t rg, unsigned bsize)
 
 	gfs2_rgrp_out(&rg->rg, buff);
 	for (i = 1; i < rg->ri.ri_length; i++)
-		gfs2_meta_header_out(&bmh, buff + (i * bsize));
+		gfs2_meta_header_out(&bmh, buff + (i * rgs->bsize));
 
-	ret = pwrite(fd, buff, len, rg->ri.ri_addr * bsize);
+	ret = pwrite(fd, buff, len, rg->ri.ri_addr * rgs->bsize);
 	if (ret != len) {
 		free(buff);
 		return -1;
