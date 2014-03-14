@@ -124,20 +124,17 @@ int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno)
  *
  * Returns: 0 on success, -1 on error
  */
-int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state)
+int gfs2_set_bitmap(lgfs2_rgrp_t rgd, uint64_t blkno, int state)
 {
 	int           buf;
 	uint32_t        rgrp_block;
 	struct gfs2_bitmap *bits = NULL;
-	struct rgrp_tree *rgd;
 	unsigned char *byte, cur_state;
 	unsigned int bit;
 
 	/* FIXME: should GFS2_BLKST_INVALID be allowed */
 	if ((state < GFS2_BLKST_FREE) || (state > GFS2_BLKST_DINODE))
 		return -1;
-
-	rgd = gfs2_blk2rgrpd(sdp, blkno);
 
 	if(!rgd || blkno < rgd->ri.ri_data0)
 		return -1;

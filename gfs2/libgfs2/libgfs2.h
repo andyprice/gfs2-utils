@@ -418,7 +418,7 @@ extern int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno);
 
 /* functions with blk #'s that are file system relative */
 extern int lgfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, struct rgrp_tree *rgd);
-extern int gfs2_set_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, int state);
+extern int gfs2_set_bitmap(lgfs2_rgrp_t rg, uint64_t blkno, int state);
 
 /* fs_geometry.c */
 extern uint32_t rgblocks2bitblocks(const unsigned int bsize, const uint32_t rgblocks,
