@@ -73,7 +73,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 			   subtract to the free space.  If the type changed
 			   from dinode to data or data to dinode, no change in
 			   free space. */
-			gfs2_set_bitmap(sdp, blk, new_bitmap_state);
+			gfs2_set_bitmap(rgd, blk, new_bitmap_state);
 			if (new_bitmap_state == GFS2_BLKST_FREE) {
 				/* If we're freeing a dinode, get rid of
 				   the hash table entries for it. */

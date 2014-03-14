@@ -148,7 +148,8 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer,
 				 (unsigned long long)block);
 			if (query(_("Do you want to reclaim the block? "
 				   "(y/n) "))) {
-				if (gfs2_set_bitmap(sdp, block, block_status))
+				lgfs2_rgrp_t rg = gfs2_blk2rgrpd(sdp, block);
+				if (gfs2_set_bitmap(rg, block, block_status))
 					log_err(_("Unlinked block %llu "
 						  "(0x%llx) bitmap not fixed."
 						  "\n"),
@@ -182,7 +183,8 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer,
 			if (query(_("Fix bitmap for block %llu (0x%llx) ? (y/n) "),
 				 (unsigned long long)block,
 				 (unsigned long long)block)) {
-				if (gfs2_set_bitmap(sdp, block, block_status))
+				lgfs2_rgrp_t rg = gfs2_blk2rgrpd(sdp, block);
+				if (gfs2_set_bitmap(rg, block, block_status))
 					log_err( _("Repair failed.\n"));
 				else
 					log_err( _("Fixed.\n"));
