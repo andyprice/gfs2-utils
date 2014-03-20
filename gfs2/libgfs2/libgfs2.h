@@ -197,6 +197,9 @@ extern uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32
 extern lgfs2_rgrp_t lgfs2_rgrp_append(lgfs2_rgrps_t rgs, uint64_t addr, uint32_t rglen, uint64_t *nextaddr);
 extern int lgfs2_rgrp_write(lgfs2_rgrps_t rgs, int fd, lgfs2_rgrp_t rg);
 extern struct gfs2_rindex *lgfs2_rgrp_index(lgfs2_rgrp_t rg);
+extern lgfs2_rgrp_t lgfs2_rgrp_first(lgfs2_rgrps_t rgs);
+extern lgfs2_rgrp_t lgfs2_rgrp_last(lgfs2_rgrps_t rgs);
+extern lgfs2_rgrp_t lgfs2_rgrp_next(lgfs2_rgrp_t rg);
 // Temporary function to aid API migration
 extern struct osi_node *lgfs2_rgrps_root(lgfs2_rgrps_t rgs) __attribute__((deprecated));
 
