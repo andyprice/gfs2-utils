@@ -1502,6 +1502,24 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 	return -1;
 }
 
+static int sanity_check(struct gfs2_sbd *sdp)
+{
+	int error = 0;
+	if (!raw_gfs1_ondisk_sb.sb_quota_di.no_addr) {
+		log_crit(_("Error: Superblock Quota inode address is NULL\n"));
+		error = 1;
+	}
+	if (!raw_gfs1_ondisk_sb.sb_license_di.no_addr) {
+		log_crit(_("Error: Superblock Statfs inode address is NULL\n"));
+		error = 1;
+	}
+	if (!raw_gfs1_ondisk_sb.sb_seg_size) {
+		log_crit(_("Error: Superblock segment size is zero\n"));
+		error = 1;
+	}
+	return error;
+}
+
 /* ------------------------------------------------------------------------- */
 /* init - initialization code                                                */
 /* Returns: 0 on success, -1 on failure                                      */
@@ -2152,6 +2170,17 @@ int main(int argc, char **argv)
 	process_parameters(argc, argv, &opts);
 	error = init(&sb2);
 
+	/*
+	 * Check for some common fs errors
+	 */
+	if (!error) {
+		if (sanity_check(&sb2)) {
+			log_crit(_("%s is not a clean gfs filesytem. Please use the"
+				   " fsck.gfs2 utility to correct these errors and"
+				   " try again.\n"), device);
+			exit(0);
+		}
+	}
 	/* ---------------------------------------------- */
 	/* Make them seal their fate.                     */
 	/* ---------------------------------------------- */
