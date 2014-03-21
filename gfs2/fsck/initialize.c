@@ -727,6 +727,19 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	}
 
 	if (sdp->gfs1) {
+		/* In gfs1, the license_di is always 3 blocks after the jindex_di */
+		if ((sbd1->sb_license_di.no_addr != sbd1->sb_jindex_di.no_addr + 3) ||
+		    (sbd1->sb_license_di.no_formal_ino != sbd1->sb_jindex_di.no_addr + 3)) {
+			if (!query( _("The gfs system statfs inode pointer is incorrect. "
+				      "Okay to correct? (y/n) "))) {
+				log_err( _("fsck.gfs2 cannot continue without a valid "
+					   "statfs file; aborting.\n"));
+				goto fail;
+			}
+			sbd1->sb_license_di.no_addr = sbd1->sb_license_di.no_formal_ino
+				= sbd1->sb_jindex_di.no_addr + 3;
+		}
+
 		sdp->md.statfs = lgfs2_inode_read(sdp, sbd1->sb_license_di.no_addr);
 		if (sdp->md.statfs == NULL) {
 			log_crit(_("Error reading statfs inode: %s\n"), strerror(errno));
@@ -773,6 +786,19 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	}
 
 	if (sdp->gfs1) {
+		/* In gfs1, the quota_di is always 2 blocks after the jindex_di */
+		if ((sbd1->sb_quota_di.no_addr != sbd1->sb_jindex_di.no_addr + 2) ||
+		    (sbd1->sb_quota_di.no_formal_ino != sbd1->sb_jindex_di.no_addr + 2)) {
+			if (!query( _("The gfs system quota inode pointer is incorrect. "
+				      " Okay to correct? (y/n) "))) {
+				log_err( _("fsck.gfs2 cannot continue without a valid "
+					   "quota file; aborting.\n"));
+				goto fail;
+			}
+			sbd1->sb_quota_di.no_addr = sbd1->sb_quota_di.no_formal_ino
+				= sbd1->sb_jindex_di.no_addr + 2;
+		}
+
 		sdp->md.qinode = lgfs2_inode_read(sdp, sbd1->sb_quota_di.no_addr);
 		if (sdp->md.qinode == NULL) {
 			log_crit(_("Error reading quota inode: %s\n"), strerror(errno));
@@ -1354,6 +1380,63 @@ static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
 	return 0;
 }
 
+static int reset_journal_seg_size(unsigned int jsize, unsigned int nsegs,
+					     unsigned int bsize)
+{
+	unsigned int seg_size = jsize / (nsegs * bsize);
+	if (!seg_size)
+		seg_size = 16; /* The default with 128MB journal and 4K bsize */
+	if (seg_size != sbd1->sb_seg_size) {
+		sbd1->sb_seg_size = seg_size;
+		if (!query(_("Computed correct journal segment size to %u."
+			     " Reset it? (y/n) "), seg_size)) {
+			log_crit(_("Error: Cannot proceed without a valid journal"
+				   " segment size value.\n"));
+			return -1;
+		}
+		log_err(_("Resetting journal segment size to %u\n"), sbd1->sb_seg_size);
+	}
+	return 0;
+}
+
+static int correct_journal_seg_size(struct gfs2_sbd *sdp)
+{
+	int count;
+	struct gfs_jindex ji_0, ji_1;
+	char buf[sizeof(struct gfs_jindex)];
+	unsigned int jsize = GFS2_DEFAULT_JSIZE * 1024 * 1024;
+
+	count = gfs2_readi(sdp->md.jiinode, buf, 0, sizeof(struct gfs_jindex));
+	if (count != sizeof(struct gfs_jindex)) {
+		log_crit(_("Error %d reading system journal index inode. "
+			   "Aborting\n"), count);
+		return -1;
+	}
+	gfs_jindex_in(&ji_0, buf);
+
+	if (sdp->md.journals == 1 && sbd1->sb_seg_size == 0) {
+		if (!query(_("The gfs2 journal segment size is 0 and a correct value\n"
+			     "cannot be determined in a single-journal filesystem.\n"
+			     "Continue with default? (y/n) "))) {
+			log_crit(_("Error: Cannot proceed without a valid sb_seg_size value.\n"));
+			return -1;
+		}
+		goto out;
+	}
+
+	count = gfs2_readi(sdp->md.jiinode, buf, sizeof(struct gfs_jindex),
+			   sizeof(struct gfs_jindex));
+	if (count != sizeof(struct gfs_jindex)) {
+		log_crit(_("Error %d reading system journal index inode. "
+			   "Aborting\n"), count);
+		return -1;
+	}
+	gfs_jindex_in(&ji_1, buf);
+
+	jsize = (ji_1.ji_addr - ji_0.ji_addr) * sbd1->sb_bsize;
+out:
+	return reset_journal_seg_size(jsize, ji_0.ji_nsegment, sbd1->sb_bsize);
+}
 
 /*
  * reconstruct_journals - write fresh journals for GFS1 only
@@ -1366,6 +1449,12 @@ static int reconstruct_journals(struct gfs2_sbd *sdp)
 	int i, count;
 	struct gfs_jindex ji;
 	char buf[sizeof(struct gfs_jindex)];
+
+	/* Ensure that sb_seg_size is valid */
+	if (correct_journal_seg_size(sdp)) {
+		log_crit(_("Failed to set correct journal segment size. Cannot continue\n"));
+		return -1;
+	}
 
 	log_err(_("Clearing GFS journals (this may take a while)\n"));
 	for (i = 0; i < sdp->md.journals; i++) {
