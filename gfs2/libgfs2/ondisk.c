@@ -132,15 +132,20 @@ void gfs2_sb_out(const struct gfs2_sb *sb, char *buf)
 
 	CPOUT_32(sb, str, sb_fs_format);
 	CPOUT_32(sb, str, sb_multihost_format);
+	CPOUT_32(sb, str, __pad0);                        /* gfs sb_flags */
 
 	CPOUT_32(sb, str, sb_bsize);
 	CPOUT_32(sb, str, sb_bsize_shift);
+	CPOUT_32(sb, str, __pad1);                        /* gfs sb_seg_size */
 
 	gfs2_inum_out(&sb->sb_master_dir, (char *)&str->sb_master_dir);
 	gfs2_inum_out(&sb->sb_root_dir, (char *)&str->sb_root_dir);
 
 	CPOUT_08(sb, str, sb_lockproto, GFS2_LOCKNAME_LEN);
 	CPOUT_08(sb, str, sb_locktable, GFS2_LOCKNAME_LEN);
+	gfs2_inum_out(&sb->__pad2, (char *)&str->__pad2); /* gfs rindex */
+	gfs2_inum_out(&sb->__pad3, (char *)&str->__pad3); /* gfs quota */
+	gfs2_inum_out(&sb->__pad4, (char *)&str->__pad4); /* gfs license */
 #ifdef GFS2_HAS_UUID
 	memcpy(str->sb_uuid, sb->sb_uuid, 16);
 #endif
