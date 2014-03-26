@@ -1414,14 +1414,22 @@ static int correct_journal_seg_size(struct gfs2_sbd *sdp)
 	}
 	gfs_jindex_in(&ji_0, buf);
 
-	if (sdp->md.journals == 1 && sbd1->sb_seg_size == 0) {
-		if (!query(_("The gfs2 journal segment size is 0 and a correct value\n"
-			     "cannot be determined in a single-journal filesystem.\n"
-			     "Continue with default? (y/n) "))) {
-			log_crit(_("Error: Cannot proceed without a valid sb_seg_size value.\n"));
-			return -1;
+	if (sdp->md.journals == 1) {
+		if (sbd1->sb_seg_size == 0) {
+			if (!query(_("The gfs2 journal segment size is 0 and a"
+				     " correct value cannot be determined in a"
+				     " single-journal filesystem.\n"
+				     "Continue with default? (y/n) "))) {
+				log_crit(_("Error: Cannot proceed without a valid"
+					   " sb_seg_size value.\n"));
+				return -1;
+			}
+			goto out;
 		}
-		goto out;
+		/* Don't mess with sb_seg_size because we don't know what
+		 * it needs to be
+		 */
+		return 0;
 	}
 
 	count = gfs2_readi(sdp->md.jiinode, buf, sizeof(struct gfs_jindex),
