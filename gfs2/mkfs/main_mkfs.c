@@ -625,16 +625,13 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 	return rgs;
 }
 
-static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, uint64_t rgaddr, uint32_t len, uint64_t *next)
+static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct gfs2_rindex *ri)
 {
 	int err = 0;
 	lgfs2_rgrp_t rg = NULL;
-	struct gfs2_rindex *ri = NULL;
 
-	rg = lgfs2_rgrp_append(rgs, rgaddr, len, next);
+	rg = lgfs2_rgrps_append(rgs, ri);
 	if (rg == NULL) {
-		if (errno == ENOSPC)
-			return 1;
 		perror(_("Failed to create resource group"));
 		return -1;
 	}
@@ -643,7 +640,6 @@ static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, uint64_t rgaddr, 
 		perror(_("Failed to write resource group"));
 		return -1;
 	}
-	ri = lgfs2_rgrp_index(rg);
 	if (sdp->debug) {
 		gfs2_rindex_print(ri);
 		printf("\n");
@@ -656,6 +652,7 @@ static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, uint64_t rgaddr, 
 
 static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts)
 {
+	struct gfs2_rindex ri;
 	uint64_t jfsize = lgfs2_space_for_data(sdp, sdp->bsize, opts->jsize << 20);
 	uint32_t jrgsize = lgfs2_rgsize_for_data(jfsize, sdp->bsize);
 	uint64_t rgaddr = lgfs2_rgrp_align_addr(rgs, sdp->sb_addr + 1);
@@ -673,21 +670,26 @@ static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts
 	}
 
 	for (j = 0; j < opts->journals; j++) {
-		int result = place_rgrp(sdp, rgs, rgaddr, jrgsize, NULL);
+		int result;
+		rgaddr = lgfs2_rindex_entry_new(rgs, &ri, rgaddr, jrgsize);
+		if (rgaddr == 0) /* Reached the end when we still have journals to write */
+			return 1;
+		result = place_rgrp(sdp, rgs, &ri);
 		if (result != 0)
 			return result;
-		rgaddr = rgaddr + jrgsize;
 	}
 
 	if (rgsize != jrgsize)
 		lgfs2_rgrps_plan(rgs, sdp->device.length - rgaddr, ((opts->rgsize << 20) / sdp->bsize));
 
 	while (1) {
-		int result = place_rgrp(sdp, rgs, rgaddr, 0, &rgaddr);
-		if (result < 0)
-			return result;
-		if (result > 0)
+		int result;
+		rgaddr = lgfs2_rindex_entry_new(rgs, &ri, rgaddr, 0);
+		if (rgaddr == 0)
 			break; /* Done */
+		result = place_rgrp(sdp, rgs, &ri);
+		if (result)
+			return result;
 	}
 	return 0;
 }
