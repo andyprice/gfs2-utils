@@ -370,11 +370,59 @@ lgfs2_rgrps_t lgfs2_rgrps_init(unsigned bsize, uint64_t devlen, uint64_t align, 
 }
 
 /**
+ * Calculate the fields for a new entry in the resource group index.
+ * ri: A pointer to the resource group index entry to be calculated.
+ * addr: The address at which to place this resource group
+ * len: The required length of the resource group, in fs blocks.
+ *        If rglen is 0, geometry previously calculated by lgfs2_rgrps_plan() will be used.
+ * Returns the calculated address of the next resource group or 0 with errno set:
+ *   EINVAL - The entry pointer is NULL
+ *   ENOSPC - This rgrp would extend past the end of the device
+ */
+uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *ri, uint64_t addr, uint32_t len)
+{
+	errno = EINVAL;
+	if (!ri)
+		return 0;
+
+	errno = ENOSPC;
+	if (len == 0) {
+		if (rgs->plan[0].num > 0) {
+			len = rgs->plan[0].len;
+			rgs->plan[0].num--;
+		} else if (rgs->plan[1].num > 0) {
+			len = rgs->plan[1].len;
+			rgs->plan[1].num--;
+		} else
+			return 0;
+	}
+	if (addr + len > rgs->devlen)
+		return 0;
+
+	ri->ri_addr = addr;
+	ri->ri_length = rgblocks2bitblocks(rgs->bsize, len, &ri->ri_data);
+	ri->__pad = 0;
+	ri->ri_data0 = ri->ri_addr + ri->ri_length;
+	ri->ri_bitbytes = ri->ri_data / GFS2_NBBY;
+	memset(&ri->ri_reserved, 0, sizeof(ri->ri_reserved));
+
+	return ri->ri_addr + len;
+}
+
+/**
  * Return the rindex structure relating to a a resource group.
  */
 struct gfs2_rindex *lgfs2_rgrp_index(lgfs2_rgrp_t rg)
 {
 	return &rg->ri;
+}
+
+/**
+ * Return the rgrp structure relating to a a resource group.
+ */
+struct gfs2_rgrp *lgfs2_rgrp_rgrp(lgfs2_rgrp_t rg)
+{
+	return &rg->rg;
 }
 
 /**
@@ -397,44 +445,21 @@ struct osi_node *lgfs2_rgrps_root(lgfs2_rgrps_t rgs)
 }
 
 /**
- * Create a new resource group after the last resource group in a set.
+ * Insert a new resource group after the last resource group in a set.
  * rgs: The set of resource groups
- * addr: The address at which to place this resource group
- * rglen: The required length of the resource group, in fs blocks.
+ * entry: The entry to be added
  * Returns the new resource group on success or NULL on failure with errno set.
- * If errno is ENOSPC on a NULL return from this function, it could be
- * interpreted as 'finished' unless you expected there to be enough space on
- * the device for the resource group.
  */
-lgfs2_rgrp_t lgfs2_rgrp_append(lgfs2_rgrps_t rgs, uint64_t addr, uint32_t rglen, uint64_t *nextaddr)
+lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry)
 {
 	int err = 0;
 	lgfs2_rgrp_t rg;
 
-	if (rglen == 0) {
-		if (rgs->plan[0].num > 0) {
-			rglen = rgs->plan[0].len;
-			rgs->plan[0].num--;
-		} else if (rgs->plan[1].num > 0) {
-			rglen = rgs->plan[1].len;
-			rgs->plan[1].num--;
-		} else {
-			errno = ENOSPC;
-			return NULL;
-		}
-	}
-	if (addr + rglen > rgs->devlen) {
-		errno = ENOSPC;
-		return NULL;
-	}
-
-	rg = rgrp_insert(&rgs->root, addr);
+	rg = rgrp_insert(&rgs->root, entry->ri_addr);
 	if (rg == NULL)
 		return NULL;
 
-	rg->ri.ri_length = rgblocks2bitblocks(rgs->bsize, rglen, &rg->ri.ri_data);
-	rg->ri.ri_data0 = rg->ri.ri_addr + rg->ri.ri_length;
-	rg->ri.ri_bitbytes = rg->ri.ri_data / GFS2_NBBY;
+	memcpy(&rg->ri, entry, sizeof(struct gfs2_rindex));
 	rg->rg.rg_header.mh_magic = GFS2_MAGIC;
 	rg->rg.rg_header.mh_type = GFS2_METATYPE_RG;
 	rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
@@ -443,8 +468,6 @@ lgfs2_rgrp_t lgfs2_rgrp_append(lgfs2_rgrps_t rgs, uint64_t addr, uint32_t rglen,
 	if (err != 0)
 		return NULL;
 
-	if (nextaddr)
-		*nextaddr = rg->ri.ri_addr + rglen;
 	return rg;
 }
 
