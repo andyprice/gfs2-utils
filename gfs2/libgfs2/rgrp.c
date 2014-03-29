@@ -10,6 +10,23 @@
 
 #define RG_SYNC_TOLERANCE 1000
 
+static void compute_bitmaps(lgfs2_rgrp_t rg, const unsigned bsize)
+{
+	int x;
+
+	rg->bits[0].bi_offset = sizeof(struct gfs2_rgrp);
+	rg->bits[0].bi_start = 0;
+	rg->bits[0].bi_len = bsize - sizeof(struct gfs2_rgrp);
+
+	for (x = 1; x < rg->ri.ri_length; x++) {
+		rg->bits[x].bi_offset = sizeof(struct gfs2_meta_header);
+		rg->bits[x].bi_start = rg->bits[x - 1].bi_start + rg->bits[x - 1].bi_len;
+		rg->bits[x].bi_len = bsize - sizeof(struct gfs2_meta_header);
+	}
+	x--;
+	rg->bits[x].bi_len = rg->ri.ri_bitbytes - rg->bits[x].bi_start;
+}
+
 /**
  * gfs2_compute_bitstructs - Compute the bitmap sizes
  * bsize: Block size
@@ -18,10 +35,9 @@
  */
 int gfs2_compute_bitstructs(const uint32_t bsize, struct rgrp_tree *rgd)
 {
-	struct gfs2_bitmap *bits;
 	uint32_t length = rgd->ri.ri_length;
-	uint32_t bytes_left, bytes;
-	int x;
+	uint32_t bytes_left;
+	int ownbits = 0;
 
 	/* Max size of an rg is 2GB.  A 2GB RG with (minimum) 512-byte blocks
 	   has 4194304 blocks.  We can represent 4 blocks in one bitmap byte.
@@ -29,63 +45,38 @@ int gfs2_compute_bitstructs(const uint32_t bsize, struct rgrp_tree *rgd)
 	   Subtract a metadata header for each 512-byte block and we get
 	   488 bytes of bitmap per block.  Divide 1048576 by 488 and we can
 	   be assured we should never have more than 2149 of them. */
+	errno = EINVAL;
 	if (length > 2149 || length == 0)
 		return -1;
-	if(rgd->bits == NULL && !(rgd->bits = (struct gfs2_bitmap *)
-		 malloc(length * sizeof(struct gfs2_bitmap))))
-		return -1;
-	if(!memset(rgd->bits, 0, length * sizeof(struct gfs2_bitmap)))
-		return -1;
-	
-	bytes_left = rgd->ri.ri_bitbytes;
 
-	for (x = 0; x < length; x++){
-		bits = &rgd->bits[x];
-
-		if (length == 1){
-			bytes = bytes_left;
-			bits->bi_offset = sizeof(struct gfs2_rgrp);
-			bits->bi_start = 0;
-			bits->bi_len = bytes;
-		}
-		else if (x == 0){
-			bytes = bsize - sizeof(struct gfs2_rgrp);
-			bits->bi_offset = sizeof(struct gfs2_rgrp);
-			bits->bi_start = 0;
-			bits->bi_len = bytes;
-		}
-		else if (x + 1 == length){
-			bytes = bytes_left;
-			bits->bi_offset = sizeof(struct gfs2_meta_header);
-			bits->bi_start = rgd->ri.ri_bitbytes - bytes_left;
-			bits->bi_len = bytes;
-		}
-		else{
-			bytes = bsize - sizeof(struct gfs2_meta_header);
-			bits->bi_offset = sizeof(struct gfs2_meta_header);
-			bits->bi_start = rgd->ri.ri_bitbytes - bytes_left;
-			bits->bi_len = bytes;
-		}
-
-		bytes_left -= bytes;
+	if(rgd->bits == NULL) {
+		rgd->bits = calloc(length, sizeof(struct gfs2_bitmap));
+		if(rgd->bits == NULL)
+			return -1;
+		ownbits = 1;
 	}
 
+	compute_bitmaps(rgd, bsize);
+	bytes_left = rgd->ri.ri_bitbytes - (rgd->bits[rgd->ri.ri_length - 1].bi_start +
+	                                   rgd->bits[rgd->ri.ri_length - 1].bi_len);
+	errno = EINVAL;
 	if(bytes_left)
-		return -1;
+		goto errbits;
 
 	if((rgd->bits[length - 1].bi_start +
 	    rgd->bits[length - 1].bi_len) * GFS2_NBBY != rgd->ri.ri_data)
-		return -1;
+		goto errbits;
 
-	if (rgd->bh)      /* If we already have a bh allocated */
-		return 0; /* don't want to allocate another */
-	if(!(rgd->bh = (struct gfs2_buffer_head **)
-		 malloc(length * sizeof(struct gfs2_buffer_head *))))
-		return -1;
-	if(!memset(rgd->bh, 0, length * sizeof(struct gfs2_buffer_head *)))
-		return -1;
-
+	if (rgd->bh == NULL) {
+		rgd->bh = calloc(length, sizeof(struct gfs2_buffer_head *));
+		if (rgd->bh == NULL)
+			goto errbits;
+	}
 	return 0;
+errbits:
+	if (ownbits)
+		free(rgd->bits);
+	return -1;
 }
 
 
@@ -370,6 +361,31 @@ lgfs2_rgrps_t lgfs2_rgrps_init(unsigned bsize, uint64_t devlen, uint64_t align, 
 }
 
 /**
+ * Free a set of resource groups created with lgfs2_rgrps_append() etc. This
+ * does not write any dirty buffers to disk. See lgfs2_rgrp_write().
+ * rgs: A pointer to the set of resource groups to be freed.
+ */
+void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs)
+{
+	lgfs2_rgrp_t rg;
+	struct osi_root *tree = &(*rgs)->root;
+
+	while ((rg = (struct rgrp_tree *)osi_first(tree))) {
+		int i;
+		for (i = 0; i < rg->ri.ri_length; i++) {
+			if (rg->bh[i] != NULL) {
+				free(rg->bh[i]);
+				rg->bh[i] = NULL;
+			}
+		}
+		osi_erase(&rg->node, tree);
+		free(rg);
+	}
+	free(*rgs);
+	*rgs = NULL;
+}
+
+/**
  * Calculate the fields for a new entry in the resource group index.
  * ri: A pointer to the resource group index entry to be calculated.
  * addr: The address at which to place this resource group
@@ -452,22 +468,41 @@ struct osi_node *lgfs2_rgrps_root(lgfs2_rgrps_t rgs)
  */
 lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry)
 {
-	int err = 0;
 	lgfs2_rgrp_t rg;
+	lgfs2_rgrp_t lastrg = (lgfs2_rgrp_t)osi_last(&rgs->root);
+	struct osi_node **link = &rgs->root.osi_node;
+	struct osi_node *parent = NULL;
 
-	rg = rgrp_insert(&rgs->root, entry->ri_addr);
+	errno = EINVAL;
+	if (entry == NULL)
+		return NULL;
+
+	if (lastrg != NULL) { /* Tree is not empty */
+		if (entry->ri_addr <= lastrg->ri.ri_addr)
+			return NULL; /* Appending with a lower address doesn't make sense */
+		parent = osi_parent(&lastrg->node);
+		link = &lastrg->node.osi_right;
+	}
+
+	rg = calloc(1, sizeof(*rg) +
+	              (entry->ri_length * sizeof(struct gfs2_bitmap)) +
+	              (entry->ri_length * sizeof(struct gfs2_buffer_head *)));
 	if (rg == NULL)
 		return NULL;
+
+	rg->bits = (struct gfs2_bitmap *)(rg + 1);
+	rg->bh = (struct gfs2_buffer_head **)(rg->bits + entry->ri_length);
+
+	osi_link_node(&rg->node, parent, link);
+	osi_insert_color(&rg->node, &rgs->root);
 
 	memcpy(&rg->ri, entry, sizeof(struct gfs2_rindex));
 	rg->rg.rg_header.mh_magic = GFS2_MAGIC;
 	rg->rg.rg_header.mh_type = GFS2_METATYPE_RG;
 	rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
 	rg->rg.rg_free = rg->ri.ri_data;
-	err = gfs2_compute_bitstructs(rgs->bsize, rg);
-	if (err != 0)
-		return NULL;
 
+	compute_bitmaps(rg, rgs->bsize);
 	return rg;
 }
 
