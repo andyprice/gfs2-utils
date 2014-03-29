@@ -907,7 +907,7 @@ void main_mkfs(int argc, char *argv[])
 	inode_put(&sbd.md.inum);
 	inode_put(&sbd.md.statfs);
 
-	gfs2_rgrp_free(&sbd.rgtree);
+	lgfs2_rgrps_free(&rgs);
 
 	error = lgfs2_sb_write(&sb, opts.dev.fd, sbd.bsize);
 	if (error) {
