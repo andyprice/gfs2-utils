@@ -275,8 +275,8 @@ uint32_t lgfs2_rgrp_align_len(const lgfs2_rgrps_t rgs, uint32_t len)
  * rgs: The resource groups descriptor
  * space: The number of remaining blocks to be allocated
  * tgtsize: The target resource group size in blocks
- * Returns the larger of the calculated resource group sizes or 0 if the
- * smaller would be less than GFS2_MIN_RGSIZE.
+ * Returns the larger of the calculated resource group sizes, in blocks, or 0
+ * if the smaller would be less than GFS2_MIN_RGSIZE.
  */
 uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgtsize)
 {
@@ -361,6 +361,41 @@ lgfs2_rgrps_t lgfs2_rgrps_init(unsigned bsize, uint64_t devlen, uint64_t align, 
 }
 
 /**
+ * Populate a set of resource groups from a gfs2 rindex file.
+ * fd: An open file descriptor for the rindex file.
+ * rgs: The set of resource groups.
+ * Returns the number of resource groups added to the set or 0 on error with
+ * errno set.
+ */
+unsigned lgfs2_rindex_read_fd(int fd, lgfs2_rgrps_t rgs)
+{
+	unsigned count = 0;
+	char buf[sizeof(struct gfs2_rindex)];
+
+	errno = EINVAL;
+	if (fd < 0 || rgs == NULL)
+		return 0;
+
+	while (1) {
+		lgfs2_rgrp_t rg;
+		struct gfs2_rindex ri;
+		ssize_t ret = read(fd, buf, sizeof(struct gfs2_rindex));
+		if (ret == 0)
+			break;
+
+		if (ret != sizeof(struct gfs2_rindex))
+			return 0;
+
+		gfs2_rindex_in(&ri, buf);
+		rg = lgfs2_rgrps_append(rgs, &ri);
+		if (rg == NULL)
+			return 0;
+		count++;
+	}
+	return count;
+}
+
+/**
  * Free a set of resource groups created with lgfs2_rgrps_append() etc. This
  * does not write any dirty buffers to disk. See lgfs2_rgrp_write().
  * rgs: A pointer to the set of resource groups to be freed.
@@ -428,7 +463,7 @@ uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *ri, uint6
 /**
  * Return the rindex structure relating to a a resource group.
  */
-struct gfs2_rindex *lgfs2_rgrp_index(lgfs2_rgrp_t rg)
+const struct gfs2_rindex *lgfs2_rgrp_index(lgfs2_rgrp_t rg)
 {
 	return &rg->ri;
 }
@@ -436,7 +471,7 @@ struct gfs2_rindex *lgfs2_rgrp_index(lgfs2_rgrp_t rg)
 /**
  * Return the rgrp structure relating to a a resource group.
  */
-struct gfs2_rgrp *lgfs2_rgrp_rgrp(lgfs2_rgrp_t rg)
+const struct gfs2_rgrp *lgfs2_rgrp_rgrp(lgfs2_rgrp_t rg)
 {
 	return &rg->rg;
 }
