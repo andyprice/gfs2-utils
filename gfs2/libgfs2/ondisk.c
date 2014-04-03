@@ -213,13 +213,13 @@ void gfs2_rindex_in(struct gfs2_rindex *ri, char *buf)
 	CPIN_08(ri, str, ri_reserved, 64);
 }
 
-void gfs2_rindex_out(struct gfs2_rindex *ri, char *buf)
+void gfs2_rindex_out(const struct gfs2_rindex *ri, char *buf)
 {
 	struct gfs2_rindex *str = (struct gfs2_rindex *)buf;
 
 	CPOUT_64(ri, str, ri_addr);
 	CPOUT_32(ri, str, ri_length);
-	ri->__pad = 0;
+	str->__pad = 0;
 
 	CPOUT_64(ri, str, ri_data0);
 	CPOUT_32(ri, str, ri_data);
