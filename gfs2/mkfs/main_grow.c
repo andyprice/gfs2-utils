@@ -133,137 +133,116 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 }
 
 /**
- * filesystem_size - Calculate the size of the filesystem
- *
- * Reads the lists of resource groups in order to
- * work out where the last block of the filesystem is located.
- *
+ * Calculate the size of the filesystem
+ * Reads the lists of resource groups in order to work out where the last block
+ * of the filesystem is located.
  * Returns: The calculated size
  */
-
-static uint64_t filesystem_size(struct gfs2_sbd *sdp)
+static uint64_t filesystem_size(lgfs2_rgrps_t rgs)
 {
-	struct osi_node *n, *next = NULL;
-	struct rgrp_tree *rgl;
-	uint64_t size = 0, extent;
-
-	for (n = osi_first(&sdp->rgtree); n; n = next) {
-		next = osi_next(n);
-		rgl = (struct rgrp_tree *)n;
-		extent = rgl->ri.ri_addr + rgl->ri.ri_length + rgl->ri.ri_data;
-		if (extent > size)
-			size = extent;
-	}
-	return size;
+	lgfs2_rgrp_t rg = lgfs2_rgrp_last(rgs);
+	const struct gfs2_rindex *ri = lgfs2_rgrp_index(rg);
+	return ri->ri_data0 + ri->ri_data;
 }
 
 /**
- * initialize_new_portion - Write the new rg information to disk buffers.
+ * Write the new rg information to disk.
  */
-static void initialize_new_portion(struct gfs2_sbd *sdp, int *old_rg_count)
+static unsigned initialize_new_portion(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs)
 {
-	struct osi_node *n, *next = NULL;
-	uint64_t rgrp = 0;
-	struct rgrp_tree *rl;
+	unsigned rgcount = 0;
+	uint64_t rgaddr = fssize;
 
-	*old_rg_count = 0;
-	/* Delete the old RGs from the rglist */
-	for (rgrp = 0, n = osi_first(&sdp->rgtree);
-	     n && rgrp < (sdp->rgrps - sdp->new_rgrps); n = next, rgrp++) {
-		next = osi_next(n);
-		(*old_rg_count)++;
-		rl = (struct rgrp_tree *)n;
-		osi_erase(&rl->node, &sdp->rgtree);
-		free(rl);
-	}
-	/* Issue a discard ioctl for the new portion */
-	rl = (struct rgrp_tree *)n;
-	discard_blocks(sdp->device_fd, rl->start * sdp->bsize,
-		       (sdp->device.length - rl->start) * sdp->bsize);
+	discard_blocks(sdp->device_fd, rgaddr * sdp->bsize, fsgrowth * sdp->bsize);
 	/* Build the remaining resource groups */
-	if (build_rgrps(sdp, !test)) {
-		fprintf(stderr, _("Failed to build resource groups\n"));
-		exit(-1);
+	while (1) {
+		int err = 0;
+		lgfs2_rgrp_t rg;
+		struct gfs2_rindex ri;
+		rgaddr = lgfs2_rindex_entry_new(rgs, &ri, rgaddr, 0);
+		if (rgaddr == 0)
+			break;
+		rg = lgfs2_rgrps_append(rgs, &ri);
+		if (rg == NULL) {
+			perror(_("Failed to create resource group"));
+			return 0;
+		}
+		if (metafs_interrupted)
+			return 0;
+		if (sdp->debug)
+			printf(_("Writing resource group at %llu with size %"PRIu32"\n"),
+			       ri.ri_addr, ri.ri_length + ri.ri_data);
+		if (!test)
+			err = lgfs2_rgrp_write(rgs, sdp->device_fd, rg);
+		if (err != 0) {
+			perror(_("Failed to write resource group"));
+			return 0;
+		}
+		rgcount++;
 	}
-
-	inode_put(&sdp->md.riinode);
-	inode_put(&sdp->master_dir);
-
-	/* We're done with the libgfs portion, so commit it to disk.      */
 	fsync(sdp->device_fd);
+	return rgcount;
+}
+
+static char *rindex_buffer(lgfs2_rgrps_t rgs, unsigned count)
+{
+	lgfs2_rgrp_t rg;
+	unsigned i = 0;
+	char *buf;
+
+	buf = calloc(count, sizeof(struct gfs2_rindex));
+	if (buf == NULL) {
+		perror(__FUNCTION__);
+		exit(EXIT_FAILURE);
+	}
+	for (rg = lgfs2_rgrp_first(rgs); rg; rg = lgfs2_rgrp_next(rg)) {
+		const struct gfs2_rindex *ri = lgfs2_rgrp_index(rg);
+		gfs2_rindex_out(ri, buf + (sizeof(*ri) * i));
+		i++;
+	}
+	return buf;
 }
 
 /**
  * fix_rindex - Add the new entries to the end of the rindex file.
  */
-static void fix_rindex(struct gfs2_sbd *sdp, int rindex_fd, int old_rg_count)
+static void fix_rindex(int rindex_fd, lgfs2_rgrps_t rgs, unsigned old_rg_count, unsigned rgcount)
 {
-	struct osi_node *n, *next = NULL;
-	int count, rg;
-	struct rgrp_tree *rl;
-	char *buf, *bufptr;
+	char *buf;
+	ssize_t count;
 	ssize_t writelen;
-	struct stat statbuf;
+	const size_t entrysize = sizeof(struct gfs2_rindex);
 
-	/* Count the number of new RGs. */
-	rg = 0;
-	for (n = osi_first(&sdp->rgtree); n; n = next) {
-		next = osi_next(n);
-		rg++;
-	}
-	log_info( _("%d new rindex entries.\n"), rg);
-	writelen = rg * sizeof(struct gfs2_rindex);
-	buf = calloc(1, writelen);
-	if (buf == NULL) {
-		perror(__FUNCTION__);
-		exit(EXIT_FAILURE);
-	}
-	/* Now add the new rg entries to the rg index.  Here we     */
-	/* need to use the gfs2 kernel code rather than the libgfs2 */
-	/* code so we have a live update while mounted.             */
-	bufptr = buf;
-	for (n = osi_first(&sdp->rgtree); n; n = next) {
-		next = osi_next(n);
-		rg++;
-		rl = (struct rgrp_tree *)n;
-		gfs2_rindex_out(&rl->ri, bufptr);
-		bufptr += sizeof(struct gfs2_rindex);
-	}
-	gfs2_rgrp_free(&sdp->rgtree);
-	fsync(sdp->device_fd);
+	log_info( _("%d new rindex entries.\n"), rgcount);
+	buf = rindex_buffer(rgs, rgcount);
+	writelen = rgcount * entrysize;
+
 	if (!test) {
-		if (fstat(rindex_fd, &statbuf) != 0) {
-			perror("rindex");
+		off_t rindex_size = lseek(rindex_fd, 0, SEEK_END);
+		if (rindex_size != old_rg_count * entrysize) {
+			log_crit(_("Incorrect rindex size. Want %ld (%d resource groups), have %ld\n"),
+				 (old_rg_count * entrysize), old_rg_count, rindex_size);
 			goto out;
 		}
-		if (statbuf.st_size !=
-		    old_rg_count * sizeof(struct gfs2_rindex)) {
-			log_crit(_("Incorrect rindex size. want %ld(%d resource groups), "
-				 "have %ld\n"),
-				 old_rg_count * sizeof(struct gfs2_rindex),
-				 old_rg_count, statbuf.st_size);
-			goto out;
-		}
-		/* Now write the new RGs to the end of the rindex */
-		lseek(rindex_fd, 0, SEEK_END);
-		count = write(rindex_fd, buf, sizeof(struct gfs2_rindex));
-		if (count != sizeof(struct gfs2_rindex)) {
+		/* Write the first entry separately to ensure there's enough
+		   space in the fs for the rest  */
+		count = write(rindex_fd, buf, entrysize);
+		if (count != entrysize) {
 			log_crit(_("Error writing first new rindex entry; aborted.\n"));
 			if (count > 0)
 				goto trunc;
 			else
 				goto out;
 		}
-		count = write(rindex_fd, buf + sizeof(struct gfs2_rindex),
-			      writelen - sizeof(struct gfs2_rindex));
-		if (count != writelen - sizeof(struct gfs2_rindex)) {
+		count = write(rindex_fd, (buf + entrysize), (writelen - entrysize));
+		if (count != (writelen - entrysize)) {
 			log_crit(_("Error writing new rindex entries; aborted.\n"));
 			if (count > 0)
 				goto trunc;
 			else
 				goto out;
 		}
-		if (fallocate(rindex_fd, FALLOC_FL_KEEP_SIZE, statbuf.st_size + writelen, sizeof(struct gfs2_rindex)) != 0)
+		if (fallocate(rindex_fd, FALLOC_FL_KEEP_SIZE, (rindex_size + writelen), entrysize) != 0)
 			perror("fallocate");
 		fsync(rindex_fd);
 	}
@@ -284,46 +263,38 @@ trunc:
  */
 static void print_info(struct gfs2_sbd *sdp)
 {
-	log_notice("FS: %-22s%s\n", _("Mount point:"), sdp->path_name);
-	log_notice("FS: %-22s%s\n", _("Device:"), sdp->device_name);
-	log_notice("FS: %-22s%llu (0x%llx)\n", _("Size:"),
+	log_notice("FS: %-25s%s\n", _("Mount point:"), sdp->path_name);
+	log_notice("FS: %-25s%s\n", _("Device:"), sdp->device_name);
+	log_notice("FS: %-25s%llu (0x%llx)\n", _("Size:"),
 		   (unsigned long long)fssize, (unsigned long long)fssize);
-	log_notice("FS: %-22s%u (0x%x)\n", _("Resource group size:"), rgsize, rgsize);
-	log_notice("DEV: %-22s%llu (0x%llx)\n", _("Length:"),
+	log_notice("FS: %-25s%u (0x%x)\n", _("New resource group size:"), rgsize, rgsize);
+	log_notice("DEV: %-24s%llu (0x%llx)\n", _("Length:"),
 		   (unsigned long long)sdp->device.length,
 		   (unsigned long long)sdp->device.length);
-	log_notice(_("The file system grew by %lluMB.\n"),
-		   (unsigned long long)fsgrowth / MB);
+	log_notice(_("The file system will grow by %lluMB.\n"),
+		   (unsigned long long)(fsgrowth * sdp->bsize) / MB);
 }
 
-void debug_print_rgrps(struct gfs2_sbd *sdp, struct osi_root *rgtree)
+static void debug_print_rgrps(const char *banner, struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs)
 {
-	struct osi_node *n, *next;
-	struct rgrp_tree *rl;
+	lgfs2_rgrp_t r;
 
 	if (sdp->debug) {
-		log_info("\n");
+		log_info("%s\n", banner);
 
-		for (n = osi_first(rgtree); n; n = next) {
-			next = osi_next(n);
-			rl = (struct rgrp_tree *)n;
-			log_info("rg_o = %llu, rg_l = %llu\n",
-				 (unsigned long long)rl->start,
-				 (unsigned long long)rl->length);
+		for (r = lgfs2_rgrp_first(rgs); r; r = lgfs2_rgrp_next(r)) {
+			const struct gfs2_rindex *ri = lgfs2_rgrp_index(r);
+			log_info("ri_addr = %llu, size = %llu\n",
+				 (unsigned long long)ri->ri_addr,
+				 (unsigned long long)(ri->ri_data0 + ri->ri_data - ri->ri_addr));
 		}
 	}
 }
 
-/**
- * main_grow - do everything
- * @argc:
- * @argv:
- */
-void
-main_grow(int argc, char *argv[])
+void main_grow(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd, *sdp = &sbd;
-	int rgcount, rindex_fd;
+	int rindex_fd;
 	char rindex_name[PATH_MAX];
 	int error = EXIT_SUCCESS;
 	int devflags = (test ? O_RDONLY : O_RDWR) | O_CLOEXEC;
@@ -337,9 +308,10 @@ main_grow(int argc, char *argv[])
 	decode_arguments(argc, argv, sdp);
 	
 	for(; (argc - optind) > 0; optind++) {
-		int sane;
 		struct mntent *mnt;
-		struct rgrp_tree *last_rgrp;
+		unsigned rgcount;
+		unsigned old_rg_count;
+		lgfs2_rgrps_t rgs;
 
 		error = lgfs2_open_mnt(argv[optind], O_RDONLY|O_CLOEXEC, &sdp->path_fd,
 		                                       devflags, &sdp->device_fd, &mnt);
@@ -358,10 +330,6 @@ main_grow(int argc, char *argv[])
 			perror(sdp->device_name);
 			exit(EXIT_FAILURE);
 		}
-		log_info( _("Initializing lists...\n"));
-		sdp->rgtree.osi_node = NULL;
-		sdp->rgcalc.osi_node = NULL;
-
 		sdp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 		sdp->bsize = sdp->sd_sb.sb_bsize;
 		if (compute_constants(sdp)) {
@@ -395,59 +363,67 @@ main_grow(int argc, char *argv[])
 			perror(_("Could not read master directory"));
 			exit(EXIT_FAILURE);
 		}
-		gfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
+		rgs = lgfs2_rgrps_init(sdp->bsize, sdp->device.length, 0, 0);
+		if (rgs == NULL) {
+			perror(_("Could not initialise resource groups"));
+			error = -1;
+			goto out;
+		}
 		/* Fetch the rindex from disk.  We aren't using gfs2 here,  */
 		/* which means that the bitmaps will most likely be cached  */
 		/* and therefore out of date.  It shouldn't matter because  */
 		/* we're only going to write out new RG information after   */
 		/* the existing RGs, and only write to the index at EOF.    */
-		ri_update(sdp, rindex_fd, &rgcount, &sane);
+		log_info(_("Gathering resource group information for %s\n"), argv[optind]);
+		old_rg_count = lgfs2_rindex_read_fd(rindex_fd, rgs);
+		if (old_rg_count == 0) {
+			perror(_("Failed to scan existing resource groups"));
+			error = -EXIT_FAILURE;
+			goto out;
+		}
 		if (metafs_interrupted)
 			goto out;
-		fssize = filesystem_size(sdp);
-		if (!sdp->rgtree.osi_node) {
-			log_err(_("Error: No resource groups found.\n"));
-			error = -EXIT_FAILURE;
+		fssize = lgfs2_rgrp_align_addr(rgs, filesystem_size(rgs) + 1);
+		debug_print_rgrps(_("Existing resource groups"), sdp, rgs);
+		/* We're done with the old rgs now that we have the fssize and rg count */
+		lgfs2_rgrps_free(&rgs);
+		/* Now lets set up the new ones with alignment and all */
+		rgs = lgfs2_rgrps_init(sdp->bsize, sdp->device.length, 0, 0);
+		if (rgs == NULL) {
+			perror(_("Could not initialise new resource groups"));
+			error = -1;
 			goto out;
 		}
-		last_rgrp = (struct rgrp_tree *)osi_last(&sdp->rgtree);
-		sdp->rgsize = GFS2_DEFAULT_RGSIZE;
-		rgsize = rgrp_size(last_rgrp);
-		fsgrowth = ((sdp->device.length - fssize) * sdp->bsize);
-		if (fsgrowth < rgsize * sdp->bsize) {
-			log_err( _("Error: The device has grown by less than "
-				"one resource group.\n"));
-			log_err( _("The device grew by %lluMB. "),
-				(unsigned long long)fsgrowth / MB);
-			log_err( _("One resource group is %uMB for this file system.\n"),
-				(rgsize * sdp->bsize) / MB);
-			error = -EXIT_FAILURE;
+		fsgrowth = (sdp->device.length - fssize);
+		rgsize = lgfs2_rgrps_plan(rgs, fsgrowth, ((GFS2_MAX_RGSIZE << 20) / sdp->bsize));
+		if (rgsize < ((GFS2_MIN_RGSIZE << 20) / sdp->bsize)) {
+			log_err( _("The calculated resource group size is too small.\n"));
+			log_err( _("%s has not grown.\n"), argv[optind]);
+			error = -1;
 			goto out;
-		} else {
-			int old_rg_count;
-
-			if (metafs_interrupted)
-				goto out;
-			compute_rgrp_layout(sdp, &sdp->rgtree, TRUE);
-			if (metafs_interrupted)
-				goto out;
-			debug_print_rgrps(sdp, &sdp->rgtree);
-			print_info(sdp);
-			initialize_new_portion(sdp, &old_rg_count);
-			if (metafs_interrupted)
-				goto out;
-			fix_rindex(sdp, rindex_fd, old_rg_count);
 		}
+		print_info(sdp);
+		rgcount = initialize_new_portion(sdp, rgs);
+		if (rgcount == 0 || metafs_interrupted)
+			goto out;
+		debug_print_rgrps(_("New resource groups"), sdp, rgs);
+		fsync(sdp->device_fd);
+		fix_rindex(rindex_fd, rgs, old_rg_count, rgcount);
 	out:
-		/* Delete the remaining RGs from the rglist */
-		gfs2_rgrp_free(&sdp->rgtree);
+		lgfs2_rgrps_free(&rgs);
 		close(rindex_fd);
 		cleanup_metafs(sdp);
 		close(sdp->device_fd);
+
+		if (metafs_interrupted)
+			break;
 	}
 	close(sdp->path_fd);
 	sync();
-	if (!metafs_interrupted)
-		log_notice( _("gfs2_grow complete.\n"));
+	if (metafs_interrupted) {
+		log_notice( _("gfs2_grow interrupted.\n"));
+		exit(1);
+	}
+	log_notice( _("gfs2_grow complete.\n"));
 	exit(error);
 }

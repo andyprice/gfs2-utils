@@ -8,7 +8,6 @@
 
 /* main_grow */
 extern void main_grow(int argc, char *argv[]);
-extern void debug_print_rgrps(struct gfs2_sbd *sdp, struct osi_root *rgtree);
 
 /* main_jadd */
 extern void main_jadd(int argc, char *argv[]);
