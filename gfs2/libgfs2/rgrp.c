@@ -299,7 +299,8 @@ uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgts
 		/* Spread the adjustment required to fit a new rgrp at the end
 		   over all of the rgrps so that we don't end with a single
 		   tiny one.  */
-		while (((rgs->plan[0].len - adj) * (rgs->plan[0].num + 1)) >= space)
+		rgs->plan[0].num++;
+		while (((rgs->plan[0].len - adj) * (rgs->plan[0].num)) >= space)
 			rgs->plan[0].len -= adj;
 
 		/* We've adjusted the size of the rgrps down as far as we can
@@ -313,7 +314,7 @@ uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgts
 		rgs->plan[1].num = 0;
 
 		while (((rgs->plan[0].len * rgs->plan[0].num) +
-		        (rgs->plan[1].len * rgs->plan[1].num)) > space) {
+		        (rgs->plan[1].len * rgs->plan[1].num)) >= space) {
 			/* Total number of rgrps stays constant now. We just
 			   need to shift some weight around */
 			rgs->plan[0].num--;
