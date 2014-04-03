@@ -433,21 +433,24 @@ void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs)
  */
 uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *ri, uint64_t addr, uint32_t len)
 {
+	int plan = -1;
 	errno = EINVAL;
 	if (!ri)
 		return 0;
 
 	errno = ENOSPC;
-	if (len == 0) {
-		if (rgs->plan[0].num > 0) {
-			len = rgs->plan[0].len;
-			rgs->plan[0].num--;
-		} else if (rgs->plan[1].num > 0) {
-			len = rgs->plan[1].len;
-			rgs->plan[1].num--;
-		} else
-			return 0;
+	if (rgs->plan[0].num > 0)
+		plan = 0;
+	else if (rgs->plan[1].num > 0)
+		plan = 1;
+	else
+		return 0;
+
+	if (plan >= 0 && (len == 0 || len == rgs->plan[plan].len)) {
+		len = rgs->plan[plan].len;
+		rgs->plan[plan].num--;
 	}
+
 	if (addr + len > rgs->devlen)
 		return 0;
 
