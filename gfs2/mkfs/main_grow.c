@@ -19,6 +19,7 @@
 #include <stdarg.h>
 #include <linux/types.h>
 #include <linux/falloc.h>
+#include <blkid.h>
 #include <libintl.h>
 #define _(String) gettext(String)
 
@@ -130,6 +131,52 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 		usage();
 		exit(EXIT_FAILURE);
 	}
+}
+
+static lgfs2_rgrps_t rgrps_init(struct gfs2_sbd *sdp)
+{
+	int ret;
+	int error;
+	uint64_t al_base = 0;
+	uint64_t al_off = 0;
+	struct stat st;
+	blkid_probe pr = blkid_new_probe();
+	if (pr == NULL || blkid_probe_set_device(pr, sdp->device_fd, 0, 0) != 0
+	               || blkid_probe_enable_superblocks(pr, TRUE) != 0
+	               || blkid_probe_enable_partitions(pr, TRUE) != 0) {
+		fprintf(stderr, _("Failed to create probe\n"));
+		return NULL;
+	}
+
+	error = fstat(sdp->device_fd, &st);
+	if (error < 0) {
+		fprintf(stderr, _("fstat failed\n"));
+		return NULL;
+	}
+
+	if (!S_ISREG(st.st_mode) && blkid_probe_enable_topology(pr, TRUE) != 0) {
+		fprintf(stderr, _("Failed to create probe\n"));
+		return NULL;
+	}
+
+	ret = blkid_do_fullprobe(pr);
+	if (ret == 0 && !S_ISREG(st.st_mode)) {
+		blkid_topology tp = blkid_probe_get_topology(pr);
+		if (tp != NULL) {
+			unsigned long min_io_sz = blkid_topology_get_minimum_io_size(tp);
+			unsigned long opt_io_sz = blkid_topology_get_optimal_io_size(tp);
+			unsigned long phy_sector_sz = blkid_topology_get_physical_sector_size(tp);
+			if ((min_io_sz > phy_sector_sz) &&
+			    (opt_io_sz > phy_sector_sz)) {
+					al_base = opt_io_sz / sdp->bsize;
+					al_off = min_io_sz / sdp->bsize;
+			}
+
+		}
+	}
+
+	blkid_free_probe(pr);
+	return lgfs2_rgrps_init(sdp->bsize, sdp->device.length, al_base, al_off);
 }
 
 /**
@@ -363,7 +410,7 @@ void main_grow(int argc, char *argv[])
 			perror(_("Could not read master directory"));
 			exit(EXIT_FAILURE);
 		}
-		rgs = lgfs2_rgrps_init(sdp->bsize, sdp->device.length, 0, 0);
+		rgs = rgrps_init(sdp);
 		if (rgs == NULL) {
 			perror(_("Could not initialise resource groups"));
 			error = -1;
@@ -388,7 +435,7 @@ void main_grow(int argc, char *argv[])
 		/* We're done with the old rgs now that we have the fssize and rg count */
 		lgfs2_rgrps_free(&rgs);
 		/* Now lets set up the new ones with alignment and all */
-		rgs = lgfs2_rgrps_init(sdp->bsize, sdp->device.length, 0, 0);
+		rgs = rgrps_init(sdp);
 		if (rgs == NULL) {
 			perror(_("Could not initialise new resource groups"));
 			error = -1;
