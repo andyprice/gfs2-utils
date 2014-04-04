@@ -175,6 +175,8 @@ struct gfs2_bitmap
 	uint32_t   bi_len;     /* The number of bytes in this block */
 };
 
+struct gfs2_sbd;
+
 struct rgrp_tree {
 	struct osi_node node;
 	uint64_t start;	   /* The offset of the beginning of this resource group */
@@ -189,7 +191,7 @@ struct rgrp_tree {
 typedef struct rgrp_tree *lgfs2_rgrp_t;
 typedef struct _lgfs2_rgrps *lgfs2_rgrps_t;
 
-extern lgfs2_rgrps_t lgfs2_rgrps_init(unsigned bsize, uint64_t devlen, uint64_t align, uint64_t offset);
+extern lgfs2_rgrps_t lgfs2_rgrps_init(const struct gfs2_sbd *sdp, uint64_t align, uint64_t offset);
 extern void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs);
 extern uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, uint64_t addr, uint32_t len);
 extern unsigned lgfs2_rindex_read_fd(int fd, lgfs2_rgrps_t rgs);
@@ -223,7 +225,6 @@ struct special_blocks {
 	uint64_t block;
 };
 
-struct gfs2_sbd;
 struct gfs2_inode {
 	int bh_owned; /* Is this bh owned, iow, should we release it later? */
 	struct gfs2_dinode i_di;
