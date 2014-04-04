@@ -178,7 +178,7 @@ static lgfs2_rgrps_t rgrps_init(struct gfs2_sbd *sdp)
 	}
 
 	blkid_free_probe(pr);
-	return lgfs2_rgrps_init(sdp->bsize, sdp->device.length, al_base, al_off);
+	return lgfs2_rgrps_init(sdp, al_base, al_off);
 }
 
 /**

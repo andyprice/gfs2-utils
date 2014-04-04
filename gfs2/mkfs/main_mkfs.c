@@ -600,7 +600,7 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 		}
 	}
 
-	rgs = lgfs2_rgrps_init(sdp->bsize, sdp->device.length, al_base, al_off);
+	rgs = lgfs2_rgrps_init(sdp, al_base, al_off);
 	if (rgs == NULL) {
 		perror(_("Could not initialise resource groups"));
 		exit(-1);

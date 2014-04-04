@@ -227,10 +227,9 @@ struct rgplan {
 struct _lgfs2_rgrps {
 	struct osi_root root;
 	struct rgplan plan[2];
-	unsigned bsize;
+	const struct gfs2_sbd *sdp;
 	unsigned long align;
 	unsigned long align_off;
-	uint64_t devlen;
 };
 
 static uint64_t align_block(const uint64_t base, const uint64_t align)
@@ -280,8 +279,8 @@ uint32_t lgfs2_rgrp_align_len(const lgfs2_rgrps_t rgs, uint32_t len)
  */
 uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgtsize)
 {
-	uint32_t maxlen = (GFS2_MAX_RGSIZE << 20) / rgs->bsize;
-	uint32_t minlen = (GFS2_MIN_RGSIZE << 20) / rgs->bsize;
+	uint32_t maxlen = (GFS2_MAX_RGSIZE << 20) / rgs->sdp->bsize;
+	uint32_t minlen = (GFS2_MIN_RGSIZE << 20) / rgs->sdp->bsize;
 
 	/* Apps should already have checked that the rg size is <=
 	   GFS2_MAX_RGSIZE but just in case alignment pushes it over we clamp
@@ -340,7 +339,7 @@ uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgts
  * offset: The required stripe offset of the resource groups
  * Returns an initialised lgfs2_rgrps_t or NULL if unsuccessful with errno set
  */
-lgfs2_rgrps_t lgfs2_rgrps_init(unsigned bsize, uint64_t devlen, uint64_t align, uint64_t offset)
+lgfs2_rgrps_t lgfs2_rgrps_init(const struct gfs2_sbd *sdp, uint64_t align, uint64_t offset)
 {
 	lgfs2_rgrps_t rgs;
 
@@ -352,8 +351,7 @@ lgfs2_rgrps_t lgfs2_rgrps_init(unsigned bsize, uint64_t devlen, uint64_t align, 
 	if (rgs == NULL)
 		return NULL;
 
-	rgs->bsize = bsize;
-	rgs->devlen = devlen;
+	rgs->sdp = sdp;
 	rgs->align = align;
 	rgs->align_off = offset;
 	memset(&rgs->root, 0, sizeof(rgs->root));
@@ -451,11 +449,11 @@ uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *ri, uint6
 		rgs->plan[plan].num--;
 	}
 
-	if (addr + len > rgs->devlen)
+	if (addr + len > rgs->sdp->device.length)
 		return 0;
 
 	ri->ri_addr = addr;
-	ri->ri_length = rgblocks2bitblocks(rgs->bsize, len, &ri->ri_data);
+	ri->ri_length = rgblocks2bitblocks(rgs->sdp->bsize, len, &ri->ri_data);
 	ri->__pad = 0;
 	ri->ri_data0 = ri->ri_addr + ri->ri_length;
 	ri->ri_bitbytes = ri->ri_data / GFS2_NBBY;
@@ -541,7 +539,7 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry)
 	rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
 	rg->rg.rg_free = rg->ri.ri_data;
 
-	compute_bitmaps(rg, rgs->bsize);
+	compute_bitmaps(rg, rgs->sdp->bsize);
 	return rg;
 }
 
@@ -552,7 +550,7 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry)
 int lgfs2_rgrp_write(const lgfs2_rgrps_t rgs, int fd, const lgfs2_rgrp_t rg)
 {
 	ssize_t ret = 0;
-	size_t len = rg->ri.ri_length * rgs->bsize;
+	size_t len = rg->ri.ri_length * rgs->sdp->bsize;
 	unsigned int i;
 	const struct gfs2_meta_header bmh = {
 		.mh_magic = GFS2_MAGIC,
@@ -565,9 +563,9 @@ int lgfs2_rgrp_write(const lgfs2_rgrps_t rgs, int fd, const lgfs2_rgrp_t rg)
 
 	gfs2_rgrp_out(&rg->rg, buff);
 	for (i = 1; i < rg->ri.ri_length; i++)
-		gfs2_meta_header_out(&bmh, buff + (i * rgs->bsize));
+		gfs2_meta_header_out(&bmh, buff + (i * rgs->sdp->bsize));
 
-	ret = pwrite(fd, buff, len, rg->ri.ri_addr * rgs->bsize);
+	ret = pwrite(fd, buff, len, rg->ri.ri_addr * rgs->sdp->bsize);
 	if (ret != len) {
 		free(buff);
 		return -1;
