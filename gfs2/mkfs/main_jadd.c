@@ -117,10 +117,10 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 {
 	int cont = TRUE;
 	int optchar;
-	
+
 	while (cont) {
-		optchar = getopt(argc, argv, "c:DhJ:j:qu:VX");
-		
+		optchar = getopt(argc, argv, "c:DhJ:j:qu:V");
+
 		switch (optchar) {
 		case 'c':
 			sdp->qcsize = atoi(optarg);
@@ -146,9 +146,6 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			       __DATE__, __TIME__);
 			printf(REDHAT_COPYRIGHT "\n");
 			exit(0);
-			break;
-		case 'X':
-			sdp->expert = TRUE;
 			break;
 		case ':':
 		case '?':
@@ -200,16 +197,12 @@ verify_arguments(struct gfs2_sbd *sdp)
  *
  */
 
-static void 
-print_results(struct gfs2_sbd *sdp)
+static void print_results(struct gfs2_sbd *sdp)
 {
 	if (sdp->debug)
 		printf("\n");
 	else if (sdp->quiet)
 		return;
-
-	if (sdp->expert)
-		printf(_("Expert mode:            on\n"));
 
 	printf( _("Filesystem: %s\n"), sdp->path_name);
 	printf( _("Old Journals: %u\n"), sdp->orig_journals);

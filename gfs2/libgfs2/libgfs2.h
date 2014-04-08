@@ -278,7 +278,6 @@ struct gfs2_sbd {
 
 	int debug;
 	int quiet;
-	int expert;
 	int override;
 
 	char device_name[PATH_MAX];
@@ -352,7 +351,6 @@ struct metapath {
 #define GFS2_MIN_GROW_SIZE          (10)
 #define GFS2_EXCESSIVE_RGS          (10000)
 
-#define GFS2_EXP_MIN_RGSIZE         (1)
 #define GFS2_MIN_RGSIZE             (32)
 #define GFS2_MAX_RGSIZE             (2048)
 
