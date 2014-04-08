@@ -146,7 +146,6 @@ struct mkfs_opts {
 
 	unsigned override:1;
 	unsigned quiet:1;
-	unsigned expert:1;
 	unsigned debug:1;
 	unsigned confirm:1;
 	unsigned align:1;
@@ -294,7 +293,7 @@ static void opts_get(int argc, char *argv[], struct mkfs_opts *opts)
 {
 	int c;
 	while (1) {
-		c = getopt(argc, argv, "-b:c:DhJ:j:KOo:p:qr:t:VX");
+		c = getopt(argc, argv, "-b:c:DhJ:j:KOo:p:qr:t:V");
 		if (c == -1)
 			break;
 
@@ -350,9 +349,6 @@ static void opts_get(int argc, char *argv[], struct mkfs_opts *opts)
 			       __DATE__, __TIME__);
 			printf(REDHAT_COPYRIGHT "\n");
 			exit(EXIT_SUCCESS);
-			break;
-		case 'X':
-			opts->expert = 1;
 			break;
 		case ':':
 		case '?':
@@ -511,17 +507,12 @@ static void opts_check(struct mkfs_opts *opts)
 		exit(1);
 	}
 
-	if (!opts->expert)
-		test_locking(opts->lockproto, opts->locktable);
-	if (opts->expert) {
-		if (GFS2_EXP_MIN_RGSIZE > opts->rgsize || opts->rgsize > GFS2_MAX_RGSIZE)
-			/* Translators: gfs2 file systems are split into equal sized chunks called
-			   resource groups. We're checking that the user gave a valid size for them. */
-			die( _("bad resource group size\n"));
-	} else {
-		if (GFS2_MIN_RGSIZE > opts->rgsize || opts->rgsize > GFS2_MAX_RGSIZE)
-			die( _("bad resource group size\n"));
-	}
+	test_locking(opts->lockproto, opts->locktable);
+
+	if (GFS2_MIN_RGSIZE > opts->rgsize || opts->rgsize > GFS2_MAX_RGSIZE)
+		/* Translators: gfs2 file systems are split into equal sized chunks called
+		   resource groups. We're checking that the user gave a valid size for them. */
+		die( _("bad resource group size\n"));
 
 	if (!opts->journals)
 		die( _("no journals specified\n"));
