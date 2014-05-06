@@ -14,6 +14,7 @@
 #include <sys/time.h>
 #include <time.h>
 #define _(String) gettext(String)
+#include <syslog.h>
 
 #include "copyright.cf"
 #include "libgfs2.h"
@@ -276,6 +277,36 @@ static int fsck_pass(const struct fsck_pass *p, struct gfs2_sbd *sdp)
 	return 0;
 }
 
+static void exitlog(int status, void *unused)
+{
+	syslog(LOG_INFO, "exit: %d", status);
+}
+
+static void startlog(int argc, char **argv)
+{
+	int i;
+	char *cmd, *p;
+	size_t len;
+
+	for (len = i = 0; i < argc; i++)
+		len += strlen(argv[i]);
+	len += argc; /* Add spaces and '\0' */
+
+	cmd = malloc(len);
+	if (cmd == NULL) {
+		perror(argv[0]);
+		exit(FSCK_ERROR);
+	}
+	p = cmd;
+	for (i = 0; i < argc; i++, p++) {
+		p = stpcpy(p, argv[i]);
+		*p = ' ';
+	}
+	*(--p) = '\0';
+	syslog(LOG_INFO, "started: %s", cmd);
+	free(cmd);
+}
+
 int main(int argc, char **argv)
 {
 	struct gfs2_sbd sb;
@@ -288,6 +319,10 @@ int main(int argc, char **argv)
 
 	setlocale(LC_ALL, "");
 	textdomain("gfs2-utils");
+
+	openlog("fsck.gfs2", LOG_CONS|LOG_PID, LOG_USER);
+	startlog(argc - 1, &argv[1]);
+	on_exit(exitlog, NULL);
 
 	memset(sdp, 0, sizeof(*sdp));
 
