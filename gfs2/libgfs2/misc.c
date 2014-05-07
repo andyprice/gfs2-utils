@@ -20,6 +20,7 @@
 #include <signal.h>
 
 #include "libgfs2.h"
+#include "config.h"
 
 #define PAGE_SIZE (4096)
 #define DIV_RU(x, y) (((x) + (y) - 1) / (y))
@@ -198,17 +199,17 @@ static int lock_for_admin(struct gfs2_sbd *sdp)
 {
 	int error;
 
-	if (sdp->debug)
+	if (cfg_debug)
 		printf("\nTrying to get admin lock...\n");
 
 	sdp->metafs_fd = open(sdp->metafs_path, O_RDONLY | O_NOFOLLOW);
 	if (sdp->metafs_fd < 0)
 		return -1;
-	
+
 	error = flock(sdp->metafs_fd, LOCK_EX);
 	if (error)
 		return -1;
-	if (sdp->debug)
+	if (cfg_debug)
 		printf("Got it.\n");
 	return 0;
 }

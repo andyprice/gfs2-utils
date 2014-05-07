@@ -216,9 +216,6 @@ static unsigned initialize_new_portion(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs)
 		}
 		if (metafs_interrupted)
 			return 0;
-		if (sdp->debug)
-			printf(_("Writing resource group at %llu with size %"PRIu32"\n"),
-			       ri.ri_addr, ri.ri_length + ri.ri_data);
 		if (!test)
 			err = lgfs2_rgrp_write(rgs, sdp->device_fd, rg);
 		if (err != 0) {
@@ -322,22 +319,6 @@ static void print_info(struct gfs2_sbd *sdp)
 		   (unsigned long long)(fsgrowth * sdp->bsize) / MB);
 }
 
-static void debug_print_rgrps(const char *banner, struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs)
-{
-	lgfs2_rgrp_t r;
-
-	if (sdp->debug) {
-		log_info("%s\n", banner);
-
-		for (r = lgfs2_rgrp_first(rgs); r; r = lgfs2_rgrp_next(r)) {
-			const struct gfs2_rindex *ri = lgfs2_rgrp_index(r);
-			log_info("ri_addr = %llu, size = %llu\n",
-				 (unsigned long long)ri->ri_addr,
-				 (unsigned long long)(ri->ri_data0 + ri->ri_data - ri->ri_addr));
-		}
-	}
-}
-
 void main_grow(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd, *sdp = &sbd;
@@ -431,7 +412,6 @@ void main_grow(int argc, char *argv[])
 		if (metafs_interrupted)
 			goto out;
 		fssize = lgfs2_rgrp_align_addr(rgs, filesystem_size(rgs) + 1);
-		debug_print_rgrps(_("Existing resource groups"), sdp, rgs);
 		/* We're done with the old rgs now that we have the fssize and rg count */
 		lgfs2_rgrps_free(&rgs);
 		/* Now lets set up the new ones with alignment and all */
@@ -453,7 +433,6 @@ void main_grow(int argc, char *argv[])
 		rgcount = initialize_new_portion(sdp, rgs);
 		if (rgcount == 0 || metafs_interrupted)
 			goto out;
-		debug_print_rgrps(_("New resource groups"), sdp, rgs);
 		fsync(sdp->device_fd);
 		fix_rindex(rindex_fd, rgs, old_rg_count, rgcount);
 	out:

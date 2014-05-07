@@ -5,14 +5,14 @@ BUILT_SOURCES		= parser.h lexer.h
 AM_LFLAGS		= --header-file=lexer.h
 AM_YFLAGS		= -d
 
-noinst_HEADERS		= libgfs2.h lang.h
+noinst_HEADERS		= libgfs2.h lang.h config.h
 
 noinst_LTLIBRARIES	= libgfs2.la
 
 noinst_PROGRAMS		= gfs2l
 
 libgfs2_la_SOURCES	= block_list.c fs_bits.c gfs1.c misc.c rgrp.c super.c \
-			  buf.c fs_geometry.c gfs2_disk_hash.c ondisk.c \
+			  buf.c fs_geometry.c gfs2_disk_hash.c ondisk.c config.c \
 			  device_geometry.c fs_ops.c gfs2_log.c recovery.c \
 			  structures.c meta.c lang.c parser.y lexer.l
 

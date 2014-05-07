@@ -14,6 +14,7 @@
 #include <sys/time.h>
 
 #include "libgfs2.h"
+#include "config.h"
 
 int build_master(struct gfs2_sbd *sdp)
 {
@@ -29,12 +30,12 @@ int build_master(struct gfs2_sbd *sdp)
 	inum.no_addr = bn;
 
 	bh = init_dinode(sdp, &inum, S_IFDIR | 0755, GFS2_DIF_SYSTEM, &inum);
-	
+
 	sdp->master_dir = lgfs2_inode_get(sdp, bh);
 	if (sdp->master_dir == NULL)
 		return -1;
 
-	if (sdp->debug) {
+	if (cfg_debug) {
 		printf("\nMaster dir:\n");
 		gfs2_dinode_print(&sdp->master_dir->i_di);
 	}
@@ -223,7 +224,7 @@ int build_jindex(struct gfs2_sbd *sdp)
 			return ret;
 		inode_put(&sdp->md.journal[j]);
 	}
-	if (sdp->debug) {
+	if (cfg_debug) {
 		printf("\nJindex:\n");
 		gfs2_dinode_print(&jindex->i_di);
 	}
@@ -235,7 +236,6 @@ int build_jindex(struct gfs2_sbd *sdp)
 
 int build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 {
-	struct gfs2_sbd *sdp = per_node->i_sbd;
 	char name[256];
 	struct gfs2_inode *ip;
 
@@ -248,7 +248,7 @@ int build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 	ip->i_di.di_size = sizeof(struct gfs2_inum_range);
 	gfs2_dinode_out(&ip->i_di, ip->i_bh);
 
-	if (sdp->debug) {
+	if (cfg_debug) {
 		printf("\nInum Range %u:\n", j);
 		gfs2_dinode_print(&ip->i_di);
 	}
@@ -259,7 +259,6 @@ int build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 
 int build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 {
-	struct gfs2_sbd *sdp = per_node->i_sbd;
 	char name[256];
 	struct gfs2_inode *ip;
 
@@ -272,7 +271,7 @@ int build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 	ip->i_di.di_size = sizeof(struct gfs2_statfs_change);
 	gfs2_dinode_out(&ip->i_di, ip->i_bh);
 
-	if (sdp->debug) {
+	if (cfg_debug) {
 		printf("\nStatFS Change %u:\n", j);
 		gfs2_dinode_print(&ip->i_di);
 	}
@@ -316,7 +315,7 @@ int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 		brelse(bh);
 	}
 
-	if (sdp->debug) {
+	if (cfg_debug) {
 		printf("\nQuota Change %u:\n", j);
 		gfs2_dinode_print(&ip->i_di);
 	}
@@ -352,7 +351,7 @@ int build_per_node(struct gfs2_sbd *sdp)
 		}
 	}
 
-	if (sdp->debug) {
+	if (cfg_debug) {
 		printf("\nper_node:\n");
 		gfs2_dinode_print(&per_node->i_di);
 	}
@@ -371,7 +370,7 @@ int build_inum(struct gfs2_sbd *sdp)
 		return errno;
 	}
 
-	if (sdp->debug) {
+	if (cfg_debug) {
 		printf("\nInum Inode:\n");
 		gfs2_dinode_print(&ip->i_di);
 	}
@@ -390,7 +389,7 @@ int build_statfs(struct gfs2_sbd *sdp)
 		return errno;
 	}
 
-	if (sdp->debug) {
+	if (cfg_debug) {
 		printf("\nStatFS Inode:\n");
 		gfs2_dinode_print(&ip->i_di);
 	}
@@ -432,7 +431,7 @@ int build_rindex(struct gfs2_sbd *sdp)
 	if (count != sizeof(struct gfs2_rindex))
 		return -1;
 
-	if (sdp->debug) {
+	if (cfg_debug) {
 		printf("\nResource Index:\n");
 		gfs2_dinode_print(&ip->i_di);
 	}
@@ -467,7 +466,7 @@ int build_quota(struct gfs2_sbd *sdp)
 	if (count != sizeof(struct gfs2_quota))
 		return -1;
 
-	if (sdp->debug) {
+	if (cfg_debug) {
 		printf("\nRoot quota:\n");
 		gfs2_quota_print(&qu);
 	}
@@ -494,7 +493,7 @@ int build_root(struct gfs2_sbd *sdp)
 	if (sdp->md.rooti == NULL)
 		return -1;
 
-	if (sdp->debug) {
+	if (cfg_debug) {
 		printf("\nRoot directory:\n");
 		gfs2_dinode_print(&sdp->md.rooti->i_di);
 	}
@@ -513,7 +512,7 @@ int do_init_inum(struct gfs2_sbd *sdp)
 	if (count != sizeof(uint64_t))
 		return -1;
 
-	if (sdp->debug)
+	if (cfg_debug)
 		printf("\nNext Inum: %"PRIu64"\n",
 		       sdp->md.next_inum);
 	return 0;
@@ -535,7 +534,7 @@ int do_init_statfs(struct gfs2_sbd *sdp)
 	if (count != sizeof(struct gfs2_statfs_change))
 		return -1;
 
-	if (sdp->debug) {
+	if (cfg_debug) {
 		printf("\nStatfs:\n");
 		gfs2_statfs_change_print(&sc);
 	}

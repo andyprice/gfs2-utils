@@ -15,6 +15,7 @@
 #include <linux/fs.h>
 
 #include "libgfs2.h"
+#include "config.h"
 
 #ifndef BLKSSZGET
 #define BLKSSZGET _IO(0x12,104)   /* logical_block_size */
@@ -99,7 +100,7 @@ void fix_device_geometry(struct gfs2_sbd *sdp)
 
 	device->length = sdp->dinfo.size / sdp->bsize;
 
-	if (sdp->debug) {
+	if (cfg_debug) {
 		printf("\nDevice Geometry:  (in FS blocks)\n");
 		printf("  length = %"PRIu64"\n", device->length);
 		printf("\nDevice Size: %"PRIu64"\n", sdp->dinfo.size);
