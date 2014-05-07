@@ -13,6 +13,7 @@
 
 #include <linux/types.h>
 #include "libgfs2.h"
+#include "config.h"
 
 #define DIV_RU(x, y) (((x) + (y) - 1) / (y))
 
@@ -59,7 +60,7 @@ uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgsize_spe
 		sdp->rgsize += GFS2_DEFAULT_RGSIZE; /* bigger rgs */
 	}
 
-	if (sdp->debug)
+	if (cfg_debug)
 		printf("  rg sz = %"PRIu32"\n  nrgrp = %"PRIu64"\n",
 		       sdp->rgsize, nrgrp);
 
@@ -220,7 +221,7 @@ int build_rgrps(struct gfs2_sbd *sdp, int do_write)
 			}
 		}
 
-		if (sdp->debug) {
+		if (cfg_debug) {
 			printf("\n");
 			gfs2_rindex_print(ri);
 		}

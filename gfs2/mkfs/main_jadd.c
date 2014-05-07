@@ -28,6 +28,7 @@
 #define RANDOM(values) ((values) * (random() / (RAND_MAX + 1.0)))
 
 static int quiet = 0;
+static int debug = 0;
 
 static void
 make_jdata(int fd, const char *value)
@@ -128,7 +129,8 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			sdp->qcsize = atoi(optarg);
 			break;
 		case 'D':
-			sdp->debug = TRUE;
+			debug = 1;
+			lgfs2_set_debug(1);
 			break;
 		case 'h':
 			print_usage(argv[0]);
@@ -172,7 +174,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 	if (optind < argc)
 		die( _("Unrecognized argument: %s\n"), argv[optind]);
 
-	if (sdp->debug) {
+	if (debug) {
 		printf( _("Command Line Arguments:\n"));
 		printf("  qcsize = %u\n", sdp->qcsize);
 		printf("  jsize = %u\n", sdp->jsize);
@@ -200,7 +202,7 @@ static void verify_arguments(struct gfs2_sbd *sdp)
 
 static void print_results(struct gfs2_sbd *sdp)
 {
-	if (sdp->debug)
+	if (debug)
 		printf("\n");
 	else if (quiet)
 		return;

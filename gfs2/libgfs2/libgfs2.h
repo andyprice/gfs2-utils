@@ -276,8 +276,6 @@ struct gfs2_sbd {
 	unsigned int rgsize;     /* Size of resource groups (in MB) */
 	unsigned int qcsize;     /* Size of quota change files (in MB) */
 
-	int debug;
-
 	char device_name[PATH_MAX];
 	char *path_name;
 
@@ -400,6 +398,9 @@ extern uint32_t lgfs2_get_block_type(const struct gfs2_buffer_head *lbh);
 
 #define bread(bl, num) __bread(bl, num, __LINE__, __FUNCTION__)
 #define breadm(bl, bhs, n, block) __breadm(bl, bhs, n, block, __LINE__, __FUNCTION__)
+
+/* config.c */
+extern void lgfs2_set_debug(int enable);
 
 /* device_geometry.c */
 extern int lgfs2_get_dev_info(int fd, struct lgfs2_dev_info *i);

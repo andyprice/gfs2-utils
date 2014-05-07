@@ -308,6 +308,7 @@ static void opts_get(int argc, char *argv[], struct mkfs_opts *opts)
 			break;
 		case 'D':
 			opts->debug = 1;
+			lgfs2_set_debug(1);
 			break;
 		case 'h':
 			print_usage(argv[0]);
@@ -616,7 +617,7 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 	return rgs;
 }
 
-static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct gfs2_rindex *ri)
+static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct gfs2_rindex *ri, int debug)
 {
 	int err = 0;
 	lgfs2_rgrp_t rg = NULL;
@@ -631,7 +632,7 @@ static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct gfs2_rinde
 		perror(_("Failed to write resource group"));
 		return -1;
 	}
-	if (sdp->debug) {
+	if (debug) {
 		gfs2_rindex_print(ri);
 		printf("\n");
 	}
@@ -665,7 +666,7 @@ static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts
 		rgaddr = lgfs2_rindex_entry_new(rgs, &ri, rgaddr, jrgsize);
 		if (rgaddr == 0) /* Reached the end when we still have journals to write */
 			return 1;
-		result = place_rgrp(sdp, rgs, &ri);
+		result = place_rgrp(sdp, rgs, &ri, opts->debug);
 		if (result != 0)
 			return result;
 	}
@@ -678,7 +679,7 @@ static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts
 		rgaddr = lgfs2_rindex_entry_new(rgs, &ri, rgaddr, 0);
 		if (rgaddr == 0)
 			break; /* Done */
-		result = place_rgrp(sdp, rgs, &ri);
+		result = place_rgrp(sdp, rgs, &ri, opts->debug);
 		if (result)
 			return result;
 	}
@@ -696,7 +697,6 @@ static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsiz
 	sdp->md.journals = opts->journals;
 	sdp->device_fd = opts->dev.fd;
 	sdp->bsize = bsize;
-	sdp->debug = opts->debug;
 
 	if (compute_constants(sdp)) {
 		perror(_("Failed to compute file system constants"));

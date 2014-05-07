@@ -1981,11 +1981,6 @@ static int conv_build_jindex(struct gfs2_sbd *sdp)
 	}
 
 	free(sdp->md.journal);
-	if (sdp->debug) {
-		printf("\nJindex:\n");
-		gfs2_dinode_print(&sdp->md.jiinode->i_di);
-	}
-
 	inode_put(&sdp->md.jiinode);
 	return 0;
 }
