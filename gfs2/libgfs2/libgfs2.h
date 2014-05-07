@@ -277,8 +277,6 @@ struct gfs2_sbd {
 	unsigned int qcsize;     /* Size of quota change files (in MB) */
 
 	int debug;
-	int quiet;
-	int override;
 
 	char device_name[PATH_MAX];
 	char *path_name;
