@@ -27,6 +27,8 @@
 #define BUF_SIZE 4096
 #define RANDOM(values) ((values) * (random() / (RAND_MAX + 1.0)))
 
+static int quiet = 0;
+
 static void
 make_jdata(int fd, const char *value)
 {
@@ -139,7 +141,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			sdp->md.journals = atoi(optarg);
 			break;
 		case 'q':
-			sdp->quiet = TRUE;
+			quiet = 1;
 			break;
 		case 'V':
 			printf("gfs2_jadd %s (built %s %s)\n", VERSION,
@@ -166,7 +168,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 		optind++;
 	} else
 		die( _("no path specified (try -h for help)\n"));
-	
+
 	if (optind < argc)
 		die( _("Unrecognized argument: %s\n"), argv[optind]);
 
@@ -175,13 +177,12 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 		printf("  qcsize = %u\n", sdp->qcsize);
 		printf("  jsize = %u\n", sdp->jsize);
 		printf("  journals = %u\n", sdp->md.journals);
-		printf("  quiet = %d\n", sdp->quiet);
+		printf("  quiet = %d\n", quiet);
 		printf("  path = %s\n", sdp->path_name);
 	}
 }
 
-static void 
-verify_arguments(struct gfs2_sbd *sdp)
+static void verify_arguments(struct gfs2_sbd *sdp)
 {
 	if (!sdp->md.journals)
 		die( _("no journals specified\n"));
@@ -201,7 +202,7 @@ static void print_results(struct gfs2_sbd *sdp)
 {
 	if (sdp->debug)
 		printf("\n");
-	else if (sdp->quiet)
+	else if (quiet)
 		return;
 
 	printf( _("Filesystem: %s\n"), sdp->path_name);
