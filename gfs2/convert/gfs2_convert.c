@@ -30,6 +30,7 @@
 
 #include <linux/types.h>
 #include <linux/gfs2_ondisk.h>
+#include <logging.h>
 #include "osi_list.h"
 #include "copyright.cf"
 #include "libgfs2.h"
@@ -112,6 +113,7 @@ uint64_t gfs2_jheightsize[GFS2_MAX_META_HEIGHT];
 uint32_t gfs2_max_height;
 uint32_t gfs2_max_jheight;
 uint64_t jindex_addr = 0, rindex_addr = 0;
+int print_level = MSG_NOTICE;
 
 /* ------------------------------------------------------------------------- */
 /* This function is for libgfs's sake.                                       */

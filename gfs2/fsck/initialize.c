@@ -15,6 +15,7 @@
 
 #define _(String) gettext(String)
 
+#include <logging.h>
 #include "libgfs2.h"
 #include "fsck.h"
 #include "util.h"

@@ -10,6 +10,7 @@
 #include <libintl.h>
 #define _(String) gettext(String)
 
+#include <logging.h>
 #include "libgfs2.h"
 #include "osi_list.h"
 #include "fsck.h"

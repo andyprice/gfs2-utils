@@ -9,6 +9,7 @@
 #include <libintl.h>
 #define _(String) gettext(String)
 
+#include <logging.h>
 #include "fsck.h"
 #include "fs_recovery.h"
 #include "libgfs2.h"

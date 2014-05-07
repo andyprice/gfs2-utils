@@ -14,6 +14,7 @@
 #define _(String) gettext(String)
 #include <syslog.h>
 
+#include <logging.h>
 #include "copyright.cf"
 #include "libgfs2.h"
 #include "fsck.h"
@@ -39,6 +40,7 @@ struct osi_root inodetree = (struct osi_root) { NULL, };
 int dups_found = 0, dups_found_first = 0;
 struct gfs_sb *sbd1 = NULL;
 int sb_fixed = 0;
+int print_level = MSG_NOTICE;
 
 /* This function is for libgfs2's sake.                                      */
 void print_it(const char *label, const char *fmt, const char *fmt2, ...)

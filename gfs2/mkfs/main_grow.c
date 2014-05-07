@@ -23,6 +23,7 @@
 #include <libintl.h>
 #define _(String) gettext(String)
 
+#include <logging.h>
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
 
@@ -33,6 +34,7 @@ static uint64_t override_device_size = 0;
 static int test = 0;
 static uint64_t fssize = 0, fsgrowth;
 static unsigned int rgsize = 0;
+int print_level = MSG_NOTICE;
 
 extern int create_new_inode(struct gfs2_sbd *sdp);
 extern int rename2system(struct gfs2_sbd *sdp, char *new_dir, char *new_name);

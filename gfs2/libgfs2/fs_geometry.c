@@ -97,12 +97,12 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree,
 	} else {
 		uint64_t old_length, new_chunk;
 
-		log_info("Existing resource groups:\n");
+		printf("Existing resource groups:\n");
 		for (rgrp = 0, n = osi_first(rgtree); n; n = next, rgrp++) {
 			next = osi_next(n);
 			rl = (struct rgrp_tree *)n;
 
-			log_info("%d: start: %" PRIu64 " (0x%"
+			printf("%d: start: %" PRIu64 " (0x%"
 				 PRIx64 "), length = %"PRIu64" (0x%"
 				 PRIx64 ")\n", rgrp + 1, rl->start, rl->start,
 				 rl->length, rl->length);
@@ -118,7 +118,7 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree,
 	}
 
 	if (rgrp < nrgrp)
-		log_info("\nNew resource groups:\n");
+		printf("\nNew resource groups:\n");
 	for (; rgrp < nrgrp; rgrp++) {
 		if (rgrp) {
 			rgaddr = rlast->start + rlast->length;
@@ -131,7 +131,7 @@ void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree,
 				(nrgrp - 1) * (dev->length / nrgrp);
 		}
 		rl->start = rgaddr;
-		log_info("%d: start: %" PRIu64 " (0x%"
+		printf("%d: start: %" PRIu64 " (0x%"
 			 PRIx64 "), length = %"PRIu64" (0x%"
 			 PRIx64 ")\n", rgrp + 1, rl->start, rl->start,
 			 rl->length, rl->length);

@@ -20,6 +20,7 @@
 #include <linux/gfs2_ondisk.h>
 #include <zlib.h>
 
+#include <logging.h>
 #include "osi_list.h"
 #include "gfs2hex.h"
 #include "hexedit.h"
@@ -47,6 +48,7 @@ uint64_t last_reported_block, blks_saved, total_out, pct;
 uint64_t journal_blocks[MAX_JOURNALS_SAVED];
 uint64_t gfs1_journal_size = 0; /* in blocks */
 int journals_found = 0;
+int print_level = MSG_NOTICE;
 
 extern void read_superblock(void);
 

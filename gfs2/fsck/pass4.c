@@ -6,6 +6,7 @@
 #include <libintl.h>
 #define _(String) gettext(String)
 
+#include <logging.h>
 #include "libgfs2.h"
 #include "fsck.h"
 #include "lost_n_found.h"
