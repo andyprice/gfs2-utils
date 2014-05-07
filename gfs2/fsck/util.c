@@ -12,6 +12,7 @@
 #include <ctype.h>
 #define _(String) gettext(String)
 
+#include <logging.h>
 #include "libgfs2.h"
 #include "metawalk.h"
 #include "util.h"

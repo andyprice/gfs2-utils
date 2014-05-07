@@ -5,6 +5,7 @@
 #include <libintl.h>
 #include <string.h>
 
+#include <logging.h>
 #include "libgfs2.h"
 #include "osi_list.h"
 #include "inode_hash.h"
