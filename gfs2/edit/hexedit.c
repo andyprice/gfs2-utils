@@ -2608,19 +2608,25 @@ static void usage(void)
  */
 static void getgziplevel(char *argv[], int *i)
 {
+	char *opt, *arg;
 	char *endptr;
-	(*i)++;
-	if (!strcasecmp(argv[*i], "-z")) {
-		(*i)++;
-		errno = 0;
-		gziplevel = strtol(argv[*i], &endptr, 10);
-		if (errno || endptr == argv[*i] || gziplevel < 0 || gziplevel > 9) {
-			fprintf(stderr, "Compression level out of range: %s\n", argv[*i]);
-			exit(-1);
-		}
+
+	arg = argv[1 + *i];
+	if (strncmp(arg, "-z", 2)) {
+		return;
+	} else if (arg[2] != '\0') {
+		opt = &arg[2];
 	} else {
-		(*i)--;
+		(*i)++;
+		opt = argv[1 + *i];
 	}
+	errno = 0;
+	gziplevel = strtol(opt, &endptr, 10);
+	if (errno || endptr == opt || gziplevel < 0 || gziplevel > 9) {
+		fprintf(stderr, "Compression level out of range: %s\n", opt);
+		exit(-1);
+	}
+	(*i)++;
 }
 
 /* ------------------------------------------------------------------------ */
