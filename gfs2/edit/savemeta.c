@@ -27,7 +27,6 @@
 #include "hexedit.h"
 #include "libgfs2.h"
 
-#define BUFSIZE (4096)
 #define DFT_SAVE_FILE "/tmp/gfsmeta.XXXXXX"
 #define MAX_JOURNALS_SAVED 256
 
@@ -45,8 +44,11 @@ struct savemeta_header {
 struct saved_metablock {
 	uint64_t blk;
 	uint16_t siglen; /* significant data length */
-	char buf[BUFSIZE];
-};
+	char buf[];
+/* This needs to be packed because old versions of gfs2_edit read and write the
+   individual fields separately, so the hole after siglen must be eradicated
+   before the struct reflects what's on disk. */
+} __attribute__((__packed__));
 
 struct metafd {
 	int fd;
@@ -55,14 +57,11 @@ struct metafd {
 	int gziplevel;
 };
 
-struct saved_metablock *savedata;
-uint64_t last_reported_block, blks_saved, total_out, pct;
-uint64_t journal_blocks[MAX_JOURNALS_SAVED];
-uint64_t gfs1_journal_size = 0; /* in blocks */
-int journals_found = 0;
+static uint64_t blks_saved;
+static uint64_t journal_blocks[MAX_JOURNALS_SAVED];
+static uint64_t gfs1_journal_size = 0; /* in blocks */
+static int journals_found = 0;
 int print_level = MSG_NOTICE;
-
-extern void read_superblock(void);
 
 static int block_is_a_journal(void)
 {
@@ -121,7 +120,7 @@ static const char *anthropomorphize(unsigned long long inhuman_value)
 		remainder = val % 1024;
 		val /= 1024;
 	}
-	sprintf(out_val, "%llu.%llu%c", val, remainder, symbols[i]);
+	sprintf(out_val, "%llu.%llu%cB", val, remainder, symbols[i]);
 	return out_val;
 }
 
@@ -223,8 +222,7 @@ static void warm_fuzzy_stuff(uint64_t wfsblock, int force)
 {
         static struct timeval tv;
         static uint32_t seconds = 0;
-        
-	last_reported_block = wfsblock;
+
 	gettimeofday(&tv, NULL);
 	if (!seconds)
 		seconds = tv.tv_sec;
@@ -235,8 +233,7 @@ static void warm_fuzzy_stuff(uint64_t wfsblock, int force)
 		if (sbd.fssize) {
 			printf("\r");
 			percent = (wfsblock * 100) / sbd.fssize;
-			printf("%llu inodes processed, %llu blocks saved "
-			       "(%llu%%) processed, ",
+			printf("%llu blocks processed, %llu saved (%llu%%)",
 			       (unsigned long long)wfsblock,
 			       (unsigned long long)blks_saved,
 			       (unsigned long long)percent);
@@ -339,10 +336,10 @@ static int savemetaclose(struct metafd *mfd)
 
 static int save_block(int fd, struct metafd *mfd, uint64_t blk)
 {
-	int blktype, blklen, outsz;
-	uint16_t trailing0;
-	char *p;
+	int blktype, blklen;
+	size_t outsz;
 	struct gfs2_buffer_head *savebh;
+	struct saved_metablock *savedata;
 
 	if (gfs2_check_range(&sbd, blk) && blk != sbd.sb_addr) {
 		fprintf(stderr, "\nWarning: bad block pointer '0x%llx' "
@@ -351,9 +348,7 @@ static int save_block(int fd, struct metafd *mfd, uint64_t blk)
 			(unsigned long long)block, (unsigned long long)block);
 		return 0;
 	}
-	memset(savedata, 0, sizeof(struct saved_metablock));
 	savebh = bread(&sbd, blk);
-	memcpy(&savedata->buf, savebh->b_data, sbd.bsize);
 
 	/* If this isn't metadata and isn't a system file, we don't want it.
 	   Note that we're checking "block" here rather than blk.  That's
@@ -365,43 +360,34 @@ static int save_block(int fd, struct metafd *mfd, uint64_t blk)
 		brelse(savebh);
 		return 0; /* Not metadata, and not system file, so skip it */
 	}
-	trailing0 = 0;
-	p = &savedata->buf[blklen - 1];
-	while (*p=='\0' && trailing0 < sbd.bsize) {
-		trailing0++;
-		p--;
+
+	/* No need to save trailing zeroes */
+	for (; blklen > 0 && savebh->b_data[blklen - 1] == '\0'; blklen--);
+
+	if (blklen == 0) /* No significant data; skip. */
+		return 0;
+
+	outsz = sizeof(*savedata) + blklen;
+	savedata = calloc(1, outsz);
+	if (savedata == NULL) {
+		perror("Failed to save block");
+		exit(1);
 	}
 	savedata->blk = cpu_to_be64(blk);
-	if (savemetawrite(mfd, &savedata->blk, sizeof(savedata->blk)) !=
-	    sizeof(savedata->blk)) {
-		fprintf(stderr, "write error: %s from %s:%d: "
-			"block %lld (0x%llx)\n", strerror(errno),
-			__FUNCTION__, __LINE__,
+	savedata->siglen = cpu_to_be16(blklen);
+	memcpy(savedata->buf, savebh->b_data, blklen);
+
+	if (savemetawrite(mfd, savedata, outsz) != outsz) {
+		fprintf(stderr, "write error: %s from %s:%d: block %lld (0x%llx)\n",
+		        strerror(errno), __FUNCTION__, __LINE__,
 			(unsigned long long)savedata->blk,
 			(unsigned long long)savedata->blk);
+		free(savedata);
 		exit(-1);
 	}
-	outsz = blklen - trailing0;
-	savedata->siglen = cpu_to_be16(outsz);
-	if (savemetawrite(mfd, &savedata->siglen, sizeof(savedata->siglen)) !=
-	    sizeof(savedata->siglen)) {
-		fprintf(stderr, "write error: %s from %s:%d: "
-			"block %lld (0x%llx)\n", strerror(errno),
-			__FUNCTION__, __LINE__,
-			(unsigned long long)savedata->blk,
-			(unsigned long long)savedata->blk);
-		exit(-1);
-	}
-	if (savemetawrite(mfd, savedata->buf, outsz) != outsz) {
-		fprintf(stderr, "write error: %s from %s:%d: "
-			"block %lld (0x%llx)\n", strerror(errno),
-			__FUNCTION__, __LINE__,
-			(unsigned long long)savedata->blk,
-			(unsigned long long)savedata->blk);
-		exit(-1);
-	}
-	total_out += sizeof(savedata->blk) + sizeof(savedata->siglen) + outsz;
+
 	blks_saved++;
+	free(savedata);
 	brelse(savebh);
 	return blktype;
 }
@@ -701,6 +687,7 @@ static int read_header(gzFile gzin_fd, struct savemeta_header *smh)
 	size_t rs;
 	struct savemeta_header smh_be = {0};
 
+	gzseek(gzin_fd, 0, SEEK_SET);
 	rs = gzread(gzin_fd, &smh_be, sizeof(smh_be));
 	if (rs == -1) {
 		perror("Failed to read savemeta file header");
@@ -721,8 +708,7 @@ static int check_header(struct savemeta_header *smh)
 {
 	if (smh->sh_magic != SAVEMETA_MAGIC || smh->sh_format > SAVEMETA_FORMAT)
 		return -1;
-	printf("Savemeta file format %"PRIu32"\n", smh->sh_format);
-	printf("Created %s\n", ctime((time_t *)&smh->sh_time));
+	printf("Metadata saved at %s", ctime((time_t *)&smh->sh_time)); /* ctime() adds \n */
 	printf("File system size %s\n", anthropomorphize(smh->sh_fs_bytes));
 	return 0;
 }
@@ -741,14 +727,10 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 
 	mfd = savemetaopen(out_fn, gziplevel);
 
-	savedata = malloc(sizeof(struct saved_metablock));
-	if (!savedata)
-		die("Can't allocate memory for the operation.\n");
-
 	lseek(sbd.device_fd, 0, SEEK_SET);
-	blks_saved = total_out = last_reported_block = 0;
+	blks_saved = 0;
 	if (!sbd.gfs1)
-		sbd.bsize = BUFSIZE;
+		sbd.bsize = GFS2_DEFAULT_BSIZE;
 	if (lgfs2_get_dev_info(sbd.device_fd, &sbd.dinfo)) {
 		perror(sbd.device_name);
 		exit(-1);
@@ -864,7 +846,6 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	} else {
 		printf("(uncompressed).\n");
 	}
-	free(savedata);
 	savemetaclose(&mfd);
 	close(sbd.device_fd);
 	free(indirect);
@@ -872,174 +853,227 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	exit(0);
 }
 
-static int restore_data(int fd, gzFile gzin_fd, int printblocksonly,
-			int find_highblk, const int startpos)
+static off_t restore_init(gzFile gzfd, struct savemeta_header *smh)
 {
+	int err;
+	unsigned i;
 	size_t rs;
-	uint64_t buf64, writes = 0, highest_valid_block = 0;
-	uint16_t buf16;
-	int first = 1, pos, gzerr;
-	char rdbuf[256];
-	char gfs_superblock_id[8] = {0x01, 0x16, 0x19, 0x70,
-				     0x00, 0x00, 0x00, 0x01};
+	char buf[256];
+	off_t startpos = 0;
+	struct saved_metablock *svb;
+	struct gfs2_meta_header *sbmh;
 
-	if (!printblocksonly)
-		lseek(fd, 0, SEEK_SET);
-	gzseek(gzin_fd, startpos, SEEK_SET);
-	rs = gzread(gzin_fd, rdbuf, sizeof(rdbuf));
-	if (rs != sizeof(rdbuf)) {
+	err = read_header(gzfd, smh);
+	if (err < 0) {
+		exit(1);
+	} else if (check_header(smh) != 0) {
+		printf("No valid file header found. Falling back to old format...\n");
+	} else if (err == 0) {
+		startpos = sizeof(*smh);
+	}
+
+	gzseek(gzfd, startpos, SEEK_SET);
+	rs = gzread(gzfd, buf, sizeof(buf));
+	if (rs != sizeof(buf)) {
 		fprintf(stderr, "Error: File is too small.\n");
+		exit(1);
+	}
+	/* Scan for the beginning of the file body. Required to support old formats(?). */
+	for (i = 0; i < (256 - sizeof(*svb) - sizeof(*sbmh)); i++) {
+		svb = (struct saved_metablock *)&buf[i];
+		sbmh = (struct gfs2_meta_header *)svb->buf;
+		if (sbmh->mh_magic == cpu_to_be32(GFS2_MAGIC) &&
+		     sbmh->mh_type == cpu_to_be32(GFS2_METATYPE_SB))
+			break;
+	}
+	if (i == (sizeof(buf) - sizeof(*svb) - sizeof(*sbmh)))
+		i = 0;
+	return startpos + i; /* File offset of saved sb */
+}
+
+
+static int restore_block(gzFile gzfd, struct saved_metablock *svb, uint16_t maxlen)
+{
+	int gzerr;
+	int ret;
+	uint16_t checklen;
+	const char *errstr;
+
+	ret = gzread(gzfd, svb, sizeof(*svb));
+	if (ret < sizeof(*svb)) {
+		goto gzread_err;
+	}
+	svb->blk = be64_to_cpu(svb->blk);
+	svb->siglen = be16_to_cpu(svb->siglen);
+
+	if (sbd.fssize && svb->blk >= sbd.fssize) {
+		fprintf(stderr, "Error: File system is too small to restore this metadata.\n");
+		fprintf(stderr, "File system is %llu blocks. Restore block = %llu\n",
+		        (unsigned long long)sbd.fssize, (unsigned long long)svb->blk);
 		return -1;
 	}
-	for (pos = startpos; pos < startpos + sizeof(rdbuf) - sizeof(uint64_t) - sizeof(uint16_t);
-	     pos++) {
-		if (!memcmp(&rdbuf[pos + sizeof(uint64_t) + sizeof(uint16_t)],
-			    gfs_superblock_id, sizeof(gfs_superblock_id))) {
-			break;
+
+	if (maxlen)
+		checklen = maxlen;
+	else
+		checklen = sbd.bsize;
+
+	if (checklen && svb->siglen > checklen) {
+		fprintf(stderr, "Bad record length: %u for block %"PRIu64" (0x%"PRIx64").\n",
+			svb->siglen, svb->blk, svb->blk);
+		return -1;
+	}
+
+	if (maxlen) {
+		ret = gzread(gzfd, svb + 1, svb->siglen);
+		if (ret < svb->siglen) {
+			goto gzread_err;
 		}
 	}
-	if (pos == startpos + sizeof(rdbuf) - sizeof(uint64_t) - sizeof(uint16_t))
-		pos = startpos;
-	if (gzseek(gzin_fd, pos, SEEK_SET) != pos) {
-		fprintf(stderr, "bad seek: %s from %s:%d: "
-			"offset %lld (0x%llx)\n", strerror(errno),
-			__FUNCTION__, __LINE__, (unsigned long long)pos,
-			(unsigned long long)pos);
-		exit(-1);
+
+	return 0;
+
+gzread_err:
+	if (gzeof(gzfd))
+		return 1;
+
+	errstr = gzerror(gzfd, &gzerr);
+	if (gzerr == Z_ERRNO)
+		errstr = strerror(errno);
+	fprintf(stderr, "Failed to restore block: %s\n", errstr);
+	return -1;
+}
+
+static int restore_super(gzFile gzfd, off_t pos)
+{
+	int ret;
+	struct saved_metablock *svb;
+	struct gfs2_buffer_head dummy_bh;
+	size_t len = sizeof(*svb) + sizeof(struct gfs2_sb);
+
+	svb = calloc(1, len);
+	if (svb == NULL) {
+		perror("Failed to restore super block");
+		exit(1);
 	}
-	blks_saved = total_out = 0;
+	gzseek(gzfd, pos, SEEK_SET);
+	ret = restore_block(gzfd, svb, sizeof(struct gfs2_sb));
+	if (ret == 1) {
+		fprintf(stderr, "Reached end of file while restoring superblock\n");
+		goto err;
+	} else if (ret != 0) {
+		goto err;
+	}
+
+	dummy_bh.b_data = (char *)svb->buf;
+	gfs2_sb_in(&sbd.sd_sb, &dummy_bh);
+	sbd1 = (struct gfs_sb *)&sbd.sd_sb;
+	ret = check_sb(&sbd.sd_sb);
+	if (ret < 0) {
+		fprintf(stderr,"Error: Invalid superblock data.\n");
+		goto err;
+	}
+	if (ret == 1)
+		sbd.gfs1 = 1;
+	sbd.bsize = sbd.sd_sb.sb_bsize;
+	free(svb);
+	printf("Block size is %uB\n", sbd.bsize);
+	return 0;
+err:
+	free(svb);
+	return -1;
+}
+
+static int find_highest_block(gzFile gzfd, off_t pos, uint64_t fssize)
+{
+	int err = 0;
+	uint64_t highest = 0;
+	struct saved_metablock svb = {0};
+
+	while (1) {
+		gzseek(gzfd, pos, SEEK_SET);
+		err = restore_block(gzfd, &svb, 0);
+		if (err == 1)
+			break;
+		if (err != 0)
+			return -1;
+
+		if (svb.blk > highest)
+			highest = svb.blk;
+		pos += sizeof(svb) + svb.siglen;
+	}
+
+	if (fssize > 0) {
+		printf("Saved file system size is %"PRIu64" (0x%"PRIx64") blocks, %s\n",
+		       fssize, fssize, anthropomorphize(fssize * sbd.bsize));
+		sbd.fssize = fssize;
+	} else {
+		sbd.fssize = highest + 1;
+	}
+
+	printf("Highest saved block is %"PRIu64" (0x%"PRIx64")\n", highest, highest);
+	return 0;
+}
+
+static int restore_data(int fd, gzFile gzin_fd, off_t pos, int printonly)
+{
+	struct saved_metablock *savedata;
+	size_t insz = sizeof(*savedata) + sbd.bsize;
+	uint64_t writes = 0;
+
+	savedata = calloc(1, insz);
+	if (savedata == NULL) {
+		perror("Failed to restore data");
+		exit(1);
+	}
+
+	gzseek(gzin_fd, pos, SEEK_SET);
+	blks_saved = 0;
 	while (TRUE) {
-		struct gfs2_buffer_head dummy_bh;
-
-		memset(savedata, 0, sizeof(struct saved_metablock));
-		rs = gzread(gzin_fd, &buf64, sizeof(uint64_t));
-		if (!rs)
+		int err;
+		err = restore_block(gzin_fd, savedata, sbd.bsize);
+		if (err == 1)
 			break;
-		if (rs != sizeof(uint64_t)) {
-			fprintf(stderr, "Error reading from file.\n");
+		if (err != 0) {
+			free(savedata);
 			return -1;
 		}
-		total_out += sbd.bsize;
-		savedata->blk = be64_to_cpu(buf64);
-		if (!printblocksonly &&
-		    sbd.fssize && savedata->blk >= sbd.fssize) {
-			fprintf(stderr, "Error: File system is too small to "
-				"restore this metadata.\n");
-			fprintf(stderr, "File system is %llu blocks, ",
-				(unsigned long long)sbd.fssize);
-			fprintf(stderr, "Restore block = %llu\n",
-				(unsigned long long)savedata->blk);
-			return -1;
-		}
-		if (gzread(gzin_fd, &buf16, sizeof(uint16_t)) !=
-		    sizeof(uint16_t)) {
-			fprintf(stderr, "read error: %s from %s:%d: "
-				"block %lld (0x%llx)\n",
-				gzerror(gzin_fd, &gzerr), __FUNCTION__, __LINE__,
-				(unsigned long long)savedata->blk,
-				(unsigned long long)savedata->blk);
-			exit(-1);
-		}
-		savedata->siglen = be16_to_cpu(buf16);
-		if (savedata->siglen > sizeof(savedata->buf)) {
-			fprintf(stderr, "\nBad record length: %d for block #%llu"
-				" (0x%llx).\n", savedata->siglen,
-				(unsigned long long)savedata->blk,
-				(unsigned long long)savedata->blk);
-			return -1;
-		}
-		if (savedata->siglen &&
-		    gzread(gzin_fd, savedata->buf, savedata->siglen) !=
-		    savedata->siglen) {
-			fprintf(stderr, "read error: %s from %s:%d: "
-				"block %lld (0x%llx)\n",
-				gzerror(gzin_fd, &gzerr), __FUNCTION__, __LINE__,
-				(unsigned long long)savedata->blk,
-				(unsigned long long)savedata->blk);
-			exit(-1);
-		}
-		if (first) {
-			struct gfs2_sb bufsb;
-			int ret;
 
-			dummy_bh.b_data = (char *)&bufsb;
-			memcpy(&bufsb, savedata->buf, sizeof(bufsb));
-			gfs2_sb_in(&sbd.sd_sb, &dummy_bh);
-			sbd1 = (struct gfs_sb *)&sbd.sd_sb;
-			ret = check_sb(&sbd.sd_sb);
-			if (ret < 0) {
-				fprintf(stderr,"Error: Invalid superblock data.\n");
-				return -1;
-			}
-			if (ret == 1)
-				sbd.gfs1 = TRUE;
-			sbd.bsize = sbd.sd_sb.sb_bsize;
-			if (find_highblk)
-				;
-			else if (!printblocksonly) {
-				sbd.fssize =
-					lseek(fd, 0, SEEK_END) / sbd.bsize;
-				printf("There are %llu blocks of %u bytes in "
-				       "the destination device.\n\n",
-				       (unsigned long long)sbd.fssize, sbd.bsize);
-			} else {
-				printf("This is %s metadata\n", sbd.gfs1 ?
-				       "gfs (not gfs2)" : "gfs2");
-			}
-			first = 0;
-		}
-		bh = &dummy_bh;
-		bh->b_data = savedata->buf;
-		if (savedata->blk > highest_valid_block)
-			highest_valid_block = savedata->blk;
-		if (find_highblk)
-			;
-		else if (printblocksonly) {
+		if (printonly) {
+			struct gfs2_buffer_head dummy_bh;
+			dummy_bh.b_data = savedata->buf;
+			bh = &dummy_bh;
 			block = savedata->blk;
-			if (printblocksonly > 1 && printblocksonly == block) {
+			if (printonly > 1 && printonly == block) {
 				block_in_mem = block;
 				display(0, 0, 0, 0);
 				bh = NULL;
-				return 0;
-			} else if (printblocksonly == 1) {
-				print_gfs2("%d (l=0x%x): ", blks_saved,
-					   savedata->siglen);
+				break;
+			} else if (printonly == 1) {
+				print_gfs2("%d (l=0x%x): ", blks_saved, savedata->siglen);
 				display_block_type(TRUE);
 			}
+			bh = NULL;
 		} else {
 			warm_fuzzy_stuff(savedata->blk, FALSE);
-			if (savedata->blk >= sbd.fssize) {
-				printf("\nOut of space on the destination "
-				       "device; quitting.\n");
-				bh = NULL;
-				break;
-			}
+			memset(savedata->buf + savedata->siglen, 0, sbd.bsize - savedata->siglen);
 			if (pwrite(fd, savedata->buf, sbd.bsize, savedata->blk * sbd.bsize) != sbd.bsize) {
-				fprintf(stderr, "write error: %s from "
-					"%s:%d: block %lld (0x%llx)\n",
-					strerror(errno), __FUNCTION__,
-					__LINE__,
+				fprintf(stderr, "write error: %s from %s:%d: block %lld (0x%llx)\n",
+					strerror(errno), __FUNCTION__, __LINE__,
 					(unsigned long long)savedata->blk,
 					(unsigned long long)savedata->blk);
-				exit(-1);
+				free(savedata);
+				return -1;
 			}
 			writes++;
 			if (writes % 1000 == 0)
 				fsync(fd);
 		}
 		blks_saved++;
-		/* Don't leave a dangling reference to our local dummy_bh */
-		bh = NULL;
 	}
-	if (!printblocksonly && !find_highblk)
-		warm_fuzzy_stuff(sbd.fssize, TRUE);
-	if (find_highblk && startpos == 0) {
-		printf("File system size: %lld (0x%llx) blocks, aka %sB\n",
-		       (unsigned long long)highest_valid_block,
-		       (unsigned long long)highest_valid_block,
-		       anthropomorphize(highest_valid_block * sbd.bsize));
-		sbd.fssize = highest_valid_block;
-	}
+	if (!printonly)
+		warm_fuzzy_stuff(sbd.fssize, 1);
+	free(savedata);
 	return 0;
 }
 
@@ -1050,56 +1084,56 @@ static void complain(const char *complaint)
 	    "<dest file system>\n");
 }
 
-void restoremeta(const char *in_fn, const char *out_device,
-		 uint64_t printblocksonly)
+void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 {
 	int error;
 	gzFile gzfd;
-	int startpos = 0;
+	off_t pos = 0;
 	struct savemeta_header smh = {0};
 
 	termlines = 0;
 	if (!in_fn)
 		complain("No source file specified.");
-	if (!printblocksonly && !out_device)
+	if (!printonly && !out_device)
 		complain("No destination file system specified.");
+
 	gzfd = gzopen(in_fn, "rb");
 	if (!gzfd)
 		die("Can't open source file %s: %s\n",
 		    in_fn, strerror(errno));
 
-	if (!printblocksonly) {
+	if (!printonly) {
 		sbd.device_fd = open(out_device, O_RDWR);
 		if (sbd.device_fd < 0)
 			die("Can't open destination file system %s: %s\n",
 			    out_device, strerror(errno));
 	} else if (out_device) /* for printsavedmeta, the out_device is an
 				  optional block no */
-		printblocksonly = check_keywords(out_device);
-	savedata = malloc(sizeof(struct saved_metablock));
-	if (!savedata)
-		die("Can't allocate memory for the restore operation.\n");
+		printonly = check_keywords(out_device);
 
-	gzseek(gzfd, 0, SEEK_SET);
-	error = read_header(gzfd, &smh);
-	if (error < 0) {
+	pos = restore_init(gzfd, &smh);
+	error = restore_super(gzfd, pos);
+	if (error)
 		exit(1);
-	} else if (check_header(&smh) != 0) {
-		printf("No valid file header found. Falling back to old format...\n");
-		gzseek(gzfd, 0, SEEK_SET);
-	} else if (error == 0) {
-		startpos = sizeof(smh);
+
+	printf("This is gfs%c metadata.\n", sbd.gfs1 ? '1': '2');
+
+	if (!printonly) {
+		uint64_t space = lseek(sbd.device_fd, 0, SEEK_END) / sbd.bsize;
+		printf("There are %"PRIu64" free blocks on the destination device.\n", space);
 	}
 
-	blks_saved = 0;
-	restore_data(sbd.device_fd, gzfd, printblocksonly, 1, startpos);
-	error = restore_data(sbd.device_fd, gzfd, printblocksonly, 0, startpos);
+	error = find_highest_block(gzfd, pos, sbd.fssize);
+	if (error)
+		exit(1);
+
+	error = restore_data(sbd.device_fd, gzfd, pos, printonly);
 	printf("File %s %s %s.\n", in_fn,
-	       (printblocksonly ? "print" : "restore"),
+	       (printonly ? "print" : "restore"),
 	       (error ? "error" : "successful"));
-	free(savedata);
+
 	gzclose(gzfd);
-	if (!printblocksonly)
+	if (!printonly)
 		close(sbd.device_fd);
 	free(indirect);
 	exit(error);
