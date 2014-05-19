@@ -11,5 +11,12 @@ Reading resource groups...Done. File system size: 4.1023GB
 GFS_TGT_REGEN
 AT_CHECK([gfs2_edit restoremeta test.meta $GFS_TGT], 0, [ignore], [ignore])
 AT_CHECK([fsck.gfs2 -n $GFS_TGT], 0, [ignore], [ignore])
+AT_CLEANUP
 
+AT_SETUP([Savemeta/restoremeta, no compression])
+GFS_TGT_REGEN
+AT_CHECK([$GFS_MKFS -p lock_nolock $GFS_TGT $(($(gfs_max_blocks 4096)/2))], 0, [ignore], [ignore])
+AT_CHECK([gfs2_edit savemeta -z0 $GFS_TGT test.meta], 0, [ignore], [ignore])
+AT_CHECK([gfs2_edit restoremeta test.meta $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([fsck.gfs2 -n $GFS_TGT], 0, [ignore], [ignore])
 AT_CLEANUP
