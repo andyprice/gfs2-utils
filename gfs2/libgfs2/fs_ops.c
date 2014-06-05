@@ -826,6 +826,7 @@ void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 		dip->i_di.di_entries--;
 	}
 	if (!prev) {
+		cur->de_inum.no_addr = 0;
 		cur->de_inum.no_formal_ino = 0;
 		return;
 	}
