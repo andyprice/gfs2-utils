@@ -75,7 +75,7 @@ static int block_is_a_journal(void)
 
 static int block_is_in_per_node(void)
 {
-	int d;
+	int i;
 	struct gfs2_inode *per_node_di;
 
 	if (sbd.gfs1)
@@ -90,9 +90,12 @@ static int block_is_in_per_node(void)
 	do_dinode_extended(&per_node_di->i_di, per_node_di->i_bh);
 	inode_put(&per_node_di);
 
-	for (d = 0; d < indirect->ii[0].dirents; d++) {
-		if (block == indirect->ii[0].dirent[d].block)
-			return TRUE;
+	for (i = 0; i < indirect_blocks; i++) {
+		int d;
+		for (d = 0; d < indirect->ii[i].dirents; d++) {
+			if (block == indirect->ii[i].dirent[d].block)
+				return TRUE;
+		}
 	}
 	return FALSE;
 }
