@@ -582,12 +582,15 @@ void dump_journal(const char *journal, int tblk)
 					   " [UNMOUNTED]" : "");
 			}
 			eol(0);
-		} else if (sbd.gfs1 && ld_blocks > 0) {
-			print_gfs2("0x%llx (j+%4llx): GFS log descriptor"
+		} else if ((ld_blocks > 0) &&
+			   (sbd.gfs1 || block_type == GFS2_METATYPE_LB)) {
+			print_gfs2("0x%llx (j+%4llx): Log descriptor"
 				   " continuation block", abs_block, jb);
 			eol(0);
 			print_gfs2("                    ");
-			ld_blocks -= print_ld_blks((uint64_t *)dummy_bh.b_data,
+			ld_blocks -= print_ld_blks((uint64_t *)dummy_bh.b_data +
+						   (sbd.gfs1 ? 0 :
+						    sizeof(struct gfs2_meta_header)),
 						   (dummy_bh.b_data +
 						    sbd.bsize), start_line,
 						   tblk, &tblk_off, 0, rgd,
