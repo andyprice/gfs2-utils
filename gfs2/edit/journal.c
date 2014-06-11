@@ -202,6 +202,7 @@ static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 {
 	int bcount = 0, found_tblk = 0, found_bblk = 0;
 	static char str[256];
+	struct gfs2_buffer_head *j_bmap_bh;
 
 	if (tblk_off)
 		*tblk_off = 0;
@@ -218,8 +219,17 @@ static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 			}
 			bcount++;
 			if (prnt) {
-				sprintf(str, "0x%llx",
-					(unsigned long long)be64_to_cpu(*b));
+				if (is_meta_ld) {
+					j_bmap_bh = bread(&sbd, abs_block +
+							  bcount);
+					sprintf(str, "0x%llx %2s",
+						(unsigned long long)be64_to_cpu(*b),
+						mtypes[lgfs2_get_block_type(j_bmap_bh)]);
+					brelse(j_bmap_bh);
+				} else {
+					sprintf(str, "0x%llx",
+						(unsigned long long)be64_to_cpu(*b));
+				}
 				print_gfs2("%-18.18s ", str);
 			}
 			if (!found_tblk && tblk_off)
@@ -237,7 +247,6 @@ static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 				int type, bmap = 0;
 				uint64_t o;
 				struct gfs2_buffer_head *save_bh;
-				struct gfs2_buffer_head *j_bmap_bh;
 
 				found_bblk = 1;
 				print_gfs2("<-------------------------");
