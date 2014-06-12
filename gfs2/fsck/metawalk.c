@@ -91,17 +91,15 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 				}
 				rgd->rg.rg_free++;
 				if (sdp->gfs1)
-					gfs_rgrp_out((struct gfs_rgrp *)
-						     &rgd->rg, rgd->bh[0]);
+					gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
 				else
-					gfs2_rgrp_out_bh(&rgd->rg, rgd->bh[0]);
+					gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[0].bi_bh);
 			} else if (old_bitmap_state == GFS2_BLKST_FREE) {
 				rgd->rg.rg_free--;
 				if (sdp->gfs1)
-					gfs_rgrp_out((struct gfs_rgrp *)
-						     &rgd->rg, rgd->bh[0]);
+					gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
 				else
-					gfs2_rgrp_out_bh(&rgd->rg, rgd->bh[0]);
+					gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[0].bi_bh);
 			}
 			log_err( _("The bitmap was fixed.\n"));
 		} else {

@@ -680,7 +680,7 @@ uint64_t find_free_blk(struct gfs2_sbd *sdp)
 	rg = &rl->rg;
 
 	for (block = 0; block < ri->ri_length; block++) {
-		bh = rl->bh[block];
+		bh = rl->bits[block].bi_bh;
 		x = (block) ? sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_rgrp);
 
 		for (; x < sdp->bsize; x++)

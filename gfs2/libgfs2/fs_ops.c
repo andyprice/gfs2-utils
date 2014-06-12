@@ -126,7 +126,7 @@ static uint64_t find_free_block(struct rgrp_tree *rgd)
 		unsigned long blk = 0;
 		struct gfs2_bitmap *bits = &rgd->bits[bm];
 
-		blk = gfs2_bitfit((unsigned char *)rgd->bh[bm]->b_data + bits->bi_offset,
+		blk = gfs2_bitfit((uint8_t *)bits->bi_bh->b_data + bits->bi_offset,
 		                  bits->bi_len, blk, GFS2_BLKST_FREE);
 		if (blk != BFITNOENT) {
 			blkno = blk + (bits->bi_start * GFS2_NBBY) + rgd->ri.ri_data0;
@@ -149,9 +149,9 @@ static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned state, struct rgrp_tre
 
 	rgd->rg.rg_free--;
 	if (sdp->gfs1)
-		gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bh[0]);
+		gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
 	else
-		gfs2_rgrp_out_bh(&rgd->rg, rgd->bh[0]);
+		gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[0].bi_bh);
 
 	sdp->blks_alloced++;
 	return 0;
@@ -178,7 +178,7 @@ static int block_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, int state, 
 	if (rgt == NULL)
 		return -1;
 
-	if (rgt->bh[0] == NULL) {
+	if (rgt->bits[0].bi_bh == NULL) {
 		if (gfs2_rgrp_read(sdp, rgt))
 			return -1;
 		release = 1;
@@ -1767,9 +1767,9 @@ void gfs2_free_block(struct gfs2_sbd *sdp, uint64_t block)
 		gfs2_set_bitmap(rgd, block, GFS2_BLKST_FREE);
 		rgd->rg.rg_free++; /* adjust the free count */
 		if (sdp->gfs1)
-			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bh[0]);
+			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
 		else
-			gfs2_rgrp_out_bh(&rgd->rg, rgd->bh[0]);
+			gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[0].bi_bh);
 		sdp->blks_alloced--;
 	}
 }
@@ -1836,9 +1836,9 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 	rgd->rg.rg_free++;
 	rgd->rg.rg_dinodes--;
 	if (sdp->gfs1)
-		gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bh[0]);
+		gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
 	else
-		gfs2_rgrp_out_bh(&rgd->rg, rgd->bh[0]);
+		gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[0].bi_bh);
 	sdp->dinodes_alloced--;
 	return 0;
 }

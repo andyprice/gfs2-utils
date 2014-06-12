@@ -658,14 +658,14 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
 		 (int)x+1, (int)rg->ri.ri_length, typedesc);
 	if (query( _("Fix the Resource Group? (y/n)"))) {
 		log_err( _("Attempting to repair the rgrp.\n"));
-		rg->bh[x] = bread(sdp, rg->ri.ri_addr + x);
+		rg->bits[x].bi_bh = bread(sdp, rg->ri.ri_addr + x);
 		if (x) {
 			struct gfs2_meta_header mh;
 
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_RB;
 			mh.mh_format = GFS2_FORMAT_RB;
-			gfs2_meta_header_out_bh(&mh, rg->bh[x]);
+			gfs2_meta_header_out_bh(&mh, rg->bits[x].bi_bh);
 		} else {
 			if (sdp->gfs1)
 				memset(&rg->rg, 0, sizeof(struct gfs_rgrp));
@@ -676,13 +676,12 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
 			rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
 			rg->rg.rg_free = rg->ri.ri_data;
 			if (sdp->gfs1)
-				gfs_rgrp_out((struct gfs_rgrp *)&rg->rg,
-					     rg->bh[x]);
+				gfs_rgrp_out((struct gfs_rgrp *)&rg->rg, rg->bits[x].bi_bh);
 			else
-				gfs2_rgrp_out_bh(&rg->rg, rg->bh[x]);
+				gfs2_rgrp_out_bh(&rg->rg, rg->bits[x].bi_bh);
 		}
-		brelse(rg->bh[x]);
-		rg->bh[x] = NULL;
+		brelse(rg->bits[x].bi_bh);
+		rg->bits[x].bi_bh = NULL;
 		return 0;
 	}
 	return 1;
@@ -712,7 +711,6 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
 		memcpy(&exp->ri, &rgd->ri, sizeof(exp->ri));
 		memcpy(&exp->rg, &rgd->rg, sizeof(exp->rg));
 		exp->bits = NULL;
-		exp->bh = NULL;
 		gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, exp);
 	}
 	sdp->rgrps = *num_rgs;

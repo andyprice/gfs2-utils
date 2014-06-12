@@ -652,7 +652,7 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 			 * don't segfault. */
 			rgd.start = sdp->sb_addr + 1;
 			rgd.length = 1;
-			rgd.bh = NULL;
+			bits.bi_bh = NULL;
 			bits.bi_start = 0;
 			bits.bi_len = sdp->fssize / GFS2_NBBY;
 			rgd.bits = &bits;
