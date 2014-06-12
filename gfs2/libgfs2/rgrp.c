@@ -67,11 +67,6 @@ int gfs2_compute_bitstructs(const uint32_t bsize, struct rgrp_tree *rgd)
 	    rgd->bits[length - 1].bi_len) * GFS2_NBBY != rgd->ri.ri_data)
 		goto errbits;
 
-	if (rgd->bh == NULL) {
-		rgd->bh = calloc(length, sizeof(struct gfs2_buffer_head *));
-		if (rgd->bh == NULL)
-			goto errbits;
-	}
 	return 0;
 errbits:
 	if (ownbits)
@@ -108,8 +103,9 @@ struct rgrp_tree *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
  */
 uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
-	int x, length = rgd->ri.ri_length;
+	unsigned x, length = rgd->ri.ri_length;
 	uint64_t max_rgrp_bitbytes, max_rgrp_len;
+	struct gfs2_buffer_head **bhs;
 
 	/* Max size of an rgrp is 2GB.  Figure out how many blocks that is: */
 	max_rgrp_bitbytes = ((2147483648 / sdp->bsize) / GFS2_NBBY);
@@ -118,27 +114,38 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 		return -1;
 	if (gfs2_check_range(sdp, rgd->ri.ri_addr))
 		return -1;
-	if (breadm(sdp, rgd->bh, length, rgd->ri.ri_addr))
-		return -1;
-	for (x = 0; x < length; x++){
-		if(gfs2_check_meta(rgd->bh[x], (x) ? GFS2_METATYPE_RB : GFS2_METATYPE_RG))
-		{
-			uint64_t error;
 
-			error = rgd->ri.ri_addr + x;
+	bhs = calloc(length, sizeof(struct gfs2_buffer_head *));
+	if (bhs == NULL)
+		return -1;
+
+	if (breadm(sdp, bhs, length, rgd->ri.ri_addr)) {
+		free(bhs);
+		return -1;
+	}
+
+	for (x = 0; x < length; x++) {
+		struct gfs2_bitmap *bi = &rgd->bits[x];
+		int mtype = (x ? GFS2_METATYPE_RB : GFS2_METATYPE_RG);
+
+		bi->bi_bh = bhs[x];
+		if (gfs2_check_meta(bi->bi_bh, mtype)) {
+			unsigned err = x;
 			for (; x >= 0; x--) {
-				brelse(rgd->bh[x]);
-				rgd->bh[x] = NULL;
+				brelse(rgd->bits[x].bi_bh);
+				rgd->bits[x].bi_bh = NULL;
 			}
-			return error;
+			free(bhs);
+			return rgd->ri.ri_addr + err;
 		}
 	}
-	if (rgd->bh && rgd->bh[0]) {
+	if (x > 0) {
 		if (sdp->gfs1)
-			gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bh[0]);
+			gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
 		else
-			gfs2_rgrp_in(&rgd->rg, rgd->bh[0]);
+			gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_bh);
 	}
+	free(bhs);
 	return 0;
 }
 
@@ -147,10 +154,9 @@ void gfs2_rgrp_relse(struct rgrp_tree *rgd)
 	int x, length = rgd->ri.ri_length;
 
 	for (x = 0; x < length; x++) {
-		if (rgd->bh) {
-			if (rgd->bh[x])
-				brelse(rgd->bh[x]);
-			rgd->bh[x] = NULL;
+		if (rgd->bits[x].bi_bh) {
+			brelse(rgd->bits[x].bi_bh);
+			rgd->bits[x].bi_bh = NULL;
 		}
 	}
 }
@@ -193,11 +199,12 @@ void gfs2_rgrp_free(struct osi_root *rgrp_tree)
 
 	while ((n = osi_first(rgrp_tree))) {
 		rgd = (struct rgrp_tree *)n;
-		if (rgd->bh && rgd->bh[0]) { /* if a buffer exists        */
+
+		if (rgd->bits[0].bi_bh) { /* if a buffer exists */
 			rgs_since_sync++;
 			if (rgs_since_sync >= RG_SYNC_TOLERANCE) {
 				if (!sdp)
-					sdp = rgd->bh[0]->sdp;
+					sdp = rgd->bits[0].bi_bh->sdp;
 				fsync(sdp->device_fd);
 				rgs_since_sync = 0;
 			}
@@ -205,10 +212,6 @@ void gfs2_rgrp_free(struct osi_root *rgrp_tree)
 		}
 		if(rgd->bits)
 			free(rgd->bits);
-		if(rgd->bh) {
-			free(rgd->bh);
-			rgd->bh = NULL;
-		}
 		osi_erase(&rgd->node, rgrp_tree);
 		free(rgd);
 	}
@@ -407,9 +410,9 @@ void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs)
 	while ((rg = (struct rgrp_tree *)osi_first(tree))) {
 		int i;
 		for (i = 0; i < rg->ri.ri_length; i++) {
-			if (rg->bh[i] != NULL) {
-				free(rg->bh[i]);
-				rg->bh[i] = NULL;
+			if (rg->bits[i].bi_bh != NULL) {
+				free(rg->bits[i].bi_bh);
+				rg->bits[i].bi_bh = NULL;
 			}
 		}
 		osi_erase(&rg->node, tree);
@@ -521,14 +524,11 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry)
 		link = &lastrg->node.osi_right;
 	}
 
-	rg = calloc(1, sizeof(*rg) +
-	              (entry->ri_length * sizeof(struct gfs2_bitmap)) +
-	              (entry->ri_length * sizeof(struct gfs2_buffer_head *)));
+	rg = calloc(1, sizeof(*rg) + (entry->ri_length * sizeof(struct gfs2_bitmap)));
 	if (rg == NULL)
 		return NULL;
 
 	rg->bits = (struct gfs2_bitmap *)(rg + 1);
-	rg->bh = (struct gfs2_buffer_head **)(rg->bits + entry->ri_length);
 
 	osi_link_node(&rg->node, parent, link);
 	osi_insert_color(&rg->node, &rgs->root);

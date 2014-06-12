@@ -170,6 +170,7 @@ struct device {
 
 struct gfs2_bitmap
 {
+	struct gfs2_buffer_head *bi_bh;
 	uint32_t   bi_offset;  /* The offset in the buffer of the first byte */
 	uint32_t   bi_start;   /* The position of the first byte in this block */
 	uint32_t   bi_len;     /* The number of bytes in this block */
@@ -185,7 +186,6 @@ struct rgrp_tree {
 	struct gfs2_rindex ri;
 	struct gfs2_rgrp rg;
 	struct gfs2_bitmap *bits;
-	struct gfs2_buffer_head **bh;
 };
 
 typedef struct rgrp_tree *lgfs2_rgrp_t;

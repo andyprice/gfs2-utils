@@ -148,7 +148,7 @@ int gfs2_set_bitmap(lgfs2_rgrp_t rgd, uint64_t blkno, int state)
 
 	if (bits == NULL)
 		return -1;
-	byte = (unsigned char *)(rgd->bh[buf]->b_data + bits->bi_offset) +
+	byte = (unsigned char *)(bits->bi_bh->b_data + bits->bi_offset) +
 		(rgrp_block/GFS2_NBBY - bits->bi_start);
 	bit = (rgrp_block % GFS2_NBBY) * GFS2_BIT_SIZE;
 
@@ -156,7 +156,7 @@ int gfs2_set_bitmap(lgfs2_rgrp_t rgd, uint64_t blkno, int state)
 	*byte ^= cur_state << bit;
 	*byte |= state << bit;
 
-	bmodified(rgd->bh[buf]);
+	bmodified(bits->bi_bh);
 	return 0;
 }
 
@@ -181,6 +181,7 @@ int lgfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, struct rgrp_tree *rgd
 	uint32_t i = 0;
 	char *byte;
 	unsigned int bit;
+	struct gfs2_bitmap *bi;
 
 	if (rgd == NULL) {
 		rgd = gfs2_blk2rgrpd(sdp, blkno);
@@ -205,10 +206,11 @@ int lgfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, struct rgrp_tree *rgd
 		offset -= i * sdp->sd_blocks_per_bitmap;
 	}
 
-	if (!rgd->bh || !rgd->bh[i])
+	bi = &rgd->bits[i];
+	if (!bi->bi_bh)
 		return GFS2_BLKST_FREE;
 
-	byte = (rgd->bh[i]->b_data + rgd->bits[i].bi_offset) + (offset/GFS2_NBBY);
+	byte = (bi->bi_bh->b_data + bi->bi_offset) + (offset/GFS2_NBBY);
 	bit = (offset % GFS2_NBBY) * GFS2_BIT_SIZE;
 
 	return (*byte >> bit) & GFS2_BIT_MASK;

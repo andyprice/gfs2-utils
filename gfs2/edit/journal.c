@@ -259,14 +259,14 @@ static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 						      sizeof(struct gfs2_meta_header))
 							* GFS2_NBBY;
 					bmap = o / sbd.sd_blocks_per_bitmap;
-					save_bh = rgd->bh[bmap];
+					save_bh = rgd->bits[bmap].bi_bh;
 					j_bmap_bh = bread(&sbd, abs_block +
 							  bcount);
-					rgd->bh[bmap] = j_bmap_bh;
+					rgd->bits[bmap].bi_bh = j_bmap_bh;
 					type = lgfs2_get_bitmap(&sbd, tblk,
 								rgd);
 					brelse(j_bmap_bh);
-					rgd->bh[bmap] = save_bh;
+					rgd->bits[bmap].bi_bh = save_bh;
 					print_gfs2("bit for blk 0x%llx is %d "
 						   "(%s)",
 						   (unsigned long long)tblk,
