@@ -1,12 +1,14 @@
 #include "clusterautoconfig.h"
 
 #include <inttypes.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "libgfs2.h"
+#include "rgrp.h"
 
 #define RG_SYNC_TOLERANCE 1000
 
@@ -588,4 +590,69 @@ lgfs2_rgrp_t lgfs2_rgrp_next(lgfs2_rgrp_t rg)
 lgfs2_rgrp_t lgfs2_rgrp_last(lgfs2_rgrps_t rgs)
 {
 	return (lgfs2_rgrp_t)osi_last(&rgs->root);
+}
+
+/**
+ * gfs2_rbm_from_block - Set the rbm based upon rgd and block number
+ * @rbm: The rbm with rgd already set correctly
+ * @block: The block number (filesystem relative)
+ *
+ * This sets the bi and offset members of an rbm based on a
+ * resource group and a filesystem relative block number. The
+ * resource group must be set in the rbm on entry, the bi and
+ * offset members will be set by this function.
+ *
+ * Returns: 0 on success, or non-zero with errno set
+ */
+static int lgfs2_rbm_from_block(struct lgfs2_rbm *rbm, uint64_t block)
+{
+	uint64_t rblock = block - rbm->rgd->ri.ri_data0;
+	struct gfs2_sbd *sdp = rbm_bi(rbm)->bi_bh->sdp;
+
+	if (rblock > UINT_MAX) {
+		errno = EINVAL;
+		return 1;
+	}
+	if (block >= rbm->rgd->ri.ri_data0 + rbm->rgd->ri.ri_data) {
+		errno = E2BIG;
+		return 1;
+	}
+
+	rbm->bii = 0;
+	rbm->offset = (uint32_t)(rblock);
+	/* Check if the block is within the first block */
+	if (rbm->offset < (rbm_bi(rbm)->bi_len * GFS2_NBBY))
+		return 0;
+
+	/* Adjust for the size diff between gfs2_meta_header and gfs2_rgrp */
+	rbm->offset += (sizeof(struct gfs2_rgrp) -
+			sizeof(struct gfs2_meta_header)) * GFS2_NBBY;
+	rbm->bii = rbm->offset / sdp->sd_blocks_per_bitmap;
+	rbm->offset -= rbm->bii * sdp->sd_blocks_per_bitmap;
+	return 0;
+}
+
+/**
+ * lgfs2_rbm_incr - increment an rbm structure
+ * @rbm: The rbm with rgd already set correctly
+ *
+ * This function takes an existing rbm structure and increments it to the next
+ * viable block offset.
+ *
+ * Returns: If incrementing the offset would cause the rbm to go past the
+ *          end of the rgrp, true is returned, otherwise false.
+ *
+ */
+static int lgfs2_rbm_incr(struct lgfs2_rbm *rbm)
+{
+	if (rbm->offset + 1 < (rbm_bi(rbm)->bi_len * GFS2_NBBY)) { /* in the same bitmap */
+		rbm->offset++;
+		return 0;
+	}
+	if (rbm->bii == rbm->rgd->ri.ri_length - 1) /* at the last bitmap */
+		return 1;
+
+	rbm->offset = 0;
+	rbm->bii++;
+	return 0;
 }
