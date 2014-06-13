@@ -5,7 +5,7 @@ BUILT_SOURCES		= parser.h lexer.h
 AM_LFLAGS		= --header-file=lexer.h
 AM_YFLAGS		= -d
 
-noinst_HEADERS		= libgfs2.h lang.h config.h
+noinst_HEADERS		= libgfs2.h lang.h config.h rgrp.h
 
 noinst_LTLIBRARIES	= libgfs2.la
 
