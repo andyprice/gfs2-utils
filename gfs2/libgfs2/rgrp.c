@@ -219,24 +219,6 @@ void gfs2_rgrp_free(struct osi_root *rgrp_tree)
 	}
 }
 
-struct rgplan {
-	uint32_t num;
-	uint32_t len;
-};
-
-/**
- * This structure is defined in libgfs2.h as an opaque type. It stores the
- * constants and context required for creating resource groups from any point
- * in an application.
- */
-struct _lgfs2_rgrps {
-	struct osi_root root;
-	struct rgplan plan[2];
-	const struct gfs2_sbd *sdp;
-	unsigned long align;
-	unsigned long align_off;
-};
-
 static uint64_t align_block(const uint64_t base, const uint64_t align)
 {
 	if ((align > 0) && ((base % align) > 0))
@@ -344,7 +326,7 @@ uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgts
  * offset: The required stripe offset of the resource groups
  * Returns an initialised lgfs2_rgrps_t or NULL if unsuccessful with errno set
  */
-lgfs2_rgrps_t lgfs2_rgrps_init(const struct gfs2_sbd *sdp, uint64_t align, uint64_t offset)
+lgfs2_rgrps_t lgfs2_rgrps_init(struct gfs2_sbd *sdp, uint64_t align, uint64_t offset)
 {
 	lgfs2_rgrps_t rgs;
 
