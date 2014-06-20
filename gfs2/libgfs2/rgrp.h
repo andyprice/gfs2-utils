@@ -3,6 +3,24 @@
 
 #include "libgfs2.h"
 
+struct rgplan {
+	uint32_t num;
+	uint32_t len;
+};
+
+/**
+ * This structure is defined in libgfs2.h as an opaque type. It stores the
+ * constants and context required for creating resource groups from any point
+ * in an application.
+ */
+struct _lgfs2_rgrps {
+	struct osi_root root;
+	struct rgplan plan[2];
+	struct gfs2_sbd *sdp;
+	unsigned long align;
+	unsigned long align_off;
+};
+
 struct lgfs2_rbm {
 	lgfs2_rgrp_t rgd;
 	uint32_t offset;    /* The offset is bitmap relative */
