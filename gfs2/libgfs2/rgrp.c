@@ -638,3 +638,200 @@ static int lgfs2_rbm_incr(struct lgfs2_rbm *rbm)
 	rbm->bii++;
 	return 0;
 }
+
+/**
+ * lgfs2_testbit - test a bit in the bitmaps
+ * @rbm: The bit to test
+ *
+ * Returns: The two bit block state of the requested bit
+ */
+static inline uint8_t lgfs2_testbit(const struct lgfs2_rbm *rbm)
+{
+	struct gfs2_bitmap *bi = rbm_bi(rbm);
+	const uint8_t *buffer = (uint8_t *)bi->bi_bh->b_data + bi->bi_offset;
+	const uint8_t *byte;
+	unsigned int bit;
+
+	byte = buffer + (rbm->offset / GFS2_NBBY);
+	bit = (rbm->offset % GFS2_NBBY) * GFS2_BIT_SIZE;
+
+	return (*byte >> bit) & GFS2_BIT_MASK;
+}
+
+/**
+ * lgfs2_unaligned_extlen - Look for free blocks which are not byte aligned
+ * @rbm: Position to search (value/result)
+ * @n_unaligned: Number of unaligned blocks to check
+ * @len: Decremented for each block found (terminate on zero)
+ *
+ * Returns: true if a non-free block is encountered
+ */
+static int lgfs2_unaligned_extlen(struct lgfs2_rbm *rbm, uint32_t n_unaligned, uint32_t *len)
+{
+	uint32_t n;
+	uint8_t res;
+
+	for (n = 0; n < n_unaligned; n++) {
+		res = lgfs2_testbit(rbm);
+		if (res != GFS2_BLKST_FREE)
+			return 1;
+		(*len)--;
+		if (*len == 0)
+			return 1;
+		if (lgfs2_rbm_incr(rbm))
+			return 1;
+	}
+
+	return 0;
+}
+
+static uint8_t *check_bytes8(const uint8_t *start, uint8_t value, unsigned bytes)
+{
+	while (bytes) {
+		if (*start != value)
+			return (void *)start;
+		start++;
+		bytes--;
+	}
+	return NULL;
+}
+
+/**
+ * lgfs2_free_extlen - Return extent length of free blocks
+ * @rbm: Starting position
+ * @len: Max length to check
+ *
+ * Starting at the block specified by the rbm, see how many free blocks
+ * there are, not reading more than len blocks ahead. This can be done
+ * using check_bytes8 when the blocks are byte aligned, but has to be done
+ * on a block by block basis in case of unaligned blocks. Also this
+ * function can cope with bitmap boundaries (although it must stop on
+ * a resource group boundary)
+ *
+ * Returns: Number of free blocks in the extent
+ */
+static uint32_t lgfs2_free_extlen(const struct lgfs2_rbm *rrbm, uint32_t len)
+{
+	struct lgfs2_rbm rbm = *rrbm;
+	uint32_t n_unaligned = rbm.offset & 3;
+	uint32_t size = len;
+	uint32_t bytes;
+	uint32_t chunk_size;
+	uint8_t *ptr, *start, *end;
+	uint64_t block;
+	struct gfs2_bitmap *bi;
+
+	if (n_unaligned &&
+	    lgfs2_unaligned_extlen(&rbm, 4 - n_unaligned, &len))
+		goto out;
+
+	n_unaligned = len & 3;
+	/* Start is now byte aligned */
+	while (len > 3) {
+		bi = rbm_bi(&rbm);
+		start = (uint8_t *)bi->bi_bh->b_data;
+		end = start + bi->bi_bh->sdp->bsize;
+		start += bi->bi_offset;
+		start += (rbm.offset / GFS2_NBBY);
+		bytes = (len / GFS2_NBBY) < (end - start) ? (len / GFS2_NBBY):(end - start);
+		ptr = check_bytes8(start, 0, bytes);
+		chunk_size = ((ptr == NULL) ? bytes : (ptr - start));
+		chunk_size *= GFS2_NBBY;
+		len -= chunk_size;
+		block = lgfs2_rbm_to_block(&rbm);
+		if (lgfs2_rbm_from_block(&rbm, block + chunk_size)) {
+			n_unaligned = 0;
+			break;
+		}
+		if (ptr) {
+			n_unaligned = 3;
+			break;
+		}
+		n_unaligned = len & 3;
+	}
+
+	/* Deal with any bits left over at the end */
+	if (n_unaligned)
+		lgfs2_unaligned_extlen(&rbm, n_unaligned, &len);
+out:
+	return size - len;
+}
+
+/**
+ * gfs2_rbm_find - Look for blocks of a particular state
+ * @rbm: Value/result starting position and final position
+ * @state: The state which we want to find
+ * @minext: Pointer to the requested extent length (NULL for a single block)
+ *          This is updated to be the actual reservation size.
+ *
+ * Returns: 0 on success, non-zero with errno == ENOSPC if there is no block of the requested state
+ */
+int lgfs2_rbm_find(struct lgfs2_rbm *rbm, uint8_t state, uint32_t *minext)
+{
+	int initial_bii;
+	uint32_t offset;
+	int n = 0;
+	int iters = rbm->rgd->ri.ri_length;
+	uint32_t extlen;
+
+	/* If we are not starting at the beginning of a bitmap, then we
+	 * need to add one to the bitmap count to ensure that we search
+	 * the starting bitmap twice.
+	 */
+	if (rbm->offset != 0)
+		iters++;
+
+	for (n = 0; n < iters; n++) {
+		struct gfs2_bitmap *bi = rbm_bi(rbm);
+		struct gfs2_buffer_head *bh = bi->bi_bh;
+		uint8_t *buf = (uint8_t *)bh->b_data + bi->bi_offset;
+		uint64_t block;
+		int ret;
+
+		if ((rbm->rgd->rg.rg_free < *minext) && (state == GFS2_BLKST_FREE))
+			goto next_bitmap;
+
+		offset = gfs2_bitfit(buf, bi->bi_len, rbm->offset, state);
+		if (offset == BFITNOENT)
+			goto next_bitmap;
+
+		rbm->offset = offset;
+		initial_bii = rbm->bii;
+		block = lgfs2_rbm_to_block(rbm);
+		extlen = 1;
+
+		if (*minext != 0)
+			extlen = lgfs2_free_extlen(rbm, *minext);
+
+		if (extlen >= *minext)
+			return 0;
+
+		ret = lgfs2_rbm_from_block(rbm, block + extlen);
+		if (ret == 0) {
+			n += (rbm->bii - initial_bii);
+			continue;
+		}
+
+		if (errno == E2BIG) {
+			rbm->bii = 0;
+			rbm->offset = 0;
+			n += (rbm->bii - initial_bii);
+			goto res_covered_end_of_rgrp;
+		}
+
+		return ret;
+
+next_bitmap:	/* Find next bitmap in the rgrp */
+		rbm->offset = 0;
+		rbm->bii++;
+		if (rbm->bii == rbm->rgd->ri.ri_length)
+			rbm->bii = 0;
+
+res_covered_end_of_rgrp:
+		if (rbm->bii == 0)
+			break;
+	}
+
+	errno = ENOSPC;
+	return 1;
+}

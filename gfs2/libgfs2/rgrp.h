@@ -44,4 +44,6 @@ static inline int lgfs2_rbm_eq(const struct lgfs2_rbm *rbm1, const struct lgfs2_
 	        (rbm1->offset == rbm2->offset);
 }
 
+extern int lgfs2_rbm_find(struct lgfs2_rbm *rbm, uint8_t state, uint32_t *minext);
+
 #endif /* __RGRP_DOT_H__ */
