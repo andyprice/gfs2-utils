@@ -25,6 +25,12 @@
 
 #define BAD_POINTER_TOLERANCE 10 /* How many bad pointers is too many? */
 
+struct gfs2_bmap {
+	uint64_t size;
+	uint64_t mapsize;
+	unsigned char *map;
+};
+
 struct inode_info
 {
         struct osi_node node;
