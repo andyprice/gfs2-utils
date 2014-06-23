@@ -373,13 +373,6 @@ extern int lgfs2_selfcheck(void);
 extern const struct lgfs2_metadata *lgfs2_find_mtype(uint32_t mh_type, const unsigned versions);
 extern const struct lgfs2_metadata *lgfs2_find_mtype_name(const char *name, const unsigned versions);
 
-/* bitmap.c */
-struct gfs2_bmap {
-	uint64_t size;
-	uint64_t mapsize;
-	unsigned char *map;
-};
-
 /* block_list.c */
 
 extern struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num);
