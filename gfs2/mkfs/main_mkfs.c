@@ -627,7 +627,7 @@ static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct gfs2_rinde
 		perror(_("Failed to create resource group"));
 		return -1;
 	}
-	err = lgfs2_rgrp_write(rgs, sdp->device_fd, rg);
+	err = lgfs2_rgrp_write(sdp->device_fd, rg);
 	if (err != 0) {
 		perror(_("Failed to write resource group"));
 		return -1;

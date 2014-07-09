@@ -528,6 +528,7 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry)
 	rg->rg.rg_free = rg->ri.ri_data;
 
 	compute_bitmaps(rg, rgs->sdp->bsize);
+	rg->rgrps = rgs;
 	return rg;
 }
 
@@ -535,9 +536,10 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry)
  * Write a resource group to a file descriptor.
  * Returns 0 on success or non-zero on failure with errno set
  */
-int lgfs2_rgrp_write(const lgfs2_rgrps_t rgs, int fd, const lgfs2_rgrp_t rg)
+int lgfs2_rgrp_write(int fd, const lgfs2_rgrp_t rg)
 {
 	ssize_t ret = 0;
+	lgfs2_rgrps_t rgs = rg->rgrps;
 	size_t len = rg->ri.ri_length * rgs->sdp->bsize;
 	unsigned int i;
 	const struct gfs2_meta_header bmh = {

@@ -177,6 +177,7 @@ struct gfs2_bitmap
 };
 
 struct gfs2_sbd;
+typedef struct _lgfs2_rgrps *lgfs2_rgrps_t;
 
 struct rgrp_tree {
 	struct osi_node node;
@@ -186,10 +187,10 @@ struct rgrp_tree {
 	struct gfs2_rindex ri;
 	struct gfs2_rgrp rg;
 	struct gfs2_bitmap *bits;
+	lgfs2_rgrps_t rgrps;
 };
 
 typedef struct rgrp_tree *lgfs2_rgrp_t;
-typedef struct _lgfs2_rgrps *lgfs2_rgrps_t;
 
 extern lgfs2_rgrps_t lgfs2_rgrps_init(struct gfs2_sbd *sdp, uint64_t align, uint64_t offset);
 extern void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs);
@@ -200,7 +201,7 @@ extern uint32_t lgfs2_rgrp_align_len(const lgfs2_rgrps_t rgs, uint32_t len);
 extern unsigned lgfs2_rgsize_for_data(uint64_t blksreq, unsigned bsize);
 extern uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgtsize);
 extern lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry);
-extern int lgfs2_rgrp_write(lgfs2_rgrps_t rgs, int fd, lgfs2_rgrp_t rg);
+extern int lgfs2_rgrp_write(int fd, lgfs2_rgrp_t rg);
 extern const struct gfs2_rindex *lgfs2_rgrp_index(lgfs2_rgrp_t rg);
 extern const struct gfs2_rgrp *lgfs2_rgrp_rgrp(lgfs2_rgrp_t rg);
 extern lgfs2_rgrp_t lgfs2_rgrp_first(lgfs2_rgrps_t rgs);
