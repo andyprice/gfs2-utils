@@ -56,7 +56,7 @@ void gfs2_inum_out(const struct gfs2_inum *no, char *buf)
 	CPOUT_64(no, str, no_addr);
 }
 
-void gfs2_inum_print(struct gfs2_inum *no)
+void gfs2_inum_print(const struct gfs2_inum *no)
 {
 	pv(no, no_formal_ino, "%llu", "0x%llx");
 	pv(no, no_addr, "%llu", "0x%llx");
@@ -90,7 +90,7 @@ void gfs2_meta_header_out_bh(const struct gfs2_meta_header *mh,
 	bmodified(bh);
 }
 
-void gfs2_meta_header_print(struct gfs2_meta_header *mh)
+void gfs2_meta_header_print(const struct gfs2_meta_header *mh)
 {
 	pv(mh, mh_magic, "0x%08X", NULL);
 	pv(mh, mh_type, "%u", "0x%x");
@@ -177,7 +177,7 @@ void gfs2_print_uuid(const unsigned char *uuid)
 }
 #endif
 
-void gfs2_sb_print(struct gfs2_sb *sb)
+void gfs2_sb_print(const struct gfs2_sb *sb)
 {
 	gfs2_meta_header_print(&sb->sb_header);
 
@@ -229,7 +229,7 @@ void gfs2_rindex_out(const struct gfs2_rindex *ri, char *buf)
 	CPOUT_08(ri, str, ri_reserved, 64);
 }
 
-void gfs2_rindex_print(struct gfs2_rindex *ri)
+void gfs2_rindex_print(const struct gfs2_rindex *ri)
 {
 	pv(ri, ri_addr, "%llu", "0x%llx");
 	pv(ri, ri_length, "%u", "0x%x");
@@ -270,7 +270,7 @@ void gfs2_rgrp_out_bh(const struct gfs2_rgrp *rg, struct gfs2_buffer_head *bh)
 	bmodified(bh);
 }
 
-void gfs2_rgrp_print(struct gfs2_rgrp *rg)
+void gfs2_rgrp_print(const struct gfs2_rgrp *rg)
 {
 	gfs2_meta_header_print(&rg->rg_header);
 	pv(rg, rg_flags, "%u", "0x%x");
@@ -298,7 +298,7 @@ void gfs2_quota_out(struct gfs2_quota *qu, char *buf)
 	memset(qu->qu_reserved, 0, sizeof(qu->qu_reserved));
 }
 
-void gfs2_quota_print(struct gfs2_quota *qu)
+void gfs2_quota_print(const struct gfs2_quota *qu)
 {
 	pv(qu, qu_limit, "%llu", "0x%llx");
 	pv(qu, qu_warn, "%llu", "0x%llx");
@@ -376,7 +376,7 @@ void gfs2_dinode_out(struct gfs2_dinode *di, struct gfs2_buffer_head *bh)
 	bmodified(bh);
 }
 
-void gfs2_dinode_print(struct gfs2_dinode *di)
+void gfs2_dinode_print(const struct gfs2_dinode *di)
 {
 	gfs2_meta_header_print(&di->di_header);
 	gfs2_inum_print(&di->di_num);
@@ -470,7 +470,7 @@ void gfs2_leaf_out(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh)
 	bmodified(bh);
 }
 
-void gfs2_leaf_print(struct gfs2_leaf *lf)
+void gfs2_leaf_print(const struct gfs2_leaf *lf)
 {
 	gfs2_meta_header_print(&lf->lf_header);
 	pv(lf, lf_depth, "%u", "0x%x");
@@ -497,7 +497,7 @@ void gfs2_ea_header_in(struct gfs2_ea_header *ea, char *buf)
 	ea->ea_num_ptrs = str->ea_num_ptrs;
 }
 
-void gfs2_ea_header_print(struct gfs2_ea_header *ea, char *name)
+void gfs2_ea_header_print(const struct gfs2_ea_header *ea, char *name)
 {
 	char buf[GFS2_EA_MAX_NAME_LEN + 1];
 
@@ -540,7 +540,7 @@ void gfs2_log_header_out(struct gfs2_log_header *lh,
 	bmodified(bh);
 }
 
-void gfs2_log_header_print(struct gfs2_log_header *lh)
+void gfs2_log_header_print(const struct gfs2_log_header *lh)
 {
 	gfs2_meta_header_print(&lh->lh_header);
 	pv(lh, lh_sequence, "%llu", "0x%llx");
@@ -579,7 +579,7 @@ void gfs2_log_descriptor_out(struct gfs2_log_descriptor *ld,
 	bmodified(bh);
 }
 
-void gfs2_log_descriptor_print(struct gfs2_log_descriptor *ld)
+void gfs2_log_descriptor_print(const struct gfs2_log_descriptor *ld)
 {
 	gfs2_meta_header_print(&ld->ld_header);
 	pv(ld, ld_type, "%u", "0x%x");
@@ -606,7 +606,7 @@ void gfs2_statfs_change_out(struct gfs2_statfs_change *sc, char *buf)
 	CPOUT_64(sc, str, sc_dinodes);
 }
 
-void gfs2_statfs_change_print(struct gfs2_statfs_change *sc)
+void gfs2_statfs_change_print(const struct gfs2_statfs_change *sc)
 {
 	pv(sc, sc_total, "%lld", "0x%llx");
 	pv(sc, sc_free, "%lld", "0x%llx");
@@ -636,7 +636,7 @@ void gfs2_quota_change_out(struct gfs2_quota_change *qc,
 	bmodified(bh);
 }
 
-void gfs2_quota_change_print(struct gfs2_quota_change *qc)
+void gfs2_quota_change_print(const struct gfs2_quota_change *qc)
 {
 	pv(qc, qc_change, "%lld", "0x%llx");
 	pv(qc, qc_flags, "0x%.8X", NULL);
