@@ -219,7 +219,7 @@ static unsigned initialize_new_portion(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs)
 		if (metafs_interrupted)
 			return 0;
 		if (!test)
-			err = lgfs2_rgrp_write(rgs, sdp->device_fd, rg);
+			err = lgfs2_rgrp_write(sdp->device_fd, rg);
 		if (err != 0) {
 			perror(_("Failed to write resource group"));
 			return 0;
