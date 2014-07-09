@@ -11,6 +11,8 @@
 #include <signal.h>
 #include <libintl.h>
 #include <locale.h>
+#include <sys/time.h>
+#include <time.h>
 #define _(String) gettext(String)
 #include <syslog.h>
 
@@ -247,11 +249,15 @@ static const struct fsck_pass passes[] = {
 static int fsck_pass(const struct fsck_pass *p, struct gfs2_sbd *sdp)
 {
 	int ret;
+	struct	timeval	before, after, diff;
+	time_t runtime;
+	struct tm *run_tm;
 
 	if (fsck_abort)
 		return FSCK_CANCELED;
 	pass = p->name;
 	log_notice( _("Starting %s\n"), p->name);
+	gettimeofday(&before, 0);
 	ret = p->f(sdp);
 	if (ret)
 		exit(ret);
@@ -260,7 +266,16 @@ static int fsck_pass(const struct fsck_pass *p, struct gfs2_sbd *sdp)
 		log_notice( _("%s interrupted   \n"), p->name);
 		return FSCK_CANCELED;
 	}
-	log_notice( _("%s complete      \n"), p->name);
+	gettimeofday(&after, 0);
+	timersub(&after, &before, &diff);
+	runtime = (time_t)diff.tv_sec;
+	run_tm = gmtime(&runtime);
+	log_notice( _("%s completed in "), p->name);
+	if (run_tm->tm_hour)
+		log_notice("%dh", run_tm->tm_hour);
+	if (run_tm->tm_min)
+		log_notice("%dm", run_tm->tm_min);
+	log_notice("%d.%03lds      \n", run_tm->tm_sec, diff.tv_usec / 1000);
 	return 0;
 }
 
