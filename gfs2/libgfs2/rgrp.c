@@ -428,7 +428,7 @@ uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *ri, uint6
 		plan = 0;
 	else if (rgs->plan[1].num > 0)
 		plan = 1;
-	else
+	else if (len == 0)
 		return 0;
 
 	if (plan >= 0 && (len == 0 || len == rgs->plan[plan].len)) {
@@ -450,7 +450,9 @@ uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *ri, uint6
 }
 
 /**
- * Return the rindex structure relating to a a resource group.
+ * Return the rindex structure relating to a resource group.
+ * The return type is const to advise callers that making changes to this
+ * structure directly isn't wise. libgfs2 functions should be used instead.
  */
 const struct gfs2_rindex *lgfs2_rgrp_index(lgfs2_rgrp_t rg)
 {
@@ -458,7 +460,9 @@ const struct gfs2_rindex *lgfs2_rgrp_index(lgfs2_rgrp_t rg)
 }
 
 /**
- * Return the rgrp structure relating to a a resource group.
+ * Return the rgrp structure relating to a resource group.
+ * The return type is const to advise callers that making changes to this
+ * structure directly isn't wise. libgfs2 functions should be used instead.
  */
 const struct gfs2_rgrp *lgfs2_rgrp_rgrp(lgfs2_rgrp_t rg)
 {
