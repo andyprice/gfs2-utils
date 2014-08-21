@@ -42,7 +42,8 @@ gfs2/fsck/fsck.gfs2
 gfs2/mkfs/mkfs.gfs2
 gfs2/tune/tunegfs2
 test-driver
-tests/check_libgfs2
+tests/check_meta
+tests/check_rgrp
 tests/testvol
 tests/testsuite.log
 tests/testsuite.dir

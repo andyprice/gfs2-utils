@@ -3,20 +3,28 @@ DISTCLEANFILES = atlocal atconfig
 CLEANFILES = testvol
 
 if BUILD_TESTS
-check_PROGRAMS = check_libgfs2
-
-check_libgfs2_SOURCES = \
-	check_meta.c \
+UNIT_TESTS = \
+	check_meta \
+	check_rgrp
+UNIT_SOURCES = \
 	$(top_srcdir)/gfs2/libgfs2/libgfs2.h
-
-check_libgfs2_CFLAGS = \
+UNIT_CFLAGS = \
 	-I$(top_srcdir)/gfs2/libgfs2 \
         -I$(top_srcdir)/gfs2/include \
 	@check_CFLAGS@
-
-check_libgfs2_LDADD = \
+UNIT_LDADD = \
 	$(top_builddir)/gfs2/libgfs2/libgfs2.la \
 	@check_LIBS@
+
+check_PROGRAMS = $(UNIT_TESTS)
+
+check_meta_SOURCES = $(UNIT_SOURCES) check_meta.c
+check_meta_CFLAGS = $(UNIT_CFLAGS)
+check_meta_LDADD = $(UNIT_LDADD)
+
+check_rgrp_SOURCES = $(UNIT_SOURCES) check_rgrp.c
+check_rgrp_CFLAGS = $(UNIT_CFLAGS)
+check_rgrp_LDADD = $(UNIT_LDADD)
 endif
 
 # The `:;' works around a Bash 3.2 bug when the output is not writable.
@@ -41,8 +49,11 @@ TESTSUITE_AT = \
 	testsuite.at \
 	mkfs.at \
 	fsck.at \
-	edit.at \
-	libgfs2.at
+	edit.at
+
+if BUILD_TESTS
+TESTSUITE_AT += libgfs2.at
+endif
 
 TESTSUITE = $(srcdir)/testsuite
 
@@ -61,6 +72,6 @@ atconfig: $(top_builddir)/config.status
 AUTOM4TE = $(SHELL) $(top_srcdir)/missing --run autom4te
 AUTOTEST = $(AUTOM4TE) --language=autotest
 
-$(TESTSUITE): $(TESTSUITE_AT) package.m4
+$(TESTSUITE): $(TESTSUITE_AT) package.m4 $(UNIT_TESTS)
 	$(AUTOTEST) -I '$(srcdir)' -o $@.tmp $@.at
 	mv $@.tmp $@
