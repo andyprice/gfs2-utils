@@ -20,7 +20,7 @@ int build_master(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inum inum;
 	uint64_t bn;
-	struct gfs2_buffer_head *bh;
+	struct gfs2_buffer_head *bh = NULL;
 	int err = lgfs2_dinode_alloc(sdp, 1, &bn);
 
 	if (err != 0)
@@ -29,7 +29,9 @@ int build_master(struct gfs2_sbd *sdp)
 	inum.no_formal_ino = sdp->md.next_inum++;
 	inum.no_addr = bn;
 
-	bh = init_dinode(sdp, &inum, S_IFDIR | 0755, GFS2_DIF_SYSTEM, &inum);
+	err = init_dinode(sdp, &bh, &inum, S_IFDIR | 0755, GFS2_DIF_SYSTEM, &inum);
+	if (err != 0)
+		return -1;
 
 	sdp->master_dir = lgfs2_inode_get(sdp, bh);
 	if (sdp->master_dir == NULL)
@@ -479,7 +481,7 @@ int build_root(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inum inum;
 	uint64_t bn;
-	struct gfs2_buffer_head *bh;
+	struct gfs2_buffer_head *bh = NULL;
 	int err = lgfs2_dinode_alloc(sdp, 1, &bn);
 
 	if (err != 0)
@@ -488,7 +490,10 @@ int build_root(struct gfs2_sbd *sdp)
 	inum.no_formal_ino = sdp->md.next_inum++;
 	inum.no_addr = bn;
 
-	bh = init_dinode(sdp, &inum, S_IFDIR | 0755, 0, &inum);
+	err = init_dinode(sdp, &bh, &inum, S_IFDIR | 0755, 0, &inum);
+	if (err != 0)
+		return -1;
+
 	sdp->md.rooti = lgfs2_inode_get(sdp, bh);
 	if (sdp->md.rooti == NULL)
 		return -1;

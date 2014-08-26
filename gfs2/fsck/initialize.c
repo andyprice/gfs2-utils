@@ -419,7 +419,7 @@ static void check_rgrps_integrity(struct gfs2_sbd *sdp)
 static int rebuild_master(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inum inum;
-	struct gfs2_buffer_head *bh;
+	struct gfs2_buffer_head *bh = NULL;
 	int err = 0;
 
 	log_err(_("The system master directory seems to be destroyed.\n"));
@@ -430,7 +430,9 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 	log_err(_("Trying to rebuild the master directory.\n"));
 	inum.no_formal_ino = sdp->md.next_inum++;
 	inum.no_addr = sdp->sd_sb.sb_master_dir.no_addr;
-	bh = init_dinode(sdp, &inum, S_IFDIR | 0755, GFS2_DIF_SYSTEM, &inum);
+	err = init_dinode(sdp, &bh, &inum, S_IFDIR | 0755, GFS2_DIF_SYSTEM, &inum);
+	if (err != 0)
+		return -1;
 	sdp->master_dir = lgfs2_inode_get(sdp, bh);
 	if (sdp->master_dir == NULL) {
 		log_crit(_("Error reading master: %s\n"), strerror(errno));
@@ -1210,7 +1212,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 		sdp->md.rooti = lgfs2_inode_read(sdp, possible_root);
 		if (!sdp->md.rooti ||
 		    sdp->md.rooti->i_di.di_header.mh_magic != GFS2_MAGIC) {
-			struct gfs2_buffer_head *bh;
+			struct gfs2_buffer_head *bh = NULL;
 
 			log_err(_("The root dinode block is destroyed.\n"));
 			log_err(_("At this point I recommend "
@@ -1225,7 +1227,9 @@ static int sb_repair(struct gfs2_sbd *sdp)
 			}
 			inum.no_formal_ino = 1;
 			inum.no_addr = possible_root;
-			bh = init_dinode(sdp, &inum, S_IFDIR | 0755, 0, &inum);
+			error = init_dinode(sdp, &bh, &inum, S_IFDIR | 0755, 0, &inum);
+			if (error != 0)
+				return -1;
 			brelse(bh);
 		}
 	}
