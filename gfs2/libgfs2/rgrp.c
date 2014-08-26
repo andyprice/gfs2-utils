@@ -841,3 +841,27 @@ res_covered_end_of_rgrp:
 	errno = ENOSPC;
 	return 1;
 }
+
+/**
+ * lgfs2_alloc_extent - allocate an extent from a given bitmap
+ * @rbm: the resource group information
+ * @state: The state of the first block, GFS2_BLKST_DINODE or GFS2_BLKST_USED
+ * @elen: The requested extent length
+ * Returns the length of the extent allocated.
+ */
+unsigned lgfs2_alloc_extent(const struct lgfs2_rbm *rbm, int state, const unsigned elen)
+{
+	struct lgfs2_rbm pos = { .rgd = rbm->rgd, };
+	const uint64_t block = lgfs2_rbm_to_block(rbm);
+	unsigned len;
+
+	gfs2_set_bitmap(rbm->rgd, block, state);
+
+	for (len = 1; len < elen; len++) {
+		int ret = lgfs2_rbm_from_block(&pos, block + len);
+		if (ret || lgfs2_testbit(&pos) != GFS2_BLKST_FREE)
+			break;
+		gfs2_set_bitmap(pos.rgd, block + len, GFS2_BLKST_USED);
+	}
+	return len;
+}

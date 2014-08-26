@@ -45,5 +45,6 @@ static inline int lgfs2_rbm_eq(const struct lgfs2_rbm *rbm1, const struct lgfs2_
 }
 
 extern int lgfs2_rbm_find(struct lgfs2_rbm *rbm, uint8_t state, uint32_t *minext);
+extern unsigned lgfs2_alloc_extent(const struct lgfs2_rbm *rbm, int state, const unsigned elen);
 
 #endif /* __RGRP_DOT_H__ */

@@ -13,6 +13,7 @@
 
 #include <linux/types.h>
 #include "libgfs2.h"
+#include "rgrp.h"
 
 static __inline__ uint64_t *metapointer(struct gfs2_buffer_head *bh,
 					unsigned int height,
@@ -289,6 +290,62 @@ uint64_t lgfs2_space_for_data(const struct gfs2_sbd *sdp, const unsigned bsize, 
 		blks += ptrs;
 	}
 	return blks + 1;
+}
+
+/**
+ * Allocate an extent for a file in a resource group's bitmaps.
+ * rg: The resource group in which to allocate the extent
+ * di_size: The size of the file in bytes
+ * ip: A pointer to the inode structure, whose fields will be set appropriately
+ * flags: GFS2_DIF_* flags
+ * mode: File mode flags, see creat(2)
+ * Returns 0 on success with the contents of ip set accordingly, or non-zero
+ * with errno set on error. If errno is ENOSPC then rg does not contain a
+ * large enough free extent for the given di_size.
+ */
+int lgfs2_file_alloc(lgfs2_rgrp_t rg, uint64_t di_size, struct gfs2_inode *ip, uint32_t flags, unsigned mode)
+{
+	unsigned extlen;
+	struct gfs2_dinode *di = &ip->i_di;
+	struct gfs2_sbd *sdp = rg->rgrps->sdp;
+	struct lgfs2_rbm rbm = { .rgd = rg, .offset = 0, .bii = 0 };
+	uint32_t blocks = lgfs2_space_for_data(sdp, sdp->bsize, di_size);
+	int err;
+
+	err = lgfs2_rbm_find(&rbm, GFS2_BLKST_FREE, &blocks);
+	if (err != 0)
+		return err;
+
+	extlen = lgfs2_alloc_extent(&rbm, GFS2_BLKST_DINODE, blocks);
+	if (extlen < blocks) {
+		errno = EINVAL;
+		return 1;
+	}
+
+	ip->i_sbd = sdp;
+
+	di->di_header.mh_magic = GFS2_MAGIC;
+	di->di_header.mh_type = GFS2_METATYPE_DI;
+	di->di_header.mh_format = GFS2_FORMAT_DI;
+	di->di_size = di_size;
+	di->di_num.no_addr = lgfs2_rbm_to_block(&rbm);
+	di->di_num.no_formal_ino = sdp->md.next_inum++;
+	di->di_mode = mode;
+	di->di_nlink = 1;
+	di->di_blocks = blocks;
+	di->di_atime = di->di_mtime = di->di_ctime = sdp->time;
+	di->di_goal_data = di->di_num.no_addr + di->di_blocks - 1;
+	di->di_goal_meta = di->di_goal_data - ((di_size + sdp->bsize - 1) / sdp->bsize);
+	di->di_height = calc_tree_height(ip, di_size);
+	di->di_flags = flags;
+
+	rg->rg.rg_free -= blocks;
+	rg->rg.rg_dinodes += 1;
+
+	sdp->dinodes_alloced++;
+	sdp->blks_alloced += blocks;
+
+	return 0;
 }
 
 unsigned int calc_tree_height(struct gfs2_inode *ip, uint64_t size)

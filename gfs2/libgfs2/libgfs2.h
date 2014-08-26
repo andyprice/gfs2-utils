@@ -453,6 +453,7 @@ extern uint64_t data_alloc(struct gfs2_inode *ip);
 extern int lgfs2_meta_alloc(struct gfs2_inode *ip, uint64_t *blkno);
 extern int lgfs2_dinode_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, uint64_t *blkno);
 extern uint64_t lgfs2_space_for_data(const struct gfs2_sbd *sdp, unsigned bsize, uint64_t bytes);
+extern int lgfs2_file_alloc(lgfs2_rgrp_t rg, uint64_t di_size, struct gfs2_inode *ip, uint32_t flags, unsigned mode);
 
 extern int gfs2_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
 		      unsigned int size);
