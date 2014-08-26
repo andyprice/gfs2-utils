@@ -1412,6 +1412,75 @@ int init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, struct gfs2
 	return __init_dinode(sdp, bhp, inum, mode, flags, parent, 0);
 }
 
+static void lgfs2_fill_indir(char *start, char *end, uint64_t ptr0, unsigned n, unsigned *p)
+{
+	char *bp;
+	memset(start, 0, end - start);
+	for (bp = start; bp < end && *p < n; bp += sizeof(uint64_t)) {
+		uint64_t pn = ptr0 + *p;
+		*(uint64_t *)bp = cpu_to_be64(pn);
+		(*p)++;
+	}
+}
+
+/**
+ * Calculate and write the indirect blocks for a single-extent file of a given
+ * size.
+ * ip: The inode for which to write indirect blocks, with fields already set
+ *     appropriately (see lgfs2_file_alloc).
+ * Returns 0 on success or non-zero with errno set on failure.
+ */
+int lgfs2_write_filemeta(struct gfs2_inode *ip)
+{
+	unsigned height = 0;
+	struct metapath mp;
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	uint64_t dblocks = (ip->i_di.di_size + sdp->bsize - 1) / sdp->bsize;
+	uint64_t ptr0 = ip->i_di.di_num.no_addr + 1;
+	unsigned ptrs = 1;
+	struct gfs2_meta_header mh = {
+		.mh_magic = GFS2_MAGIC,
+		.mh_type = GFS2_METATYPE_IN,
+		.mh_format = GFS2_FORMAT_IN,
+	};
+	struct gfs2_buffer_head *bh = bget(sdp, ip->i_di.di_num.no_addr);
+	if (bh == NULL)
+		return 1;
+
+	/* Using find_metapath() to find the last data block in the file will
+	   effectively give a remainder for the number of pointers at each
+	   height. Just need to add 1 to convert ptr index to quantity later. */
+	find_metapath(ip, dblocks - 1, &mp);
+
+	for (height = 0; height < ip->i_di.di_height; height++) {
+		unsigned p;
+		/* The number of pointers in this height will be the number of
+		   full indirect blocks pointed to by the previous height
+		   multiplied by the pointer capacity of an indirect block,
+		   plus the remainder which find_metapath() gave us. */
+		ptrs = ((ptrs - 1) * sdp->sd_inptrs) + mp.mp_list[height] + 1;
+
+		for (p = 0; p < ptrs; bh->b_blocknr++) {
+			char *start = bh->b_data;
+			if (height == 0) {
+				start += sizeof(struct gfs2_dinode);
+				gfs2_dinode_out(&ip->i_di, bh);
+			} else {
+				start += sizeof(struct gfs2_meta_header);
+				gfs2_meta_header_out(&mh, bh->b_data);
+			}
+			lgfs2_fill_indir(start, bh->b_data + sdp->bsize, ptr0, ptrs, &p);
+			if(bwrite(bh)) {
+				free(bh);
+				return 1;
+			}
+		}
+		ptr0 += ptrs;
+	}
+	free(bh);
+	return 0;
+}
+
 static struct gfs2_inode *__createi(struct gfs2_inode *dip,
 				    const char *filename, unsigned int mode,
 				    uint32_t flags, int if_gfs1)

@@ -500,6 +500,7 @@ extern void build_height(struct gfs2_inode *ip, int height);
 extern void unstuff_dinode(struct gfs2_inode *ip);
 extern unsigned int calc_tree_height(struct gfs2_inode *ip, uint64_t size);
 extern int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned blocks);
+extern int lgfs2_write_filemeta(struct gfs2_inode *ip);
 
 /* gfs1.c - GFS1 backward compatibility structures and functions */
 
