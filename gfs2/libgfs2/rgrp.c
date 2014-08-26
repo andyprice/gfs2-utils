@@ -99,6 +99,54 @@ struct rgrp_tree *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
 }
 
 /**
+ * Allocate a multi-block buffer for a resource group's bitmaps. This is done
+ * as one chunk and should be freed using lgfs2_rgrp_bitbuf_free().
+ * Returns 0 on success with the bitmap buffer allocated in the resource group,
+ * or non-zero on failure with errno set.
+ */
+int lgfs2_rgrp_bitbuf_alloc(lgfs2_rgrp_t rg)
+{
+	struct gfs2_sbd *sdp = rg->rgrps->sdp;
+	unsigned i;
+	char *bufs;
+
+	bufs = calloc(rg->ri.ri_length, sizeof(struct gfs2_buffer_head) + sdp->bsize);
+	if (bufs == NULL)
+		return 1;
+
+	rg->bits[0].bi_bh = (struct gfs2_buffer_head *)bufs;
+	rg->bits[0].bi_bh->iov.iov_base = (char *)(rg->bits[0].bi_bh + 1);
+	rg->bits[0].bi_bh->iov.iov_len = sdp->bsize;
+	rg->bits[0].bi_bh->b_blocknr = rg->ri.ri_addr;
+	rg->bits[0].bi_bh->sdp = sdp;
+
+	for (i = 1; i < rg->ri.ri_length; i++) {
+		char *nextbuf = rg->bits[i - 1].bi_bh->b_data + sdp->bsize;
+		rg->bits[i].bi_bh = (struct gfs2_buffer_head *)(nextbuf);
+		rg->bits[i].bi_bh->iov.iov_base = (char *)(rg->bits[i].bi_bh + 1);
+		rg->bits[i].bi_bh->iov.iov_len = sdp->bsize;
+		rg->bits[i].bi_bh->b_blocknr = rg->ri.ri_addr + i;
+		rg->bits[i].bi_bh->sdp = sdp;
+	}
+	return 0;
+}
+
+/**
+ * Free the multi-block bitmap buffer from a resource group. The buffer should
+ * have been allocated as a single chunk as in lgfs2_rgrp_bitbuf_alloc().
+ * This does not implicitly write the bitmaps to disk. Use lgfs2_rgrp_write()
+ * for that.
+ * rg: The resource groups whose bitmap buffer should be freed.
+ */
+void lgfs2_rgrp_bitbuf_free(lgfs2_rgrp_t rg)
+{
+	unsigned i;
+	free(rg->bits[0].bi_bh);
+	for (i = 0; i < rg->ri.ri_length; i++)
+		rg->bits[i].bi_bh = NULL;
+}
+
+/**
  * gfs2_rgrp_read - read in the resource group information from disk.
  * @rgd - resource group structure
  * returns: 0 if no error, otherwise the block number that failed
