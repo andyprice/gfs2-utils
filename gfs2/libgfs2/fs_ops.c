@@ -1273,24 +1273,30 @@ int dir_add(struct gfs2_inode *dip, const char *filename, int len,
 	return err;
 }
 
-static struct gfs2_buffer_head *__init_dinode(struct gfs2_sbd *sdp,
-					      struct gfs2_inum *inum,
-					      unsigned int mode,
-					      uint32_t flags,
-					      struct gfs2_inum *parent,
-					      int gfs1)
+static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, struct gfs2_inum *inum,
+                         unsigned int mode, uint32_t flags, struct gfs2_inum *parent, int gfs1)
 {
 	struct gfs2_buffer_head *bh;
-	struct gfs2_dinode di;
+	struct gfs2_dinode di = {{0}};
 	int is_dir;
 
 	if (gfs1)
 		is_dir = (IF2DT(mode) == GFS_FILE_DIR);
 	else
 		is_dir = S_ISDIR(mode);
-	bh = bget(sdp, inum->no_addr);
 
-	memset(&di, 0, sizeof(struct gfs2_dinode));
+	errno = EINVAL;
+	if (bhp == NULL)
+		return 1;
+
+	if (*bhp == NULL) {
+		*bhp = bget(sdp, inum->no_addr);
+		if (*bhp == NULL)
+			return 1;
+	}
+
+	bh = *bhp;
+
 	di.di_header.mh_magic = GFS2_MAGIC;
 	di.di_header.mh_type = GFS2_METATYPE_DI;
 	di.di_header.mh_format = GFS2_FORMAT_DI;
@@ -1340,15 +1346,13 @@ static struct gfs2_buffer_head *__init_dinode(struct gfs2_sbd *sdp,
 
 	gfs2_dinode_out(&di, bh);
 
-	return bh;
+	return 0;
 }
 
-struct gfs2_buffer_head *init_dinode(struct gfs2_sbd *sdp,
-				     struct gfs2_inum *inum,
-				     unsigned int mode, uint32_t flags,
-				     struct gfs2_inum *parent)
+int init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, struct gfs2_inum *inum,
+                unsigned int mode, uint32_t flags, struct gfs2_inum *parent)
 {
-	return __init_dinode(sdp, inum, mode, flags, parent, 0);
+	return __init_dinode(sdp, bhp, inum, mode, flags, parent, 0);
 }
 
 static struct gfs2_inode *__createi(struct gfs2_inode *dip,
@@ -1358,7 +1362,7 @@ static struct gfs2_inode *__createi(struct gfs2_inode *dip,
 	struct gfs2_sbd *sdp = dip->i_sbd;
 	uint64_t bn;
 	struct gfs2_inum inum;
-	struct gfs2_buffer_head *bh;
+	struct gfs2_buffer_head *bh = NULL;
 	struct gfs2_inode *ip;
 	int err = 0;
 	int is_dir;
@@ -1388,8 +1392,10 @@ static struct gfs2_inode *__createi(struct gfs2_inode *dip,
 			dip->i_di.di_nlink++;
 		}
 
-		bh = __init_dinode(sdp, &inum, mode, flags, &dip->i_di.di_num,
-				   if_gfs1);
+		err = __init_dinode(sdp, &bh, &inum, mode, flags, &dip->i_di.di_num, if_gfs1);
+		if (err != 0)
+			return NULL;
+
 		ip = lgfs2_inode_get(sdp, bh);
 		if (ip == NULL)
 			return NULL;

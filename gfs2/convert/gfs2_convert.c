@@ -1389,7 +1389,7 @@ static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 	osi_list_foreach_safe(tmp, cdpn_to_fix, x) {
 		struct gfs2_inum fix, dir;
 		struct inode_dir_block *l_fix;
-		struct gfs2_buffer_head *bh;
+		struct gfs2_buffer_head *bh = NULL;
 		struct gfs2_inode *fix_inode;
 		uint64_t eablk;
 
@@ -1411,7 +1411,10 @@ static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 		}
 
 		/* initialize the symlink inode to be a directory */
-		bh = init_dinode(sbp, &fix, S_IFDIR | 0755, 0, &dir);
+		error = init_dinode(sbp, &bh, &fix, S_IFDIR | 0755, 0, &dir);
+		if (error != 0)
+			return -1;
+
 		fix_inode = lgfs2_inode_get(sbp, bh);
 		if (fix_inode == NULL)
 			return -1;
