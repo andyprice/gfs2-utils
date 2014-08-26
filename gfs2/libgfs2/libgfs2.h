@@ -201,6 +201,8 @@ extern uint32_t lgfs2_rgrp_align_len(const lgfs2_rgrps_t rgs, uint32_t len);
 extern unsigned lgfs2_rgsize_for_data(uint64_t blksreq, unsigned bsize);
 extern uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgtsize);
 extern lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry);
+extern int lgfs2_rgrp_bitbuf_alloc(lgfs2_rgrp_t rg);
+extern void lgfs2_rgrp_bitbuf_free(lgfs2_rgrp_t rg);
 extern int lgfs2_rgrp_write(int fd, lgfs2_rgrp_t rg);
 extern const struct gfs2_rindex *lgfs2_rgrp_index(lgfs2_rgrp_t rg);
 extern const struct gfs2_rgrp *lgfs2_rgrp_rgrp(lgfs2_rgrp_t rg);
