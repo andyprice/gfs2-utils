@@ -131,10 +131,10 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 		bi->bi_bh = bhs[x];
 		if (gfs2_check_meta(bi->bi_bh, mtype)) {
 			unsigned err = x;
-			for (; x >= 0; x--) {
+			do {
 				brelse(rgd->bits[x].bi_bh);
 				rgd->bits[x].bi_bh = NULL;
-			}
+			} while (x-- != 0);
 			free(bhs);
 			return rgd->ri.ri_addr + err;
 		}
