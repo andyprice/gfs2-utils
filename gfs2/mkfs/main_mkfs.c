@@ -166,6 +166,8 @@ static void opts_init(struct mkfs_opts *opts)
 	opts->align = 1;
 }
 
+struct gfs2_inum *mkfs_journals = NULL;
+
 #ifndef BLKDISCARD
 #define BLKDISCARD      _IO(0x12,119)
 #endif
@@ -617,16 +619,11 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 	return rgs;
 }
 
-static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct gfs2_rindex *ri, int debug)
+static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrp_t rg, int debug)
 {
 	int err = 0;
-	lgfs2_rgrp_t rg = NULL;
+	const struct gfs2_rindex *ri = lgfs2_rgrp_index(rg);
 
-	rg = lgfs2_rgrps_append(rgs, ri);
-	if (rg == NULL) {
-		perror(_("Failed to create resource group"));
-		return -1;
-	}
 	err = lgfs2_rgrp_write(sdp->device_fd, rg);
 	if (err != 0) {
 		perror(_("Failed to write resource group"));
@@ -642,46 +639,121 @@ static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct gfs2_rinde
 	return 0;
 }
 
-static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts)
+static int add_rgrp(lgfs2_rgrps_t rgs, uint64_t *addr, uint32_t len, lgfs2_rgrp_t *rg)
 {
 	struct gfs2_rindex ri;
+
+	/* When we get to the end of the device, it's only an error if we have
+	   more structures left to write, i.e. when len is != 0. */
+	*addr = lgfs2_rindex_entry_new(rgs, &ri, *addr, len);
+	if (*addr == 0) {
+		if (len != 0) {
+			perror(_("Failed to create resource group index entry"));
+			return -1;
+		} else {
+			return 1;
+		}
+	}
+
+	*rg = lgfs2_rgrps_append(rgs, &ri);
+	if (*rg == NULL) {
+		perror(_("Failed to create resource group"));
+		return -1;
+	}
+	return 0;
+}
+
+static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts, uint64_t *rgaddr)
+{
 	uint64_t jfsize = lgfs2_space_for_data(sdp, sdp->bsize, opts->jsize << 20);
-	uint32_t jrgsize = lgfs2_rgsize_for_data(jfsize, sdp->bsize);
-	uint64_t rgaddr = lgfs2_rgrp_align_addr(rgs, sdp->sb_addr + 1);
-	uint32_t rgsize = lgfs2_rgrps_plan(rgs, sdp->device.length - rgaddr, ((opts->rgsize << 20) / sdp->bsize));
+	uint32_t rgsize = lgfs2_rgsize_for_data(jfsize, sdp->bsize);
 	unsigned j;
 
-	if (rgsize >= jrgsize)
-		jrgsize = rgsize;
-
-	if (rgsize < ((GFS2_MIN_RGSIZE << 20) / sdp->bsize)) {
-		fprintf(stderr, _("Resource group size is too small\n"));
-		return -1;
-	} else if (rgsize < ((GFS2_DEFAULT_RGSIZE << 20) / sdp->bsize)) {
-		fprintf(stderr, _("Warning: small resource group size could impact performance\n"));
-	}
+	/* We'll build the jindex later so remember where we put the journals */
+	mkfs_journals = calloc(opts->journals, sizeof(*mkfs_journals));
+	if (mkfs_journals == NULL)
+		return 1;
+	*rgaddr = lgfs2_rgrp_align_addr(rgs, sdp->sb_addr + 1);
 
 	for (j = 0; j < opts->journals; j++) {
 		int result;
-		rgaddr = lgfs2_rindex_entry_new(rgs, &ri, rgaddr, jrgsize);
-		if (rgaddr == 0) /* Reached the end when we still have journals to write */
-			return 1;
-		result = place_rgrp(sdp, rgs, &ri, opts->debug);
+		lgfs2_rgrp_t rg;
+		struct gfs2_inode in = {0};
+
+		if (opts->debug)
+			printf(_("Placing resource group for journal%u\n"), j);
+
+		result = add_rgrp(rgs, rgaddr, rgsize, &rg);
+		if (result > 0)
+			break;
+		else if (result < 0)
+			return result;
+
+		result = lgfs2_rgrp_bitbuf_alloc(rg);
+		if (result != 0) {
+			perror(_("Failed to allocate space for bitmap buffer"));
+			return result;
+		}
+		/* In order to keep writes sequential here, we have to allocate
+		   the journal, then write the rgrp header (which is now in its
+		   final form) and then write the journal out */
+		result = lgfs2_file_alloc(rg, opts->jsize << 20, &in, GFS2_DIF_SYSTEM, S_IFREG | 0600);
+		if (result != 0) {
+			fprintf(stderr, _("Failed to allocate space for journal %u\n"), j);
+			return result;
+		}
+
+		if (opts->debug)
+			gfs2_dinode_print(&in.i_di);
+
+		result = place_rgrp(sdp, rg, opts->debug);
 		if (result != 0)
 			return result;
+
+		lgfs2_rgrp_bitbuf_free(rg);
+
+		result = lgfs2_write_filemeta(&in);
+		if (result != 0) {
+			fprintf(stderr, _("Failed to write journal %u\n"), j);
+			return result;
+		}
+
+		result = lgfs2_write_journal_data(&in);
+		if (result != 0) {
+			fprintf(stderr, _("Failed to write data blocks for journal %u\n"), j);
+			return result;
+		}
+		mkfs_journals[j] = in.i_di.di_num;
 	}
 
-	if (rgsize != jrgsize)
-		lgfs2_rgrps_plan(rgs, sdp->device.length - rgaddr, ((opts->rgsize << 20) / sdp->bsize));
+	return 0;
+}
+
+static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts)
+{
+	uint64_t rgaddr = lgfs2_rgrp_align_addr(rgs, sdp->sb_addr + 1);
+	uint32_t rgblks = ((opts->rgsize << 20) / sdp->bsize);
+	int result;
+
+	result = place_journals(sdp, rgs, opts, &rgaddr);
+	if (result != 0)
+		return result;
+
+	lgfs2_rgrps_plan(rgs, sdp->device.length - rgaddr, rgblks);
 
 	while (1) {
-		int result;
-		rgaddr = lgfs2_rindex_entry_new(rgs, &ri, rgaddr, 0);
-		if (rgaddr == 0)
-			break; /* Done */
-		result = place_rgrp(sdp, rgs, &ri, opts->debug);
-		if (result)
+		lgfs2_rgrp_t rg;
+		result = add_rgrp(rgs, &rgaddr, 0, &rg);
+		if (result > 0)
+			break;
+		else if (result < 0)
 			return result;
+
+		result = place_rgrp(sdp, rg, opts->debug);
+		if (result != 0) {
+			fprintf(stderr, _("Failed to build resource groups\n"));
+			return result;
+		}
 	}
 	return 0;
 }
@@ -696,7 +768,7 @@ static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsiz
 	sdp->jsize = opts->jsize;
 	sdp->md.journals = opts->journals;
 	sdp->device_fd = opts->dev.fd;
-	sdp->bsize = bsize;
+	sdp->bsize = sdp->sd_sb.sb_bsize = bsize;
 
 	if (compute_constants(sdp)) {
 		perror(_("Failed to compute file system constants"));
@@ -848,17 +920,19 @@ void main_mkfs(int argc, char *argv[])
 	}
 	sbd.rgtree.osi_node = lgfs2_rgrps_root(rgs); // Temporary
 
-	build_root(&sbd);
-	sb.sb_root_dir = sbd.md.rooti->i_di.di_num;
-
-	build_master(&sbd);
+	error = build_master(&sbd);
+	if (error) {
+		fprintf(stderr, _("Error building '%s': %s\n"), "master", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	sb.sb_master_dir = sbd.master_dir->i_di.di_num;
 
-	error = build_jindex(&sbd);
+	error = lgfs2_build_jindex(sbd.master_dir, mkfs_journals, opts.journals);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "jindex", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+	free(mkfs_journals);
 	error = build_per_node(&sbd);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "per_node", strerror(errno));
@@ -886,6 +960,9 @@ void main_mkfs(int argc, char *argv[])
 		fprintf(stderr, _("Error building '%s': %s\n"), "quota", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+
+	build_root(&sbd);
+	sb.sb_root_dir = sbd.md.rooti->i_di.di_num;
 
 	strcpy(sb.sb_lockproto, opts.lockproto);
 	strcpy(sb.sb_locktable, opts.locktable);
