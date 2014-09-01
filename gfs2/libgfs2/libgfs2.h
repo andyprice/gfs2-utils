@@ -729,6 +729,7 @@ extern int lgfs2_sb_write(const struct gfs2_sb *sb, int fd, const unsigned bsize
 extern int build_journal(struct gfs2_sbd *sdp, int j,
 			 struct gfs2_inode *jindex);
 extern int build_jindex(struct gfs2_sbd *sdp);
+extern int lgfs2_build_jindex(struct gfs2_inode *master, struct gfs2_inum *jnls, size_t nmemb);
 extern int build_per_node(struct gfs2_sbd *sdp);
 extern int build_inum(struct gfs2_sbd *sdp);
 extern int build_statfs(struct gfs2_sbd *sdp);

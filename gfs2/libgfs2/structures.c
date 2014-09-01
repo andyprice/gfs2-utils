@@ -255,6 +255,46 @@ int build_journal(struct gfs2_sbd *sdp, int j, struct gfs2_inode *jindex)
 	return ret;
 }
 
+/**
+ * Write a jindex file given a list of journal inums.
+ * master: Inode of the master directory
+ * jnls: List of inum structures relating to previously created journals.
+ * nmemb: The number of entries in the list (number of journals).
+ * Returns 0 on success or non-zero on error with errno set.
+ */
+int lgfs2_build_jindex(struct gfs2_inode *master, struct gfs2_inum *jnls, size_t nmemb)
+{
+	char fname[GFS2_FNAMESIZE + 1];
+	struct gfs2_inode *jindex;
+	unsigned j;
+	int ret;
+
+	if (nmemb == 0 || jnls == NULL) {
+		errno = EINVAL;
+		return 1;
+	}
+	jindex = createi(master, "jindex", S_IFDIR | 0700, GFS2_DIF_SYSTEM);
+	if (jindex == NULL)
+		return 1;
+
+	fname[GFS2_FNAMESIZE] = '\0';
+
+	for (j = 0; j < nmemb; j++) {
+		snprintf(fname, GFS2_FNAMESIZE, "journal%u", j);
+		ret = dir_add(jindex, fname, strlen(fname), &jnls[j], IF2DT(S_IFREG | 0600));
+		if (ret)
+			return 1;
+	}
+
+	if (cfg_debug) {
+		printf("\nJindex:\n");
+		gfs2_dinode_print(&jindex->i_di);
+	}
+
+	inode_put(&jindex);
+	return 0;
+}
+
 int build_jindex(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *jindex;
