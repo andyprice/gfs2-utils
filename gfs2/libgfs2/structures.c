@@ -143,6 +143,54 @@ out_buf:
 	return err;
 }
 
+/**
+ * Intialise and write the data blocks for a new journal as a contiguous
+ * extent. The indirect blocks pointing to these data blocks should have been
+ * written separately using lgfs2_write_filemeta() and the extent should have
+ * been allocated using lgfs2_file_alloc().
+ * ip: The journal's inode
+ * Returns 0 on success or -1 with errno set on error.
+ */
+int lgfs2_write_journal_data(struct gfs2_inode *ip)
+{
+	uint32_t hash;
+	struct gfs2_log_header lh = {
+		.lh_header.mh_magic = GFS2_MAGIC,
+		.lh_header.mh_type = GFS2_METATYPE_LH,
+		.lh_header.mh_format = GFS2_FORMAT_LH,
+		.lh_flags = GFS2_LOG_HEAD_UNMOUNT,
+	};
+	struct gfs2_buffer_head *bh;
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	unsigned blocks = (ip->i_di.di_size + sdp->bsize - 1) / sdp->bsize;
+	uint64_t jext0 = ip->i_di.di_num.no_addr + ip->i_di.di_blocks - blocks;
+	uint64_t seq = ((blocks) * (random() / (RAND_MAX + 1.0)));
+
+	bh = bget(sdp, jext0);
+	if (bh == NULL)
+		return -1;
+
+	do {
+		lh.lh_sequence = seq;
+		lh.lh_blkno = bh->b_blocknr - jext0;
+		gfs2_log_header_out(&lh, bh);
+		hash = gfs2_disk_hash(bh->b_data, sizeof(struct gfs2_log_header));
+		((struct gfs2_log_header *)bh->b_data)->lh_hash = cpu_to_be32(hash);
+
+		if (bwrite(bh)) {
+			free(bh);
+			return -1;
+		}
+
+		if (++seq == blocks)
+			seq = 0;
+
+	} while (++bh->b_blocknr < jext0 + blocks);
+
+	free(bh);
+	return 0;
+}
+
 int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 {
 	struct gfs2_log_header lh;
