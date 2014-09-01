@@ -587,31 +587,33 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry)
  */
 int lgfs2_rgrp_write(int fd, const lgfs2_rgrp_t rg)
 {
-	ssize_t ret = 0;
-	lgfs2_rgrps_t rgs = rg->rgrps;
-	size_t len = rg->ri.ri_length * rgs->sdp->bsize;
+	int ret = 0;
 	unsigned int i;
 	const struct gfs2_meta_header bmh = {
 		.mh_magic = GFS2_MAGIC,
 		.mh_type = GFS2_METATYPE_RB,
 		.mh_format = GFS2_FORMAT_RB,
 	};
-	char *buff = calloc(len, 1);
-	if (buff == NULL)
-		return -1;
+	int freebufs = 0;
 
-	gfs2_rgrp_out(&rg->rg, buff);
-	for (i = 1; i < rg->ri.ri_length; i++)
-		gfs2_meta_header_out(&bmh, buff + (i * rgs->sdp->bsize));
-
-	ret = pwrite(fd, buff, len, rg->ri.ri_addr * rgs->sdp->bsize);
-	if (ret != len) {
-		free(buff);
-		return -1;
+	if (rg->bits[0].bi_bh == NULL) {
+		freebufs = 1;
+		if (lgfs2_rgrp_bitbuf_alloc(rg) != 0)
+			return -1;
 	}
 
-	free(buff);
-	return 0;
+	gfs2_rgrp_out(&rg->rg, rg->bits[0].bi_bh->b_data);
+	ret = bwrite(rg->bits[0].bi_bh);
+
+	for (i = 1; ret == 0 && i < rg->ri.ri_length; i++) {
+		gfs2_meta_header_out(&bmh, rg->bits[i].bi_bh->b_data);
+		ret = bwrite(rg->bits[i].bi_bh);
+	}
+
+	if (freebufs)
+		lgfs2_rgrp_bitbuf_free(rg);
+
+	return ret;
 }
 
 lgfs2_rgrp_t lgfs2_rgrp_first(lgfs2_rgrps_t rgs)
