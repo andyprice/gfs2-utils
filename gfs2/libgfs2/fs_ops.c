@@ -296,7 +296,9 @@ uint64_t lgfs2_space_for_data(const struct gfs2_sbd *sdp, const unsigned bsize, 
  * Allocate an extent for a file in a resource group's bitmaps.
  * rg: The resource group in which to allocate the extent
  * di_size: The size of the file in bytes
- * ip: A pointer to the inode structure, whose fields will be set appropriately
+ * ip: A pointer to the inode structure, whose fields will be set appropriately.
+ *     If ip->i_di.di_num.no_addr is not 0, the extent search will be skipped and
+ *     the file allocated from that address.
  * flags: GFS2_DIF_* flags
  * mode: File mode flags, see creat(2)
  * Returns 0 on success with the contents of ip set accordingly, or non-zero
@@ -310,11 +312,13 @@ int lgfs2_file_alloc(lgfs2_rgrp_t rg, uint64_t di_size, struct gfs2_inode *ip, u
 	struct gfs2_sbd *sdp = rg->rgrps->sdp;
 	struct lgfs2_rbm rbm = { .rgd = rg, .offset = 0, .bii = 0 };
 	uint32_t blocks = lgfs2_space_for_data(sdp, sdp->bsize, di_size);
-	int err;
 
-	err = lgfs2_rbm_find(&rbm, GFS2_BLKST_FREE, &blocks);
-	if (err != 0)
-		return err;
+	if (ip->i_di.di_num.no_addr != 0) {
+		if (lgfs2_rbm_from_block(&rbm, ip->i_di.di_num.no_addr) != 0)
+			return 1;
+	} else if (lgfs2_rbm_find(&rbm, GFS2_BLKST_FREE, &blocks) != 0) {
+		return 1;
+	}
 
 	extlen = lgfs2_alloc_extent(&rbm, GFS2_BLKST_DINODE, blocks);
 	if (extlen < blocks) {
