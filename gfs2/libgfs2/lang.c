@@ -150,7 +150,7 @@ static void ast_string_unescape(char *str)
 static uint64_t ast_lookup_path(char *path, struct gfs2_sbd *sbd)
 {
 	int err = 0;
-	char *c;
+	char *c = NULL;
 	struct gfs2_inode *ip, *iptmp;
 	char *segment;
 	uint64_t bn = 0;
