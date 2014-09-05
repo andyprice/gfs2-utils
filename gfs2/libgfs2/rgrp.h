@@ -44,6 +44,7 @@ static inline int lgfs2_rbm_eq(const struct lgfs2_rbm *rbm1, const struct lgfs2_
 	        (rbm1->offset == rbm2->offset);
 }
 
+extern int lgfs2_rbm_from_block(struct lgfs2_rbm *rbm, uint64_t block);
 extern int lgfs2_rbm_find(struct lgfs2_rbm *rbm, uint8_t state, uint32_t *minext);
 extern unsigned lgfs2_alloc_extent(const struct lgfs2_rbm *rbm, int state, const unsigned elen);
 

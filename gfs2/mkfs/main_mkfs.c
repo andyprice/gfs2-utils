@@ -694,6 +694,8 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 			perror(_("Failed to allocate space for bitmap buffer"));
 			return result;
 		}
+		/* Allocate at the beginning of the rgrp, bypassing extent search */
+		in.i_di.di_num.no_addr = lgfs2_rgrp_index(rg)->ri_data0;
 		/* In order to keep writes sequential here, we have to allocate
 		   the journal, then write the rgrp header (which is now in its
 		   final form) and then write the journal out */

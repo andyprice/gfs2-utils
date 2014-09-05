@@ -643,7 +643,7 @@ lgfs2_rgrp_t lgfs2_rgrp_last(lgfs2_rgrps_t rgs)
  *
  * Returns: 0 on success, or non-zero with errno set
  */
-static int lgfs2_rbm_from_block(struct lgfs2_rbm *rbm, uint64_t block)
+int lgfs2_rbm_from_block(struct lgfs2_rbm *rbm, uint64_t block)
 {
 	uint64_t rblock = block - rbm->rgd->ri.ri_data0;
 	struct gfs2_sbd *sdp = rbm_bi(rbm)->bi_bh->sdp;
