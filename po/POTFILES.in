@@ -12,7 +12,6 @@ gfs2/fsck/initialize.c
 gfs2/fsck/util.h
 gfs2/fsck/pass3.c
 gfs2/fsck/pass2.c
-gfs2/fsck/eattr.c
 gfs2/fsck/metawalk.c
 gfs2/fsck/util.c
 gfs2/fsck/lost_n_found.c
@@ -31,4 +30,3 @@ gfs2/fsck/pass1b.c
 gfs2/fsck/link.h
 gfs2/fsck/pass5.c
 gfs2/fsck/pass1.c
-gfs2/fsck/eattr.h
