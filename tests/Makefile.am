@@ -15,16 +15,22 @@ UNIT_CFLAGS = \
 UNIT_LDADD = \
 	$(top_builddir)/gfs2/libgfs2/libgfs2.la \
 	@check_LIBS@
+UNIT_CPPFLAGS = \
+	-D_FILE_OFFSET_BITS=64 \
+	-D_LARGEFILE64_SOURCE \
+	-D_GNU_SOURCE
 
 check_PROGRAMS = $(UNIT_TESTS)
 
 check_meta_SOURCES = $(UNIT_SOURCES) check_meta.c
 check_meta_CFLAGS = $(UNIT_CFLAGS)
 check_meta_LDADD = $(UNIT_LDADD)
+check_meta_CPPFLAGS = $(UNIT_CPPFLAGS)
 
 check_rgrp_SOURCES = $(UNIT_SOURCES) check_rgrp.c
 check_rgrp_CFLAGS = $(UNIT_CFLAGS)
 check_rgrp_LDADD = $(UNIT_LDADD)
+check_rgrp_CPPFLAGS = $(UNIT_CPPFLAGS)
 endif
 
 # The `:;' works around a Bash 3.2 bug when the output is not writable.
