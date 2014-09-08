@@ -125,7 +125,7 @@ static Suite * libgfs2_suite(void)
 	tcase_add_test(tc_rgrp, test_rbm_find_good);
 	tcase_add_test(tc_rgrp, test_rbm_find_bad);
 	tcase_add_test(tc_rgrp, test_rbm_find_lastblock);
-	tcase_set_timeout(tc_rgrp, 60);
+	tcase_set_timeout(tc_rgrp, 120);
 	suite_add_tcase(s, tc_rgrp);
 
 	return s;
