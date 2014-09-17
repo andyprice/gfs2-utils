@@ -68,7 +68,7 @@ test x"$YACC" = x && AC_MSG_ERROR([bison not found])
 # args. Global CFLAGS are ignored during this test.
 cc_supports_flag() {
 	local CFLAGS="$@"
-	AC_MSG_CHECKING([whether $CC supports "$@"])
+	AC_MSG_CHECKING([whether $CC supports $CFLAGS])
 	AC_COMPILE_IFELSE([AC_LANG_SOURCE([int main(){return 0;}])],
 			  [RC=0; AC_MSG_RESULT([yes])],
 			  [RC=1; AC_MSG_RESULT([no])])
@@ -88,6 +88,9 @@ check_lib_no_libs() {
 # local options
 AC_ARG_ENABLE([debug],
 	[  --enable-debug          enable debug build. ],
+	[ default="no" ])
+AC_ARG_ENABLE([gcov],
+	[  --enable-gcov           enable coverage instrumentation.],
 	[ default="no" ])
 
 # We use the Check framework for unit tests
@@ -166,6 +169,15 @@ else
 	GDB_FLAGS="-g"
 fi
 
+# gcov works without optimization
+if test "x${enable_gcov}" = xyes; then
+	GCOV_CFLAGS="-fprofile-arcs -ftest-coverage"
+	if ! cc_supports_flag $GCOV_CFLAGS; then
+		AC_MSG_ERROR([your compiler does not support coverage instrumentation])
+	fi
+	OPT_CFLAGS="-O0 $GCOV_CFLAGS"
+fi
+
 # extra warnings
 EXTRA_WARNINGS=""
 
@@ -223,3 +235,4 @@ AC_CONFIG_FILES([Makefile
 AC_OUTPUT
 
 test x"$have_check" = "xyes" || AC_MSG_NOTICE([package 'check' not found; unit tests will not be built])
+test x"${enable_gcov}" = "xyes" && AC_MSG_NOTICE([code coverage enabled; optimization will be disabled])
