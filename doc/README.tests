@@ -40,3 +40,15 @@ Documentation for Autotest, including the AT_* macros used to define tests, can
 be found in the autoconf manual at:
 
     http://www.gnu.org/software/autoconf/manual/index.html
+
+Test coverage instrumentation can be enabled using the --enable-gcov option at
+the configure stage. Once the tools have been built and run with this option
+enabled, coverage data will be written to files in the source directories for
+use by tools such as gcov or lcov. For example, to generate a HTML report of
+testsuite code coverage, using lcov, in a directory named 'coverage':
+
+    ./autogen.sh
+    ./configure --enable-gcov
+    make check
+    lcov --directory . -c -o gfs2-utils.info
+    genhtml -o coverage gfs2-utils.info
