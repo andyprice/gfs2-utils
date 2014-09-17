@@ -590,6 +590,124 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 	return 0;
 }
 
+#define DIV_RU(x, y) (((x) + (y) - 1) / (y))
+
+/**
+ * how_many_rgrps - figure out how many RG to put in a subdevice
+ * @w: the command line
+ * @dev: the device
+ *
+ * Returns: the number of RGs
+ */
+static uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgsize_specified)
+{
+	uint64_t nrgrp;
+	uint32_t rgblocks1, rgblocksn, bitblocks1, bitblocksn;
+	int bitmap_overflow = 0;
+
+	while (1) {
+		nrgrp = DIV_RU(dev->length, (sdp->rgsize << 20) / sdp->bsize);
+
+		/* check to see if the rg length overflows max # bitblks */
+		bitblocksn = rgblocks2bitblocks(sdp->bsize, dev->length / nrgrp, &rgblocksn);
+		/* calculate size of the first rgrp */
+		bitblocks1 = rgblocks2bitblocks(sdp->bsize, dev->length - (nrgrp - 1) * (dev->length / nrgrp),
+		                                &rgblocks1);
+		if (bitblocks1 > 2149 || bitblocksn > 2149) {
+			bitmap_overflow = 1;
+			if (sdp->rgsize <= GFS2_DEFAULT_RGSIZE) {
+				fprintf(stderr, "error: It is not possible "
+					"to use the entire device with "
+					"block size %u bytes.\n",
+					sdp->bsize);
+				exit(-1);
+			}
+			sdp->rgsize -= GFS2_DEFAULT_RGSIZE; /* smaller rgs */
+			continue;
+		}
+		if (bitmap_overflow ||
+		    rgsize_specified || /* If user specified an rg size or */
+		    nrgrp <= GFS2_EXCESSIVE_RGS || /* not an excessive # or  */
+		    sdp->rgsize >= 2048)   /* we reached the max rg size */
+			break;
+
+		sdp->rgsize += GFS2_DEFAULT_RGSIZE; /* bigger rgs */
+	}
+
+	log_debug("  rg sz = %"PRIu32"\n  nrgrp = %"PRIu64"\n", sdp->rgsize, nrgrp);
+
+	return nrgrp;
+}
+
+/**
+ * compute_rgrp_layout - figure out where the RG in a FS are
+ */
+static void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree, int rgsize_specified)
+{
+	struct device *dev;
+	struct rgrp_tree *rl, *rlast = NULL;
+	struct osi_node *n, *next = NULL;
+	unsigned int rgrp = 0, nrgrp, rglength;
+	uint64_t rgaddr;
+
+	sdp->new_rgrps = 0;
+	dev = &sdp->device;
+
+	/* If this is a new file system, compute the length and number */
+	/* of rgs based on the size of the device.                     */
+	/* If we have existing RGs (i.e. gfs2_grow) find the last one. */
+	if (!rgtree->osi_node) {
+		dev->length -= sdp->sb_addr + 1;
+		nrgrp = how_many_rgrps(sdp, dev, rgsize_specified);
+		rglength = dev->length / nrgrp;
+		sdp->new_rgrps = nrgrp;
+	} else {
+		uint64_t old_length, new_chunk;
+
+		printf("Existing resource groups:\n");
+		for (rgrp = 0, n = osi_first(rgtree); n; n = next, rgrp++) {
+			next = osi_next(n);
+			rl = (struct rgrp_tree *)n;
+
+			printf("%d: start: %" PRIu64 " (0x%"
+				 PRIx64 "), length = %"PRIu64" (0x%"
+				 PRIx64 ")\n", rgrp + 1, rl->start, rl->start,
+				 rl->length, rl->length);
+			rlast = rl;
+		}
+		rlast->start = rlast->ri.ri_addr;
+		rglength = rgrp_size(rlast);
+		rlast->length = rglength;
+		old_length = rlast->ri.ri_addr + rglength;
+		new_chunk = dev->length - old_length;
+		sdp->new_rgrps = new_chunk / rglength;
+		nrgrp = rgrp + sdp->new_rgrps;
+	}
+
+	if (rgrp < nrgrp)
+		printf("\nNew resource groups:\n");
+	for (; rgrp < nrgrp; rgrp++) {
+		if (rgrp) {
+			rgaddr = rlast->start + rlast->length;
+			rl = rgrp_insert(rgtree, rgaddr);
+			rl->length = rglength;
+		} else {
+			rgaddr = sdp->sb_addr + 1;
+			rl = rgrp_insert(rgtree, rgaddr);
+			rl->length = dev->length -
+				(nrgrp - 1) * (dev->length / nrgrp);
+		}
+		rl->start = rgaddr;
+		printf("%d: start: %" PRIu64 " (0x%"
+			 PRIx64 "), length = %"PRIu64" (0x%"
+			 PRIx64 ")\n", rgrp + 1, rl->start, rl->start,
+			 rl->length, rl->length);
+		rlast = rl;
+	}
+
+	sdp->rgrps = nrgrp;
+}
+
 /*
  * gfs2_rindex_calculate - calculate what the rindex should look like
  *                          in a perfect world (trust_lvl == open_minded)
