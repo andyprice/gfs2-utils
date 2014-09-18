@@ -259,6 +259,7 @@ static struct metafd savemetaopen(char *out_fn, int gziplevel)
 	struct metafd mfd = {-1, NULL, NULL, gziplevel};
 	char gzmode[3] = "w9";
 	char dft_fn[] = DFT_SAVE_FILE;
+	mode_t mask = umask(S_IXUSR | S_IRWXG | S_IRWXO);
 
 	if (!out_fn) {
 		out_fn = dft_fn;
@@ -266,6 +267,7 @@ static struct metafd savemetaopen(char *out_fn, int gziplevel)
 	} else {
 		mfd.fd = open(out_fn, O_RDWR | O_CREAT, 0644);
 	}
+	umask(mask);
 	mfd.filename = out_fn;
 
 	if (mfd.fd < 0) {
