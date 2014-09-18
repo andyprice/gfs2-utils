@@ -297,50 +297,58 @@ static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 	return bcount;
 }
 
+static int is_wrap_pt(char *buf, uint64_t *highest_seq)
+{
+	struct gfs2_buffer_head tbh = { .b_data = buf };
+
+	if (get_block_type(&tbh, NULL) == GFS2_METATYPE_LH) {
+		uint64_t seq;
+
+		if (sbd.gfs1) {
+			struct gfs_log_header lh;
+			gfs_log_header_in(&lh, &tbh);
+			seq = lh.lh_sequence;
+		} else {
+			struct gfs2_log_header lh;
+			gfs2_log_header_in(&lh, &tbh);
+			seq = lh.lh_sequence;
+		}
+		if (seq < *highest_seq)
+			return 1;
+		*highest_seq = seq;
+	}
+	return 0;
+}
+
 /**
  * find_wrap_pt - figure out where a journal wraps
  * Returns: The wrap point, in bytes
  */
-static uint64_t find_wrap_pt(struct gfs2_inode *j_inode, char *jbuf,
-			     uint64_t jblock, uint64_t j_size)
+static uint64_t find_wrap_pt(struct gfs2_inode *ji, char *jbuf, uint64_t jblock, uint64_t j_size)
 {
-	struct gfs2_buffer_head *j_bh = NULL, dummy_bh;
-	uint64_t jb, abs_block;
-	int error;
+	uint64_t jb = 0;
 	uint64_t highest_seq = 0;
 
 	for (jb = 0; jb < j_size; jb += (sbd.gfs1 ? 1 : sbd.bsize)) {
-		if (sbd.gfs1) {
-			if (j_bh)
-				brelse(j_bh);
-			j_bh = bread(&sbd, jblock + jb);
-			abs_block = jblock + jb;
-			dummy_bh.b_data = j_bh->b_data;
-		} else {
-			error = fsck_readi(j_inode, (void *)jbuf, jb,
-					   sbd.bsize, &abs_block);
-			if (!error) /* end of file */
-				break;
-			dummy_bh.b_data = jbuf;
-		}
-		if (get_block_type(&dummy_bh, NULL) == GFS2_METATYPE_LH) {
-			struct gfs2_log_header lh;
-			struct gfs_log_header lh1;
+		int found = 0;
 
-			if (sbd.gfs1) {
-				gfs_log_header_in(&lh1, &dummy_bh);
-				if (lh1.lh_sequence < highest_seq)
-					return jb;
-				highest_seq = lh1.lh_sequence;
-			} else {
-				gfs2_log_header_in(&lh, &dummy_bh);
-				if (lh.lh_sequence < highest_seq)
-					return jb;
-				highest_seq = lh.lh_sequence;
-			}
-		}
-		if (j_bh)
+		if (sbd.gfs1) {
+			struct gfs2_buffer_head *j_bh;
+
+			j_bh = bread(&sbd, jblock + jb);
+			found = is_wrap_pt(j_bh->b_data, &highest_seq);
 			brelse(j_bh);
+		} else {
+			int copied;
+			uint64_t abs_block;
+
+			copied = fsck_readi(ji, jbuf, jb, sbd.bsize, &abs_block);
+			if (!copied) /* end of file */
+				break;
+			found = is_wrap_pt(jbuf, &highest_seq);
+		}
+		if (found)
+			return jb;
 	}
 	return 0;
 }
