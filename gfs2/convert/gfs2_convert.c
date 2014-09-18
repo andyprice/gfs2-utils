@@ -885,7 +885,7 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 		if (!fixdir) {
 			/*FIXME: Same message as fix_cdpn_symlink */
 			log_crit(_("Error: out of memory.\n"));
-			return -1;
+			goto err_freei;
 		}
 		memset(fixdir, 0, sizeof(struct inode_block));
 		fixdir->di_addr = inode->i_di.di_num.no_addr;
@@ -939,18 +939,18 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 		inode->i_di.di_generation = 0;
 
 		if (adjust_indirect_blocks(sbp, inode))
-			return -1;
+			goto err_freei;
 		/* Check for cdpns */
 		if (S_ISLNK(inode->i_di.di_mode)) {
 			ret = fix_cdpn_symlink(sbp, bh, inode);
 			if (ret)
-				return -1;
+				goto err_freei;
 		}
 		/* Check for extended attributes */
 		if (inode->i_di.di_eattr) {
 			ret = fix_xattr(sbp, bh, inode);
 			if (ret)
-				return -1;
+				goto err_freei;
 		}
 	}
 
@@ -958,6 +958,9 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 	inode_put(&inode); /* does gfs2_dinode_out if modified */
 	sbp->md.next_inum++; /* update inode count */
 	return 0;
+err_freei:
+	inode_put(&inode);
+	return -1;
 } /* adjust_inode */
 
 static int next_rg_meta(struct rgrp_tree *rgd, uint64_t *block, int first)
