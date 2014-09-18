@@ -1988,6 +1988,7 @@ int pass2(struct gfs2_sbd *sdp)
 				if (error) {
 					log_err(_("Error adding directory %s: %s\n"), "'.'",
 					        strerror(errno));
+					fsck_inode_put(&ip);
 					return -errno;
 				}
 				if (cur_blks != ip->i_di.di_blocks) {
