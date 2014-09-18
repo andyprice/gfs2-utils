@@ -263,9 +263,12 @@ static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 					j_bmap_bh = bread(&sbd, abs_block +
 							  bcount);
 					rgd->bits[bmap].bi_bh = j_bmap_bh;
-					type = lgfs2_get_bitmap(&sbd, tblk,
-								rgd);
+					type = lgfs2_get_bitmap(&sbd, tblk, rgd);
 					brelse(j_bmap_bh);
+					if (type < 0) {
+						perror("Error printing log descriptor blocks");
+						exit(1);
+					}
 					rgd->bits[bmap].bi_bh = save_bh;
 					print_gfs2("bit for blk 0x%llx is %d "
 						   "(%s)",
