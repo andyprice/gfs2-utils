@@ -154,15 +154,9 @@ void lgfs2_rgrp_bitbuf_free(lgfs2_rgrp_t rg)
 uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
 	unsigned x, length = rgd->ri.ri_length;
-	uint64_t max_rgrp_bitbytes, max_rgrp_len;
 	struct gfs2_buffer_head **bhs;
 
-	/* Max size of an rgrp is 2GB.  Figure out how many blocks that is: */
-	max_rgrp_bitbytes = ((2147483648 / sdp->bsize) / GFS2_NBBY);
-	max_rgrp_len = max_rgrp_bitbytes / sdp->bsize;
-	if (!length && length > max_rgrp_len)
-		return -1;
-	if (gfs2_check_range(sdp, rgd->ri.ri_addr))
+	if (length == 0 || gfs2_check_range(sdp, rgd->ri.ri_addr))
 		return -1;
 
 	bhs = calloc(length, sizeof(struct gfs2_buffer_head *));
