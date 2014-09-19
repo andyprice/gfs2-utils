@@ -254,8 +254,7 @@ void gfs2_rgrp_free(struct osi_root *rgrp_tree)
 			}
 			gfs2_rgrp_relse(rgd); /* free them all. */
 		}
-		if(rgd->bits)
-			free(rgd->bits);
+		free(rgd->bits);
 		osi_erase(&rgd->node, rgrp_tree);
 		free(rgd);
 	}
