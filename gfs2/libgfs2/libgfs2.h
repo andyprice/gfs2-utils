@@ -689,9 +689,6 @@ extern int gfs2_revoke_check(struct gfs2_sbd *sdp, uint64_t blkno,
 extern void gfs2_revoke_clean(struct gfs2_sbd *sdp);
 extern int get_log_header(struct gfs2_inode *ip, unsigned int blk,
 			  struct gfs2_log_header *head);
-extern int find_good_lh(struct gfs2_inode *ip, unsigned int *blk,
-			struct gfs2_log_header *head);
-extern int jhead_scan(struct gfs2_inode *ip, struct gfs2_log_header *head);
 extern int gfs2_find_jhead(struct gfs2_inode *ip, struct gfs2_log_header *head);
 extern int clean_journal(struct gfs2_inode *ip, struct gfs2_log_header *head);
 

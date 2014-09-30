@@ -91,9 +91,7 @@ int get_log_header(struct gfs2_inode *ip, unsigned int blk,
  *
  * Returns: errno
  */
-
-int find_good_lh(struct gfs2_inode *ip, unsigned int *blk,
-		 struct gfs2_log_header *head)
+static int find_good_lh(struct gfs2_inode *ip, unsigned int *blk, struct gfs2_log_header *head)
 {
 	unsigned int orig_blk = *blk;
 	int error;
@@ -123,7 +121,7 @@ int find_good_lh(struct gfs2_inode *ip, unsigned int *blk,
  * Returns: errno
  */
 
-int jhead_scan(struct gfs2_inode *ip, struct gfs2_log_header *head)
+static int jhead_scan(struct gfs2_inode *ip, struct gfs2_log_header *head)
 {
 	unsigned int blk = head->lh_blkno;
 	uint32_t jd_blocks = ip->i_di.di_size / ip->i_sbd->sd_sb.sb_bsize;
