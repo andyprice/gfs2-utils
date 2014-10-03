@@ -105,6 +105,9 @@ int compute_constants(struct gfs2_sbd *sdp)
 static int fdcmp(int fd1, int fd2)
 {
 	struct stat st1, st2;
+
+	if (fd1 < 0 || fd2 < 0)
+		return -1;
 	if ((fstat(fd1, &st1) != 0) || (fstat(fd2, &st2) != 0))
 		return -1;
 	if (S_ISBLK(st1.st_mode) && S_ISBLK(st2.st_mode)) {
