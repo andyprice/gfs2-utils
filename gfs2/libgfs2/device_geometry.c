@@ -53,7 +53,7 @@ int lgfs2_get_dev_info(int fd, struct lgfs2_dev_info *i)
 	case S_IFREG:
 		i->size = i->stat.st_size;
 		ret = fcntl(fd, F_GETFL, 0);
-		if (ret & O_RDONLY)
+		if ((ret & O_ACCMODE) == O_RDONLY)
 			i->readonly = 1;
 		i->io_optimal_size = i->stat.st_blksize;
 		goto size_check;
