@@ -55,10 +55,7 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return 0;
 		next = osi_next(tmp);
-		if (!(ii = (struct inode_info *)tmp)) {
-			log_crit( _("osi_tree broken in scan_info_list!!\n"));
-			exit(FSCK_ERROR);
-		}
+		ii = (struct inode_info *)tmp;
 		/* Don't check reference counts on the special gfs files */
 		if (sdp->gfs1 &&
 		    ((ii->di_num.no_addr == sdp->md.riinode->i_di.di_num.no_addr) ||
