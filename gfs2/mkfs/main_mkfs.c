@@ -966,8 +966,10 @@ void main_mkfs(int argc, char *argv[])
 	build_root(&sbd);
 	sb.sb_root_dir = sbd.md.rooti->i_di.di_num;
 
-	strcpy(sb.sb_lockproto, opts.lockproto);
-	strcpy(sb.sb_locktable, opts.locktable);
+	strncpy(sb.sb_lockproto, opts.lockproto, GFS2_LOCKNAME_LEN);
+	strncpy(sb.sb_locktable, opts.locktable, GFS2_LOCKNAME_LEN);
+	sb.sb_lockproto[GFS2_LOCKNAME_LEN - 1] = '\0';
+	sb.sb_locktable[GFS2_LOCKNAME_LEN - 1] = '\0';
 
 	do_init_inum(&sbd);
 	do_init_statfs(&sbd);
