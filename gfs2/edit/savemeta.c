@@ -62,6 +62,7 @@ static uint64_t journal_blocks[MAX_JOURNALS_SAVED];
 static uint64_t gfs1_journal_size = 0; /* in blocks */
 static int journals_found = 0;
 int print_level = MSG_NOTICE;
+extern char *device;
 
 static int block_is_a_journal(void)
 {
@@ -737,7 +738,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	if (!sbd.gfs1)
 		sbd.bsize = GFS2_DEFAULT_BSIZE;
 	if (lgfs2_get_dev_info(sbd.device_fd, &sbd.dinfo)) {
-		perror(sbd.device_name);
+		perror(device);
 		exit(-1);
 	}
 	fix_device_geometry(&sbd);

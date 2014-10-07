@@ -507,7 +507,6 @@ void main_jadd(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	sbd.path_name = mnt->mnt_dir;
-	strncpy(sbd.device_name, mnt->mnt_fsname, PATH_MAX - 1);
 
 	gather_info(sdp);
 

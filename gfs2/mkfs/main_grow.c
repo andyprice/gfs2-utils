@@ -305,12 +305,11 @@ trunc:
 
 /**
  * print_info - Print out various bits of (interesting?) information
- *
  */
-static void print_info(struct gfs2_sbd *sdp)
+static void print_info(struct gfs2_sbd *sdp, char *device)
 {
 	log_notice("FS: %-25s%s\n", _("Mount point:"), sdp->path_name);
-	log_notice("FS: %-25s%s\n", _("Device:"), sdp->device_name);
+	log_notice("FS: %-25s%s\n", _("Device:"), device);
 	log_notice("FS: %-25s%llu (0x%llx)\n", _("Size:"),
 		   (unsigned long long)fssize, (unsigned long long)fssize);
 	log_notice("FS: %-25s%u (0x%x)\n", _("New resource group size:"), rgsize, rgsize);
@@ -354,10 +353,9 @@ void main_grow(int argc, char *argv[])
 			continue;
 		}
 		sdp->path_name = mnt->mnt_dir;
-		strncpy(sdp->device_name, mnt->mnt_fsname, PATH_MAX - 1);
 
 		if (lgfs2_get_dev_info(sdp->device_fd, &sdp->dinfo) < 0) {
-			perror(sdp->device_name);
+			perror(mnt->mnt_fsname);
 			exit(EXIT_FAILURE);
 		}
 		sdp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
@@ -431,7 +429,7 @@ void main_grow(int argc, char *argv[])
 			error = -1;
 			goto out;
 		}
-		print_info(sdp);
+		print_info(sdp, mnt->mnt_fsname);
 		rgcount = initialize_new_portion(sdp, rgs);
 		if (rgcount == 0 || metafs_interrupted)
 			goto out;

@@ -1000,7 +1000,7 @@ static void read_superblock(int fd)
 	if (!sbd.bsize)
 		sbd.bsize = GFS2_DEFAULT_BSIZE;
 	if (lgfs2_get_dev_info(fd, &sbd.dinfo)) {
-		perror(sbd.device_name);
+		perror(device);
 		exit(-1);
 	}
 	if(compute_constants(&sbd)) {
@@ -1401,8 +1401,7 @@ uint64_t check_keywords(const char *kword)
 		if (sbd.gfs1)
 			fprintf(stderr, "This is GFS1; there's no master directory.\n");
 		else if (!sbd.sd_sb.sb_master_dir.no_addr) {
-			fprintf(stderr, "GFS2 master directory not found on %s\n",
-			                                          sbd.device_name);
+			fprintf(stderr, "GFS2 master directory not found on %s\n", device);
 			exit(-1);
 		} else
 			blk = sbd.sd_sb.sb_master_dir.no_addr;
@@ -2541,7 +2540,6 @@ int main(int argc, char *argv[])
 
 	read_superblock(fd);
 	max_block = lseek(fd, 0, SEEK_END) / sbd.bsize;
-	strcpy(sbd.device_name, device);
 	if (sbd.gfs1)
 		edit_row[GFS2_MODE]++;
 	else
