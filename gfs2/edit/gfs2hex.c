@@ -48,7 +48,6 @@ struct gfs2_sbd sbd;
 uint64_t starting_blk;
 struct blkstack_info blockstack[BLOCK_STACK_SIZE];
 int identify = FALSE;
-char device[NAME_MAX];
 uint64_t max_block = 0;
 int start_row[DMODES], end_row[DMODES], lines_per_row[DMODES];
 struct gfs_sb *sbd1;

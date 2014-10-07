@@ -57,7 +57,6 @@ extern struct gfs2_dinode di;
 extern int screen_chunk_size; /* how much of the 4K can fit on screen */
 extern int gfs2_struct_type;
 extern uint64_t block_in_mem;
-extern char device[NAME_MAX];
 extern int identify;
 extern int color_scheme;
 extern WINDOW *wind;
