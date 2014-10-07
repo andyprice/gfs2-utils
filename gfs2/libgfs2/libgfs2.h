@@ -326,7 +326,7 @@ struct gfs2_sbd {
 	struct master_dir md;
 
 	int metafs_fd;
-	char metafs_path[PATH_MAX]; /* where metafs is mounted */
+	char *metafs_path; /* where metafs is mounted */
 	struct special_blocks eattr_blocks;
 
 	uint64_t rg_one_length;
