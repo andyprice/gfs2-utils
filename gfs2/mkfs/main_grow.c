@@ -306,9 +306,9 @@ trunc:
 /**
  * print_info - Print out various bits of (interesting?) information
  */
-static void print_info(struct gfs2_sbd *sdp, char *device)
+static void print_info(struct gfs2_sbd *sdp, char *device, char *mnt_path)
 {
-	log_notice("FS: %-25s%s\n", _("Mount point:"), sdp->path_name);
+	log_notice("FS: %-25s%s\n", _("Mount point:"), mnt_path);
 	log_notice("FS: %-25s%s\n", _("Device:"), device);
 	log_notice("FS: %-25s%llu (0x%llx)\n", _("Size:"),
 		   (unsigned long long)fssize, (unsigned long long)fssize);
@@ -352,7 +352,6 @@ void main_grow(int argc, char *argv[])
 			fprintf(stderr, _("%s: not a mounted gfs2 file system\n"), argv[optind]);
 			continue;
 		}
-		sdp->path_name = mnt->mnt_dir;
 
 		if (lgfs2_get_dev_info(sdp->device_fd, &sdp->dinfo) < 0) {
 			perror(mnt->mnt_fsname);
@@ -373,7 +372,7 @@ void main_grow(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 		fix_device_geometry(sdp);
-		if (mount_gfs2_meta(sdp)) {
+		if (mount_gfs2_meta(sdp, mnt->mnt_dir)) {
 			perror(_("Failed to mount GFS2 meta file system"));
 			exit(EXIT_FAILURE);
 		}
@@ -429,7 +428,7 @@ void main_grow(int argc, char *argv[])
 			error = -1;
 			goto out;
 		}
-		print_info(sdp, mnt->mnt_fsname);
+		print_info(sdp, mnt->mnt_fsname, mnt->mnt_dir);
 		rgcount = initialize_new_portion(sdp, rgs);
 		if (rgcount == 0 || metafs_interrupted)
 			goto out;

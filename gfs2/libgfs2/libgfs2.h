@@ -281,8 +281,6 @@ struct gfs2_sbd {
 	unsigned int rgsize;     /* Size of resource groups (in MB) */
 	unsigned int qcsize;     /* Size of quota change files (in MB) */
 
-	char *path_name;
-
 	/* Constants */
 
 	uint32_t sd_fsb2bb;
@@ -680,7 +678,7 @@ extern int lgfs2_open_mnt_dev(const char *path, int flags, struct mntent **mnt);
 extern int lgfs2_open_mnt_dir(const char *path, int flags, struct mntent **mnt);
 extern int find_gfs2_meta(struct gfs2_sbd *sdp);
 extern int dir_exists(const char *dir);
-extern int mount_gfs2_meta(struct gfs2_sbd *sdp);
+extern int mount_gfs2_meta(struct gfs2_sbd *sdp, const char *path);
 extern void cleanup_metafs(struct gfs2_sbd *sdp);
 extern int is_fsname(char *name);
 
