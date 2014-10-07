@@ -1608,7 +1608,7 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 	}
 
 	if (lgfs2_get_dev_info(sdp->device_fd, &sdp->dinfo)) {
-		perror(sdp->device_name);
+		perror(opts.device);
 		return FSCK_ERROR;
 	}
 
