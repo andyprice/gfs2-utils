@@ -901,7 +901,12 @@ int lgfs2_field_assign(char *blk, const struct lgfs2_metafield *field, const voi
 		return 0;
 	}
 
+	errno = EINVAL;
 	if (field->flags & LGFS2_MFF_STRING) {
+		size_t len = strnlen(val, field->length);
+
+		if (len >= field->length)
+			return 1;
 		strncpy(fieldp, val, field->length - 1);
 		fieldp[field->length - 1] = '\0';
 		return 0;
@@ -925,6 +930,5 @@ int lgfs2_field_assign(char *blk, const struct lgfs2_metafield *field, const voi
 		break;
 	}
 
-	errno = EINVAL;
 	return 1;
 }

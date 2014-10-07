@@ -471,7 +471,7 @@ invalid:
 static int ast_field_set(struct gfs2_buffer_head *bh, const struct lgfs2_metafield *field,
                                                                         struct ast_node *val)
 {
-	char *fieldp = (char *)bh->iov.iov_base + field->offset;
+	int err = 0;
 
 	if (field->flags & LGFS2_MFF_UUID) {
 		uint8_t uuid[16];
@@ -479,56 +479,21 @@ static int ast_field_set(struct gfs2_buffer_head *bh, const struct lgfs2_metafie
 
 		if (ret != AST_INTERP_SUCCESS)
 			return ret;
-
-		memcpy(fieldp, uuid, 16);
-		bmodified(bh);
-		return AST_INTERP_SUCCESS;
+		err = lgfs2_field_assign(bh->b_data, field, uuid);
+	} else if (field->flags & LGFS2_MFF_STRING) {
+		err = lgfs2_field_assign(bh->b_data, field, val->ast_str);
+	} else {
+		err = lgfs2_field_assign(bh->b_data, field, &val->ast_num);
 	}
 
-	if ((field->flags & LGFS2_MFF_STRING) && strlen(val->ast_str) > field->length) {
-		fprintf(stderr, "String '%s' is too long for field '%s'\n", val->ast_str, field->name);
+	if (err) {
+		fprintf(stderr, "Invalid field assignment: %s (size %d) = %s\n",
+	                field->name, field->length, val->ast_text);
 		return AST_INTERP_INVAL;
 	}
 
-	if (field->flags & (LGFS2_MFF_STRING|LGFS2_MFF_UUID)) {
-		strncpy(fieldp, val->ast_str, field->length - 1);
-		fieldp[field->length - 1] = '\0';
-		bmodified(bh);
-		return AST_INTERP_SUCCESS;
-	} else {
-		// Numeric fields
-		switch(field->length) {
-		case 1:
-			if (val->ast_num > UINT8_MAX)
-				break;
-			*fieldp = (uint8_t)val->ast_num;
-			bmodified(bh);
-			return AST_INTERP_SUCCESS;
-		case 2:
-			if (val->ast_num > UINT16_MAX)
-				break;
-			*(uint16_t *)fieldp = cpu_to_be16((uint16_t)val->ast_num);
-			bmodified(bh);
-			return AST_INTERP_SUCCESS;
-		case 4:
-			if (val->ast_num > UINT32_MAX)
-				break;
-			*(uint32_t *)fieldp = cpu_to_be32((uint32_t)val->ast_num);
-			bmodified(bh);
-			return AST_INTERP_SUCCESS;
-		case 8:
-			*(uint64_t *)fieldp = cpu_to_be64((uint64_t)val->ast_num);
-			bmodified(bh);
-			return AST_INTERP_SUCCESS;
-		default:
-			// This should never happen
-			return AST_INTERP_ERR;
-		}
-	}
-
-	fprintf(stderr, "Invalid field assignment: %s (size %d) = %s\n",
-	                     field->name, field->length, val->ast_text);
-	return AST_INTERP_INVAL;
+	bmodified(bh);
+	return AST_INTERP_SUCCESS;
 }
 
 static const struct lgfs2_metadata *lang_find_mtype(struct ast_node *node, struct gfs2_buffer_head *bh, unsigned ver)
@@ -558,7 +523,6 @@ static struct lgfs2_lang_result *ast_interp_set(struct lgfs2_lang_state *state,
 	struct ast_node *fieldspec;
 	struct ast_node *fieldname;
 	struct ast_node *fieldval;
-	int i = 0;
 	int ret = 0;
 	unsigned ver = sbd->gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2;
 
@@ -592,17 +556,21 @@ static struct lgfs2_lang_result *ast_interp_set(struct lgfs2_lang_state *state,
 	for (fieldspec = lookup->ast_right;
 	     fieldspec != NULL && fieldspec->ast_type == AST_EX_FIELDSPEC;
 	     fieldspec = fieldspec->ast_left) {
+		const struct lgfs2_metafield *mfield;
 
 		fieldname = fieldspec->ast_right;
 		fieldval = fieldname->ast_right;
-		for (i = 0; i < result->lr_mtype->nfields; i++) {
-			if (!strcmp(result->lr_mtype->fields[i].name, fieldname->ast_str)) {
-				ret = ast_field_set(result->lr_bh, &result->lr_mtype->fields[i], fieldval);
-				if (ret != AST_INTERP_SUCCESS) {
-					goto out_err;
-				}
-				break;
-			}
+
+		mfield = lgfs2_find_mfield_name(fieldname->ast_str, result->lr_mtype);
+		if (mfield == NULL) {
+			fprintf(stderr, "No field '%s' found in '%s'\n",
+			        fieldname->ast_str, result->lr_mtype->name);
+			goto out_err;
+		}
+
+		ret = ast_field_set(result->lr_bh, mfield, fieldval);
+		if (ret != AST_INTERP_SUCCESS) {
+			goto out_err;
 		}
 	}
 
