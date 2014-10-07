@@ -27,8 +27,11 @@
 #define BUF_SIZE 4096
 #define RANDOM(values) ((values) * (random() / (RAND_MAX + 1.0)))
 
-static int quiet = 0;
-static int debug = 0;
+struct jadd_opts {
+	char *path;
+	unsigned quiet:1;
+	unsigned debug:1;
+};
 
 static void
 make_jdata(int fd, const char *value)
@@ -116,7 +119,7 @@ static void print_usage(const char *prog_name)
  *
  */
 
-static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
+static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	int cont = TRUE;
 	int optchar;
@@ -129,7 +132,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			sdp->qcsize = atoi(optarg);
 			break;
 		case 'D':
-			debug = 1;
+			opts->debug = 1;
 			lgfs2_set_debug(1);
 			break;
 		case 'h':
@@ -143,7 +146,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 			sdp->md.journals = atoi(optarg);
 			break;
 		case 'q':
-			quiet = 1;
+			opts->quiet = 1;
 			break;
 		case 'V':
 			printf("gfs2_jadd %s (built %s %s)\n", VERSION,
@@ -166,7 +169,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 	}
 
 	if (optind < argc) {
-		sdp->path_name = argv[optind];
+		opts->path = argv[optind];
 		optind++;
 	} else
 		die( _("no path specified (try -h for help)\n"));
@@ -174,13 +177,13 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 	if (optind < argc)
 		die( _("Unrecognized argument: %s\n"), argv[optind]);
 
-	if (debug) {
+	if (opts->debug) {
 		printf( _("Command Line Arguments:\n"));
 		printf("  qcsize = %u\n", sdp->qcsize);
 		printf("  jsize = %u\n", sdp->jsize);
 		printf("  journals = %u\n", sdp->md.journals);
-		printf("  quiet = %d\n", quiet);
-		printf("  path = %s\n", sdp->path_name);
+		printf("  quiet = %u\n", opts->quiet);
+		printf("  path = %s\n", opts->path);
 	}
 }
 
@@ -200,14 +203,14 @@ static void verify_arguments(struct gfs2_sbd *sdp)
  *
  */
 
-static void print_results(struct gfs2_sbd *sdp)
+static void print_results(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 {
-	if (debug)
+	if (opts->debug)
 		printf("\n");
-	else if (quiet)
+	else if (opts->quiet)
 		return;
 
-	printf( _("Filesystem: %s\n"), sdp->path_name);
+	printf( _("Filesystem: %s\n"), opts->path);
 	printf( _("Old Journals: %u\n"), sdp->orig_journals);
 	printf( _("New Journals: %u\n"), sdp->md.journals);
 
@@ -364,12 +367,11 @@ add_qc(struct gfs2_sbd *sdp)
 	}
 }
 
-static void 
-gather_info(struct gfs2_sbd *sdp)
+static void gather_info(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	struct statfs statbuf;
-	if (statfs(sdp->path_name, &statbuf) < 0) {
-		perror(sdp->path_name);
+	if (statfs(opts->path, &statbuf) < 0) {
+		perror(opts->path);
 		exit(EXIT_FAILURE);
 	}
 	sdp->bsize = statbuf.f_bsize;
@@ -485,6 +487,7 @@ add_j(struct gfs2_sbd *sdp)
 
 void main_jadd(int argc, char *argv[])
 {
+	struct jadd_opts opts = {0};
 	struct gfs2_sbd sbd, *sdp = &sbd;
 	struct mntent *mnt;
 	unsigned int total;
@@ -494,23 +497,21 @@ void main_jadd(int argc, char *argv[])
 	sdp->qcsize = GFS2_DEFAULT_QCSIZE;
 	sdp->md.journals = 1;
 
-	decode_arguments(argc, argv, sdp);
+	decode_arguments(argc, argv, sdp, &opts);
 	verify_arguments(sdp);
 
-	sbd.path_fd = lgfs2_open_mnt_dir(sbd.path_name, O_RDONLY|O_CLOEXEC, &mnt);
+	sbd.path_fd = lgfs2_open_mnt_dir(opts.path, O_RDONLY|O_CLOEXEC, &mnt);
 	if (sbd.path_fd < 0) {
-		fprintf(stderr, _("Error looking up mount '%s': %s\n"), sbd.path_name, strerror(errno));
+		fprintf(stderr, _("Error looking up mount '%s': %s\n"), opts.path, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	if (mnt == NULL) {
-		fprintf(stderr, _("%s: not a mounted gfs2 file system\n"), sbd.path_name);
+		fprintf(stderr, _("%s: not a mounted gfs2 file system\n"), opts.path);
 		exit(EXIT_FAILURE);
 	}
-	sbd.path_name = mnt->mnt_dir;
+	gather_info(sdp, &opts);
 
-	gather_info(sdp);
-
-	if (mount_gfs2_meta(sdp)) {
+	if (mount_gfs2_meta(sdp, mnt->mnt_dir)) {
 		perror("GFS2 metafs");
 		exit(EXIT_FAILURE);
 	}
@@ -538,5 +539,5 @@ void main_jadd(int argc, char *argv[])
 	close(sdp->path_fd);
 	cleanup_metafs(sdp);
 	sync();
-	print_results(sdp);
+	print_results(sdp, &opts);
 }

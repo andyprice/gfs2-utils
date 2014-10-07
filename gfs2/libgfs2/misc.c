@@ -222,7 +222,7 @@ static void sighandler(int error)
 	metafs_interrupted = 1;
 }
 
-int mount_gfs2_meta(struct gfs2_sbd *sdp)
+int mount_gfs2_meta(struct gfs2_sbd *sdp, const char *path)
 {
 	int ret;
 	struct sigaction sa = {	.sa_handler = &sighandler };
@@ -242,7 +242,7 @@ int mount_gfs2_meta(struct gfs2_sbd *sdp)
 	sigaction(SIGCONT, &sa, NULL);
 	sigaction(SIGUSR1, &sa, NULL);
 	sigaction(SIGUSR2, &sa, NULL);
-	ret = mount(sdp->path_name, sdp->metafs_path, "gfs2meta", 0, NULL);
+	ret = mount(path, sdp->metafs_path, "gfs2meta", 0, NULL);
 	if (ret) {
 		rmdir(sdp->metafs_path);
 		return -1;
