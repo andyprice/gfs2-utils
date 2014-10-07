@@ -734,6 +734,19 @@ const struct lgfs2_metadata lgfs2_metadata[] = {
 
 const unsigned lgfs2_metadata_size = ARRAY_SIZE(lgfs2_metadata);
 
+const struct lgfs2_metafield *lgfs2_find_mfield_name(const char *name, const struct lgfs2_metadata *mtype)
+{
+	int j;
+	const struct lgfs2_metafield *f;
+
+	for (j = 0; j < mtype->nfields; j++) {
+		f = &mtype->fields[j];
+		if (strcmp(f->name, name) == 0)
+			return f;
+	}
+	return NULL;
+}
+
 static int check_metadata_sizes(void)
 {
 	unsigned offset;
@@ -843,4 +856,75 @@ const struct lgfs2_metadata *lgfs2_find_mtype_name(const char *name, const unsig
 	} while (n < lgfs2_metadata_size);
 
 	return NULL;
+}
+
+int lgfs2_field_str(char *str, const size_t size, const char *blk, const struct lgfs2_metafield *field, int hex)
+{
+	const char *fieldp = blk + field->offset;
+
+	errno = EINVAL;
+	if (str == NULL)
+		return 1;
+
+	if (field->flags & LGFS2_MFF_UUID) {
+		snprintf(str, size, "%s", str_uuid((unsigned char *)fieldp));
+	} else if (field->flags & LGFS2_MFF_STRING) {
+		snprintf(str, size, "%s", fieldp);
+	} else {
+		switch(field->length) {
+		case sizeof(uint8_t):
+			snprintf(str, size, hex? "%"PRIx8 : "%"PRIu8, *(uint8_t *)fieldp);
+			break;
+		case sizeof(uint16_t):
+			snprintf(str, size, hex? "%"PRIx16 : "%"PRIu16, be16_to_cpu(*(uint16_t *)fieldp));
+			break;
+		case sizeof(uint32_t):
+			snprintf(str, size, hex? "%"PRIx32 : "%"PRIu32, be32_to_cpu(*(uint32_t *)fieldp));
+			break;
+		case sizeof(uint64_t):
+			snprintf(str, size, hex? "%"PRIx64 : "%"PRIu64, be64_to_cpu(*(uint64_t *)fieldp));
+			break;
+		default:
+			break;
+		}
+	}
+	str[size - 1] = '\0';
+	return 0;
+}
+
+int lgfs2_field_assign(char *blk, const struct lgfs2_metafield *field, const void *val)
+{
+	char *fieldp = blk + field->offset;
+
+	if (field->flags & LGFS2_MFF_UUID) {
+		memcpy(fieldp, val, 16);
+		return 0;
+	}
+
+	if (field->flags & LGFS2_MFF_STRING) {
+		strncpy(fieldp, val, field->length - 1);
+		fieldp[field->length - 1] = '\0';
+		return 0;
+	}
+
+	switch(field->length) {
+	case sizeof(uint8_t):
+		*fieldp = *(uint8_t *)val;
+		return 0;
+	case sizeof(uint16_t):
+		*(uint16_t *)fieldp = cpu_to_be16(*(uint16_t *)val);
+		return 0;
+	case sizeof(uint32_t):
+		*(uint32_t *)fieldp = cpu_to_be32(*(uint32_t *)val);
+		return 0;
+	case sizeof(uint64_t):
+		*(uint64_t *)fieldp = cpu_to_be64(*(uint64_t *)val);
+		return 0;
+	default:
+		/* Will never happen */
+		break;
+	}
+
+	errno = EINVAL;
+	return 1;
 }
