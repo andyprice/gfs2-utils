@@ -210,8 +210,10 @@ static int lock_for_admin(struct gfs2_sbd *sdp)
 		return -1;
 
 	error = flock(sdp->metafs_fd, LOCK_EX);
-	if (error)
+	if (error) {
+		close(sdp->metafs_fd);
 		return -1;
+	}
 	if (cfg_debug)
 		printf("Got it.\n");
 	return 0;
@@ -222,40 +224,57 @@ static void sighandler(int error)
 	metafs_interrupted = 1;
 }
 
-int mount_gfs2_meta(struct gfs2_sbd *sdp, const char *path)
+static void setsigs(void (*handler)(int))
 {
-	int ret;
-	struct sigaction sa = {	.sa_handler = &sighandler };
-
-	memset(sdp->metafs_path, 0, PATH_MAX);
-	snprintf(sdp->metafs_path, PATH_MAX - 1, "/tmp/.gfs2meta.XXXXXX");
-
-	if(!mkdtemp(sdp->metafs_path))
-		return -1;
+	struct sigaction sa = {	.sa_handler = handler };
 
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGILL, &sa, NULL);
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGHUP, &sa, NULL);
 	sigaction(SIGABRT, &sa, NULL);
-	sigaction(SIGSEGV, &sa, NULL);
 	sigaction(SIGCONT, &sa, NULL);
 	sigaction(SIGUSR1, &sa, NULL);
 	sigaction(SIGUSR2, &sa, NULL);
+}
+
+int mount_gfs2_meta(struct gfs2_sbd *sdp, const char *path)
+{
+	int ret;
+
+	sdp->metafs_path = strdup("/tmp/.gfs2meta.XXXXXX");
+	if (sdp->metafs_path == NULL)
+		return -1;
+
+	if(!mkdtemp(sdp->metafs_path))
+		goto err_free;
+
+	setsigs(sighandler);
+
 	ret = mount(path, sdp->metafs_path, "gfs2meta", 0, NULL);
-	if (ret) {
-		rmdir(sdp->metafs_path);
-		return -1;
-	}
+	if (ret)
+		goto err_rmdir;
+
 	if (lock_for_admin(sdp))
-		return -1;
+		goto err_umount;
+
 	return 0;
+
+err_umount:
+	if (umount(sdp->metafs_path))
+		fprintf(stderr, "Could not unmount %s: %s\n", sdp->metafs_path, strerror(errno));
+	setsigs(SIG_DFL);
+err_rmdir:
+	rmdir(sdp->metafs_path);
+err_free:
+	free(sdp->metafs_path);
+	sdp->metafs_path = NULL;
+	return -1;
 }
 
 void cleanup_metafs(struct gfs2_sbd *sdp)
 {
 	int ret;
-	struct sigaction sa = {	.sa_handler = SIG_DFL };
 
 	if (sdp->metafs_fd <= 0)
 		return;
@@ -268,14 +287,9 @@ void cleanup_metafs(struct gfs2_sbd *sdp)
 			sdp->metafs_path, strerror(errno));
 	else
 		rmdir(sdp->metafs_path);
-	sigaction(SIGINT, &sa, NULL);
-	sigaction(SIGILL, &sa, NULL);
-	sigaction(SIGTERM, &sa, NULL);
-	sigaction(SIGHUP, &sa, NULL);
-	sigaction(SIGABRT, &sa, NULL);
-	sigaction(SIGSEGV, &sa, NULL);
-	sigaction(SIGCONT, &sa, NULL);
-	sigaction(SIGUSR1, &sa, NULL);
-	sigaction(SIGUSR2, &sa, NULL);
+
+	setsigs(SIG_DFL);
 	metafs_interrupted = 0;
+	free(sdp->metafs_path);
+	sdp->metafs_path = NULL;
 }
