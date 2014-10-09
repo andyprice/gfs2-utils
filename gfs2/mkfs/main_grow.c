@@ -320,11 +320,28 @@ static void print_info(struct gfs2_sbd *sdp, char *device, char *mnt_path)
 		   (unsigned long long)(fsgrowth * sdp->bsize) / MB);
 }
 
+static int open_rindex(char *metafs_path, int mode)
+{
+	char *path;
+	int fd;
+
+	if (asprintf(&path, "%s/rindex", metafs_path) < 0) {
+		perror(_("Failed to open rindex"));
+		return -1;
+	}
+	fd = open(path, (mode | O_CLOEXEC));
+	if (fd < 0) {
+		perror(path);
+		fprintf(stderr, _("Please run fsck.gfs2\n"));
+	}
+	free(path);
+	return fd;
+}
+
 void main_grow(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd, *sdp = &sbd;
 	int rindex_fd;
-	char rindex_name[PATH_MAX];
 	int error = EXIT_SUCCESS;
 	int devflags = (test ? O_RDONLY : O_RDWR) | O_CLOEXEC;
 
@@ -376,12 +393,9 @@ void main_grow(int argc, char *argv[])
 			perror(_("Failed to mount GFS2 meta file system"));
 			exit(EXIT_FAILURE);
 		}
-
-		sprintf(rindex_name, "%s/rindex", sdp->metafs_path);
-		rindex_fd = open(rindex_name, (test ? O_RDONLY : O_RDWR) | O_CLOEXEC);
+		rindex_fd = open_rindex(sdp->metafs_path, (test ? O_RDONLY : O_RDWR));
 		if (rindex_fd < 0) {
 			cleanup_metafs(sdp);
-			perror(_("GFS2 rindex not found. Please run fsck.gfs2.\n"));
 			exit(EXIT_FAILURE);
 		}
 		/* Get master dinode */
