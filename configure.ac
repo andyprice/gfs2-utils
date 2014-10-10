@@ -234,5 +234,9 @@ AC_CONFIG_FILES([Makefile
 
 AC_OUTPUT
 
-test x"$have_check" = "xyes" || AC_MSG_NOTICE([package 'check' not found; unit tests will not be built])
-test x"${enable_gcov}" = "xyes" && AC_MSG_NOTICE([code coverage enabled; optimization will be disabled])
+if test x"${have_check}" != "xyes"; then
+	AC_MSG_NOTICE([package 'check' not found; unit tests will not be built])
+fi
+if test x"${enable_gcov}" = "xyes"; then
+	AC_MSG_NOTICE([code coverage enabled; optimization will be disabled])
+fi
