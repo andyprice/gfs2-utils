@@ -96,36 +96,38 @@ static int getopts(int argc, char *argv[], struct cmdopts *opts)
 	return 0;
 }
 
-static struct gfs2_sbd *openfs(const char *path)
+static int openfs(const char *path, struct gfs2_sbd *sdp)
 {
 	int fd;
 	int ret;
 	int sane;
 	int count;
-	struct gfs2_sbd *sdp = calloc(1, sizeof(struct gfs2_sbd));
-	if (sdp == NULL) {
-		perror("calloc");
-		return NULL;
-	}
 
 	fd = open(path, O_RDWR);
 	if (fd < 0) {
 		fprintf(stderr, "Failed to open %s\n", path);
-		free(sdp);
-		return NULL;
+		return 1;
 	}
 
 	memset(sdp, 0, sizeof(*sdp));
 	sdp->bsize = GFS2_BASIC_BLOCK;
 	sdp->device_fd = fd;
-	compute_constants(sdp);
-	lgfs2_get_dev_info(fd, &sdp->dinfo);
+	ret = compute_constants(sdp);
+	if (ret != 0) {
+		perror("Bad constants");
+		return 1;
+	}
+	ret = lgfs2_get_dev_info(fd, &sdp->dinfo);
+	if (ret != 0) {
+		perror("Failed to gather device info");
+		return 1;
+	}
 	fix_device_geometry(sdp);
 
 	ret = read_sb(sdp);
 	if (ret != 0) {
 		perror("Could not read sb");
-		return NULL;
+		return 1;
 	}
 
 	sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_sb.sb_master_dir.no_addr);
@@ -135,17 +137,16 @@ static struct gfs2_sbd *openfs(const char *path)
 		rindex_read(sdp, 0, &count, &sane);
 	} else {
 		perror("Failed to look up rindex");
-		free(sdp);
-		return NULL;
+		return 1;
 	}
-	return sdp;
+	return 0;
 }
 
 int main(int argc, char *argv[])
 {
 	int ret;
 	struct cmdopts opts = {NULL, NULL};
-	struct gfs2_sbd *sdp;
+	struct gfs2_sbd sbd;
 	struct lgfs2_lang_result *result;
 	struct lgfs2_lang_state *state;
 
@@ -158,10 +159,8 @@ int main(int argc, char *argv[])
 		exit(0);
 	}
 
-	sdp = openfs(argv[optind]);
-	if (sdp == NULL) {
+	if (openfs(argv[optind], &sbd))
 		exit(1);
-	}
 
 	state = lgfs2_lang_init();
 	if (state == NULL) {
@@ -176,9 +175,9 @@ int main(int argc, char *argv[])
 		return ret;
 	}
 
-	for (result = lgfs2_lang_result_next(state, sdp);
+	for (result = lgfs2_lang_result_next(state, &sbd);
 	     result != NULL;
-	     result = lgfs2_lang_result_next(state, sdp)) {
+	     result = lgfs2_lang_result_next(state, &sbd)) {
 		if (result == NULL) {
 			fprintf(stderr, "Failed to interpret script\n");
 			return -1;
@@ -187,9 +186,9 @@ int main(int argc, char *argv[])
 		lgfs2_lang_result_free(&result);
 	}
 
-	gfs2_rgrp_free(&sdp->rgtree);
-	inode_put(&sdp->md.riinode);
-	inode_put(&sdp->master_dir);
+	gfs2_rgrp_free(&sbd.rgtree);
+	inode_put(&sbd.md.riinode);
+	inode_put(&sbd.master_dir);
 	lgfs2_lang_free(&state);
 	free(opts.fspath);
 	return 0;
