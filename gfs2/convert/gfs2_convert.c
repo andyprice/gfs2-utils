@@ -114,6 +114,7 @@ uint32_t gfs2_max_height;
 uint32_t gfs2_max_jheight;
 uint64_t jindex_addr = 0, rindex_addr = 0;
 int print_level = MSG_NOTICE;
+unsigned orig_journals = 0;
 
 /* ------------------------------------------------------------------------- */
 /* This function is for libgfs's sake.                                       */
@@ -1513,7 +1514,7 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 		log_crit(_("journal inode size invalid\n"));
 		goto fail;
 	}
-	sdp->md.journals = sdp->orig_journals = j;
+	sdp->md.journals = orig_journals = j;
 	return 0;
 
  fail:
@@ -1821,7 +1822,7 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 	mh.mh_format = GFS2_FORMAT_RB;
 	log_notice(_("Converting journal space to rg space.\n"));
 	/* Go through each journal, converting them one by one */
-	for (j = 0; j < sdp->orig_journals; j++) { /* for each journal */
+	for (j = 0; j < orig_journals; j++) { /* for each journal */
 		uint64_t size;
 
 		jndx = &sd_jindex[j];

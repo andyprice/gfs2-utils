@@ -321,8 +321,6 @@ struct gfs2_sbd {
 	struct osi_root rgtree;
 	struct osi_root rgcalc;
 
-	unsigned int orig_journals;
-
 	struct gfs2_inode *master_dir;
 	struct master_dir md;
 
