@@ -197,8 +197,6 @@ WARNLIST="
 	format-security
 	format-nonliteral
 	no-long-long
-	unsigned-char
-	gnu89-inline
 	no-strict-aliasing
 	"
 
