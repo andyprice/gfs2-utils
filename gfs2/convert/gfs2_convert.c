@@ -98,7 +98,6 @@ struct gfs2_options {
 
 struct gfs_sb  raw_gfs1_ondisk_sb;
 struct gfs2_sbd sb2;
-char device[256];
 struct inode_block dirs_to_fix;  /* linked list of directories to fix */
 struct inode_dir_block cdpns_to_fix; /* linked list of cdpn symlinks */
 int seconds;
@@ -1544,15 +1543,15 @@ static int sanity_check(struct gfs2_sbd *sdp)
 /* init - initialization code                                                */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-static int init(struct gfs2_sbd *sbp)
+static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 {
 	struct gfs2_buffer_head *bh;
 	int rgcount;
 	struct gfs2_inum inum;
 
 	memset(sbp, 0, sizeof(struct gfs2_sbd));
-	if ((sbp->device_fd = open(device, O_RDWR)) < 0) {
-		perror(device);
+	if ((sbp->device_fd = open(opts->device, O_RDWR)) < 0) {
+		perror(opts->device);
 		exit(-1);
 	}
 	/* --------------------------------- */
@@ -1634,8 +1633,7 @@ static int init(struct gfs2_sbd *sbp)
 		sbp->sd_sb.sb_header.mh_type != GFS_METATYPE_SB ||
 		sbp->sd_sb.sb_header.mh_format != GFS_FORMAT_SB ||
 		sbp->sd_sb.sb_multihost_format != GFS_FORMAT_MULTI) {
-		log_crit(_("Error: %s does not look like a gfs1 filesystem.\n"),
-				device);
+		log_crit(_("Error: %s does not look like a gfs1 filesystem.\n"), opts->device);
 		close(sbp->device_fd);
 		exit(-1);
 	}
@@ -1733,7 +1731,6 @@ static void process_parameters(int argc, char **argv, struct gfs2_options *opts)
 		usage(argv[0]);
 		exit(0);
 	}
-	memset(device, 0, sizeof(device));
 	while((c = getopt(argc, argv, "hnqvyV")) != -1) {
 		switch(c) {
 
@@ -1762,12 +1759,7 @@ static void process_parameters(int argc, char **argv, struct gfs2_options *opts)
 		}
 	}
 	if(argc > optind) {
-		strcpy(device, argv[optind]);
-		opts->device = device;
-		if(!opts->device) {
-			fprintf(stderr, _("No device specified. Please use '-h' for help\n"));
-			exit(1);
-		}
+		opts->device = argv[optind];
 	} else {
 		fprintf(stderr, _("No device specified. Please use '-h' for help\n"));
 		exit(1);
@@ -2174,7 +2166,7 @@ int main(int argc, char **argv)
 
 	version();
 	process_parameters(argc, argv, &opts);
-	error = init(&sb2);
+	error = init(&sb2, &opts);
 
 	/*
 	 * Check for some common fs errors
@@ -2183,7 +2175,7 @@ int main(int argc, char **argv)
 		if (sanity_check(&sb2)) {
 			log_crit(_("%s is not a clean gfs filesytem. Please use the"
 				   " fsck.gfs2 utility to correct these errors and"
-				   " try again.\n"), device);
+				   " try again.\n"), opts.device);
 			exit(0);
 		}
 	}
@@ -2192,8 +2184,8 @@ int main(int argc, char **argv)
 	/* ---------------------------------------------- */
 	if (!error) {
 		give_warning();
-		if (!gfs2_query(&opts, device)) {
-			log_crit(_("%s not converted.\n"), device);
+		if (!gfs2_query(&opts, opts.device)) {
+			log_crit(_("%s not converted.\n"), opts.device);
 			close(sb2.device_fd);
 			exit(0);
 		}
@@ -2207,8 +2199,7 @@ int main(int argc, char **argv)
 		error = convert_rgs(&sb2);
 		log_notice("\n");
 		if (error)
-			log_crit(_("%s: Unable to convert resource groups.\n"),
-					device);
+			log_crit(_("%s: Unable to convert resource groups.\n"), opts.device);
 		fsync(sb2.device_fd); /* write the buffers to disk */
 	}
 	/* ---------------------------------------------- */
@@ -2219,7 +2210,7 @@ int main(int argc, char **argv)
 		error = inode_renumber(&sb2, sb2.sd_sb.sb_root_dir.no_addr,
 				       (osi_list_t *)&cdpns_to_fix);
 		if (error)
-			log_crit(_("\n%s: Error renumbering inodes.\n"), device);
+			log_crit(_("\n%s: Error renumbering inodes.\n"), opts.device);
 		fsync(sb2.device_fd); /* write the buffers to disk */
 	}
 	/* ---------------------------------------------- */
@@ -2232,7 +2223,7 @@ int main(int argc, char **argv)
 			   (unsigned long long)dirents_fixed);
 		fflush(stdout);
 		if (error)
-			log_crit(_("\n%s: Error fixing directories.\n"), device);
+			log_crit(_("\n%s: Error fixing directories.\n"), opts.device);
 	}
 	/* ---------------------------------------------- */
 	/* Convert cdpn symlinks to empty dirs            */
@@ -2243,7 +2234,7 @@ int main(int argc, char **argv)
 			   (unsigned long long)cdpns_fixed);
 		fflush(stdout);
 		if (error)
-			log_crit(_("\n%s: Error fixing cdpn symlinks.\n"), device);
+			log_crit(_("\n%s: Error fixing cdpn symlinks.\n"), opts.device);
 	}
 	/* ---------------------------------------------- */
 	/* Convert journal space to rg space              */
@@ -2252,7 +2243,7 @@ int main(int argc, char **argv)
 		log_notice(_("\nConverting journals.\n"));
 		error = journ_space_to_rg(&sb2);
 		if (error)
-			log_crit(_("%s: Error converting journal space.\n"), device);
+			log_crit(_("%s: Error converting journal space.\n"), opts.device);
 		fsync(sb2.device_fd); /* write the buffers to disk */
 	}
 	/* ---------------------------------------------- */
@@ -2364,10 +2355,9 @@ int main(int argc, char **argv)
 
 		error = fsync(sb2.device_fd);
 		if (error)
-			perror(device);
+			perror(opts.device);
 		else
-			log_notice(_("%s: filesystem converted successfully to gfs2.\n"),
-					   device);
+			log_notice(_("%s: filesystem converted successfully to gfs2.\n"), opts.device);
 	}
 	close(sb2.device_fd);
 	if (sd_jindex)
