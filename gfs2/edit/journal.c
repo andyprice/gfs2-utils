@@ -41,6 +41,9 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 	char jbuf[sbd.bsize];
 
 	journal_num = atoi(journal + 7);
+	if (journal_num < 0)
+		return 0;
+
 	/* Figure out the block of the jindex file */
 	if (sbd.gfs1)
 		jindex_block = sbd1->sb_jindex_di.no_addr;
@@ -73,6 +76,8 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 	} else {
 		struct gfs2_dinode jdi;
 
+		if (journal_num > indirect->ii[0].dirents - 2)
+			return 0;
 		jblock = indirect->ii[0].dirent[journal_num + 2].block;
 		j_bh = bread(&sbd, jblock);
 		gfs2_dinode_in(&jdi, j_bh);/* parse dinode to struct */
