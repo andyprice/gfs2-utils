@@ -97,7 +97,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 		return ask_remove_eattr(ip);
 	}
 	q = block_type(block);
-	if (q != gfs2_indir_blk) {
+	if (q != (sdp->gfs1 ? GFS2_BLKST_DINODE : GFS2_BLKST_USED)) {
 		log_err( _("Extended attributes indirect block #%llu"
 			" (0x%llx) for inode #%llu"
 			" (0x%llx) is invalid.\n"),
@@ -122,16 +122,18 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 	uint8_t q;
 
 	if (!valid_block(sdp, block)) {
-		log_err( _("Extended attributes block for inode #%llu"
-			" (0x%llx) is invalid.\n"),
-			(unsigned long long)ip->i_di.di_num.no_addr,
-			(unsigned long long)ip->i_di.di_num.no_addr);
+		log_err( _("Extended attributes block %lld (0x%llx) for "
+			   "inode #%llu (0x%llx) is invalid.\n"),
+			 (unsigned long long)block, (unsigned long long)block,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr);
 		return ask_remove_eattr(ip);
 	}
 	q = block_type(block);
-	if (q != gfs2_meta_eattr) {
-		log_err( _("Extended attributes block for inode #%llu"
-			   " (0x%llx) invalid.\n"),
+	if (q != (sdp->gfs1 ? GFS2_BLKST_DINODE : GFS2_BLKST_USED)) {
+		log_err( _("Extended attributes block %lld (0x%llx) for "
+			   "inode #%llu (0x%llx) invalid.\n"),
+			 (unsigned long long)block, (unsigned long long)block,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
 		return ask_remove_eattr(ip);
@@ -218,7 +220,7 @@ static int check_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_ptr,
 	struct gfs2_sbd *sdp = ip->i_sbd;
 
 	q = block_type(be64_to_cpu(*ea_ptr));
-	if (q != gfs2_meta_eattr) {
+	if (q != (sdp->gfs1 ? GFS2_BLKST_DINODE : GFS2_BLKST_USED)) {
 		if (remove_eattr_entry(sdp, leaf_bh, ea_hdr, ea_hdr_prev)){
 			stack;
 			return -1;

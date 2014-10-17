@@ -71,7 +71,7 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 				(unsigned long long)ii->di_num.no_addr,
 				(unsigned long long)ii->di_num.no_addr);
 			q = block_type(ii->di_num.no_addr);
-			if (q == gfs2_bad_block) {
+			if (q == GFS2_BLKST_UNLINKED) {
 				log_err( _("Unlinked inode %llu (0x%llx) contains "
 					"bad blocks\n"),
 					(unsigned long long)ii->di_num.no_addr,
@@ -84,18 +84,13 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 					check_metatree(ip, &pass4_fxns_delete);
 					fsck_blockmap_set(ip, ii->di_num.no_addr,
 							  _("bad unlinked"),
-							  gfs2_block_free);
+							  GFS2_BLKST_FREE);
 					fsck_inode_put(&ip);
 					continue;
 				} else
 					log_err( _("Unlinked inode with bad blocks not cleared\n"));
 			}
-			if (q != gfs2_inode_dir &&
-			   q != gfs2_inode_file &&
-			   q != gfs2_inode_lnk &&
-			   q != gfs2_inode_device &&
-			   q != gfs2_inode_fifo &&
-			   q != gfs2_inode_sock) {
+			if (q != GFS2_BLKST_DINODE) {
 				log_err( _("Unlinked block %lld (0x%llx) "
 					   "marked as inode is "
 					   "not an inode (%d)\n"),
@@ -108,7 +103,7 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 					check_metatree(ip, &pass4_fxns_delete);
 					fsck_blockmap_set(ip, ii->di_num.no_addr,
 						  _("invalid unlinked"),
-							  gfs2_block_free);
+							  GFS2_BLKST_FREE);
 					fsck_inode_put(&ip);
 					log_err( _("The inode was deleted\n"));
 				} else {
@@ -129,7 +124,7 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 					   "(y/n) "))) {
 					fsck_blockmap_set(ip, ii->di_num.no_addr,
 						_("unlinked zero-length"),
-							  gfs2_block_free);
+							  GFS2_BLKST_FREE);
 					fsck_inode_put(&ip);
 					continue;
 				}

@@ -46,12 +46,10 @@ extern int delete_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
 				 void *private);
 
 extern int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
-			      const char *btype, enum gfs2_mark_block mark,
-			      int error_on_dinode,
+			      const char *btype, int mark, int error_on_dinode,
 			      const char *caller, int line);
 extern int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
-			      int error_on_dinode,
-			      enum gfs2_mark_block new_blockmap_state);
+			      int error_on_dinode, int new_blockmap_state);
 extern int check_i_goal(struct gfs2_inode *ip, uint64_t goal_blk,
 			void *private);
 extern void reprocess_inode(struct gfs2_inode *ip, const char *desc);

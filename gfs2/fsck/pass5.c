@@ -34,7 +34,7 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer,
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return 0;
 
-		q = blockmap_to_bitmap(block_type(block), sdp->gfs1);
+		q = block_type(block);
 		/* GFS1 file systems will have to suffer from slower fsck run
 		 * times because in GFS, there's no 1:1 relationship between
 		 * bits and counts. If a bit is marked "dinode" in GFS1, it
