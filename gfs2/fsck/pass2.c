@@ -135,40 +135,28 @@ static const char *de_type_string(uint8_t de_type)
 	return de_types[3]; /* invalid */
 }
 
-static int check_file_type(uint8_t de_type, uint8_t blk_type, int gfs1)
+static int check_file_type(uint64_t block, uint8_t de_type, uint8_t q,
+			   int gfs1, int *isdir)
 {
-	switch(blk_type) {
-	case gfs2_inode_dir:
-		if (de_type != (gfs1 ? GFS_FILE_DIR : DT_DIR))
-			return 1;
-		break;
-	case gfs2_inode_file:
-		if (de_type != (gfs1 ? GFS_FILE_REG : DT_REG))
-			return 1;
-		break;
-	case gfs2_inode_lnk:
-		if (de_type != (gfs1 ? GFS_FILE_LNK : DT_LNK))
-			return 1;
-		break;
-	case gfs2_inode_device:
-		if ((de_type != (gfs1 ? GFS_FILE_BLK : DT_BLK)) &&
-		    (de_type != (gfs1 ? GFS_FILE_CHR : DT_CHR)))
-			return 1;
-		break;
-	case gfs2_inode_fifo:
-		if (de_type != (gfs1 ? GFS_FILE_FIFO : DT_FIFO))
-			return 1;
-		break;
-	case gfs2_inode_sock:
-		if (de_type != (gfs1 ? GFS_FILE_SOCK : DT_SOCK))
-			return 1;
-		break;
-	default:
+	struct dir_info *dt;
+
+	*isdir = 0;
+	if (q != GFS2_BLKST_DINODE) {
 		log_err( _("Invalid block type\n"));
 		return -1;
-		break;
 	}
-	return 0;
+	if (de_type == (gfs1 ? GFS_FILE_DIR : DT_DIR))
+		*isdir = 1;
+	/* Check if the dinode is in the dir tree */
+	dt = dirtree_find(block);
+	/* This is a bit confusing, so let me explain:
+	   If the dirent says the inode supposed to be for a directory,
+	   it should be in the dir tree. If it is, no problem, return 0.
+	   If it's not, return 1 (wrong type). If it's not supposed to be
+	   a directory, it shouldn't be in the dir tree. */
+	if (dt)
+		return !(*isdir);
+	return *isdir;
 }
 
 struct metawalk_fxns pass2_fxns_delete = {
@@ -209,7 +197,7 @@ static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		 (unsigned long long)entry.no_formal_ino,
 		 (unsigned long long)ii->di_num.no_formal_ino,
 		 (unsigned long long)ii->di_num.no_formal_ino);
-	if (q != gfs2_inode_dir || !strcmp("..", tmp_name)) {
+	if (q != GFS2_BLKST_DINODE || !strcmp("..", tmp_name)) {
 		if (query( _("Remove the corrupt directory entry? (y/n) ")))
 			return 1;
 		log_err( _("Corrupt directory entry not removed.\n"));
@@ -388,7 +376,8 @@ static int wrong_leaf(struct gfs2_inode *ip, struct gfs2_inum *entry,
 				(unsigned long long)real_leaf,
 				(unsigned long long)ip->i_di.di_blocks);
 			fsck_blockmap_set(ip, real_leaf, _("split leaf"),
-					  gfs2_indir_blk);
+					  sdp->gfs1 ? GFS2_BLKST_DINODE :
+					  GFS2_BLKST_USED);
 		}
 		/* If the misplaced dirent was supposed to be earlier in the
 		   hash table, we need to adjust our counts for the blocks
@@ -449,7 +438,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			       struct gfs2_inum *entry, const char *tmp_name,
 			       uint32_t *count, struct gfs2_dirent *de,
 			       struct dir_status *ds, uint8_t *q,
-			       struct gfs2_buffer_head *bh)
+			       struct gfs2_buffer_head *bh, int *isdir)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint32_t calculated_hash;
@@ -457,6 +446,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	int error;
 	struct inode_info *ii;
 
+	*isdir = 0;
 	if (!valid_block(ip->i_sbd, entry->no_addr)) {
 		log_err( _("Block # referenced by directory entry %s in inode "
 			   "%lld (0x%llx) is invalid\n"),
@@ -487,7 +477,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		/* Don't be tempted to do this:
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
 				  _("corrupt directory entry"),
-				  gfs2_inode_invalid);
+				  GFS2_BLKST_FREE);
 		We can't free it because another dir may have a valid reference
 		to it. Just return 1 so we can delete the bad dirent. */
 		log_err( _("Bad directory entry deleted.\n"));
@@ -530,41 +520,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	 * 2. Blocks marked "bad" need to have their entire
 	 * metadata tree deleted.
 	*/
-	if (*q == gfs2_inode_invalid || *q == gfs2_bad_block) {
-		/* This entry's inode has bad blocks in it */
-
-		/* Handle bad blocks */
-		log_err( _("Found directory entry '%s' pointing to invalid "
-			   "block %lld (0x%llx)\n"), tmp_name,
-			 (unsigned long long)entry->no_addr,
-			 (unsigned long long)entry->no_addr);
-
-		if (!query( _("Delete inode containing bad blocks? (y/n)"))) {
-			log_warn( _("Entry to inode containing bad blocks remains\n"));
-			return 0;
-		}
-
-		if (*q == gfs2_bad_block) {
-			if (ip->i_di.di_num.no_addr == entry->no_addr)
-				entry_ip = ip;
-			else
-				entry_ip = fsck_load_inode(sdp, entry->no_addr);
-			if (ip->i_di.di_eattr) {
-				check_inode_eattr(entry_ip,
-						  &pass2_fxns_delete);
-			}
-			check_metatree(entry_ip, &pass2_fxns_delete);
-			if (entry_ip != ip)
-				fsck_inode_put(&entry_ip);
-		}
-		fsck_blockmap_set(ip, entry->no_addr,
-				  _("bad directory entry"), gfs2_block_free);
-		log_err( _("Inode %lld (0x%llx) was deleted.\n"),
-			 (unsigned long long)entry->no_addr,
-			 (unsigned long long)entry->no_addr);
-		return 1;
-	}
-	if (*q < gfs2_inode_dir || *q > gfs2_inode_sock) {
+	if (*q != GFS2_BLKST_DINODE) {
 		log_err( _("Directory entry '%s' referencing inode %llu "
 			   "(0x%llx) in dir inode %llu (0x%llx) block type "
 			   "%d: %s.\n"), tmp_name,
@@ -572,7 +528,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			 (unsigned long long)entry->no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 *q, *q == gfs2_inode_invalid ?
+			 *q, *q == GFS2_BLKST_FREE ?
 			 _("was previously marked invalid") :
 			 _("was deleted or is not an inode"));
 
@@ -601,7 +557,8 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		return 1;
 	}
 
-	error = check_file_type(de->de_type, *q, sdp->gfs1);
+	error = check_file_type(entry->no_addr, de->de_type, *q, sdp->gfs1,
+				isdir);
 	if (error < 0) {
 		log_err( _("Error: directory entry type is "
 			   "incompatible with block type at block %lld "
@@ -674,6 +631,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	struct gfs2_dirent dentry, *de;
 	int hash_index; /* index into the hash table based on the hash */
 	int lindex_max; /* largest acceptable hash table index for hash */
+	int isdir;
 
 	memset(&dentry, 0, sizeof(struct gfs2_dirent));
 	gfs2_dirent_in(&dentry, (char *)dent);
@@ -690,7 +648,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		strncpy(tmp_name, filename, MAX_FILENAME - 1);
 
 	error = basic_dentry_checks(ip, dent, &entry, tmp_name, count, de,
-				    ds, &q, bh);
+				    ds, &q, bh, &isdir);
 	if (error)
 		goto nuke_dentry;
 
@@ -781,8 +739,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 
 			goto nuke_dentry;
 		}
-
-		if (q != gfs2_inode_dir) {
+		if (!isdir) {
 			log_err( _("Found '..' entry in directory %llu (0x%llx) "
 				"pointing to something that's not a directory"),
 				(unsigned long long)ip->i_di.di_num.no_addr,
@@ -831,7 +788,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	}
 
 	/* After this point we're only concerned with directories */
-	if (q != gfs2_inode_dir) {
+	if (!isdir) {
 		log_debug( _("Found non-dir inode dentry pointing to %lld "
 			     "(0x%llx)\n"),
 			   (unsigned long long)entry.no_addr,
@@ -916,7 +873,8 @@ static void pad_with_leafblks(struct gfs2_inode *ip, uint64_t *tbl,
 			(unsigned long long)new_leaf_blk,
 			lindex, lindex, new_len);
 		fsck_blockmap_set(ip, new_leaf_blk, _("pad leaf"),
-				  gfs2_leaf_blk);
+				  ip->i_sbd->gfs1 ?
+				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 		/* Fix the hash table in memory to have the new leaf */
 		for (i = 0; i < new_len; i++)
 			tbl[lindex + i] = cpu_to_be64(new_leaf_blk);
@@ -941,6 +899,7 @@ static int lost_leaf(struct gfs2_inode *ip, uint64_t *tbl, uint64_t leafno,
 	char *bh_end = bh->b_data + ip->i_sbd->bsize;
 	struct gfs2_dirent de, *dent;
 	int error;
+	int isdir = 0;
 
 	log_err(_("Leaf block %llu (0x%llx) seems to be out of place and its "
 		  "contents need to be moved to lost+found.\n"),
@@ -979,7 +938,7 @@ static int lost_leaf(struct gfs2_inode *ip, uint64_t *tbl, uint64_t leafno,
 
 			error = basic_dentry_checks(ip, dent, &de.de_inum,
 						    tmp_name, &count, &de,
-						    &ds, &q, bh);
+						    &ds, &q, bh, &isdir);
 			if (error) {
 				log_err(_("Not relocating corrupt entry "
 					  "\"%s\".\n"), tmp_name);
@@ -999,7 +958,7 @@ static int lost_leaf(struct gfs2_inode *ip, uint64_t *tbl, uint64_t leafno,
 						_("from lost+found"));
 				/* If it's a directory, lost+found is
 				   back-linked to it via .. */
-				if (q == gfs2_inode_dir)
+				if (isdir)
 					incr_link_count(lf_dip->i_di.di_num,
 							NULL,
 							_("to lost+found"));
@@ -1017,7 +976,7 @@ static int lost_leaf(struct gfs2_inode *ip, uint64_t *tbl, uint64_t leafno,
 	log_err(_("Directory entries from misplaced leaf block were relocated "
 		  "to lost+found.\n"));
 	/* Free the lost leaf. */
-	fsck_blockmap_set(ip, leafno, _("lost leaf"), gfs2_block_free);
+	fsck_blockmap_set(ip, leafno, _("lost leaf"), GFS2_BLKST_FREE);
 	ip->i_di.di_blocks--;
 	bmodified(ip->i_bh);
 	/* Now we have to deal with the bad hash table entries pointing to the
@@ -1039,6 +998,7 @@ static int basic_check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	struct dir_status *ds = (struct dir_status *) priv;
 	struct gfs2_dirent dentry, *de;
 	int error;
+	int isdir;
 
 	memset(&dentry, 0, sizeof(struct gfs2_dirent));
 	gfs2_dirent_in(&dentry, (char *)dent);
@@ -1055,7 +1015,7 @@ static int basic_check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		strncpy(tmp_name, filename, MAX_FILENAME - 1);
 
 	error = basic_dentry_checks(ip, dent, &entry, tmp_name, count, de,
-				    ds, &q, bh);
+				    ds, &q, bh, &isdir);
 	if (error) {
 		dirent2_del(ip, bh, prev_de, dent);
 		log_err( _("Bad directory entry '%s' cleared.\n"), tmp_name);
@@ -1248,7 +1208,8 @@ static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
 			(unsigned long long)new_leaf_blk,
 			(unsigned long long)new_leaf_blk, lindex, lindex);
 		fsck_blockmap_set(ip, new_leaf_blk, _("split leaf"),
-				  gfs2_leaf_blk);
+				  ip->i_sbd->gfs1 ?
+				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 		log_err(_("Hash table repaired.\n"));
 		/* Fix up the hash table in memory to include the new leaf */
 		for (i = 0; i < *proper_len; i++)
@@ -1712,7 +1673,7 @@ build_it:
 		log_err(_("Error rebuilding %s.\n"), fn);
 		return -1;
 	}
-	fsck_blockmap_set(ip, ip->i_di.di_num.no_addr, fn, gfs2_inode_file);
+	fsck_blockmap_set(ip, ip->i_di.di_num.no_addr, fn, GFS2_BLKST_DINODE);
 	reprocess_inode(ip, fn);
 	log_err(_("System file %s rebuilt.\n"), fn);
 	goto out_good;
@@ -1740,7 +1701,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 	ds.q = block_type(iblock);
 
 	pass2_fxns.private = (void *) &ds;
-	if (ds.q == gfs2_bad_block) {
+	if (ds.q == GFS2_BLKST_UNLINKED) {
 		astate_save(sysinode, &as);
 		/* First check that the directory's metatree is valid */
 		error = check_metatree(sysinode, &pass2_fxns);
@@ -1759,8 +1720,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		return -1;
 	}
 	if (error > 0)
-		fsck_blockmap_set(sysinode, iblock, dirname,
-				  gfs2_inode_invalid);
+		fsck_blockmap_set(sysinode, iblock, dirname, GFS2_BLKST_FREE);
 
 	if (check_inode_eattr(sysinode, &pass2_fxns)) {
 		stack;
@@ -1866,6 +1826,7 @@ int pass2(struct gfs2_sbd *sdp)
 	struct dir_status ds = {0};
 	struct gfs2_inode *ip;
 	int error = 0;
+	struct dir_info *dt;
 
 	/* Check all the system directory inodes. */
 	if (!sdp->gfs1 &&
@@ -1908,7 +1869,11 @@ int pass2(struct gfs2_sbd *sdp)
 
 		q = block_type(dirblk);
 
-		if (q != gfs2_inode_dir)
+		if (q != GFS2_BLKST_DINODE)
+			continue;
+
+		dt = dirtree_find(dirblk);
+		if (dt == NULL)
 			continue;
 
 		/* If we created lost+found, its links should have been
@@ -1924,7 +1889,7 @@ int pass2(struct gfs2_sbd *sdp)
 
 		memset(&ds, 0, sizeof(ds));
 		pass2_fxns.private = (void *) &ds;
-		if (ds.q == gfs2_bad_block) {
+		if (ds.q == GFS2_BLKST_UNLINKED) {
 			/* First check that the directory's metatree
 			 * is valid */
 			ip = fsck_load_inode(sdp, dirblk);
@@ -1985,8 +1950,8 @@ int pass2(struct gfs2_sbd *sdp)
 				   (unsigned long long)dirblk);
 			/* Can't use fsck_blockmap_set here because we don't
 			   have an inode in memory. */
-			gfs2_blockmap_set(bl, dirblk, gfs2_inode_invalid);
-			check_n_fix_bitmap(sdp, dirblk, 0, gfs2_inode_invalid);
+			gfs2_blockmap_set(bl, dirblk, GFS2_BLKST_FREE);
+			check_n_fix_bitmap(sdp, dirblk, 0, GFS2_BLKST_FREE);
 		}
 		ip = fsck_load_inode(sdp, dirblk);
 		if (!ds.dotdir) {

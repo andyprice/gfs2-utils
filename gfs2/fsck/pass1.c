@@ -137,7 +137,7 @@ static int resuscitate_metalist(struct gfs2_inode *ip, uint64_t block,
 	*bh = NULL;
 	if (!valid_block(ip->i_sbd, block)){ /* blk outside of FS */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-				  _("itself"), gfs2_bad_block);
+				  _("itself"), GFS2_BLKST_UNLINKED);
 		log_err( _("Bad indirect block pointer (invalid or out of "
 			   "range) found in system inode %lld (0x%llx).\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
@@ -146,9 +146,12 @@ static int resuscitate_metalist(struct gfs2_inode *ip, uint64_t block,
 		return meta_is_good;
 	}
 	if (fsck_system_inode(ip->i_sbd, block))
-		fsck_blockmap_set(ip, block, _("system file"), gfs2_indir_blk);
+		fsck_blockmap_set(ip, block, _("system file"),
+				  ip->i_sbd->gfs1 ?
+				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	else
-		check_n_fix_bitmap(ip->i_sbd, block, 0, gfs2_indir_blk);
+		check_n_fix_bitmap(ip->i_sbd, block, 0, ip->i_sbd->gfs1 ?
+				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	bc->indir_count++;
 	return meta_is_good;
 }
@@ -168,7 +171,6 @@ static int resuscitate_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	struct gfs2_dirent dentry, *de;
 	char tmp_name[PATH_MAX];
 	uint64_t block;
-	enum gfs2_mark_block dinode_type;
 
 	memset(&dentry, 0, sizeof(struct gfs2_dirent));
 	gfs2_dirent_in(&dentry, (char *)dent);
@@ -188,21 +190,15 @@ static int resuscitate_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
 		return 0;
 	}
-	if (block == sdp->md.jiinode->i_di.di_num.no_addr)
-		dinode_type = gfs2_inode_dir;
-	else if (!sdp->gfs1 && (block == sdp->md.pinode->i_di.di_num.no_addr ||
-				block == sdp->master_dir->i_di.di_num.no_addr))
-		dinode_type = gfs2_inode_dir;
-	else
-		dinode_type = gfs2_inode_file;
 	/* If this is a system dinode, we'll handle it later in
 	   check_system_inodes.  If not, it'll be handled by pass1 but
 	   since it's in a system directory we need to make sure it's
 	   represented in the rgrp bitmap. */
 	if (fsck_system_inode(sdp, block))
-		fsck_blockmap_set(ip, block, _("system file"), dinode_type);
+		fsck_blockmap_set(ip, block, _("system file"),
+				  GFS2_BLKST_DINODE);
 	else
-		check_n_fix_bitmap(sdp, block, 0, dinode_type);
+		check_n_fix_bitmap(sdp, block, 0, GFS2_BLKST_DINODE);
 	/* Return the number of leaf entries so metawalk doesn't flag this
 	   leaf as having none. */
 	*count = be16_to_cpu(((struct gfs2_leaf *)bh->b_data)->lf_entries);
@@ -225,7 +221,7 @@ static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	   So we know it's a leaf block. */
 	bc->indir_count++;
 	q = block_type(block);
-	if (q != gfs2_block_free) {
+	if (q != GFS2_BLKST_FREE) {
 		log_err( _("Found duplicate block #%llu (0x%llx) referenced "
 			   "as a directory leaf in dinode "
 			   "%llu (0x%llx) - was marked %d (%s)\n"),
@@ -235,12 +231,15 @@ static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 			 (unsigned long long)ip->i_di.di_num.no_addr, q,
 			 block_type_string(q));
 		add_duplicate_ref(ip, block, ref_as_meta, 0, INODE_VALID);
-		if (q == gfs2_leaf_blk) /* If the previous reference also saw
-					   this as a leaf, it was already
-					   checked, so don't check again. */
+		if (q == (ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
+			  GFS2_BLKST_USED))
+			/* If the previous reference also saw this as a leaf,
+			   it was already checked, so don't check again. */
 			return EEXIST; /* non-fatal */
 	}
-	fsck_blockmap_set(ip, block, _("directory leaf"), gfs2_leaf_blk);
+	fsck_blockmap_set(ip, block, _("directory leaf"),
+			  ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
+			  GFS2_BLKST_USED);
 	return 0;
 }
 
@@ -264,7 +263,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 		   set "free" and removed from the inodetree by
 		   undo_check_metalist. */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-				  _("bad block referencing"), gfs2_bad_block);
+				  _("bad block referencing"), GFS2_BLKST_UNLINKED);
 		log_debug( _("Bad indirect block (invalid/out of range) "
 			     "found in inode %lld (0x%llx).\n"),
 			   (unsigned long long)ip->i_di.di_num.no_addr,
@@ -280,7 +279,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 		blktypedesc = _("a journaled data block");
 	}
 	q = block_type(block);
-	if (q != gfs2_block_free) {
+	if (q != GFS2_BLKST_FREE) {
 		log_err( _("Found duplicate block #%llu (0x%llx) referenced "
 			   "as metadata in indirect block for dinode "
 			   "%llu (0x%llx) - was marked %d (%s)\n"),
@@ -314,7 +313,8 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 		brelse(nbh);
 	} else {
 		*bh = nbh;
-		fsck_blockmap_set(ip, block, _("indirect"), gfs2_indir_blk);
+		fsck_blockmap_set(ip, block, _("indirect"), ip->i_sbd->gfs1 ?
+				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	}
 
 	if (*is_valid)
@@ -342,7 +342,7 @@ static int undo_reference(struct gfs2_inode *ip, uint64_t block, int meta,
 
 	if (!valid_block(ip->i_sbd, block)) { /* blk outside of FS */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-				  _("bad block referencing"), gfs2_block_free);
+				  _("bad block referencing"), GFS2_BLKST_FREE);
 		return 1;
 	}
 
@@ -380,7 +380,7 @@ static int undo_reference(struct gfs2_inode *ip, uint64_t block, int meta,
 	}
 	fsck_blockmap_set(ip, block,
 			  meta ? _("bad indirect") : _("referenced data"),
-			  gfs2_block_free);
+			  GFS2_BLKST_FREE);
 	return 0;
 }
 
@@ -410,7 +410,7 @@ static int blockmap_set_as_data(struct gfs2_inode *ip, uint64_t block)
 	struct gfs2_buffer_head *bh;
 	struct gfs2_dinode *di;
 
-	error = fsck_blkmap_set_noino(ip, block, _("data"),  gfs2_block_used);
+	error = fsck_blkmap_set_noino(ip, block, _("data"), GFS2_BLKST_USED);
 	if (!error)
 		return 0;
 
@@ -436,7 +436,7 @@ static int blockmap_set_as_data(struct gfs2_inode *ip, uint64_t block)
 	error = -1;
 out:
 	if (!error)
-		fsck_blockmap_set(ip, block, _("data"),  gfs2_block_used);
+		fsck_blockmap_set(ip, block, _("data"),  GFS2_BLKST_USED);
 	brelse(bh);
 	return error;
 }
@@ -464,12 +464,15 @@ static int check_data(struct gfs2_inode *ip, uint64_t metablock,
 		 * blocks later */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
 				  _("bad (out of range) data"),
-				  gfs2_bad_block);
+				  GFS2_BLKST_UNLINKED);
 		return -1;
 	}
 	bc->data_count++; /* keep the count sane anyway */
 	q = block_type(block);
-	if (q != gfs2_block_free) {
+	if (q != GFS2_BLKST_FREE) {
+		struct gfs2_buffer_head *bh;
+		struct gfs2_meta_header mh;
+
 		log_err( _("Found duplicate %s block %llu (0x%llx) "
 			   "referenced as data by dinode %llu (0x%llx) "),
 			 block_type_string(q),
@@ -483,11 +486,11 @@ static int check_data(struct gfs2_inode *ip, uint64_t metablock,
 			log_err(_("from metadata block %llu (0x%llx)\n"),
 				(unsigned long long)metablock,
 				(unsigned long long)metablock);
-				
-		if (q >= gfs2_indir_blk && q <= gfs2_jdata) {
-			log_info(_("The block was processed earlier as valid "
-				   "metadata, so it can't possibly be "
-				   "data.\n"));
+
+		switch (q) {
+		case GFS2_BLKST_DINODE:
+			log_info(_("The block was processed earlier as an "
+				   "inode, so it can't possibly be data.\n"));
 			/* We still need to add a duplicate record here because
 			   when check_metatree tries to delete the inode, we
 			   can't have the "undo" functions freeing the block
@@ -495,8 +498,27 @@ static int check_data(struct gfs2_inode *ip, uint64_t metablock,
 			add_duplicate_ref(ip, block, ref_as_data, 0,
 					  INODE_VALID);
 			return 1;
-		}
-		if (q != gfs2_meta_inval) {
+		case GFS2_BLKST_USED: /* tough decision: May be data or meta */
+			bh = bread(ip->i_sbd, block);
+			gfs2_meta_header_in(&mh, bh);
+			brelse(bh);
+			if (mh.mh_magic == GFS2_MAGIC &&
+			    mh.mh_type >= GFS2_METATYPE_RG &&
+			    mh.mh_type <= GFS2_METATYPE_QC &&
+			    mh.mh_type != GFS2_METATYPE_DI &&
+			    mh.mh_format % 100 == 0) {
+				log_info(_("The block was processed earlier "
+					   "as valid metadata, so it can't "
+					   "possibly be data.\n"));
+				/* We still need to add a duplicate record here
+				   because when check_metatree tries to delete
+				   the inode, we can't have the "undo"
+				   functions freeing the block out from other
+				   the original referencing inode. */
+				add_duplicate_ref(ip, block, ref_as_data, 0,
+						  INODE_VALID);
+				return 1;
+			}
 			log_info( _("Seems to be a normal duplicate; I'll "
 				    "sort it out in pass1b.\n"));
 			add_duplicate_ref(ip, block, ref_as_data, 0,
@@ -504,11 +526,12 @@ static int check_data(struct gfs2_inode *ip, uint64_t metablock,
 			/* This inode references the block as data. So if this
 			   all is validated, we want to keep this count. */
 			return 0;
+		case GFS2_BLKST_UNLINKED:
+			log_info( _("The block was invalid as metadata but might be "
+				    "okay as data.  I'll sort it out in pass1b.\n"));
+			add_duplicate_ref(ip, block, ref_as_data, 0, INODE_VALID);
+			return 0;
 		}
-		log_info( _("The block was invalid as metadata but might be "
-			    "okay as data.  I'll sort it out in pass1b.\n"));
-		add_duplicate_ref(ip, block, ref_as_data, 0, INODE_VALID);
-		return 0;
 	}
 	/* In gfs1, rgrp indirect blocks are marked in the bitmap as "meta".
 	   In gfs2, "meta" is only for dinodes. So here we dummy up the
@@ -517,13 +540,13 @@ static int check_data(struct gfs2_inode *ip, uint64_t metablock,
 		log_info(_("Block %lld (0x%llx) is a GFS1 rindex block\n"),
 			 (unsigned long long)block, (unsigned long long)block);
 		gfs2_special_set(&gfs1_rindex_blks, block);
-		fsck_blockmap_set(ip, block, _("rgrp"), gfs2_indir_blk);
+		fsck_blockmap_set(ip, block, _("rgrp"), GFS2_BLKST_DINODE);
 		/*gfs2_meta_rgrp);*/
 	} else if (ip->i_sbd->gfs1 && ip->i_di.di_flags & GFS2_DIF_JDATA) {
 		log_info(_("Block %lld (0x%llx) is a GFS1 journaled data "
 			   "block\n"),
 			 (unsigned long long)block, (unsigned long long)block);
-		fsck_blockmap_set(ip, block, _("jdata"), gfs2_jdata);
+		fsck_blockmap_set(ip, block, _("jdata"), GFS2_BLKST_DINODE);
 	} else
 		return blockmap_set_as_data(ip, block);
 	return 0;
@@ -618,7 +641,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 	   count it as a duplicate. */
 	*bh = bread(sdp, indirect);
 	if (gfs2_check_meta(*bh, GFS2_METATYPE_IN)) {
-		if (q != gfs2_block_free) { /* Duplicate? */
+		if (q != GFS2_BLKST_FREE) { /* Duplicate? */
 			add_duplicate_ref(ip, indirect, ref_as_ea, 0,
 					  INODE_VALID);
 			if (!clear_eas(ip, bc, indirect, 1,
@@ -632,7 +655,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 			    "type"));
 		return 1;
 	}
-	if (q != gfs2_block_free) { /* Duplicate? */
+	if (q != GFS2_BLKST_FREE) { /* Duplicate? */
 		log_err( _("Inode #%llu (0x%llx): Duplicate Extended "
 			   "Attribute indirect block found at #%llu "
 			   "(0x%llx).\n"),
@@ -645,8 +668,8 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 		ret = 1;
 	} else {
 		fsck_blockmap_set(ip, indirect,
-				  _("indirect Extended Attribute"),
-				  gfs2_indir_blk);
+				  _("indirect Extended Attribute"), sdp->gfs1 ?
+				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 		bc->ea_count++;
 	}
 	return ret;
@@ -715,7 +738,7 @@ static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 	   If it isn't, clear it but don't count it as a duplicate. */
 	leaf_bh = bread(sdp, block);
 	if (gfs2_check_meta(leaf_bh, btype)) {
-		if (q != gfs2_block_free) { /* Duplicate? */
+		if (q != GFS2_BLKST_FREE) { /* Duplicate? */
 			add_duplicate_ref(ip, block, ref_as_ea, 0,
 					  INODE_VALID);
 			clear_eas(ip, bc, block, 1,
@@ -728,7 +751,7 @@ static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 		brelse(leaf_bh);
 		return 1;
 	}
-	if (q != gfs2_block_free) { /* Duplicate? */
+	if (q != GFS2_BLKST_FREE) { /* Duplicate? */
 		log_debug( _("Duplicate block found at #%lld (0x%llx).\n"),
 			   (unsigned long long)block,
 			   (unsigned long long)block);
@@ -748,9 +771,10 @@ static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 		return 1;
 	}
 	/* Point of confusion: We've got to set the ea block itself to
-	   gfs2_meta_eattr here.  Elsewhere we mark the inode with
+	   GFS2_BLKST_USED here.  Elsewhere we mark the inode with
 	   gfs2_eattr_block meaning it contains an eattr for pass1c. */
-	fsck_blockmap_set(ip, block, _("Extended Attribute"), gfs2_meta_eattr);
+	fsck_blockmap_set(ip, block, _("Extended Attribute"),
+			  sdp->gfs1 ? GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	bc->ea_count++;
 	*bh = leaf_bh;
 	return 0;
@@ -790,7 +814,7 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
 			 (unsigned long long)el_blk);
 		fsck_blockmap_set(ip, ip->i_di.di_eattr,
 				  _("bad (out of range) Extended Attribute "),
-				  gfs2_bad_block);
+				  GFS2_BLKST_UNLINKED);
 		return 1;
 	}
 	error = check_ealeaf_block(ip, el_blk, GFS2_METATYPE_ED, &bh, private);
@@ -831,7 +855,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			 (unsigned long long)block, (unsigned long long)block);
 		fsck_blockmap_set(ip, ip->i_di.di_eattr,
 				  _("bad (out of range) Extended "
-				    "Attribute leaf"), gfs2_bad_block);
+				    "Attribute leaf"), GFS2_BLKST_UNLINKED);
 		return 1;
 	}
 	return check_ealeaf_block(ip, block, GFS2_METATYPE_EA, bh, private);
@@ -910,7 +934,7 @@ static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
 	}
 
 	q = block_type(block);
-	if (q != gfs2_block_free) {
+	if (q != GFS2_BLKST_FREE) {
 		if (was_duplicate)
 			*was_duplicate = 1;
 		add_duplicate_ref(ip, block, reftype, 0, INODE_INVALID);
@@ -923,7 +947,7 @@ static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
 		return meta_is_good;
 	}
-	fsck_blockmap_set(ip, block, btype, gfs2_meta_inval);
+	fsck_blockmap_set(ip, block, btype, GFS2_BLKST_UNLINKED);
 	return meta_is_good;
 }
 
@@ -1008,7 +1032,7 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 	}
 	/* See how many duplicate blocks it has */
 	q = block_type(block);
-	if (q != gfs2_block_free) {
+	if (q != GFS2_BLKST_FREE) {
 		(*bad_pointers)++;
 		log_info( _("Duplicated %s block pointer (violation %ld, block"
 			    " %lld (0x%llx)) found in inode %lld (0x%llx).\n"),
@@ -1100,7 +1124,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 BAD_POINTER_TOLERANCE);
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-				  _("badly corrupt"), gfs2_block_free);
+				  _("badly corrupt"), GFS2_BLKST_FREE);
 		return 0;
 	}
 
@@ -1113,7 +1137,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		   metadata will be flagged as metadata or data blocks yet.
 		   Therefore, we don't need to invalidate anything. */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-				  _("invalid mode"), gfs2_block_free);
+				  _("invalid mode"), GFS2_BLKST_FREE);
 		return 0;
 	} else if (error)
 		goto bad_dinode;
@@ -1241,8 +1265,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 static int check_system_inode(struct gfs2_sbd *sdp,
 			      struct gfs2_inode **sysinode,
 			      const char *filename,
-			      int builder(struct gfs2_sbd *sdp),
-			      enum gfs2_mark_block mark,
+			      int builder(struct gfs2_sbd *sdp), int isdir,
 			      struct gfs2_inode *sysdir, int needs_sysbit)
 {
 	uint64_t iblock = 0;
@@ -1263,8 +1286,8 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 				   "%llu (0x%llx)\n"),
 				 (unsigned long long)iblock,
 				 (unsigned long long)iblock);
-			gfs2_blockmap_set(bl, iblock, gfs2_block_free);
-			check_n_fix_bitmap(sdp, iblock, 0, gfs2_block_free);
+			gfs2_blockmap_set(bl, iblock, GFS2_BLKST_FREE);
+			check_n_fix_bitmap(sdp, iblock, 0, GFS2_BLKST_FREE);
 			inode_put(sysinode);
 		}
 	}
@@ -1274,14 +1297,14 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 		   be recovering from a corrupt bitmap.  In that case, don't
 		   rebuild the inode.  Just reuse the inode and fix the
 		   bitmap. */
-		if (ds.q == gfs2_block_free) {
+		if (ds.q == GFS2_BLKST_FREE) {
 			log_info( _("The inode exists but the block is not "
 				    "marked 'in use'; fixing it.\n"));
 			fsck_blockmap_set(*sysinode,
 					  (*sysinode)->i_di.di_num.no_addr,
-					  filename, mark);
-			ds.q = mark;
-			if (mark == gfs2_inode_dir)
+					  filename, GFS2_BLKST_DINODE);
+			ds.q = GFS2_BLKST_DINODE;
+			if (isdir)
 				dirtree_insert((*sysinode)->i_di.di_num);
 		}
 		/* Make sure it's marked as a system file/directory */
@@ -1297,7 +1320,7 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 				/* Set the blockmap (but not bitmap) back to
 				   'free' so that it gets checked like any
 				   normal dinode. */
-				gfs2_blockmap_set(bl, iblock, gfs2_block_free);
+				gfs2_blockmap_set(bl, iblock, GFS2_BLKST_FREE);
 				log_err( _("Removed system inode \"%s\".\n"),
 					 filename);
 			}
@@ -1309,11 +1332,11 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 	   inode and get it all setup - of course, everything will be in
 	   lost+found then, but we *need* our system inodes before we can
 	   do any of that. */
-	if (!(*sysinode) || ds.q != mark) {
-		log_err( _("Invalid or missing %s system inode (should be "
-			   "'%s', is '%s').\n"), filename,
-			 block_type_string(mark),
-			 block_type_string(ds.q));
+	if (!(*sysinode) || ds.q != GFS2_BLKST_DINODE) {
+		log_err(_("Invalid or missing %s system inode (is '%s', "
+			  "should be '%s').\n"), filename,
+			block_type_string(ds.q),
+			block_type_string(GFS2_BLKST_DINODE));
 		if (query(_("Create new %s system inode? (y/n) "), filename)) {
 			log_err( _("Rebuilding system file \"%s\"\n"),
 				 filename);
@@ -1328,9 +1351,9 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 				ji_update(sdp);
 			fsck_blockmap_set(*sysinode,
 					  (*sysinode)->i_di.di_num.no_addr,
-					  filename, mark);
-			ds.q = mark;
-			if (mark == gfs2_inode_dir)
+					  filename, GFS2_BLKST_DINODE);
+			ds.q = GFS2_BLKST_DINODE;
+			if (isdir)
 				dirtree_insert((*sysinode)->i_di.di_num);
 		} else {
 			log_err( _("Cannot continue without valid %s inode\n"),
@@ -1389,10 +1412,9 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 	if (!sdp->gfs1) {
 		fsck_blockmap_set(sdp->master_dir,
 				  sdp->master_dir->i_di.di_num.no_addr,
-				  "master", gfs2_inode_dir);
+				  "master", GFS2_BLKST_DINODE);
 		if (check_system_inode(sdp, &sdp->master_dir, "master",
-				       build_master, gfs2_inode_dir,
-				       NULL, 1)) {
+				       build_master, 1, NULL, 1)) {
 			stack;
 			return -1;
 		}
@@ -1400,43 +1422,42 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 	/* Mark the root dinode as a "dinode" in the block map as we did
 	   for master, since it has no parent. */
 	fsck_blockmap_set(sdp->md.rooti, sdp->md.rooti->i_di.di_num.no_addr,
-			  "root", gfs2_inode_dir);
-	if (check_system_inode(sdp, &sdp->md.rooti, "root", build_root,
-			       gfs2_inode_dir, NULL, 0)) {
+			  "root", GFS2_BLKST_DINODE);
+	if (check_system_inode(sdp, &sdp->md.rooti, "root", build_root, 1,
+			       NULL, 0)) {
 		stack;
 		return -1;
 	}
 	if (!sdp->gfs1 &&
-	    check_system_inode(sdp, &sdp->md.inum, "inum", build_inum,
-			       gfs2_inode_file, sdp->master_dir, 1)) {
+	    check_system_inode(sdp, &sdp->md.inum, "inum", build_inum, 0,
+			       sdp->master_dir, 1)) {
 		stack;
 		return -1;
 	}
-	if (check_system_inode(sdp, &sdp->md.statfs, "statfs", build_statfs,
-			       gfs2_inode_file, sdp->master_dir, !sdp->gfs1)) {
-		stack;
-		return -1;
-	}
-	if (check_system_inode(sdp, &sdp->md.jiinode, "jindex", build_jindex,
-			       (sdp->gfs1 ? gfs2_inode_file : gfs2_inode_dir),
+	if (check_system_inode(sdp, &sdp->md.statfs, "statfs", build_statfs, 0,
 			       sdp->master_dir, !sdp->gfs1)) {
 		stack;
 		return -1;
 	}
+	if (check_system_inode(sdp, &sdp->md.jiinode, "jindex", build_jindex,
+			       (sdp->gfs1 ? 0 : 1), sdp->master_dir,
+			       !sdp->gfs1)) {
+		stack;
+		return -1;
+	}
 	if (check_system_inode(sdp, &sdp->md.riinode, "rindex", build_rindex,
-			       gfs2_inode_file, sdp->master_dir, !sdp->gfs1)) {
+			       0, sdp->master_dir, !sdp->gfs1)) {
 		stack;
 		return -1;
 	}
 	if (check_system_inode(sdp, &sdp->md.qinode, "quota", build_quota,
-			       gfs2_inode_file, sdp->master_dir, !sdp->gfs1)) {
+			       0, sdp->master_dir, !sdp->gfs1)) {
 		stack;
 		return -1;
 	}
 	if (!sdp->gfs1 &&
 	    check_system_inode(sdp, &sdp->md.pinode, "per_node",
-			       build_per_node, gfs2_inode_dir,
-			       sdp->master_dir, 1)) {
+			       build_per_node, 1, sdp->master_dir, 1)) {
 		stack;
 		return -1;
 	}
@@ -1464,8 +1485,8 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 
 		sprintf(jname, "journal%d", sdp->md.journals);
 		if (check_system_inode(sdp, &sdp->md.journal[sdp->md.journals],
-				       jname, build_a_journal,
-				       gfs2_inode_file, sdp->md.jiinode, 1)) {
+				       jname, build_a_journal, 0,
+				       sdp->md.jiinode, 1)) {
 			stack;
 			return -1;
 		}
@@ -1529,7 +1550,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 			       (bh->b_data))->mh_magic;
 
 		q = block_type(block);
-		if (q != gfs2_block_free) {
+		if (q != GFS2_BLKST_FREE) {
 			if (be32_to_cpu(check_magic) == GFS2_MAGIC &&
 			    sdp->gfs1 && !is_inode) {
 				log_debug(_("Block 0x%llx assumed to be "
@@ -1580,7 +1601,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 				   "%llu (0x%llx)\n"),
 				 (unsigned long long)block,
 				 (unsigned long long)block);
-			check_n_fix_bitmap(sdp, block, 0, gfs2_block_free);
+			check_n_fix_bitmap(sdp, block, 0, GFS2_BLKST_FREE);
 		} else if (handle_di(sdp, bh, rgd) < 0) {
 			stack;
 			brelse(bh);
@@ -1615,6 +1636,8 @@ static int pass1_process_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 				return ret;
 		}
 
+		if (fsck_abort)
+			return 0;
 		/*
 		  For GFS1, we have to count the "free meta" blocks in the
 		  resource group and mark them specially so we can count them
@@ -1624,8 +1647,11 @@ static int pass1_process_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 			continue;
 
 		n = lgfs2_bm_scan(rgd, k, ibuf, GFS2_BLKST_UNLINKED);
-		for (i = 0; i < n; i++)
-			gfs2_blockmap_set(bl, ibuf[i], gfs2_freemeta);
+		for (i = 0; i < n; i++) {
+			gfs2_blockmap_set(bl, ibuf[i], GFS2_BLKST_UNLINKED);
+			if (fsck_abort)
+				return 0;
+		}
 	}
 
 	free(ibuf);
@@ -1674,6 +1700,8 @@ int pass1(struct gfs2_sbd *sdp)
 	 * things - we can change the method later if necessary.
 	 */
 	for (n = osi_first(&sdp->rgtree); n; n = next, rg_count++) {
+		if (fsck_abort)
+			return FSCK_CANCELED;
 		next = osi_next(n);
 		log_debug( _("Checking metadata in Resource Group #%llu\n"),
 				 (unsigned long long)rg_count);
@@ -1683,7 +1711,7 @@ int pass1(struct gfs2_sbd *sdp)
 				     "is now marked as 'rgrp data'\n"),
 				   rgd->ri.ri_addr + i, rgd->ri.ri_addr + i);
 			if (gfs2_blockmap_set(bl, rgd->ri.ri_addr + i,
-					      gfs2_indir_blk)) {
+					      GFS2_BLKST_USED)) {
 				stack;
 				gfs2_special_free(&gfs1_rindex_blks);
 				return FSCK_ERROR;

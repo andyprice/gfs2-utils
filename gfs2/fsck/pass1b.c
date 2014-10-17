@@ -52,7 +52,6 @@ static void log_inode_reference(struct duptree *dt, osi_list_t *tmp, int inval)
 		  (unsigned long long)dt->block, reftypestring);
 }
 
-/* delete_all_dups - delete all duplicate records for a given inode */
 /*
  * resolve_dup_references - resolve all but the last dinode that has a
  *                          duplicate reference to a given block.
@@ -114,7 +113,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 		    !found_good_ref) { /* We haven't found a good reference */
 			/* If this is an invalid inode, but not on the invalid
 			   list, it's better to delete it. */
-			if (q != gfs2_inode_invalid) {
+			if (q == GFS2_BLKST_DINODE) {
 				found_good_ref = 1;
 				log_warn( _("Inode %s (%lld/0x%llx)'s "
 					    "reference to block %llu (0x%llx) "
@@ -158,7 +157,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 			dup_listent_delete(dt, id);
 			continue;
 		}
-		if (q == gfs2_block_free)
+		if (q == GFS2_BLKST_FREE)
 			log_warn( _("Inode %lld (0x%llx) was previously "
 				    "deleted.\n"),
 				  (unsigned long long)id->block_no,
@@ -172,7 +171,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 		/* If we've already deleted this dinode, don't try to delete
 		   it again. That could free blocks that used to be duplicate
 		   references that are now resolved (and gone). */
-		if (q != gfs2_block_free) {
+		if (q != GFS2_BLKST_FREE) {
 			/* Clear the EAs for the inode first */
 			check_inode_eattr(ip, &pass1b_fxns_delete);
 			/* If the reference was as metadata or data, we've got
@@ -185,7 +184,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 					inodetree_delete(ii);
 				fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
 						_("duplicate referencing bad"),
-						  gfs2_inode_invalid);
+						  GFS2_BLKST_UNLINKED);
 				/* We delete the dup_handler inode count and
 				   duplicate id BEFORE clearing the metadata,
 				   because if this is the last reference to
@@ -391,7 +390,7 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 		ip = fsck_load_inode(sdp, id->block_no);
 
 		q = block_type(id->block_no);
-		if (q == gfs2_inode_invalid) {
+		if (q == GFS2_BLKST_UNLINKED) {
 			log_debug( _("The remaining reference inode %lld "
 				     "(0x%llx) is marked invalid: Marking "
 				     "the block as free.\n"),
@@ -399,28 +398,32 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 				   (unsigned long long)id->block_no);
 			fsck_blockmap_set(ip, dt->block,
 					  _("reference-repaired leaf"),
-					  gfs2_block_free);
+					  GFS2_BLKST_FREE);
 		} else if (id->reftypecount[ref_is_inode]) {
 			set_ip_blockmap(ip, 0); /* 0=do not add to dirtree */
 		} else if (id->reftypecount[ref_as_data]) {
 			fsck_blockmap_set(ip, dt->block,
 					  _("reference-repaired data"),
-					  gfs2_block_used);
+					  GFS2_BLKST_USED);
 		} else if (id->reftypecount[ref_as_meta]) {
 			if (is_dir(&ip->i_di, sdp->gfs1))
 				fsck_blockmap_set(ip, dt->block,
 						  _("reference-repaired leaf"),
-						  gfs2_leaf_blk);
+						  sdp->gfs1 ?
+						  GFS2_BLKST_DINODE :
+						  GFS2_BLKST_USED);
 			else
 				fsck_blockmap_set(ip, dt->block,
 						  _("reference-repaired "
-						    "indirect"),
-						  gfs2_indir_blk);
+						    "indirect"), sdp->gfs1 ?
+						  GFS2_BLKST_DINODE :
+						  GFS2_BLKST_USED);
 		} else
 			fsck_blockmap_set(ip, dt->block,
 					  _("reference-repaired extended "
 					    "attribute"),
-					  gfs2_meta_eattr);
+					  sdp->gfs1 ? GFS2_BLKST_DINODE :
+					  GFS2_BLKST_USED);
 		fsck_inode_put(&ip); /* out, brelse, free */
 		log_debug(_("Done with duplicate reference to block 0x%llx\n"),
 			  (unsigned long long)dt->block);
@@ -441,8 +444,8 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 			if (dh.dt)
 				dup_delete(dh.dt);
 			/* Now fix the block type of the block in question. */
-			gfs2_blockmap_set(bl, dup_blk, gfs2_block_free);
-			check_n_fix_bitmap(sdp, dup_blk, 0, gfs2_block_free);
+			gfs2_blockmap_set(bl, dup_blk, GFS2_BLKST_FREE);
+			check_n_fix_bitmap(sdp, dup_blk, 0, GFS2_BLKST_FREE);
 		}
 	}
 	return 0;
@@ -599,13 +602,11 @@ int pass1b(struct gfs2_sbd *sdp)
 		}
 		q = block_type(i);
 
-		if (q < gfs2_inode_dir)
-			continue;
-		if (q > gfs2_inode_invalid)
+		if (q == GFS2_BLKST_FREE || q == GFS2_BLKST_USED)
 			continue;
 
-		if (q == gfs2_inode_invalid)
-			log_debug( _("Checking invalidated duplicate dinode "
+		if (q == GFS2_BLKST_UNLINKED)
+			log_debug( _("Checking invalidated duplicate block "
 				     "%lld (0x%llx)\n"),
 				   (unsigned long long)i,
 				   (unsigned long long)i);

@@ -29,9 +29,9 @@
    you'll get bitmap mismatches.  This function checks the status of the
    bitmap whenever the blockmap changes, and fixes it accordingly. */
 int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
-		       enum gfs2_mark_block new_blockmap_state)
+		       int new_blockmap_state)
 {
-	int old_bitmap_state, new_bitmap_state;
+	int old_bitmap_state;
 	struct rgrp_tree *rgd;
 
 	rgd = gfs2_blk2rgrpd(sdp, blk);
@@ -43,19 +43,18 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 			 (unsigned long long)blk, (unsigned long long)blk);
 		return -1;
 	}
-	new_bitmap_state = blockmap_to_bitmap(new_blockmap_state, sdp->gfs1);
-	if (old_bitmap_state != new_bitmap_state) {
+	if (old_bitmap_state != new_blockmap_state) {
 		const char *allocdesc[2][5] = { /* gfs2 descriptions */
 			{"free", "data", "unlinked", "inode", "reserved"},
 			/* gfs1 descriptions: */
 			{"free", "data", "free meta", "metadata", "reserved"}};
 
 		if (error_on_dinode && old_bitmap_state == GFS2_BLKST_DINODE &&
-		    new_bitmap_state != GFS2_BLKST_FREE) {
+		    new_blockmap_state != GFS2_BLKST_FREE) {
 			log_debug(_("Reference as '%s' to block %llu (0x%llx) "
 				    "which was marked as dinode. Needs "
 				    "further investigation.\n"),
-				  allocdesc[sdp->gfs1][new_bitmap_state],
+				  allocdesc[sdp->gfs1][new_blockmap_state],
 				  (unsigned long long)blk,
 				  (unsigned long long)blk);
 			return 1;
@@ -65,7 +64,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 		log_err( _("Block %llu (0x%llx) was '%s', should be %s.\n"),
 			 (unsigned long long)blk, (unsigned long long)blk,
 			 allocdesc[sdp->gfs1][old_bitmap_state],
-			 allocdesc[sdp->gfs1][new_bitmap_state]);
+			 allocdesc[sdp->gfs1][new_blockmap_state]);
 		if (query( _("Fix the bitmap? (y/n)"))) {
 			/* If the new bitmap state is free (and therefore the
 			   old state was not) we have to add to the free
@@ -74,11 +73,12 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 			   subtract to the free space.  If the type changed
 			   from dinode to data or data to dinode, no change in
 			   free space. */
-			gfs2_set_bitmap(rgd, blk, new_bitmap_state);
-			if (new_bitmap_state == GFS2_BLKST_FREE) {
+			gfs2_set_bitmap(rgd, blk, new_blockmap_state);
+			if (new_blockmap_state == GFS2_BLKST_FREE) {
 				/* If we're freeing a dinode, get rid of
 				   the hash table entries for it. */
-				if (old_bitmap_state == GFS2_BLKST_DINODE) {
+				if (old_bitmap_state == GFS2_BLKST_DINODE ||
+				    old_bitmap_state == GFS2_BLKST_UNLINKED) {
 					struct dir_info *dt;
 					struct inode_info *ii;
 
@@ -114,18 +114,18 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
  *                      bitmap, and adjust free space accordingly.
  */
 int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
-		       const char *btype, enum gfs2_mark_block mark,
-		       int error_on_dinode,
-		       const char *caller, int fline)
+		       const char *btype, int mark,
+		       int error_on_dinode, const char *caller, int fline)
 {
 	int error;
 	static int prev_ino_addr = 0;
-	static enum gfs2_mark_block prev_mark = 0;
+	static int prev_mark = 0;
 	static int prevcount = 0;
+	static const char *prev_caller = NULL;
 
 	if (print_level >= MSG_DEBUG) {
 		if ((ip->i_di.di_num.no_addr == prev_ino_addr) &&
-		    (mark == prev_mark)) {
+		    (mark == prev_mark) && caller == prev_caller) {
 			log_info("(0x%llx) ", (unsigned long long)bblock);
 			prevcount++;
 			if (prevcount > 10) {
@@ -145,7 +145,7 @@ int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 			       (unsigned long long)ip->i_di.di_num.no_addr,
 			       block_type_string(mark));
 
-		} else if (mark == gfs2_bad_block || mark == gfs2_meta_inval) {
+		} else if (mark == GFS2_BLKST_UNLINKED) {
 			if (prevcount) {
 				log_info("\n");
 				prevcount = 0;
@@ -170,6 +170,7 @@ int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 		}
 		prev_ino_addr = ip->i_di.di_num.no_addr;
 		prev_mark = mark;
+		prev_caller = caller;
 	}
 
 	/* First, check the rgrp bitmap against what we think it should be.
@@ -909,8 +910,9 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 						   a single byte. */
 						fsck_blockmap_set(ip,
 						       ip->i_di.di_eattr,
-						       _("extended attribute"),
-						       gfs2_meta_eattr);
+							_("extended attribute"),
+							sdp->gfs1 ? GFS2_BLKST_DINODE :
+								  GFS2_BLKST_USED);
 						log_err( _("The EA was "
 							   "fixed.\n"));
 					} else {
@@ -986,7 +988,7 @@ int delete_block(struct gfs2_inode *ip, uint64_t block,
 		 void *private)
 {
 	if (valid_block(ip->i_sbd, block)) {
-		fsck_blockmap_set(ip, block, btype, gfs2_block_free);
+		fsck_blockmap_set(ip, block, btype, GFS2_BLKST_FREE);
 		return 0;
 	}
 	return -1;
@@ -1041,7 +1043,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 		return meta_error;
 
 	q = block_type(block);
-	if (q == gfs2_block_free) {
+	if (q == GFS2_BLKST_FREE) {
 		log_info( _("%s block %lld (0x%llx), part of inode "
 			    "%lld (0x%llx), was already free.\n"),
 			  btype, (unsigned long long)block,
@@ -1060,7 +1062,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)block, (unsigned long long)block);
 	} else {
-		fsck_blockmap_set(ip, block, btype, gfs2_block_free);
+		fsck_blockmap_set(ip, block, btype, GFS2_BLKST_FREE);
 	}
 	return meta_is_good;
 }
@@ -1672,7 +1674,7 @@ undo_metalist:
 	delete_all_dups(ip);
 	/* Set the dinode as "bad" so it gets deleted */
 	fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-			  _("corrupt"), gfs2_block_free);
+			  _("corrupt"), GFS2_BLKST_FREE);
 	log_err(_("The corrupt inode was invalidated.\n"));
 out:
 	free_metalist(ip, &metalist[0]);
@@ -1763,8 +1765,8 @@ int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 	remove_dentry_fxns.check_dentry = remove_dentry;
 
 	q = block_type(dir);
-	if (q != gfs2_inode_dir) {
-		log_info( _("Parent block is not a directory...ignoring\n"));
+	if (q != GFS2_BLKST_DINODE) {
+		log_info( _("Parent block is not an inode...ignoring\n"));
 		return 1;
 	}
 	/* Need to run check_dir with a private var of dentryblock,
@@ -1807,7 +1809,7 @@ static int del_eattr_generic(struct gfs2_inode *ip, uint64_t block,
 
 	if (valid_block(ip->i_sbd, block)) {
 		q = block_type(block);
-		if (q == gfs2_block_free)
+		if (q == GFS2_BLKST_FREE)
 			was_free = 1;
 		ret = delete_block_if_notdup(ip, block, NULL, eatype,
 					     NULL, private);
@@ -1907,12 +1909,13 @@ static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,
 	*was_duplicate = 0;
 	*bh = bread(ip->i_sbd, block);
 	q = block_type(block);
-	if (blockmap_to_bitmap(q, ip->i_sbd->gfs1) == GFS2_BLKST_FREE) {
+	if (q == GFS2_BLKST_FREE) {
 		log_debug(_("%s reference to new metadata block "
 			    "%lld (0x%llx) is now marked as indirect.\n"),
 			  desc, (unsigned long long)block,
 			  (unsigned long long)block);
-		gfs2_blockmap_set(bl, block, gfs2_indir_blk);
+		gfs2_blockmap_set(bl, block, ip->i_sbd->gfs1 ?
+				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	}
 	return meta_is_good;
 }
@@ -1927,12 +1930,12 @@ static int alloc_data(struct gfs2_inode *ip, uint64_t metablock,
 	/* We can't check the bitmap here because this function is called
 	   after the bitmap has been set but before the blockmap has. */
 	q = block_type(block);
-	if (blockmap_to_bitmap(q, ip->i_sbd->gfs1) == GFS2_BLKST_FREE) {
+	if (q == GFS2_BLKST_FREE) {
 		log_debug(_("%s reference to new data block "
 			    "%lld (0x%llx) is now marked as data.\n"),
 			  desc, (unsigned long long)block,
 			  (unsigned long long)block);
-		gfs2_blockmap_set(bl, block, gfs2_block_used);
+		gfs2_blockmap_set(bl, block, GFS2_BLKST_USED);
 	}
 	return 0;
 }
@@ -1945,9 +1948,10 @@ static int alloc_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	/* We can't check the bitmap here because this function is called
 	   after the bitmap has been set but before the blockmap has. */
 	q = block_type(block);
-	if (blockmap_to_bitmap(q, ip->i_sbd->gfs1) == GFS2_BLKST_FREE)
+	if (q == GFS2_BLKST_FREE)
 		fsck_blockmap_set(ip, block, _("newly allocated leaf"),
-				  gfs2_leaf_blk);
+				  ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
+				  GFS2_BLKST_USED);
 	return 0;
 }
 
@@ -2119,7 +2123,8 @@ int write_new_leaf(struct gfs2_inode *dip, int start_lindex, int num_copies,
 		free(padbuf);
 		return -1;
 	}
-	fsck_blockmap_set(dip, *bn, _("directory leaf"), gfs2_leaf_blk);
+	fsck_blockmap_set(dip, *bn, _("directory leaf"), dip->i_sbd->gfs1 ?
+			  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	log_err(_("A new directory leaf was allocated at block %lld "
 		  "(0x%llx) to fill the %d (0x%x) pointer gap %s the existing "
 		  "pointer at index %d (0x%x).\n"), (unsigned long long)*bn,

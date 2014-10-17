@@ -375,7 +375,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 		q = block_type(ip->i_di.di_num.no_addr);
 		/* If it's an invalid dinode, put it first on the invalid
 		   inode reference list otherwise put it on the normal list. */
-		if (!inode_valid || q == gfs2_inode_invalid)
+		if (!inode_valid || q == GFS2_BLKST_UNLINKED)
 			osi_list_add_prev(&id->list, &dt->ref_invinode_list);
 		else {
 			/* If this is a system dinode, we want the duplicate
@@ -526,7 +526,7 @@ static int gfs2_blockmap_create(struct gfs2_bmap *bmap, uint64_t size)
 
 	/* Have to add 1 to BLOCKMAP_SIZE since it's 0-based and mallocs
 	 * must be 1-based */
-	bmap->mapsize = BLOCKMAP_SIZE4(size) + 1;
+	bmap->mapsize = BLOCKMAP_SIZE2(size) + 1;
 
 	if (!(bmap->map = calloc(bmap->mapsize, sizeof(char))))
 		return -ENOMEM;
@@ -560,8 +560,7 @@ struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
 	return il;
 }
 
-int gfs2_blockmap_set(struct gfs2_bmap *bmap, uint64_t bblock,
-		      enum gfs2_mark_block mark)
+int gfs2_blockmap_set(struct gfs2_bmap *bmap, uint64_t bblock, int mark)
 {
 	static unsigned char *byte;
 	static uint64_t b;
@@ -571,10 +570,10 @@ int gfs2_blockmap_set(struct gfs2_bmap *bmap, uint64_t bblock,
 	if (bblock > bmap->size)
 		return -1;
 
-	byte = bmap->map + BLOCKMAP_SIZE4(bblock);
-	b = BLOCKMAP_BYTE_OFFSET4(bblock);
-	*byte &= ~(BLOCKMAP_MASK4 << b);
-	*byte |= (mark & BLOCKMAP_MASK4) << b;
+	byte = bmap->map + BLOCKMAP_SIZE2(bblock);
+	b = BLOCKMAP_BYTE_OFFSET2(bblock);
+	*byte &= ~(BLOCKMAP_MASK2 << b);
+	*byte |= (mark & BLOCKMAP_MASK2) << b;
 	return 0;
 }
 
@@ -598,61 +597,45 @@ void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il)
 int set_ip_blockmap(struct gfs2_inode *ip, int instree)
 {
 	uint64_t block = ip->i_bh->b_blocknr;
-	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint32_t mode;
+	const char *ty;
 
-	if (sdp->gfs1)
+	if (ip->i_sbd->gfs1)
 		mode = gfs_to_gfs2_mode(ip);
 	else
 		mode = ip->i_di.di_mode & S_IFMT;
 
 	switch (mode) {
 	case S_IFDIR:
-		if (fsck_blockmap_set(ip, block, _("directory"),
-				      gfs2_inode_dir))
-			goto bad_dinode;
-		if (instree && !dirtree_insert(ip->i_di.di_num))
-			goto bad_dinode;
+		ty = _("directory");
 		break;
 	case S_IFREG:
-		if (fsck_blockmap_set(ip, block, _("file"), gfs2_inode_file))
-			goto bad_dinode;
+		ty = _("file");
 		break;
 	case S_IFLNK:
-		if (fsck_blockmap_set(ip, block, _("symlink"),
-				      gfs2_inode_lnk))
-			goto bad_dinode;
+		ty = _("symlink");
 		break;
 	case S_IFBLK:
-		if (fsck_blockmap_set(ip, block, _("block device"),
-				      gfs2_inode_device))
-			goto bad_dinode;
+		ty = _("block device");
 		break;
 	case S_IFCHR:
-		if (fsck_blockmap_set(ip, block, _("character device"),
-				      gfs2_inode_device))
-			goto bad_dinode;
+		ty = _("character device");
 		break;
 	case S_IFIFO:
-		if (fsck_blockmap_set(ip, block, _("fifo"),
-				      gfs2_inode_fifo))
-			goto bad_dinode;
+		ty = _("fifo");
 		break;
 	case S_IFSOCK:
-		if (fsck_blockmap_set(ip, block, _("socket"),
-				      gfs2_inode_sock))
-			goto bad_dinode;
+		ty = _("socket");
 		break;
 	default:
-		fsck_blockmap_set(ip, block, _("invalid mode"),
-				  gfs2_inode_invalid);
 		return -EINVAL;
 	}
+	if (fsck_blockmap_set(ip, block, ty, GFS2_BLKST_DINODE) ||
+	    (mode == S_IFDIR && instree && !dirtree_insert(ip->i_di.di_num))) {
+		stack;
+		return -EPERM;
+	}
 	return 0;
-
-bad_dinode:
-	stack;
-	return -EPERM;
 }
 
 uint64_t find_free_blk(struct gfs2_sbd *sdp)

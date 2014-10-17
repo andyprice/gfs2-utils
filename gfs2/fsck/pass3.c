@@ -67,6 +67,7 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 	struct dir_info *pdi;
 	uint8_t q_dotdot, q_treewalk;
 	int error = 0;
+	struct dir_info *dt_dotdot, *dt_treewalk;
 
 	di->checked = 1;
 
@@ -75,7 +76,7 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 
 	if (di->dotdot_parent.no_addr == di->treewalk_parent) {
 		q_dotdot = block_type(di->dotdot_parent.no_addr);
-		if (q_dotdot != gfs2_inode_dir) {
+		if (q_dotdot != GFS2_BLKST_DINODE) {
 			log_err( _("Orphaned directory at block %llu (0x%llx) "
 				   "moved to lost+found\n"),
 				 (unsigned long long)di->dinode.no_addr,
@@ -95,7 +96,9 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 		    (unsigned long long)di->treewalk_parent,
 		    (unsigned long long)di->treewalk_parent);
 	q_dotdot = block_type(di->dotdot_parent.no_addr);
+	dt_dotdot = dirtree_find(di->dotdot_parent.no_addr);
 	q_treewalk = block_type(di->treewalk_parent);
+	dt_treewalk = dirtree_find(di->treewalk_parent);
 	/* if the dotdot entry isn't a directory, but the
 	 * treewalk is, treewalk is correct - if the treewalk
 	 * entry isn't a directory, but the dotdot is, dotdot
@@ -103,8 +106,8 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 	 * choose? if neither are directories, we have a
 	 * problem - need to move this directory into lost+found
 	 */
-	if (q_dotdot != gfs2_inode_dir) {
-		if (q_treewalk != gfs2_inode_dir) {
+	if (q_dotdot != GFS2_BLKST_DINODE || dt_dotdot == NULL) {
+		if (q_treewalk != GFS2_BLKST_DINODE) {
 			log_err( _("Orphaned directory, move to "
 				   "lost+found\n"));
 			return NULL;
@@ -120,7 +123,7 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 		}
 		goto out;
 	}
-	if (q_treewalk == gfs2_inode_dir) {
+	if (dt_treewalk) {
 		log_err( _("Both .. and treewalk parents are directories, "
 			   "going with treewalk...\n"));
 		attach_dotdot_to(sdp, di->treewalk_parent,
@@ -247,7 +250,7 @@ int pass3(struct gfs2_sbd *sdp)
 				continue;
 			}
 			q = block_type(di->dinode.no_addr);
-			if (q == gfs2_bad_block) {
+			if (q == GFS2_BLKST_UNLINKED) {
 				log_err( _("Found unlinked directory "
 					   "containing bad block at block %llu"
 					   " (0x%llx)\n"),
@@ -264,16 +267,14 @@ int pass3(struct gfs2_sbd *sdp)
 					/* Can't use fsck_blockmap_set
 					   because we don't have ip */
 					gfs2_blockmap_set(bl, di->dinode.no_addr,
-							  gfs2_block_free);
+							  GFS2_BLKST_FREE);
 					check_n_fix_bitmap(sdp, di->dinode.no_addr,
-							   0, gfs2_block_free);
+							   0, GFS2_BLKST_FREE);
 					break;
 				} else
 					log_err( _("Unlinked directory with bad block remains\n"));
 			}
-			if (q != gfs2_inode_dir && q != gfs2_inode_file &&
-			   q != gfs2_inode_lnk && q != gfs2_inode_device &&
-			   q != gfs2_inode_fifo && q != gfs2_inode_sock) {
+			if (q != GFS2_BLKST_DINODE) {
 				log_err( _("Unlinked block marked as an inode "
 					   "is not an inode\n"));
 				if (!query(_("Clear the unlinked block?"
@@ -289,9 +290,9 @@ int pass3(struct gfs2_sbd *sdp)
 				/* Can't use fsck_blockmap_set
 				   because we don't have ip */
 				gfs2_blockmap_set(bl, di->dinode.no_addr,
-						  gfs2_block_free);
+						  GFS2_BLKST_FREE);
 				check_n_fix_bitmap(sdp, di->dinode.no_addr, 0,
-						   gfs2_block_free);
+						   GFS2_BLKST_FREE);
 				log_err( _("The block was cleared\n"));
 				break;
 			}
@@ -310,7 +311,7 @@ int pass3(struct gfs2_sbd *sdp)
 					fsck_blockmap_set(ip,
 							  di->dinode.no_addr,
 						_("zero-sized unlinked inode"),
-							  gfs2_block_free);
+							  GFS2_BLKST_FREE);
 					fsck_inode_put(&ip);
 					break;
 				} else {

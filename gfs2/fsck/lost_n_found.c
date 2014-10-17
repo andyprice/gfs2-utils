@@ -132,7 +132,7 @@ void make_sure_lf_exists(struct gfs2_inode *ip)
 	set_di_nlink(sdp->md.rooti);
 
 	q = block_type(lf_dip->i_di.di_num.no_addr);
-	if (q != gfs2_inode_dir) {
+	if (q != GFS2_BLKST_DINODE) {
 		lf_was_created = 1;
 		/* This is a new lost+found directory, so set its block type
 		   and increment link counts for the directories */
@@ -140,7 +140,7 @@ void make_sure_lf_exists(struct gfs2_inode *ip)
 		   whether it created a new directory or just found an old one,
 		   and we used that instead of the block_type to run this */
 		fsck_blockmap_set(ip, lf_dip->i_di.di_num.no_addr,
-				  _("lost+found dinode"), gfs2_inode_dir);
+				  _("lost+found dinode"), GFS2_BLKST_DINODE);
 		dirtree_insert(lf_dip->i_di.di_num);
 		/* root inode links to lost+found */
 		incr_link_count(sdp->md.rooti->i_di.di_num, lf_dip, _("root"));
