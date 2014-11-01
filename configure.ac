@@ -49,7 +49,7 @@ esac
 
 # check stolen from gnulib/m4/gnu-make.m4
 if ! ${MAKE-make} --version /cannot/make/this >/dev/null 2>&1; then
-	AC_MSG_ERROR([you don't seem to have GNU make; it is required])
+	AC_MSG_ERROR([GNU make was not found but is required.])
 fi
 
 AC_PROG_CC
@@ -87,11 +87,11 @@ check_lib_no_libs() {
 
 # local options
 AC_ARG_ENABLE([debug],
-	[  --enable-debug          enable debug build. ],
-	[ default="no" ])
+	AC_HELP_STRING([--enable-debug],[enable debug build [default=no]]),
+	[default="no"])
 AC_ARG_ENABLE([gcov],
-	[  --enable-gcov           enable coverage instrumentation.],
-	[ default="no" ])
+	AC_HELP_STRING([--enable-gcov],[enable coverage instrumentation [default=no]]),
+	[default="no"])
 
 # We use the Check framework for unit tests
 PKG_CHECK_MODULES([check], [check >= 0.9.8],
