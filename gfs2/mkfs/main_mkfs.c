@@ -21,25 +21,13 @@
 #include <sys/ioctl.h>
 #include <limits.h>
 #include <blkid.h>
+#include <locale.h>
 
 #define _(String) gettext(String)
 
 #include <linux/types.h>
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
-
-/**
- * This function is for libgfs2's sake.
- */
-void print_it(const char *label, const char *fmt, const char *fmt2, ...)
-{
-	va_list args;
-
-	va_start(args, fmt2);
-	printf("%s: ", label);
-	vprintf(fmt, args);
-	va_end(args);
-}
 
 static void print_usage(const char *prog_name)
 {
@@ -871,7 +859,7 @@ static void open_dev(struct mkfs_dev *dev)
 		exit(1);
 }
 
-void main_mkfs(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd;
 	struct gfs2_sb sb;
@@ -879,6 +867,10 @@ void main_mkfs(int argc, char *argv[])
 	lgfs2_rgrps_t rgs;
 	int error;
 	unsigned bsize;
+
+	setlocale(LC_ALL, "");
+	textdomain("gfs2-utils");
+	srandom(time(NULL) ^ getpid());
 
 	opts_init(&opts);
 	opts_get(argc, argv, &opts);
@@ -1001,4 +993,6 @@ void main_mkfs(int argc, char *argv[])
 
 	if (!opts.quiet)
 		print_results(&sb, &opts, sbd.rgrps, sbd.fssize);
+
+	return 0;
 }

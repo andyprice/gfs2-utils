@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <libintl.h>
+#include <locale.h>
 #define _(String) gettext(String)
 
 #include <linux/types.h>
@@ -486,12 +487,16 @@ static void add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	}
 }
 
-void main_jadd(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	struct jadd_opts opts = {0};
 	struct gfs2_sbd sbd, *sdp = &sbd;
 	struct mntent *mnt;
 	unsigned int total;
+
+	setlocale(LC_ALL, "");
+	textdomain("gfs2-utils");
+	srandom(time(NULL) ^ getpid());
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	sdp->jsize = GFS2_DEFAULT_JSIZE;
@@ -549,4 +554,6 @@ void main_jadd(int argc, char *argv[])
 	cleanup_metafs(sdp);
 	sync();
 	print_results(&opts);
+
+	return 0;
 }
