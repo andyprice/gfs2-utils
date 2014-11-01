@@ -21,6 +21,7 @@
 #include <linux/falloc.h>
 #include <blkid.h>
 #include <libintl.h>
+#include <locale.h>
 #define _(String) gettext(String)
 
 #include <logging.h>
@@ -338,12 +339,16 @@ static int open_rindex(char *metafs_path, int mode)
 	return fd;
 }
 
-void main_grow(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd, *sdp = &sbd;
 	int rindex_fd;
 	int error = EXIT_SUCCESS;
 	int devflags = (test ? O_RDONLY : O_RDWR) | O_CLOEXEC;
+
+	setlocale(LC_ALL, "");
+	textdomain("gfs2-utils");
+	srandom(time(NULL) ^ getpid());
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
 	sdp->bsize = GFS2_DEFAULT_BSIZE;
@@ -464,5 +469,5 @@ void main_grow(int argc, char *argv[])
 		exit(1);
 	}
 	log_notice( _("gfs2_grow complete.\n"));
-	exit(error);
+	return error;
 }

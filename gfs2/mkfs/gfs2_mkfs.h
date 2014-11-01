@@ -29,6 +29,17 @@ void die(const char *fmt, ...)
 	exit(-1);
 }
 
+/* This function is for libgfs2's sake. */
+void print_it(const char *label, const char *fmt, const char *fmt2, ...)
+{
+	va_list args;
+
+	va_start(args, fmt2);
+	printf("%s: ", label);
+	vprintf(fmt, args);
+	va_end(args);
+}
+
 /*
  * The following inode IOCTL macros and inode flags 
  * are copied from linux/fs.h, because we have duplicate 

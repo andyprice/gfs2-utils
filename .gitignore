@@ -40,6 +40,8 @@ gfs2/libgfs2/lexer.c
 gfs2/libgfs2/lexer.h
 gfs2/fsck/fsck.gfs2
 gfs2/mkfs/mkfs.gfs2
+gfs2/mkfs/gfs2_grow
+gfs2/mkfs/gfs2_jadd
 gfs2/tune/tunegfs2
 test-driver
 tests/check_meta
