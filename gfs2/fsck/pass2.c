@@ -468,7 +468,8 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		}
 	}
 
-	if (de->de_rec_len < GFS2_DIRENT_SIZE(de->de_name_len)) {
+	if (de->de_rec_len < GFS2_DIRENT_SIZE(de->de_name_len) ||
+	    de->de_name_len > GFS2_FNAMESIZE) {
 		log_err( _("Dir entry with bad record or name length\n"
 			"\tRecord length = %u\n\tName length = %u\n"),
 			de->de_rec_len, de->de_name_len);
@@ -476,9 +477,12 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			log_err( _("Directory entry not fixed.\n"));
 			return 0;
 		}
+		/* Don't be tempted to do this:
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
 				  _("corrupt directory entry"),
 				  gfs2_inode_invalid);
+		We can't free it because another dir may have a valid reference
+		to it. Just return 1 so we can delete the bad dirent. */
 		log_err( _("Bad directory entry deleted.\n"));
 		return 1;
 	}
