@@ -246,18 +246,46 @@ static const struct fsck_pass passes[] = {
 	{ .name = NULL, }
 };
 
+static void print_pass_duration(const char *name, struct timeval *start)
+{
+	char duration[17] = ""; /* strlen("XXdXXhXXmXX.XXXs") + 1 */
+	struct timeval end, diff;
+	unsigned d, h, m, s;
+	char *p = duration;
+
+	gettimeofday(&end, NULL);
+	timersub(&end, start, &diff);
+
+	s = diff.tv_sec % 60;
+	diff.tv_sec /= 60;
+	m = diff.tv_sec % 60;
+	diff.tv_sec /= 60;
+	h = diff.tv_sec % 24;
+	d = diff.tv_sec / 24;
+
+	if (d)
+		p += snprintf(p, 4, "%ud", d > 99 ? 99U : d);
+	if (h)
+		p += snprintf(p, 4, "%uh", h);
+	if (m)
+		p += snprintf(p, 4, "%um", m);
+
+	snprintf(p, 8, "%u.%03lus", s, diff.tv_usec / 1000);
+	log_notice(_("%s completed in %s\n"), name, duration);
+}
+
 static int fsck_pass(const struct fsck_pass *p, struct gfs2_sbd *sdp)
 {
 	int ret;
-	struct	timeval	before, after, diff;
-	time_t runtime;
-	struct tm *run_tm;
+	struct timeval timer;
 
 	if (fsck_abort)
 		return FSCK_CANCELED;
 	pass = p->name;
+
 	log_notice( _("Starting %s\n"), p->name);
-	gettimeofday(&before, 0);
+	gettimeofday(&timer, NULL);
+
 	ret = p->f(sdp);
 	if (ret)
 		exit(ret);
@@ -266,16 +294,8 @@ static int fsck_pass(const struct fsck_pass *p, struct gfs2_sbd *sdp)
 		log_notice( _("%s interrupted   \n"), p->name);
 		return FSCK_CANCELED;
 	}
-	gettimeofday(&after, 0);
-	timersub(&after, &before, &diff);
-	runtime = (time_t)diff.tv_sec;
-	run_tm = gmtime(&runtime);
-	log_notice( _("%s completed in "), p->name);
-	if (run_tm->tm_hour)
-		log_notice("%dh", run_tm->tm_hour);
-	if (run_tm->tm_min)
-		log_notice("%dm", run_tm->tm_min);
-	log_notice("%d.%03lds      \n", run_tm->tm_sec, diff.tv_usec / 1000);
+
+	print_pass_duration(p->name, &timer);
 	return 0;
 }
 
