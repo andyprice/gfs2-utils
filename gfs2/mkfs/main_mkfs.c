@@ -147,7 +147,7 @@ static void opts_init(struct mkfs_opts *opts)
 	opts->bsize = GFS2_DEFAULT_BSIZE;
 	opts->jsize = GFS2_DEFAULT_JSIZE;
 	opts->qcsize = GFS2_DEFAULT_QCSIZE;
-	opts->rgsize = GFS2_MAX_RGSIZE;
+	opts->rgsize = GFS2_DEFAULT_RGSIZE;
 	opts->lockproto = "lock_dlm";
 	opts->locktable = "";
 	opts->confirm = 1;
