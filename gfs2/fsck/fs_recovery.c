@@ -17,6 +17,7 @@
 #include "util.h"
 
 #define JOURNAL_NAME_SIZE 16
+#define JOURNAL_SEQ_TOLERANCE 10
 
 unsigned int sd_found_jblocks = 0, sd_replayed_jblocks = 0;
 unsigned int sd_found_metablocks = 0, sd_replayed_metablocks = 0;
@@ -138,10 +139,15 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 		check_magic = ((struct gfs2_meta_header *)
 			       (bh_ip->b_data))->mh_magic;
 		check_magic = be32_to_cpu(check_magic);
-		if (check_magic != GFS2_MAGIC)
+		if (check_magic != GFS2_MAGIC) {
+			log_err(_("Journal corruption detected at block #"
+				  "%lld (0x%llx) for journal+0x%x.\n"),
+				(unsigned long long)blkno, (unsigned long long)blkno,
+				start);
 			error = -EIO;
-		else
+		} else {
 			bmodified(bh_ip);
+		}
 
 		brelse(bh_log);
 		brelse(bh_ip);
@@ -313,8 +319,11 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 				brelse(bh);
 				continue;
 			}
-			if (error == 1)
+			if (error == 1) {
+				log_err(_("Journal corruption detected at "
+					  "journal+0x%x.\n"), start);
 				error = -EIO;
+			}
 			bmodified(bh);
 			brelse(bh);
 			return error;
@@ -354,10 +363,13 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 }
 
 /**
- * fix_journal_seq_no - Fix log header sequencing problems
+ * check_journal_seq_no - Check and Fix log header sequencing problems
  * @ip: the journal incore inode
+ * @fix: if 1, fix the sequence numbers, otherwise just report the problem
+ *
+ * Returns: The number of sequencing errors (hopefully none).
  */
-static int fix_journal_seq_no(struct gfs2_inode *ip)
+static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 {
 	int error = 0, wrapped = 0;
 	uint32_t jd_blocks = ip->i_di.di_size / ip->i_sbd->sd_sb.sb_bsize;
@@ -368,6 +380,7 @@ static int fix_journal_seq_no(struct gfs2_inode *ip)
 	uint64_t dblock;
 	uint32_t extlen;
 	struct gfs2_buffer_head *bh;
+	int seq_errors = 0;
 
 	memset(&lh, 0, sizeof(lh));
 	for (blk = 0; blk < jd_blocks; blk++) {
@@ -395,6 +408,10 @@ static int fix_journal_seq_no(struct gfs2_inode *ip)
 			  (unsigned long long)lowest_seq,
 			  (unsigned long long)highest_seq,
 			  (unsigned long long)prev_seq);
+		if (!fix) {
+			seq_errors++;
+			continue;
+		}
 		highest_seq++;
 		lh.lh_sequence = highest_seq;
 		prev_seq = lh.lh_sequence;
@@ -404,7 +421,9 @@ static int fix_journal_seq_no(struct gfs2_inode *ip)
 		gfs2_log_header_out(&lh, bh);
 		brelse(bh);
 	}
-	return 0;
+	if (seq_errors && fix)
+		log_err(_("%d sequence errors fixed.\n"), seq_errors);
+	return seq_errors;
 }
 
 /**
@@ -456,6 +475,15 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 
 	osi_list_init(&sd_revoke_list);
 	error = gfs2_find_jhead(ip, &head);
+	if (!error) {
+		error = check_journal_seq_no(ip, 0);
+		if (error > JOURNAL_SEQ_TOLERANCE) {
+			log_err( _("Journal #%d (\"journal%d\") has %d "
+				   "sequencing errors; tolerance is %d.\n"),
+				 j+1, j, error, JOURNAL_SEQ_TOLERANCE);
+			goto out;
+		}
+	}
 	if (error) {
 		if (opts.no) {
 			log_err( _("Journal #%d (\"journal%d\") is corrupt\n"),j+1, j);
@@ -481,7 +509,7 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 			goto out;
 		}
 		log_info( _("jid=%u: Repairing journal...\n"), j);
-		error = fix_journal_seq_no(ip);
+		error = check_journal_seq_no(ip, 1);
 		if (error) {
 			log_err( _("jid=%u: Unable to fix the bad journal.\n"), 
 				 j);
@@ -530,8 +558,10 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 	for (pass = 0; pass < 2; pass++) {
 		error = foreach_descriptor(ip, head.lh_tail,
 					   head.lh_blkno, pass);
-		if (error)
+		if (error) {
+			log_err(_("Error found during journal replay.\n"));
 			goto out;
+		}
 	}
 	log_info( _("jid=%u: Found %u revoke tags\n"), j, sd_found_revokes);
 	gfs2_revoke_clean(sdp);
@@ -550,14 +580,16 @@ out:
 		log_info( _("jid=%u: Done\n"), j);
 		return 0;
 	}
-	log_info( _("jid=%u: Failed\n"), j);
+	log_err( _("jid=%u: Failed\n"), j);
 reinit:
-	if (query( _("Do you want to clear the journal instead? (y/n)")))
+	if (query( _("Do you want to clear the journal instead? (y/n)"))) {
 		error = write_journal(sdp->md.journal[j], sdp->bsize,
 				      sdp->md.journal[j]->i_di.di_size /
 				      sdp->sd_sb.sb_bsize);
-	else
+		log_err(_("jid=%u: journal was cleared.\n"), j);
+	} else {
 		log_err( _("jid=%u: journal not cleared.\n"), j);
+	}
 	return error;
 }
 
