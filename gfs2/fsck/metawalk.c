@@ -1395,7 +1395,8 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
  */
 static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		      struct gfs2_buffer_head *bh, int head_size,
-		      uint64_t *blks_checked, uint64_t *error_blk)
+		      uint64_t *last_block, uint64_t *blks_checked,
+		      uint64_t *error_blk)
 {
 	int error = 0, rc = 0;
 	uint64_t block, *ptr;
@@ -1410,7 +1411,7 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 
 		if (skip_this_pass || fsck_abort)
 			return error;
-		block =  be64_to_cpu(*ptr);
+		*last_block = block =  be64_to_cpu(*ptr);
 		/* It's important that we don't call valid_block() and
 		   bypass calling check_data on invalid blocks because that
 		   would defeat the rangecheck_block related functions in
@@ -1490,7 +1491,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	struct gfs2_buffer_head *bh;
 	uint32_t height = ip->i_di.di_height;
 	int  i, head_size;
-	uint64_t blks_checked = 0;
+	uint64_t blks_checked = 0, last_block = 0;
 	int error, rc;
 	int metadata_clean = 0;
 	uint64_t error_blk = 0;
@@ -1514,6 +1515,9 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	 * comprise the directory hash table, so we perform the directory
 	 * checks and exit. */
         if (is_dir(&ip->i_di, ip->i_sbd->gfs1)) {
+		last_block = ip->i_di.di_num.no_addr;
+		if (pass->check_i_goal)
+			pass->check_i_goal(ip, last_block, pass->private);
 		if (!(ip->i_di.di_flags & GFS2_DIF_EXHASH))
 			goto out;
 		/* check validity of leaf blocks and leaf chains */
@@ -1540,7 +1544,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 
 		if (pass->check_data)
 			error = check_data(ip, pass, bh, head_size,
-					   &blks_checked, &error_blk);
+					   &last_block, &blks_checked, &error_blk);
 		if (pass->big_file_msg && ip->i_di.di_blocks > COMFORTABLE_BLKS)
 			pass->big_file_msg(ip, blks_checked);
 	}
@@ -1552,6 +1556,8 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			    (unsigned long long)ip->i_di.di_num.no_addr);
 		fflush(stdout);
 	}
+	if (!error && pass->check_i_goal)
+		pass->check_i_goal(ip, last_block, pass->private);
 undo_metalist:
 	if (!error)
 		goto out;
