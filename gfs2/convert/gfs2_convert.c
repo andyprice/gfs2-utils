@@ -618,8 +618,10 @@ static int fix_ind_reg_or_dir(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint3
 	mp_gfs1_to_gfs2(sbp, di_height, gfs2_hgt, &blk->mp, &gfs2mp);
 	memcpy(&blk->mp, &gfs2mp, sizeof(struct metapath));
 	blk->height -= di_height - gfs2_hgt;
-	if (len)
+	if (len) {
 		fix_metatree(sbp, ip, blk, ptr1, len);
+		ip->i_di.di_goal_data = ip->i_di.di_goal_meta = be64_to_cpu(*ptr2);
+	}
 
 	return 0;
 }
@@ -903,7 +905,7 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 		inode->i_di.di_mode |= S_IFSOCK;
 		break;
 	}
-			
+
 	/* ----------------------------------------------------------- */
 	/* gfs2 inodes are slightly different from gfs1 inodes in that */
 	/* di_goal_meta has shifted locations and di_goal_data has     */
@@ -929,7 +931,7 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 		inode->i_di.di_goal_data = 0; /* make sure the upper 32b are 0 */
 		inode->i_di.di_goal_data = gfs1_dinode_struct->di_goal_dblk;
 		inode->i_di.di_generation = 0;
-		
+
 		if (adjust_indirect_blocks(sbp, inode))
 			return -1;
 		/* Check for cdpns */
@@ -945,7 +947,7 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 				return -1;
 		}
 	}
-	
+
 	bmodified(inode->i_bh);
 	inode_put(&inode); /* does gfs2_dinode_out if modified */
 	sbp->md.next_inum++; /* update inode count */
