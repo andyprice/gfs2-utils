@@ -249,7 +249,10 @@ int pass3(struct gfs2_sbd *sdp)
 			q = block_type(di->dinode.no_addr);
 			if (q == gfs2_bad_block) {
 				log_err( _("Found unlinked directory "
-					   "containing bad block\n"));
+					   "containing bad block at block %llu"
+					   " (0x%llx)\n"),
+					(unsigned long long)di->dinode.no_addr,
+					(unsigned long long)di->dinode.no_addr);
 				if (query(_("Clear unlinked directory "
 					   "with bad blocks? (y/n) "))) {
 					log_warn( _("inode %lld (0x%llx) is "
