@@ -307,7 +307,7 @@ static int check_leaf_depth(struct gfs2_inode *ip, uint64_t leaf_no,
  *          or -1 on error
  */
 static int wrong_leaf(struct gfs2_inode *ip, struct gfs2_inum *entry,
-		      const char *tmp_name, int lindex, int lindex_max,
+		      const char *tmp_name, int *lindex, int lindex_max,
 		      int hash_index, struct gfs2_buffer_head *bh,
 		      struct dir_status *ds, struct gfs2_dirent *dent,
 		      struct gfs2_dirent *de, struct gfs2_dirent *prev_de,
@@ -318,13 +318,14 @@ static int wrong_leaf(struct gfs2_inode *ip, struct gfs2_inum *entry,
 	uint64_t planned_leaf, real_leaf;
 	int li, dest_ref, error;
 	uint64_t *tbl;
+	int di_depth;
 
 	log_err(_("Directory entry '%s' at block %lld (0x%llx) is on the "
 		  "wrong leaf block.\n"), tmp_name,
 		(unsigned long long)entry->no_addr,
 		(unsigned long long)entry->no_addr);
 	log_err(_("Leaf index is: 0x%x. The range for this leaf block is "
-		  "0x%x - 0x%x\n"), hash_index, lindex, lindex_max);
+		  "0x%x - 0x%x\n"), hash_index, *lindex, lindex_max);
 	if (!query( _("Move the misplaced directory entry to "
 		      "a valid leaf block? (y/n) "))) {
 		log_err( _("Misplaced directory entry not moved.\n"));
@@ -339,8 +340,8 @@ static int wrong_leaf(struct gfs2_inode *ip, struct gfs2_inum *entry,
 	}
 	planned_leaf = be64_to_cpu(tbl[hash_index]);
 	log_err(_("Moving it from leaf %llu (0x%llx) to %llu (0x%llx)\n"),
-		(unsigned long long)be64_to_cpu(tbl[lindex]),
-		(unsigned long long)be64_to_cpu(tbl[lindex]),
+		(unsigned long long)be64_to_cpu(tbl[*lindex]),
+		(unsigned long long)be64_to_cpu(tbl[*lindex]),
 		(unsigned long long)planned_leaf,
 		(unsigned long long)planned_leaf);
 	/* Can't trust lf_depth; we have to count */
@@ -366,10 +367,16 @@ static int wrong_leaf(struct gfs2_inode *ip, struct gfs2_inum *entry,
 		return 1; /* nuke the dent upon return */
 	}
 
+	di_depth = ip->i_di.di_depth;
 	if (dir_add(ip, tmp_name, de->de_name_len, &de->de_inum,
 		    de->de_type) == 0) {
 		log_err(_("The misplaced directory entry was moved to a "
 			  "valid leaf block.\n"));
+		if (ip->i_di.di_depth > di_depth) {
+			log_err(_("Directory hash table was doubled.\n"));
+			hash_index <<= (ip->i_di.di_depth - di_depth);
+			(*lindex) <<= (ip->i_di.di_depth - di_depth);
+		}
 		if (lgfs2_get_leaf_ptr(ip, hash_index, &real_leaf)) {
 			log_err(_("Could not read leaf %d in dinode %"PRIu64": %s\n"), hash_index,
 			        (uint64_t)ip->i_di.di_num.no_addr, strerror(errno));
@@ -389,7 +396,7 @@ static int wrong_leaf(struct gfs2_inode *ip, struct gfs2_inum *entry,
 		   appear later, we'll count it has part of our normal
 		   processing when we get to that leaf block later on in the
 		   hash table. */
-		if (hash_index > lindex) {
+		if (hash_index > *lindex) {
 			log_err(_("Accounting deferred.\n"));
 			return 1; /* nuke the dent upon return */
 		}
@@ -655,7 +662,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			struct gfs2_dirent *prev_de,
 			struct gfs2_buffer_head *bh, char *filename,
-			uint32_t *count, int lindex, void *priv)
+			uint32_t *count, int *lindex, void *priv)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint8_t q = 0;
@@ -811,8 +818,8 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	   block have a hash table index that fits */
 	if (ip->i_di.di_flags & GFS2_DIF_EXHASH) {
 		hash_index = hash_table_index(de->de_hash, ip);
-		lindex_max = hash_table_max(lindex, ip, bh);
-		if (hash_index < lindex || hash_index > lindex_max) {
+		lindex_max = hash_table_max(*lindex, ip, bh);
+		if (hash_index < *lindex || hash_index > lindex_max) {
 			int nuke_dent;
 
 			nuke_dent = wrong_leaf(ip, &entry, tmp_name, lindex,
@@ -1024,7 +1031,7 @@ static int lost_leaf(struct gfs2_inode *ip, uint64_t *tbl, uint64_t leafno,
 static int basic_check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			      struct gfs2_dirent *prev_de,
 			      struct gfs2_buffer_head *bh, char *filename,
-			      uint32_t *count, int lindex, void *priv)
+			      uint32_t *count, int *lindex, void *priv)
 {
 	uint8_t q = 0;
 	char tmp_name[MAX_FILENAME];

@@ -162,7 +162,7 @@ static int resuscitate_metalist(struct gfs2_inode *ip, uint64_t block,
 static int resuscitate_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			      struct gfs2_dirent *prev_de,
 			      struct gfs2_buffer_head *bh, char *filename,
-			      uint32_t *count, int lindex, void *priv)
+			      uint32_t *count, int *lindex, void *priv)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct gfs2_dirent dentry, *de;
