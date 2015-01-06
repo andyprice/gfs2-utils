@@ -461,7 +461,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			} else {
 				error = pass->check_dentry(ip, dent, prev, bh,
 							   filename, count,
-							   lindex,
+							   &lindex,
 							   pass->private);
 				if (error < 0) {
 					stack;
@@ -504,6 +504,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	uint32_t count = 0;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	const char *msg;
+	int di_depth = ip->i_di.di_depth;
 
 	/* Make sure the block number is in range. */
 	if (!valid_block(ip->i_sbd, *leaf_no)) {
@@ -604,6 +605,16 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 		}
 	}
 out:
+	if (di_depth < ip->i_di.di_depth) {
+		log_debug(_("Depth of directory %lld (0x%llx) changed from "
+			    "%d to %d; adjusting ref_count from %d to %d\n"),
+			  (unsigned long long)ip->i_di.di_num.no_addr,
+			  (unsigned long long)ip->i_di.di_num.no_addr,
+			  di_depth, ip->i_di.di_depth,
+			  *ref_count,
+			  (*ref_count) << (ip->i_di.di_depth - di_depth));
+		(*ref_count) <<= (ip->i_di.di_depth - di_depth);
+	}
 	brelse(lbh);
 	return 0;
 
@@ -617,6 +628,16 @@ bad_leaf:
 		if (fix < 0)
 			return fix;
 
+	}
+	if (di_depth < ip->i_di.di_depth) {
+		log_debug(_("Depth of directory %lld (0x%llx) changed from "
+			    "%d to %d. Adjusting ref_count from %d to %d\n"),
+			  (unsigned long long)ip->i_di.di_num.no_addr,
+			  (unsigned long long)ip->i_di.di_num.no_addr,
+			  di_depth, ip->i_di.di_depth,
+			  *ref_count,
+			  (*ref_count) << (ip->i_di.di_depth - di_depth));
+		(*ref_count) <<= (ip->i_di.di_depth - di_depth);
 	}
 	return 1;
 }
@@ -773,8 +794,13 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			}
 			error = check_leaf(ip, lindex, pass, &leaf_no, &leaf,
 					   &ref_count);
-			if (ref_count != orig_ref_count)
+			if (ref_count != orig_ref_count) {
+				log_debug(_("Ref count of leaf 0x%llx "
+					    "changed from %d to %d.\n"),
+					  (unsigned long long)leaf_no,
+					  orig_ref_count, ref_count);
 				tbl_valid = 0;
+			}
 			if (!leaf.lf_next || error)
 				break;
 			leaf_no = leaf.lf_next;
@@ -787,6 +813,8 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 				  (unsigned long long)ip->i_di.di_num.no_addr,
 				  orig_di_depth, ip->i_di.di_depth);
 			tbl_valid = 0;
+			lindex <<= (ip->i_di.di_depth - orig_di_depth);
+			hsize = (1 << ip->i_di.di_depth);
 		}
 		if (orig_di_height != ip->i_di.di_height) {
 			log_debug(_("Height of 0x%llx changed from %d to "
@@ -1666,7 +1694,7 @@ int check_dir(struct gfs2_sbd *sdp, uint64_t block, struct metawalk_fxns *pass)
 static int remove_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			 struct gfs2_dirent *prev_de,
 			 struct gfs2_buffer_head *bh,
-			 char *filename, uint32_t *count, int lindex,
+			 char *filename, uint32_t *count, int *lindex,
 			 void *private)
 {
 	/* the metawalk_fxn's private field must be set to the dentry
