@@ -1446,17 +1446,28 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		   pass1. Therefore the individual check_data functions
 		   should do a range check. */
 		rc = pass->check_data(ip, metablock, block, pass->private);
-		if (!error && rc) {
-			error = rc;
+		if (rc && (!error || (rc < error))) {
 			log_info("\n");
 			if (rc < 0) {
-				*error_blk = block;
+				/* A fatal error trumps a non-fatal one. */
+				if ((*error_blk == 0) || (rc < error)) {
+					log_debug(_("Fatal error on block 0x"
+						    "%llx preempts non-fatal "
+						    "error on block 0x%llx\n"),
+						  (unsigned long long)block,
+						  (unsigned long long)*error_blk);
+					*error_blk = block;
+				}
 				log_info(_("Unrecoverable "));
+			} else { /* nonfatal error */
+				if ((*error_blk) == 0)
+					*error_blk = block;
 			}
 			log_info(_("data block error %d on block %llu "
 				   "(0x%llx).\n"), rc,
 				 (unsigned long long)block,
 				 (unsigned long long)block);
+			error = rc;
 		}
 		if (rc < 0)
 			return rc;
@@ -1467,10 +1478,11 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 
 static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 			   uint64_t *ptr_start, char *ptr_end,
-			   uint64_t error_blk)
+			   uint64_t error_blk, int error)
 {
 	int rc = 0;
 	uint64_t block, *ptr;
+	int found_error_blk = 0;
 
 	/* If there isn't much pointer corruption check the pointers */
 	for (ptr = ptr_start ; (char *)ptr < ptr_end && !fsck_abort; ptr++) {
@@ -1480,13 +1492,25 @@ static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		if (skip_this_pass || fsck_abort)
 			return 1;
 		block =  be64_to_cpu(*ptr);
-		if (block == error_blk)
-			return 1;
+		if (block == error_blk) {
+			if (error < 0) { /* A fatal error that stopped it? */
+				log_debug(_("Stopping the undo process: "
+					    "fatal error block 0x%llx was "
+					    "found.\n"),
+					  (unsigned long long)error_blk);
+				return 1;
+			}
+			found_error_blk = 1;
+			log_debug(_("The non-fatal error block 0x%llx was "
+				    "found, but undo processing will continue "
+				    "until the end of this metadata block.\n"),
+				  (unsigned long long)error_blk);
+		}
 		rc = pass->undo_check_data(ip, block, pass->private);
 		if (rc < 0)
 			return rc;
 	}
-	return 0;
+	return found_error_blk;
 }
 
 static int hdr_size(struct gfs2_buffer_head *bh, int height)
@@ -1589,9 +1613,11 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 undo_metalist:
 	if (!error)
 		goto out;
-	log_err( _("Error: inode %llu (0x%llx) had unrecoverable errors.\n"),
+	log_err( _("Error: inode %llu (0x%llx) had unrecoverable errors at "
+		   "%lld (0x%llx).\n"),
 		 (unsigned long long)ip->i_di.di_num.no_addr,
-		 (unsigned long long)ip->i_di.di_num.no_addr);
+		 (unsigned long long)ip->i_di.di_num.no_addr,
+		 (unsigned long long)error_blk, (unsigned long long)error_blk);
 	if (!query( _("Remove the invalid inode? (y/n) "))) {
 		free_metalist(ip, &metalist[0]);
 		log_err(_("Invalid inode not deleted.\n"));
@@ -1620,7 +1646,7 @@ undo_metalist:
 							     (uint64_t *)
 					      (bh->b_data + head_size),
 					      (bh->b_data + ip->i_sbd->bsize),
-							     error_blk);
+							     error_blk, error);
 					if (rc > 0) {
 						hit_error_blk = 1;
 						rc = 0;
