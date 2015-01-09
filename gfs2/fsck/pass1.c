@@ -363,6 +363,11 @@ static int undo_reference(struct gfs2_inode *ip, uint64_t block, int meta,
 				  "from another inode; not freeing.\n"),
 				(unsigned long long)block,
 				(unsigned long long)block);
+			if (dt->refs == 1) {
+				log_err(_("This was the only duplicate "
+					  "reference so far; removing it.\n"));
+				dup_delete(dt);
+			}
 			return 1;
 		}
 	}
@@ -1012,8 +1017,13 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
 		if ((*bad_pointers) <= BAD_POINTER_TOLERANCE)
 			return meta_is_good;
-		else
+		else {
+			log_debug(_("Inode 0x%llx bad pointer tolerance "
+				    "exceeded: block 0x%llx.\n"),
+				  (unsigned long long)ip->i_di.di_num.no_addr,
+				  (unsigned long long)block);
 			return meta_error; /* Exits check_metatree quicker */
+		}
 	}
 	return meta_is_good;
 }
