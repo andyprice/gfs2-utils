@@ -27,6 +27,7 @@
 #include "util.h"
 #include "link.h"
 #include "metawalk.h"
+#include "fs_recovery.h"
 
 struct special_blocks gfs1_rindex_blks;
 
@@ -1241,7 +1242,8 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 			      struct gfs2_inode **sysinode,
 			      const char *filename,
 			      int builder(struct gfs2_sbd *sdp),
-			      enum gfs2_mark_block mark)
+			      enum gfs2_mark_block mark,
+			      struct gfs2_inode *sysdir, int needs_sysbit)
 {
 	uint64_t iblock = 0;
 	struct dir_status ds = {0};
@@ -1282,6 +1284,24 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 			if (mark == gfs2_inode_dir)
 				dirtree_insert((*sysinode)->i_di.di_num);
 		}
+		/* Make sure it's marked as a system file/directory */
+		if (needs_sysbit &&
+		    !((*sysinode)->i_di.di_flags & GFS2_DIF_SYSTEM)) {
+			log_err( _("System inode %s is missing the 'system' "
+				   "flag. It should be rebuilt.\n"), filename);
+			if (sysdir && query(_("Delete the corrupt %s system "
+					      "inode? (y/n) "), filename)) {
+				inode_put(sysinode);
+				gfs2_dirent_del(sysdir, filename,
+						strlen(filename));
+				/* Set the blockmap (but not bitmap) back to
+				   'free' so that it gets checked like any
+				   normal dinode. */
+				gfs2_blockmap_set(bl, iblock, gfs2_block_free);
+				log_err( _("Removed system inode \"%s\".\n"),
+					 filename);
+			}
+		}
 	} else
 		log_info( _("System inode for '%s' is corrupt or missing.\n"),
 			  filename);
@@ -1290,18 +1310,22 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 	   lost+found then, but we *need* our system inodes before we can
 	   do any of that. */
 	if (!(*sysinode) || ds.q != mark) {
-		log_err( _("Invalid or missing %s system inode (should be %d, "
-			   "is %d).\n"), filename, mark, ds.q);
+		log_err( _("Invalid or missing %s system inode (should be "
+			   "'%s', is '%s').\n"), filename,
+			 block_type_string(mark),
+			 block_type_string(ds.q));
 		if (query(_("Create new %s system inode? (y/n) "), filename)) {
 			log_err( _("Rebuilding system file \"%s\"\n"),
 				 filename);
 			error = builder(sdp);
 			if (error) {
-				log_err( _("Error trying to rebuild system "
-					   "file %s: Cannot continue\n"),
+				log_err( _("Error rebuilding system "
+					   "inode %s: Cannot continue\n"),
 					 filename);
 				return error;
 			}
+			if (*sysinode == sdp->md.jiinode)
+				ji_update(sdp);
 			fsck_blockmap_set(*sysinode,
 					  (*sysinode)->i_di.di_num.no_addr,
 					  filename, mark);
@@ -1367,7 +1391,8 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 				  sdp->master_dir->i_di.di_num.no_addr,
 				  "master", gfs2_inode_dir);
 		if (check_system_inode(sdp, &sdp->master_dir, "master",
-				       build_master, gfs2_inode_dir)) {
+				       build_master, gfs2_inode_dir,
+				       NULL, 1)) {
 			stack;
 			return -1;
 		}
@@ -1377,39 +1402,41 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 	fsck_blockmap_set(sdp->md.rooti, sdp->md.rooti->i_di.di_num.no_addr,
 			  "root", gfs2_inode_dir);
 	if (check_system_inode(sdp, &sdp->md.rooti, "root", build_root,
-			       gfs2_inode_dir)) {
+			       gfs2_inode_dir, NULL, 0)) {
 		stack;
 		return -1;
 	}
 	if (!sdp->gfs1 &&
 	    check_system_inode(sdp, &sdp->md.inum, "inum", build_inum,
-			       gfs2_inode_file)) {
+			       gfs2_inode_file, sdp->master_dir, 1)) {
 		stack;
 		return -1;
 	}
 	if (check_system_inode(sdp, &sdp->md.statfs, "statfs", build_statfs,
-			       gfs2_inode_file)) {
+			       gfs2_inode_file, sdp->master_dir, !sdp->gfs1)) {
 		stack;
 		return -1;
 	}
 	if (check_system_inode(sdp, &sdp->md.jiinode, "jindex", build_jindex,
-			       (sdp->gfs1 ? gfs2_inode_file : gfs2_inode_dir))) {
+			       (sdp->gfs1 ? gfs2_inode_file : gfs2_inode_dir),
+			       sdp->master_dir, !sdp->gfs1)) {
 		stack;
 		return -1;
 	}
 	if (check_system_inode(sdp, &sdp->md.riinode, "rindex", build_rindex,
-			       gfs2_inode_file)) {
+			       gfs2_inode_file, sdp->master_dir, !sdp->gfs1)) {
 		stack;
 		return -1;
 	}
 	if (check_system_inode(sdp, &sdp->md.qinode, "quota", build_quota,
-			       gfs2_inode_file)) {
+			       gfs2_inode_file, sdp->master_dir, !sdp->gfs1)) {
 		stack;
 		return -1;
 	}
 	if (!sdp->gfs1 &&
 	    check_system_inode(sdp, &sdp->md.pinode, "per_node",
-			       build_per_node, gfs2_inode_dir)) {
+			       build_per_node, gfs2_inode_dir,
+			       sdp->master_dir, 1)) {
 		stack;
 		return -1;
 	}
@@ -1438,7 +1465,7 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 		sprintf(jname, "journal%d", sdp->md.journals);
 		if (check_system_inode(sdp, &sdp->md.journal[sdp->md.journals],
 				       jname, build_a_journal,
-				       gfs2_inode_file)) {
+				       gfs2_inode_file, sdp->md.jiinode, 1)) {
 			stack;
 			return -1;
 		}
