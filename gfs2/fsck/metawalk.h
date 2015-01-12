@@ -11,6 +11,7 @@ struct metawalk_fxns;
 extern int check_inode_eattr(struct gfs2_inode *ip,
 			     struct metawalk_fxns *pass);
 extern int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass);
+extern int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass);
 extern int check_dir(struct gfs2_sbd *sdp, uint64_t block,
 		     struct metawalk_fxns *pass);
 extern int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,

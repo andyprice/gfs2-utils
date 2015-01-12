@@ -238,7 +238,7 @@ static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 		if (q == gfs2_leaf_blk) /* If the previous reference also saw
 					   this as a leaf, it was already
 					   checked, so don't check again. */
-			return -EEXIST;
+			return EEXIST; /* non-fatal */
 	}
 	fsck_blockmap_set(ip, block, _("directory leaf"), gfs2_leaf_blk);
 	return 0;
@@ -1532,9 +1532,9 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 		if (q != gfs2_block_free) {
 			if (be32_to_cpu(check_magic) == GFS2_MAGIC &&
 			    sdp->gfs1 && !is_inode) {
-				log_debug("Block 0x%llx assumed to be "
-					  "previously processed GFS1 "
-					  "non-dinode metadata.\n",
+				log_debug(_("Block 0x%llx assumed to be "
+					    "previously processed GFS1 "
+					    "non-dinode metadata.\n"),
 					  (unsigned long long)block);
 				brelse(bh);
 				continue;

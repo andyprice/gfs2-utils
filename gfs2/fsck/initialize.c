@@ -142,7 +142,7 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	uint64_t rmin = 0;
 	int error;
 
-	log_info( _("Setting block ranges...\n"));
+	log_info( _("Setting block ranges..."));
 
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
@@ -184,9 +184,12 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 		goto fail;
 	}
 
+	log_info(_("0x%llx to 0x%llx\n"), (unsigned long long)first_data_block,
+		 (unsigned long long)last_data_block);
 	return 0;
 
  fail:
+	log_info( _("Error\n"));
 	return -1;
 }
 
@@ -685,10 +688,6 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	if (sdp->md.rooti == NULL)
 		return -1;
 
-	err = fetch_rgrps(sdp);
-	if (err)
-		return err;
-
 	/*******************************************************************
 	 *****************  Initialize more system inodes  *****************
 	 *******************************************************************/
@@ -711,8 +710,8 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 			gfs2_lookupi(sdp->master_dir, "inum", 4,
 				     &sdp->md.inum);
 			if (!sdp->md.inum) {
-				log_crit("System inum inode was not rebuilt.  "
-					 "Aborting.\n");
+				log_crit(_("System inum inode was not rebuilt."
+					   " Aborting.\n"));
 				goto fail;
 			}
 		}
@@ -811,8 +810,8 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	if (!sdp->gfs1 && !sdp->md.qinode) {
 		if (!query( _("The gfs2 system quota inode is missing. "
 			      "Okay to rebuild it? (y/n) "))) {
-			log_crit("System quota inode was not "
-				 "rebuilt.  Aborting.\n");
+			log_crit(_("System quota inode was not "
+				   "rebuilt.  Aborting.\n"));
 			goto fail;
 		}
 		err = build_quota(sdp);
@@ -822,8 +821,8 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 		}
 		gfs2_lookupi(sdp->master_dir, "quota", 5, &sdp->md.qinode);
 		if (!sdp->md.qinode) {
-			log_crit("Unable to rebuild system quota file "
-				 "inode.  Aborting.\n");
+			log_crit(_("Unable to rebuild system quota file "
+				   "inode.  Aborting.\n"));
 			goto fail;
 		}
 	}
@@ -1357,7 +1356,7 @@ static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
 	srandom(time(NULL));
 	sequence = ji_nsegment / (RAND_MAX + 1.0) * random();
 
-	log_info("Clearing journal %d\n", jnum);
+	log_info(_("Clearing journal %d\n"), jnum);
 
 	for (seg = 0; seg < ji_nsegment; seg++){
 		memset(&lh, 0, sizeof(struct gfs_log_header));
@@ -1512,6 +1511,66 @@ static int init_rindex(struct gfs2_sbd *sdp)
 	return 0;
 }
 
+static void bad_journalname(const char *filename, int len)
+{
+	char tmp_name[64];
+
+	if (len >= 64)
+		len = 63;
+	strncpy(tmp_name, filename, len);
+	tmp_name[len] = '\0';
+	log_debug(_("Journal index entry '%s' has an invalid filename.\n"),
+		  tmp_name);
+}
+
+/**
+ * check_jindex_dent - check the jindex directory entries
+ *
+ * This function makes sure the directory entries of the jindex are valid.
+ * If they're not '.' or '..' they better have the form journalXXX.
+ */
+static int check_jindex_dent(struct gfs2_inode *ip, struct gfs2_dirent *dent,
+			     struct gfs2_dirent *prev_de,
+			     struct gfs2_buffer_head *bh, char *filename,
+			     uint32_t *count, int *lindex, void *priv)
+{
+	struct gfs2_dirent dentry, *de;
+	int i;
+
+	memset(&dentry, 0, sizeof(struct gfs2_dirent));
+	gfs2_dirent_in(&dentry, (char *)dent);
+	de = &dentry;
+
+	if (de->de_name_len == 1 && filename[0] == '.')
+		goto dirent_good;
+	if (de->de_name_len == 2 && filename[0] == '.' && filename[1] == '.')
+		goto dirent_good;
+
+	if ((de->de_name_len >= 11) || /* "journal9999" */
+	    (de->de_name_len <= 7) ||
+	    (strncmp(filename, "journal", 7))) {
+		bad_journalname(filename, de->de_name_len);
+		return -1;
+	}
+	for (i = 7; i < de->de_name_len; i++) {
+		if (filename[i] < '0' || filename[i] > '9') {
+			bad_journalname(filename, de->de_name_len);
+			return -2;
+		}
+	}
+
+dirent_good:
+	/* Return the number of leaf entries so metawalk doesn't flag this
+	   leaf as having none. */
+	*count = be16_to_cpu(((struct gfs2_leaf *)bh->b_data)->lf_entries);
+	return 0;
+}
+
+struct metawalk_fxns jindex_check_fxns = {
+	.private = NULL,
+	.check_dentry = check_jindex_dent,
+};
+
 /**
  * init_jindex - read in the rindex file
  */
@@ -1521,6 +1580,7 @@ static int init_jindex(struct gfs2_sbd *sdp)
 	 ******************  Fill in journal information  ******************
 	 *******************************************************************/
 
+	log_debug(_("Validating the journal index.\n"));
 	/* rgrepair requires the journals be read in in order to distinguish
 	   "real" rgrps from rgrps that are just copies left in journals. */
 	if (sdp->gfs1)
@@ -1537,24 +1597,52 @@ static int init_jindex(struct gfs2_sbd *sdp)
 				   "jindex file.\n"));
 			return -1;
 		}
-		/* In order to rebuild jindex, we need some valid
-		   rgrps in memory.  Temporarily read those in. */
-		err = fetch_rgrps(sdp);
-		if (err)
-			return err;
 
 		err = build_jindex(sdp);
-		/* Free rgrps read in earlier (re-read them later) */
-		gfs2_rgrp_free(&sdp->rgtree);
 		if (err) {
 			log_crit(_("Error %d rebuilding jindex\n"), err);
 			return err;
+		}
+		gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
+	}
+
+	/* check for irrelevant entries in jindex. Can't use check_dir because
+	   that creates and destroys the inode, which we don't want. */
+	if (!sdp->gfs1) {
+		int error;
+
+		log_debug(_("Checking the integrity of the journal index.\n"));
+		if (sdp->md.jiinode->i_di.di_flags & GFS2_DIF_EXHASH)
+			error = check_leaf_blks(sdp->md.jiinode,
+						&jindex_check_fxns);
+		else
+			error = check_linear_dir(sdp->md.jiinode,
+						 sdp->md.jiinode->i_bh,
+						 &jindex_check_fxns);
+		if (error) {
+			log_err(_("The system journal index is damaged.\n"));
+			if (!query( _("Okay to rebuild it? (y/n) "))) {
+				log_crit(_("Error: cannot proceed without a "
+					   "valid jindex file.\n"));
+				return -1;
+			}
+			inode_put(&sdp->md.jiinode);
+			gfs2_dirent_del(sdp->master_dir, "jindex", 6);
+			log_err(_("Corrupt journal index was removed.\n"));
+			error = build_jindex(sdp);
+			if (error) {
+				log_err(_("Error rebuilding journal "
+					  "index: Cannot continue.\n"));
+				return error;
+			}
+			gfs2_lookupi(sdp->master_dir, "jindex", 6,
+				     &sdp->md.jiinode);
 		}
 	}
 
 	/* read in the ji data */
 	if (ji_update(sdp)){
-		log_err( _("Unable to read in jindex inode.\n"));
+		log_err( _("Unable to read jindex inode.\n"));
 		return -1;
 	}
 	return 0;
@@ -1655,31 +1743,34 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 	if (init_rindex(sdp))
 		return FSCK_ERROR;
 
-	/* We need to read in jindex in order to replay the journals */
-	if (init_jindex(sdp))
+	if (fetch_rgrps(sdp))
 		return FSCK_ERROR;
 
-	/* If GFS, rebuild the journals.  If GFS2, replay them.  We don't have
-	   the smarts to replay GFS1 journals (neither did gfs_fsck). */
-
-	if (sdp->gfs1) {
-		if (reconstruct_journals(sdp))
+	/* We need to read in jindex in order to replay the journals. If
+	   there's an error, we may proceed and let init_system_inodes
+	   try to rebuild it. */
+	if (init_jindex(sdp) == 0) {
+		/* If GFS, rebuild the journals. If GFS2, replay them. We don't
+		   have the smarts to replay GFS1 journals (neither did
+		   gfs_fsck). */
+		if (sdp->gfs1) {
+			if (reconstruct_journals(sdp))
+				return FSCK_ERROR;
+		} else if (replay_journals(sdp, preen, force_check,
+					   &clean_journals)) {
+			if (!opts.no && preen_is_safe(sdp, preen, force_check))
+				block_mounters(sdp, 0);
+			stack;
 			return FSCK_ERROR;
-	} else if (replay_journals(sdp, preen, force_check, &clean_journals)) {
-		if (!opts.no && preen_is_safe(sdp, preen, force_check))
-			block_mounters(sdp, 0);
-		stack;
-		return FSCK_ERROR;
-	}
-	if (sdp->md.journals == clean_journals)
-		*all_clean = 1;
-	else {
-		if (force_check || !preen)
+		}
+		if (sdp->md.journals == clean_journals)
+			*all_clean = 1;
+		else if (force_check || !preen)
 			log_notice( _("\nJournal recovery complete.\n"));
-	}
 
-	if (!force_check && *all_clean && preen)
-		return FSCK_OK;
+		if (!force_check && *all_clean && preen)
+			return FSCK_OK;
+	}
 
 	if (init_system_inodes(sdp))
 		return FSCK_ERROR;

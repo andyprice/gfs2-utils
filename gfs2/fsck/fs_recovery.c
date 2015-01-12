@@ -96,6 +96,30 @@ void gfs2_revoke_clean(struct gfs2_sbd *sdp)
 	}
 }
 
+static void refresh_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
+			 struct gfs2_buffer_head *bh, uint64_t blkno)
+{
+	int i;
+
+	log_debug(_("Block is part of rgrp 0x%llx; refreshing the rgrp.\n"),
+		  (unsigned long long)rgd->ri.ri_addr);
+	for (i = 0; i < rgd->ri.ri_length; i++) {
+		if (rgd->bits[i].bi_bh->b_blocknr != blkno)
+			continue;
+
+		memcpy(rgd->bits[i].bi_bh->b_data, bh->b_data, sdp->bsize);
+		bmodified(rgd->bits[i].bi_bh);
+		if (i == 0) { /* this is the rgrp itself */
+			if (sdp->gfs1)
+				gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg,
+					    rgd->bits[0].bi_bh);
+			else
+				gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_bh);
+		}
+		break;
+	}
+}
+
 static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 				struct gfs2_log_descriptor *ld, __be64 *ptr,
 				int pass)
@@ -105,6 +129,7 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 	struct gfs2_buffer_head *bh_log, *bh_ip;
 	uint64_t blkno;
 	int error = 0;
+	struct rgrp_tree *rgd;
 
 	if (pass != 1 || be32_to_cpu(ld->ld_type) != GFS2_LOG_DESC_METADATA)
 		return 0;
@@ -147,6 +172,9 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			error = -EIO;
 		} else {
 			bmodified(bh_ip);
+			rgd = gfs2_blk2rgrpd(sdp, blkno);
+			if (rgd && blkno < rgd->ri.ri_data0)
+				refresh_rgrp(sdp, rgd, bh_ip, blkno);
 		}
 
 		brelse(bh_log);
@@ -676,28 +704,8 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 
 	for(i = 0; i < sdp->md.journals; i++) {
 		if (sdp->md.journal[i]) {
-			struct rgrp_tree rgd;
-			struct gfs2_bitmap bits;
-
-			/* The real rgrp tree hasn't been built at this point,
-			 * so we need to dummy one up that covers the whole
-			 * file system so basic functions in check_metatree
-			 * don't segfault. */
-			rgd.start = sdp->sb_addr + 1;
-			rgd.length = 1;
-			bits.bi_bh = NULL;
-			bits.bi_start = 0;
-			bits.bi_len = sdp->fssize / GFS2_NBBY;
-			rgd.bits = &bits;
-			rgd.ri.ri_addr = sdp->sb_addr + 1;
-			rgd.ri.ri_length = 1;
-			rgd.ri.ri_data0 = sdp->sb_addr + 2;
-			rgd.ri.ri_data = sdp->fssize - (sdp->sb_addr + 2);
-
-			sdp->rgtree.osi_node = (struct osi_node *)&rgd;
 			error = check_metatree(sdp->md.journal[i],
 					       &rangecheck_journal);
-			sdp->rgtree.osi_node = NULL;
 			if (error)
 				/* Don't use fsck_inode_put here because it's a
 				   system file and we need to dismantle it. */
@@ -707,8 +715,7 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 		if (!sdp->md.journal[i]) {
 			log_err(_("File system journal \"journal%d\" is "
 				  "missing or corrupt: pass1 will try to "
-				  "recreate it.\n"),
-				i);
+				  "recreate it.\n"), i);
 			continue;
 		}
 		if (!error) {
@@ -755,7 +762,7 @@ int ji_update(struct gfs2_sbd *sdp)
 	struct gfs_jindex ji;
 
 	if (!ip) {
-		log_crit("Journal index inode not found.\n");
+		log_crit(_("Journal index inode not found.\n"));
 		return -1;
 	}
 
