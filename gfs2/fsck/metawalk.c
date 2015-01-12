@@ -368,14 +368,11 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 
 	if (type == DIR_LINEAR) {
 		dent = (struct gfs2_dirent *)(bh->b_data + sizeof(struct gfs2_dinode));
-	} else if (type == DIR_EXHASH) {
+	} else {
 		dent = (struct gfs2_dirent *)(bh->b_data + sizeof(struct gfs2_leaf));
 		log_debug( _("Checking leaf %llu (0x%llx)\n"),
 			  (unsigned long long)bh->b_blocknr,
 			  (unsigned long long)bh->b_blocknr);
-	} else {
-		log_err( _("Invalid directory type %d specified\n"), type);
-		return -1;
 	}
 
 	prev = NULL;
@@ -465,7 +462,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 							   pass->private);
 				if (error < 0) {
 					stack;
-					return -1;
+					return error;
 				}
 			}
 		}
@@ -529,7 +526,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	if (pass->check_leaf_depth)
 		error = pass->check_leaf_depth(ip, *leaf_no, *ref_count, lbh);
 
-	if (pass->check_leaf) {
+	if (error >= 0 && pass->check_leaf) {
 		error = pass->check_leaf(ip, *leaf_no, pass->private);
 		if (error == -EEXIST) {
 			log_info(_("Previous reference to leaf %lld (0x%llx) "
@@ -616,6 +613,8 @@ out:
 		(*ref_count) <<= (ip->i_di.di_depth - di_depth);
 	}
 	brelse(lbh);
+	if (error < 0)
+		return error;
 	return 0;
 
 bad_leaf:
@@ -674,7 +673,7 @@ static void dir_leaf_reada(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize)
 }
 
 /* Checks exhash directory entries */
-static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
+int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	int error = 0;
 	unsigned hsize = (1 << ip->i_di.di_depth);
@@ -800,6 +799,10 @@ static int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 					  (unsigned long long)leaf_no,
 					  orig_ref_count, ref_count);
 				tbl_valid = 0;
+			}
+			if (error < 0) {
+				free(tbl);
+				return error;
 			}
 			if (!leaf.lf_next || error)
 				break;
