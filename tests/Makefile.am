@@ -64,10 +64,10 @@ endif
 TESTSUITE = $(srcdir)/testsuite
 
 check-local: atconfig atlocal $(TESTSUITE)
-	$(SHELL) '$(TESTSUITE)' $(TESTSUITEFLAGS)
+	$(SHELL) '$(TESTSUITE)' $(TOPTS)
 
 installcheck-local: atconfig atlocal $(TESTSUITE)
-	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(sbindir):tests' $(TESTSUITEFLAGS)
+	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(sbindir):tests' $(TOPTS)
 
 clean-local:
 	test ! -f '$(TESTSUITE)' || $(SHELL) '$(TESTSUITE)' --clean
