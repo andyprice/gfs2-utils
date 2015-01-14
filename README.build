@@ -29,4 +29,5 @@ To install gfs2-utils, run:
 
     make install
 
-See also doc/README.contributing for details on submitting patches.
+See also doc/README.contributing for details on submitting patches and
+doc/README.tests for more details regarding the test suite.
