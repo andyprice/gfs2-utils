@@ -1723,7 +1723,8 @@ build_it:
 static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		     int builder(struct gfs2_sbd *sdp))
 {
-	uint64_t iblock = 0, cur_blks;
+	uint64_t iblock = 0;
+	struct alloc_state as;
 	struct dir_status ds = {0};
 	int error = 0;
 
@@ -1740,14 +1741,14 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 
 	pass2_fxns.private = (void *) &ds;
 	if (ds.q == gfs2_bad_block) {
-		cur_blks = sysinode->i_di.di_blocks;
+		astate_save(sysinode, &as);
 		/* First check that the directory's metatree is valid */
 		error = check_metatree(sysinode, &pass2_fxns);
 		if (error < 0) {
 			stack;
 			return error;
 		}
-		if (sysinode->i_di.di_blocks != cur_blks)
+		if (astate_changed(sysinode, &as))
 			reprocess_inode(sysinode, _("System inode"));
 	}
 	error = check_dir(sysinode->i_sbd, iblock, &pass2_fxns);
@@ -1768,7 +1769,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 	if (!ds.dotdir) {
 		log_err( _("No '.' entry found for %s directory.\n"), dirname);
 		if (query( _("Is it okay to add '.' entry? (y/n) "))) {
-			cur_blks = sysinode->i_di.di_blocks;
+			astate_save(sysinode, &as);
 			log_warn( _("Adding '.' entry\n"));
 			error = dir_add(sysinode, ".", 1, &(sysinode->i_di.di_num),
 			                (sysinode->i_sbd->gfs1 ? GFS_FILE_DIR : DT_DIR));
@@ -1777,7 +1778,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 				         strerror(errno));
 				return -errno;
 			}
-			if (cur_blks != sysinode->i_di.di_blocks)
+			if (astate_changed(sysinode, &as))
 				reprocess_inode(sysinode, dirname);
 			/* This system inode is linked to itself via '.' */
 			incr_link_count(sysinode->i_di.di_num, sysinode,
@@ -1859,7 +1860,8 @@ static inline int is_system_dir(struct gfs2_sbd *sdp, uint64_t block)
  */
 int pass2(struct gfs2_sbd *sdp)
 {
-	uint64_t dirblk, cur_blks;
+	uint64_t dirblk;
+	struct alloc_state as;
 	uint8_t q;
 	struct dir_status ds = {0};
 	struct gfs2_inode *ip;
@@ -1926,14 +1928,14 @@ int pass2(struct gfs2_sbd *sdp)
 			/* First check that the directory's metatree
 			 * is valid */
 			ip = fsck_load_inode(sdp, dirblk);
-			cur_blks = ip->i_di.di_blocks;
+			astate_save(ip, &as);
 			error = check_metatree(ip, &pass2_fxns);
 			if (error < 0) {
 				stack;
 				fsck_inode_put(&ip);
 				return error;
 			}
-			if (ip->i_di.di_blocks != cur_blks)
+			if (astate_changed(ip, &as))
 				reprocess_inode(ip, "current");
 			fsck_inode_put(&ip);
 		}
@@ -1994,7 +1996,7 @@ int pass2(struct gfs2_sbd *sdp)
 				(unsigned long long)dirblk);
 
 			if (query( _("Is it okay to add '.' entry? (y/n) "))) {
-				cur_blks = ip->i_di.di_blocks;
+				astate_save(ip, &as);
 				error = dir_add(ip, ".", 1, &(ip->i_di.di_num),
 						(sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 				if (error) {
@@ -2003,7 +2005,7 @@ int pass2(struct gfs2_sbd *sdp)
 					fsck_inode_put(&ip);
 					return -errno;
 				}
-				if (cur_blks != ip->i_di.di_blocks) {
+				if (astate_changed(ip, &as)) {
 					char dirname[80];
 
 					sprintf(dirname, _("Directory at %lld "
