@@ -1,9 +1,11 @@
 AT_BANNER([libgfs2 unit tests])
 
 AT_SETUP([meta.c])
+AT_KEYWORDS(libgfs2)
 AT_CHECK([check_meta], 0, [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([rgrp.c])
+AT_KEYWORDS(libgfs2)
 AT_CHECK([check_rgrp], 0, [ignore], [ignore])
 AT_CLEANUP
