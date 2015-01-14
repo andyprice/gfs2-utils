@@ -1,15 +1,18 @@
 # Regenerate the sparse file used for testing and skip the test if it fails
+# Usage: GFS_TGT_REGEN
 m4_define([GFS_TGT_REGEN],
 [AT_CHECK([rm -f $GFS_TGT && truncate -s ${GFS_TGT_SZ}G ${GFS_TGT}], [ignore], [ignore], [ignore])
 AT_SKIP_IF([test ! -f ${GFS_TGT}])])
 
 # Regenerate, check, fsck is used a lot so combine it into one macro
+# Usage: GFS_FSCK_CHECK ([mkfs.gfs2 ... $GFS_TGT])
 m4_define([GFS_FSCK_CHECK],
 [GFS_TGT_REGEN
 AT_CHECK($1, 0, [ignore], [ignore])
 AT_CHECK([fsck.gfs2 -n $GFS_TGT], 0, [ignore], [ignore])])
 
 # Regenerate, mkfs, modify fs with gfs2l, fsck
+# Usage: GFS_TGT_REGEN ([<mkfs.gfs2 command>], [<gfs2l script>])
 m4_define([GFS_LANG_CHECK],
 [GFS_TGT_REGEN
 AT_CHECK($1, 0, [ignore], [ignore])
