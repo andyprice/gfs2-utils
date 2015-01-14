@@ -2,7 +2,7 @@ EXTRA_DIST = $(TESTSUITE_AT) package.m4 $(TESTSUITE) atlocal atconfig
 DISTCLEANFILES = atlocal atconfig
 CLEANFILES = testvol
 
-if BUILD_TESTS
+if HAVE_CHECK
 UNIT_TESTS = \
 	check_meta \
 	check_rgrp
@@ -55,19 +55,20 @@ TESTSUITE_AT = \
 	testsuite.at \
 	mkfs.at \
 	fsck.at \
-	edit.at
+	edit.at \
+	libgfs2.at
 
-if BUILD_TESTS
-TESTSUITE_AT += libgfs2.at
+if HAVE_CHECK
+ENABLE_UNIT=yes
 endif
 
 TESTSUITE = $(srcdir)/testsuite
 
 check-local: atconfig atlocal $(TESTSUITE)
-	$(SHELL) '$(TESTSUITE)' $(TOPTS)
+	$(SHELL) '$(TESTSUITE)' ENABLE_UNIT_TESTS=$(ENABLE_UNIT) $(TOPTS)
 
 installcheck-local: atconfig atlocal $(TESTSUITE)
-	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(sbindir):tests' $(TOPTS)
+	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(sbindir):tests' ENABLE_UNIT_TESTS=$(ENABLE_UNIT) $(TOPTS)
 
 clean-local:
 	test ! -f '$(TESTSUITE)' || $(SHELL) '$(TESTSUITE)' --clean

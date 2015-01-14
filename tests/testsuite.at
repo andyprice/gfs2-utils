@@ -17,6 +17,14 @@ AT_CHECK([echo "$2" | gfs2l ${GFS_TGT}], 0, [ignore], [ignore])
 AT_CHECK([fsck.gfs2 -y $GFS_TGT], 1, [ignore], [ignore])
 AT_CHECK([fsck.gfs2 -n $GFS_TGT], 0, [ignore], [ignore])])
 
+# Set up a unit test, skipping if unit tests are disabled
+# Usage: GFS_UNIT_TEST ([name], [keywords])
+m4_define([GFS_UNIT_TEST],
+[AT_SETUP($1)
+AT_KEYWORDS($2)
+AT_CHECK([test x"$ENABLE_UNIT_TESTS" = "xyes" || exit 77])])
+
+# Test suite begins here
 AT_INIT([])
 AT_COLOR_TESTS
 

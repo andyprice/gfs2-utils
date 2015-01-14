@@ -97,7 +97,7 @@ AC_ARG_ENABLE([gcov],
 PKG_CHECK_MODULES([check], [check >= 0.9.8],
                   [have_check=yes],
                   [have_check=no])
-AM_CONDITIONAL([BUILD_TESTS], [test "x$have_check" = "xyes"])
+AM_CONDITIONAL([HAVE_CHECK], [test "x$have_check" = "xyes"])
 
 PKG_CHECK_MODULES([zlib],[zlib])
 PKG_CHECK_MODULES([blkid],[blkid])
