@@ -1930,13 +1930,14 @@ int pass2(struct gfs2_sbd *sdp)
 			ip = fsck_load_inode(sdp, dirblk);
 			astate_save(ip, &as);
 			error = check_metatree(ip, &pass2_fxns);
-			fsck_inode_put(&ip);
 			if (error < 0) {
 				stack;
+				fsck_inode_put(&ip);
 				return error;
 			}
 			if (astate_changed(ip, &as))
 				reprocess_inode(ip, "current");
+			fsck_inode_put(&ip);
 		}
 		error = check_dir(sdp, dirblk, &pass2_fxns);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
