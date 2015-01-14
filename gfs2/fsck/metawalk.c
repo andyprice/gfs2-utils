@@ -1639,11 +1639,11 @@ int check_dir(struct gfs2_sbd *sdp, uint64_t block, struct metawalk_fxns *pass)
 {
 	struct gfs2_inode *ip;
 	int error = 0;
-	uint64_t cur_blks;
+	struct alloc_state as;
 
 	ip = fsck_load_inode(sdp, block);
 
-	cur_blks = ip->i_di.di_blocks;
+	astate_save(ip, &as);
 
 	if (ip->i_di.di_flags & GFS2_DIF_EXHASH)
 		error = check_leaf_blks(ip, pass);
@@ -1653,7 +1653,7 @@ int check_dir(struct gfs2_sbd *sdp, uint64_t block, struct metawalk_fxns *pass)
 	if (error < 0)
 		stack;
 
-	if (ip->i_di.di_blocks != cur_blks)
+	if (astate_changed(ip, &as))
 		reprocess_inode(ip, _("Current"));
 
 	fsck_inode_put(&ip); /* does a brelse */

@@ -174,7 +174,6 @@ void make_sure_lf_exists(struct gfs2_inode *ip)
 int add_inode_to_lf(struct gfs2_inode *ip){
 	char tmp_name[256];
 	__be32 inode_type;
-	uint64_t lf_blocks;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	int err = 0;
 	uint32_t mode;
@@ -184,7 +183,6 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 		log_err( _("Trying to add lost+found to itself...skipping"));
 		return 0;
 	}
-	lf_blocks = lf_dip->i_di.di_blocks;
 
 	if (sdp->gfs1)
 		mode = gfs_to_gfs2_mode(ip);
@@ -242,10 +240,6 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 			 tmp_name, strerror(errno));
 		exit(FSCK_ERROR);
 	}
-	/* If the lf directory had new blocks added we have to mark them
-	   properly in the bitmap so they're not freed. */
-	if (lf_dip->i_di.di_blocks != lf_blocks)
-		reprocess_inode(lf_dip, "lost+found");
 
 	/* This inode is linked from lost+found */
 	incr_link_count(ip->i_di.di_num, lf_dip, _("from lost+found"));

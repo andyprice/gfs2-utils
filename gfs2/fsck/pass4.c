@@ -48,12 +48,15 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 	struct gfs2_inode *ip;
 	int lf_addition = 0;
 	uint8_t q;
+	struct alloc_state lf_as = {.as_blocks = 0, .as_meta_goal = 0};
 
 	/* FIXME: should probably factor this out into a generic
 	 * scanning fxn */
 	for (tmp = osi_first(&inodetree); tmp; tmp = next) {
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return 0;
+		if (lf_dip && lf_as.as_blocks == 0)
+			astate_save(lf_dip, &lf_as);
 		next = osi_next(tmp);
 		if (!(ii = (struct inode_info *)tmp)) {
 			log_crit( _("osi_tree broken in scan_info_list!!\n"));
@@ -181,6 +184,9 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 			 (unsigned long long)ii->di_num.no_addr,
 			 (unsigned long long)ii->di_num.no_addr, ii->di_nlink);
 	} /* osi_list_foreach(tmp, list) */
+
+	if (lf_dip && astate_changed(lf_dip, &lf_as))
+		reprocess_inode(lf_dip, "lost+found");
 
 	if (lf_addition) {
 		if (!(ii = inodetree_find(lf_dip->i_di.di_num.no_addr))) {
