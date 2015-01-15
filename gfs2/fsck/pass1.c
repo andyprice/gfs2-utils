@@ -62,7 +62,6 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
 				     struct gfs2_ea_header *ea_hdr,
 				     struct gfs2_ea_header *ea_hdr_prev,
 				     void *private);
-static int check_i_goal(struct gfs2_inode *ip, uint64_t goal_blk, void *private);
 static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 			      int leaf_pointer_errors, void *private);
 static int invalidate_metadata(struct gfs2_inode *ip, uint64_t block,
@@ -100,7 +99,7 @@ struct metawalk_fxns pass1_fxns = {
 	.check_dentry = NULL,
 	.check_eattr_entry = check_eattr_entries,
 	.check_eattr_extentry = check_extended_leaf_eattr,
-	.check_i_goal = NULL,
+	.check_i_goal = check_i_goal,
 	.finish_eattr_indir = finish_eattr_indir,
 	.big_file_msg = big_file_comfort,
 	.repair_leaf = pass1_repair_leaf,
@@ -794,48 +793,6 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
 	return error;
 }
 
-/**
- * check_i_goal
- * @ip
- * @goal_blk: What the goal block should be for this inode
- *
- * The goal block for a regular file is typically the last
- * data block of the file. If we can't get the right value,
- * the inode metadata block is the next best thing.
- *
- * Returns: 0 if corrected, 1 if not corrected
- */
-static int check_i_goal(struct gfs2_inode *ip, uint64_t goal_blk,
-			void *private)
-{
-	struct gfs2_sbd *sdp = ip->i_sbd;
-
-	if (fsck_system_inode(sdp, ip->i_di.di_num.no_addr))
-		return 0;
-	if (!goal_blk)
-		goal_blk = ip->i_di.di_num.no_addr;
-	if (ip->i_di.di_goal_meta != goal_blk ||
-	    ip->i_di.di_goal_data != goal_blk) {
-		log_err( _("Error: inode %llu (0x%llx) has invalid "
-			   "allocation goal block %llu (0x%llx). Should"
-			   " be %llu (0x%llx)\n"),
-			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)ip->i_di.di_goal_meta,
-			 (unsigned long long)ip->i_di.di_goal_meta,
-			 (unsigned long long)goal_blk,
-			 (unsigned long long)goal_blk);
-		if (query( _("Fix the invalid goal block? (y/n) "))) {
-			ip->i_di.di_goal_meta = ip->i_di.di_goal_data = goal_blk;
-			bmodified(ip->i_bh);
-		} else {
-			log_err(_("Invalid goal block not fixed.\n"));
-			return 1;
-		}
-	}
-	return 0;
-}
-
 static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			    uint64_t parent, struct gfs2_buffer_head **bh,
 			    void *private)
@@ -1217,7 +1174,8 @@ bad_dinode:
  * handle_di - This is now a wrapper function that takes a gfs2_buffer_head
  *             and calls handle_ip, which takes an in-code dinode structure.
  */
-static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
+static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
+		     struct rgrp_tree *rgd)
 {
 	int error = 0;
 	uint64_t block = bh->b_blocknr;
@@ -1259,6 +1217,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 				 (unsigned long long)block,
 				 (unsigned long long)block);
 	}
+	ip->i_rgd = rgd;
 	error = handle_ip(sdp, ip);
 	fsck_inode_put(&ip);
 	return error;
@@ -1585,7 +1544,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 				 (unsigned long long)block,
 				 (unsigned long long)block);
 			check_n_fix_bitmap(sdp, block, 0, gfs2_block_free);
-		} else if (handle_di(sdp, bh) < 0) {
+		} else if (handle_di(sdp, bh, rgd) < 0) {
 			stack;
 			brelse(bh);
 			gfs2_special_free(&gfs1_rindex_blks);
@@ -1667,9 +1626,6 @@ int pass1(struct gfs2_sbd *sdp)
 
 	/* Make sure the system inodes are okay & represented in the bitmap. */
 	check_system_inodes(sdp);
-
-	/* Turn the check_i_goal function ON for the non-system inodes */
-	pass1_fxns.check_i_goal = check_i_goal;
 
 	/* So, do we do a depth first search starting at the root
 	 * inode, or use the rg bitmaps, or just read every fs block
