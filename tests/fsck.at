@@ -11,5 +11,4 @@ AT_CLEANUP
 
 AT_SETUP([Fix invalid goal blocks])
 GFS_LANG_CHECK([mkfs.gfs2 -O -p lock_nolock $GFS_TGT], [set '/' { di_goal_meta: 0 }])
-GFS_LANG_CHECK([mkfs.gfs2 -O -p lock_nolock $GFS_TGT], [set '/' { di_goal_data: 0 }])
 AT_CLEANUP

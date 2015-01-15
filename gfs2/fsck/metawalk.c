@@ -1549,6 +1549,9 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	uint64_t error_blk = 0;
 	int hit_error_blk = 0;
 
+	if (!height && pass->check_i_goal)
+		pass->check_i_goal(ip, ip->i_di.di_num.no_addr,
+				   pass->private);
 	if (!height && !is_dir(&ip->i_di, ip->i_sbd->gfs1))
 		return 0;
 
@@ -1945,6 +1948,72 @@ static int alloc_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	return 0;
 }
 
+/**
+ * rgrp_contains_block - Check if the rgrp provided contains the
+ * given block. Taken directly from the gfs2 kernel code
+ * @rgd: The rgrp to search within
+ * @block: The block to search for
+ *
+ * Returns: 1 if present, 0 if not.
+ */
+static inline int rgrp_contains_block(struct rgrp_tree *rgd, uint64_t block)
+{
+	uint64_t first = rgd->ri.ri_data0;
+	uint64_t last = first + rgd->ri.ri_data;
+	return first <= block && block < last;
+}
+
+/**
+ * check_i_goal
+ * @ip
+ * @goal_blk: What the goal block should be for this inode
+ *
+ * The goal block for a regular file is typically the last
+ * data block of the file. If we can't get the right value,
+ * the inode metadata block is the next best thing.
+ *
+ * Returns: 0 if corrected, 1 if not corrected
+ */
+int check_i_goal(struct gfs2_inode *ip, uint64_t goal_blk,
+			void *private)
+{
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	uint64_t i_block = ip->i_di.di_num.no_addr;
+
+	/* Don't fix gfs1 inodes, system inodes or inodes whose goal blocks are
+	 * set to the inode blocks themselves. */
+	if (sdp->gfs1 || ip->i_di.di_flags & GFS2_DIF_SYSTEM ||
+		ip->i_di.di_goal_meta == i_block)
+		return 0;
+	/* We default to the inode block */
+	if (!goal_blk)
+		goal_blk = i_block;
+
+	if (ip->i_di.di_goal_meta != goal_blk) {
+		/* If the existing goal block is in the same rgrp as the inode,
+		 * we give the benefit of doubt and assume the value is correct */
+		if (ip->i_rgd &&
+		    rgrp_contains_block(ip->i_rgd, ip->i_di.di_goal_meta))
+			goto skip;
+		log_err( _("Error: inode %llu (0x%llx) has invalid "
+			   "allocation goal block %llu (0x%llx). Should"
+			   " be %llu (0x%llx)\n"),
+			 (unsigned long long)i_block, (unsigned long long)i_block,
+			 (unsigned long long)ip->i_di.di_goal_meta,
+			 (unsigned long long)ip->i_di.di_goal_meta,
+			 (unsigned long long)goal_blk, (unsigned long long)goal_blk);
+		if (query( _("Fix the invalid goal block? (y/n) "))) {
+			ip->i_di.di_goal_meta = ip->i_di.di_goal_data = goal_blk;
+			bmodified(ip->i_bh);
+		} else {
+			log_err(_("Invalid goal block not fixed.\n"));
+			return 1;
+		}
+	}
+skip:
+	return 0;
+}
+
 struct metawalk_fxns alloc_fxns = {
 	.private = NULL,
 	.check_leaf = alloc_leaf,
@@ -1955,6 +2024,7 @@ struct metawalk_fxns alloc_fxns = {
 	.check_dentry = NULL,
 	.check_eattr_entry = NULL,
 	.check_eattr_extentry = NULL,
+	.check_i_goal = check_i_goal,
 	.finish_eattr_indir = NULL,
 };
 

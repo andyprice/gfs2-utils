@@ -51,6 +51,8 @@ extern int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 extern int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
 			      int error_on_dinode,
 			      enum gfs2_mark_block new_blockmap_state);
+extern int check_i_goal(struct gfs2_inode *ip, uint64_t goal_blk,
+			void *private);
 extern void reprocess_inode(struct gfs2_inode *ip, const char *desc);
 extern struct duptree *dupfind(uint64_t block);
 extern struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
