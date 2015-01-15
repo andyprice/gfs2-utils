@@ -1203,7 +1203,7 @@ static void free_metalist(struct gfs2_inode *ip, osi_list_t *mlp)
 			nbh = osi_list_entry(list->next,
 					     struct gfs2_buffer_head, b_altlist);
 			if (nbh == ip->i_bh)
-				osi_list_del(&nbh->b_altlist);
+				osi_list_del_init(&nbh->b_altlist);
 			else
 				brelse(nbh);
 		}

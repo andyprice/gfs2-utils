@@ -631,6 +631,7 @@ static int rangecheck_jmeta(struct gfs2_inode *ip, uint64_t block,
 				 (unsigned long long)block,
 				 (unsigned long long)block);
 			brelse(*bh);
+			*bh = NULL;
 			return meta_skip_further;
 		}
 	}
