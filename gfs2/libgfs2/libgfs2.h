@@ -236,39 +236,20 @@ struct gfs2_inode {
 	struct rgrp_tree *i_rgd; /* The rgrp this inode is in */
 };
 
-/* FIXME not sure that i want to keep a record of the inodes or the
- * contents of them, or both ... if I need to write back to them, it
- * would be easier to hold the inode as well  */
-struct per_node
-{
-	struct gfs2_inode *inum;
-	struct gfs2_inum_range inum_range;
-	struct gfs2_inode *statfs;
-	struct gfs2_statfs_change statfs_change;
-	struct gfs2_inode *unlinked;
-	struct gfs2_inode *quota;
-	struct gfs2_quota_change quota_change;
-};
-
 struct master_dir
 {
 	struct gfs2_inode *inum;
 	uint64_t next_inum;
 	struct gfs2_inode *statfs;
-	struct gfs2_statfs_change statfs_change;
-
-	struct gfs2_rindex rindex;
 	struct gfs2_inode *qinode;
-	struct gfs2_quota quotas;
 
 	struct gfs2_inode       *jiinode;
 	struct gfs2_inode       *riinode;
 	struct gfs2_inode       *rooti;
 	struct gfs2_inode       *pinode;
-	
+
 	struct gfs2_inode **journal;      /* Array of journals */
 	uint32_t journals;                /* Journal count */
-	struct per_node *pn;              /* Array of per_node entries */
 };
 
 struct gfs2_sbd {
