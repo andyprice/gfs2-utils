@@ -436,10 +436,9 @@ static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 			  (unsigned long long)lowest_seq,
 			  (unsigned long long)highest_seq,
 			  (unsigned long long)prev_seq);
-		if (!fix) {
-			seq_errors++;
+		seq_errors++;
+		if (!fix)
 			continue;
-		}
 		highest_seq++;
 		lh.lh_sequence = highest_seq;
 		prev_seq = lh.lh_sequence;
@@ -449,8 +448,10 @@ static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 		gfs2_log_header_out(&lh, bh);
 		brelse(bh);
 	}
-	if (seq_errors && fix)
+	if (seq_errors && fix) {
 		log_err(_("%d sequence errors fixed.\n"), seq_errors);
+		seq_errors = 0;
+	}
 	return seq_errors;
 }
 
