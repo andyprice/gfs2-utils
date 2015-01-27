@@ -88,10 +88,10 @@ check_lib_no_libs() {
 # local options
 AC_ARG_ENABLE([debug],
 	AC_HELP_STRING([--enable-debug],[enable debug build [default=no]]),
-	[default="no"])
+	[], [enable_debug="no"])
 AC_ARG_ENABLE([gcov],
 	AC_HELP_STRING([--enable-gcov],[enable coverage instrumentation [default=no]]),
-	[default="no"])
+	[], [enable_gcov="no"])
 
 # We use the Check framework for unit tests
 PKG_CHECK_MODULES([check], [check >= 0.9.8],
@@ -175,6 +175,9 @@ if test "x${enable_gcov}" = xyes; then
 	if ! cc_supports_flag $GCOV_CFLAGS; then
 		AC_MSG_ERROR([your compiler does not support coverage instrumentation])
 	fi
+	if test "x${enable_debug}" = xyes; then
+		enable_debug="no (gcov enabled)"
+	fi
 	OPT_CFLAGS="-O0 $GCOV_CFLAGS"
 fi
 
@@ -206,10 +209,8 @@ for j in $WARNLIST; do
 	fi
 done
 
-CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS \
-	$EXTRA_WARNINGS $WERROR_CFLAGS"
-CPPFLAGS="-I\$(top_builddir)/make -I\$(top_srcdir)/make \
-	  -I. $ENV_CPPFLAGS"
+CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS $EXTRA_WARNINGS $WERROR_CFLAGS"
+CPPFLAGS="-I\$(top_builddir)/make -I\$(top_srcdir)/make -I. $ENV_CPPFLAGS"
 LDFLAGS="$ENV_LDFLAGS"
 
 AC_CONFIG_TESTDIR([tests], [gfs2/libgfs2:gfs2/mkfs:gfs2/fsck:gfs2/edit:gfs2/convert:gfs2/tune:tests])
@@ -232,9 +233,15 @@ AC_CONFIG_FILES([Makefile
 
 AC_OUTPUT
 
-if test x"${have_check}" != "xyes"; then
-	AC_MSG_NOTICE([package 'check' not found; unit tests will not be built])
-fi
-if test x"${enable_gcov}" = "xyes"; then
-	AC_MSG_NOTICE([code coverage enabled; optimization will be disabled])
-fi
+echo
+echo "  Configure summary"
+echo " ==================="
+echo " prefix            : $prefix"
+echo " exec_prefix       : $exec_prefix"
+echo " sbindir           : $sbindir"
+echo " ------------------"
+echo " debug build       : $enable_debug"
+echo " C unit tests      : $have_check"
+echo " gcov build        : $enable_gcov"
+echo
+echo "Now run 'make' to build and 'make check' to run tests"
