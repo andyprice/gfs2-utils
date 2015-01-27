@@ -1513,14 +1513,10 @@ static int init_rindex(struct gfs2_sbd *sdp)
 
 static void bad_journalname(const char *filename, int len)
 {
-	char tmp_name[64];
-
 	if (len >= 64)
 		len = 63;
-	strncpy(tmp_name, filename, len);
-	tmp_name[len] = '\0';
-	log_debug(_("Journal index entry '%s' has an invalid filename.\n"),
-		  tmp_name);
+	log_debug(_("Journal index entry '%.*s' has an invalid filename.\n"),
+	          len, filename);
 }
 
 /**
