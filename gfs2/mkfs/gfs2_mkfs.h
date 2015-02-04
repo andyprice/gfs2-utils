@@ -6,18 +6,6 @@
 #include "osi_list.h"
 #include "copyright.cf"
 
-/* main_grow */
-extern void main_grow(int argc, char *argv[]);
-
-/* main_jadd */
-extern void main_jadd(int argc, char *argv[]);
-
-/* main_mkfs */
-extern void main_mkfs(int argc, char *argv[]);
-
-/* main_shrink */
-extern void main_shrink(int argc, char *argv[]);
-
 /* die() used to be in libgfs2.h */
 static __inline__ __attribute__((noreturn, format (printf, 1, 2)))
 void die(const char *fmt, ...)
