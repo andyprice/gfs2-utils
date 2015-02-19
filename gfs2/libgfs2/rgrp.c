@@ -539,9 +539,9 @@ struct osi_node *lgfs2_rgrps_root(lgfs2_rgrps_t rgs)
 lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry)
 {
 	lgfs2_rgrp_t rg;
-	lgfs2_rgrp_t lastrg = (lgfs2_rgrp_t)osi_last(&rgs->root);
 	struct osi_node **link = &rgs->root.osi_node;
-	struct osi_node *parent = NULL;
+	struct osi_node *parent = osi_last(&rgs->root);
+	lgfs2_rgrp_t lastrg = (lgfs2_rgrp_t)parent;
 
 	errno = EINVAL;
 	if (entry == NULL)
@@ -550,7 +550,6 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry)
 	if (lastrg != NULL) { /* Tree is not empty */
 		if (entry->ri_addr <= lastrg->ri.ri_addr)
 			return NULL; /* Appending with a lower address doesn't make sense */
-		parent = osi_parent(&lastrg->node);
 		link = &lastrg->node.osi_right;
 	}
 
