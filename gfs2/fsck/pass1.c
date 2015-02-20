@@ -1625,7 +1625,10 @@ static int pass1_process_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
 	unsigned k, n, i;
 	uint64_t *ibuf = malloc(sdp->bsize * GFS2_NBBY * sizeof(uint64_t));
-	int ret;
+	int ret = 0;
+
+	if (ibuf == NULL)
+		return FSCK_ERROR;
 
 	for (k = 0; k < rgd->ri.ri_length; k++) {
 		n = lgfs2_bm_scan(rgd, k, ibuf, GFS2_BLKST_DINODE);
@@ -1633,11 +1636,11 @@ static int pass1_process_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 		if (n) {
 			ret = pass1_process_bitmap(sdp, rgd, ibuf, n);
 			if (ret)
-				return ret;
+				goto out;
 		}
 
 		if (fsck_abort)
-			return 0;
+			goto out;
 		/*
 		  For GFS1, we have to count the "free meta" blocks in the
 		  resource group and mark them specially so we can count them
@@ -1650,12 +1653,13 @@ static int pass1_process_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 		for (i = 0; i < n; i++) {
 			gfs2_blockmap_set(bl, ibuf[i], GFS2_BLKST_UNLINKED);
 			if (fsck_abort)
-				return 0;
+				goto out;
 		}
 	}
 
+out:
 	free(ibuf);
-	return 0;
+	return ret;
 }
 
 /**
