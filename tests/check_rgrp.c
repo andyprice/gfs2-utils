@@ -5,10 +5,6 @@
 // TODO: Remove this when the extern is removed from libgfs2
 void print_it(const char *label, const char *fmt, const char *fmt2, ...) {}
 
-/* Older check-devel doesn't have these functions */
-#define ck_assert_ptr_ne(ptr, val) fail_unless(ptr != val)
-#define ck_assert_uint_eq(u1, u2) fail_unless(u1 == u2)
-
 static lgfs2_rgrps_t mockup_rgrp(void)
 {
 	struct gfs2_sbd *sdp;
