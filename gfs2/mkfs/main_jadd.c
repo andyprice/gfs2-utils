@@ -520,7 +520,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	gather_info(sdp, &opts);
-
+	mfs.context = copy_context_opt(mnt);
 	if (mount_gfs2_meta(&mfs, mnt->mnt_dir, opts.debug)) {
 		perror("GFS2 metafs");
 		exit(EXIT_FAILURE);
