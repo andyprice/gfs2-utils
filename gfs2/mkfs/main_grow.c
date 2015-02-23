@@ -396,6 +396,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 		fix_device_geometry(sdp);
+		mfs.context = copy_context_opt(mnt);
 		if (mount_gfs2_meta(&mfs, mnt->mnt_dir, (print_level > MSG_NOTICE))) {
 			perror(_("Failed to mount GFS2 meta file system"));
 			exit(EXIT_FAILURE);

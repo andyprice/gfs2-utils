@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <signal.h>
+#include <mntent.h>
 #include <libintl.h>
 #include <locale.h>
 #define _(String) gettext(String)
@@ -70,7 +71,7 @@ int mount_gfs2_meta(struct metafs *mfs, const char *path, int debug)
 
 	setsigs(sighandler);
 
-	ret = mount(path, mfs->path, "gfs2meta", 0, NULL);
+	ret = mount(path, mfs->path, "gfs2meta", 0, mfs->context);
 	if (ret)
 		goto err_rmdir;
 
@@ -115,4 +116,24 @@ void cleanup_metafs(struct metafs *mfs)
 
 	free(mfs->path);
 	mfs->path = NULL;
+	free(mfs->context);
+	mfs->context = NULL;
+}
+
+/**
+ * Returns a duplicate of the 'context' mount option, or NULL if not found.
+ */
+char *copy_context_opt(struct mntent *mnt)
+{
+	char *ctx, *end;
+
+	ctx = hasmntopt(mnt, "context");
+	if (ctx == NULL)
+		return NULL;
+
+	end = strchr(ctx, ',');
+	if (end == NULL)
+		return NULL;
+
+	return strndup(ctx, end - ctx);
 }
