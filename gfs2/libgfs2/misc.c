@@ -1,31 +1,16 @@
 #include "clusterautoconfig.h"
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 #include <inttypes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <time.h>
-#include <errno.h>
-#include <sys/mount.h>
-#include <linux/types.h>
-#include <sys/file.h>
-#include <dirent.h>
-#include <sys/sysmacros.h>
-#include <mntent.h>
-#include <signal.h>
 
 #include "libgfs2.h"
-#include "config.h"
 
 #define PAGE_SIZE (4096)
 #define DIV_RU(x, y) (((x) + (y) - 1) / (y))
-
-int metafs_interrupted = 0;
 
 int compute_heightsize(unsigned bsize, uint64_t *heightsize,
 	uint32_t *maxheight, uint32_t bsize1, int diptrs, int inptrs)
@@ -196,100 +181,4 @@ int lgfs2_open_mnt_dir(const char *path, int flags, struct mntent **mnt)
 	if (*mnt != NULL)
 		close(devfd);
 	return dirfd;
-}
-
-static int lock_for_admin(struct gfs2_sbd *sdp)
-{
-	int error;
-
-	if (cfg_debug)
-		printf("\nTrying to get admin lock...\n");
-
-	sdp->metafs_fd = open(sdp->metafs_path, O_RDONLY | O_NOFOLLOW);
-	if (sdp->metafs_fd < 0)
-		return -1;
-
-	error = flock(sdp->metafs_fd, LOCK_EX);
-	if (error) {
-		close(sdp->metafs_fd);
-		return -1;
-	}
-	if (cfg_debug)
-		printf("Got it.\n");
-	return 0;
-}
-
-static void sighandler(int error)
-{
-	metafs_interrupted = 1;
-}
-
-static void setsigs(void (*handler)(int))
-{
-	struct sigaction sa = {	.sa_handler = handler };
-
-	sigaction(SIGINT, &sa, NULL);
-	sigaction(SIGILL, &sa, NULL);
-	sigaction(SIGTERM, &sa, NULL);
-	sigaction(SIGHUP, &sa, NULL);
-	sigaction(SIGABRT, &sa, NULL);
-	sigaction(SIGCONT, &sa, NULL);
-	sigaction(SIGUSR1, &sa, NULL);
-	sigaction(SIGUSR2, &sa, NULL);
-}
-
-int mount_gfs2_meta(struct gfs2_sbd *sdp, const char *path)
-{
-	int ret;
-
-	sdp->metafs_path = strdup("/tmp/.gfs2meta.XXXXXX");
-	if (sdp->metafs_path == NULL)
-		return -1;
-
-	if(!mkdtemp(sdp->metafs_path))
-		goto err_free;
-
-	setsigs(sighandler);
-
-	ret = mount(path, sdp->metafs_path, "gfs2meta", 0, NULL);
-	if (ret)
-		goto err_rmdir;
-
-	if (lock_for_admin(sdp))
-		goto err_umount;
-
-	return 0;
-
-err_umount:
-	if (umount(sdp->metafs_path))
-		fprintf(stderr, "Could not unmount %s: %s\n", sdp->metafs_path, strerror(errno));
-	setsigs(SIG_DFL);
-err_rmdir:
-	rmdir(sdp->metafs_path);
-err_free:
-	free(sdp->metafs_path);
-	sdp->metafs_path = NULL;
-	return -1;
-}
-
-void cleanup_metafs(struct gfs2_sbd *sdp)
-{
-	int ret;
-
-	if (sdp->metafs_fd <= 0)
-		return;
-
-	fsync(sdp->metafs_fd);
-	close(sdp->metafs_fd);
-	ret = umount(sdp->metafs_path);
-	if (ret)
-		fprintf(stderr, "Couldn't unmount %s : %s\n",
-			sdp->metafs_path, strerror(errno));
-	else
-		rmdir(sdp->metafs_path);
-
-	setsigs(SIG_DFL);
-	metafs_interrupted = 0;
-	free(sdp->metafs_path);
-	sdp->metafs_path = NULL;
 }

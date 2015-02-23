@@ -27,6 +27,7 @@
 #include <logging.h>
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
+#include "metafs.h"
 
 #define BUF_SIZE 4096
 #define MB (1024 * 1024)
@@ -359,6 +360,7 @@ int main(int argc, char *argv[])
 	decode_arguments(argc, argv, sdp);
 	
 	for(; (argc - optind) > 0; optind++) {
+		struct metafs mfs = {0};
 		struct mntent *mnt;
 		unsigned rgcount;
 		unsigned old_rg_count;
@@ -394,13 +396,13 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 		fix_device_geometry(sdp);
-		if (mount_gfs2_meta(sdp, mnt->mnt_dir)) {
+		if (mount_gfs2_meta(&mfs, mnt->mnt_dir, (print_level > MSG_NOTICE))) {
 			perror(_("Failed to mount GFS2 meta file system"));
 			exit(EXIT_FAILURE);
 		}
-		rindex_fd = open_rindex(sdp->metafs_path, (test ? O_RDONLY : O_RDWR));
+		rindex_fd = open_rindex(mfs.path, (test ? O_RDONLY : O_RDWR));
 		if (rindex_fd < 0) {
-			cleanup_metafs(sdp);
+			cleanup_metafs(&mfs);
 			exit(EXIT_FAILURE);
 		}
 		/* Get master dinode */
@@ -456,7 +458,7 @@ int main(int argc, char *argv[])
 	out:
 		lgfs2_rgrps_free(&rgs);
 		close(rindex_fd);
-		cleanup_metafs(sdp);
+		cleanup_metafs(&mfs);
 		close(sdp->device_fd);
 
 		if (metafs_interrupted)

@@ -324,8 +324,6 @@ struct gfs2_sbd {
 	struct gfs2_inode *master_dir;
 	struct master_dir md;
 
-	int metafs_fd;
-	char *metafs_path; /* where metafs is mounted */
 	struct special_blocks eattr_blocks;
 
 	uint64_t rg_one_length;
@@ -665,17 +663,12 @@ extern void gfs_rgrp_in(struct gfs_rgrp *rg, struct gfs2_buffer_head *bh);
 extern void gfs_rgrp_out(struct gfs_rgrp *rg, struct gfs2_buffer_head *bh);
 
 /* misc.c */
-
-extern int metafs_interrupted;
-
 extern int compute_heightsize(unsigned bsize, uint64_t *heightsize,
 		uint32_t *maxheight, uint32_t bsize1, int diptrs, int inptrs);
 extern int compute_constants(struct gfs2_sbd *sdp);
 extern int lgfs2_open_mnt(const char *path, int dirflags, int *dirfd, int devflags, int *devfd, struct mntent **mnt);
 extern int lgfs2_open_mnt_dev(const char *path, int flags, struct mntent **mnt);
 extern int lgfs2_open_mnt_dir(const char *path, int flags, struct mntent **mnt);
-extern int mount_gfs2_meta(struct gfs2_sbd *sdp, const char *path);
-extern void cleanup_metafs(struct gfs2_sbd *sdp);
 
 /* recovery.c */
 extern void gfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk);

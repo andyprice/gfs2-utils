@@ -24,6 +24,7 @@
 #include <linux/types.h>
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
+#include "metafs.h"
 
 #define RANDOM(values) ((values) * (random() / (RAND_MAX + 1.0)))
 
@@ -38,25 +39,26 @@ struct jadd_opts {
 	unsigned debug:1;
 };
 
-static void
-make_jdata(int fd, const char *value)
+#define JA_FL_SET   0
+#define JA_FL_CLEAR 1
+static void set_flags(int fd, int op, uint32_t flags)
 {
         int err;
-        uint32_t val;
+	uint32_t val;
 
         err = ioctl(fd, FS_IOC_GETFLAGS, &val);
-        if (err){
+        if (err) {
 		perror("GETFLAGS");
 		exit(EXIT_FAILURE);
 	}
 
-        if (strcmp(value, "set") == 0)
-                val |= FS_JOURNAL_DATA_FL;
-        if (strcmp(value, "clear") == 0)
-                val &= ~FS_JOURNAL_DATA_FL;
-        err = ioctl(fd, FS_IOC_SETFLAGS, &val);
+        if (op == JA_FL_SET)
+                val |= flags;
+        else if (op == JA_FL_CLEAR)
+                val &= ~flags;
 
-        if (err){
+        err = ioctl(fd, FS_IOC_SETFLAGS, &val);
+        if (err) {
 		perror("SETFLAGS");
 		exit(EXIT_FAILURE);
 	}
@@ -272,7 +274,8 @@ static void add_ir(struct jadd_opts *opts)
 
 	{
 		struct gfs2_inum_range ir;
-		make_jdata(fd, "set");
+
+		set_flags(fd, JA_FL_SET, FS_JOURNAL_DATA_FL);
 		memset(&ir, 0, sizeof(struct gfs2_inum_range));
 		if (write(fd, (void*)&ir, sizeof(struct gfs2_inum_range)) !=
 		    sizeof(struct gfs2_inum_range)) {
@@ -301,7 +304,7 @@ static void add_sc(struct jadd_opts *opts)
 
 	{
 		struct gfs2_statfs_change sc;
-		make_jdata(fd, "set");
+		set_flags(fd, JA_FL_SET, FS_JOURNAL_DATA_FL);
 
 		memset(&sc, 0, sizeof(struct gfs2_statfs_change));
 		if (write(fd, (void*)&sc, sizeof(struct gfs2_statfs_change)) !=
@@ -338,7 +341,7 @@ static void add_qc(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 		struct gfs2_buffer_head dummy_bh;
 
 		dummy_bh.b_data = buf;
-		make_jdata(fd, "clear");
+		set_flags(fd, JA_FL_CLEAR, FS_JOURNAL_DATA_FL);
 		memset(buf, 0, sdp->bsize);
 
 		for (x=0; x<blocks; x++) {
@@ -433,7 +436,7 @@ static void add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 		struct gfs2_log_header lh;
 		uint64_t seq = RANDOM(blocks);
 
-		make_jdata(fd, "clear");
+		set_flags(fd, JA_FL_CLEAR, FS_JOURNAL_DATA_FL);
 		memset(buf, 0, sdp->bsize);
 		for (x=0; x<blocks; x++) {
 			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
@@ -491,6 +494,7 @@ int main(int argc, char *argv[])
 {
 	struct jadd_opts opts = {0};
 	struct gfs2_sbd sbd, *sdp = &sbd;
+	struct metafs mfs = {0};
 	struct mntent *mnt;
 	unsigned int total;
 
@@ -517,12 +521,12 @@ int main(int argc, char *argv[])
 	}
 	gather_info(sdp, &opts);
 
-	if (mount_gfs2_meta(sdp, mnt->mnt_dir)) {
+	if (mount_gfs2_meta(&mfs, mnt->mnt_dir, opts.debug)) {
 		perror("GFS2 metafs");
 		exit(EXIT_FAILURE);
 	}
 
-	if (build_paths(sdp->metafs_path, &opts)) {
+	if (build_paths(mfs.path, &opts)) {
 		perror(_("Failed to build paths"));
 		exit(EXIT_FAILURE);
 	}
@@ -538,7 +542,7 @@ int main(int argc, char *argv[])
 	     opts.journals < total;
 	     opts.journals++) {
 		if (metafs_interrupted) {
-			cleanup_metafs(&sbd);
+			cleanup_metafs(&mfs);
 			exit(130);
 		}
 		add_ir(&opts);
@@ -551,7 +555,7 @@ int main(int argc, char *argv[])
 	free(opts.per_node);
 	free(opts.jindex);
 	close(sdp->path_fd);
-	cleanup_metafs(sdp);
+	cleanup_metafs(&mfs);
 	sync();
 	print_results(&opts);
 
