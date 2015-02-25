@@ -966,8 +966,6 @@ static int block_has_extended_info(void)
 /* ------------------------------------------------------------------------ */
 static void read_superblock(int fd)
 {
-	int count, sane;
-
 	sbd1 = (struct gfs_sb *)&sbd.sd_sb;
 	ioctl(fd, BLKFLSBUF, 0);
 	memset(&sbd, 0, sizeof(struct gfs2_sbd));
@@ -1033,9 +1031,20 @@ static void read_superblock(int fd)
 			gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
 		}
 	}
+}
+
+static int read_rindex(void)
+{
+	struct gfs2_rindex *ri;
+	int count, sane;
+
 	sbd.fssize = sbd.device.length;
 	if (sbd.md.riinode) /* If we found the rindex */
 		rindex_read(&sbd, 0, &count, &sane);
+
+	ri = &((struct rgrp_tree *)osi_last(&sbd.rgtree))->ri;
+	sbd.fssize = ri->ri_data0 + ri->ri_data;
+	return 0;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -2539,6 +2548,8 @@ int main(int argc, char *argv[])
 	max_block = lseek(fd, 0, SEEK_END) / sbd.bsize;
 
 	read_superblock(fd);
+	if (read_rindex())
+		exit(-1);
 	max_block = lseek(fd, 0, SEEK_END) / sbd.bsize;
 	if (sbd.gfs1)
 		edit_row[GFS2_MODE]++;

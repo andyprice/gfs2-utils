@@ -721,75 +721,32 @@ static int check_header(struct savemeta_header *smh)
 
 void savemeta(char *out_fn, int saveoption, int gziplevel)
 {
-	int rgcount;
 	uint64_t jindex_block;
 	struct gfs2_buffer_head *lbh;
 	struct metafd mfd;
-	int sane;
-	struct osi_node *n, *next = NULL;
+	struct osi_node *n;
 	int err = 0;
 
 	sbd.md.journals = 1;
 
 	mfd = savemetaopen(out_fn, gziplevel);
 
-	lseek(sbd.device_fd, 0, SEEK_SET);
 	blks_saved = 0;
-	if (!sbd.gfs1)
-		sbd.bsize = GFS2_DEFAULT_BSIZE;
-	if (lgfs2_get_dev_info(sbd.device_fd, &sbd.dinfo)) {
-		perror(device);
-		exit(-1);
-	}
-	fix_device_geometry(&sbd);
-	sbd.rgtree.osi_node = NULL;
-	if (!sbd.gfs1)
-		sbd.sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
-	if (compute_constants(&sbd)) {
-		fprintf(stderr, "Bad constants (1)\n");
-		exit(-1);
-	}
-	if (read_sb(&sbd) < 0) {
-		fprintf(stderr, "Unable to read superblock.\n");
-		exit(-1);
-	}
 	if (sbd.gfs1)
 		sbd.bsize = sbd.sd_sb.sb_bsize;
-	printf("There are %llu blocks of %u bytes in the destination "
-	       "device.\n", (unsigned long long)sbd.fssize, sbd.bsize);
-	if (sbd.gfs1) {
-		sbd.md.riinode = lgfs2_inode_read(&sbd, sbd1->sb_rindex_di.no_addr);
-		if (sbd.md.riinode == NULL) {
-			fprintf(stderr, "Unable to read rindex: %s.\n", strerror(errno));
-			exit(-1);
-		}
+	printf("There are %llu blocks of %u bytes in the filesystem.\n",
+	                     (unsigned long long)sbd.fssize, sbd.bsize);
+	if (sbd.gfs1)
 		jindex_block = sbd1->sb_jindex_di.no_addr;
-	} else {
-		sbd.master_dir = lgfs2_inode_read(&sbd,
-					    sbd.sd_sb.sb_master_dir.no_addr);
-		if (sbd.master_dir == NULL) {
-			fprintf(stderr, "Unable to read master: %s.\n", strerror(errno));
-			exit(-1);
-		}
-
-		gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
+	else
 		jindex_block = masterblock("jindex");
-	}
 	lbh = bread(&sbd, jindex_block);
 	gfs2_dinode_in(&di, lbh);
 	if (!sbd.gfs1)
 		do_dinode_extended(&di, lbh);
 	brelse(lbh);
 
-	printf("Reading resource groups...");
-	fflush(stdout);
-	if (sbd.gfs1)
-		gfs1_ri_update(&sbd, 0, &rgcount, 0);
-	else
-		ri_update(&sbd, 0, &rgcount, &sane);
-	printf("Done. File system size: %s\n\n", anthropomorphize(sbd.fssize * sbd.bsize));
-	fflush(stdout);
-
+	printf("Filesystem size: %s\n", anthropomorphize(sbd.fssize * sbd.bsize));
 	get_journal_inode_blocks();
 
 	/* Write the savemeta file header */
@@ -818,10 +775,9 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		}
 	}
 	/* Walk through the resource groups saving everything within */
-	for (n = osi_first(&sbd.rgtree); n; n = next) {
+	for (n = osi_first(&sbd.rgtree); n; n = osi_next(n)) {
 		struct rgrp_tree *rgd;
 
-		next = osi_next(n);
 		rgd = (struct rgrp_tree *)n;
 		if (gfs2_rgrp_read(&sbd, rgd))
 			continue;
