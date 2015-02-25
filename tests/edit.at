@@ -6,8 +6,8 @@ AT_KEYWORDS(gfs2_edit edit)
 GFS_TGT_REGEN
 AT_CHECK([$GFS_MKFS -p lock_nolock $GFS_TGT $(($(gfs_max_blocks 4096)/2))], 0, [ignore], [ignore])
 AT_CHECK([gfs2_edit savemeta $GFS_TGT test.meta > savemeta.log], 0, [ignore], [ignore])
-AT_CHECK([head -2 savemeta.log], 0, [There are 2621440 blocks of 4096 bytes in the destination device.
-Reading resource groups...Done. File system size: 4.1023GB
+AT_CHECK([head -2 savemeta.log], 0, [There are 1310718 blocks of 4096 bytes in the filesystem.
+Filesystem size: 4.1023GB
 ], [ignore])
 GFS_TGT_REGEN
 AT_CHECK([gfs2_edit restoremeta test.meta $GFS_TGT], 0, [ignore], [ignore])
