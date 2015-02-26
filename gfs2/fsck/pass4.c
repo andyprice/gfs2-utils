@@ -177,7 +177,9 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 			 (unsigned long long)ii->di_num.no_addr, ii->di_nlink);
 	} /* osi_list_foreach(tmp, list) */
 
-	if (lf_dip && astate_changed(lf_dip, &lf_as))
+	if (lf_dip == NULL)
+		return 0;
+	if (astate_changed(lf_dip, &lf_as))
 		reprocess_inode(lf_dip, "lost+found");
 
 	if (lf_addition) {
