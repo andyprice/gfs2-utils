@@ -1697,13 +1697,10 @@ int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	return error;
 }
 
-int check_dir(struct gfs2_sbd *sdp, uint64_t block, struct metawalk_fxns *pass)
+int check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip, struct metawalk_fxns *pass)
 {
-	struct gfs2_inode *ip;
 	int error = 0;
 	struct alloc_state as;
-
-	ip = fsck_load_inode(sdp, block);
 
 	astate_save(ip, &as);
 
@@ -1718,7 +1715,6 @@ int check_dir(struct gfs2_sbd *sdp, uint64_t block, struct metawalk_fxns *pass)
 	if (astate_changed(ip, &as))
 		reprocess_inode(ip, _("Current"));
 
-	fsck_inode_put(&ip); /* does a brelse */
 	return error;
 }
 
@@ -1750,6 +1746,7 @@ int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 			   uint64_t dentryblock)
 {
 	struct metawalk_fxns remove_dentry_fxns = {0};
+	struct gfs2_inode *ip;
 	uint8_t q;
 	int error;
 
@@ -1769,10 +1766,16 @@ int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 		log_info( _("Parent block is not an inode...ignoring\n"));
 		return 1;
 	}
+
+	ip = fsck_load_inode(sdp, dir);
+	if (ip == NULL) {
+		stack;
+		return -1;
+	}
 	/* Need to run check_dir with a private var of dentryblock,
 	 * and fxns that remove that dentry if found */
-	error = check_dir(sdp, dir, &remove_dentry_fxns);
-
+	error = check_dir(sdp, ip, &remove_dentry_fxns);
+	fsck_inode_put(&ip);
 	return error;
 }
 
