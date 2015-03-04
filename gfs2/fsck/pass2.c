@@ -1712,7 +1712,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		if (astate_changed(sysinode, &as))
 			reprocess_inode(sysinode, _("System inode"));
 	}
-	error = check_dir(sysinode->i_sbd, iblock, &pass2_fxns);
+	error = check_dir(sysinode->i_sbd, sysinode, &pass2_fxns);
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 		return FSCK_OK;
 	if (error < 0) {
@@ -1807,6 +1807,116 @@ static inline int is_system_dir(struct gfs2_sbd *sdp, uint64_t block)
 	return FALSE;
 }
 
+static int pass2_check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
+{
+	uint64_t dirblk = ip->i_di.di_num.no_addr;
+	struct dir_status ds = {0};
+	struct alloc_state as;
+	int error;
+
+	pass2_fxns.private = &ds;
+	if (ds.q == GFS2_BLKST_UNLINKED) {
+		/* First check that the directory's metatree is valid */
+		astate_save(ip, &as);
+		error = check_metatree(ip, &pass2_fxns);
+		if (error < 0) {
+			stack;
+			return error;
+		}
+		if (astate_changed(ip, &as))
+			reprocess_inode(ip, "current");
+	}
+	error = check_dir(sdp, ip, &pass2_fxns);
+	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
+		return FSCK_OK;
+	if (error < 0) {
+		stack;
+		return FSCK_ERROR;
+	}
+	if (error > 0) {
+		struct dir_info *di;
+
+		di = dirtree_find(dirblk);
+		if (!di) {
+			stack;
+			return FSCK_ERROR;
+		}
+		if (query(_("Remove directory entry for bad inode "
+		            "%llu (0x%llx) in %llu (0x%llx)? (y/n)"),
+			  (unsigned long long)dirblk,
+			  (unsigned long long)dirblk,
+			  (unsigned long long)di->treewalk_parent,
+			  (unsigned long long)di->treewalk_parent)) {
+			error = remove_dentry_from_dir(sdp, di->treewalk_parent, dirblk);
+			if (error < 0) {
+				stack;
+				return FSCK_ERROR;
+			}
+			if (error > 0) {
+				log_warn(_("Unable to find dentry for %llu (0x%llx) "
+				           "in %llu (0x%llx)\n"),
+					  (unsigned long long)dirblk,
+					  (unsigned long long)dirblk,
+					  (unsigned long long)di->treewalk_parent,
+					  (unsigned long long)di->treewalk_parent);
+			}
+			log_warn(_("Directory entry removed\n"));
+		} else
+			log_err(_("Directory entry to invalid inode remains.\n"));
+
+		log_debug(_("Directory block %lld (0x%llx) is now marked as 'invalid'\n"),
+			   (unsigned long long)dirblk, (unsigned long long)dirblk);
+		/* Can't use fsck_blockmap_set here because we don't
+		   have an inode in memory. */
+		gfs2_blockmap_set(bl, dirblk, GFS2_BLKST_FREE);
+		check_n_fix_bitmap(sdp, dirblk, 0, GFS2_BLKST_FREE);
+	}
+
+	if (!ds.dotdir) {
+		log_err(_("No '.' entry found for directory inode at block %llu (0x%llx)\n"),
+			(unsigned long long)dirblk, (unsigned long long)dirblk);
+
+		if (query( _("Is it okay to add '.' entry? (y/n) "))) {
+			astate_save(ip, &as);
+			error = dir_add(ip, ".", 1, &(ip->i_di.di_num),
+					(sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
+			if (error) {
+				log_err(_("Error adding directory %s: %s\n"), "'.'",
+					strerror(errno));
+				return -errno;
+			}
+			if (astate_changed(ip, &as)) {
+				char dirname[80];
+
+				sprintf(dirname, _("Directory at %lld (0x%llx)"),
+					(unsigned long long)dirblk,
+					(unsigned long long)dirblk);
+				reprocess_inode(ip, dirname);
+			}
+			/* directory links to itself via '.' */
+			incr_link_count(ip->i_di.di_num, ip, _("\". (itself)\""));
+			ds.entry_count++;
+			log_err(_("The directory was fixed.\n"));
+		} else {
+			log_err(_("The directory was not fixed.\n"));
+		}
+	}
+
+	if (!fsck_abort && ip->i_di.di_entries != ds.entry_count) {
+		log_err(_("Entries is %d - should be %d for inode block %llu (0x%llx)\n"),
+			ip->i_di.di_entries, ds.entry_count,
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)ip->i_di.di_num.no_addr);
+		if (query(_("Fix the entry count? (y/n) "))) {
+			ip->i_di.di_entries = ds.entry_count;
+			bmodified(ip->i_bh);
+		} else {
+			log_err(_("The entry count was not fixed.\n"));
+		}
+	}
+	return FSCK_OK;
+}
+
 /* What i need to do in this pass is check that the dentries aren't
  * pointing to invalid blocks...and verify the contents of each
  * directory. and start filling in the directory info structure*/
@@ -1821,12 +1931,7 @@ static inline int is_system_dir(struct gfs2_sbd *sdp, uint64_t block)
 int pass2(struct gfs2_sbd *sdp)
 {
 	uint64_t dirblk;
-	struct alloc_state as;
 	uint8_t q;
-	struct dir_status ds = {0};
-	struct gfs2_inode *ip;
-	int error = 0;
-	struct dir_info *dt;
 
 	/* Check all the system directory inodes. */
 	if (!sdp->gfs1 &&
@@ -1859,6 +1964,10 @@ int pass2(struct gfs2_sbd *sdp)
 	log_info( _("Checking directory inodes.\n"));
 	/* Grab each directory inode, and run checks on it */
 	for (dirblk = 0; dirblk < last_fs_block; dirblk++) {
+		struct gfs2_inode *ip;
+		struct dir_info *dt;
+		int error;
+
 		warm_fuzzy_stuff(dirblk);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
@@ -1868,7 +1977,6 @@ int pass2(struct gfs2_sbd *sdp)
 			continue;
 
 		q = block_type(dirblk);
-
 		if (q != GFS2_BLKST_DINODE)
 			continue;
 
@@ -1884,125 +1992,24 @@ int pass2(struct gfs2_sbd *sdp)
 			continue;
 		}
 
-		log_debug( _("Checking directory inode at block %llu (0x%llx)\n"),
+		log_debug(_("Checking directory inode at block %llu (0x%llx)\n"),
 			  (unsigned long long)dirblk, (unsigned long long)dirblk);
 
-		memset(&ds, 0, sizeof(ds));
-		pass2_fxns.private = (void *) &ds;
-		if (ds.q == GFS2_BLKST_UNLINKED) {
-			/* First check that the directory's metatree
-			 * is valid */
-			ip = fsck_load_inode(sdp, dirblk);
-			astate_save(ip, &as);
-			error = check_metatree(ip, &pass2_fxns);
-			if (error < 0) {
-				stack;
-				fsck_inode_put(&ip);
-				return error;
-			}
-			if (astate_changed(ip, &as))
-				reprocess_inode(ip, "current");
-			fsck_inode_put(&ip);
-		}
-		error = check_dir(sdp, dirblk, &pass2_fxns);
-		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
-			return FSCK_OK;
-		if (error < 0) {
+		ip = fsck_load_inode(sdp, dirblk);
+		if (ip == NULL) {
 			stack;
 			return FSCK_ERROR;
 		}
-		if (error > 0) {
-			struct dir_info *di;
+		error = pass2_check_dir(sdp, ip);
+		fsck_inode_put(&ip);
 
-			di = dirtree_find(dirblk);
-			if (!di) {
-				stack;
-				return FSCK_ERROR;
-			}
-			if (query( _("Remove directory entry for bad"
-				    " inode %llu (0x%llx) in %llu"
-				    " (0x%llx)? (y/n)"),
-				  (unsigned long long)dirblk,
-				  (unsigned long long)dirblk,
-				  (unsigned long long)di->treewalk_parent,
-				  (unsigned long long)di->treewalk_parent)) {
-				error = remove_dentry_from_dir(sdp, di->treewalk_parent,
-							       dirblk);
-				if (error < 0) {
-					stack;
-					return FSCK_ERROR;
-				}
-				if (error > 0) {
-					log_warn( _("Unable to find dentry for %llu"
-						    " (0x%llx) in %llu"
-						    " (0x%llx)\n"),
-						  (unsigned long long)dirblk,
-						  (unsigned long long)dirblk,
-						  (unsigned long long)di->treewalk_parent,
-						  (unsigned long long)di->treewalk_parent);
-				}
-				log_warn( _("Directory entry removed\n"));
-			} else
-				log_err( _("Directory entry to invalid inode remains.\n"));
-			log_debug( _("Directory block %lld (0x%llx) "
-				     "is now marked as 'invalid'\n"),
-				   (unsigned long long)dirblk,
-				   (unsigned long long)dirblk);
-			/* Can't use fsck_blockmap_set here because we don't
-			   have an inode in memory. */
-			gfs2_blockmap_set(bl, dirblk, GFS2_BLKST_FREE);
-			check_n_fix_bitmap(sdp, dirblk, 0, GFS2_BLKST_FREE);
+		if (skip_this_pass || fsck_abort)
+			return FSCK_OK;
+
+		if (error != FSCK_OK) {
+			stack;
+			return error;
 		}
-		ip = fsck_load_inode(sdp, dirblk);
-		if (!ds.dotdir) {
-			log_err(_("No '.' entry found for directory inode at "
-				  "block %llu (0x%llx)\n"),
-				(unsigned long long)dirblk,
-				(unsigned long long)dirblk);
-
-			if (query( _("Is it okay to add '.' entry? (y/n) "))) {
-				astate_save(ip, &as);
-				error = dir_add(ip, ".", 1, &(ip->i_di.di_num),
-						(sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
-				if (error) {
-					log_err(_("Error adding directory %s: %s\n"), "'.'",
-					        strerror(errno));
-					fsck_inode_put(&ip);
-					return -errno;
-				}
-				if (astate_changed(ip, &as)) {
-					char dirname[80];
-
-					sprintf(dirname, _("Directory at %lld "
-							   "(0x%llx)"),
-						(unsigned long long)dirblk,
-						(unsigned long long)dirblk);
-					reprocess_inode(ip, dirname);
-				}
-				/* directory links to itself via '.' */
-				incr_link_count(ip->i_di.di_num, ip,
-						_("\". (itself)\""));
-				ds.entry_count++;
-				log_err( _("The directory was fixed.\n"));
-			} else {
-				log_err( _("The directory was not fixed.\n"));
-			}
-		}
-
-		if (!fsck_abort && ip->i_di.di_entries != ds.entry_count) {
-			log_err( _("Entries is %d - should be %d for inode "
-				"block %llu (0x%llx)\n"),
-				ip->i_di.di_entries, ds.entry_count,
-				(unsigned long long)ip->i_di.di_num.no_addr,
-				(unsigned long long)ip->i_di.di_num.no_addr);
-			if (query( _("Fix the entry count? (y/n) "))) {
-				ip->i_di.di_entries = ds.entry_count;
-				bmodified(ip->i_bh);
-			} else {
-				log_err( _("The entry count was not fixed.\n"));
-			}
-		}
-		fsck_inode_put(&ip); /* does a gfs2_dinode_out, brelse */
 	}
 	return FSCK_OK;
 }
