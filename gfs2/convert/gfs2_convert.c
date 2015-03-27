@@ -435,9 +435,9 @@ static void jdata_mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,
 	}
 }
 
-static void fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
-		  struct blocklist *blk, char *srcptr,
-		  unsigned int size)
+static uint64_t fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
+			      struct blocklist *blk, char *srcptr,
+			      unsigned int size)
 {
 	uint64_t block;
 	struct gfs2_buffer_head *bh;
@@ -499,6 +499,7 @@ static void fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 		amount = size - copied;
 		ptramt = 0;
 	}
+	return block;
 }
 
 static int get_inode_metablocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip, struct blocklist *blocks)
@@ -620,7 +621,7 @@ static int fix_ind_reg_or_dir(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint3
 	blk->height -= di_height - gfs2_hgt;
 	if (len) {
 		fix_metatree(sbp, ip, blk, ptr1, len);
-		ip->i_di.di_goal_data = ip->i_di.di_goal_meta = be64_to_cpu(*ptr2);
+		ip->i_di.di_goal_meta = be64_to_cpu(*ptr2);
 	}
 
 	return 0;
@@ -687,7 +688,8 @@ static int fix_ind_jdata(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint32_t d
 		memcpy(&newblk->mp, &gfs2mp, sizeof(struct metapath));
 		newblk->height -= di_height - gfs2_hgt;
 		if (len)
-			fix_jdatatree(sbp, ip, newblk, newblk->ptrbuf, len);
+			ip->i_di.di_goal_meta = fix_jdatatree(sbp, ip, newblk,
+							      newblk->ptrbuf, len);
 		free(newblk->ptrbuf);
 		free(newblk);
 	}
@@ -705,12 +707,16 @@ static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
 	int isdir = S_ISDIR(ip->i_di.di_mode); /* is always jdata */
 	int isjdata = ((GFS2_DIF_JDATA & ip->i_di.di_flags) && !isdir);
 	int isreg = (!isjdata && !isdir);
+	int issys = (GFS2_DIF_SYSTEM & ip->i_di.di_flags);
 
 	/* regular files and dirs are same upto height=2
 	   jdata files (not dirs) are same only when height=0 */
 	if (((isreg||isdir) && ip->i_di.di_height <= 1) ||
-	    (isjdata && ip->i_di.di_height == 0))
+	    (isjdata && ip->i_di.di_height == 0)) {
+		if (!issys)
+			ip->i_di.di_goal_meta = ip->i_di.di_num.no_addr;
 		return 0; /* nothing to do */
+	}
 
 	osi_list_init(&blocks.list);
 
