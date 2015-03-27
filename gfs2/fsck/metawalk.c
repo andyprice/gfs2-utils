@@ -1995,6 +1995,14 @@ int check_i_goal(struct gfs2_inode *ip, uint64_t goal_blk,
 	if (sdp->gfs1 || ip->i_di.di_flags & GFS2_DIF_SYSTEM ||
 		ip->i_di.di_goal_meta == i_block)
 		return 0;
+	/* Don't fix directory goal blocks unless we know they're wrong.
+	 * i.e. out of bounds of the fs. Directories can easily have blocks
+	 * outside of the dinode's rgrp and thus we have no way of knowing
+	 * if the goal block is bogus or not. */
+	if (is_dir(&ip->i_di, ip->i_sbd->gfs1) &&
+	    (ip->i_di.di_goal_meta > sdp->sb_addr &&
+	     ip->i_di.di_goal_meta <= sdp->fssize))
+		return 0;
 	/* We default to the inode block */
 	if (!goal_blk)
 		goal_blk = i_block;
