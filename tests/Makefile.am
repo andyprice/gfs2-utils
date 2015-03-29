@@ -1,5 +1,14 @@
-EXTRA_DIST = $(TESTSUITE_AT) package.m4 $(TESTSUITE) atlocal atconfig
-DISTCLEANFILES = atlocal atconfig
+EXTRA_DIST = \
+	$(TESTSUITE_AT) \
+	$(TESTSUITE) \
+	package.m4 \
+	atlocal \
+	atconfig
+
+DISTCLEANFILES = \
+	atlocal \
+	atconfig
+
 CLEANFILES = testvol
 
 if HAVE_CHECK
@@ -22,12 +31,16 @@ UNIT_CPPFLAGS = \
 
 check_PROGRAMS = $(UNIT_TESTS)
 
-check_meta_SOURCES = $(UNIT_SOURCES) check_meta.c
+check_meta_SOURCES = \
+	$(UNIT_SOURCES) \
+	check_meta.c
 check_meta_CFLAGS = $(UNIT_CFLAGS)
 check_meta_LDADD = $(UNIT_LDADD)
 check_meta_CPPFLAGS = $(UNIT_CPPFLAGS)
 
-check_rgrp_SOURCES = $(UNIT_SOURCES) check_rgrp.c
+check_rgrp_SOURCES = \
+	$(UNIT_SOURCES) \
+	check_rgrp.c
 check_rgrp_CFLAGS = $(UNIT_CFLAGS)
 check_rgrp_LDADD = $(UNIT_LDADD)
 check_rgrp_CPPFLAGS = $(UNIT_CPPFLAGS)
