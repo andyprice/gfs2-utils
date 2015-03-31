@@ -9,7 +9,6 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
-#include <sys/file.h>
 #include <sys/vfs.h>
 #include <sys/mount.h>
 #include <fcntl.h>

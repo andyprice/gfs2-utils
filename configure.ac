@@ -110,46 +110,17 @@ if test -z "$ncurses_CFLAGS"  && test -z "$ncurses_LIBS"; then
 	ncurses_LIBS=-lncurses
 fi
 
-# external libs (no pkgconfig)
-check_lib_no_libs pthread pthread_mutex_lock
-
 # Checks for header files.
-
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h libintl.h limits.h locale.h mntent.h netdb.h netinet/in.h stddef.h stdint.h stdlib.h string.h sys/file.h sys/ioctl.h sys/mount.h sys/param.h sys/socket.h sys/time.h sys/vfs.h syslog.h termios.h unistd.h])
-
-AC_CHECK_HEADERS([linux/dlmconstants.h linux/limits.h linux/types.h linux/netlink.h linux/fs.h],,
-		 [AC_MSG_ERROR([Unable to find all required kernel headers.])])
-
+AC_CHECK_HEADERS([fcntl.h libintl.h limits.h locale.h mntent.h stddef.h sys/file.h sys/ioctl.h sys/mount.h sys/time.h sys/vfs.h syslog.h termios.h])
+AC_CHECK_HEADER([linux/fs.h], [], [AC_MSG_ERROR([Unable to find linux/fs.h])])
+AC_CHECK_HEADER([linux/types.h], [], [AC_MSG_ERROR([Unable to find linux/types.h])])
+AC_CHECK_HEADER([linux/limits.h], [], [AC_MSG_ERROR([Unable to find linux/limits.h])])
 AC_CHECK_HEADER([linux/gfs2_ondisk.h], [], [AC_MSG_ERROR([Unable to find linux/gfs2_ondisk.h])])
 AC_CHECK_MEMBER([struct gfs2_sb.sb_uuid], [], [], [[#include <linux/gfs2_ondisk.h>]])
 AC_CHECK_MEMBER([struct gfs2_leaf.lf_inode],[AC_DEFINE([GFS2_HAS_LEAF_HINTS],[],[Leaf block hints])],
                 [], [[#include <linux/gfs2_ondisk.h>]])
 
-# Checks for typedefs, structures, and compiler characteristics.
-AC_C_INLINE
-AC_TYPE_INT64_T
-AC_TYPE_MODE_T
-AC_TYPE_OFF_T
-AC_TYPE_PID_T
-AC_TYPE_SIZE_T
-AC_TYPE_SSIZE_T
-AC_STRUCT_ST_BLOCKS
-AC_TYPE_UINT16_T
-AC_TYPE_UINT32_T
-AC_TYPE_UINT64_T
-AC_TYPE_UINT8_T
-
-# Checks for library functions.
-AC_FUNC_CHOWN
-AC_FUNC_FORK
-AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
-AC_HEADER_MAJOR
-AC_FUNC_MALLOC
-AC_FUNC_REALLOC
-AC_CHECK_FUNCS([ftruncate gettimeofday memset realpath rmdir select setlocale socket strcasecmp strchr strdup strerror strstr])
-
-## *FLAGS handling
-
+# *FLAGS handling
 ENV_CFLAGS="$CFLAGS"
 ENV_CPPFLAGS="$CPPFLAGS"
 ENV_LDFLAGS="$LDFLAGS"
