@@ -35,7 +35,7 @@ static void print_usage(const char *prog_name)
 	const char *option, *param, *desc;
 	const char *options[] = {
 	    /* Translators: This is a usage string printed with --help.
-	       <size> and <number> here are  to commandline parameters,
+	       <size> and <number> here are the commandline parameters,
 	       e.g. mkfs.gfs2 -b <size> -j <number> /dev/sda */
 	    "-b", _("<size>"),   _("File system block size, in bytes"),
 	    "-c", _("<size>"),   _("Size of quota change file, in megabytes"),

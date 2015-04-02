@@ -1301,7 +1301,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 	}
 
 	if (compute_constants(sdp)) {
-		log_crit(_("Bad constants (1)\n"));
+		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(FSCK_ERROR);
 	}
 	ret = read_sb(sdp);

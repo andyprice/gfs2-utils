@@ -1577,7 +1577,7 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 	sbp->bsize = sbp->sd_sb.sb_bsize;
 	sbp->rgtree.osi_node = NULL;
 	if (compute_constants(sbp)) {
-		log_crit(_("Error: Bad constants (1)\n"));
+		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(-1);
 	}
 
@@ -1599,13 +1599,13 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 	brelse(bh);
 	if (compute_heightsize(sbp->bsize, sbp->sd_heightsize, &sbp->sd_max_height,
 				sbp->bsize, sbp->sd_diptrs, sbp->sd_inptrs)) {
-		log_crit(_("Error: Bad constants (1)\n"));
+		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(-1);
 	}
 
 	if (compute_heightsize(sbp->bsize, sbp->sd_jheightsize, &sbp->sd_max_jheight,
 				sbp->sd_jbsize, sbp->sd_diptrs, sbp->sd_inptrs)) {
-		log_crit(_("Error: Bad constants (1)\n"));
+		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(-1);
 	}
 	/* -------------------------------------------------------- */
@@ -1616,13 +1616,13 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 	memset(gfs2_heightsize, 0, sizeof(gfs2_heightsize));
 	if (compute_heightsize(sbp->bsize, gfs2_heightsize, &gfs2_max_height,
 				sbp->bsize, sbp->sd_diptrs, gfs2_inptrs)) {
-		log_crit(_("Error: Bad constants (1)\n"));
+		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(-1);
 	}
 	memset(gfs2_jheightsize, 0, sizeof(gfs2_jheightsize));
 	if (compute_heightsize(sbp->bsize, gfs2_jheightsize, &gfs2_max_jheight,
 				sbp->sd_jbsize, sbp->sd_diptrs, gfs2_inptrs)) {
-		log_crit(_("Error: Bad constants (1)\n"));
+		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(-1);
 	}
 
@@ -2254,7 +2254,7 @@ int main(int argc, char **argv)
 
 		/* Now we've got to treat it as a gfs2 file system */
 		if (compute_constants(&sb2)) {
-			log_crit(_("Error: Bad constants (1)\n"));
+			log_crit("%s\n", _("Failed to compute file system constants"));
 			exit(-1);
 		}
 

@@ -115,7 +115,7 @@ static void print_usage(const char *prog_name)
 	const char *option, *param, *desc;
 	const char *options[] = {
 		/* Translators: This is a usage string printed with --help.
-		   <size> and <number> here are  to commandline parameters,
+		   <size> and <number> here are the commandline parameters,
 		   e.g. gfs2_jadd -j <number> /dev/sda */
 		"-c", "<size>",   _("Size of quota change file, in megabytes"),
 		"-D", NULL,       _("Enable debugging code"),
@@ -207,7 +207,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp, struc
 		die( _("Unrecognized argument: %s\n"), argv[optind]);
 
 	if (opts->debug) {
-		printf( _("Command Line Arguments:\n"));
+		printf( _("Command line arguments:\n"));
 		printf("  qcsize = %u\n", sdp->qcsize);
 		printf("  jsize = %u\n", sdp->jsize);
 		printf("  journals = %u\n", sdp->md.journals);
@@ -234,8 +234,8 @@ static void print_results(struct jadd_opts *opts)
 		return;
 
 	printf( _("Filesystem: %s\n"), opts->path);
-	printf( _("Old Journals: %u\n"), opts->orig_journals);
-	printf( _("New Journals: %u\n"), opts->journals);
+	printf( _("Old journals: %u\n"), opts->orig_journals);
+	printf( _("New journals: %u\n"), opts->journals);
 }
 
 static int create_new_inode(struct jadd_opts *opts)
@@ -531,7 +531,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (compute_constants(sdp)) {
-		perror(_("Bad constants (1)"));
+		perror(_("Failed to compute file system constants"));
 		exit(EXIT_FAILURE);
 	}
 	find_current_journals(&opts);
