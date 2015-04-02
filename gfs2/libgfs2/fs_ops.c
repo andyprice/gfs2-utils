@@ -1669,22 +1669,22 @@ static int linked_leaf_search(struct gfs2_inode *dip, const char *filename,
 		case 0:
 			*bh_out = bh;
 			return 0;
-			
+
 		case -ENOENT:
 			break;
-			
+
 		default:
 			if (bh && bh != dip->i_bh)
 				brelse(bh);
 			return error;
 		}
-		
+
 		error = get_next_leaf(dip, bh, &bh_next);
-	} while (!error);
-	
+	} while (!error && bh_next != NULL);
+
 	if (bh && bh != dip->i_bh)
 		brelse(bh);
-	
+
 	return error;
 }
 
