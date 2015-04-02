@@ -2,6 +2,7 @@ gfs2/mkfs/main_mkfs.c
 gfs2/mkfs/gfs2_mkfs.h
 gfs2/mkfs/main_grow.c
 gfs2/mkfs/main_jadd.c
+gfs2/mkfs/metafs.c
 gfs2/tune/main.c
 gfs2/tune/super.c
 gfs2/tune/tunegfs2.h
