@@ -381,7 +381,7 @@ int main(int argc, char *argv[])
 		sdp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
 		sdp->bsize = sdp->sd_sb.sb_bsize;
 		if (compute_constants(sdp)) {
-			perror(_("Bad constants (1)"));
+			log_crit("%s\n", _("Failed to compute file system constants"));
 			exit(EXIT_FAILURE);
 		}
 		if (read_sb(sdp) < 0) {
