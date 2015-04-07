@@ -38,6 +38,9 @@ int print_level = MSG_NOTICE;
 extern int create_new_inode(struct gfs2_sbd *sdp);
 extern int rename2system(struct gfs2_sbd *sdp, char *new_dir, char *new_name);
 
+#ifndef FALLOC_FL_KEEP_SIZE
+#define FALLOC_FL_KEEP_SIZE 0x01
+#endif
 #ifndef BLKDISCARD
 #define BLKDISCARD      _IO(0x12,119)
 #endif
