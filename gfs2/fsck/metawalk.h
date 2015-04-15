@@ -50,8 +50,6 @@ extern int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 			      const char *caller, int line);
 extern int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
 			      int error_on_dinode, int new_blockmap_state);
-extern int check_i_goal(struct gfs2_inode *ip, uint64_t goal_blk,
-			void *private);
 extern void reprocess_inode(struct gfs2_inode *ip, const char *desc);
 extern struct duptree *dupfind(uint64_t block);
 extern struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
@@ -91,7 +89,6 @@ enum meta_check_rc {
  * check_dentry:
  * check_eattr_entry:
  * check_eattr_extentry:
- * check_i_goal:
  */
 struct metawalk_fxns {
 	void *private;
@@ -143,8 +140,6 @@ struct metawalk_fxns {
 				     struct gfs2_ea_header *ea_hdr,
 				     struct gfs2_ea_header *ea_hdr_prev,
 				     void *private);
-	int (*check_i_goal) (struct gfs2_inode *ip, uint64_t goal_blk,
-			     void *private);
 	int (*finish_eattr_indir) (struct gfs2_inode *ip, int leaf_pointers,
 				   int leaf_pointer_errors, void *private);
 	void (*big_file_msg) (struct gfs2_inode *ip, uint64_t blks_checked);

@@ -100,7 +100,6 @@ struct metawalk_fxns pass1_fxns = {
 	.check_dentry = NULL,
 	.check_eattr_entry = check_eattr_entries,
 	.check_eattr_extentry = check_extended_leaf_eattr,
-	.check_i_goal = check_i_goal,
 	.finish_eattr_indir = finish_eattr_indir,
 	.big_file_msg = big_file_comfort,
 	.repair_leaf = pass1_repair_leaf,
@@ -1205,12 +1204,37 @@ bad_dinode:
 	return -1;
 }
 
+static void check_i_goal(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
+{
+	if (sdp->gfs1 || ip->i_di.di_flags & GFS2_DIF_SYSTEM)
+		return;
+
+	if (ip->i_di.di_goal_meta <= sdp->sb_addr ||
+	    ip->i_di.di_goal_meta > sdp->fssize) {
+		log_err(_("Inode #%llu (0x%llx): Bad allocation goal block "
+			  "found: %llu (0x%llx)\n"),
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)ip->i_di.di_num.no_addr,
+			(unsigned long long)ip->i_di.di_goal_meta,
+			(unsigned long long)ip->i_di.di_goal_meta);
+		if (query( _("Fix goal block in inode #%llu (0x%llx)? (y/n) "),
+			   (unsigned long long)ip->i_di.di_num.no_addr,
+			   (unsigned long long)ip->i_di.di_num.no_addr)) {
+			ip->i_di.di_goal_meta = ip->i_di.di_num.no_addr;
+			bmodified(ip->i_bh);
+		} else
+			log_err(_("Allocation goal block in inode #%lld "
+				  "(0x%llx) not fixed\n"),
+				(unsigned long long)ip->i_di.di_num.no_addr,
+				(unsigned long long)ip->i_di.di_num.no_addr);
+	}
+}
+
 /*
  * handle_di - This is now a wrapper function that takes a gfs2_buffer_head
  *             and calls handle_ip, which takes an in-code dinode structure.
  */
-static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
-		     struct rgrp_tree *rgd)
+static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
 {
 	int error = 0;
 	uint64_t block = bh->b_blocknr;
@@ -1252,7 +1276,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh,
 				 (unsigned long long)block,
 				 (unsigned long long)block);
 	}
-	ip->i_rgd = rgd;
+	check_i_goal(sdp, ip);
 	error = handle_ip(sdp, ip);
 	fsck_inode_put(&ip);
 	return error;
@@ -1378,6 +1402,7 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 					  "directory entries.\n"), filename);
 		}
 	}
+	check_i_goal(sdp, *sysinode);
 	error = handle_ip(sdp, *sysinode);
 	return error ? error : err;
 }
@@ -1602,7 +1627,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 				 (unsigned long long)block,
 				 (unsigned long long)block);
 			check_n_fix_bitmap(sdp, block, 0, GFS2_BLKST_FREE);
-		} else if (handle_di(sdp, bh, rgd) < 0) {
+		} else if (handle_di(sdp, bh) < 0) {
 			stack;
 			brelse(bh);
 			gfs2_special_free(&gfs1_rindex_blks);
