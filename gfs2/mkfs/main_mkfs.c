@@ -398,7 +398,7 @@ static void test_locking(const char *lockproto, const char *locktable)
 
 		if (c == locktable)
 			die("%s %s\n", errprefix, _("cluster name is missing"));
-		if (c - locktable > 16)
+		if (c - locktable > 32)
 			die("%s %s\n", errprefix, _("cluster name is too long"));
 
 		c++;
@@ -406,7 +406,7 @@ static void test_locking(const char *lockproto, const char *locktable)
 			die("%s %s\n", errprefix, _("contains more than one colon"));
 		if (!strlen(c))
 			die("%s %s\n", errprefix, _("file system name is missing"));
-		if (strlen(c) > 16)
+		if (strlen(c) > 30)
 			die("%s %s\n", errprefix, _("file system name is too long"));
 	} else {
 		die( _("Invalid lock protocol: %s\n"), lockproto);
