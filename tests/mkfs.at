@@ -89,3 +89,11 @@ AT_SETUP([Min. quota change file size])
 AT_KEYWORDS(mkfs.gfs2 mkfs)
 GFS_FSCK_CHECK([$GFS_MKFS -p lock_nolock -c 1 $GFS_TGT])
 AT_CLEANUP
+
+AT_SETUP([Incr. cluster/file system name validation])
+AT_KEYWORDS(mkfs.gfs2 mkfs)
+AT_CHECK([$GFS_MKFS -p lock_dlm -t "" $GFS_TGT], 255, [ignore], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_dlm -t "quite_long_cluster_name_test_here:intec34p" $GFS_TGT], 255, [ignore], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_dlm -t "financial_cluster:this_time_we_test_fs_naming_len" $GFS_TGT], 255, [ignore], [ignore])
+GFS_FSCK_CHECK([$GFS_MKFS -p lock_dlm -t "a_really_long_named_cluster_here:concurrently_lets_check_fs_len" $GFS_TGT])
+AT_CLEANUP

@@ -194,7 +194,7 @@ int change_locktable(struct tunegfs2 *tfs, const char *locktable)
 			fprintf(stderr, "%s %s\n", errpre, _("missing colon"));
 			return EX_DATAERR;
 		}
-		if (strlen(++fsname) > 16) {
+		if (strlen(++fsname) > 30) {
 			fprintf(stderr, "%s %s\n", errpre, _("file system name is too long"));
 			return EX_DATAERR;
 		}
