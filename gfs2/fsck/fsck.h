@@ -57,9 +57,11 @@ struct dir_status {
 	uint32_t entry_count;
 };
 
+#define DUPFLAG_REF1_FOUND 1 /* Has the original reference been found? */
+
 struct duptree {
 	struct osi_node node;
-	int first_ref_found; /* Has the original reference been found? */
+	int dup_flags;
 	int refs;
 	uint64_t block;
 	osi_list_t ref_inode_list; /* list of inodes referencing a dup block */
