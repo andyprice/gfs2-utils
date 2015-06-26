@@ -261,7 +261,6 @@ static struct duptree *gfs2_dup_set(uint64_t dblock, int create)
 	dt->block = dblock;
 	dt->refs = 1; /* reference 1 is actually the reference we need to
 			 discover in pass1b. */
-	dt->first_ref_found = 0;
 	osi_list_init(&dt->ref_inode_list);
 	osi_list_init(&dt->ref_invinode_list);
 	osi_link_node(&dt->node, parent, newn);
@@ -326,7 +325,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	/* If we found the duplicate reference but we've already discovered
 	   the first reference (in pass1b) and the other references in pass1,
 	   we don't need to count it, so just return. */
-	if (dt->first_ref_found)
+	if (dt->dup_flags & DUPFLAG_REF1_FOUND)
 		return meta_is_good;
 
 	/* Check for a previous reference to this duplicate */
@@ -338,7 +337,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	   that case, we don't want to be confused and consider this second
 	   reference the same as the first. If we do, we'll never be able to
 	   resolve it. The first reference can't be the second reference. */
-	if (id && first && !dt->first_ref_found) {
+	if (id && first && !(dt->dup_flags & DUPFLAG_REF1_FOUND)) {
 		log_info(_("Original reference to block %llu (0x%llx) was "
 			   "previously found to be bad and deleted.\n"),
 			 (unsigned long long)block,
@@ -347,7 +346,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 			   "(0x%llx) the first reference.\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
-		dt->first_ref_found = 1;
+		dt->dup_flags |= DUPFLAG_REF1_FOUND;
 		return meta_is_good;
 	}
 
@@ -356,7 +355,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	   reference, we don't want to increment the reference count because
 	   it's already accounted for. */
 	if (first) {
-		dt->first_ref_found = 1;
+		dt->dup_flags |= DUPFLAG_REF1_FOUND;
 		dups_found_first++; /* We found another first ref. */
 	} else {
 		dt->refs++;
