@@ -44,7 +44,8 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
 			       int h, void *private);
 static int check_data(struct gfs2_inode *ip, uint64_t metablock,
-		      uint64_t block, void *private);
+		      uint64_t block, void *private,
+		      struct gfs2_buffer_head *bh, uint64_t *ptr);
 static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
 			   void *private);
 static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
@@ -72,7 +73,8 @@ static int invalidate_metadata(struct gfs2_inode *ip, uint64_t block,
 static int invalidate_leaf(struct gfs2_inode *ip, uint64_t block,
 			   void *private);
 static int invalidate_data(struct gfs2_inode *ip, uint64_t metablock,
-			   uint64_t block, void *private);
+			   uint64_t block, void *private,
+			   struct gfs2_buffer_head *bh, uint64_t *ptr);
 static int invalidate_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 				  uint64_t parent,
 				  struct gfs2_buffer_head **bh,
@@ -441,7 +443,8 @@ out:
 }
 
 static int check_data(struct gfs2_inode *ip, uint64_t metablock,
-		      uint64_t block, void *private)
+		      uint64_t block, void *private,
+		      struct gfs2_buffer_head *bbh, uint64_t *ptr)
 {
 	uint8_t q;
 	struct block_count *bc = (struct block_count *) private;
@@ -969,7 +972,8 @@ static int invalidate_leaf(struct gfs2_inode *ip, uint64_t block,
 }
 
 static int invalidate_data(struct gfs2_inode *ip, uint64_t metablock,
-			   uint64_t block, void *private)
+			   uint64_t block, void *private,
+			   struct gfs2_buffer_head *bh, uint64_t *ptr)
 {
 	return mark_block_invalid(ip, block, ref_as_data, _("data"),
 				  NULL, NULL);
@@ -1069,7 +1073,8 @@ static int rangecheck_leaf(struct gfs2_inode *ip, uint64_t block,
 }
 
 static int rangecheck_data(struct gfs2_inode *ip, uint64_t metablock,
-			   uint64_t block, void *private)
+			   uint64_t block, void *private,
+			   struct gfs2_buffer_head *bh, uint64_t *ptr)
 {
 	return rangecheck_block(ip, block, NULL, btype_data, private);
 }

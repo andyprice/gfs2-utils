@@ -339,15 +339,16 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	   resolve it. The first reference can't be the second reference. */
 	if (id && first && !(dt->dup_flags & DUPFLAG_REF1_FOUND)) {
 		log_info(_("Original reference to block %llu (0x%llx) was "
-			   "previously found to be bad and deleted.\n"),
+			   "either found to be bad and deleted, or else "
+			   "a duplicate within the same inode.\n"),
 			 (unsigned long long)block,
 			 (unsigned long long)block);
 		log_info(_("I'll consider the reference from inode %llu "
 			   "(0x%llx) the first reference.\n"),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
-		dt->dup_flags |= DUPFLAG_REF1_FOUND;
-		return meta_is_good;
+		dt->dup_flags |= DUPFLAG_REF1_IS_DUPL;
+		dt->refs++;
 	}
 
 	/* The first time this is called from pass1 is actually the second

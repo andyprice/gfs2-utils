@@ -1580,7 +1580,8 @@ static int check_metalist_qc(struct gfs2_inode *ip, uint64_t block,
 }
 
 static int check_data_qc(struct gfs2_inode *ip, uint64_t metablock,
-			 uint64_t block, void *private)
+			 uint64_t block, void *private,
+			 struct gfs2_buffer_head *bbh, uint64_t *ptr)
 {
 	struct gfs2_buffer_head *bh;
 

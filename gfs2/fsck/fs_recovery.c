@@ -668,7 +668,8 @@ static int rangecheck_jmeta(struct gfs2_inode *ip, uint64_t block,
 }
 
 static int rangecheck_jdata(struct gfs2_inode *ip, uint64_t metablock,
-			   uint64_t block, void *private)
+			    uint64_t block, void *private,
+			    struct gfs2_buffer_head *bh, uint64_t *ptr)
 {
 	return rangecheck_jblock(ip, block);
 }
