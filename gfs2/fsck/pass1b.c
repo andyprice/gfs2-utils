@@ -28,6 +28,11 @@ struct dup_handler {
 	int ref_count;
 };
 
+struct clone_target {
+	uint64_t dup_block;
+	int first;
+};
+
 static void log_inode_reference(struct duptree *dt, osi_list_t *tmp, int inval)
 {
 	char reftypestring[32];
@@ -249,6 +254,116 @@ static void revise_dup_handler(uint64_t dup_blk, struct dup_handler *dh)
 	}
 }
 
+static int clone_check_meta(struct gfs2_inode *ip, uint64_t block,
+			    struct gfs2_buffer_head **bh, int h,
+			    int *is_valid, int *was_duplicate, void *private)
+{
+	*was_duplicate = 0;
+	*is_valid = 1;
+	*bh = bread(ip->i_sbd, block);
+	return 0;
+}
+
+/* clone_data - clone a duplicate reference
+ *
+ * This function remembers the first reference to the specified block, and
+ * clones all subsequent references to it (with permission).
+ */
+static int clone_data(struct gfs2_inode *ip, uint64_t metablock,
+		      uint64_t block, void *private,
+		      struct gfs2_buffer_head *bh, uint64_t *ptr)
+{
+	struct clone_target *clonet = (struct clone_target *)private;
+	struct gfs2_buffer_head *clone_bh;
+	uint64_t cloneblock;
+	int error;
+
+	if (block != clonet->dup_block)
+		return 0;
+
+	if (clonet->first) {
+		log_debug(_("Inode %lld (0x%llx)'s first reference to "
+			    "block %lld (0x%llx) is targeted for cloning.\n"),
+			  (unsigned long long)ip->i_di.di_num.no_addr,
+			  (unsigned long long)ip->i_di.di_num.no_addr,
+			  (unsigned long long)block,
+			  (unsigned long long)block);
+		clonet->first = 0;
+		return 0;
+	}
+	log_err(_("Error: Inode %lld (0x%llx)'s subsequent reference to "
+		  "block %lld (0x%llx) is an error.\n"),
+		(unsigned long long)ip->i_di.di_num.no_addr,
+		(unsigned long long)ip->i_di.di_num.no_addr,
+		(unsigned long long)block, (unsigned long long)block);
+	if (query( _("Okay to clone the duplicated reference? (y/n) "))) {
+		error = lgfs2_meta_alloc(ip, &cloneblock);
+		if (!error) {
+			clone_bh = bread(ip->i_sbd, clonet->dup_block);
+			if (clone_bh) {
+				fsck_blockmap_set(ip, cloneblock, _("data"),
+						  GFS2_BLKST_USED);
+				clone_bh->b_blocknr = cloneblock;
+				bmodified(clone_bh);
+				brelse(clone_bh);
+				/* Now fix the reference: */
+				*ptr = cpu_to_be64(cloneblock);
+				bmodified(bh);
+				log_err(_("Duplicate reference to block %lld "
+					  "(0x%llx) was cloned to block %lld "
+					  "(0x%llx).\n"),
+					(unsigned long long)block,
+					(unsigned long long)block,
+					(unsigned long long)cloneblock,
+					(unsigned long long)cloneblock);
+				return 0;
+			}
+		}
+		log_err(_("Error: Unable to allocate a new data block.\n"));
+		if (!query("Should I zero the reference instead? (y/n)")) {
+			log_err(_("Duplicate reference to block %lld "
+				  "(0x%llx) was not fixed.\n"),
+				(unsigned long long)block,
+				(unsigned long long)block);
+			return 0;
+		}
+		*ptr = 0;
+		bmodified(bh);
+		log_err(_("Duplicate reference to block %lld (0x%llx) was "
+			  "zeroed.\n"),
+			(unsigned long long)block,
+			(unsigned long long)block);
+	} else {
+		log_err(_("Duplicate reference to block %lld (0x%llx) "
+			  "was not fixed.\n"), (unsigned long long)block,
+			(unsigned long long)block);
+	}
+	return 0;
+}
+
+/* clone_dup_ref_in_inode - clone a duplicate reference within a single inode
+ *
+ * This function traverses the metadata tree of an inode, cloning all
+ * but the first reference to a duplicate block reference.
+ */
+static void clone_dup_ref_in_inode(struct gfs2_inode *ip, struct duptree *dt)
+{
+	int error;
+	struct clone_target clonet = {.dup_block = dt->block, .first = 1};
+	struct metawalk_fxns pass1b_fxns_clone = {
+		.private = &clonet,
+		.check_metalist = clone_check_meta,
+		.check_data = clone_data,
+	};
+
+	error = check_metatree(ip, &pass1b_fxns_clone);
+	if (error) {
+		log_err(_("Error cloning duplicate reference(s) to block %lld "
+			  "(0x%llx).\n"), (unsigned long long)dt->block,
+			(unsigned long long)dt->block);
+	}
+}
+
 /* handle_dup_blk - handle a duplicate block reference.
  *
  * This function should resolve and delete the duplicate block reference given,
@@ -389,6 +504,9 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 			   (unsigned long long)id->block_no);
 		ip = fsck_load_inode(sdp, id->block_no);
 
+		if (dt->dup_flags & DUPFLAG_REF1_IS_DUPL)
+			clone_dup_ref_in_inode(ip, dt);
+
 		q = block_type(id->block_no);
 		if (q == GFS2_BLKST_UNLINKED) {
 			log_debug( _("The remaining reference inode %lld "
@@ -468,7 +586,8 @@ static int check_metalist_refs(struct gfs2_inode *ip, uint64_t block,
 }
 
 static int check_data_refs(struct gfs2_inode *ip, uint64_t metablock,
-			   uint64_t block, void *private)
+			   uint64_t block, void *private,
+			   struct gfs2_buffer_head *bh, uint64_t *ptr)
 {
 	return add_duplicate_ref(ip, block, ref_as_data, 1, INODE_VALID);
 }

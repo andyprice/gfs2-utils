@@ -29,7 +29,8 @@ extern int delete_metadata(struct gfs2_inode *ip, uint64_t block,
 			   int *was_duplicate, void *private);
 extern int delete_leaf(struct gfs2_inode *ip, uint64_t block, void *private);
 extern int delete_data(struct gfs2_inode *ip, uint64_t metablock,
-		       uint64_t block, void *private);
+		       uint64_t block, void *private,
+		       struct gfs2_buffer_head *bh, uint64_t *ptr);
 extern int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
 		       struct gfs2_buffer_head **bh, void *private);
 extern int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
@@ -117,7 +118,8 @@ struct metawalk_fxns {
 			       int *is_valid, int *was_duplicate,
 			       void *private);
 	int (*check_data) (struct gfs2_inode *ip, uint64_t metablock,
-			   uint64_t block, void *private);
+			   uint64_t block, void *private,
+			   struct gfs2_buffer_head *bh, uint64_t *ptr);
 	int (*check_eattr_indir) (struct gfs2_inode *ip, uint64_t block,
 				  uint64_t parent,
 				  struct gfs2_buffer_head **bh, void *private);

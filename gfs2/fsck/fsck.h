@@ -58,6 +58,8 @@ struct dir_status {
 };
 
 #define DUPFLAG_REF1_FOUND 1 /* Has the original reference been found? */
+#define DUPFLAG_REF1_IS_DUPL 2 /* The original reference is also where we
+				  determined there was a duplicate. */
 
 struct duptree {
 	struct osi_node node;

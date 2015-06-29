@@ -1449,7 +1449,8 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		   would defeat the rangecheck_block related functions in
 		   pass1. Therefore the individual check_data functions
 		   should do a range check. */
-		rc = pass->check_data(ip, metablock, block, pass->private);
+		rc = pass->check_data(ip, metablock, block, pass->private,
+				      bh, ptr);
 		if (rc && (!error || (rc < error))) {
 			log_info("\n");
 			if (rc < 0) {
@@ -1787,7 +1788,8 @@ int delete_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 }
 
 int delete_data(struct gfs2_inode *ip, uint64_t metablock,
-		uint64_t block, void *private)
+		uint64_t block, void *private, struct gfs2_buffer_head *bh,
+		uint64_t *ptr)
 {
 	return delete_block_if_notdup(ip, block, NULL, _("data"), NULL,
 				      private);
@@ -1915,7 +1917,8 @@ static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,
 }
 
 static int alloc_data(struct gfs2_inode *ip, uint64_t metablock,
-		      uint64_t block, void *private)
+		      uint64_t block, void *private,
+		      struct gfs2_buffer_head *bh, uint64_t *ptr)
 {
 	uint8_t q;
 	const char *desc = (const char *)private;
