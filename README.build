@@ -29,5 +29,14 @@ To install gfs2-utils, run:
 
     make install
 
+The following scripts (located in gfs2/scripts) are used to complete
+the userland portion of the gfs2 withdraw feature using uevents. They
+are not installed by 'make install' and need to be installed manually
+or during rpm installation to the corresponding locations.
+
+	82-gfs2-withdraw.rules in /etc/udev/rules.d/
+	gfs2_wd_udev.sh        in /usr/sbin/
+
 See also doc/README.contributing for details on submitting patches and
 doc/README.tests for more details regarding the test suite.
+
