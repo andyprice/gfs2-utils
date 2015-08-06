@@ -1511,139 +1511,6 @@ static int init_rindex(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-static void bad_journalname(const char *filename, int len)
-{
-	if (len >= 64)
-		len = 63;
-	log_debug(_("Journal index entry '%.*s' has an invalid filename.\n"),
-	          len, filename);
-}
-
-/**
- * check_jindex_dent - check the jindex directory entries
- *
- * This function makes sure the directory entries of the jindex are valid.
- * If they're not '.' or '..' they better have the form journalXXX.
- */
-static int check_jindex_dent(struct gfs2_inode *ip, struct gfs2_dirent *dent,
-			     struct gfs2_dirent *prev_de,
-			     struct gfs2_buffer_head *bh, char *filename,
-			     uint32_t *count, int *lindex, void *priv)
-{
-	struct gfs2_dirent dentry, *de;
-	int i;
-
-	memset(&dentry, 0, sizeof(struct gfs2_dirent));
-	gfs2_dirent_in(&dentry, (char *)dent);
-	de = &dentry;
-
-	if (de->de_name_len == 1 && filename[0] == '.')
-		goto dirent_good;
-	if (de->de_name_len == 2 && filename[0] == '.' && filename[1] == '.')
-		goto dirent_good;
-
-	if ((de->de_name_len >= 11) || /* "journal9999" */
-	    (de->de_name_len <= 7) ||
-	    (strncmp(filename, "journal", 7))) {
-		bad_journalname(filename, de->de_name_len);
-		return -1;
-	}
-	for (i = 7; i < de->de_name_len; i++) {
-		if (filename[i] < '0' || filename[i] > '9') {
-			bad_journalname(filename, de->de_name_len);
-			return -2;
-		}
-	}
-
-dirent_good:
-	/* Return the number of leaf entries so metawalk doesn't flag this
-	   leaf as having none. */
-	*count = be16_to_cpu(((struct gfs2_leaf *)bh->b_data)->lf_entries);
-	return 0;
-}
-
-struct metawalk_fxns jindex_check_fxns = {
-	.private = NULL,
-	.check_dentry = check_jindex_dent,
-};
-
-/**
- * init_jindex - read in the rindex file
- */
-static int init_jindex(struct gfs2_sbd *sdp)
-{
-	/*******************************************************************
-	 ******************  Fill in journal information  ******************
-	 *******************************************************************/
-
-	log_debug(_("Validating the journal index.\n"));
-	/* rgrepair requires the journals be read in in order to distinguish
-	   "real" rgrps from rgrps that are just copies left in journals. */
-	if (sdp->gfs1)
-		sdp->md.jiinode = lgfs2_inode_read(sdp, sbd1->sb_jindex_di.no_addr);
-	else
-		gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
-
-	if (!sdp->md.jiinode) {
-		int err;
-
-		if (!query( _("The gfs2 system jindex inode is missing. "
-			      "Okay to rebuild it? (y/n) "))) {
-			log_crit(_("Error: cannot proceed without a valid "
-				   "jindex file.\n"));
-			return -1;
-		}
-
-		err = build_jindex(sdp);
-		if (err) {
-			log_crit(_("Error %d rebuilding jindex\n"), err);
-			return err;
-		}
-		gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
-	}
-
-	/* check for irrelevant entries in jindex. Can't use check_dir because
-	   that creates and destroys the inode, which we don't want. */
-	if (!sdp->gfs1) {
-		int error;
-
-		log_debug(_("Checking the integrity of the journal index.\n"));
-		if (sdp->md.jiinode->i_di.di_flags & GFS2_DIF_EXHASH)
-			error = check_leaf_blks(sdp->md.jiinode,
-						&jindex_check_fxns);
-		else
-			error = check_linear_dir(sdp->md.jiinode,
-						 sdp->md.jiinode->i_bh,
-						 &jindex_check_fxns);
-		if (error) {
-			log_err(_("The system journal index is damaged.\n"));
-			if (!query( _("Okay to rebuild it? (y/n) "))) {
-				log_crit(_("Error: cannot proceed without a "
-					   "valid jindex file.\n"));
-				return -1;
-			}
-			inode_put(&sdp->md.jiinode);
-			gfs2_dirent_del(sdp->master_dir, "jindex", 6);
-			log_err(_("Corrupt journal index was removed.\n"));
-			error = build_jindex(sdp);
-			if (error) {
-				log_err(_("Error rebuilding journal "
-					  "index: Cannot continue.\n"));
-				return error;
-			}
-			gfs2_lookupi(sdp->master_dir, "jindex", 6,
-				     &sdp->md.jiinode);
-		}
-	}
-
-	/* read in the ji data */
-	if (ji_update(sdp)){
-		log_err( _("Unable to read jindex inode.\n"));
-		return -1;
-	}
-	return 0;
-}
-
 /**
  * initialize - initialize superblock pointer
  *
@@ -1735,7 +1602,10 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 		lookup_per_node(sdp, 0);
 
 	/* We need rindex first in case jindex is missing and needs to read
-	   in the rgrps before rebuilding it. */
+	   in the rgrps before rebuilding it. However, note that if the rindex
+	   is damaged, we need the journals to repair it. That's because the
+	   journals likely contain rgrps and bitmaps, which we need to ignore
+	   when we're trying to find the rgrps. */
 	if (init_rindex(sdp))
 		return FSCK_ERROR;
 
@@ -1745,7 +1615,7 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 	/* We need to read in jindex in order to replay the journals. If
 	   there's an error, we may proceed and let init_system_inodes
 	   try to rebuild it. */
-	if (init_jindex(sdp) == 0) {
+	if (init_jindex(sdp, 1) == 0) {
 		/* If GFS, rebuild the journals. If GFS2, replay them. We don't
 		   have the smarts to replay GFS1 journals (neither did
 		   gfs_fsck). */
