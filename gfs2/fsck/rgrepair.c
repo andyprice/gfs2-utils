@@ -14,6 +14,7 @@
 #include "libgfs2.h"
 #include "osi_list.h"
 #include "fsck.h"
+#include "fs_recovery.h"
 
 int rindex_modified = FALSE;
 struct special_blocks false_rgrps;
@@ -41,6 +42,10 @@ struct special_blocks false_rgrps;
  * case, we don't want to mistake these blocks that look just a real RG
  * for a real RG block.  These are "fake" RGs that need to be ignored for
  * the purposes of finding where things are.
+ *
+ * NOTE: This function assumes that the jindex and journals have been read in,
+ *       which isn't often the case. Normally the rindex needs to be read in
+ *       first. If the rindex is damaged, that's not an option.
  */
 static void find_journaled_rgs(struct gfs2_sbd *sdp)
 {
@@ -62,8 +67,7 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 				break;
 			bh = bread(sdp, dblock);
 			if (!gfs2_check_meta(bh, GFS2_METATYPE_RG)) {
-				log_debug( _("False rgrp found at block 0x%llx\n"),
-					  (unsigned long long)dblock);
+				/* False rgrp found at block dblock */
 				gfs2_special_set(&false_rgrps, dblock);
 			}
 			brelse(bh);
@@ -443,6 +447,21 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 	struct rgrp_tree *calc_rgd, *prev_rgd;
 	int number_of_rgs, rgi;
 	int rg_was_fnd = FALSE, corrupt_rgs = 0;
+	int error = -1, j;
+
+	/*
+	 * In order to continue, we need to initialize the jindex. We need
+	 * the journals in order to correctly eliminate false positives during
+	 * rgrp repair. IOW, we need to properly ignore rgrps that appear in
+	 * the journals, and we can only do that if we have the journals.
+	 * To make matters worse, journals may span several (small) rgrps,
+	 * so we can't go by the rgrps.
+	 */
+	if (init_jindex(sdp, 0) != 0) {
+		log_crit(_("Error: Can't read jindex required for rindex "
+			   "repairs.\n"));
+		return -1;
+	}
 
 	sdp->rgcalc.osi_node = NULL;
 	initial_first_rg_dist = first_rg_dist = sdp->sb_addr + 1;
@@ -466,7 +485,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 		calc_rgd = rgrp_insert(&sdp->rgcalc, blk);
 		if (!calc_rgd) {
 			log_crit( _("Can't allocate memory for rgrp repair.\n"));
-			return -1;
+			goto out;
 		}
 		calc_rgd->ri.ri_length = 1;
 		if (!rg_was_fnd) { /* if not an RG */
@@ -483,7 +502,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 				log_crit( _("Error: too many missing or "
 					    "damaged rgrps using this method. "
 					    "Time to try another method.\n"));
-				return -1;
+				goto out;
 			}
 		}
 		/* ------------------------------------------------ */
@@ -519,10 +538,10 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 		}
 		number_of_rgs++;
 		if (rg_was_fnd)
-			log_info( _("  rgrp %d at block 0x%llx intact"),
+			log_info( _("  rgrp %d at block 0x%llx intact\n"),
 				  number_of_rgs, (unsigned long long)blk);
 		else
-			log_warn( _("* rgrp %d at block 0x%llx *** DAMAGED ***"),
+			log_warn( _("* rgrp %d at block 0x%llx *** DAMAGED ***\n"),
 				  number_of_rgs, (unsigned long long)blk);
 		prev_rgd = calc_rgd;
 		/*
@@ -587,7 +606,12 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 			  calc_rgd->ri.ri_bitbytes);
         }
 	*num_rgs = number_of_rgs;
-	return 0;
+	error = 0;
+out:
+	for (j = 0; j < sdp->md.journals; j++)
+		inode_put(&sdp->md.journal[j]);
+	free(sdp->md.journal);
+	return error;
 }
 
 #define DIV_RU(x, y) (((x) + (y) - 1) / (y))

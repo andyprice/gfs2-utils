@@ -250,17 +250,19 @@ void gfs2_rgrp_free(struct osi_root *rgrp_tree)
 	while ((n = osi_first(rgrp_tree))) {
 		rgd = (struct rgrp_tree *)n;
 
-		if (rgd->bits && rgd->bits[0].bi_bh) { /* if a buffer exists */
-			rgs_since_sync++;
-			if (rgs_since_sync >= RG_SYNC_TOLERANCE) {
-				if (!sdp)
-					sdp = rgd->bits[0].bi_bh->sdp;
-				fsync(sdp->device_fd);
-				rgs_since_sync = 0;
+		if (rgd->bits) {
+			if (rgd->bits[0].bi_bh) { /* if a buffer exists */
+				rgs_since_sync++;
+				if (rgs_since_sync >= RG_SYNC_TOLERANCE) {
+					if (!sdp)
+						sdp = rgd->bits[0].bi_bh->sdp;
+					fsync(sdp->device_fd);
+					rgs_since_sync = 0;
+				}
+				gfs2_rgrp_relse(rgd); /* free them all. */
 			}
-			gfs2_rgrp_relse(rgd); /* free them all. */
+			free(rgd->bits);
 		}
-		free(rgd->bits);
 		osi_erase(&rgd->node, rgrp_tree);
 		free(rgd);
 	}
