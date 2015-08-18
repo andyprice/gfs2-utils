@@ -1,2 +1,2 @@
-SUBSYSTEM=="gfs2", ACTION=="offline", RUN+="/bin/sh /usr/sbin/gfs2_wd_udev.sh"
+SUBSYSTEM=="gfs2", ACTION=="offline", RUN+="/bin/sh /usr/sbin/gfs2_withdraw_helper"
 
