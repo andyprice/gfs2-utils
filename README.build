@@ -35,7 +35,7 @@ are not installed by 'make install' and need to be installed manually
 or during rpm installation to the corresponding locations.
 
 	82-gfs2-withdraw.rules in /etc/udev/rules.d/
-	gfs2_wd_udev.sh        in /usr/sbin/
+	gfs2_withdraw_helper   in /usr/sbin/
 
 See also doc/README.contributing for details on submitting patches and
 doc/README.tests for more details regarding the test suite.

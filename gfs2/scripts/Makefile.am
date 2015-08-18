@@ -6,5 +6,5 @@ dist_sbin_SCRIPTS = \
 
 noinst_SCRIPTS = \
 	82-gfs2-withdraw.rules \
-	gfs2_wd_udev.sh
+	gfs2_withdraw_helper
 
