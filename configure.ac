@@ -110,6 +110,12 @@ if test -z "$ncurses_CFLAGS"  && test -z "$ncurses_LIBS"; then
 	ncurses_LIBS=-lncurses
 fi
 
+AC_ARG_WITH([udevdir],
+            AS_HELP_STRING([--with-udevdir=DIR],
+                           [udev directory containing rules.d [default=${prefix}/lib/udev]]),
+            [], [with_udevdir=\${prefix}/lib/udev])
+AC_SUBST([udevdir], [$with_udevdir])
+
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h libintl.h limits.h locale.h mntent.h stddef.h sys/file.h sys/ioctl.h sys/mount.h sys/time.h sys/vfs.h syslog.h termios.h])
 AC_CHECK_HEADER([linux/fs.h], [], [AC_MSG_ERROR([Unable to find linux/fs.h])])
@@ -209,7 +215,9 @@ echo "  Configure summary"
 echo " ==================="
 echo " prefix            : $prefix"
 echo " exec_prefix       : $exec_prefix"
+echo " libdir            : $libdir"
 echo " sbindir           : $sbindir"
+echo " udevdir           : $udevdir"
 echo " ------------------"
 echo " debug build       : $enable_debug"
 echo " C unit tests      : $have_check"
