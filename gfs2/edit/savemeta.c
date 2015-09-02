@@ -74,7 +74,69 @@ static int block_is_a_journal(void)
 	return FALSE;
 }
 
+struct osi_root per_node_tree;
+struct per_node_node {
+	struct osi_node node;
+	uint64_t block;
+};
+
+static void destroy_per_node_lookup(void)
+{
+	struct osi_node *n;
+	struct per_node_node *pnp;
+
+	while ((n = osi_first(&per_node_tree))) {
+		pnp = (struct per_node_node *)n;
+		osi_erase(n, &per_node_tree);
+		free(pnp);
+	}
+}
+
 static int block_is_in_per_node(void)
+{
+	struct per_node_node *pnp = (struct per_node_node *)per_node_tree.osi_node;
+
+	while (pnp) {
+		if (block < pnp->block)
+			pnp = (struct per_node_node *)pnp->node.osi_left;
+		else if (block > pnp->block)
+			pnp = (struct per_node_node *)pnp->node.osi_right;
+		else
+			return 1;
+	}
+
+	return 0;
+}
+
+static int insert_per_node_lookup(uint64_t blk)
+{
+	struct osi_node **newn = &per_node_tree.osi_node, *parent = NULL;
+	struct per_node_node *pnp;
+
+	while (*newn) {
+		struct per_node_node *cur = (struct per_node_node *)*newn;
+
+		parent = *newn;
+		if (blk < cur->block)
+			newn = &((*newn)->osi_left);
+		else if (blk > cur->block)
+			newn = &((*newn)->osi_right);
+		else
+			return 0;
+	}
+
+	pnp = calloc(1, sizeof(struct per_node_node));
+	if (pnp == NULL) {
+		perror("Failed to insert per_node lookup entry");
+		return 1;
+	}
+	pnp->block = blk;
+	osi_link_node(&pnp->node, parent, newn);
+	osi_insert_color(&pnp->node, &per_node_tree);
+	return 0;
+}
+
+static int init_per_node_lookup(void)
 {
 	int i;
 	struct gfs2_inode *per_node_di;
@@ -85,7 +147,7 @@ static int block_is_in_per_node(void)
 	per_node_di = lgfs2_inode_read(&sbd, masterblock("per_node"));
 	if (per_node_di == NULL) {
 		fprintf(stderr, "Failed to read per_node: %s\n", strerror(errno));
-		exit(1);
+		return 1;
 	}
 
 	do_dinode_extended(&per_node_di->i_di, per_node_di->i_bh);
@@ -94,11 +156,12 @@ static int block_is_in_per_node(void)
 	for (i = 0; i < indirect_blocks; i++) {
 		int d;
 		for (d = 0; d < indirect->ii[i].dirents; d++) {
-			if (block == indirect->ii[i].dirent[d].block)
-				return TRUE;
+			int ret = insert_per_node_lookup(indirect->ii[i].dirent[d].block);
+			if (ret != 0)
+				return ret;
 		}
 	}
-	return FALSE;
+	return 0;
 }
 
 static int block_is_systemfile(void)
@@ -749,6 +812,10 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	printf("Filesystem size: %s\n", anthropomorphize(sbd.fssize * sbd.bsize));
 	get_journal_inode_blocks();
 
+	err = init_per_node_lookup();
+	if (err)
+		exit(1);
+
 	/* Write the savemeta file header */
 	err = save_header(&mfd, sbd.fssize * sbd.bsize);
 	if (err) {
@@ -810,6 +877,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	}
 	savemetaclose(&mfd);
 	close(sbd.device_fd);
+	destroy_per_node_lookup();
 	free(indirect);
 	gfs2_rgrp_free(&sbd.rgtree);
 	exit(0);
