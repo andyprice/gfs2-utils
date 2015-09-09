@@ -629,15 +629,15 @@ static int fetch_rgrps(struct gfs2_sbd *sdp)
 	/*******************************************************************
 	 ********  Validate and read in resource group information  ********
 	 *******************************************************************/
-	log_warn( _("Validating Resource Group index.\n"));
+	log_notice(_("Validating resource group index.\n"));
 	for (trust_lvl = blind_faith; trust_lvl <= indignation; trust_lvl++) {
 		int ret = 0;
 
-		log_warn( _("Level %d rgrp check: %s.\n"), trust_lvl + 1,
+		log_notice(_("Level %d resource group check: %s.\n"), trust_lvl + 1,
 			  level_desc[trust_lvl]);
 		if ((rg_repair(sdp, trust_lvl, &rgcount, &sane) == 0) &&
 		    ((ret = ri_update(sdp, 0, &rgcount, &sane)) == 0)) {
-			log_warn( _("(level %d passed)\n"), trust_lvl + 1);
+			log_notice(_("(level %d passed)\n"), trust_lvl + 1);
 			break;
 		} else {
 			if (ret < 0)
@@ -654,7 +654,7 @@ static int fetch_rgrps(struct gfs2_sbd *sdp)
 			break;
 	}
 	if (trust_lvl > indignation) {
-		log_err( _("Resource Group recovery impossible; I can't fix "
+		log_err( _("Resource group recovery impossible; I can't fix "
 			   "this file system.\n"));
 		return -1;
 	}
