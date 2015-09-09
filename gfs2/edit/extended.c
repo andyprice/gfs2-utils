@@ -342,13 +342,14 @@ static int display_leaf(struct iinfo *ind)
 					strcpy(edit_fmt, "%llx");
 				}
 			}
-			print_gfs2("%d/%d [%08x] %lld/%lld (0x%llx/0x%llx): ",
+			print_gfs2("%d/%d [%08x] %lld/%lld (0x%llx/0x%llx) +%u: ",
 				   total_dirents, d + 1,
 				   ind->ii[0].dirent[d].dirent.de_hash,
 				   ind->ii[0].dirent[d].dirent.de_inum.no_formal_ino,
 				   ind->ii[0].dirent[d].block,
 				   ind->ii[0].dirent[d].dirent.de_inum.no_formal_ino,
-				   ind->ii[0].dirent[d].block);
+				   ind->ii[0].dirent[d].block,
+				   (unsigned int)ind->ii[0].dirent[d].dirent.de_rahead);
 		}
 		print_inode_type(ind->ii[0].dirent[d].dirent.de_type);
 		print_gfs2(" %s", ind->ii[0].dirent[d].filename);
