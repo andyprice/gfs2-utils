@@ -415,6 +415,7 @@ void gfs2_dirent_in(struct gfs2_dirent *de, char *buf)
 	CPIN_16(de, str, de_rec_len);
 	CPIN_16(de, str, de_name_len);
 	CPIN_16(de, str, de_type);
+	CPIN_16(de, str, de_rahead);
 }
 
 void gfs2_dirent_out(struct gfs2_dirent *de, char *buf)
@@ -427,6 +428,7 @@ void gfs2_dirent_out(struct gfs2_dirent *de, char *buf)
 	CPOUT_16(de, str, de_name_len);
 	CPOUT_16(de, str, de_type);
 	memset(str->__pad, 0, sizeof(str->__pad));
+	CPOUT_16(de, str, de_rahead);
 }
 
 void gfs2_leaf_in(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh)
