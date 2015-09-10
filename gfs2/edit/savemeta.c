@@ -1012,7 +1012,7 @@ static int restore_data(int fd, gzFile gzin_fd, off_t pos, int printonly)
 				bh = NULL;
 				break;
 			} else if (printonly == 1) {
-				print_gfs2("%d (l=0x%x): ", blks_saved, savedata->siglen);
+				print_gfs2("%"PRId64" (l=0x%x): ", blks_saved, savedata->siglen);
 				display_block_type(TRUE);
 			}
 			bh = NULL;

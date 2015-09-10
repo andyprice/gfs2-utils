@@ -392,7 +392,7 @@ static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 			       bitblk);
 
 	if (*prnt) {
-		print_gfs2("0x%llx (j+%4llx): Log descriptor, ",
+		print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log descriptor, ",
 			   abs_block, ((jb + wrappt) % j_size) / sbd.bsize);
 		print_gfs2("type %d ", ld.ld_type);
 
@@ -586,9 +586,9 @@ void dump_journal(const char *journal, int tblk)
 				gfs_log_header_in(&lh1, &dummy_bh);
 				check_journal_wrap(lh1.lh_sequence,
 						   &highest_seq);
-				print_gfs2("0x%llx (j+%4llx): Log header: "
-					   "Flags:%x, Seq: 0x%x, 1st: 0x%x, "
-					   "tail: 0x%x, last: 0x%x",
+				print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: "
+					   "Flags:%x, Seq: 0x%llx, 1st: 0x%llx, "
+					   "tail: 0x%llx, last: 0x%llx",
 					   abs_block, jb + wrappt,
 					   lh1.lh_flags, lh1.lh_sequence,
 					   lh1.lh_first, lh1.lh_tail,
@@ -597,8 +597,8 @@ void dump_journal(const char *journal, int tblk)
 				gfs2_log_header_in(&lh, &dummy_bh);
 				check_journal_wrap(lh.lh_sequence,
 						   &highest_seq);
-				print_gfs2("0x%llx (j+%4llx): Log header: Seq"
-					   ": 0x%x, tail: 0x%x, blk: 0x%x%s",
+				print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: Seq"
+					   ": 0x%llx, tail: 0x%x, blk: 0x%x%s",
 					   abs_block, ((jb + wrappt) % j_size)
 					   / sbd.bsize, lh.lh_sequence,
 					   lh.lh_tail, lh.lh_blkno,
@@ -609,7 +609,7 @@ void dump_journal(const char *journal, int tblk)
 			eol(0);
 		} else if ((ld_blocks > 0) &&
 			   (sbd.gfs1 || block_type == GFS2_METATYPE_LB)) {
-			print_gfs2("0x%llx (j+%4llx): Log descriptor"
+			print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log descriptor"
 				   " continuation block", abs_block, jb);
 			eol(0);
 			print_gfs2("                    ");

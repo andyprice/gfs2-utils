@@ -178,7 +178,7 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 		print_gfs2("%d => ", pndx);
 		if (termlines)
 			move(line,9);
-		print_gfs2("0x%llx / %lld", ind->ii[pndx].block,
+		print_gfs2("0x%"PRIx64" / %"PRId64, ind->ii[pndx].block,
 			   ind->ii[pndx].block);
 		if (termlines) {
 			if (edit_row[dmode] >= 0 &&
@@ -206,7 +206,7 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 			if (human_off > 1024.0) { h = 'T'; human_off /= 1024.0; }
 			if (human_off > 1024.0) { h = 'P'; human_off /= 1024.0; }
 			if (human_off > 1024.0) { h = 'E'; human_off /= 1024.0; }
-			print_gfs2("(data offset 0x%llx / %lld / %6.2f%c)",
+			print_gfs2("(data offset 0x%"PRIx64" / %"PRId64" / %6.2f%c)",
 				   file_offset, file_offset, human_off, h);
 			print_gfs2("   ");
 		}
@@ -297,8 +297,8 @@ static void print_inode_type(__be16 de_type)
 }
 
 #ifdef GFS2_HAS_LEAF_HINTS
-#define LEAF_HINT_FMTS "lf_inode: 0x%"PRIx64", lf_dist: %"PRIu32", " \
-                       "lf_nsec: %"PRIu32", lf_sec: %"PRIu64", "
+#define LEAF_HINT_FMTS "lf_inode: 0x%llx, lf_dist: %u, " \
+                       "lf_nsec: %u, lf_sec: %llu, "
 #define LEAF_HINT_FIELDS(lp) lp->lf_inode, lp->lf_dist, lp->lf_nsec, lp->lf_sec,
 #else
 #define LEAF_HINT_FMTS
@@ -342,7 +342,7 @@ static int display_leaf(struct iinfo *ind)
 					strcpy(edit_fmt, "%llx");
 				}
 			}
-			print_gfs2("%d/%d [%08x] %lld/%lld (0x%llx/0x%llx) +%u: ",
+			print_gfs2("%d/%d [%08x] %lld/%"PRId64" (0x%llx/0x%"PRIx64") +%u: ",
 				   total_dirents, d + 1,
 				   ind->ii[0].dirent[d].dirent.de_hash,
 				   ind->ii[0].dirent[d].dirent.de_inum.no_formal_ino,
@@ -429,7 +429,7 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 			eol(0);
 			if (termlines)
 				move(line,9);
-			print_gfs2("Continuation block 0x%llx / %lld",
+			print_gfs2("Continuation block 0x%"PRIx64" / %"PRId64,
 				   thisblk, thisblk);
 		}
 	}
@@ -451,7 +451,7 @@ static int print_gfs_jindex(struct gfs2_inode *dij)
 	char jbuf[sizeof(struct gfs_jindex)];
 
 	start_line = line;
-	print_gfs2("Journal index entries found: %d.",
+	print_gfs2("Journal index entries found: %lld.",
 		   dij->i_di.di_size / sizeof(struct gfs_jindex));
 	eol(0);
 	lines_per_row[dmode] = 4;
@@ -493,7 +493,7 @@ static int print_gfs2_jindex(void)
 		if (strncmp(indirect->ii[0].dirent[d].filename, "journal", 7))
 			continue;
 		ip = lgfs2_inode_read(&sbd, indirect->ii[0].dirent[d].block);
-		print_gfs2("%s: 0x%-5x %dMB ",
+		print_gfs2("%s: 0x%-5"PRIx64" %lldMB ",
 			   indirect->ii[0].dirent[d].filename,
 			   indirect->ii[0].dirent[d].block,
 			   ip->i_di.di_size / 1048576);
@@ -520,7 +520,7 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 	char highlighted_addr[32];
 
 	start_line = line;
-	print_gfs2("RG index entries found: %d.", dip->i_di.di_size /
+	print_gfs2("RG index entries found: %lld.", dip->i_di.di_size /
 		   sizeof(struct gfs2_rindex));
 	eol(0);
 	lines_per_row[dmode] = 6;
@@ -593,7 +593,7 @@ static int print_inum(struct gfs2_inode *dii)
 		return -1;
 	}
 	inodenum = be64_to_cpu(inum);
-	print_gfs2("Next inode num = %lld (0x%llx)", inodenum, inodenum);
+	print_gfs2("Next inode num = %"PRId64" (0x%"PRIx64")", inodenum, inodenum);
 	eol(0);
 	return 0;
 }
@@ -628,7 +628,7 @@ static int print_quota(struct gfs2_inode *diq)
 	
 	print_gfs2("quota file contents:");
 	eol(0);
-	print_gfs2("quota entries found: %d.", diq->i_di.di_size / sizeof(q));
+	print_gfs2("quota entries found: %lld.", diq->i_di.di_size / sizeof(q));
 	eol(0);
 	for (i=0; ; i++) {
 		error = gfs2_readi(diq, (void *)&qbuf, i * sizeof(q), sizeof(qbuf));
