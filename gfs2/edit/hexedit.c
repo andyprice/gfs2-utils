@@ -332,14 +332,14 @@ int display_block_type(int from_restore)
 	else if (block == JOURNALS_DUMMY_BLOCK)
 		print_gfs2("Journal Status:      ");
 	else
-		print_gfs2("%lld    (0x%llx)", block, block);
+		print_gfs2("%"PRId64"    (0x%"PRIx64")", block, block);
 	if (termlines) {
 		if (edit_row[dmode] == -1)
 			COLORS_NORMAL;
 	}
 	print_gfs2(" ");
 	if (!from_restore)
-		print_gfs2("of %llu (0x%llx) ", max_block, max_block);
+		print_gfs2("of %"PRIu64" (0x%"PRIx64") ", max_block, max_block);
 	if (block == RGLIST_DUMMY_BLOCK) {
 		ret_type = GFS2_METATYPE_RG;
 		struct_len = sbd.gfs1 ? sizeof(struct gfs_rgrp) :
@@ -580,9 +580,9 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 			COLORS_OFFSETS; /* cyan for offsets */
 		}
 		if (startaddr < 0xffffffff)
-			print_gfs2("%.8llx", startaddr + l);
+			print_gfs2("%.8"PRIx64, startaddr + l);
 		else
-			print_gfs2("%.16llx", startaddr + l);
+			print_gfs2("%.16"PRIx64, startaddr + l);
 		if (termlines) {
 			if (l < struct_len)
 				COLORS_NORMAL; /* normal part of structure */
@@ -670,7 +670,7 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 					f = &m->fields[n];
 					if (print_field >= f->offset &&
 					    print_field < (f->offset + f->length)) {
-						print_gfs2(m->fields[n].name);
+						print_gfs2("%s", m->fields[n].name);
 						break;
 					}
 				}
@@ -699,12 +699,12 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 		if (line - 3 > last_entry_onscreen[dmode])
 			last_entry_onscreen[dmode] = line - 3;
 		if (flagref && be64_to_cpu(*ref) == flagref)
-			print_gfs2("<------------------------- ref in 0x%llx "
-				   "to 0x%llx", ref_blk, flagref);
+			print_gfs2("<------------------------- ref in 0x%"PRIx64" "
+				   "to 0x%"PRIx64, ref_blk, flagref);
 		ref++;
 		if (flagref && be64_to_cpu(*ref) == flagref)
-			print_gfs2("<------------------------- ref in 0x%llx "
-				   "to 0x%llx", ref_blk, flagref);
+			print_gfs2("<------------------------- ref in 0x%"PRIx64" "
+				   "to 0x%"PRIx64, ref_blk, flagref);
 		ref++;
 		eol(0);
 		l += 16;
@@ -849,7 +849,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 	} else {
 		if (full) {
 			print_gfs2("RG #%d", rgnum);
-			print_gfs2(" located at: %llu (0x%llx)", rgblk, rgblk);
+			print_gfs2(" located at: %"PRIu64" (0x%"PRIx64")", rgblk, rgblk);
                         eol(0);
 			if (sbd.gfs1)
 				gfs_rgrp_print(&rg.rg1);
