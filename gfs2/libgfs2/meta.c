@@ -428,8 +428,12 @@ F(de_hash, .flags = LGFS2_MFF_CHECK)
 F(de_rec_len, .flags = LGFS2_MFF_BYTES)
 F(de_name_len, .flags = LGFS2_MFF_BYTES)
 F(de_type)
+#ifdef GFS2_HAS_DE_RAHEAD
 F(de_rahead)
+RF(__pad2)
+#else
 RF(__pad)
+#endif
 };
 
 #undef STRUCT
