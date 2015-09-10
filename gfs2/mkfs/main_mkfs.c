@@ -599,7 +599,7 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 	if (opts->debug) {
 		printf("  rgrp align = ");
 		if (opts->align)
-			printf("%lu+%lu blocks\n", al_base, al_off);
+			printf("%"PRIu64"+%"PRIu64" blocks\n", al_base, al_off);
 		else
 			printf("(disabled)\n");
 	}

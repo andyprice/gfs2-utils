@@ -269,7 +269,8 @@ static void fix_rindex(int rindex_fd, lgfs2_rgrps_t rgs, unsigned old_rg_count, 
 		off_t rindex_size = lseek(rindex_fd, 0, SEEK_END);
 		if (rindex_size != old_rg_count * entrysize) {
 			log_crit(_("Incorrect rindex size. Want %ld (%d resource groups), have %ld\n"),
-				 (old_rg_count * entrysize), old_rg_count, rindex_size);
+				 (long)(old_rg_count * entrysize), old_rg_count,
+				 (long)rindex_size);
 			goto out;
 		}
 		/* Write the first entry separately to ensure there's enough
@@ -300,7 +301,7 @@ out:
 trunc:
 	count = (count / sizeof(struct gfs2_rindex)) + old_rg_count;
 	log_crit(_("truncating rindex to %ld entries\n"),
-		 (off_t)count * sizeof(struct gfs2_rindex));
+		 (long)count * sizeof(struct gfs2_rindex));
 	ftruncate(rindex_fd, (off_t)count * sizeof(struct gfs2_rindex));
 	free(buf);
 }
