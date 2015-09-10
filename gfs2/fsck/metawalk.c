@@ -2080,7 +2080,7 @@ int write_new_leaf(struct gfs2_inode *dip, int start_lindex, int num_copies,
 		  "(0x%llx) at index: 0x%x for 0x%lx pointers.\n"),
 		(unsigned long long)dip->i_di.di_num.no_addr,
 		(unsigned long long)dip->i_di.di_num.no_addr,
-		start_lindex, pad_size / sizeof(uint64_t));
+		start_lindex, (unsigned long)pad_size / sizeof(uint64_t));
 	if (dip->i_sbd->gfs1)
 		count = gfs1_writei(dip, padbuf, start_lindex *
 				    sizeof(uint64_t), pad_size);
