@@ -415,7 +415,9 @@ void gfs2_dirent_in(struct gfs2_dirent *de, char *buf)
 	CPIN_16(de, str, de_rec_len);
 	CPIN_16(de, str, de_name_len);
 	CPIN_16(de, str, de_type);
+#ifdef GFS2_HAS_DE_RAHEAD
 	CPIN_16(de, str, de_rahead);
+#endif
 }
 
 void gfs2_dirent_out(struct gfs2_dirent *de, char *buf)
@@ -428,7 +430,9 @@ void gfs2_dirent_out(struct gfs2_dirent *de, char *buf)
 	CPOUT_16(de, str, de_name_len);
 	CPOUT_16(de, str, de_type);
 	memset(str->__pad, 0, sizeof(str->__pad));
+#ifdef GFS2_HAS_DE_RAHEAD
 	CPOUT_16(de, str, de_rahead);
+#endif
 }
 
 void gfs2_leaf_in(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh)

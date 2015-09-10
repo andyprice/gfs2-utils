@@ -125,6 +125,8 @@ AC_CHECK_HEADER([linux/gfs2_ondisk.h], [], [AC_MSG_ERROR([Unable to find linux/g
 AC_CHECK_MEMBER([struct gfs2_sb.sb_uuid], [], [], [[#include <linux/gfs2_ondisk.h>]])
 AC_CHECK_MEMBER([struct gfs2_leaf.lf_inode],[AC_DEFINE([GFS2_HAS_LEAF_HINTS],[],[Leaf block hints])],
                 [], [[#include <linux/gfs2_ondisk.h>]])
+AC_CHECK_MEMBER([struct gfs2_dirent.de_rahead],[AC_DEFINE([GFS2_HAS_DE_RAHEAD],[],[Dirent readahead field])],
+                [], [[#include <linux/gfs2_ondisk.h>]])
 
 # *FLAGS handling
 ENV_CFLAGS="$CFLAGS"

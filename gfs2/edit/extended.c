@@ -349,7 +349,12 @@ static int display_leaf(struct iinfo *ind)
 				   ind->ii[0].dirent[d].block,
 				   ind->ii[0].dirent[d].dirent.de_inum.no_formal_ino,
 				   ind->ii[0].dirent[d].block,
-				   (unsigned int)ind->ii[0].dirent[d].dirent.de_rahead);
+#ifdef GFS2_HAS_DE_RAHEAD
+				   (unsigned int)ind->ii[0].dirent[d].dirent.de_rahead
+#else
+				   0
+#endif
+			);
 		}
 		print_inode_type(ind->ii[0].dirent[d].dirent.de_type);
 		print_gfs2(" %s", ind->ii[0].dirent[d].filename);
