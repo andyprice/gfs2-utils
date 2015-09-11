@@ -1532,16 +1532,21 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 	uint64_t block;
 	struct gfs2_inode *ip;
 	uint8_t q;
+	/* Readahead numbers arrived at by experiment */
+	unsigned rawin = 50;
+	unsigned ralen = 100 * sdp->bsize;
+	unsigned r = 0;
 
-	/* Issue read-ahead for all dinodes in this bitmap */
-	for (i = 0; i < n; i++)
-		posix_fadvise(sdp->device_fd, ibuf[i] * sdp->bsize, sdp->bsize,
-			      POSIX_FADV_WILLNEED);
 	for (i = 0; i < n; i++) {
 		int is_inode;
 		uint32_t check_magic;
 
 		block = ibuf[i];
+
+		if (r++ == rawin) {
+			posix_fadvise(sdp->device_fd, block * sdp->bsize, ralen, POSIX_FADV_WILLNEED);
+			r = 0;
+		}
 
 		/* skip gfs1 rindex indirect blocks */
 		if (sdp->gfs1 && blockfind(&gfs1_rindex_blks, block)) {
