@@ -611,6 +611,27 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			 (unsigned long long)ii->di_num.no_formal_ino);
 		return 1;
 	}
+	/* Check for a special case where a (bad) GFS1 dirent points to what
+	 * is not a known inode. It could be other GFS1 metadata, such as an
+	 * eattr or indirect block, but marked "dinode" in the bitmap because
+	 * gfs1 marked all gfs1 metadata that way. */
+	if (ii == NULL && sdp->gfs1) {
+		struct gfs2_buffer_head *tbh;
+
+		tbh = bread(sdp, entry->no_addr);
+		if (gfs2_check_meta(tbh, GFS2_METATYPE_DI)) { /* not dinode */
+			log_err( _("Directory entry '%s' pointing to block "
+				   "%llu (0x%llx) in directory %llu (0x%llx) "
+				   "is not really a GFS1 dinode.\n"), tmp_name,
+			 (unsigned long long)entry->no_addr,
+			 (unsigned long long)entry->no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr,
+			 (unsigned long long)ip->i_di.di_num.no_addr);
+			brelse(tbh);
+			return 1;
+		}
+		brelse(tbh);
+	}
 	return 0;
 }
 
