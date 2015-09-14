@@ -244,7 +244,7 @@ void gfs2_rgrp_free(struct osi_root *rgrp_tree)
 	while ((n = osi_first(rgrp_tree))) {
 		rgd = (struct rgrp_tree *)n;
 
-		if (rgd->bits[0].bi_bh) { /* if a buffer exists */
+		if (rgd->bits && rgd->bits[0].bi_bh) { /* if a buffer exists */
 			rgs_since_sync++;
 			if (rgs_since_sync >= RG_SYNC_TOLERANCE) {
 				if (!sdp)
