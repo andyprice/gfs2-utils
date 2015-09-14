@@ -166,6 +166,12 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 			return -1;
 
 		gfs2_rindex_in(&ri, (char *)&buf.bufgfs2);
+		if (gfs2_check_range(sdp, ri.ri_addr) != 0) {
+			*sane = 0;
+			if (prev_rgd == NULL)
+				return -1;
+			ri.ri_addr = prev_rgd->ri.ri_addr + prev_rgd->length;
+		}
 		rgd = rgrp_insert(&sdp->rgtree, ri.ri_addr);
 		memcpy(&rgd->ri, &ri, sizeof(struct gfs2_rindex));
 
