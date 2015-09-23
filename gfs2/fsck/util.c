@@ -402,8 +402,8 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	if (first)
 		log_info( _("This is the original reference.\n"));
 	else
-		log_info( _("This brings the total to: %d duplicate "
-			    "references\n"), dt->refs);
+		log_info( _("This brings the total to: %d references\n"),
+			  dt->refs);
 	return meta_is_good;
 }
 
