@@ -114,8 +114,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 		if (acceptable_ref != ref_types && /* If we're nuking all but
 						      an acceptable reference
 						      type and */
-		    this_ref == acceptable_ref && /* this ref is acceptable */
-		    !found_good_ref) { /* We haven't found a good reference */
+		    this_ref == acceptable_ref) { /* this ref is acceptable */
 			/* If this is an invalid inode, but not on the invalid
 			   list, it's better to delete it. */
 			if (q == GFS2_BLKST_DINODE) {
