@@ -198,8 +198,27 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 		   it again. That could free blocks that used to be duplicate
 		   references that are now resolved (and gone). */
 		if (q != GFS2_BLKST_FREE) {
-			/* Clear the EAs for the inode first */
-			check_inode_eattr(ip, &pass1b_fxns_delete);
+			/* If the inode's eattr pointer is to the duplicate
+			   ref block, we don't want to call check_inode_eattr
+			   because that would traverse the structure, and it's
+			   not ours to do anymore; it rightly belongs to a
+			   different dinode. On the other hand, if the dup
+			   block is buried deep within the eattr structure
+			   of this dinode, we need to traverse the structure
+			   because it IS ours, and we need to remove all the
+			   eattr leaf blocks: they do belong to us (except for
+			   the duplicate referenced one, which is handled). */
+			if (ip->i_di.di_eattr == dt->block) {
+				ip->i_di.di_eattr = 0;
+				if (ip->i_di.di_blocks > 0)
+					ip->i_di.di_blocks--;
+				ip->i_di.di_flags &= ~GFS2_DIF_EA_INDIRECT;
+				bmodified(ip->i_bh);
+				dup_listent_delete(dt, id);
+			} else {
+				/* Clear the EAs for the inode first */
+				check_inode_eattr(ip, &pass1b_fxns_delete);
+			}
 			/* If the reference was as metadata or data, we've got
 			   a corrupt dinode that will be deleted. */
 			if ((this_ref != ref_as_ea) &&
