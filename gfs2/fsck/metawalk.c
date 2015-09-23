@@ -1081,7 +1081,7 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 				struct gfs2_buffer_head *indirect_buf,
 				struct metawalk_fxns *pass)
 {
-	int error = 0;
+	int error = 0, err;
 	uint64_t *ea_leaf_ptr, *end;
 	uint64_t block;
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -1096,11 +1096,29 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 	while (*ea_leaf_ptr && (ea_leaf_ptr < end)){
 		block = be64_to_cpu(*ea_leaf_ptr);
 		leaf_pointers++;
-		error = check_leaf_eattr(ip, block, indirect, pass);
-		if (error) {
+		err = check_leaf_eattr(ip, block, indirect, pass);
+		if (err) {
+			error = err;
+			log_err(_("Error detected in leaf block %lld (0x%llx) "
+				  "referenced by indirect block %lld (0x%llx)"
+				  ".\n"),
+				(unsigned long long)block,
+				(unsigned long long)block,
+				(unsigned long long)indirect,
+				(unsigned long long)indirect);
+			log_err(_("Subsequent leaf block pointers should be "
+				  "cleared.\n"));
+		}
+		if (error) { /* leaf blocks following an error must also be
+				treated as error blocks and cleared. */
 			leaf_pointer_errors++;
-			if (query( _("Fix the indirect block too? (y/n) ")))
-				*ea_leaf_ptr = 0;
+			log_err(_("Pointer to EA leaf block %lld (0x%llx) in "
+				  "indirect block %lld (0x%llx) should be "
+				  "cleared.\n"),
+				(unsigned long long)block,
+				(unsigned long long)block,
+				(unsigned long long)indirect,
+				(unsigned long long)indirect);
 		}
 		/* If the first eattr lead is bad, we can't have a hole, so we
 		   have to treat this as an unrecoverable eattr error and
