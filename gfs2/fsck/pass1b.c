@@ -364,6 +364,72 @@ static void clone_dup_ref_in_inode(struct gfs2_inode *ip, struct duptree *dt)
 	}
 }
 
+static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
+				   enum dup_ref_type acceptable_ref)
+{
+	struct gfs2_inode *ip;
+	struct inode_with_dups *id;
+	osi_list_t *tmp;
+	uint8_t q;
+
+	log_notice( _("Block %llu (0x%llx) has only one remaining "
+		      "valid inode referencing it.\n"),
+		    (unsigned long long)dt->block,
+		    (unsigned long long)dt->block);
+	/* If we're down to a single reference (and not all references
+	   deleted, which may be the case of an inode that has only
+	   itself and a reference), we need to reset the block type
+	   from invalid to data or metadata. Start at the first one
+	   in the list, not the structure's place holder. */
+	tmp = dt->ref_inode_list.next;
+	id = osi_list_entry(tmp, struct inode_with_dups, list);
+	log_debug( _("----------------------------------------------\n"
+		     "Step 4. Set block type based on the remaining "
+		     "reference in inode %lld (0x%llx).\n"),
+		   (unsigned long long)id->block_no,
+		   (unsigned long long)id->block_no);
+	ip = fsck_load_inode(sdp, id->block_no);
+
+	if (dt->dup_flags & DUPFLAG_REF1_IS_DUPL)
+		clone_dup_ref_in_inode(ip, dt);
+
+	q = block_type(id->block_no);
+	if (q == GFS2_BLKST_UNLINKED) {
+		log_debug( _("The remaining reference inode %lld (0x%llx) is "
+			     "marked invalid: Marking the block as free.\n"),
+			   (unsigned long long)id->block_no,
+			   (unsigned long long)id->block_no);
+		fsck_blockmap_set(ip, dt->block, _("reference-repaired leaf"),
+				  GFS2_BLKST_FREE);
+	} else if (id->reftypecount[ref_is_inode]) {
+		set_ip_blockmap(ip, 0); /* 0=do not add to dirtree */
+	} else if (id->reftypecount[ref_as_data]) {
+		fsck_blockmap_set(ip, dt->block,  _("reference-repaired data"),
+				  GFS2_BLKST_USED);
+	} else if (id->reftypecount[ref_as_meta]) {
+		if (is_dir(&ip->i_di, sdp->gfs1))
+			fsck_blockmap_set(ip, dt->block,
+					  _("reference-repaired leaf"),
+					  sdp->gfs1 ? GFS2_BLKST_DINODE :
+					  GFS2_BLKST_USED);
+		else
+			fsck_blockmap_set(ip, dt->block,
+					  _("reference-repaired indirect"),
+					  sdp->gfs1 ? GFS2_BLKST_DINODE :
+					  GFS2_BLKST_USED);
+	} else {
+		fsck_blockmap_set(ip, dt->block,
+				  _("reference-repaired extended "
+				    "attribute"),
+				  sdp->gfs1 ? GFS2_BLKST_DINODE :
+				  GFS2_BLKST_USED);
+	}
+	fsck_inode_put(&ip); /* out, brelse, free */
+	log_debug(_("Done with duplicate reference to block 0x%llx\n"),
+		  (unsigned long long)dt->block);
+	dup_delete(dt);
+}
+
 /* handle_dup_blk - handle a duplicate block reference.
  *
  * This function should resolve and delete the duplicate block reference given,
@@ -372,8 +438,6 @@ static void clone_dup_ref_in_inode(struct gfs2_inode *ip, struct duptree *dt)
 static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 {
 	osi_list_t *tmp;
-	struct gfs2_inode *ip;
-	struct inode_with_dups *id;
 	struct dup_handler dh = {0};
 	struct gfs2_buffer_head *bh;
 	uint32_t cmagic, ctype;
@@ -484,68 +548,7 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 	   reference, use it to determine the correct block type for our
 	   blockmap and bitmap. */
 	if (dh.ref_inode_count == 1 && !osi_list_empty(&dt->ref_inode_list)) {
-		uint8_t q;
-
-		log_notice( _("Block %llu (0x%llx) has only one remaining "
-			      "valid inode referencing it.\n"),
-			    (unsigned long long)dup_blk,
-			    (unsigned long long)dup_blk);
-		/* If we're down to a single reference (and not all references
-		   deleted, which may be the case of an inode that has only
-		   itself and a reference), we need to reset the block type
-		   from invalid to data or metadata. Start at the first one
-		   in the list, not the structure's place holder. */
-		tmp = dt->ref_inode_list.next;
-		id = osi_list_entry(tmp, struct inode_with_dups, list);
-		log_debug( _("----------------------------------------------\n"
-			     "Step 4. Set block type based on the remaining "
-			     "reference in inode %lld (0x%llx).\n"),
-			   (unsigned long long)id->block_no,
-			   (unsigned long long)id->block_no);
-		ip = fsck_load_inode(sdp, id->block_no);
-
-		if (dt->dup_flags & DUPFLAG_REF1_IS_DUPL)
-			clone_dup_ref_in_inode(ip, dt);
-
-		q = block_type(id->block_no);
-		if (q == GFS2_BLKST_UNLINKED) {
-			log_debug( _("The remaining reference inode %lld "
-				     "(0x%llx) is marked invalid: Marking "
-				     "the block as free.\n"),
-				   (unsigned long long)id->block_no,
-				   (unsigned long long)id->block_no);
-			fsck_blockmap_set(ip, dt->block,
-					  _("reference-repaired leaf"),
-					  GFS2_BLKST_FREE);
-		} else if (id->reftypecount[ref_is_inode]) {
-			set_ip_blockmap(ip, 0); /* 0=do not add to dirtree */
-		} else if (id->reftypecount[ref_as_data]) {
-			fsck_blockmap_set(ip, dt->block,
-					  _("reference-repaired data"),
-					  GFS2_BLKST_USED);
-		} else if (id->reftypecount[ref_as_meta]) {
-			if (is_dir(&ip->i_di, sdp->gfs1))
-				fsck_blockmap_set(ip, dt->block,
-						  _("reference-repaired leaf"),
-						  sdp->gfs1 ?
-						  GFS2_BLKST_DINODE :
-						  GFS2_BLKST_USED);
-			else
-				fsck_blockmap_set(ip, dt->block,
-						  _("reference-repaired "
-						    "indirect"), sdp->gfs1 ?
-						  GFS2_BLKST_DINODE :
-						  GFS2_BLKST_USED);
-		} else
-			fsck_blockmap_set(ip, dt->block,
-					  _("reference-repaired extended "
-					    "attribute"),
-					  sdp->gfs1 ? GFS2_BLKST_DINODE :
-					  GFS2_BLKST_USED);
-		fsck_inode_put(&ip); /* out, brelse, free */
-		log_debug(_("Done with duplicate reference to block 0x%llx\n"),
-			  (unsigned long long)dt->block);
-		dup_delete(dt);
+		resolve_last_reference(sdp, dt, acceptable_ref);
 	} else {
 		/* They may have answered no and not fixed all references. */
 		log_debug( _("All duplicate references to block 0x%llx were "
