@@ -147,11 +147,28 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 			  (unsigned long long)dt->block,
 			  (unsigned long long)dt->block,
 			  reftypes[this_ref], reftypes[acceptable_ref]);
-		if (!(query( _("Okay to delete %s inode %lld (0x%llx)? "
-			       "(y/n) "),
-			     (inval ? _("invalidated") : ""),
-			     (unsigned long long)id->block_no,
-			     (unsigned long long)id->block_no))) {
+		if (this_ref == ref_as_ea) {
+			if (!(query( _("Okay to remove extended attributes "
+				       "from %s inode %lld (0x%llx)? (y/n) "),
+				     (inval ? _("invalidated") : ""),
+				     (unsigned long long)id->block_no,
+				     (unsigned long long)id->block_no))) {
+				log_warn( _("The bad EA reference was not "
+					    "cleared."));
+				/* delete the list entry so we don't leak
+				   memory but leave the reference count. If we
+				   decrement the ref count, we could get down
+				   to 1 and the dinode would be changed
+				   without a 'Yes' answer. */
+				/* (dh->ref_inode_count)--;*/
+				dup_listent_delete(dt, id);
+				continue;
+			}
+		} else if (!(query( _("Okay to delete %s inode %lld (0x%llx)? "
+				      "(y/n) "),
+				    (inval ? _("invalidated") : ""),
+				    (unsigned long long)id->block_no,
+				    (unsigned long long)id->block_no))) {
 			log_warn( _("The bad inode was not cleared."));
 			/* delete the list entry so we don't leak memory but
 			   leave the reference count. If we decrement the
@@ -166,6 +183,11 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 				    "deleted.\n"),
 				  (unsigned long long)id->block_no,
 				  (unsigned long long)id->block_no);
+		else if (this_ref == ref_as_ea)
+			log_warn(_("Pass1b is removing extended attributes "
+				   "from inode %lld (0x%llx).\n"),
+				 (unsigned long long)id->block_no,
+				 (unsigned long long)id->block_no);
 		else
 			log_warn(_("Pass1b is deleting inode %lld (0x%llx).\n"),
 				 (unsigned long long)id->block_no,
@@ -180,8 +202,9 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 			check_inode_eattr(ip, &pass1b_fxns_delete);
 			/* If the reference was as metadata or data, we've got
 			   a corrupt dinode that will be deleted. */
-			if (inval || id->reftypecount[ref_as_data] ||
-			    id->reftypecount[ref_as_meta]) {
+			if ((this_ref != ref_as_ea) &&
+			    (inval || id->reftypecount[ref_as_data] ||
+			     id->reftypecount[ref_as_meta])) {
 				/* Remove the inode from the inode tree */
 				ii = inodetree_find(ip->i_di.di_num.no_addr);
 				if (ii)
@@ -204,7 +227,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 				check_metatree(ip, &pass1b_fxns_delete);
 			}
 		}
-		/* Now we've got to go through an delete any other duplicate
+		/* Now we've got to go through and delete any other duplicate
 		   references from this dinode we're deleting. If we don't,
 		   pass1b will discover the other duplicate record, try to
 		   delete this dinode a second time, and this time its earlier
@@ -212,7 +235,8 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 		   (because they were eliminated earlier in pass1b). And so
 		   the blocks will be mistakenly freed, when, in fact, they're
 		   still being referenced by a valid dinode. */
-		delete_all_dups(ip);
+		if (this_ref != ref_as_ea)
+			delete_all_dups(ip);
 		fsck_inode_put(&ip); /* out, brelse, free */
 	}
 	return;
