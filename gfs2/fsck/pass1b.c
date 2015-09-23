@@ -417,11 +417,40 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 					  sdp->gfs1 ? GFS2_BLKST_DINODE :
 					  GFS2_BLKST_USED);
 	} else {
-		fsck_blockmap_set(ip, dt->block,
-				  _("reference-repaired extended "
-				    "attribute"),
-				  sdp->gfs1 ? GFS2_BLKST_DINODE :
-				  GFS2_BLKST_USED);
+		if (acceptable_ref == ref_as_ea)
+			fsck_blockmap_set(ip, dt->block,
+					  _("reference-repaired extended "
+					    "attribute"),
+					  sdp->gfs1 ? GFS2_BLKST_DINODE :
+					  GFS2_BLKST_USED);
+		else {
+			log_err(_("Error: The remaining reference to block "
+				  " %lld (0x%llx) is as extended attribute, "
+				  "in inode %lld (0x%llx) but the block is "
+				  "not an EA.\n"),
+				(unsigned long long)dt->block,
+				(unsigned long long)dt->block,
+				(unsigned long long)id->block_no,
+				(unsigned long long)id->block_no);
+			if (query(_("Okay to remove the bad extended "
+				    "attribute from inode %lld (0x%llx)? "
+				    "(y/n) "),
+				  (unsigned long long)id->block_no,
+				  (unsigned long long)id->block_no)) {
+				ip->i_di.di_eattr = 0;
+				ip->i_di.di_flags &= ~GFS2_DIF_EA_INDIRECT;
+				ip->i_di.di_blocks--;
+				bmodified(ip->i_bh);
+				fsck_blockmap_set(ip, dt->block,
+						  _("reference-repaired EA"),
+						  GFS2_BLKST_FREE);
+				log_err(_("The bad extended attribute was "
+					  "removed.\n"));
+			} else {
+				log_err(_("The bad extended attribute was not "
+					  "removed.\n"));
+			}
+		}
 	}
 	fsck_inode_put(&ip); /* out, brelse, free */
 	log_debug(_("Done with duplicate reference to block 0x%llx\n"),
