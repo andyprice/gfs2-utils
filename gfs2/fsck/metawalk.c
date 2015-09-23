@@ -955,9 +955,12 @@ static int check_leaf_eattr(struct gfs2_inode *ip, uint64_t block,
 	if (pass->check_eattr_leaf) {
 		int error = 0;
 
-		log_debug( _("Checking EA leaf block #%llu (0x%llx).\n"),
+		log_debug( _("Checking EA leaf block #%llu (0x%llx) for "
+			     "inode #%llu (0x%llx).\n"),
 			   (unsigned long long)block,
-			   (unsigned long long)block);
+			   (unsigned long long)block,
+			   (unsigned long long)ip->i_di.di_num.no_addr,
+			   (unsigned long long)ip->i_di.di_num.no_addr);
 
 		error = pass->check_eattr_leaf(ip, block, parent, &bh,
 					       pass->private);
@@ -1175,11 +1178,13 @@ int check_inode_eattr(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	if (!ip->i_di.di_eattr)
 		return 0;
 
-	log_debug( _("Extended attributes exist for inode #%llu (0x%llx).\n"),
-		  (unsigned long long)ip->i_di.di_num.no_addr,
-		  (unsigned long long)ip->i_di.di_num.no_addr);
-
 	if (ip->i_di.di_flags & GFS2_DIF_EA_INDIRECT){
+		log_debug( _("Checking EA indirect block #%llu (0x%llx) for "
+			     "inode #%llu (0x%llx)..\n"),
+			   (unsigned long long)ip->i_di.di_eattr,
+			   (unsigned long long)ip->i_di.di_eattr,
+			   (unsigned long long)ip->i_di.di_num.no_addr,
+			   (unsigned long long)ip->i_di.di_num.no_addr);
 		if ((error = check_indirect_eattr(ip, ip->i_di.di_eattr, pass)))
 			stack;
 	} else {
