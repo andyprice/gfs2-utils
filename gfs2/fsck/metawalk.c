@@ -1144,13 +1144,12 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 		}
 		ea_leaf_ptr++;
 	}
+	/* If we temporarily nuked the ea block to prevent checking past
+	   a corrupt ea leaf, we need to restore the saved di_eattr block. */
+	if (di_eattr_save != 0)
+		ip->i_di.di_eattr = di_eattr_save;
 	if (pass->finish_eattr_indir) {
 		if (!first_ea_is_bad) {
-			/* If the first ea is good but subsequent ones were
-			   bad and deleted, we need to restore the saved
-			   di_eattr block. */
-			if (leaf_pointer_errors)
-				ip->i_di.di_eattr = di_eattr_save;
 			pass->finish_eattr_indir(ip, leaf_pointers,
 						 leaf_pointer_errors,
 						 pass->private);
