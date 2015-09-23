@@ -1078,89 +1078,71 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
  * Returns: 0 on success -1 on error
  */
 static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
+				struct gfs2_buffer_head *indirect_buf,
 				struct metawalk_fxns *pass)
 {
 	int error = 0;
 	uint64_t *ea_leaf_ptr, *end;
 	uint64_t block;
-	struct gfs2_buffer_head *indirect_buf = NULL;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	int first_ea_is_bad = 0;
 	uint64_t di_eattr_save = ip->i_di.di_eattr;
 	uint64_t offset = ip->i_sbd->gfs1 ? sizeof(struct gfs_indirect) : sizeof(struct gfs2_meta_header);
+	int leaf_pointers = 0, leaf_pointer_errors = 0;
 
-	log_debug( _("Checking EA indirect block #%llu (0x%llx).\n"),
-		  (unsigned long long)indirect,
-		  (unsigned long long)indirect);
+	ea_leaf_ptr = (uint64_t *)(indirect_buf->b_data + offset);
+	end = ea_leaf_ptr + ((sdp->sd_sb.sb_bsize - offset) / 8);
 
-	if (!pass->check_eattr_indir)
-		return 0;
-	error = pass->check_eattr_indir(ip, indirect, ip->i_di.di_num.no_addr,
-					&indirect_buf, pass->private);
-	if (!error) {
-		int leaf_pointers = 0, leaf_pointer_errors = 0;
-
-		ea_leaf_ptr = (uint64_t *)(indirect_buf->b_data + offset);
-		end = ea_leaf_ptr + ((sdp->sd_sb.sb_bsize - offset) / 8);
-
-		while (*ea_leaf_ptr && (ea_leaf_ptr < end)){
-			block = be64_to_cpu(*ea_leaf_ptr);
-			leaf_pointers++;
-			error = check_leaf_eattr(ip, block, indirect, pass);
-			if (error) {
-				leaf_pointer_errors++;
-				if (query( _("Fix the indirect "
-					     "block too? (y/n) ")))
-					*ea_leaf_ptr = 0;
-			}
-			/* If the first eattr lead is bad, we can't have
-			   a hole, so we have to treat this as an unrecoverable
-			   eattr error and delete all eattr info. Calling
-			   finish_eattr_indir here causes ip->i_di.di_eattr = 0
-			   and that ensures that subsequent calls to
-			   check_leaf_eattr result in the eattr
-			   check_leaf_block nuking them all "due to previous
-			   errors" */
-			if (leaf_pointers == 1 && leaf_pointer_errors == 1) {
-				first_ea_is_bad = 1;
-				if (pass->finish_eattr_indir)
-					pass->finish_eattr_indir(ip,
-							leaf_pointers,
-							leaf_pointer_errors,
-							pass->private);
-			} else if (leaf_pointer_errors) {
-				/* This is a bit tricky.  We can't have eattr
-				   holes. So if we have 4 good eattrs, 1 bad
-				   eattr and 5 more good ones: GGGGBGGGGG,
-				   we need to tell check_leaf_eattr to delete
-				   all eattrs after the bad one.  So we want:
-				   GGGG when we finish.  To do that, we set
-				   di_eattr to 0 temporarily. */
-				ip->i_di.di_eattr = 0;
-				bmodified(ip->i_bh);
-			}
-			ea_leaf_ptr++;
+	while (*ea_leaf_ptr && (ea_leaf_ptr < end)){
+		block = be64_to_cpu(*ea_leaf_ptr);
+		leaf_pointers++;
+		error = check_leaf_eattr(ip, block, indirect, pass);
+		if (error) {
+			leaf_pointer_errors++;
+			if (query( _("Fix the indirect block too? (y/n) ")))
+				*ea_leaf_ptr = 0;
 		}
-		if (pass->finish_eattr_indir) {
-			if (!first_ea_is_bad) {
-				/* If the first ea is good but subsequent ones
-				   were bad and deleted, we need to restore
-				   the saved di_eattr block. */
-				if (leaf_pointer_errors)
-					ip->i_di.di_eattr = di_eattr_save;
+		/* If the first eattr lead is bad, we can't have a hole, so we
+		   have to treat this as an unrecoverable eattr error and
+		   delete all eattr info. Calling finish_eattr_indir here
+		   causes ip->i_di.di_eattr = 0 and that ensures that
+		   subsequent calls to check_leaf_eattr result in the eattr
+		   check_leaf_block nuking them all "due to previous errors" */
+		if (leaf_pointers == 1 && leaf_pointer_errors == 1) {
+			first_ea_is_bad = 1;
+			if (pass->finish_eattr_indir)
 				pass->finish_eattr_indir(ip, leaf_pointers,
 							 leaf_pointer_errors,
 							 pass->private);
-			}
-			if (leaf_pointer_errors &&
-			    leaf_pointer_errors == leaf_pointers) {
-				delete_block(ip, indirect, NULL, "leaf", NULL);
-				error = 1;
-			}
+		} else if (leaf_pointer_errors) {
+			/* This is a bit tricky.  We can't have eattr holes.
+			   So if we have 4 good eattrs, 1 bad eattr and 5 more
+			   good ones: GGGGBGGGGG, we need to tell
+			   check_leaf_eattr to delete all eattrs after the bad
+			   one. So we want: GGGG when we finish. To do that,
+			   we set di_eattr to 0 temporarily. */
+			ip->i_di.di_eattr = 0;
+			bmodified(ip->i_bh);
+		}
+		ea_leaf_ptr++;
+	}
+	if (pass->finish_eattr_indir) {
+		if (!first_ea_is_bad) {
+			/* If the first ea is good but subsequent ones were
+			   bad and deleted, we need to restore the saved
+			   di_eattr block. */
+			if (leaf_pointer_errors)
+				ip->i_di.di_eattr = di_eattr_save;
+			pass->finish_eattr_indir(ip, leaf_pointers,
+						 leaf_pointer_errors,
+						 pass->private);
+		}
+		if (leaf_pointer_errors &&
+		    leaf_pointer_errors == leaf_pointers) {
+			delete_block(ip, indirect, NULL, "leaf", NULL);
+			error = 1;
 		}
 	}
-	if (indirect_buf)
-		brelse(indirect_buf);
 
 	return error;
 }
@@ -1174,25 +1156,38 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 int check_inode_eattr(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	int error = 0;
+	struct gfs2_buffer_head *indirect_buf = NULL;
 
 	if (!ip->i_di.di_eattr)
 		return 0;
 
 	if (ip->i_di.di_flags & GFS2_DIF_EA_INDIRECT){
+		if (!pass->check_eattr_indir)
+			return 0;
+
 		log_debug( _("Checking EA indirect block #%llu (0x%llx) for "
 			     "inode #%llu (0x%llx)..\n"),
 			   (unsigned long long)ip->i_di.di_eattr,
 			   (unsigned long long)ip->i_di.di_eattr,
 			   (unsigned long long)ip->i_di.di_num.no_addr,
 			   (unsigned long long)ip->i_di.di_num.no_addr);
-		if ((error = check_indirect_eattr(ip, ip->i_di.di_eattr, pass)))
-			stack;
-	} else {
-		error = check_leaf_eattr(ip, ip->i_di.di_eattr,
-					 ip->i_di.di_num.no_addr, pass);
-		if (error)
-			stack;
+		error = pass->check_eattr_indir(ip, ip->i_di.di_eattr,
+						ip->i_di.di_num.no_addr,
+						&indirect_buf, pass->private);
+		if (!error) {
+			error = check_indirect_eattr(ip, ip->i_di.di_eattr,
+						     indirect_buf, pass);
+			if (error)
+				stack;
+		}
+		if (indirect_buf)
+			brelse(indirect_buf);
+		return error;
 	}
+	error = check_leaf_eattr(ip, ip->i_di.di_eattr,
+				 ip->i_di.di_num.no_addr, pass);
+	if (error)
+		stack;
 
 	return error;
 }
