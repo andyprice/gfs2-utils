@@ -33,6 +33,16 @@ struct clone_target {
 	int first;
 };
 
+struct meta_blk_ref {
+	uint64_t block; /* block to locate */
+	uint64_t metablock; /* returned metadata block addr containing ref */
+	int off; /* offset to the reference within the buffer */
+};
+
+static int clone_data(struct gfs2_inode *ip, uint64_t metablock,
+		      uint64_t block, void *private,
+		      struct gfs2_buffer_head *bh, uint64_t *ptr);
+
 static void log_inode_reference(struct duptree *dt, osi_list_t *tmp, int inval)
 {
 	char reftypestring[32];
@@ -55,6 +65,108 @@ static void log_inode_reference(struct duptree *dt, osi_list_t *tmp, int inval)
 		  (unsigned long long)id->block_no, id->dup_count,
 		  (unsigned long long)dt->block,
 		  (unsigned long long)dt->block, reftypestring);
+}
+
+static int findref_meta(struct gfs2_inode *ip, uint64_t block,
+			struct gfs2_buffer_head **bh, int h,
+			int *is_valid, int *was_duplicate, void *private)
+{
+	*is_valid = 1;
+	*was_duplicate = 0;
+	return meta_is_good;
+}
+
+static int findref_data(struct gfs2_inode *ip, uint64_t metablock,
+			uint64_t block, void *private,
+			struct gfs2_buffer_head *bh, uint64_t *ptr)
+{
+	struct meta_blk_ref *mbr = (struct meta_blk_ref *)private;
+
+	if (block == mbr->block) {
+		mbr->metablock = bh->b_blocknr;
+		mbr->off = (ptr - (uint64_t *)bh->b_data);
+		log_debug("Duplicate data reference located on metadata "
+			  "block 0x%llx, offset 0x%x\n",
+			  (unsigned long long)mbr->metablock, mbr->off);
+	}
+	return meta_is_good;
+}
+
+static void clone_data_block(struct gfs2_sbd *sdp, struct duptree *dt,
+			     struct inode_with_dups *id)
+{
+	struct meta_blk_ref metaref = { .block = dt->block, };
+	struct metawalk_fxns find1ref_fxns = {
+		.private = &metaref,
+		.check_metalist = findref_meta,
+		.check_data = findref_data,
+	};
+	struct clone_target clone = {.dup_block = dt->block,};
+	struct gfs2_inode *ip;
+	struct gfs2_buffer_head *bh;
+	uint64_t *ptr;
+
+	if (!(query(_("Okay to clone data block %lld (0x%llx) for inode "
+		      "%lld (0x%llx)? (y/n) "),
+		    (unsigned long long)dt->block,
+		    (unsigned long long)dt->block,
+		    (unsigned long long)id->block_no,
+		    (unsigned long long)id->block_no))) {
+		log_warn(_("The duplicate reference was not cloned.\n"));
+		return;
+	}
+	ip = fsck_load_inode(sdp, id->block_no);
+	check_metatree(ip, &find1ref_fxns);
+	if (metaref.metablock == 0) {
+		log_err(_("Unable to clone data block.\n"));
+	} else {
+		if (metaref.metablock != id->block_no)
+			bh = bread(sdp, metaref.metablock);
+		else
+			bh = ip->i_bh;
+		ptr = (uint64_t *)bh->b_data + metaref.off;
+		clone_data(ip, 0, dt->block, &clone, bh, ptr);
+		if (metaref.metablock != id->block_no)
+			brelse(bh);
+		else
+			bmodified(ip->i_bh);
+	}
+	fsck_inode_put(&ip); /* out, brelse, free */
+}
+
+/* revise_dup_handler - get current information about a duplicate reference
+ *
+ * Function resolve_dup_references can delete dinodes that reference blocks
+ * which may have duplicate references. Therefore, the duplicate tree is
+ * constantly being changed. This function revises the duplicate handler so
+ * that it accurately matches what's in the duplicate tree regarding this block
+ */
+static void revise_dup_handler(uint64_t dup_blk, struct dup_handler *dh)
+{
+	osi_list_t *tmp;
+	struct duptree *dt;
+	struct inode_with_dups *id;
+
+	dh->ref_inode_count = 0;
+	dh->ref_count = 0;
+	dh->dt = NULL;
+
+	dt = dupfind(dup_blk);
+	if (!dt)
+		return;
+
+	dh->dt = dt;
+	/* Count the duplicate references, both valid and invalid */
+	osi_list_foreach(tmp, &dt->ref_invinode_list) {
+		id = osi_list_entry(tmp, struct inode_with_dups, list);
+		dh->ref_inode_count++;
+		dh->ref_count += id->dup_count;
+	}
+	osi_list_foreach(tmp, &dt->ref_inode_list) {
+		id = osi_list_entry(tmp, struct inode_with_dups, list);
+		dh->ref_inode_count++;
+		dh->ref_count += id->dup_count;
+	}
 }
 
 /*
@@ -164,6 +276,12 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 				dup_listent_delete(dt, id);
 				continue;
 			}
+		} else if (acceptable_ref == ref_types &&
+			   this_ref == ref_as_data) {
+			clone_data_block(sdp, dt, id);
+			dup_listent_delete(dt, id);
+			revise_dup_handler(dt->block, dh);
+			continue;
 		} else if (!(query( _("Okay to delete %s inode %lld (0x%llx)? "
 				      "(y/n) "),
 				    (inval ? _("invalidated") : ""),
@@ -215,9 +333,11 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 				ip->i_di.di_flags &= ~GFS2_DIF_EA_INDIRECT;
 				bmodified(ip->i_bh);
 				dup_listent_delete(dt, id);
+				(dh->ref_inode_count)--;
 			} else {
 				/* Clear the EAs for the inode first */
 				check_inode_eattr(ip, &pass1b_fxns_delete);
+				(dh->ref_inode_count)--;
 			}
 			/* If the reference was as metadata or data, we've got
 			   a corrupt dinode that will be deleted. */
@@ -261,41 +381,6 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 	return;
 }
 
-/* revise_dup_handler - get current information about a duplicate reference
- *
- * Function resolve_dup_references can delete dinodes that reference blocks
- * which may have duplicate references. Therefore, the duplicate tree is
- * constantly being changed. This function revises the duplicate handler so
- * that it accurately matches what's in the duplicate tree regarding this block
- */
-static void revise_dup_handler(uint64_t dup_blk, struct dup_handler *dh)
-{
-	osi_list_t *tmp;
-	struct duptree *dt;
-	struct inode_with_dups *id;
-
-	dh->ref_inode_count = 0;
-	dh->ref_count = 0;
-	dh->dt = NULL;
-
-	dt = dupfind(dup_blk);
-	if (!dt)
-		return;
-
-	dh->dt = dt;
-	/* Count the duplicate references, both valid and invalid */
-	osi_list_foreach(tmp, &dt->ref_invinode_list) {
-		id = osi_list_entry(tmp, struct inode_with_dups, list);
-		dh->ref_inode_count++;
-		dh->ref_count += id->dup_count;
-	}
-	osi_list_foreach(tmp, &dt->ref_inode_list) {
-		id = osi_list_entry(tmp, struct inode_with_dups, list);
-		dh->ref_inode_count++;
-		dh->ref_count += id->dup_count;
-	}
-}
-
 static int clone_check_meta(struct gfs2_inode *ip, uint64_t block,
 			    struct gfs2_buffer_head **bh, int h,
 			    int *is_valid, int *was_duplicate, void *private)
@@ -333,8 +418,8 @@ static int clone_data(struct gfs2_inode *ip, uint64_t metablock,
 		clonet->first = 0;
 		return 0;
 	}
-	log_err(_("Error: Inode %lld (0x%llx)'s subsequent reference to "
-		  "block %lld (0x%llx) is an error.\n"),
+	log_err(_("Error: Inode %lld (0x%llx)'s reference to block %lld "
+		  "(0x%llx) should be replaced with a clone.\n"),
 		(unsigned long long)ip->i_di.di_num.no_addr,
 		(unsigned long long)ip->i_di.di_num.no_addr,
 		(unsigned long long)block, (unsigned long long)block);
@@ -398,6 +483,11 @@ static void clone_dup_ref_in_inode(struct gfs2_inode *ip, struct duptree *dt)
 		.check_data = clone_data,
 	};
 
+	log_err(_("There are multiple references to block %lld (0x%llx) in "
+		  "inode %lld (0x%llx)\n"),
+		(unsigned long long)ip->i_di.di_num.no_addr,
+		(unsigned long long)ip->i_di.di_num.no_addr,
+		(unsigned long long)dt->block, (unsigned long long)dt->block);
 	error = check_metatree(ip, &pass1b_fxns_clone);
 	if (error) {
 		log_err(_("Error cloning duplicate reference(s) to block %lld "
