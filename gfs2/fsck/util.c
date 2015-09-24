@@ -556,7 +556,6 @@ struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
 		free(il);
 		il = NULL;
 	}
-	osi_list_init(&sdp->eattr_blocks.list);
 	return il;
 }
 
@@ -584,7 +583,6 @@ void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il)
 		free(il);
 		il = NULL;
 	}
-	gfs2_special_free(&sdp->eattr_blocks);
 	return il;
 }
 
