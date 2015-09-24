@@ -585,6 +585,24 @@ static int ask_remove_inode_eattr(struct gfs2_inode *ip,
 	return 0;
 }
 
+/* complain_eas - complain about extended attribute errors for an inode
+ *
+ * @ip       - in core inode pointer
+ * block     - the block that had the problem
+ * duplicate - if this is a duplicate block, don't set it "free"
+ * emsg      - what to tell the user about the eas being checked
+ * Returns: 1 if the EA is fixed, else 0 if it was not fixed.
+ */
+static void complain_eas(struct gfs2_inode *ip, uint64_t block,
+			 const char *emsg)
+{
+	log_err(_("Inode #%llu (0x%llx): %s"),
+		(unsigned long long)ip->i_di.di_num.no_addr,
+		(unsigned long long)ip->i_di.di_num.no_addr, emsg);
+	log_err(_(" at block #%lld (0x%llx).\n"),
+		 (unsigned long long)block, (unsigned long long)block);
+}
+
 /* clear_eas - clear the extended attributes for an inode
  *
  * @ip       - in core inode pointer
@@ -597,11 +615,7 @@ static int ask_remove_inode_eattr(struct gfs2_inode *ip,
 static int clear_eas(struct gfs2_inode *ip, struct block_count *bc,
 		     uint64_t block, int duplicate, const char *emsg)
 {
-	log_err( _("Inode #%llu (0x%llx): %s"),
-		(unsigned long long)ip->i_di.di_num.no_addr,
-		(unsigned long long)ip->i_di.di_num.no_addr, emsg);
-	log_err( _(" at block #%lld (0x%llx).\n"),
-		 (unsigned long long)block, (unsigned long long)block);
+	complain_eas(ip, block, emsg);
 	if (query( _("Clear the bad Extended Attribute? (y/n) "))) {
 		if (block == ip->i_di.di_eattr) {
 			remove_inode_eattr(ip, bc);
@@ -646,11 +660,15 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 		if (q != GFS2_BLKST_FREE) { /* Duplicate? */
 			add_duplicate_ref(ip, indirect, ref_as_ea, 0,
 					  INODE_VALID);
-			if (!clear_eas(ip, bc, indirect, 1,
-				       _("Bad indirect Extended Attribute "
-					 "duplicate found")))
-				bc->ea_count++;
-			return 1;
+			complain_eas(ip, indirect,
+				     _("Bad indirect Extended Attribute "
+				       "duplicate found"));
+			bc->ea_count++;
+			/* Return 0 here because if all that's wrong is a
+			   duplicate block reference, we want pass1b to figure
+			   it out. We don't want to delete all the extended
+			   attributes as if they are in error. */
+			return 0;
 		}
 		clear_eas(ip, bc, indirect, 0,
 			  _("Extended Attribute indirect block has incorrect "
@@ -658,16 +676,11 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 		return 1;
 	}
 	if (q != GFS2_BLKST_FREE) { /* Duplicate? */
-		log_err( _("Inode #%llu (0x%llx): Duplicate Extended "
-			   "Attribute indirect block found at #%llu "
-			   "(0x%llx).\n"),
-			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)indirect,
-			 (unsigned long long)indirect);
 		add_duplicate_ref(ip, indirect, ref_as_ea, 0, INODE_VALID);
+		complain_eas(ip, indirect,
+			     _("Duplicate Extended Attribute indirect block"));
 		bc->ea_count++;
-		ret = 1;
+		ret = 0; /* For the same reason stated above. */
 	} else {
 		fsck_blockmap_set(ip, indirect,
 				  _("indirect Extended Attribute"), sdp->gfs1 ?
@@ -740,27 +753,34 @@ static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 	   If it isn't, clear it but don't count it as a duplicate. */
 	leaf_bh = bread(sdp, block);
 	if (gfs2_check_meta(leaf_bh, btype)) {
+		bc->ea_count++;
 		if (q != GFS2_BLKST_FREE) { /* Duplicate? */
 			add_duplicate_ref(ip, block, ref_as_ea, 0,
 					  INODE_VALID);
-			clear_eas(ip, bc, block, 1,
-				  _("Bad Extended Attribute duplicate found"));
-		} else {
-			clear_eas(ip, bc, block, 0,
-				  _("Extended Attribute leaf block "
-				    "has incorrect type"));
+			complain_eas(ip, block, _("Extended attribute leaf "
+						  "duplicate found"));
+			/* Return 0 here because if all that's wrong is a
+			   duplicate block reference, we want pass1b to figure
+			   it out. We don't want to delete all the extended
+			   attributes as if they are in error. */
+			return 0;
 		}
+		clear_eas(ip, bc, block, 0, _("Extended Attribute leaf block "
+					      "has incorrect type"));
 		brelse(leaf_bh);
 		return 1;
 	}
 	if (q != GFS2_BLKST_FREE) { /* Duplicate? */
-		log_debug( _("Duplicate block found at #%lld (0x%llx).\n"),
-			   (unsigned long long)block,
-			   (unsigned long long)block);
+		complain_eas(ip, block, _("Extended Attribute leaf "
+					  "duplicate found"));
 		add_duplicate_ref(ip, block, ref_as_data, 0, INODE_VALID);
 		bc->ea_count++;
 		brelse(leaf_bh);
-		return 1;
+		/* Return 0 here because if all that's wrong is a duplicate
+		   block reference, we want pass1b to figure it out. We don't
+		   want to delete all the extended attributes as if they are
+		   in error. */
+		return 0;
 	}
 	if (ip->i_di.di_eattr == 0) {
 		/* Can only get in here if there were unrecoverable ea
