@@ -18,7 +18,7 @@
 #include "util.h"
 
 const char *reftypes[ref_types + 1] = {"data", "metadata",
-				       "extended attribute", "itself",
+				       "an extended attribute", "an inode",
 				       "unimportant"};
 
 void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked)
@@ -401,9 +401,14 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 		  (unsigned long long)ip->i_di.di_num.no_addr);
 	if (first)
 		log_info( _("This is the original reference.\n"));
-	else
-		log_info( _("This brings the total to: %d references\n"),
-			  dt->refs);
+	else {
+		/* Check for duplicate refs to the same block in one inode. */
+		if (id->dup_count > 1)
+			dt->dup_flags |= DUPFLAG_REF1_FOUND;
+		log_info( _("This brings the total to: %d inode references, "
+			    "%d from this inode.\n"),
+			  dt->refs, id->dup_count);
+	}
 	return meta_is_good;
 }
 
