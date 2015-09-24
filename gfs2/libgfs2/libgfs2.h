@@ -304,8 +304,6 @@ struct gfs2_sbd {
 	struct gfs2_inode *master_dir;
 	struct master_dir md;
 
-	struct special_blocks eattr_blocks;
-
 	uint64_t rg_one_length;
 	uint64_t rg_length;
 	int gfs1;

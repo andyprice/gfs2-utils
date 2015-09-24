@@ -684,8 +684,6 @@ static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 			      int leaf_pointer_errors, void *private)
 {
 	struct block_count *bc = (struct block_count *) private;
-	osi_list_t *head;
-	struct special_blocks *b = NULL;
 
 	if (leaf_pointer_errors == leaf_pointers) /* All eas were bad */
 		return ask_remove_inode_eattr(ip, bc);
@@ -693,18 +691,6 @@ static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 		     "attribute block\n"),
 		   (unsigned long long)ip->i_di.di_num.no_addr,
 		   (unsigned long long)ip->i_di.di_num.no_addr);
-	/* Mark the inode as having an eattr in the block map
-	   so pass1c can check it. We may have previously added this inode
-	   to the eattr_blocks list and if we did, it would be the first
-	   one on the list.  So check that one only (to save time) and
-	   if that one matches, no need to add it again. */
-	if (!osi_list_empty(&ip->i_sbd->eattr_blocks.list)) {
-		head = &ip->i_sbd->eattr_blocks.list;
-		b = osi_list_entry(head->next, struct special_blocks, list);
-	}
-	if (!b || b->block != ip->i_di.di_num.no_addr)
-		gfs2_special_add(&ip->i_sbd->eattr_blocks,
-				 ip->i_di.di_num.no_addr);
 	if (!leaf_pointer_errors)
 		return 0;
 	log_err( _("Inode %lld (0x%llx) has recoverable indirect "
@@ -774,7 +760,7 @@ static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 	}
 	/* Point of confusion: We've got to set the ea block itself to
 	   GFS2_BLKST_USED here.  Elsewhere we mark the inode with
-	   gfs2_eattr_block meaning it contains an eattr for pass1c. */
+	   gfs2_eattr_block meaning it contains an eattr. */
 	fsck_blockmap_set(ip, block, _("Extended Attribute"),
 			  sdp->gfs1 ? GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	bc->ea_count++;
@@ -830,24 +816,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			    void *private)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	osi_list_t *head;
-	struct special_blocks *b = NULL;
 
-	/* This inode contains an eattr - it may be invalid, but the
-	 * eattr attributes points to a non-zero block.
-	 * Clarification: If we're here we're checking a leaf block, and the
-	 * source dinode needs to be marked as having extended attributes.
-	 * That instructs pass1c to check the contents of the ea blocks. */
-	log_debug( _("Setting inode %lld (0x%llx) as having eattr "
-		     "block(s) attached.\n"),
-		   (unsigned long long)ip->i_di.di_num.no_addr,
-		   (unsigned long long)ip->i_di.di_num.no_addr);
-	if (!osi_list_empty(&ip->i_sbd->eattr_blocks.list)) {
-		head = &ip->i_sbd->eattr_blocks.list;
-		b = osi_list_entry(head->next, struct special_blocks, list);
-	}
-	if (!b || b->block != ip->i_di.di_num.no_addr)
-		gfs2_special_add(&sdp->eattr_blocks, ip->i_di.di_num.no_addr);
 	if (!valid_block(sdp, block)) {
 		log_warn( _("Inode #%llu (0x%llx): Extended Attribute leaf "
 			    "block #%llu (0x%llx) is invalid or out of "
@@ -863,6 +832,41 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 	return check_ealeaf_block(ip, block, GFS2_METATYPE_EA, bh, private);
 }
 
+static int ask_remove_eattr_entry(struct gfs2_sbd *sdp,
+				  struct gfs2_buffer_head *leaf_bh,
+				  struct gfs2_ea_header *curr,
+				  struct gfs2_ea_header *prev,
+				  int fix_curr, int fix_curr_len)
+{
+	if (!query( _("Remove the bad Extended Attribute entry? (y/n) "))) {
+		log_err( _("Bad Extended Attribute not removed.\n"));
+		return 0;
+	}
+	if (fix_curr)
+		curr->ea_flags |= GFS2_EAFLAG_LAST;
+	if (fix_curr_len) {
+		uint32_t max_size = sdp->sd_sb.sb_bsize;
+		uint32_t offset = (uint32_t)(((unsigned long)curr) -
+					     ((unsigned long)leaf_bh->b_data));
+		curr->ea_rec_len = cpu_to_be32(max_size - offset);
+	}
+	if (!prev)
+		curr->ea_type = GFS2_EATYPE_UNUSED;
+	else {
+		uint32_t tmp32 = be32_to_cpu(curr->ea_rec_len) +
+			be32_to_cpu(prev->ea_rec_len);
+		prev->ea_rec_len = cpu_to_be32(tmp32);
+		if (curr->ea_flags & GFS2_EAFLAG_LAST)
+			prev->ea_flags |= GFS2_EAFLAG_LAST;	
+	}
+	log_err( _("Bad Extended Attribute at block #%llu"
+		   " (0x%llx) removed.\n"),
+		 (unsigned long long)leaf_bh->b_blocknr,
+		 (unsigned long long)leaf_bh->b_blocknr);
+	bmodified(leaf_bh);
+	return 1;
+}
+
 static int check_eattr_entries(struct gfs2_inode *ip,
 			       struct gfs2_buffer_head *leaf_bh,
 			       struct gfs2_ea_header *ea_hdr,
@@ -871,12 +875,32 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	char ea_name[256];
+	uint32_t offset = (uint32_t)(((unsigned long)ea_hdr) -
+				     ((unsigned long)leaf_bh->b_data));
+	uint32_t max_size = sdp->sd_sb.sb_bsize;
 	uint32_t avail_size;
 	int max_ptrs;
 
 	if (!ea_hdr->ea_name_len){
-		/* Skip this entry for now */
-		return 1;
+		log_err( _("EA has name length of zero\n"));
+		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+					      ea_hdr_prev, 1, 1);
+	}
+	if (offset + be32_to_cpu(ea_hdr->ea_rec_len) > max_size){
+		log_err( _("EA rec length too long\n"));
+		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+					      ea_hdr_prev, 1, 1);
+	}
+	if (offset + be32_to_cpu(ea_hdr->ea_rec_len) == max_size &&
+	   (ea_hdr->ea_flags & GFS2_EAFLAG_LAST) == 0){
+		log_err( _("last EA has no last entry flag\n"));
+		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+					      ea_hdr_prev, 0, 0);
+	}
+	if (!ea_hdr->ea_name_len){
+		log_err( _("EA has name length of zero\n"));
+		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+					      ea_hdr_prev, 0, 0);
 	}
 
 	memset(ea_name, 0, sizeof(ea_name));
@@ -888,7 +912,8 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 		/* Skip invalid entry */
 		log_err(_("EA (%s) type is invalid (%d > %d).\n"),
 			ea_name, ea_hdr->ea_type, GFS2_EATYPE_LAST);
-		return 1;
+		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+					      ea_hdr_prev, 0, 0);
 	}
 
 	if (!ea_hdr->ea_num_ptrs)
@@ -902,7 +927,8 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 			ea_name);
 		log_err(_("  Required:  %d\n  Reported:  %d\n"),
 			max_ptrs, ea_hdr->ea_num_ptrs);
-		return 1;
+		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+					      ea_hdr_prev, 0, 0);
 	} else {
 		log_debug( _("  Pointers Required: %d\n  Pointers Reported: %d\n"),
 			   max_ptrs, ea_hdr->ea_num_ptrs);

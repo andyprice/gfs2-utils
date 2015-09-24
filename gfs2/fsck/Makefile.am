@@ -21,7 +21,6 @@ fsck_gfs2_SOURCES = \
 	metawalk.c \
 	pass1b.c \
 	pass1.c \
-	pass1c.c \
 	pass2.c \
 	pass3.c \
 	pass4.c \
