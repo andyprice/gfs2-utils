@@ -553,17 +553,6 @@ static int check_data(struct gfs2_inode *ip, uint64_t metablock,
 	return 0;
 }
 
-static int remove_inode_eattr(struct gfs2_inode *ip, struct block_count *bc)
-{
-	undo_reference(ip, ip->i_di.di_eattr, 0, bc);
-	ip->i_di.di_eattr = 0;
-	bc->ea_count = 0;
-	ip->i_di.di_blocks = 1 + bc->indir_count + bc->data_count;
-	ip->i_di.di_flags &= ~GFS2_DIF_EA_INDIRECT;
-	bmodified(ip->i_bh);
-	return 0;
-}
-
 static int ask_remove_inode_eattr(struct gfs2_inode *ip,
 				  struct block_count *bc)
 {
@@ -573,11 +562,13 @@ static int ask_remove_inode_eattr(struct gfs2_inode *ip,
 		   "errors.\n"), (unsigned long long)ip->i_di.di_num.no_addr,
 		 (unsigned long long)ip->i_di.di_num.no_addr);
 	if (query( _("Clear all Extended Attributes from the inode? (y/n) "))){
-		if (!remove_inode_eattr(ip, bc))
-			log_err( _("Extended attributes were removed.\n"));
-		else
-			log_err( _("Unable to remove inode eattr pointer; "
-				   "the error remains.\n"));
+		undo_reference(ip, ip->i_di.di_eattr, 0, bc);
+		ip->i_di.di_eattr = 0;
+		bc->ea_count = 0;
+		ip->i_di.di_blocks = 1 + bc->indir_count + bc->data_count;
+		ip->i_di.di_flags &= ~GFS2_DIF_EA_INDIRECT;
+		bmodified(ip->i_bh);
+		log_err( _("Extended attributes were removed.\n"));
 	} else {
 		log_err( _("Extended attributes were not removed.\n"));
 	}
