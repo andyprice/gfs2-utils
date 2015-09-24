@@ -1454,6 +1454,10 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 	uint64_t metablock = bh->b_blocknr;
 
 	/* If there isn't much pointer corruption check the pointers */
+	log_debug(_("\nProcessing data blocks for inode 0x%llx, metadata "
+		    "block 0x%llx.\n"),
+		  (unsigned long long)ip->i_di.di_num.no_addr,
+		  (unsigned long long)bh->b_blocknr);
 	for (ptr = ptr_start ; (char *)ptr < ptr_end && !fsck_abort; ptr++) {
 		if (!*ptr)
 			continue;
