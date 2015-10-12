@@ -302,8 +302,8 @@ uint32_t lgfs2_rgrp_align_len(const lgfs2_rgrps_t rgs, uint32_t len)
  * rgs: The resource groups descriptor
  * space: The number of remaining blocks to be allocated
  * tgtsize: The target resource group size in blocks
- * Returns the larger of the calculated resource group sizes, in blocks, or 0
- * if the smaller would be less than GFS2_MIN_RGSIZE.
+ * Returns the number of resource groups planned to fit in the given space, or
+ * 0 if the smallest resource group would be smaller than GFS2_MIN_RGSIZE.
  */
 uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgtsize)
 {
@@ -352,11 +352,10 @@ uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgts
 	/* Once we've reached this point,
 	   (plan[0].num * plan[0].len) + (plan[1].num * plan[1].len)
 	   will be less than one adjustment smaller than 'space'.  */
-
 	if (rgs->plan[0].len < minlen)
 		return 0;
 
-	return rgs->plan[0].len;
+	return rgs->plan[0].num + rgs->plan[1].num;
 }
 
 /**
