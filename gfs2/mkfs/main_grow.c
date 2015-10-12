@@ -32,7 +32,6 @@
 static uint64_t override_device_size = 0;
 static int test = 0;
 static uint64_t fssize = 0, fsgrowth;
-static unsigned int rgsize = 0;
 int print_level = MSG_NOTICE;
 
 extern int create_new_inode(struct gfs2_sbd *sdp);
@@ -315,7 +314,6 @@ static void print_info(struct gfs2_sbd *sdp, char *device, char *mnt_path)
 	log_notice("FS: %-25s%s\n", _("Device:"), device);
 	log_notice("FS: %-25s%llu (0x%llx)\n", _("Size:"),
 		   (unsigned long long)fssize, (unsigned long long)fssize);
-	log_notice("FS: %-25s%u (0x%x)\n", _("New resource group size:"), rgsize, rgsize);
 	log_notice("DEV: %-24s%llu (0x%llx)\n", _("Length:"),
 		   (unsigned long long)sdp->device.length,
 		   (unsigned long long)sdp->device.length);
@@ -359,7 +357,7 @@ int main(int argc, char *argv[])
 	sdp->qcsize = GFS2_DEFAULT_QCSIZE;
 	sdp->md.journals = 1;
 	decode_arguments(argc, argv, sdp);
-	
+
 	for(; (argc - optind) > 0; optind++) {
 		struct metafs mfs = {0};
 		struct mntent *mnt;
@@ -444,8 +442,8 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 		fsgrowth = (sdp->device.length - fssize);
-		rgsize = lgfs2_rgrps_plan(rgs, fsgrowth, ((GFS2_MAX_RGSIZE << 20) / sdp->bsize));
-		if (rgsize < ((GFS2_MIN_RGSIZE << 20) / sdp->bsize)) {
+		rgcount = lgfs2_rgrps_plan(rgs, fsgrowth, ((GFS2_MAX_RGSIZE << 20) / sdp->bsize));
+		if (rgcount == 0) {
 			log_err( _("The calculated resource group size is too small.\n"));
 			log_err( _("%s has not grown.\n"), argv[optind]);
 			error = -1;
