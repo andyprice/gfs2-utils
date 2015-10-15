@@ -28,6 +28,7 @@
 #include <linux/types.h>
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
+#include "progress.h"
 
 static void print_usage(const char *prog_name)
 {
@@ -653,9 +654,13 @@ static int add_rgrp(lgfs2_rgrps_t rgs, uint64_t *addr, uint32_t len, lgfs2_rgrp_
 
 static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts, uint64_t *rgaddr)
 {
+	struct gfs2_progress_bar progress;
 	uint64_t jfsize = lgfs2_space_for_data(sdp, sdp->bsize, opts->jsize << 20);
 	uint32_t rgsize = lgfs2_rgsize_for_data(jfsize, sdp->bsize);
 	unsigned j;
+
+	/* Initialise a progress bar for resource group creation. */
+	gfs2_progress_init(&progress, opts->journals, _("Adding journals: "), opts->quiet);
 
 	/* We'll build the jindex later so remember where we put the journals */
 	mkfs_journals = calloc(opts->journals, sizeof(*mkfs_journals));
@@ -667,6 +672,9 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 		int result;
 		lgfs2_rgrp_t rg;
 		struct gfs2_inode in = {0};
+
+		/* Update progress bar for journal creation. */
+		gfs2_progress_update(&progress, (j + 1));
 
 		if (opts->debug)
 			printf(_("Placing resource group for journal%u\n"), j);
@@ -715,21 +723,27 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 		}
 		mkfs_journals[j] = in.i_di.di_num;
 	}
+	gfs2_progress_close(&progress, _("Done\n"));
 
 	return 0;
 }
 
 static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts)
 {
+	struct gfs2_progress_bar progress;
 	uint64_t rgaddr = lgfs2_rgrp_align_addr(rgs, sdp->sb_addr + 1);
 	uint32_t rgblks = ((opts->rgsize << 20) / sdp->bsize);
+	uint32_t rgnum;
 	int result;
 
 	result = place_journals(sdp, rgs, opts, &rgaddr);
 	if (result != 0)
 		return result;
 
-	lgfs2_rgrps_plan(rgs, sdp->device.length - rgaddr, rgblks);
+	rgnum = lgfs2_rgrps_plan(rgs, sdp->device.length - rgaddr, rgblks);
+
+	/* Initialise a progress bar for resource group creation (after journal creation). */
+	gfs2_progress_init(&progress, (rgnum + opts->journals), _("Building resource groups: "), opts->quiet);
 
 	while (1) {
 		lgfs2_rgrp_t rg;
@@ -744,7 +758,12 @@ static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts
 			fprintf(stderr, _("Failed to build resource groups\n"));
 			return result;
 		}
+
+		/* Update progress bar with resource group address. */
+		gfs2_progress_update(&progress, (sdp->rgrps));
 	}
+	gfs2_progress_close(&progress, _("Done\n"));
+
 	return 0;
 }
 
@@ -949,11 +968,17 @@ int main(int argc, char *argv[])
 		fprintf(stderr, _("Error building '%s': %s\n"), "rindex", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+	if (!opts.quiet) {
+		printf("%s", _("Creating quota file: "));
+		fflush(stdout);
+	}
 	error = build_quota(&sbd);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "quota", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+	if (!opts.quiet)
+		printf("%s", _("Done\n"));
 
 	build_root(&sbd);
 	sb.sb_root_dir = sbd.md.rooti->i_di.di_num;
@@ -973,6 +998,11 @@ int main(int argc, char *argv[])
 
 	lgfs2_rgrps_free(&rgs);
 
+	if (!opts.quiet) {
+		printf("%s", _("Writing superblock and syncing: "));
+		fflush(stdout);
+	}
+
 	error = lgfs2_sb_write(&sb, opts.dev.fd, sbd.bsize);
 	if (error) {
 		perror(_("Failed to write superblock\n"));
@@ -991,8 +1021,9 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (!opts.quiet)
+	if (!opts.quiet) {
+		printf("%s", _("Done\n"));
 		print_results(&sb, &opts, sbd.rgrps, sbd.fssize);
-
+	}
 	return 0;
 }
