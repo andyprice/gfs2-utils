@@ -16,7 +16,11 @@ noinst_HEADERS = \
 	gfs2_mkfs.h \
 	metafs.h
 
-mkfs_gfs2_SOURCES = main_mkfs.c
+mkfs_gfs2_SOURCES = \
+	main_mkfs.c \
+	progress.c \
+	progress.h
+
 mkfs_gfs2_CPPFLAGS = $(COMMON_CPPFLAGS)
 mkfs_gfs2_CFLAGS = $(blkid_CFLAGS)
 mkfs_gfs2_LDFLAGS = $(blkid_LIBS)
