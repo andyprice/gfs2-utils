@@ -923,8 +923,16 @@ int main(int argc, char *argv[])
 	if (opts.confirm && !opts.override)
 		are_you_sure();
 
-	if (!S_ISREG(opts.dev.stat.st_mode) && opts.discard)
+	if (!S_ISREG(opts.dev.stat.st_mode) && opts.discard) {
+		if (!opts.quiet) {
+			printf("%s", _("Discarding device contents (may take a while on large devices): "));
+			fflush(stdout);
+		}
 		discard_blocks(opts.dev.fd, opts.dev.size, opts.debug);
+
+		if (!opts.quiet)
+			printf("%s", _("Done\n"));
+	}
 
 	error = place_rgrps(&sbd, rgs, &opts);
 	if (error) {
