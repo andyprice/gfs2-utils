@@ -610,7 +610,8 @@ void dump_journal(const char *journal, int tblk)
 		} else if ((ld_blocks > 0) &&
 			   (sbd.gfs1 || block_type == GFS2_METATYPE_LB)) {
 			print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log descriptor"
-				   " continuation block", abs_block, jb);
+				   " continuation block", abs_block,
+				   ((jb + wrappt) % j_size) / sbd.bsize);
 			eol(0);
 			print_gfs2("                    ");
 			ld_blocks -= print_ld_blks((uint64_t *)dummy_bh.b_data +
@@ -619,7 +620,7 @@ void dump_journal(const char *journal, int tblk)
 						   (dummy_bh.b_data +
 						    sbd.bsize), start_line,
 						   tblk, &tblk_off, 0, rgd,
-						   0, 1, NULL, 1);
+						   0, 1, NULL, 0);
 		} else if (block_type == 0) {
 			continue;
 		}
