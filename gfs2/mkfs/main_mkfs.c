@@ -373,45 +373,51 @@ static void opts_get(int argc, char *argv[], struct mkfs_opts *opts)
  *
  */
 
-static void test_locking(const char *lockproto, const char *locktable)
+static void test_locking(struct mkfs_opts *opts)
 {
 	const char *c;
 	/* Translators: A lock table is a string identifying a gfs2 file system
 	 * in a cluster, e.g. cluster_name:fs_name */
 	const char *errprefix = _("Invalid lock table:");
+	int table_required = (strcmp(opts->lockproto, "lock_gulm") == 0)
+	                  || (strcmp(opts->lockproto, "lock_dlm") == 0);
 
-	if (strcmp(lockproto, "lock_nolock") == 0) {
-		/*  Nolock is always ok.  */
-	} else if (strcmp(lockproto, "lock_gulm") == 0 ||
-		   strcmp(lockproto, "lock_dlm") == 0) {
-		if (locktable == NULL || *locktable == '\0') {
+	if ((strcmp(opts->lockproto, "lock_nolock") != 0) && !table_required)
+		die( _("Invalid lock protocol: %s\n"), opts->lockproto);
+
+	/* When lock_*lm is given as the lock protocol, require a lock table too */
+	if (!opts->got_locktable) {
+		if (table_required) {
 			fprintf(stderr, _("No lock table specified.\n"));
 			exit(-1);
 		}
-		for (c = locktable; *c; c++) {
-			if (!isalnum(*c) && (*c != '-') && (*c != '_') && (*c != ':'))
-				die("%s %s '%c'\n", errprefix, _("invalid character"), *c);
-		}
-
-		c = strstr(locktable, ":");
-		if (!c)
-			die("%s %s\n", errprefix, _("missing colon"));
-
-		if (c == locktable)
-			die("%s %s\n", errprefix, _("cluster name is missing"));
-		if (c - locktable > 32)
-			die("%s %s\n", errprefix, _("cluster name is too long"));
-
-		c++;
-		if (strstr(c, ":"))
-			die("%s %s\n", errprefix, _("contains more than one colon"));
-		if (!strlen(c))
-			die("%s %s\n", errprefix, _("file system name is missing"));
-		if (strlen(c) > 30)
-			die("%s %s\n", errprefix, _("file system name is too long"));
-	} else {
-		die( _("Invalid lock protocol: %s\n"), lockproto);
+		return;
 	}
+	/* User gave a lock table option, validate it */
+	if (*opts->locktable == '\0') {
+		fprintf(stderr, _("Lock table is empty.\n"));
+		exit(-1);
+	}
+	for (c = opts->locktable; *c; c++) {
+		if (!isalnum(*c) && (*c != '-') && (*c != '_') && (*c != ':'))
+			die("%s %s '%c'\n", errprefix, _("invalid character"), *c);
+	}
+	c = strstr(opts->locktable, ":");
+	if (!c)
+		die("%s %s\n", errprefix, _("missing colon"));
+
+	if (c == opts->locktable)
+		die("%s %s\n", errprefix, _("cluster name is missing"));
+	if (c - opts->locktable > 32)
+		die("%s %s\n", errprefix, _("cluster name is too long"));
+
+	c++;
+	if (strstr(c, ":"))
+		die("%s %s\n", errprefix, _("contains more than one colon"));
+	if (!strlen(c))
+		die("%s %s\n", errprefix, _("file system name is missing"));
+	if (strlen(c) > 30)
+		die("%s %s\n", errprefix, _("file system name is too long"));
 }
 
 static void are_you_sure(void)
@@ -499,7 +505,7 @@ static void opts_check(struct mkfs_opts *opts)
 		exit(1);
 	}
 
-	test_locking(opts->lockproto, opts->locktable);
+	test_locking(opts);
 
 	if (GFS2_MIN_RGSIZE > opts->rgsize || opts->rgsize > GFS2_MAX_RGSIZE)
 		/* Translators: gfs2 file systems are split into equal sized chunks called
