@@ -137,6 +137,8 @@ AC_CHECK_MEMBER([struct gfs2_dirent.de_rahead],[AC_DEFINE([GFS2_HAS_DE_RAHEAD],[
                 [], [[#include <linux/gfs2_ondisk.h>]])
 AC_CHECK_MEMBER([struct gfs2_dirent.de_cookie],[AC_DEFINE([GFS2_HAS_DE_COOKIE],[],[Dirent cookie field])],
                 [], [[#include <linux/gfs2_ondisk.h>]])
+AC_CHECK_MEMBER([struct gfs2_rgrp.rg_skip],[AC_DEFINE([GFS2_HAS_RG_SKIP],[],[Next resource group pointer])],
+                [], [[#include <linux/gfs2_ondisk.h>]])
 
 # libuuid is only required if struct gfs2_sb.sb_uuid exists
 if test "$sb_has_uuid" = "yes" -a "$have_uuid" = "no"; then
