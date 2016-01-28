@@ -204,6 +204,7 @@ AC_CONFIG_FILES([Makefile
 		 gfs2/tune/Makefile
 		 gfs2/man/Makefile
 		 gfs2/scripts/Makefile
+		 gfs2/glocktop/Makefile
 		 doc/Makefile
 		 tests/Makefile
 		 tests/atlocal
