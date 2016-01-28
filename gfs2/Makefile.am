@@ -9,4 +9,5 @@ SUBDIRS = \
 	mkfs \
 	man \
 	tune \
+	glocktop \
 	scripts
