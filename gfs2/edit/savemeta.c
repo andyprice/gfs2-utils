@@ -828,26 +828,28 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		exit(1);
 	}
 	/* Save off the superblock */
-	save_block(sbd.device_fd, &mfd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sbd.bsize, block);
+	save_block(sbd.device_fd, &mfd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sbd.bsize, 0);
 	/* If this is gfs1, save off the rindex because it's not
 	   part of the file system as it is in gfs2. */
 	if (sbd.gfs1) {
+		uint64_t blk;
 		int j;
 
-		block = sbd1->sb_rindex_di.no_addr;
-		save_block(sbd.device_fd, &mfd, block, block);
-		save_inode_data(&mfd, block);
+		blk = sbd1->sb_rindex_di.no_addr;
+		save_block(sbd.device_fd, &mfd, blk, blk);
+		save_inode_data(&mfd, blk);
 		/* In GFS1, journals aren't part of the RG space */
 		for (j = 0; j < journals_found; j++) {
 			log_debug("Saving journal #%d\n", j + 1);
-			for (block = journal_blocks[j];
-			     block < journal_blocks[j] + gfs1_journal_size;
-			     block++)
-				save_block(sbd.device_fd, &mfd, block, block);
+			for (blk = journal_blocks[j];
+			     blk < journal_blocks[j] + gfs1_journal_size;
+			     blk++)
+				save_block(sbd.device_fd, &mfd, blk, blk);
 		}
 	}
 	/* Walk through the resource groups saving everything within */
 	for (n = osi_first(&sbd.rgtree); n; n = osi_next(n)) {
+		uint64_t blk;
 		struct rgrp_tree *rgd;
 
 		rgd = (struct rgrp_tree *)n;
@@ -858,10 +860,10 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 			  (unsigned long long)rgd->ri.ri_addr,
 			  rgd->ri.ri_length);
 		/* Save off the rg and bitmaps */
-		for (block = rgd->ri.ri_addr;
-		     block < rgd->ri.ri_data0; block++) {
-			warm_fuzzy_stuff(block, FALSE);
-			save_block(sbd.device_fd, &mfd, block, block);
+		for (blk = rgd->ri.ri_addr;
+		     blk < rgd->ri.ri_data0; blk++) {
+			warm_fuzzy_stuff(blk, FALSE);
+			save_block(sbd.device_fd, &mfd, blk, blk);
 		}
 		/* Save off the other metadata: inodes, etc. if mode is not 'savergs' */
 		if (saveoption != 2) {
@@ -872,8 +874,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	/* Clean up */
 	/* There may be a gap between end of file system and end of device */
 	/* so we tell the user that we've processed everything. */
-	block = sbd.fssize;
-	warm_fuzzy_stuff(block, TRUE);
+	warm_fuzzy_stuff(sbd.fssize, TRUE);
 	printf("\nMetadata saved to file %s ", mfd.filename);
 	if (mfd.gziplevel) {
 		printf("(gzipped, level %d).\n", mfd.gziplevel);
