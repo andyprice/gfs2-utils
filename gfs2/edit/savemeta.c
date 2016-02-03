@@ -196,14 +196,16 @@ static const char *anthropomorphize(unsigned long long inhuman_value)
 /*
  * get_gfs_struct_info - get block type and structure length
  *
+ * @lbh - The block buffer to examine
+ * @owner - The block address of the parent structure
  * @block_type - pointer to integer to hold the block type
- * @struct_length - pointer to integet to hold the structure length
+ * @gstruct_len - pointer to integer to hold the structure length
  *
  * returns: 0 if successful
  *          -1 if this isn't gfs metadata.
  */
-static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, int *block_type,
-			       int *gstruct_len)
+static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, uint64_t owner,
+                               int *block_type, int *gstruct_len)
 {
 	struct gfs2_meta_header mh;
 	struct gfs2_inode *inode;
@@ -240,7 +242,7 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, int *block_type,
 		if (S_ISDIR(inode->i_di.di_mode) ||
 		     (sbd.gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR))
 			*gstruct_len = sbd.bsize;
-		else if (!inode->i_di.di_height && !block_is_systemfile(block) &&
+		else if (!inode->i_di.di_height && !block_is_systemfile(owner) &&
 			 !S_ISDIR(inode->i_di.di_mode))
 			*gstruct_len = sizeof(struct gfs2_dinode);
 		else
@@ -426,7 +428,7 @@ static int save_block(int fd, struct metafd *mfd, uint64_t blk, uint64_t owner)
 	   because we want to know if the source inode is a system inode
 	   not the block within the inode "blk". They may or may not
 	   be the same thing. */
-	if (get_gfs_struct_info(savebh, &blktype, &blklen) &&
+	if (get_gfs_struct_info(savebh, owner, &blktype, &blklen) &&
 	    !block_is_systemfile(owner)) {
 		brelse(savebh);
 		return 0; /* Not metadata, and not system file, so skip it */
