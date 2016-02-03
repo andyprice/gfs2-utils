@@ -684,7 +684,7 @@ int display_extended(void)
 		parse_rindex(tmp_inode, FALSE);
 		inode_put(&tmp_inode);
 		brelse(tmp_bh);
-	} else if (block_is_jindex()) {
+	} else if (block_is_jindex(block)) {
 		tmp_bh = bread(&sbd, block);
 		tmp_inode = lgfs2_inode_get(&sbd, tmp_bh);
 		if (tmp_inode == NULL)
