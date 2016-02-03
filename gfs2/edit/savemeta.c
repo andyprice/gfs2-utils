@@ -468,7 +468,7 @@ static int save_block(int fd, struct metafd *mfd, uint64_t blk, uint64_t owner)
 /*
  * save_ea_block - save off an extended attribute block
  */
-static void save_ea_block(struct metafd *mfd, struct gfs2_buffer_head *metabh)
+static void save_ea_block(struct metafd *mfd, struct gfs2_buffer_head *metabh, uint64_t owner)
 {
 	int e;
 	struct gfs2_ea_header ea;
@@ -486,7 +486,7 @@ static void save_ea_block(struct metafd *mfd, struct gfs2_buffer_head *metabh)
 			b = (uint64_t *)(metabh->b_data);
 			b += charoff + i;
 			blk = be64_to_cpu(*b);
-			save_block(sbd.device_fd, mfd, blk, block);
+			save_block(sbd.device_fd, mfd, blk, owner);
 		}
 		if (!ea.ea_rec_len)
 			break;
@@ -519,7 +519,7 @@ static void save_indirect_blocks(struct metafd *mfd, osi_list_t *cur_list,
 		blktype = save_block(sbd.device_fd, mfd, indir_block, owner);
 		if (blktype == GFS2_METATYPE_EA) {
 			nbh = bread(&sbd, indir_block);
-			save_ea_block(mfd, nbh);
+			save_ea_block(mfd, nbh, owner);
 			brelse(nbh);
 		}
 		if (height != hgt && /* If not at max height and */
@@ -640,7 +640,7 @@ static void save_inode_data(struct metafd *mfd, uint64_t iblk)
 		gfs2_meta_header_in(&mh, lbh);
 		if (mh.mh_magic == GFS2_MAGIC &&
 		    mh.mh_type == GFS2_METATYPE_EA)
-			save_ea_block(mfd, lbh);
+			save_ea_block(mfd, lbh, iblk);
 		else if (mh.mh_magic == GFS2_MAGIC &&
 			 mh.mh_type == GFS2_METATYPE_IN)
 			save_indirect_blocks(mfd, cur_list, lbh, iblk, 2, 2);
