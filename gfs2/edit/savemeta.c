@@ -714,6 +714,7 @@ static void get_journal_inode_blocks(void)
 static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 {
 	int blktype;
+	uint64_t blk;
 	unsigned i, j, m;
 	uint64_t *ibuf = malloc(sbd.bsize * GFS2_NBBY * sizeof(uint64_t));
 
@@ -721,11 +722,11 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_DINODE);
 
 		for (j = 0; j < m; j++) {
-			block = ibuf[j];
-			warm_fuzzy_stuff(block, FALSE);
-			blktype = save_block(sbd.device_fd, mfd, block, block);
+			blk = ibuf[j];
+			warm_fuzzy_stuff(blk, FALSE);
+			blktype = save_block(sbd.device_fd, mfd, blk, blk);
 			if (blktype == GFS2_METATYPE_DI)
-				save_inode_data(mfd, block);
+				save_inode_data(mfd, blk);
 		}
 
 		if (!sbd.gfs1)
@@ -735,7 +736,7 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 		 * If we don't, we may run into metadata allocation issues. */
 		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_UNLINKED);
 		for (j = 0; j < m; j++) {
-			save_block(sbd.device_fd, mfd, block, block);
+			save_block(sbd.device_fd, mfd, blk, blk);
 		}
 	}
 	free(ibuf);
