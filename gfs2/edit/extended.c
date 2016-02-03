@@ -693,7 +693,7 @@ int display_extended(void)
 		inode_put(&tmp_inode);
 		brelse(tmp_bh);
 	}
-	else if (block_is_inum_file()) {
+	else if (block_is_inum_file(block)) {
 		tmp_bh = bread(&sbd, block);
 		tmp_inode = lgfs2_inode_get(&sbd, tmp_bh);
 		if (tmp_inode == NULL)
