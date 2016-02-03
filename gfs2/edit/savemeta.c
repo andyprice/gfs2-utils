@@ -92,14 +92,14 @@ static void destroy_per_node_lookup(void)
 	}
 }
 
-static int block_is_in_per_node(void)
+static int block_is_in_per_node(uint64_t blk)
 {
 	struct per_node_node *pnp = (struct per_node_node *)per_node_tree.osi_node;
 
 	while (pnp) {
-		if (block < pnp->block)
+		if (blk < pnp->block)
 			pnp = (struct per_node_node *)pnp->node.osi_left;
-		else if (block > pnp->block)
+		else if (blk > pnp->block)
 			pnp = (struct per_node_node *)pnp->node.osi_right;
 		else
 			return 1;
@@ -169,7 +169,7 @@ static int block_is_systemfile(void)
 	return block_is_jindex() || block_is_inum_file() ||
 		block_is_statfs_file() || block_is_quota_file() ||
 		block_is_rindex() || block_is_a_journal(block) ||
-		block_is_per_node() || block_is_in_per_node();
+		block_is_per_node() || block_is_in_per_node(block);
 }
 
 /**
