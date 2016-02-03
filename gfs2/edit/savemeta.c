@@ -535,7 +535,7 @@ static void save_indirect_blocks(struct metafd *mfd, osi_list_t *cur_list,
  * save_inode_data - save off important data associated with an inode
  *
  * mfd - destination file descriptor
- * block - block number of the inode to save the data for
+ * iblk - block number of the inode to save the data for
  * 
  * For user files, we don't want anything except all the indirect block
  * pointers that reside on blocks on all but the highest height.
@@ -546,7 +546,7 @@ static void save_indirect_blocks(struct metafd *mfd, osi_list_t *cur_list,
  * For file system journals, the "data" is a mixture of metadata and
  * journaled data.  We want all the metadata and none of the user data.
  */
-static void save_inode_data(struct metafd *mfd)
+static void save_inode_data(struct metafd *mfd, uint64_t iblk)
 {
 	uint32_t height;
 	struct gfs2_inode *inode;
@@ -557,7 +557,7 @@ static void save_inode_data(struct metafd *mfd)
 
 	for (i = 0; i < GFS2_MAX_META_HEIGHT; i++)
 		osi_list_init(&metalist[i]);
-	metabh = bread(&sbd, block);
+	metabh = bread(&sbd, iblk);
 	if (sbd.gfs1) {
 		inode = lgfs2_gfs_inode_get(&sbd, metabh);
 	} else {
@@ -578,7 +578,7 @@ static void save_inode_data(struct metafd *mfd)
 	     (sbd.gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR)))
 		height++;
 	else if (height && !(inode->i_di.di_flags & GFS2_DIF_SYSTEM) &&
-		 !block_is_systemfile(block) && !S_ISDIR(inode->i_di.di_mode))
+		 !block_is_systemfile(iblk) && !S_ISDIR(inode->i_di.di_mode))
 		height--;
 	osi_list_add(&metabh->b_altlist, &metalist[0]);
         for (i = 1; i <= height; i++){
@@ -588,8 +588,8 @@ static void save_inode_data(struct metafd *mfd)
 		for (tmp = prev_list->next; tmp != prev_list; tmp = tmp->next){
 			mybh = osi_list_entry(tmp, struct gfs2_buffer_head,
 					      b_altlist);
-			warm_fuzzy_stuff(block, FALSE);
-			save_indirect_blocks(mfd, cur_list, mybh, block,
+			warm_fuzzy_stuff(iblk, FALSE);
+			save_indirect_blocks(mfd, cur_list, mybh, iblk,
 					     height, i);
 		} /* for blocks at that height */
 	} /* for height */
@@ -623,9 +623,9 @@ static void save_inode_data(struct metafd *mfd)
 				continue;
 			old_leaf = leaf_no;
 			mybh = bread(&sbd, leaf_no);
-			warm_fuzzy_stuff(block, FALSE);
+			warm_fuzzy_stuff(iblk, FALSE);
 			if (gfs2_check_meta(mybh, GFS2_METATYPE_LF) == 0)
-				save_block(sbd.device_fd, mfd, leaf_no, block);
+				save_block(sbd.device_fd, mfd, leaf_no, iblk);
 			brelse(mybh);
 		}
 	}
@@ -634,26 +634,26 @@ static void save_inode_data(struct metafd *mfd)
 		struct gfs2_buffer_head *lbh;
 
 		lbh = bread(&sbd, inode->i_di.di_eattr);
-		save_block(sbd.device_fd, mfd, inode->i_di.di_eattr, block);
+		save_block(sbd.device_fd, mfd, inode->i_di.di_eattr, iblk);
 		gfs2_meta_header_in(&mh, lbh);
 		if (mh.mh_magic == GFS2_MAGIC &&
 		    mh.mh_type == GFS2_METATYPE_EA)
 			save_ea_block(mfd, lbh);
 		else if (mh.mh_magic == GFS2_MAGIC &&
 			 mh.mh_type == GFS2_METATYPE_IN)
-			save_indirect_blocks(mfd, cur_list, lbh, block, 2, 2);
+			save_indirect_blocks(mfd, cur_list, lbh, iblk, 2, 2);
 		else {
 			if (mh.mh_magic == GFS2_MAGIC) /* if it's metadata */
 				save_block(sbd.device_fd, mfd,
-					   inode->i_di.di_eattr, block);
+					   inode->i_di.di_eattr, iblk);
 			fprintf(stderr,
 				"\nWarning: corrupt extended "
 				"attribute at block %llu (0x%llx) "
 				"detected in inode %lld (0x%llx).\n",
 				(unsigned long long)inode->i_di.di_eattr,
 				(unsigned long long)inode->i_di.di_eattr,
-				(unsigned long long)block,
-				(unsigned long long)block);
+				(unsigned long long)iblk,
+				(unsigned long long)iblk);
 		}
 		brelse(lbh);
 	}
@@ -723,7 +723,7 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 			warm_fuzzy_stuff(block, FALSE);
 			blktype = save_block(sbd.device_fd, mfd, block, block);
 			if (blktype == GFS2_METATYPE_DI)
-				save_inode_data(mfd);
+				save_inode_data(mfd, block);
 		}
 
 		if (!sbd.gfs1)
@@ -833,7 +833,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 
 		block = sbd1->sb_rindex_di.no_addr;
 		save_block(sbd.device_fd, &mfd, block, block);
-		save_inode_data(&mfd);
+		save_inode_data(&mfd, block);
 		/* In GFS1, journals aren't part of the RG space */
 		for (j = 0; j < journals_found; j++) {
 			log_debug("Saving journal #%d\n", j + 1);
