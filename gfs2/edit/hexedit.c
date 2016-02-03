@@ -45,6 +45,7 @@ int details = 0;
 long int gziplevel = 9;
 static int termcols;
 char *device = NULL;
+extern uint64_t block;
 
 /* ------------------------------------------------------------------------- */
 /* erase - clear the screen */

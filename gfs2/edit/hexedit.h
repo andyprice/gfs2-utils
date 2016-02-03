@@ -29,7 +29,6 @@ enum dsp_mode { HEX_MODE = 0, GFS2_MODE = 1, EXTENDED_MODE = 2, INIT_MODE = 3 };
 
 extern const char *mtypes[];
 extern struct gfs2_sb sb;
-extern uint64_t block;
 extern int blockhist;
 extern int edit_mode;
 extern int line;

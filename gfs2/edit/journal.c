@@ -28,6 +28,8 @@
 #include "gfs2hex.h"
 #include "journal.h"
 
+extern uint64_t block;
+
 /**
  * find_journal_block - figure out where a journal starts, given the name
  * Returns: journal block number, changes j_size to the journal size

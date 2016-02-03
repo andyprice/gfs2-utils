@@ -27,6 +27,8 @@
 #include "extended.h"
 #include "gfs2hex.h"
 
+extern uint64_t block;
+
 static void print_block_details(struct iinfo *ind, int level, int cur_height,
 				int pndx, uint64_t file_offset);
 
