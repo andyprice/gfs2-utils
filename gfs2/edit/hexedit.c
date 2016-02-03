@@ -904,14 +904,11 @@ int block_is_inum_file(uint64_t blk)
 	return FALSE;
 }
 
-/* ------------------------------------------------------------------------ */
-/* block_is_statfs_file                                                     */
-/* ------------------------------------------------------------------------ */
-int block_is_statfs_file(void)
+int block_is_statfs_file(uint64_t blk)
 {
-	if (sbd.gfs1 && block == gfs1_license_di.no_addr)
+	if (sbd.gfs1 && blk == gfs1_license_di.no_addr)
 		return TRUE;
-	if (!sbd.gfs1 && block == masterblock("statfs"))
+	if (!sbd.gfs1 && blk == masterblock("statfs"))
 		return TRUE;
 	return FALSE;
 }
@@ -949,7 +946,7 @@ static int block_has_extended_info(void)
 	    block_is_journals() ||
 	    block_is_jindex(block) ||
 	    block_is_inum_file(block) ||
-	    block_is_statfs_file() ||
+	    block_is_statfs_file(block) ||
 	    block_is_quota_file())
 		return TRUE;
 	return FALSE;
