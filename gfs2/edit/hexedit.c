@@ -879,13 +879,10 @@ int has_indirect_blocks(void)
 	return FALSE;
 }
 
-/* ------------------------------------------------------------------------ */
-/* block_is_rindex                                                          */
-/* ------------------------------------------------------------------------ */
-int block_is_rindex(void)
+int block_is_rindex(uint64_t blk)
 {
-	if ((sbd.gfs1 && block == sbd1->sb_rindex_di.no_addr) ||
-	    (block == masterblock("rindex")))
+	if ((sbd.gfs1 && blk == sbd1->sb_rindex_di.no_addr) ||
+	    (blk == masterblock("rindex")))
 		return TRUE;
 	return FALSE;
 }
@@ -938,7 +935,7 @@ int block_is_per_node(void)
 static int block_has_extended_info(void)
 {
 	if (has_indirect_blocks() ||
-	    block_is_rindex() ||
+	    block_is_rindex(block) ||
 	    block_is_rgtree() ||
 	    block_is_journals() ||
 	    block_is_jindex(block) ||
@@ -1187,7 +1184,7 @@ static void push_block(uint64_t blk)
 			blockstack[bhst].lines_per_row[i] = lines_per_row[i];
 		}
 		blockstack[bhst].gfs2_struct_type = gfs2_struct_type;
-		if (edit_row[dmode] >= 0 && !block_is_rindex())
+		if (edit_row[dmode] >= 0 && !block_is_rindex(block))
 			memcpy(&blockstack[bhst].mp,
 			       &indirect->ii[edit_row[dmode]].mp,
 			       sizeof(struct metapath));

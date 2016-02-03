@@ -168,7 +168,7 @@ static int block_is_systemfile(void)
 {
 	return block_is_jindex(block) || block_is_inum_file(block) ||
 		block_is_statfs_file(block) || block_is_quota_file(block) ||
-		block_is_rindex() || block_is_a_journal(block) ||
+		block_is_rindex(block) || block_is_a_journal(block) ||
 		block_is_per_node() || block_is_in_per_node(block);
 }
 
