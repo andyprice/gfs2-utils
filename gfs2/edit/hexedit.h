@@ -218,7 +218,7 @@ void die(const char *fmt, ...)
 		} \
 	} while (0)
 
-extern int block_is_jindex(void);
+extern int block_is_jindex(uint64_t blk);
 extern int block_is_rindex(void);
 extern int block_is_inum_file(void);
 extern int block_is_statfs_file(void);

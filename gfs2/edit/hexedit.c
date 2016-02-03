@@ -890,12 +890,9 @@ int block_is_rindex(void)
 	return FALSE;
 }
 
-/* ------------------------------------------------------------------------ */
-/* block_is_jindex                                                          */
-/* ------------------------------------------------------------------------ */
-int block_is_jindex(void)
+int block_is_jindex(uint64_t blk)
 {
-	if ((sbd.gfs1 && block == sbd1->sb_jindex_di.no_addr))
+	if ((sbd.gfs1 && blk == sbd1->sb_jindex_di.no_addr))
 		return TRUE;
 	return FALSE;
 }
@@ -953,7 +950,7 @@ static int block_has_extended_info(void)
 	    block_is_rindex() ||
 	    block_is_rgtree() ||
 	    block_is_journals() ||
-	    block_is_jindex() ||
+	    block_is_jindex(block) ||
 	    block_is_inum_file() ||
 	    block_is_statfs_file() ||
 	    block_is_quota_file())
