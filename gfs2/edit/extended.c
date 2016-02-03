@@ -654,7 +654,7 @@ int display_extended(void)
 
 	dsplines = termlines - line - 1;
 	/* Display any indirect pointers that we have. */
-	if (block_is_rindex()) {
+	if (block_is_rindex(block)) {
 		tmp_bh = bread(&sbd, block);
 		tmp_inode = lgfs2_inode_get(&sbd, tmp_bh);
 		if (tmp_inode == NULL)
