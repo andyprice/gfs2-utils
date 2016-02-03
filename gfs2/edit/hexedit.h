@@ -222,7 +222,7 @@ extern int block_is_jindex(uint64_t blk);
 extern int block_is_rindex(void);
 extern int block_is_inum_file(uint64_t blk);
 extern int block_is_statfs_file(uint64_t blk);
-extern int block_is_quota_file(void);
+extern int block_is_quota_file(uint64_t blk);
 extern int block_is_per_node(void);
 extern int display_block_type(int from_restore);
 extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
