@@ -114,9 +114,9 @@ extern enum dsp_mode dmode;
 /*                   special case meant to parse the rindex and follow the  */
 /*                   blocks to the real rgs.                                */
 /* ------------------------------------------------------------------------ */
-static inline int block_is_rgtree(void)
+static inline int block_is_rgtree(uint64_t blk)
 {
-	if (block == RGLIST_DUMMY_BLOCK)
+	if (blk == RGLIST_DUMMY_BLOCK)
 		return TRUE;
 	return FALSE;
 }

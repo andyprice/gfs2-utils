@@ -933,7 +933,7 @@ static int block_has_extended_info(void)
 {
 	if (has_indirect_blocks() ||
 	    block_is_rindex(block) ||
-	    block_is_rgtree() ||
+	    block_is_rgtree(block) ||
 	    block_is_journals() ||
 	    block_is_jindex(block) ||
 	    block_is_inum_file(block) ||
