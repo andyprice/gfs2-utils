@@ -64,12 +64,12 @@ static int journals_found = 0;
 int print_level = MSG_NOTICE;
 extern char *device;
 
-static int block_is_a_journal(void)
+static int block_is_a_journal(uint64_t blk)
 {
 	int j;
 
 	for (j = 0; j < journals_found; j++)
-		if (block == journal_blocks[j])
+		if (blk == journal_blocks[j])
 			return TRUE;
 	return FALSE;
 }
@@ -168,7 +168,7 @@ static int block_is_systemfile(void)
 {
 	return block_is_jindex() || block_is_inum_file() ||
 		block_is_statfs_file() || block_is_quota_file() ||
-		block_is_rindex() || block_is_a_journal() ||
+		block_is_rindex() || block_is_a_journal(block) ||
 		block_is_per_node() || block_is_in_per_node();
 }
 
