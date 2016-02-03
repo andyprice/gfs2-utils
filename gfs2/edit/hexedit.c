@@ -313,7 +313,7 @@ uint32_t get_block_type(const struct gfs2_buffer_head *lbh, int *structlen)
 /* returns: metatype if block is a GFS2 structure block type                */
 /*          0 if block is not a GFS2 structure                              */
 /* ------------------------------------------------------------------------ */
-int display_block_type(int from_restore)
+int display_block_type(struct gfs2_buffer_head *dbh, int from_restore)
 {
 	const struct gfs2_meta_header *mh;
 	int ret_type = 0; /* return type */
@@ -349,7 +349,7 @@ int display_block_type(int from_restore)
 		ret_type = GFS2_METATYPE_DI;
 		struct_len = 0;
 	} else {
-		ret_type = get_block_type(bh, &struct_len);
+		ret_type = get_block_type(dbh, &struct_len);
 		switch (ret_type) {
 		case GFS2_METATYPE_SB:   /* 1 */
 			print_gfs2("(superblock)");
@@ -398,9 +398,7 @@ int display_block_type(int from_restore)
 			break;
 		}
 	}
-	
-
-	mh = bh->iov.iov_base;
+	mh = dbh->iov.iov_base;
 	eol(0);
 	if (from_restore)
 		return ret_type;
@@ -1052,9 +1050,6 @@ static void read_master_dir(void)
 	memcpy(&masterdir, &indirect[0], sizeof(struct indirect_info));
 }
 
-/* ------------------------------------------------------------------------ */
-/* display                                                                  */
-/* ------------------------------------------------------------------------ */
 int display(int identify_only, int trunc_zeros, uint64_t flagref,
 	    uint64_t ref_blk)
 {
@@ -1090,7 +1085,7 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 		block_in_mem = blk; /* remember which block is in memory */
 	}
 	line = 1;
-	gfs2_struct_type = display_block_type(FALSE);
+	gfs2_struct_type = display_block_type(bh, FALSE);
 	if (identify_only)
 		return 0;
 	indirect_blocks = 0;

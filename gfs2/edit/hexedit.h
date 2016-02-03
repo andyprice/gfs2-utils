@@ -223,7 +223,7 @@ extern int block_is_inum_file(uint64_t blk);
 extern int block_is_statfs_file(uint64_t blk);
 extern int block_is_quota_file(uint64_t blk);
 extern int block_is_per_node(uint64_t blk);
-extern int display_block_type(int from_restore);
+extern int display_block_type(struct gfs2_buffer_head *bh, int from_restore);
 extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
 extern void gfs_log_header_in(struct gfs_log_header *head,
 			      struct gfs2_buffer_head *bh);
