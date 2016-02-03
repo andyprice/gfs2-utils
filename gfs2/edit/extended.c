@@ -662,7 +662,7 @@ int display_extended(void)
 		parse_rindex(tmp_inode, TRUE);
 		inode_put(&tmp_inode);
 		brelse(tmp_bh);
-	} else if (block_is_journals()) {
+	} else if (block_is_journals(block)) {
 		if (sbd.gfs1)
 			block = sbd1->sb_jindex_di.no_addr;
 		else

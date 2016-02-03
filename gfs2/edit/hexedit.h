@@ -121,9 +121,9 @@ static inline int block_is_rgtree(uint64_t blk)
 	return FALSE;
 }
 
-static inline int block_is_journals(void)
+static inline int block_is_journals(uint64_t blk)
 {
-	if (block == JOURNALS_DUMMY_BLOCK)
+	if (blk == JOURNALS_DUMMY_BLOCK)
 		return TRUE;
 	return FALSE;
 }
