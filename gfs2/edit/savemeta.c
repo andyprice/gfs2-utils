@@ -27,6 +27,8 @@
 #include "hexedit.h"
 #include "libgfs2.h"
 
+extern uint64_t block;
+
 #define DFT_SAVE_FILE "/tmp/gfsmeta.XXXXXX"
 #define MAX_JOURNALS_SAVED 256
 
