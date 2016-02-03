@@ -919,12 +919,9 @@ int block_is_quota_file(uint64_t blk)
 	return FALSE;
 }
 
-/* ------------------------------------------------------------------------ */
-/* block_is_per_node                                                        */
-/* ------------------------------------------------------------------------ */
-int block_is_per_node(void)
+int block_is_per_node(uint64_t blk)
 {
-	if (!sbd.gfs1 && block == masterblock("per_node"))
+	if (!sbd.gfs1 && blk == masterblock("per_node"))
 		return TRUE;
 	return FALSE;
 }
