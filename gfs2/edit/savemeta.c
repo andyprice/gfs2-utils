@@ -164,12 +164,12 @@ static int init_per_node_lookup(void)
 	return 0;
 }
 
-static int block_is_systemfile(void)
+static int block_is_systemfile(uint64_t blk)
 {
-	return block_is_jindex(block) || block_is_inum_file(block) ||
-		block_is_statfs_file(block) || block_is_quota_file(block) ||
-		block_is_rindex(block) || block_is_a_journal(block) ||
-		block_is_per_node(block) || block_is_in_per_node(block);
+	return block_is_jindex(blk) || block_is_inum_file(blk) ||
+		block_is_statfs_file(blk) || block_is_quota_file(blk) ||
+		block_is_rindex(blk) || block_is_a_journal(blk) ||
+		block_is_per_node(blk) || block_is_in_per_node(blk);
 }
 
 /**
@@ -238,7 +238,7 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, int *block_type,
 		if (S_ISDIR(inode->i_di.di_mode) ||
 		     (sbd.gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR))
 			*gstruct_len = sbd.bsize;
-		else if (!inode->i_di.di_height && !block_is_systemfile() &&
+		else if (!inode->i_di.di_height && !block_is_systemfile(block) &&
 			 !S_ISDIR(inode->i_di.di_mode))
 			*gstruct_len = sizeof(struct gfs2_dinode);
 		else
@@ -425,7 +425,7 @@ static int save_block(int fd, struct metafd *mfd, uint64_t blk)
 	   inode, not the block within the inode "blk". They may or may not
 	   be the same thing. */
 	if (get_gfs_struct_info(savebh, &blktype, &blklen) &&
-	    !block_is_systemfile()) {
+	    !block_is_systemfile(block)) {
 		brelse(savebh);
 		return 0; /* Not metadata, and not system file, so skip it */
 	}
@@ -576,7 +576,7 @@ static void save_inode_data(struct metafd *mfd)
 	     (sbd.gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR)))
 		height++;
 	else if (height && !(inode->i_di.di_flags & GFS2_DIF_SYSTEM) &&
-		 !block_is_systemfile() && !S_ISDIR(inode->i_di.di_mode))
+		 !block_is_systemfile(block) && !S_ISDIR(inode->i_di.di_mode))
 		height--;
 	osi_list_add(&metabh->b_altlist, &metalist[0]);
         for (i = 1; i <= height; i++){
