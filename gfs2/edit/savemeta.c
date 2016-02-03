@@ -1087,7 +1087,7 @@ static int restore_data(int fd, gzFile gzin_fd, off_t pos, int printonly)
 				break;
 			} else if (printonly == 1) {
 				print_gfs2("%"PRId64" (l=0x%x): ", blks_saved, savedata->siglen);
-				display_block_type(TRUE);
+				display_block_type(&dummy_bh, TRUE);
 			}
 			bh = NULL;
 		} else {
