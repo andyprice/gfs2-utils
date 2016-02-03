@@ -495,7 +495,7 @@ static void save_ea_block(struct metafd *mfd, struct gfs2_buffer_head *metabh)
  * save_indirect_blocks - save all indirect blocks for the given buffer
  */
 static void save_indirect_blocks(struct metafd *mfd, osi_list_t *cur_list,
-			  struct gfs2_buffer_head *mybh, int height, int hgt)
+           struct gfs2_buffer_head *mybh, uint64_t owner, int height, int hgt)
 {
 	uint64_t old_block = 0, indir_block;
 	uint64_t *ptr;
@@ -514,7 +514,7 @@ static void save_indirect_blocks(struct metafd *mfd, osi_list_t *cur_list,
 		if (indir_block == old_block)
 			continue;
 		old_block = indir_block;
-		blktype = save_block(sbd.device_fd, mfd, indir_block, block);
+		blktype = save_block(sbd.device_fd, mfd, indir_block, owner);
 		if (blktype == GFS2_METATYPE_EA) {
 			nbh = bread(&sbd, indir_block);
 			save_ea_block(mfd, nbh);
@@ -589,7 +589,7 @@ static void save_inode_data(struct metafd *mfd)
 			mybh = osi_list_entry(tmp, struct gfs2_buffer_head,
 					      b_altlist);
 			warm_fuzzy_stuff(block, FALSE);
-			save_indirect_blocks(mfd, cur_list, mybh,
+			save_indirect_blocks(mfd, cur_list, mybh, block,
 					     height, i);
 		} /* for blocks at that height */
 	} /* for height */
@@ -641,7 +641,7 @@ static void save_inode_data(struct metafd *mfd)
 			save_ea_block(mfd, lbh);
 		else if (mh.mh_magic == GFS2_MAGIC &&
 			 mh.mh_type == GFS2_METATYPE_IN)
-			save_indirect_blocks(mfd, cur_list, lbh, 2, 2);
+			save_indirect_blocks(mfd, cur_list, lbh, block, 2, 2);
 		else {
 			if (mh.mh_magic == GFS2_MAGIC) /* if it's metadata */
 				save_block(sbd.device_fd, mfd,
