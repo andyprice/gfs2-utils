@@ -1072,7 +1072,9 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 		display_title_lines();
 		move(2,0);
 	}
-	if (block_in_mem != blk) { /* If we changed blocks from the last read */
+	if (bh == NULL || bh->b_blocknr != blk) { /* If we changed blocks from the last read */
+		if (bh != NULL)
+			brelse(bh);
 		dev_offset = blk * sbd.bsize;
 		ioctl(sbd.device_fd, BLKFLSBUF, 0);
 		if (!(bh = bread(&sbd, blk))) {
@@ -1083,7 +1085,6 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 				(unsigned long long)dev_offset);
 			exit(-1);
 		}
-		block_in_mem = blk; /* remember which block is in memory */
 	}
 	line = 1;
 	gfs2_struct_type = display_block_type(bh, FALSE);
@@ -1869,7 +1870,6 @@ static void interactive_mode(void)
 					bobgets(estring, edit_row[dmode]+4, 24,
 						10, &ch);
 					process_field(efield, estring);
-					block_in_mem = -1;
 				} else
 					bobgets(estring, edit_row[dmode]+6, 14,
 						edit_size[dmode], &ch);
@@ -2534,7 +2534,7 @@ int main(int argc, char *argv[])
 		edit_row[GFS2_MODE]++;
 	else
 		read_master_dir();
-	block_in_mem = -1;
+
 	process_parameters(argc, argv, 1); /* get what to print from cmdline */
 
 	block = blockstack[0].block = starting_blk * (4096 / sbd.bsize);

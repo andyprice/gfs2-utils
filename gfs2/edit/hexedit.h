@@ -54,7 +54,6 @@ extern struct gfs2_inum gfs1_license_di; /* kludge because gfs2 sb too small */
 extern struct gfs2_dinode di;
 extern int screen_chunk_size; /* how much of the 4K can fit on screen */
 extern int gfs2_struct_type;
-extern uint64_t block_in_mem;
 extern int identify;
 extern int color_scheme;
 extern WINDOW *wind;
