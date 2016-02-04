@@ -333,7 +333,7 @@ int display_block_type(struct gfs2_buffer_head *dbh, int from_restore)
 	else if (block == JOURNALS_DUMMY_BLOCK)
 		print_gfs2("Journal Status:      ");
 	else
-		print_gfs2("%"PRId64"    (0x%"PRIx64")", block, block);
+		print_gfs2("%"PRIu64"    (0x%"PRIx64")", dbh->b_blocknr, dbh->b_blocknr);
 	if (termlines) {
 		if (edit_row[dmode] == -1)
 			COLORS_NORMAL;
@@ -1150,7 +1150,7 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 		        flagref, ref_blk);
 	else if (dmode == GFS2_MODE) { /* if structure display */
 		if (block != JOURNALS_DUMMY_BLOCK)
-			display_gfs2();       /* display the gfs2 structure */
+			display_gfs2(bh);  /* display the gfs2 structure */
 	} else
 		display_extended();        /* display extended blocks       */
 	/* No else here because display_extended can switch back to hex mode */

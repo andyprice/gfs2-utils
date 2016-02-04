@@ -27,8 +27,6 @@
 #include "hexedit.h"
 #include "libgfs2.h"
 
-extern uint64_t block;
-
 #define DFT_SAVE_FILE "/tmp/gfsmeta.XXXXXX"
 #define MAX_JOURNALS_SAVED 256
 
@@ -1076,20 +1074,18 @@ static int restore_data(int fd, gzFile gzin_fd, off_t pos, int printonly)
 		}
 
 		if (printonly) {
-			struct gfs2_buffer_head dummy_bh;
-			dummy_bh.b_data = savedata->buf;
-			bh = &dummy_bh;
-			block = savedata->blk;
-			if (printonly > 1 && printonly == block) {
-				block_in_mem = block;
-				display(0, 0, 0, 0);
-				bh = NULL;
+			struct gfs2_buffer_head dummy_bh = {
+				.b_data = savedata->buf,
+				.b_blocknr = savedata->blk,
+			};
+			if (printonly > 1 && printonly == savedata->blk) {
+				display_block_type(&dummy_bh, TRUE);
+				display_gfs2(&dummy_bh);
 				break;
 			} else if (printonly == 1) {
 				print_gfs2("%"PRId64" (l=0x%x): ", blks_saved, savedata->siglen);
 				display_block_type(&dummy_bh, TRUE);
 			}
-			bh = NULL;
 		} else {
 			warm_fuzzy_stuff(savedata->blk, FALSE);
 			memset(savedata->buf + savedata->siglen, 0, sbd.bsize - savedata->siglen);
