@@ -42,7 +42,6 @@ uint64_t block = 0;
 int blockhist = 0;
 struct iinfo *indirect;
 int indirect_blocks;
-uint64_t block_in_mem = -1;
 struct gfs2_sbd sbd;
 uint64_t starting_blk;
 struct blkstack_info blockstack[BLOCK_STACK_SIZE];
