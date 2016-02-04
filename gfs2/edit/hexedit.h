@@ -37,7 +37,6 @@ extern char estring[1024]; /* edit string */
 extern char efield[64];
 extern uint64_t dev_offset;
 extern uint64_t max_block;
-extern struct gfs2_buffer_head *bh;
 extern int termlines;
 extern int insert;
 extern const char *termtype;

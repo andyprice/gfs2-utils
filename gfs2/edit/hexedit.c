@@ -34,6 +34,7 @@ const char *allocdesc[2][5] = {
 	{"Free ", "Data ", "Unlnk", "Meta ", "Resrv"},
 	{"Free ", "Data ", "FreeM", "Meta ", "Resrv"},};
 
+struct gfs2_buffer_head *bh;
 struct gfs2_rgrp *lrgrp;
 struct gfs2_meta_header *lmh;
 struct gfs2_dinode *ldi;

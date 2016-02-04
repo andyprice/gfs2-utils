@@ -29,7 +29,6 @@
 	} while (FALSE);
 
 struct gfs2_sb sb;
-struct gfs2_buffer_head *bh;
 struct gfs2_dinode di;
 int line, termlines, modelines[DMODES];
 char edit_fmt[80];
