@@ -455,7 +455,7 @@ static void gfs1_rgrp_print(struct gfs_rgrp *rg)
         pv(rg, rg_freemeta, "%u", "0x%x");
 }
 
-int display_gfs2(void)
+int display_gfs2(struct gfs2_buffer_head *dbh)
 {
 	struct gfs2_meta_header mh;
 	struct gfs2_rgrp rg;
@@ -467,22 +467,22 @@ int display_gfs2(void)
 
 	uint32_t magic;
 
-	magic = be32_to_cpu(*(uint32_t *)bh->b_data);
+	magic = be32_to_cpu(*(uint32_t *)dbh->b_data);
 
 	switch (magic)
 	{
 	case GFS2_MAGIC:
-		gfs2_meta_header_in(&mh, bh);
+		gfs2_meta_header_in(&mh, dbh);
 		if (mh.mh_type > GFS2_METATYPE_QC)
 			print_gfs2("Unknown metadata type");
 		else
 			print_gfs2("%s:", block_type_str[mh.mh_type]);
 		eol(0);
-		
+
 		switch (mh.mh_type)
 		{
 		case GFS2_METATYPE_SB:
-			gfs2_sb_in(&sbd.sd_sb, bh);
+			gfs2_sb_in(&sbd.sd_sb, dbh);
 			gfs2_sb_print2(&sbd.sd_sb);
 			break;
 
@@ -490,10 +490,10 @@ int display_gfs2(void)
 			if (sbd.gfs1) {
 				struct gfs_rgrp rg1;
 
-				gfs1_rgrp_in(&rg1, bh);
+				gfs1_rgrp_in(&rg1, dbh);
 				gfs1_rgrp_print(&rg1);
 			} else {
-				gfs2_rgrp_in(&rg, bh);
+				gfs2_rgrp_in(&rg, dbh);
 				gfs2_rgrp_print(&rg);
 			}
 			break;
@@ -511,7 +511,7 @@ int display_gfs2(void)
 			break;
 
 		case GFS2_METATYPE_LF:
-			gfs2_leaf_in(&lf, bh);
+			gfs2_leaf_in(&lf, dbh);
 			gfs2_leaf_print(&lf);
 			break;
 
@@ -521,33 +521,33 @@ int display_gfs2(void)
 
 		case GFS2_METATYPE_LH:
 			if (sbd.gfs1) {
-				gfs_log_header_in(&lh1, bh);
+				gfs_log_header_in(&lh1, dbh);
 				gfs_log_header_print(&lh1);
 			} else {
-				gfs2_log_header_in(&lh, bh);
+				gfs2_log_header_in(&lh, dbh);
 				gfs2_log_header_print(&lh);
 			}
 			break;
 
 		case GFS2_METATYPE_LD:
-			gfs2_log_descriptor_in(&ld, bh);
+			gfs2_log_descriptor_in(&ld, dbh);
 			gfs2_log_descriptor_print(&ld);
 			break;
 
 		case GFS2_METATYPE_EA:
-			do_eattr_extended(bh);
+			do_eattr_extended(dbh);
 			break;
-			
+
 		case GFS2_METATYPE_ED:
 			gfs2_meta_header_print(&mh);
 			break;
-			
+
 		case GFS2_METATYPE_LB:
 			gfs2_meta_header_print(&mh);
 			break;
 
 		case GFS2_METATYPE_QC:
-			gfs2_quota_change_in(&qc, bh);
+			gfs2_quota_change_in(&qc, dbh);
 			gfs2_quota_change_print(&qc);
 			break;
 
@@ -555,7 +555,7 @@ int display_gfs2(void)
 			break;
 		}
 		break;
-		
+
 	default:
 		print_gfs2("Unknown block type");
 		eol(0);
