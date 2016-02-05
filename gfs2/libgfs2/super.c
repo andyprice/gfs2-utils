@@ -169,7 +169,7 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 		if (gfs2_check_range(sdp, ri.ri_addr) != 0) {
 			*sane = 0;
 			if (prev_rgd == NULL)
-				return -1;
+				continue;
 			ri.ri_addr = prev_rgd->ri.ri_addr + prev_rgd->length;
 		}
 		rgd = rgrp_insert(&sdp->rgtree, ri.ri_addr);
@@ -206,6 +206,8 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
 	}
 	if (prev_rgd)
 		prev_rgd->length = rgrp_size(prev_rgd);
+	if (*count1 == 0)
+		return -1;
 	return 0;
 }
 
