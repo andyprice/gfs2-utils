@@ -12,7 +12,6 @@ struct osi_node {
 #define	OSI_BLACK	1
 	struct osi_node *osi_left;
 	struct osi_node *osi_right;
-	struct osi_node *osi_parent;
 };
 
 #define osi_parent(r)   ((struct osi_node *)((r)->osi_parent_color & ~3))
@@ -21,20 +20,23 @@ struct osi_node {
 #define osi_is_black(r) osi_color(r)
 #define osi_set_red(r)  do { (r)->osi_parent_color &= ~1; } while (0)
 #define osi_set_black(r)  do { (r)->osi_parent_color |= 1; } while (0)
+#define OSI_EMPTY_NODE(node) (osi_parent(node) == node)
 
 struct osi_root
 {
 	struct osi_node *osi_node;
 };
 
-static inline void osi_set_color(struct osi_node *rb, int color)
-{
-	rb->osi_parent_color = (rb->osi_parent_color & ~1) | color;
-}
+#define OSI_EMPTY_ROOT(root)  ((root)->osi_node == NULL)
 
 static inline void osi_set_parent(struct osi_node *rb, struct osi_node *p)
 {
         rb->osi_parent_color = (rb->osi_parent_color & 3) | (unsigned long)p;
+}
+
+static inline void osi_set_color(struct osi_node *rb, int color)
+{
+	rb->osi_parent_color = (rb->osi_parent_color & ~1) | color;
 }
 
 static inline void osi_link_node(struct osi_node *node,
@@ -245,21 +247,6 @@ static inline void osi_erase(struct osi_node *node, struct osi_root *root)
 		node = node->osi_right;
 		while ((left = node->osi_left) != NULL)
 			node = left;
-		child = node->osi_right;
-		parent = osi_parent(node);
-		color = osi_color(node);
-
-		if (child)
-			osi_set_parent(child, parent);
-		if (parent == old) {
-			parent->osi_right = child;
-			parent = node;
-		} else
-			parent->osi_left = child;
-
-		node->osi_parent_color = old->osi_parent_color;
-		node->osi_right = old->osi_right;
-		node->osi_left = old->osi_left;
 
 		if (osi_parent(old)) {
 			if (osi_parent(old)->osi_left == old)
@@ -269,9 +256,25 @@ static inline void osi_erase(struct osi_node *node, struct osi_root *root)
 		} else
 			root->osi_node = node;
 
-		osi_set_parent(old->osi_left, node);
-		if (old->osi_right)
+		child = node->osi_right;
+		parent = osi_parent(node);
+		color = osi_color(node);
+
+		if (parent == old) {
+			parent = node;
+		} else {
+			if (child)
+				osi_set_parent(child, parent);
+			parent->osi_left = child;
+
+			node->osi_right = old->osi_right;
 			osi_set_parent(old->osi_right, node);
+		}
+
+		node->osi_parent_color = old->osi_parent_color;
+		node->osi_left = old->osi_left;
+		osi_set_parent(old->osi_left, node);
+
 		goto color;
 	}
 
@@ -326,6 +329,9 @@ static inline struct osi_node *osi_next(struct osi_node *node)
 {
 	struct osi_node *parent;
 
+	if (OSI_EMPTY_NODE(node))
+		return NULL;
+
 	/* If we have a right-hand child, go down and then left as far
 	   as we can. */
 	if (node->osi_right) {
@@ -350,6 +356,9 @@ static inline struct osi_node *osi_next(struct osi_node *node)
 static inline struct osi_node *osi_prev(struct osi_node *node)
 {
 	struct osi_node *parent;
+
+	if (OSI_EMPTY_NODE(node))
+		return NULL;
 
 	/* If we have a left-hand child, go down and then right as far
 	   as we can. */
