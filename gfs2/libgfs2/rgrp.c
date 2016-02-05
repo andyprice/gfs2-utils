@@ -71,8 +71,10 @@ int gfs2_compute_bitstructs(const uint32_t bsize, struct rgrp_tree *rgd)
 
 	return 0;
 errbits:
-	if (ownbits)
+	if (ownbits) {
 		free(rgd->bits);
+		rgd->bits = NULL;
+	}
 	return -1;
 }
 
@@ -197,8 +199,10 @@ void gfs2_rgrp_relse(struct rgrp_tree *rgd)
 {
 	int x, length = rgd->ri.ri_length;
 
+	if (rgd->bits == NULL)
+		return;
 	for (x = 0; x < length; x++) {
-		if (rgd->bits[x].bi_bh) {
+		if (rgd->bits[x].bi_bh && rgd->bits[x].bi_bh->b_data) {
 			brelse(rgd->bits[x].bi_bh);
 			rgd->bits[x].bi_bh = NULL;
 		}
@@ -241,6 +245,8 @@ void gfs2_rgrp_free(struct osi_root *rgrp_tree)
 	struct osi_node *n;
 	struct gfs2_sbd *sdp = NULL;
 
+	if (OSI_EMPTY_ROOT(rgrp_tree))
+		return;
 	while ((n = osi_first(rgrp_tree))) {
 		rgd = (struct rgrp_tree *)n;
 
