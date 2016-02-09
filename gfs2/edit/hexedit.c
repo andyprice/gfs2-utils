@@ -1025,8 +1025,10 @@ static int read_rindex(void)
 	if (sbd.md.riinode) /* If we found the rindex */
 		rindex_read(&sbd, 0, &count, &sane);
 
-	ri = &((struct rgrp_tree *)osi_last(&sbd.rgtree))->ri;
-	sbd.fssize = ri->ri_data0 + ri->ri_data;
+	if (!OSI_EMPTY_ROOT(&sbd.rgtree)) {
+		ri = &((struct rgrp_tree *)osi_last(&sbd.rgtree))->ri;
+		sbd.fssize = ri->ri_data0 + ri->ri_data;
+	}
 	return 0;
 }
 
