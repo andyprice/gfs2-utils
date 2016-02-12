@@ -934,10 +934,18 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 	sdp->rgtree.osi_node = NULL; /* Just to be safe */
 	rindex_read(sdp, 0, &sdp->rgrps, sane);
 	if (sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex)) {
-		log_warn( _("WARNING: rindex file is corrupt.\n"));
-		gfs2_rgrp_free(&sdp->rgcalc);
-		gfs2_rgrp_free(&sdp->rgtree);
-		return -1;
+		log_warn( _("WARNING: rindex file has an invalid size.\n"));
+		if (!query( _("Truncate the rindex size? (y/n)"))) {
+			log_err(_("The rindex was not repaired.\n"));
+			gfs2_rgrp_free(&sdp->rgcalc);
+			gfs2_rgrp_free(&sdp->rgtree);
+			return -1;
+		}
+		sdp->md.riinode->i_di.di_size /= sizeof(struct gfs2_rindex);
+		sdp->md.riinode->i_di.di_size *= sizeof(struct gfs2_rindex);
+		bmodified(sdp->md.riinode->i_bh);
+		log_err(_("Changing rindex size to %lld.\n"),
+			(unsigned long long)sdp->md.riinode->i_di.di_size);
 	}
 	log_warn( _("L%d: number of rgs expected     = %lld.\n"), trust_lvl + 1,
 		 (unsigned long long)sdp->rgrps);
