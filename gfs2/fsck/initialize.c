@@ -640,7 +640,7 @@ static int fetch_rgrps(struct gfs2_sbd *sdp)
 			log_notice(_("(level %d passed)\n"), trust_lvl + 1);
 			break;
 		} else {
-			if (ret < 0)
+			if (ret == -1)
 				log_err( _("(level %d failed: %s)\n"),
 					 trust_lvl + 1, fail_desc[trust_lvl]);
 			else
