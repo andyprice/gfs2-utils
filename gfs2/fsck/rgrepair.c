@@ -21,6 +21,7 @@ struct special_blocks false_rgrps;
 
 #define BAD_RG_PERCENT_TOLERANCE 11
 #define AWAY_FROM_BITMAPS 0x1000
+#define MAX_RGSEGMENTS 20
 
 #define ri_equal(ondisk, expected, field) (ondisk.field == expected.field)
 
@@ -95,72 +96,146 @@ static int is_false_rg(uint64_t block)
  * look like twice the distance.  If we can find 6 of them, that
  * should be enough to figure out the correct layout.
  * This also figures out first_rg_dist since that's always different.
+ *
+ * This function was revised to return the number of segments, usually 2.
+ * The shortest distance is now returned in the highest entry in rg_dist
  */
-static uint64_t find_shortest_rgdist(struct gfs2_sbd *sdp,
-				     uint64_t *initial_first_rg_dist,
-				     uint64_t *first_rg_dist)
+static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
+				int *dist_cnt)
 {
-	uint64_t blk, block_of_last_rg, shortest_dist_btwn_rgs;
+	uint64_t blk, block_last_rg, shortest_dist_btwn_rgs;
 	struct gfs2_buffer_head *bh;
-	int number_of_rgs = 0;
+	int rgs_sampled = 0;
 	struct gfs2_rindex buf, tmpndx;
+	uint64_t initial_first_rg_dist;
+	int gsegment = 0;
+	int is_rgrp;
 
 	/* Figure out if there are any RG-looking blocks in the journal we
 	   need to ignore. */
 	find_journaled_rgs(sdp);
 
-	*initial_first_rg_dist = *first_rg_dist = sdp->sb_addr + 1;
-	block_of_last_rg = sdp->sb_addr + 1;
+	initial_first_rg_dist = dist_array[0] = block_last_rg =
+		sdp->sb_addr + 1;
 	shortest_dist_btwn_rgs = sdp->device.length;
 
-	for (blk = sdp->sb_addr + 1;
-	     blk < sdp->device.length && number_of_rgs < 6; blk++) {
-		bh = bread(sdp, blk);
-		if (((blk == sdp->sb_addr + 1) ||
-		    (!gfs2_check_meta(bh, GFS2_METATYPE_RG))) &&
-		    !is_false_rg(blk)) {
-			log_debug( _("rgrp found at block 0x%llx\n"),
-				(unsigned long long)blk);
-			if (blk > sdp->sb_addr + 1) {
-				uint64_t rgdist;
-				
-				rgdist = blk - block_of_last_rg;
-				log_debug("dist 0x%llx = 0x%llx - 0x%llx",
-					  (unsigned long long)rgdist,
-					  (unsigned long long)blk,
-					  (unsigned long long)block_of_last_rg);
-				/* ----------------------------------------- */
-				/* We found an RG.  Check to see if we need  */
-				/* to set the first_rg_dist based on whether */
-				/* it's still at its initial value (i.e. the */
-				/* fs.)  The first rg distance is different  */
-				/* from the rest because of the superblock   */
-				/* and 64K dead space.                       */
-				/* ----------------------------------------- */
-				if (*first_rg_dist == *initial_first_rg_dist)
-					*first_rg_dist = rgdist;
-				if (rgdist < shortest_dist_btwn_rgs) {
-					shortest_dist_btwn_rgs = rgdist;
-					log_debug( _("(shortest so far)\n"));
-				}
-				else
-					log_debug("\n");
-			}
-			block_of_last_rg = blk;
-			number_of_rgs++;
-			blk += 250; /* skip ahead for performance */
+	for (blk = sdp->sb_addr + 1; blk < sdp->device.length; blk++) {
+		uint64_t dist;
+
+		if (blk == sdp->sb_addr + 1)
+			is_rgrp = 1;
+		else if (is_false_rg(blk))
+			is_rgrp = 0;
+		else {
+			bh = bread(sdp, blk);
+			is_rgrp = (gfs2_check_meta(bh, GFS2_METATYPE_RG) == 0);
+			brelse(bh);
 		}
-		brelse(bh);
+		if (!is_rgrp) {
+			if (rgs_sampled >= 6) {
+				uint64_t nblk;
+
+				log_info(_("rgrp not found at block 0x%llx. "
+					   "Last found rgrp was 0x%llx. "
+					   "Checking the next one.\n"),
+					 (unsigned long long)blk,
+					 (unsigned long long)block_last_rg);
+				/* check for just a damaged rgrp */
+				nblk = blk + dist_array[gsegment];
+				if (is_false_rg(nblk)) {
+					is_rgrp = 0;
+				} else {
+					bh = bread(sdp, nblk);
+					is_rgrp = (((gfs2_check_meta(bh,
+						GFS2_METATYPE_RG) == 0)));
+					brelse(bh);
+				}
+				if (is_rgrp) {
+					log_info(_("Next rgrp is intact, so "
+						   "this one is damaged.\n"));
+					blk = nblk - 1;
+					dist_cnt[gsegment]++;
+					continue;
+				}
+				log_info(_("Looking for new segment.\n"));
+				blk -= 16;
+				rgs_sampled = 0;
+				shortest_dist_btwn_rgs = sdp->device.length;
+				/* That last one didn't pan out, so: */
+				dist_cnt[gsegment]--;
+				gsegment++;
+			}
+			if ((blk - block_last_rg) > (524288 * 2)) {
+				log_info(_("No rgrps were found within 4GB "
+					   "of the last rgrp. Must be the "
+					   "end of the file system.\n"));
+
+				break;
+			}
+			continue;
+		}
+
+		dist_cnt[gsegment]++;
+		if (rgs_sampled >= 6) {
+			block_last_rg = blk;
+			blk += dist_array[gsegment] - 1; /* prev value in
+							    array minus 1. */
+			continue;
+		}
+		log_info(_("segment %d: rgrp found at block 0x%llx\n"),
+			 gsegment + 1, (unsigned long long)blk);
+		dist = blk - block_last_rg;
+		if (blk > sdp->sb_addr + 1) { /* not the very first rgrp */
+
+			log_info("dist 0x%llx = 0x%llx - 0x%llx ",
+				 (unsigned long long)dist,
+				 (unsigned long long)blk,
+				 (unsigned long long)block_last_rg);
+			/**
+			 * We found an RG.  Check to see if we need to set the
+			 * first_rg_dist based on whether it is still at its
+			 * initial value (i.e. the fs.)  The first rg distance
+			 * is different from the rest because of the
+			 * superblock and 64K dead space.
+			 **/
+			if (dist_array[0] == initial_first_rg_dist) {
+				dist_array[0] = dist;
+				dist_cnt[0] = 1;
+				rgs_sampled = 0;
+			}
+			if (dist < shortest_dist_btwn_rgs) {
+				shortest_dist_btwn_rgs = dist;
+				log_info( _("(shortest so far)"));
+			}
+			log_info("\n");
+			if (++rgs_sampled == 6) {
+				dist_array[gsegment] = shortest_dist_btwn_rgs;
+				log_info(_("Settled on distance 0x%llx for "
+					   "segment %d\n"),
+					 (unsigned long long)
+					 dist_array[gsegment], gsegment + 1);
+			}
+		} else {
+			gsegment++;
+		}
+		block_last_rg = blk;
+		if (rgs_sampled < 6)
+			blk += 250; /* skip ahead for performance */
+		else
+			blk += shortest_dist_btwn_rgs - 1;
+	}
+	if (gsegment > MAX_RGSEGMENTS) {
+		log_err(_("Maximum number of rgrp grow segments reached.\n"));
+		log_err(_("This file system cannot be repaired with fsck.\n"));
+		gsegment = 0;
+		goto out;
 	}
 	/* -------------------------------------------------------------- */
 	/* Sanity-check our first_rg_dist. If RG #2 got nuked, the        */
 	/* first_rg_dist would measure from #1 to #3, which would be bad. */
 	/* We need to take remedial measures to fix it (from the index).  */
 	/* -------------------------------------------------------------- */
-	log_debug( _("First rgrp distance: 0x%llx\n"), (unsigned long long)*first_rg_dist);
-	log_debug( _("Distance between rgrps: 0x%llx\n"),
-		  (unsigned long long)shortest_dist_btwn_rgs);
-	if (*first_rg_dist >= shortest_dist_btwn_rgs +
+	if (*dist_array >= shortest_dist_btwn_rgs +
 	    (shortest_dist_btwn_rgs / 4)) {
 		/* read in the second RG index entry for this subd. */
 		gfs2_readi(sdp->md.riinode, (char *)&buf,
@@ -169,21 +244,21 @@ static uint64_t find_shortest_rgdist(struct gfs2_sbd *sdp,
 		gfs2_rindex_in(&tmpndx, (char *)&buf);
 		if (tmpndx.ri_addr > sdp->sb_addr + 1) { /* sanity check */
 			log_warn( _("rgrp 2 is damaged: getting dist from index: "));
-			*first_rg_dist = tmpndx.ri_addr - (sdp->sb_addr + 1);
-			log_warn("0x%llx\n", (unsigned long long)*first_rg_dist);
+			*dist_array = tmpndx.ri_addr - (sdp->sb_addr + 1);
+			log_warn("0x%llx\n", (unsigned long long)*dist_array);
 		} else {
 			log_warn( _("rgrp index 2 is damaged: extrapolating dist: "));
-			*first_rg_dist = sdp->device.length -
-				(sdp->rgrps - 1) *
+			*dist_array = sdp->device.length - (sdp->rgrps - 1) *
 				(sdp->device.length / sdp->rgrps);
-			log_warn("0x%llx\n", (unsigned long long)*first_rg_dist);
+			log_warn("0x%llx\n", (unsigned long long)*dist_array);
 		}
 		log_debug( _("Adjusted first rgrp distance: 0x%llx\n"),
-			   (unsigned long long)*first_rg_dist);
+			   (unsigned long long)*dist_array);
 	} /* if first RG distance is within tolerance */
 
+out:
 	gfs2_special_free(&false_rgrps);
-	return shortest_dist_btwn_rgs;
+	return gsegment;
 }
 
 /*
@@ -445,14 +520,15 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 {
 	struct osi_node *n, *next = NULL;
 	struct gfs2_buffer_head *bh;
-	uint64_t shortest_dist_btwn_rgs;
+	uint64_t rg_dist[MAX_RGSEGMENTS] = {0, };
+	int rg_dcnt[MAX_RGSEGMENTS] = {0, };
 	uint64_t blk;
 	uint64_t fwd_block, block_bump;
-	uint64_t first_rg_dist, initial_first_rg_dist;
 	struct rgrp_tree *calc_rgd, *prev_rgd;
-	int number_of_rgs, rgi;
+	int number_of_rgs, rgi, segment_rgs;
 	int rg_was_fnd = FALSE, corrupt_rgs = 0;
-	int error = -1, j;
+	int error = -1, j, i;
+	int grow_segments, segment = 0;
 
 	/*
 	 * In order to continue, we need to initialize the jindex. We need
@@ -469,17 +545,17 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 	}
 
 	sdp->rgcalc.osi_node = NULL;
-	initial_first_rg_dist = first_rg_dist = sdp->sb_addr + 1;
-	shortest_dist_btwn_rgs = find_shortest_rgdist(sdp,
-						      &initial_first_rg_dist,
-						      &first_rg_dist);
-	number_of_rgs = 0;
+	grow_segments = find_shortest_rgdist(sdp, &rg_dist[0], &rg_dcnt[0]);
+	for (i = 0; i < grow_segments; i++)
+		log_info(_("Segment %d: rgrp distance: 0x%llx, count: %d\n"),
+			  i + 1, (unsigned long long)rg_dist[i], rg_dcnt[i]);
+	number_of_rgs = segment_rgs = 0;
 	/* -------------------------------------------------------------- */
 	/* Now go through the RGs and verify their integrity, fixing as   */
 	/* needed when corruption is encountered.                         */
 	/* -------------------------------------------------------------- */
 	prev_rgd = NULL;
-	block_bump = first_rg_dist;
+	block_bump = rg_dist[0];
 	blk = sdp->sb_addr + 1;
 	while (blk <= sdp->device.length) {
 		log_debug( _("Block 0x%llx\n"), (unsigned long long)blk);
@@ -542,6 +618,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 				  (unsigned long)prev_rgd->ri.ri_data);
 		}
 		number_of_rgs++;
+		segment_rgs++;
 		if (rg_was_fnd)
 			log_info( _("  rgrp %d at block 0x%llx intact\n"),
 				  number_of_rgs, (unsigned long long)blk);
@@ -552,10 +629,16 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 		/*
 		 * Figure out where our next rgrp should be.
 		 */
-		if (blk == sdp->sb_addr + 1)
-			block_bump = first_rg_dist;
-		else if (!gfs_grow) {
-			block_bump = shortest_dist_btwn_rgs;
+		if ((blk == sdp->sb_addr + 1) || (!gfs_grow)) {
+			block_bump = rg_dist[segment];
+			if (segment_rgs >= rg_dcnt[segment]) {
+				log_debug(_("End of segment %d\n"), ++segment);
+				segment_rgs = 0;
+				if (segment >= grow_segments) {
+					log_debug(_("Last segment.\n"));
+					break;
+				}
+			}
 			/* if we have uniformly-spaced rgrps, there may be
 			   some wasted space at the end of the device.
 			   Since we don't want to create a short rgrp and
@@ -1142,5 +1225,14 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 	*rg_count = rg;
 	gfs2_rgrp_free(&sdp->rgcalc);
 	gfs2_rgrp_free(&sdp->rgtree);
+	/* We shouldn't need to worry about getting the user's permission to
+	   make changes here. If b_modified is true, they already gave their
+	   permission. */
+	if (sdp->md.riinode->i_bh->b_modified) {
+		log_debug("Syncing rindex inode changes to disk.\n");
+		gfs2_dinode_out(&sdp->md.riinode->i_di,
+				sdp->md.riinode->i_bh);
+		bwrite(sdp->md.riinode->i_bh);
+	}
 	return 0;
 }
