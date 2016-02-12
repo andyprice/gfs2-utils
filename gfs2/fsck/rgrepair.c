@@ -950,13 +950,34 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 	log_warn( _("L%d: number of rgs expected     = %lld.\n"), trust_lvl + 1,
 		 (unsigned long long)sdp->rgrps);
 	if (calc_rg_count != sdp->rgrps) {
+		int most_that_fit;
+
 		log_warn( _("L%d: They don't match; either (1) the fs was "
 			    "extended, (2) an odd\n"), trust_lvl + 1);
 		log_warn( _("L%d: rgrp size was used, or (3) we have a corrupt "
 			    "rg index.\n"), trust_lvl + 1);
-		gfs2_rgrp_free(&sdp->rgcalc);
-		gfs2_rgrp_free(&sdp->rgtree);
-		return -1;
+		/* If the trust level is open_minded, we would have calculated
+		   the rindex based on the device size. If it's not the same
+		   number, don't trust it. Complain about the discrepancy,
+		   then try again with a little more distrust. */
+		if ((trust_lvl < distrust) ||
+		    !query( _("Attempt to use what rgrps we can? (y/n)"))) {
+			gfs2_rgrp_free(&sdp->rgcalc);
+			gfs2_rgrp_free(&sdp->rgtree);
+			log_err(_("The rindex was not repaired.\n"));
+			return -1;
+		}
+		/* We cannot grow rindex at this point. Since pass1 has not
+		   yet run, we can't allocate blocks. Therefore we must use
+		   whatever will fix in the space given. */
+		most_that_fit = sdp->md.riinode->i_di.di_size /
+			sizeof(struct gfs2_rindex);
+		log_debug(_("The most we can fit is %d rgrps\n"),
+			  most_that_fit);
+		if (most_that_fit < calc_rg_count)
+			calc_rg_count = most_that_fit;
+		log_err(_("Attempting to fix rindex with %d rgrps.\n"),
+			calc_rg_count);
 	}
 	/* ------------------------------------------------------------- */
 	/* Now compare the rindex to what we think it should be.         */
@@ -967,7 +988,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 	/* ------------------------------------------------------------- */
 	discrepancies = 0;
 	for (rg = 0, n = osi_first(&sdp->rgtree), e = osi_first(&sdp->rgcalc);
-	     n && e && !fsck_abort; rg++) {
+	     n && e && !fsck_abort && rg < calc_rg_count; rg++) {
 		struct rgrp_tree *expected, *actual;
 
 		next = osi_next(n);
@@ -1016,13 +1037,15 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 			return -1;
 		}
 	}
+	log_debug("Calculated %d rgrps: Total: %d Match: %d Mismatch: %d\n",
+		  calc_rg_count, rg, rg - discrepancies, discrepancies);
 	/* ------------------------------------------------------------- */
 	/* Now compare the rindex to what we think it should be.         */
 	/* Our rindex should be pretty predictable unless we've grown    */
 	/* so look for index problems first before looking at the rgs.   */
 	/* ------------------------------------------------------------- */
 	for (rg = 0, n = osi_first(&sdp->rgtree), e = osi_first(&sdp->rgcalc);
-	     e && !fsck_abort; rg++) {
+	     e && !fsck_abort && rg < calc_rg_count; rg++) {
 		struct rgrp_tree *expected, *actual;
 
 		if (n)
@@ -1091,8 +1114,8 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 	/* Now we can somewhat trust the rindex and the RG addresses,    */
 	/* so let's read them in, check them and optionally fix them.    */
 	/* ------------------------------------------------------------- */
-	for (rg = 0, n = osi_first(&sdp->rgtree); n && !fsck_abort;
-	     n = next, rg++) {
+	for (rg = 0, n = osi_first(&sdp->rgtree); n && !fsck_abort &&
+		     rg < calc_rg_count; n = next, rg++) {
 		struct rgrp_tree *rgd;
 		uint64_t prev_err = 0, errblock;
 		int i;
