@@ -880,7 +880,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 {
 	struct osi_node *n, *next = NULL, *e, *enext;
 	int error, discrepancies, percent;
-	int calc_rg_count = 0, rgcount_from_index, rg;
+	int calc_rg_count = 0, rg;
 	struct gfs2_rindex buf;
 
 	if (trust_lvl == blind_faith)
@@ -919,7 +919,6 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 			gfs2_rgrp_free(&sdp->rgcalc);
 			return -1;
 		}
-		sdp->rgrps = calc_rg_count;
 	} else if (trust_lvl == indignation) { /* If we can't trust anything */
 		/* Free previous incarnations in memory, if any. */
 		gfs2_rgrp_free(&sdp->rgtree);
@@ -930,11 +929,10 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 			gfs2_rgrp_free(&sdp->rgcalc);
 			return -1;
 		}
-		sdp->rgrps = calc_rg_count;
 	}
 	/* Read in the rindex */
 	sdp->rgtree.osi_node = NULL; /* Just to be safe */
-	rindex_read(sdp, 0, &rgcount_from_index, sane);
+	rindex_read(sdp, 0, &sdp->rgrps, sane);
 	if (sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex)) {
 		log_warn( _("WARNING: rindex file is corrupt.\n"));
 		gfs2_rgrp_free(&sdp->rgcalc);
