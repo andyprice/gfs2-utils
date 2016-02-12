@@ -55,12 +55,16 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 	uint32_t extlen;
 	struct gfs2_inode *ip;
 	struct gfs2_buffer_head *bh;
+	int false_count;
 
 	osi_list_init(&false_rgrps.list);
 	for (j = 0; j < sdp->md.journals; j++) {
-		log_debug( _("Checking for rgrps in journal%d.\n"), j);
 		ip = sdp->md.journal[j];
+		log_debug(_("Checking for rgrps in journal%d which starts "
+			    "at block 0x%llx.\n"), j,
+			  (unsigned long long)ip->i_di.di_num.no_addr);
 		jblocks = ip->i_di.di_size / sdp->sd_sb.sb_bsize;
+		false_count = 0;
 		for (b = 0; b < jblocks; b++) {
 			block_map(ip, b, &new, &dblock, &extlen, 0);
 			if (!dblock)
@@ -68,10 +72,12 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 			bh = bread(sdp, dblock);
 			if (!gfs2_check_meta(bh, GFS2_METATYPE_RG)) {
 				/* False rgrp found at block dblock */
+				false_count++;
 				gfs2_special_set(&false_rgrps, dblock);
 			}
 			brelse(bh);
 		}
+		log_debug("\n%d false positives identified.\n", false_count);
 	}
 }
 
