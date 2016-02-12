@@ -208,14 +208,16 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, uint64_t owner,
 	struct gfs2_meta_header mh;
 	struct gfs2_inode *inode;
 
-	*block_type = 0;
+	if (block_type != NULL)
+		*block_type = 0;
 	*gstruct_len = sbd.bsize;
 
 	gfs2_meta_header_in(&mh, lbh);
 	if (mh.mh_magic != GFS2_MAGIC)
 		return -1;
 
-	*block_type = mh.mh_type;
+	if (block_type != NULL)
+		*block_type = mh.mh_type;
 
 	switch (mh.mh_type) {
 	case GFS2_METATYPE_SB:   /* 1 (superblock) */
@@ -405,32 +407,19 @@ static int savemetaclose(struct metafd *mfd)
 	return close(mfd->fd);
 }
 
-static int save_block(int fd, struct metafd *mfd, uint64_t blk, uint64_t owner)
+static int save_bh(struct metafd *mfd, struct gfs2_buffer_head *savebh, uint64_t owner, int *blktype)
 {
-	int blktype, blklen;
-	size_t outsz;
-	struct gfs2_buffer_head *savebh;
 	struct saved_metablock *savedata;
-
-	if (gfs2_check_range(&sbd, blk) && blk != sbd.sb_addr) {
-		fprintf(stderr, "\nWarning: bad block pointer '0x%llx' "
-			"ignored in block (block %llu (0x%llx))",
-			(unsigned long long)blk,
-			(unsigned long long)owner, (unsigned long long)owner);
-		return 0;
-	}
-	savebh = bread(&sbd, blk);
+	size_t outsz;
+	int blklen;
 
 	/* If this isn't metadata and isn't a system file, we don't want it.
 	   Note that we're checking "owner" here rather than blk.  That's
 	   because we want to know if the source inode is a system inode
 	   not the block within the inode "blk". They may or may not
 	   be the same thing. */
-	if (get_gfs_struct_info(savebh, owner, &blktype, &blklen) &&
-	    !block_is_systemfile(owner)) {
-		brelse(savebh);
+	if (get_gfs_struct_info(savebh, owner, blktype, &blklen) && !block_is_systemfile(owner))
 		return 0; /* Not metadata, and not system file, so skip it */
-	}
 
 	/* No need to save trailing zeroes */
 	for (; blklen > 0 && savebh->b_data[blklen - 1] == '\0'; blklen--);
@@ -444,7 +433,7 @@ static int save_block(int fd, struct metafd *mfd, uint64_t blk, uint64_t owner)
 		perror("Failed to save block");
 		exit(1);
 	}
-	savedata->blk = cpu_to_be64(blk);
+	savedata->blk = cpu_to_be64(savebh->b_blocknr);
 	savedata->siglen = cpu_to_be16(blklen);
 	memcpy(savedata->buf, savebh->b_data, blklen);
 
@@ -459,8 +448,27 @@ static int save_block(int fd, struct metafd *mfd, uint64_t blk, uint64_t owner)
 
 	blks_saved++;
 	free(savedata);
+	return 0;
+}
+
+static int save_block(int fd, struct metafd *mfd, uint64_t blk, uint64_t owner, int *blktype)
+{
+	struct gfs2_buffer_head *savebh;
+	int err;
+
+	if (gfs2_check_range(&sbd, blk) && blk != sbd.sb_addr) {
+		fprintf(stderr, "\nWarning: bad block pointer '0x%llx' "
+			"ignored in block (block %llu (0x%llx))",
+			(unsigned long long)blk,
+			(unsigned long long)owner, (unsigned long long)owner);
+		return 0;
+	}
+	savebh = bread(&sbd, blk);
+	if (savebh == NULL)
+		return 1;
+	err = save_bh(mfd, savebh, owner, blktype);
 	brelse(savebh);
-	return blktype;
+	return err;
 }
 
 /*
@@ -484,7 +492,7 @@ static void save_ea_block(struct metafd *mfd, struct gfs2_buffer_head *metabh, u
 			b = (uint64_t *)(metabh->b_data);
 			b += charoff + i;
 			blk = be64_to_cpu(*b);
-			save_block(sbd.device_fd, mfd, blk, owner);
+			save_block(sbd.device_fd, mfd, blk, owner, NULL);
 		}
 		if (!ea.ea_rec_len)
 			break;
@@ -514,7 +522,7 @@ static void save_indirect_blocks(struct metafd *mfd, osi_list_t *cur_list,
 		if (indir_block == old_block)
 			continue;
 		old_block = indir_block;
-		blktype = save_block(sbd.device_fd, mfd, indir_block, owner);
+		save_block(sbd.device_fd, mfd, indir_block, owner, &blktype);
 		if (blktype == GFS2_METATYPE_EA) {
 			nbh = bread(&sbd, indir_block);
 			save_ea_block(mfd, nbh, owner);
@@ -625,7 +633,7 @@ static void save_inode_data(struct metafd *mfd, uint64_t iblk)
 			mybh = bread(&sbd, leaf_no);
 			warm_fuzzy_stuff(iblk, FALSE);
 			if (gfs2_check_meta(mybh, GFS2_METATYPE_LF) == 0)
-				save_block(sbd.device_fd, mfd, leaf_no, iblk);
+				save_block(sbd.device_fd, mfd, leaf_no, iblk, NULL);
 			brelse(mybh);
 		}
 	}
@@ -634,7 +642,7 @@ static void save_inode_data(struct metafd *mfd, uint64_t iblk)
 		struct gfs2_buffer_head *lbh;
 
 		lbh = bread(&sbd, inode->i_di.di_eattr);
-		save_block(sbd.device_fd, mfd, inode->i_di.di_eattr, iblk);
+		save_block(sbd.device_fd, mfd, inode->i_di.di_eattr, iblk, NULL);
 		gfs2_meta_header_in(&mh, lbh);
 		if (mh.mh_magic == GFS2_MAGIC &&
 		    mh.mh_type == GFS2_METATYPE_EA)
@@ -644,8 +652,8 @@ static void save_inode_data(struct metafd *mfd, uint64_t iblk)
 			save_indirect_blocks(mfd, cur_list, lbh, iblk, 2, 2);
 		else {
 			if (mh.mh_magic == GFS2_MAGIC) /* if it's metadata */
-				save_block(sbd.device_fd, mfd,
-					   inode->i_di.di_eattr, iblk);
+				save_block(sbd.device_fd, mfd, inode->i_di.di_eattr,
+				           iblk, NULL);
 			fprintf(stderr,
 				"\nWarning: corrupt extended "
 				"attribute at block %llu (0x%llx) "
@@ -722,7 +730,7 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 		for (j = 0; j < m; j++) {
 			blk = ibuf[j];
 			warm_fuzzy_stuff(blk, FALSE);
-			blktype = save_block(sbd.device_fd, mfd, blk, blk);
+			save_block(sbd.device_fd, mfd, blk, blk, &blktype);
 			if (blktype == GFS2_METATYPE_DI)
 				save_inode_data(mfd, blk);
 		}
@@ -734,7 +742,7 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 		 * If we don't, we may run into metadata allocation issues. */
 		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_UNLINKED);
 		for (j = 0; j < m; j++) {
-			save_block(sbd.device_fd, mfd, blk, blk);
+			save_block(sbd.device_fd, mfd, blk, blk, NULL);
 		}
 	}
 	free(ibuf);
@@ -826,7 +834,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		exit(1);
 	}
 	/* Save off the superblock */
-	save_block(sbd.device_fd, &mfd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sbd.bsize, 0);
+	save_block(sbd.device_fd, &mfd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sbd.bsize, 0, NULL);
 	/* If this is gfs1, save off the rindex because it's not
 	   part of the file system as it is in gfs2. */
 	if (sbd.gfs1) {
@@ -834,7 +842,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		int j;
 
 		blk = sbd1->sb_rindex_di.no_addr;
-		save_block(sbd.device_fd, &mfd, blk, blk);
+		save_block(sbd.device_fd, &mfd, blk, blk, NULL);
 		save_inode_data(&mfd, blk);
 		/* In GFS1, journals aren't part of the RG space */
 		for (j = 0; j < journals_found; j++) {
@@ -842,7 +850,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 			for (blk = journal_blocks[j];
 			     blk < journal_blocks[j] + gfs1_journal_size;
 			     blk++)
-				save_block(sbd.device_fd, &mfd, blk, blk);
+				save_block(sbd.device_fd, &mfd, blk, blk, NULL);
 		}
 	}
 	/* Walk through the resource groups saving everything within */
@@ -861,7 +869,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		for (blk = rgd->ri.ri_addr;
 		     blk < rgd->ri.ri_data0; blk++) {
 			warm_fuzzy_stuff(blk, FALSE);
-			save_block(sbd.device_fd, &mfd, blk, blk);
+			save_block(sbd.device_fd, &mfd, blk, blk, NULL);
 		}
 		/* Save off the other metadata: inodes, etc. if mode is not 'savergs' */
 		if (saveoption != 2) {
