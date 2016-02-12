@@ -171,8 +171,7 @@ static uint64_t find_shortest_rgdist(struct gfs2_sbd *sdp,
 			log_warn( _("rgrp 2 is damaged: getting dist from index: "));
 			*first_rg_dist = tmpndx.ri_addr - (sdp->sb_addr + 1);
 			log_warn("0x%llx\n", (unsigned long long)*first_rg_dist);
-		}
-		else {
+		} else {
 			log_warn( _("rgrp index 2 is damaged: extrapolating dist: "));
 			*first_rg_dist = sdp->device.length -
 				(sdp->rgrps - 1) *
@@ -500,8 +499,8 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 			/* ------------------------------------------------- */
 			corrupt_rgs++;
 			if (corrupt_rgs < 5)
-				log_debug( _("Missing or damaged rgrp at block "
-					  "%llu (0x%llx)\n"),
+				log_debug(_("Missing or damaged rgrp at block "
+					    "%llu (0x%llx)\n"),
 					  (unsigned long long)blk,
 					  (unsigned long long)blk);
 			else {
@@ -664,7 +663,8 @@ static uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgs
 		sdp->rgsize += GFS2_DEFAULT_RGSIZE; /* bigger rgs */
 	}
 
-	log_debug("  rg sz = %"PRIu32"\n  nrgrp = %"PRIu64"\n", sdp->rgsize, nrgrp);
+	log_debug("  rg sz = %"PRIu32"\n  nrgrp = %"PRIu64"\n", sdp->rgsize,
+		  nrgrp);
 
 	return nrgrp;
 }
@@ -728,10 +728,10 @@ static void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree, i
 				(nrgrp - 1) * (dev->length / nrgrp);
 		}
 		rl->start = rgaddr;
-		printf("%d: start: %" PRIu64 " (0x%"
+		/* printf("%d: start: %" PRIu64 " (0x%"
 			 PRIx64 "), length = %"PRIu64" (0x%"
 			 PRIx64 ")\n", rgrp + 1, rl->start, rl->start,
-			 rl->length, rl->length);
+			 rl->length, rl->length);*/
 		rlast = rl;
 	}
 
@@ -909,8 +909,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 			gfs2_rgrp_free(&sdp->rgcalc);
 			return -1;
 		}
-	}
-	else if (trust_lvl == distrust) { /* If we can't trust RG index */
+	} else if (trust_lvl == distrust) { /* If we can't trust RG index */
 		/* Free previous incarnations in memory, if any. */
 		gfs2_rgrp_free(&sdp->rgtree);
 
@@ -921,8 +920,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 			return -1;
 		}
 		sdp->rgrps = calc_rg_count;
-	}
-	else if (trust_lvl == indignation) { /* If we can't trust anything */
+	} else if (trust_lvl == indignation) { /* If we can't trust anything */
 		/* Free previous incarnations in memory, if any. */
 		gfs2_rgrp_free(&sdp->rgtree);
 
