@@ -1018,7 +1018,8 @@ static void read_superblock(int fd)
 static int read_rindex(void)
 {
 	struct gfs2_rindex *ri;
-	int count, sane;
+	uint64_t count;
+	int sane;
 
 	sbd.fssize = sbd.device.length;
 	if (sbd.md.riinode) /* If we found the rindex */

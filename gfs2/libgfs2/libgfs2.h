@@ -701,7 +701,8 @@ extern int build_quota_change(struct gfs2_inode *per_node, unsigned int j);
 /* super.c */
 extern int check_sb(struct gfs2_sb *sb);
 extern int read_sb(struct gfs2_sbd *sdp);
-extern int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane);
+extern int rindex_read(struct gfs2_sbd *sdp, int fd, uint64_t *count1,
+		       int *sane);
 extern int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane);
 extern int write_sb(struct gfs2_sbd *sdp);
 

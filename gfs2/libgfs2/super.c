@@ -137,7 +137,7 @@ int read_sb(struct gfs2_sbd *sdp)
  *
  * Returns: 0 on success, -1 on failure
  */
-int rindex_read(struct gfs2_sbd *sdp, int fd, int *count1, int *sane)
+int rindex_read(struct gfs2_sbd *sdp, int fd, uint64_t *count1, int *sane)
 {
 	unsigned int rg;
 	int error;
@@ -250,7 +250,7 @@ static int __ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane,
 {
 	struct rgrp_tree *rgd;
 	struct gfs2_rindex *ri;
-	int count1 = 0, count2 = 0;
+	uint64_t count1 = 0, count2 = 0;
 	uint64_t errblock = 0;
 	uint64_t rmax = 0;
 	struct osi_node *n, *next = NULL;

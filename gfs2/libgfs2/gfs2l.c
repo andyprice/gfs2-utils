@@ -101,7 +101,7 @@ static int openfs(const char *path, struct gfs2_sbd *sdp)
 	int fd;
 	int ret;
 	int sane;
-	int count;
+	uint64_t count;
 
 	fd = open(path, O_RDWR);
 	if (fd < 0) {
