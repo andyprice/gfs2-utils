@@ -855,8 +855,8 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	}
 	/* Walk through the resource groups saving everything within */
 	for (n = osi_first(&sbd.rgtree); n; n = osi_next(n)) {
-		uint64_t blk;
 		struct rgrp_tree *rgd;
+		unsigned i;
 
 		rgd = (struct rgrp_tree *)n;
 		if (gfs2_rgrp_read(&sbd, rgd))
@@ -866,10 +866,9 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 			  (unsigned long long)rgd->ri.ri_addr,
 			  rgd->ri.ri_length);
 		/* Save off the rg and bitmaps */
-		for (blk = rgd->ri.ri_addr;
-		     blk < rgd->ri.ri_data0; blk++) {
-			warm_fuzzy_stuff(blk, FALSE);
-			save_block(sbd.device_fd, &mfd, blk, blk, NULL);
+		for (i = 0; i < rgd->ri.ri_length; i++) {
+			warm_fuzzy_stuff(rgd->ri.ri_addr + i, FALSE);
+			save_bh(&mfd, rgd->bits[i].bi_bh, 0, NULL);
 		}
 		/* Save off the other metadata: inodes, etc. if mode is not 'savergs' */
 		if (saveoption != 2) {
