@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "libgfs2.h"
+#include "clusterautoconfig.h"
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 #define SYM(x) { x, #x },
@@ -430,10 +431,15 @@ F(de_name_len, .flags = LGFS2_MFF_BYTES)
 F(de_type)
 #ifdef GFS2_HAS_DE_RAHEAD
 F(de_rahead)
-RF(__pad2)
+#ifdef GFS2_HAS_DE_COOKIE
+F(de_cookie)
+RF(pad3)
+#else
+RF(pad2)
+#endif /* GFS2_HAS_DE_COOKIE */
 #else
 RF(__pad)
-#endif
+#endif /* GFS2_HAS_DE_RAHEAD */
 };
 
 #undef STRUCT
