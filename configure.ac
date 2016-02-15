@@ -127,6 +127,8 @@ AC_CHECK_MEMBER([struct gfs2_leaf.lf_inode],[AC_DEFINE([GFS2_HAS_LEAF_HINTS],[],
                 [], [[#include <linux/gfs2_ondisk.h>]])
 AC_CHECK_MEMBER([struct gfs2_dirent.de_rahead],[AC_DEFINE([GFS2_HAS_DE_RAHEAD],[],[Dirent readahead field])],
                 [], [[#include <linux/gfs2_ondisk.h>]])
+AC_CHECK_MEMBER([struct gfs2_dirent.de_cookie],[AC_DEFINE([GFS2_HAS_DE_COOKIE],[],[Dirent cookie field])],
+                [], [[#include <linux/gfs2_ondisk.h>]])
 
 # *FLAGS handling
 ENV_CFLAGS="$CFLAGS"
