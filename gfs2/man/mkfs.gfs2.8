@@ -1,55 +1,61 @@
 .TH mkfs.gfs2 8
 
 .SH NAME
-mkfs.gfs2 - Make a GFS2 filesystem
+mkfs.gfs2 - create a gfs2 filesystem
 
 .SH SYNOPSIS
 .B mkfs.gfs2
-[\fIOPTION\fR]... \fIDEVICE\fR \fI[ block-count ]\fR 
+[\fIoptions\fR] \fIdevice\fR \fI[block-count]\fR
 
 .SH DESCRIPTION
-mkfs.gfs2 is used to create a Global File System.
+mkfs.gfs2 is used to create a gfs2 file system.
 
 .SH OPTIONS
+The default values of the following options have been chosen for best results.
+In most cases, there should be no need to choose different values. The
+exceptions to this are the number of journals (\fB-j\fP) and the lock table
+(\fB-t\fP), as these options will be specific to your cluster.
 .TP
-\fB-b\fP \fIBlockSize\fR 
-Set the filesystem block size to \fIBlockSize\fR (must be a power of
-two).  The minimum block size is 512.  The FS block size cannot exceed
-the machine's memory page size.  On the most architectures (i386,
-x86_64, s390, s390x), the memory page size is 4096 bytes.  On other
-architectures it may be bigger.  The default block size is 4096 bytes.
-In general, GFS2 filesystems should not deviate from the default value.
+\fB-b\fP \fIbytes\fR
+Set the filesystem block size to \fIbytes\fR which must be a power of two. The
+minimum block size is 512 and the block size cannot exceed the machine's memory
+page size, which on most architectures is 4096 bytes.  The default block size
+is 4096 bytes.
 .TP
-\fB-c\fP \fIMegaBytes\fR
-Initial size of each journal's quota change file
+\fB-c\fP \fImegabytes\fR
+Initial size of each journal's quota change file. The default is 1MB.
 .TP
 \fB-D\fP
 Enable debugging output.
 .TP
 \fB-h\fP
-Print  out  a  help  message  describing  available
-options, then exit.
+Print out a help message describing the available options, then exit.
 .TP
-\fB-J\fP \fIMegaBytes\fR 
-The size of the journals in Megabytes. The default journal size is 
-128 megabytes.  The minimum size is 8 megabytes.
+\fB-J\fP \fImegabytes\fR
+The size of each journal. The default journal size is 128 megabytes and the
+minimum size is 8 megabytes.
 .TP
-\fB-j\fP \fINumber\fR 
-The number of journals for gfs2_mkfs to create.  You need at least one
-journal per machine that will mount the filesystem.  If this option is
-not specified, one journal will be created.
+\fB-j\fP \fIjournals\fR
+The number of journals for mkfs.gfs2 to create.  At least one journal is
+required for each machine that will mount the filesystem concurrently.  If this
+option is not specified, only one journal will be created. This number may be
+used as an indicator of the number of nodes in the cluster in order to optimize
+the layout of the filesystem. As such, it is best to set this option with the
+maximum number of mounters in mind than to add more journals later.
 .TP
 \fB-K\fP
-Keep, do not attempt to discard blocks at mkfs time (discarding blocks
-initially is useful on solid state devices and  sparse  /  thin-provisioned
-storage).
+Do not attempt to discard the block device contents. Issuing discards to the
+device allows some solid state devices and sparse or thin-provisioned storage
+devices to optimise free space. Other devices may emulate this behaviour by
+zeroing the device contents, which can be a slow process.
 .TP
 \fB-O\fP
-This option prevents gfs2_mkfs from asking for confirmation before writing
-the filesystem.
+Override. This option prevents mkfs.gfs2 from asking for confirmation before
+writing the filesystem.
 .TP
 \fB-o\fP
-Specify extended options. Multiple options can be separated by commas. Valid extended options are:
+Specify extended options. Multiple options can be separated by commas. Valid
+extended options are:
 .RS 1.0i
 .TP
 .BI help
@@ -65,7 +71,9 @@ option.
 .TP
 .BI swidth= bytes
 This is used to specify the stripe width for a RAID device or striped logical
-volume.  This option ensures that resource groups will be stripe aligned and overrides the stripe width value obtained by probing the device. This value must be a multiple of the
+volume.  This option ensures that resource groups will be stripe aligned and
+overrides the stripe width value obtained by probing the device. This value
+must be a multiple of the
 .I sunit
 option and must also be specified with it.
 .TP
@@ -79,51 +87,62 @@ and
 extended options.
 .RE
 .TP
-\fB-p\fP \fILockProtoName\fR 
-LockProtoName is the name of the  locking  protocol to use.  Acceptable
-locking protocols are \fIlock_dlm\fR (for shared storage) or if you are
-using GFS2 as a local filesystem (\fB1 node only\fP), you can specify the
-\fIlock_nolock\fR protocol.  If this option is not specified,
-\fIlock_dlm\fR protocol will be assumed.
+\fB-p\fP \fIprotocol\fR
+Specify the locking protocol to use when no locking protocol is specified at
+mount time. Valid locking protocols are:
+.RS 1.0i
+.TP
+.BI lock_dlm
+This is the default. It enables DLM-based locking for use in shared storage
+configurations.
+.TP
+.BI lock_nolock
+This enables single-node locking
+.RE
 .TP
 \fB-q\fP
-Be quiet.  Don't print anything.
+Quiet mode. Do not print anything.
 .TP
-\fB-r\fP \fIMegaBytes\fR
-gfs2_mkfs will try to make Resource Groups about this big.
-Minimum RG size is 32 MB.  Maximum RG size is 2048 MB.
-A large RG size may increase performance on very large file systems.
-If not specified, mkfs.gfs2 will choose the RG size based on the size
-of the file system: average size file systems will have 256 MB RGs, and
-bigger file systems will have bigger RGs for better performance.
+\fB-r\fP \fImegabytes\fR
+mkfs.gfs2 will try to make resource groups approximately this large.  The
+minimum resource group size is 32 MB and the maximum is 2048 MB.  A large
+resource group size may increase performance on very large file systems.  If
+not specified, mkfs.gfs2 will choose the resource group size based on the
+size and alignment characteristics of the target device.
 .TP
-\fB-t\fP \fILockTableName\fR 
-The lock table field appropriate to the lock module you're using.
-It is \fIclustername:fsname\fR.
-Clustername must match that in cluster.conf; only members of this
-cluster are permitted to use this file system (1 to 32 characters).
-Fsname is a unique file system name used to distinguish this GFS2 file
-system from others created (1 to 30 characters).  Lock_nolock doesn't
-use this field. Valid \fIclustername\fRs and \fIfsname\fRs may only contain
-alphanumeric characters, hyphens (-) and underscores (_).
+\fB-t\fP \fIclustername:lockspace\fR
+The "lock table" pair used to uniquely identify this filesystem in a cluster.
+The cluster name segment (maximum 32 characters) must match the name given to
+your cluster in its configuration; only members of this cluster are permitted
+to use this file system.  The lockspace segment (maximum 30 characters) is a
+unique file system name used to distinguish this gfs2 file system.  Valid
+\fIclustername\fRs and \fIlockspace\fRs may only contain alphanumeric
+characters, hyphens (-) and underscores (_).
 .TP
 \fB-V\fP
 Print program version information, then exit.
-
 .TP
-[ \fIblock-count\fR ]
-Make the file system this many blocks in size.  If not specified, the
-entire length of the specified device is used.
-
+\fIblock-count\fR
+Use \fIblock-count\fR as the size of the filesystem instead of using the whole
+device. \fIblock-count\fR is specified as a number of filesystem blocks.
 .SH EXAMPLE
-.TP
-gfs2_mkfs -t mycluster:mygfs2 -p lock_dlm -j 2 /dev/vg0/mygfs2
-This will make a Global File System on the block device
-"/dev/vg0/mygfs2".  It will belong to "mycluster" and register itself
-as wanting locking for "mygfs2".  It will use DLM for locking and make
-two journals.
-.TP
-gfs2_mkfs -t mycluster:mygfs2 -p lock_nolock -j 3 /dev/vg0/mygfs2
-This will make a Global File System on the block device
-"/dev/vg0/mygfs2".  It will belong to "mycluster" and but have no
-cluster locking.  It will have three journals.
+.nf
+.RS
+# mkfs.gfs2 -t mycluster:mygfs2 -p lock_dlm -j 2 /dev/vg0/lv_gfs2
+.PP
+This will create a gfs2 filesystem on the block device /dev/vg0/lv_gfs2.  It
+will belong to a cluster named "mycluster" and use the "mygfs2" lock space.  It
+will use DLM for locking and create journals for a two-node cluster.
+.PP
+# mkfs.gfs2 -t mycluster:mygfs2 -p lock_nolock -j 3 /dev/vg0/lv_gfs2
+.PP
+This will create a filesystem on the block device /dev/vg0/lv_gfs2.  It
+will belong to a cluster named "mycluster" and use the "mygfs2" lockspace, but
+it will have no cluster locking by default as lock_nolock is used.  It will
+have journals for a three-node cluster.
+.RE
+.fi
+.SH SEE ALSO
+.BR gfs2 (5),
+.BR gfs2_jadd (8),
+.BR gfs2_grow (8)
