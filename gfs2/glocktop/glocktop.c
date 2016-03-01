@@ -147,7 +147,6 @@ enum summary_types {
 char debugfs[PATH_MAX];
 int termcols = 80, termlines = 30, done = 0;
 unsigned glocks = 0;
-int refresh_time = REFRESH_TIME;
 const char *termtype;
 WINDOW *wind;
 int bufsize = 4 * 1024 * 1024;
@@ -1625,7 +1624,7 @@ static void usage(void)
 	       "[-c] [-D] [-H] [-r] [-t]\n");
 	printf("\n");
 	printf("-i : Runs glocktop in interactive mode.\n");
-	printf("-d : delay between refreshes, in seconds (default: 3).\n");
+	printf("-d : delay between refreshes, in seconds (default: %d).\n", REFRESH_TIME);
 	printf("-n : stop after <iter> refreshes.\n");
 	printf("-H : don't show Held glocks, even if not waited on, excluding "
 	       "iopen\n");
@@ -1645,7 +1644,7 @@ int main(int argc, char **argv)
 	char fn[PATH_MAX];
 	struct dirent *dent;
 	int retval;
-	struct timeval tv;
+	int refresh_time = REFRESH_TIME;
 	fd_set readfds;
 	char string[96];
 	int ch, i, dlmwaiters = 0, dlmgrants = 0;
@@ -1654,6 +1653,7 @@ int main(int argc, char **argv)
 	int show_held = 1, help = 0;
 	int interactive = 0;
 	int summary = 10;
+	int nfds = STDIN_FILENO + 1;
 
 	prog_name = argv[0];
 	memset(glock, 0, sizeof(glock));
@@ -1669,7 +1669,7 @@ int main(int argc, char **argv)
 			refresh_time = atoi(optarg);
 			if (refresh_time < 1) {
 				fprintf(stderr, "Error: delay %d too small; "
-					"must be > 1\n", refresh_time);
+					"must be at least 1\n", refresh_time);
 				exit(-1);
 			}
 			break;
@@ -1759,6 +1759,8 @@ int main(int argc, char **argv)
 	}
 
 	while (!done) {
+		struct timeval tv;
+
 		sprintf(fn, "%s/gfs2/", debugfs);
 		dir = opendir(fn);
 
@@ -1829,8 +1831,9 @@ int main(int argc, char **argv)
 		tv.tv_sec = refresh_time;
 		tv.tv_usec = 0;
 		FD_ZERO(&readfds);
-		FD_SET(0, &readfds);
-		retval = select(1, &readfds, NULL, NULL, &tv);
+		if (nfds != 0)
+			FD_SET(STDIN_FILENO, &readfds);
+		retval = select(nfds, &readfds, NULL, NULL, &tv);
 		if (retval) {
 			if (interactive)
 				ch = getch();
@@ -1855,6 +1858,11 @@ int main(int argc, char **argv)
 					refresh_time = atoi(string);
 				if (refresh_time < 1)
 					refresh_time = 1;
+				break;
+			/* When we get EOF on stdin, remove it from the fd_set
+			   to avoid shorting out the select() */
+			case EOF:
+				nfds = 0;
 				break;
 			}
 		}
