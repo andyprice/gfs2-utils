@@ -506,7 +506,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			 tmp_name);
 	}
 
-	*q = block_type(entry->no_addr);
+	*q = bitmap_type(sdp, entry->no_addr);
 	/* Get the status of the directory inode */
 	/**
 	 * 1. Blocks marked "invalid" were invalidated due to duplicate
@@ -1720,7 +1720,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 	}
 
 	iblock = sysinode->i_di.di_num.no_addr;
-	ds.q = block_type(iblock);
+	ds.q = bitmap_type(sysinode->i_sbd, iblock);
 
 	pass2_fxns.private = (void *) &ds;
 	if (ds.q == GFS2_BLKST_UNLINKED) {
@@ -1998,7 +1998,7 @@ int pass2(struct gfs2_sbd *sdp)
 		if (is_system_dir(sdp, dirblk))
 			continue;
 
-		q = block_type(dirblk);
+		q = bitmap_type(sdp, dirblk);
 		if (q != GFS2_BLKST_DINODE)
 			continue;
 

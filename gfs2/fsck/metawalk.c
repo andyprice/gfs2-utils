@@ -1045,7 +1045,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 	if (!valid_block(ip->i_sbd, block))
 		return meta_error;
 
-	q = block_type(block);
+	q = bitmap_type(ip->i_sbd, block);
 	if (q == GFS2_BLKST_FREE) {
 		log_info( _("%s block %lld (0x%llx), part of inode "
 			    "%lld (0x%llx), was already free.\n"),
@@ -1774,7 +1774,7 @@ int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 	remove_dentry_fxns.private = &dentryblock;
 	remove_dentry_fxns.check_dentry = remove_dentry;
 
-	q = block_type(dir);
+	q = bitmap_type(sdp, dir);
 	if (q != GFS2_BLKST_DINODE) {
 		log_info( _("Parent block is not an inode...ignoring\n"));
 		return 1;
@@ -1825,7 +1825,7 @@ static int del_eattr_generic(struct gfs2_inode *ip, uint64_t block,
 	uint8_t q;
 
 	if (valid_block(ip->i_sbd, block)) {
-		q = block_type(block);
+		q = bitmap_type(ip->i_sbd, block);
 		if (q == GFS2_BLKST_FREE)
 			was_free = 1;
 		ret = delete_block_if_notdup(ip, block, NULL, eatype,
@@ -1925,7 +1925,7 @@ static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,
 	*is_valid = 1;
 	*was_duplicate = 0;
 	*bh = bread(ip->i_sbd, block);
-	q = block_type(block);
+	q = bitmap_type(ip->i_sbd, block);
 	if (q == GFS2_BLKST_FREE) {
 		log_debug(_("%s reference to new metadata block "
 			    "%lld (0x%llx) is now marked as indirect.\n"),
@@ -1947,7 +1947,7 @@ static int alloc_data(struct gfs2_inode *ip, uint64_t metablock,
 	/* No need to range_check here--if it was added, it's in range. */
 	/* We can't check the bitmap here because this function is called
 	   after the bitmap has been set but before the blockmap has. */
-	q = block_type(block);
+	q = bitmap_type(ip->i_sbd, block);
 	if (q == GFS2_BLKST_FREE) {
 		log_debug(_("%s reference to new data block "
 			    "%lld (0x%llx) is now marked as data.\n"),
@@ -1965,7 +1965,7 @@ static int alloc_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	/* No need to range_check here--if it was added, it's in range. */
 	/* We can't check the bitmap here because this function is called
 	   after the bitmap has been set but before the blockmap has. */
-	q = block_type(block);
+	q = bitmap_type(ip->i_sbd, block);
 	if (q == GFS2_BLKST_FREE)
 		fsck_blockmap_set(ip, block, _("newly allocated leaf"),
 				  ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :

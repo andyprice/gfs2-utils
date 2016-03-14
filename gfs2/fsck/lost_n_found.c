@@ -131,14 +131,14 @@ void make_sure_lf_exists(struct gfs2_inode *ip)
 	   them in sync so that pass4 can detect and fix any descrepancies. */
 	set_di_nlink(sdp->md.rooti);
 
-	q = block_type(lf_dip->i_di.di_num.no_addr);
+	q = bitmap_type(sdp, lf_dip->i_di.di_num.no_addr);
 	if (q != GFS2_BLKST_DINODE) {
 		lf_was_created = 1;
 		/* This is a new lost+found directory, so set its block type
 		   and increment link counts for the directories */
 		/* FIXME: i'd feel better about this if fs_mkdir returned
 		   whether it created a new directory or just found an old one,
-		   and we used that instead of the block_type to run this */
+		   and we used that instead of the bitmap_type to run this */
 		fsck_blockmap_set(ip, lf_dip->i_di.di_num.no_addr,
 				  _("lost+found dinode"), GFS2_BLKST_DINODE);
 		dirtree_insert(lf_dip->i_di.di_num);

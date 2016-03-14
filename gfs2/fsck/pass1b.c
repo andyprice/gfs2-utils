@@ -216,7 +216,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 			return;
 
 		this_ref = get_ref_type(id);
-		q = block_type(id->block_no);
+		q = bitmap_type(sdp, id->block_no);
 		if (inval)
 			log_warn( _("Invalid "));
 		/* FIXME: If we already found an acceptable reference to this
@@ -525,7 +525,7 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 	if (dt->dup_flags & DUPFLAG_REF1_IS_DUPL)
 		clone_dup_ref_in_inode(ip, dt);
 
-	q = block_type(id->block_no);
+	q = bitmap_type(sdp, id->block_no);
 	if (q == GFS2_BLKST_UNLINKED) {
 		log_debug( _("The remaining reference inode %lld (0x%llx) is "
 			     "marked invalid: Marking the block as free.\n"),
@@ -883,7 +883,7 @@ int pass1b(struct gfs2_sbd *sdp)
 				    "duplicates.\n"), dups_found);
 			break;
 		}
-		q = block_type(i);
+		q = bitmap_type(sdp, i);
 
 		if (q == GFS2_BLKST_FREE || q == GFS2_BLKST_USED)
 			continue;

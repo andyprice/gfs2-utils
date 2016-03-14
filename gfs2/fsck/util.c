@@ -372,7 +372,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 			return meta_error;
 		}
 		id->block_no = ip->i_di.di_num.no_addr;
-		q = block_type(ip->i_di.di_num.no_addr);
+		q = bitmap_type(ip->i_sbd, ip->i_di.di_num.no_addr);
 		/* If it's an invalid dinode, put it first on the invalid
 		   inode reference list otherwise put it on the normal list. */
 		if (!inode_valid || q == GFS2_BLKST_UNLINKED)
