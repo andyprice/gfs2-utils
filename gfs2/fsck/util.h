@@ -119,7 +119,6 @@ extern struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
 					  uint64_t *addl_mem_needed);
 extern void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il);
 extern int gfs2_blockmap_set(struct gfs2_bmap *il, uint64_t block, int mark);
-extern int set_ip_blockmap(struct gfs2_inode *ip, int instree);
 extern char generic_interrupt(const char *caller, const char *where,
                        const char *progress, const char *question,
                        const char *answers);
