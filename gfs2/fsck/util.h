@@ -59,6 +59,14 @@ static inline uint8_t block_type(uint64_t bblock)
 	return btype;
 }
 
+static inline uint8_t bitmap_type(struct gfs2_sbd *sdp, uint64_t bblock)
+{
+	struct rgrp_tree *rgd;
+
+	rgd = gfs2_blk2rgrpd(sdp, bblock);
+	return lgfs2_get_bitmap(sdp, bblock, rgd);
+}
+
 static const inline char *block_type_string(uint8_t q)
 {
 	const char *blktyp[] = {"free", "data", "other", "inode", "invalid"};

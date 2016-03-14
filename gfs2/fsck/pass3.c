@@ -75,7 +75,7 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 		return NULL;
 
 	if (di->dotdot_parent.no_addr == di->treewalk_parent) {
-		q_dotdot = block_type(di->dotdot_parent.no_addr);
+		q_dotdot = bitmap_type(sdp, di->dotdot_parent.no_addr);
 		if (q_dotdot != GFS2_BLKST_DINODE) {
 			log_err( _("Orphaned directory at block %llu (0x%llx) "
 				   "moved to lost+found\n"),
@@ -95,9 +95,9 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 		    (unsigned long long)di->dotdot_parent.no_addr,
 		    (unsigned long long)di->treewalk_parent,
 		    (unsigned long long)di->treewalk_parent);
-	q_dotdot = block_type(di->dotdot_parent.no_addr);
+	q_dotdot = bitmap_type(sdp, di->dotdot_parent.no_addr);
 	dt_dotdot = dirtree_find(di->dotdot_parent.no_addr);
-	q_treewalk = block_type(di->treewalk_parent);
+	q_treewalk = bitmap_type(sdp, di->treewalk_parent);
 	dt_treewalk = dirtree_find(di->treewalk_parent);
 	/* if the dotdot entry isn't a directory, but the
 	 * treewalk is, treewalk is correct - if the treewalk
@@ -249,7 +249,7 @@ int pass3(struct gfs2_sbd *sdp)
 				di = tdi;
 				continue;
 			}
-			q = block_type(di->dinode.no_addr);
+			q = bitmap_type(sdp, di->dinode.no_addr);
 			if (q == GFS2_BLKST_UNLINKED) {
 				log_err( _("Found unlinked directory "
 					   "containing bad block at block %llu"
