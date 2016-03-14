@@ -591,56 +591,6 @@ void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il)
 	return il;
 }
 
-/* set_ip_blockmap - set the blockmap for a dinode
- *
- * instree: Set to 1 if directories should be inserted into the directory tree
- *          otherwise 0.
- * returns: 0 if no error, -EINVAL if dinode has a bad mode, -EPERM on error
- */
-int set_ip_blockmap(struct gfs2_inode *ip, int instree)
-{
-	uint64_t block = ip->i_bh->b_blocknr;
-	uint32_t mode;
-	const char *ty;
-
-	if (ip->i_sbd->gfs1)
-		mode = gfs_to_gfs2_mode(ip);
-	else
-		mode = ip->i_di.di_mode & S_IFMT;
-
-	switch (mode) {
-	case S_IFDIR:
-		ty = _("directory");
-		break;
-	case S_IFREG:
-		ty = _("file");
-		break;
-	case S_IFLNK:
-		ty = _("symlink");
-		break;
-	case S_IFBLK:
-		ty = _("block device");
-		break;
-	case S_IFCHR:
-		ty = _("character device");
-		break;
-	case S_IFIFO:
-		ty = _("fifo");
-		break;
-	case S_IFSOCK:
-		ty = _("socket");
-		break;
-	default:
-		return -EINVAL;
-	}
-	if (fsck_blockmap_set(ip, block, ty, GFS2_BLKST_DINODE) ||
-	    (mode == S_IFDIR && instree && !dirtree_insert(ip->i_di.di_num))) {
-		stack;
-		return -EPERM;
-	}
-	return 0;
-}
-
 uint64_t find_free_blk(struct gfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
