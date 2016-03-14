@@ -375,9 +375,9 @@ static int wrong_leaf(struct gfs2_inode *ip, struct gfs2_inum *entry,
 				(unsigned long long)real_leaf,
 				(unsigned long long)real_leaf,
 				(unsigned long long)ip->i_di.di_blocks);
-			fsck_blockmap_set(ip, real_leaf, _("split leaf"),
-					  sdp->gfs1 ? GFS2_BLKST_DINODE :
-					  GFS2_BLKST_USED);
+			fsck_bitmap_set(ip, real_leaf, _("split leaf"),
+					sdp->gfs1 ? GFS2_BLKST_DINODE :
+					GFS2_BLKST_USED);
 		}
 		/* If the misplaced dirent was supposed to be earlier in the
 		   hash table, we need to adjust our counts for the blocks
@@ -475,9 +475,9 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			return 0;
 		}
 		/* Don't be tempted to do this:
-		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-				  _("corrupt directory entry"),
-				  GFS2_BLKST_FREE);
+		fsck_bitmap_set(ip, ip->i_di.di_num.no_addr,
+				_("corrupt directory entry"),
+				GFS2_BLKST_FREE);
 		We can't free it because another dir may have a valid reference
 		to it. Just return 1 so we can delete the bad dirent. */
 		log_err( _("Bad directory entry deleted.\n"));
@@ -893,9 +893,9 @@ static void pad_with_leafblks(struct gfs2_inode *ip, uint64_t *tbl,
 			(unsigned long long)new_leaf_blk,
 			(unsigned long long)new_leaf_blk,
 			lindex, lindex, new_len);
-		fsck_blockmap_set(ip, new_leaf_blk, _("pad leaf"),
-				  ip->i_sbd->gfs1 ?
-				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
+		fsck_bitmap_set(ip, new_leaf_blk, _("pad leaf"),
+				ip->i_sbd->gfs1 ?
+				GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 		/* Fix the hash table in memory to have the new leaf */
 		for (i = 0; i < new_len; i++)
 			tbl[lindex + i] = cpu_to_be64(new_leaf_blk);
@@ -997,7 +997,7 @@ static int lost_leaf(struct gfs2_inode *ip, uint64_t *tbl, uint64_t leafno,
 	log_err(_("Directory entries from misplaced leaf block were relocated "
 		  "to lost+found.\n"));
 	/* Free the lost leaf. */
-	fsck_blockmap_set(ip, leafno, _("lost leaf"), GFS2_BLKST_FREE);
+	fsck_bitmap_set(ip, leafno, _("lost leaf"), GFS2_BLKST_FREE);
 	ip->i_di.di_blocks--;
 	bmodified(ip->i_bh);
 	/* Now we have to deal with the bad hash table entries pointing to the
@@ -1228,9 +1228,9 @@ static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
 			  "(0x%llx) for index %d (0x%x)\n"),
 			(unsigned long long)new_leaf_blk,
 			(unsigned long long)new_leaf_blk, lindex, lindex);
-		fsck_blockmap_set(ip, new_leaf_blk, _("split leaf"),
-				  ip->i_sbd->gfs1 ?
-				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
+		fsck_bitmap_set(ip, new_leaf_blk, _("split leaf"),
+				ip->i_sbd->gfs1 ?
+				GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 		log_err(_("Hash table repaired.\n"));
 		/* Fix up the hash table in memory to include the new leaf */
 		for (i = 0; i < *proper_len; i++)
@@ -1695,7 +1695,7 @@ build_it:
 		log_err(_("Error rebuilding %s.\n"), fn);
 		return -1;
 	}
-	fsck_blockmap_set(ip, ip->i_di.di_num.no_addr, fn, GFS2_BLKST_DINODE);
+	fsck_bitmap_set(ip, ip->i_di.di_num.no_addr, fn, GFS2_BLKST_DINODE);
 	reprocess_inode(ip, fn);
 	log_err(_("System file %s rebuilt.\n"), fn);
 	goto out_good;
@@ -1742,7 +1742,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		return -1;
 	}
 	if (error > 0)
-		fsck_blockmap_set(sysinode, iblock, dirname, GFS2_BLKST_FREE);
+		fsck_bitmap_set(sysinode, iblock, dirname, GFS2_BLKST_FREE);
 
 	if (check_inode_eattr(sysinode, &pass2_fxns)) {
 		stack;
@@ -1888,9 +1888,6 @@ static int pass2_check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 
 		log_debug(_("Directory block %lld (0x%llx) is now marked as 'invalid'\n"),
 			   (unsigned long long)dirblk, (unsigned long long)dirblk);
-		/* Can't use fsck_blockmap_set here because we don't
-		   have an inode in memory. */
-		gfs2_blockmap_set(bl, dirblk, GFS2_BLKST_FREE);
 		check_n_fix_bitmap(sdp, dirblk, 0, GFS2_BLKST_FREE);
 	}
 

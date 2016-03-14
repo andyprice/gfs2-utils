@@ -139,8 +139,8 @@ void make_sure_lf_exists(struct gfs2_inode *ip)
 		/* FIXME: i'd feel better about this if fs_mkdir returned
 		   whether it created a new directory or just found an old one,
 		   and we used that instead of the bitmap_type to run this */
-		fsck_blockmap_set(ip, lf_dip->i_di.di_num.no_addr,
-				  _("lost+found dinode"), GFS2_BLKST_DINODE);
+		fsck_bitmap_set(ip, lf_dip->i_di.di_num.no_addr,
+				_("lost+found dinode"), GFS2_BLKST_DINODE);
 		dirtree_insert(lf_dip->i_di.di_num);
 		/* root inode links to lost+found */
 		incr_link_count(sdp->md.rooti->i_di.di_num, lf_dip, _("root"));

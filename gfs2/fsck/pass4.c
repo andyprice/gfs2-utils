@@ -82,9 +82,9 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 					check_inode_eattr(ip,
 							  &pass4_fxns_delete);
 					check_metatree(ip, &pass4_fxns_delete);
-					fsck_blockmap_set(ip, ii->di_num.no_addr,
-							  _("bad unlinked"),
-							  GFS2_BLKST_FREE);
+					fsck_bitmap_set(ip, ii->di_num.no_addr,
+							_("bad unlinked"),
+							GFS2_BLKST_FREE);
 					fsck_inode_put(&ip);
 					continue;
 				} else
@@ -101,9 +101,9 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 					check_inode_eattr(ip,
 							  &pass4_fxns_delete);
 					check_metatree(ip, &pass4_fxns_delete);
-					fsck_blockmap_set(ip, ii->di_num.no_addr,
-						  _("invalid unlinked"),
-							  GFS2_BLKST_FREE);
+					fsck_bitmap_set(ip, ii->di_num.no_addr,
+							_("invalid unlinked"),
+							GFS2_BLKST_FREE);
 					fsck_inode_put(&ip);
 					log_err( _("The inode was deleted\n"));
 				} else {
@@ -122,9 +122,9 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 				log_err( _("Unlinked inode has zero size\n"));
 				if (query(_("Clear zero-size unlinked inode? "
 					   "(y/n) "))) {
-					fsck_blockmap_set(ip, ii->di_num.no_addr,
+					fsck_bitmap_set(ip, ii->di_num.no_addr,
 						_("unlinked zero-length"),
-							  GFS2_BLKST_FREE);
+							GFS2_BLKST_FREE);
 					fsck_inode_put(&ip);
 					continue;
 				}

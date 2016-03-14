@@ -250,6 +250,7 @@ int pass3(struct gfs2_sbd *sdp)
 				continue;
 			}
 			q = bitmap_type(sdp, di->dinode.no_addr);
+			ip = fsck_load_inode(sdp, di->dinode.no_addr);
 			if (q == GFS2_BLKST_UNLINKED) {
 				log_err( _("Found unlinked directory "
 					   "containing bad block at block %llu"
@@ -264,12 +265,9 @@ int pass3(struct gfs2_sbd *sdp)
 						  di->dinode.no_addr,
 						  (unsigned long long)
 						  di->dinode.no_addr);
-					/* Can't use fsck_blockmap_set
-					   because we don't have ip */
-					gfs2_blockmap_set(bl, di->dinode.no_addr,
-							  GFS2_BLKST_FREE);
 					check_n_fix_bitmap(sdp, di->dinode.no_addr,
 							   0, GFS2_BLKST_FREE);
+					fsck_inode_put(&ip);
 					break;
 				} else
 					log_err( _("Unlinked directory with bad block remains\n"));
@@ -287,13 +285,10 @@ int pass3(struct gfs2_sbd *sdp)
 					    "marked as free\n"),
 					  (unsigned long long)di->dinode.no_addr,
 					  (unsigned long long)di->dinode.no_addr);
-				/* Can't use fsck_blockmap_set
-				   because we don't have ip */
-				gfs2_blockmap_set(bl, di->dinode.no_addr,
-						  GFS2_BLKST_FREE);
 				check_n_fix_bitmap(sdp, di->dinode.no_addr, 0,
 						   GFS2_BLKST_FREE);
 				log_err( _("The block was cleared\n"));
+				fsck_inode_put(&ip);
 				break;
 			}
 
@@ -301,17 +296,15 @@ int pass3(struct gfs2_sbd *sdp)
 				   " (0x%llx)\n"),
 				 (unsigned long long)di->dinode.no_addr,
 				 (unsigned long long)di->dinode.no_addr);
-			ip = fsck_load_inode(sdp, di->dinode.no_addr);
 			/* Don't skip zero size directories with eattrs */
 			if (!ip->i_di.di_size && !ip->i_di.di_eattr){
 				log_err( _("Unlinked directory has zero "
 					   "size.\n"));
 				if (query( _("Remove zero-size unlinked "
 					    "directory? (y/n) "))) {
-					fsck_blockmap_set(ip,
-							  di->dinode.no_addr,
+					fsck_bitmap_set(ip, di->dinode.no_addr,
 						_("zero-sized unlinked inode"),
-							  GFS2_BLKST_FREE);
+							GFS2_BLKST_FREE);
 					fsck_inode_put(&ip);
 					break;
 				} else {
