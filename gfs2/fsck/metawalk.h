@@ -60,11 +60,6 @@ extern struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
 					    uint64_t block);
 extern int find_remove_dup(struct gfs2_inode *ip, uint64_t block,
 			   const char *btype);
-extern int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
-			  int num_copies, const char *before_or_after,
-			  uint64_t *bn);
-extern int repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no, int lindex,
-		       int ref_count, const char *msg, int allow_alloc);
 
 #define is_duplicate(dblock) ((dupfind(dblock)) ? 1 : 0)
 
@@ -155,8 +150,7 @@ struct metawalk_fxns {
 	int (*check_hash_tbl) (struct gfs2_inode *ip, uint64_t *tbl,
 			       unsigned hsize, void *private);
 	int (*repair_leaf) (struct gfs2_inode *ip, uint64_t *leaf_no,
-			    int lindex, int ref_count, const char *msg,
-			    void *private);
+			    int lindex, int ref_count, const char *msg);
 	int (*undo_check_meta) (struct gfs2_inode *ip, uint64_t block,
 				int h, void *private);
 	int (*undo_check_data) (struct gfs2_inode *ip, uint64_t block,
