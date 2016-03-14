@@ -110,12 +110,11 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 }
 
 /*
- * _fsck_blockmap_set - Mark a block in the 4-bit blockmap and the 2-bit
- *                      bitmap, and adjust free space accordingly.
+ * _fsck_bitmap_set - Mark a block in the bitmap, and adjust free space.
  */
-int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
-		       const char *btype, int mark,
-		       int error_on_dinode, const char *caller, int fline)
+int _fsck_bitmap_set(struct gfs2_inode *ip, uint64_t bblock,
+		     const char *btype, int mark,
+		     int error_on_dinode, const char *caller, int fline)
 {
 	int error;
 	static int prev_ino_addr = 0;
@@ -172,19 +171,26 @@ int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 		prev_mark = mark;
 		prev_caller = caller;
 	}
-
-	/* First, check the rgrp bitmap against what we think it should be.
-	   If that fails, it's an invalid block--part of an rgrp. */
 	error = check_n_fix_bitmap(ip->i_sbd, bblock, error_on_dinode, mark);
-	if (error) {
-		if (error < 0)
-			log_err( _("This block is not represented in the "
-				   "bitmap.\n"));
-		return error;
-	}
-
-	error = gfs2_blockmap_set(bl, bblock, mark);
+	if (error < 0)
+		log_err(_("This block is not represented in the bitmap.\n"));
 	return error;
+}
+
+/*
+ * _fsck_blockmap_set - Mark a block in the 4-bit blockmap and the 2-bit
+ *                      bitmap, and adjust free space accordingly.
+ */
+int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
+		       const char *btype, int mark,
+		       int error_on_dinode, const char *caller, int fline)
+{
+	int error = _fsck_bitmap_set(ip, bblock, btype, mark, error_on_dinode,
+				     caller, fline);
+	if (error)
+		return error;
+
+	return gfs2_blockmap_set(bl, bblock, mark);
 }
 
 struct duptree *dupfind(uint64_t block)

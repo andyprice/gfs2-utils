@@ -348,9 +348,9 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 				ii = inodetree_find(ip->i_di.di_num.no_addr);
 				if (ii)
 					inodetree_delete(ii);
-				fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
+				fsck_bitmap_set(ip, ip->i_di.di_num.no_addr,
 						_("duplicate referencing bad"),
-						  GFS2_BLKST_UNLINKED);
+						GFS2_BLKST_UNLINKED);
 				/* We delete the dup_handler inode count and
 				   duplicate id BEFORE clearing the metadata,
 				   because if this is the last reference to
@@ -428,8 +428,8 @@ static int clone_data(struct gfs2_inode *ip, uint64_t metablock,
 		if (!error) {
 			clone_bh = bread(ip->i_sbd, clonet->dup_block);
 			if (clone_bh) {
-				fsck_blockmap_set(ip, cloneblock, _("data"),
-						  GFS2_BLKST_USED);
+				fsck_bitmap_set(ip, cloneblock, _("data"),
+						GFS2_BLKST_USED);
 				clone_bh->b_blocknr = cloneblock;
 				bmodified(clone_bh);
 				brelse(clone_bh);
@@ -496,6 +496,46 @@ static void clone_dup_ref_in_inode(struct gfs2_inode *ip, struct duptree *dt)
 	}
 }
 
+static int set_ip_bitmap(struct gfs2_inode *ip)
+{
+	uint64_t block = ip->i_bh->b_blocknr;
+	uint32_t mode;
+	const char *ty;
+
+	if (ip->i_sbd->gfs1)
+		mode = gfs_to_gfs2_mode(ip);
+	else
+		mode = ip->i_di.di_mode & S_IFMT;
+
+	switch (mode) {
+	case S_IFDIR:
+		ty = _("directory");
+		break;
+	case S_IFREG:
+		ty = _("file");
+		break;
+	case S_IFLNK:
+		ty = _("symlink");
+		break;
+	case S_IFBLK:
+		ty = _("block device");
+		break;
+	case S_IFCHR:
+		ty = _("character device");
+		break;
+	case S_IFIFO:
+		ty = _("fifo");
+		break;
+	case S_IFSOCK:
+		ty = _("socket");
+		break;
+	default:
+		return -EINVAL;
+	}
+	fsck_bitmap_set(ip, block, ty, GFS2_BLKST_DINODE);
+	return 0;
+}
+
 static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 				   enum dup_ref_type acceptable_ref)
 {
@@ -531,31 +571,31 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 			     "marked invalid: Marking the block as free.\n"),
 			   (unsigned long long)id->block_no,
 			   (unsigned long long)id->block_no);
-		fsck_blockmap_set(ip, dt->block, _("reference-repaired leaf"),
+		fsck_bitmap_set(ip, dt->block, _("reference-repaired leaf"),
 				  GFS2_BLKST_FREE);
 	} else if (id->reftypecount[ref_is_inode]) {
-		set_ip_blockmap(ip, 0); /* 0=do not add to dirtree */
+		set_ip_bitmap(ip);
 	} else if (id->reftypecount[ref_as_data]) {
-		fsck_blockmap_set(ip, dt->block,  _("reference-repaired data"),
-				  GFS2_BLKST_USED);
+		fsck_bitmap_set(ip, dt->block,  _("reference-repaired data"),
+				GFS2_BLKST_USED);
 	} else if (id->reftypecount[ref_as_meta]) {
 		if (is_dir(&ip->i_di, sdp->gfs1))
-			fsck_blockmap_set(ip, dt->block,
-					  _("reference-repaired leaf"),
-					  sdp->gfs1 ? GFS2_BLKST_DINODE :
-					  GFS2_BLKST_USED);
+			fsck_bitmap_set(ip, dt->block,
+					_("reference-repaired leaf"),
+					sdp->gfs1 ? GFS2_BLKST_DINODE :
+					GFS2_BLKST_USED);
 		else
-			fsck_blockmap_set(ip, dt->block,
-					  _("reference-repaired indirect"),
-					  sdp->gfs1 ? GFS2_BLKST_DINODE :
-					  GFS2_BLKST_USED);
+			fsck_bitmap_set(ip, dt->block,
+					_("reference-repaired indirect"),
+					sdp->gfs1 ? GFS2_BLKST_DINODE :
+					GFS2_BLKST_USED);
 	} else {
 		if (acceptable_ref == ref_as_ea)
-			fsck_blockmap_set(ip, dt->block,
-					  _("reference-repaired extended "
-					    "attribute"),
-					  sdp->gfs1 ? GFS2_BLKST_DINODE :
-					  GFS2_BLKST_USED);
+			fsck_bitmap_set(ip, dt->block,
+					_("reference-repaired extended "
+					  "attribute"),
+					sdp->gfs1 ? GFS2_BLKST_DINODE :
+					GFS2_BLKST_USED);
 		else {
 			log_err(_("Error: The remaining reference to block "
 				  " %lld (0x%llx) is as extended attribute, "
@@ -574,9 +614,9 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 				ip->i_di.di_flags &= ~GFS2_DIF_EA_INDIRECT;
 				ip->i_di.di_blocks--;
 				bmodified(ip->i_bh);
-				fsck_blockmap_set(ip, dt->block,
-						  _("reference-repaired EA"),
-						  GFS2_BLKST_FREE);
+				fsck_bitmap_set(ip, dt->block,
+						_("reference-repaired EA"),
+						GFS2_BLKST_FREE);
 				log_err(_("The bad extended attribute was "
 					  "removed.\n"));
 			} else {
@@ -725,8 +765,6 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 				    (unsigned long long)dup_blk);
 			if (dh.dt)
 				dup_delete(dh.dt);
-			/* Now fix the block type of the block in question. */
-			gfs2_blockmap_set(bl, dup_blk, GFS2_BLKST_FREE);
 			check_n_fix_bitmap(sdp, dup_blk, 0, GFS2_BLKST_FREE);
 		}
 	}
