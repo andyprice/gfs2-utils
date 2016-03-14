@@ -236,11 +236,11 @@ struct fsck_pass {
 
 static const struct fsck_pass passes[] = {
 	{ .name = "pass1",  .f = pass1 },
+	{ .name = "reconcile_bitmaps",  .f = pass5 },
 	{ .name = "pass1b", .f = pass1b },
 	{ .name = "pass2",  .f = pass2 },
 	{ .name = "pass3",  .f = pass3 },
 	{ .name = "pass4",  .f = pass4 },
-	{ .name = "pass5",  .f = pass5 },
 	{ .name = "check_statfs", .f = check_statfs },
 	{ .name = NULL, }
 };
