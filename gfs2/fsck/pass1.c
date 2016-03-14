@@ -1143,11 +1143,9 @@ struct metawalk_fxns eattr_undo_fxns = {
 };
 /* set_ip_blockmap - set the blockmap for a dinode
  *
- * instree: Set to 1 if directories should be inserted into the directory tree
- *          otherwise 0.
  * returns: 0 if no error, -EINVAL if dinode has a bad mode, -EPERM on error
  */
-static int set_ip_blockmap(struct gfs2_inode *ip, int instree)
+static int set_ip_blockmap(struct gfs2_inode *ip)
 {
 	uint64_t block = ip->i_bh->b_blocknr;
 	uint32_t mode;
@@ -1184,7 +1182,7 @@ static int set_ip_blockmap(struct gfs2_inode *ip, int instree)
 		return -EINVAL;
 	}
 	if (fsck_blockmap_set(ip, block, ty, GFS2_BLKST_DINODE) ||
-	    (mode == S_IFDIR && instree && !dirtree_insert(ip->i_di.di_num))) {
+	    (mode == S_IFDIR && !dirtree_insert(ip->i_di.di_num))) {
 		stack;
 		return -EPERM;
 	}
@@ -1220,7 +1218,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		return 0;
 	}
 
-	error = set_ip_blockmap(ip, 1);
+	error = set_ip_blockmap(ip);
 	if (error == -EINVAL) {
 		/* We found a dinode that has an invalid mode. At this point
 		   set_ip_blockmap returned an error, which means it never
