@@ -1718,9 +1718,6 @@ int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 int check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	int error = 0;
-	struct alloc_state as;
-
-	astate_save(ip, &as);
 
 	if (ip->i_di.di_flags & GFS2_DIF_EXHASH)
 		error = check_leaf_blks(ip, pass);
@@ -1729,9 +1726,6 @@ int check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip, struct metawalk_fxns 
 
 	if (error < 0)
 		stack;
-
-	if (astate_changed(ip, &as))
-		reprocess_inode(ip, _("Current"));
 
 	return error;
 }

@@ -24,7 +24,6 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 	int filename_len = 2;
 	int err;
 	struct gfs2_inode *ip, *pip;
-	struct alloc_state as;
 
 	ip = fsck_load_inode(sdp, block);
 	pip = fsck_load_inode(sdp, newdotdot);
@@ -39,21 +38,12 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 		log_warn( _("Unable to remove \"..\" directory entry.\n"));
 	else
 		decr_link_count(olddotdot, block, _("old \"..\""));
-	astate_save(ip, &as);
 	err = dir_add(ip, filename, filename_len, &pip->i_di.di_num,
 		      (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 	if (err) {
 		log_err(_("Error adding directory %s: %s\n"),
 		        filename, strerror(errno));
 		exit(FSCK_ERROR);
-	}
-	if (astate_changed(ip, &as)) {
-		char dirname[80];
-
-		sprintf(dirname, _("Directory at %lld (0x%llx)"),
-			(unsigned long long)ip->i_di.di_num.no_addr,
-			(unsigned long long)ip->i_di.di_num.no_addr);
-		reprocess_inode(ip, dirname);
 	}
 	incr_link_count(pip->i_di.di_num, ip, _("new \"..\""));
 	fsck_inode_put(&ip);
@@ -182,7 +172,6 @@ int pass3(struct gfs2_sbd *sdp)
 	struct dir_info *di, *tdi;
 	struct gfs2_inode *ip;
 	int q;
-	struct alloc_state lf_as = {.as_blocks = 0, .as_meta_goal = 0};
 
 	di = dirtree_find(sdp->md.rooti->i_di.di_num.no_addr);
 	if (di) {
@@ -229,8 +218,6 @@ int pass3(struct gfs2_sbd *sdp)
 	 */
 	log_info( _("Checking directory linkage.\n"));
 	for (tmp = osi_first(&dirtree); tmp; tmp = next) {
-		if (lf_dip && lf_as.as_blocks == 0)
-			astate_save(lf_dip, &lf_as);
 		next = osi_next(tmp);
 		di = (struct dir_info *)tmp;
 		while (!di->checked) {
@@ -328,11 +315,6 @@ int pass3(struct gfs2_sbd *sdp)
 		}
 	}
 	if (lf_dip) {
-		/* If the lf directory had new blocks added we have to mark
-		   them properly in the blockmap so they're not freed. */
-		if (astate_changed(lf_dip, &lf_as))
-			reprocess_inode(lf_dip, "lost+found");
-		
 		log_debug( _("At end of pass3, lost+found entries is %u\n"),
 				  lf_dip->i_di.di_entries);
 	}
