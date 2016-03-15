@@ -54,7 +54,6 @@ extern int _fsck_bitmap_set(struct gfs2_inode *ip, uint64_t bblock,
 			    const char *caller, int line);
 extern int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
 			      int error_on_dinode, int new_blockmap_state);
-extern void reprocess_inode(struct gfs2_inode *ip, const char *desc);
 extern struct duptree *dupfind(uint64_t block);
 extern struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
 					    uint64_t block);
