@@ -1180,6 +1180,113 @@ static int set_ip_blockmap(struct gfs2_inode *ip)
 	return 0;
 }
 
+static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,
+			  struct gfs2_buffer_head **bh, int h, int *is_valid,
+			  int *was_duplicate, void *private)
+{
+	int q;
+	const char *desc = (const char *)private;
+
+	/* No need to range_check here--if it was added, it's in range. */
+	/* We can't check the bitmap here because this function is called
+	   after the bitmap has been set but before the blockmap has. */
+	*is_valid = 1;
+	*was_duplicate = 0;
+	*bh = bread(ip->i_sbd, block);
+	q = bitmap_type(ip->i_sbd, block);
+	if (q == GFS2_BLKST_FREE) {
+		log_debug(_("%s reference to new metadata block "
+			    "%lld (0x%llx) is now marked as indirect.\n"),
+			  desc, (unsigned long long)block,
+			  (unsigned long long)block);
+		gfs2_blockmap_set(bl, block, ip->i_sbd->gfs1 ?
+				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
+	}
+	return meta_is_good;
+}
+
+static int alloc_data(struct gfs2_inode *ip, uint64_t metablock,
+		      uint64_t block, void *private,
+		      struct gfs2_buffer_head *bh, uint64_t *ptr)
+{
+	int q;
+	const char *desc = (const char *)private;
+
+	/* No need to range_check here--if it was added, it's in range. */
+	/* We can't check the bitmap here because this function is called
+	   after the bitmap has been set but before the blockmap has. */
+	q = bitmap_type(ip->i_sbd, block);
+	if (q == GFS2_BLKST_FREE) {
+		log_debug(_("%s reference to new data block "
+			    "%lld (0x%llx) is now marked as data.\n"),
+			  desc, (unsigned long long)block,
+			  (unsigned long long)block);
+		gfs2_blockmap_set(bl, block, GFS2_BLKST_USED);
+	}
+	return 0;
+}
+
+static int alloc_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
+{
+	int q;
+
+	/* No need to range_check here--if it was added, it's in range. */
+	/* We can't check the bitmap here because this function is called
+	   after the bitmap has been set but before the blockmap has. */
+	q = bitmap_type(ip->i_sbd, block);
+	if (q == GFS2_BLKST_FREE)
+		fsck_blockmap_set(ip, block, _("newly allocated leaf"),
+				  ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
+				  GFS2_BLKST_USED);
+	return 0;
+}
+
+struct metawalk_fxns alloc_fxns = {
+	.private = NULL,
+	.check_leaf = alloc_leaf,
+	.check_metalist = alloc_metalist,
+	.check_data = alloc_data,
+	.check_eattr_indir = NULL,
+	.check_eattr_leaf = NULL,
+	.check_dentry = NULL,
+	.check_eattr_entry = NULL,
+	.check_eattr_extentry = NULL,
+	.finish_eattr_indir = NULL,
+};
+
+/*
+ * reprocess_inode - fixes the blockmap to match the bitmap due to an
+ *                   unexpected block allocation via libgfs2.
+ *
+ * The problem we're trying to overcome here is when a new block must be
+ * added to a dinode because of a write.  This will happen when lost+found
+ * needs a new indirect block for its hash table.  In that case, the write
+ * causes a new block to be assigned in the bitmap but that block is not yet
+ * accurately reflected in the fsck blockmap.  We need to compensate here.
+ *
+ * We can't really use fsck_blockmap_set here because the new block
+ * was already allocated by libgfs2 and therefore it took care of
+ * the rgrp free space variable.  fsck_blockmap_set adjusts the free space
+ * in the rgrp according to the change, which has already been done.
+ * So it's only our blockmap that now disagrees with the rgrp bitmap, so we
+ * need to fix only that.
+ */
+static void reprocess_inode(struct gfs2_inode *ip, const char *desc)
+{
+	int error;
+
+	alloc_fxns.private = (void *)desc;
+	log_info( _("%s inode %llu (0x%llx) had blocks added; reprocessing "
+		    "its metadata tree at height=%d.\n"), desc,
+		  (unsigned long long)ip->i_di.di_num.no_addr,
+		  (unsigned long long)ip->i_di.di_num.no_addr,
+		  ip->i_di.di_height);
+	error = check_metatree(ip, &alloc_fxns);
+	if (error)
+		log_err( _("Error %d reprocessing the %s metadata tree.\n"),
+			 error, desc);
+}
+
 /*
  * handle_ip - process an incore structure representing a dinode.
  */
