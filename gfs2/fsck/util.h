@@ -12,11 +12,6 @@
 #define INODE_VALID 1
 #define INODE_INVALID 0
 
-struct alloc_state {
-	uint64_t as_blocks;
-	uint64_t as_meta_goal;
-};
-
 struct di_info *search_list(osi_list_t *list, uint64_t addr);
 void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked);
 void warm_fuzzy_stuff(uint64_t block);
@@ -31,21 +26,6 @@ extern const char *reftypes[ref_types + 1];
 #define BLOCKMAP_SIZE2(size) ((size) >> 2)
 #define BLOCKMAP_BYTE_OFFSET2(x) ((x & 0x0000000000000003) << 1)
 #define BLOCKMAP_MASK2 (0x3)
-
-static inline void astate_save(struct gfs2_inode *ip, struct alloc_state *as)
-{
-	as->as_blocks = ip->i_di.di_blocks;
-	as->as_meta_goal = ip->i_di.di_goal_meta;
-}
-
-static inline int astate_changed(struct gfs2_inode *ip, struct alloc_state *as)
-{
-	if (as->as_blocks != ip->i_di.di_blocks)
-		return 1;
-	if (as->as_meta_goal != ip->i_di.di_goal_meta)
-		return 1;
-	return 0;
-}
 
 static inline int block_type(uint64_t bblock)
 {

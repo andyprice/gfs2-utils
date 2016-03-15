@@ -1837,7 +1837,6 @@ build_it:
 		return -1;
 	}
 	fsck_bitmap_set(ip, ip->i_di.di_num.no_addr, fn, GFS2_BLKST_DINODE);
-	reprocess_inode(ip, fn);
 	log_err(_("System file %s rebuilt.\n"), fn);
 	goto out_good;
 }
@@ -1848,7 +1847,6 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		     int builder(struct gfs2_sbd *sdp))
 {
 	uint64_t iblock = 0;
-	struct alloc_state as;
 	struct dir_status ds = {0};
 	int error = 0;
 
@@ -1865,15 +1863,12 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 
 	pass2_fxns.private = (void *) &ds;
 	if (ds.q == GFS2_BLKST_UNLINKED) {
-		astate_save(sysinode, &as);
 		/* First check that the directory's metatree is valid */
 		error = check_metatree(sysinode, &pass2_fxns);
 		if (error < 0) {
 			stack;
 			return error;
 		}
-		if (astate_changed(sysinode, &as))
-			reprocess_inode(sysinode, _("System inode"));
 	}
 	error = check_dir(sysinode->i_sbd, sysinode, &pass2_fxns);
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
@@ -1892,7 +1887,6 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 	if (!ds.dotdir) {
 		log_err( _("No '.' entry found for %s directory.\n"), dirname);
 		if (query( _("Is it okay to add '.' entry? (y/n) "))) {
-			astate_save(sysinode, &as);
 			log_warn( _("Adding '.' entry\n"));
 			error = dir_add(sysinode, ".", 1, &(sysinode->i_di.di_num),
 			                (sysinode->i_sbd->gfs1 ? GFS_FILE_DIR : DT_DIR));
@@ -1901,8 +1895,6 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 				         strerror(errno));
 				return -errno;
 			}
-			if (astate_changed(sysinode, &as))
-				reprocess_inode(sysinode, dirname);
 			/* This system inode is linked to itself via '.' */
 			incr_link_count(sysinode->i_di.di_num, sysinode,
 					"sysinode \".\"");
@@ -1974,20 +1966,16 @@ static int pass2_check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 {
 	uint64_t dirblk = ip->i_di.di_num.no_addr;
 	struct dir_status ds = {0};
-	struct alloc_state as;
 	int error;
 
 	pass2_fxns.private = &ds;
 	if (ds.q == GFS2_BLKST_UNLINKED) {
 		/* First check that the directory's metatree is valid */
-		astate_save(ip, &as);
 		error = check_metatree(ip, &pass2_fxns);
 		if (error < 0) {
 			stack;
 			return error;
 		}
-		if (astate_changed(ip, &as))
-			reprocess_inode(ip, "current");
 	}
 	error = check_dir(sdp, ip, &pass2_fxns);
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
@@ -2037,21 +2025,12 @@ static int pass2_check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 			(unsigned long long)dirblk, (unsigned long long)dirblk);
 
 		if (query( _("Is it okay to add '.' entry? (y/n) "))) {
-			astate_save(ip, &as);
 			error = dir_add(ip, ".", 1, &(ip->i_di.di_num),
 					(sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 			if (error) {
 				log_err(_("Error adding directory %s: %s\n"), "'.'",
 					strerror(errno));
 				return -errno;
-			}
-			if (astate_changed(ip, &as)) {
-				char dirname[80];
-
-				sprintf(dirname, _("Directory at %lld (0x%llx)"),
-					(unsigned long long)dirblk,
-					(unsigned long long)dirblk);
-				reprocess_inode(ip, dirname);
 			}
 			/* directory links to itself via '.' */
 			incr_link_count(ip->i_di.di_num, ip, _("\". (itself)\""));
