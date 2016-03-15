@@ -19,33 +19,6 @@ extern int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 extern int check_leaf(struct gfs2_inode *ip, int lindex,
 		      struct metawalk_fxns *pass, uint64_t *leaf_no,
 		      struct gfs2_leaf *leaf, int *ref_count);
-extern int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
-						   uint64_t dentryblock);
-extern int delete_block(struct gfs2_inode *ip, uint64_t block,
-		 struct gfs2_buffer_head **bh, const char *btype,
-		 void *private);
-extern int delete_metadata(struct gfs2_inode *ip, uint64_t block,
-			   struct gfs2_buffer_head **bh, int h, int *is_valid,
-			   int *was_duplicate, void *private);
-extern int delete_leaf(struct gfs2_inode *ip, uint64_t block, void *private);
-extern int delete_data(struct gfs2_inode *ip, uint64_t metablock,
-		       uint64_t block, void *private,
-		       struct gfs2_buffer_head *bh, uint64_t *ptr);
-extern int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
-		       struct gfs2_buffer_head **bh, void *private);
-extern int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
-		      struct gfs2_buffer_head **bh, void *private);
-extern int delete_eattr_entry(struct gfs2_inode *ip,
-			      struct gfs2_buffer_head *leaf_bh,
-			      struct gfs2_ea_header *ea_hdr,
-			      struct gfs2_ea_header *ea_hdr_prev,
-			      void *private);
-extern int delete_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
-				 struct gfs2_buffer_head *leaf_bh,
-				 struct gfs2_ea_header *ea_hdr,
-				 struct gfs2_ea_header *ea_hdr_prev,
-				 void *private);
-
 extern int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
 			      const char *btype, int mark, int error_on_dinode,
 			      const char *caller, int line);
@@ -57,8 +30,6 @@ extern int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk,
 extern struct duptree *dupfind(uint64_t block);
 extern struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
 					    uint64_t block);
-extern int find_remove_dup(struct gfs2_inode *ip, uint64_t block,
-			   const char *btype);
 
 #define is_duplicate(dblock) ((dupfind(dblock)) ? 1 : 0)
 
@@ -154,6 +125,9 @@ struct metawalk_fxns {
 				int h, void *private);
 	int (*undo_check_data) (struct gfs2_inode *ip, uint64_t block,
 				void *private);
+	int (*delete_block) (struct gfs2_inode *ip, uint64_t block,
+			     struct gfs2_buffer_head **bh, const char *btype,
+			     void *private);
 };
 
 #endif /* _METAWALK_H */

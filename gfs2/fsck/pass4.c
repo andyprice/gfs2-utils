@@ -13,6 +13,7 @@
 #include "inode_hash.h"
 #include "metawalk.h"
 #include "util.h"
+#include "afterpass1_common.h"
 
 struct metawalk_fxns pass4_fxns_delete = {
 	.private = NULL,

@@ -15,6 +15,7 @@
 #include "util.h"
 #include "metawalk.h"
 #include "inode_hash.h"
+#include "afterpass1_common.h"
 
 struct fxn_info {
 	uint64_t block;
