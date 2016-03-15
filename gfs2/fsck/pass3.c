@@ -16,6 +16,7 @@
 #include "link.h"
 #include "metawalk.h"
 #include "util.h"
+#include "afterpass1_common.h"
 
 static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 			    uint64_t olddotdot, uint64_t block)

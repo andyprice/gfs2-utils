@@ -3,6 +3,7 @@ MAINTAINERCLEANFILES = Makefile.in
 sbin_PROGRAMS = fsck.gfs2
 
 noinst_HEADERS = \
+	afterpass1_common.h \
 	fsck.h \
 	fs_recovery.h \
 	inode_hash.h \
@@ -19,6 +20,7 @@ fsck_gfs2_SOURCES = \
 	lost_n_found.c \
 	main.c \
 	metawalk.c \
+	afterpass1_common.c \
 	pass1b.c \
 	pass1.c \
 	pass2.c \

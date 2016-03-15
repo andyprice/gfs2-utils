@@ -17,6 +17,7 @@
 #include "link.h"
 #include "lost_n_found.h"
 #include "inode_hash.h"
+#include "afterpass1_common.h"
 
 #define MAX_FILENAME 256
 

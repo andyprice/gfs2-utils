@@ -83,6 +83,22 @@ static int invalidate_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 				 uint64_t parent, struct gfs2_buffer_head **bh,
 				 void *private);
 static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip);
+static int delete_block(struct gfs2_inode *ip, uint64_t block,
+			struct gfs2_buffer_head **bh, const char *btype,
+			void *private);
+/**
+ * delete_block - delete a block associated with an inode
+ */
+static int delete_block(struct gfs2_inode *ip, uint64_t block,
+			struct gfs2_buffer_head **bh, const char *btype,
+			void *private)
+{
+	if (valid_block(ip->i_sbd, block)) {
+		fsck_blockmap_set(ip, block, btype, GFS2_BLKST_FREE);
+		return 0;
+	}
+	return -1;
+}
 
 struct metawalk_fxns pass1_fxns = {
 	.private = NULL,
@@ -97,6 +113,7 @@ struct metawalk_fxns pass1_fxns = {
 	.big_file_msg = big_file_comfort,
 	.undo_check_meta = undo_check_metalist,
 	.undo_check_data = undo_check_data,
+	.delete_block = delete_block,
 };
 
 struct metawalk_fxns invalidate_fxns = {
@@ -106,6 +123,7 @@ struct metawalk_fxns invalidate_fxns = {
 	.check_leaf = invalidate_leaf,
 	.check_eattr_indir = invalidate_eattr_indir,
 	.check_eattr_leaf = invalidate_eattr_leaf,
+	.delete_block = delete_block,
 };
 
 /*
@@ -200,6 +218,7 @@ struct metawalk_fxns sysdir_fxns = {
 	.private = NULL,
 	.check_metalist = resuscitate_metalist,
 	.check_dentry = resuscitate_dentry,
+	.delete_block = delete_block,
 };
 
 static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
@@ -1124,6 +1143,7 @@ struct metawalk_fxns rangecheck_fxns = {
         .check_leaf = rangecheck_leaf,
         .check_eattr_indir = rangecheck_eattr_indir,
         .check_eattr_leaf = rangecheck_eattr_leaf,
+	.delete_block = delete_block,
 };
 
 struct metawalk_fxns eattr_undo_fxns = {
@@ -1131,6 +1151,7 @@ struct metawalk_fxns eattr_undo_fxns = {
 	.check_eattr_indir = undo_eattr_indir_or_leaf,
 	.check_eattr_leaf = undo_eattr_indir_or_leaf,
 	.finish_eattr_indir = finish_eattr_indir,
+	.delete_block = delete_block,
 };
 /* set_ip_blockmap - set the blockmap for a dinode
  *
@@ -1252,6 +1273,7 @@ struct metawalk_fxns alloc_fxns = {
 	.check_eattr_entry = NULL,
 	.check_eattr_extentry = NULL,
 	.finish_eattr_indir = NULL,
+	.delete_block = delete_block,
 };
 
 /*
