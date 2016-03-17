@@ -59,8 +59,10 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 			       struct gfs2_ea_header *ea_hdr,
 			       struct gfs2_ea_header *ea_hdr_prev,
 			       void *private);
-static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
+static int check_extended_leaf_eattr(struct gfs2_inode *ip, int i,
+				     uint64_t *data_ptr,
 				     struct gfs2_buffer_head *leaf_bh,
+				     uint32_t tot_ealen,
 				     struct gfs2_ea_header *ea_hdr,
 				     struct gfs2_ea_header *ea_hdr_prev,
 				     void *private);
@@ -789,8 +791,10 @@ static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
  *
  * Returns: 0 if correct[able], -1 if removal is needed
  */
-static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
+static int check_extended_leaf_eattr(struct gfs2_inode *ip, int i,
+				     uint64_t *data_ptr,
 				     struct gfs2_buffer_head *leaf_bh,
+				     uint32_t tot_ealen,
 				     struct gfs2_ea_header *ea_hdr,
 				     struct gfs2_ea_header *ea_hdr_prev,
 				     void *private)
@@ -798,7 +802,7 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
 	uint64_t el_blk = be64_to_cpu(*data_ptr);
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct gfs2_buffer_head *bh = NULL;
-	int error;
+	int error = 0;
 
 	if (!valid_block(sdp, el_blk)) {
 		log_err( _("Inode #%llu (0x%llx): Extended Attribute block "
@@ -813,11 +817,36 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, uint64_t *data_ptr,
 		fsck_blockmap_set(ip, ip->i_di.di_eattr,
 				  _("bad (out of range) Extended Attribute "),
 				  GFS2_BLKST_UNLINKED);
-		return 1;
+		error = 1;
+	} else {
+		error = check_ealeaf_block(ip, el_blk, GFS2_METATYPE_ED, &bh,
+					   private);
 	}
-	error = check_ealeaf_block(ip, el_blk, GFS2_METATYPE_ED, &bh, private);
 	if (bh)
 		brelse(bh);
+	if (error) {
+		log_err(_("Bad extended attribute found at block %lld "
+			  "(0x%llx)"),
+			(unsigned long long)be64_to_cpu(*data_ptr),
+			(unsigned long long)be64_to_cpu(*data_ptr));
+		if (query( _("Repair the bad Extended Attribute? (y/n) "))) {
+			ea_hdr->ea_num_ptrs = i;
+			ea_hdr->ea_data_len = cpu_to_be32(tot_ealen);
+			*data_ptr = 0;
+			bmodified(leaf_bh);
+			/* Endianness doesn't matter in this case because it's
+			   a single byte. */
+			fsck_blockmap_set(ip, ip->i_di.di_eattr,
+					  _("extended attribute"),
+					  sdp->gfs1 ? GFS2_BLKST_DINODE :
+					  GFS2_BLKST_USED);
+			log_err( _("The EA was fixed.\n"));
+			error = 0;
+		} else {
+			error = 1;
+			log_err( _("The bad EA was not fixed.\n"));
+		}
+	}
 	return error;
 }
 

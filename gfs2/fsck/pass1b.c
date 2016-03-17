@@ -831,15 +831,22 @@ static int check_eattr_entry_refs(struct gfs2_inode *ip,
 	return 0;
 }
 
-static int check_eattr_extentry_refs(struct gfs2_inode *ip,
+static int check_eattr_extentry_refs(struct gfs2_inode *ip, int i,
 				     uint64_t *ea_data_ptr,
 				     struct gfs2_buffer_head *leaf_bh,
+				     uint32_t tot_ealen,
 				     struct gfs2_ea_header *ea_hdr,
 				     struct gfs2_ea_header *ea_hdr_prev,
 				     void *private)
 {
 	uint64_t block = be64_to_cpu(*ea_data_ptr);
 
+	/* This is a case where a bad return code may be sent back, and
+	   behavior has changed. Before, if add_duplicate_ref returned a
+	   non-zero return code, the caller would delete the eattr from
+	   the blockmap. In this case, we should be okay because the only
+	   error possible is a malloc that fails, in which case we don't
+	   want to delete the eattr anyway. */
 	return add_duplicate_ref(ip, block, ref_as_ea, 1, INODE_VALID);
 }
 

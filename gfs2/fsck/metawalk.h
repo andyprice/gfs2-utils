@@ -108,9 +108,10 @@ struct metawalk_fxns {
 				  struct gfs2_ea_header *ea_hdr,
 				  struct gfs2_ea_header *ea_hdr_prev,
 				  void *private);
-	int (*check_eattr_extentry) (struct gfs2_inode *ip,
+	int (*check_eattr_extentry) (struct gfs2_inode *ip, int i,
 				     uint64_t *ea_data_ptr,
 				     struct gfs2_buffer_head *leaf_bh,
+				     uint32_t tot_ealen,
 				     struct gfs2_ea_header *ea_hdr,
 				     struct gfs2_ea_header *ea_hdr_prev,
 				     void *private);

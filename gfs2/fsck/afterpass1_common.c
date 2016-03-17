@@ -260,13 +260,37 @@ int delete_eattr_entry(struct gfs2_inode *ip, struct gfs2_buffer_head *leaf_bh,
 	return 0;
 }
 
-int delete_eattr_extentry(struct gfs2_inode *ip, uint64_t *ea_data_ptr,
-			  struct gfs2_buffer_head *leaf_bh,
+int delete_eattr_extentry(struct gfs2_inode *ip, int i, uint64_t *ea_data_ptr,
+			  struct gfs2_buffer_head *leaf_bh, uint32_t tot_ealen,
 			  struct gfs2_ea_header *ea_hdr,
 			  struct gfs2_ea_header *ea_hdr_prev, void *private)
 {
 	uint64_t block = be64_to_cpu(*ea_data_ptr);
+	int error;
 
-	return delete_block_if_notdup(ip, block, NULL, _("extended attribute"),
-				      NULL, private);
+	error = delete_block_if_notdup(ip, block, NULL,
+				       _("extended attribute"), NULL, private);
+	if (error) {
+		log_err(_("Bad extended attribute found at block %lld "
+			  "(0x%llx)"),
+			(unsigned long long)be64_to_cpu(*ea_data_ptr),
+			(unsigned long long)be64_to_cpu(*ea_data_ptr));
+		if (query( _("Repair the bad Extended Attribute? (y/n) "))) {
+			ea_hdr->ea_num_ptrs = i;
+			ea_hdr->ea_data_len = cpu_to_be32(tot_ealen);
+			*ea_data_ptr = 0;
+			bmodified(leaf_bh);
+			/* Endianness doesn't matter in this case because it's
+			   a single byte. */
+			fsck_bitmap_set(ip, ip->i_di.di_eattr,
+					_("extended attribute"),
+					ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
+					GFS2_BLKST_USED);
+			log_err( _("The EA was fixed.\n"));
+		} else {
+			error = 1;
+			log_err( _("The bad EA was not fixed.\n"));
+		}
+	}
+	return error;
 }
