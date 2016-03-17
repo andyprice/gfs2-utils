@@ -1304,9 +1304,14 @@ static void reprocess_inode(struct gfs2_inode *ip, const char *desc)
 		  (unsigned long long)ip->i_di.di_num.no_addr,
 		  ip->i_di.di_height);
 	error = check_metatree(ip, &alloc_fxns);
-	if (error)
+	if (error) {
+		/* check_metatree will have fixed the bitmap, but not the
+		   blockmap. */
+		gfs2_blockmap_set(bl, ip->i_di.di_num.no_addr,
+				  GFS2_BLKST_FREE);
 		log_err( _("Error %d reprocessing the %s metadata tree.\n"),
 			 error, desc);
+	}
 }
 
 /*

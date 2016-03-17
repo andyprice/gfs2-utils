@@ -1604,8 +1604,8 @@ undo_metalist:
 	   to undo. */
 	delete_all_dups(ip);
 	/* Set the dinode as "bad" so it gets deleted */
-	fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
-			  _("corrupt"), GFS2_BLKST_FREE);
+	fsck_bitmap_set(ip, ip->i_di.di_num.no_addr, _("corrupt"),
+			GFS2_BLKST_FREE);
 	log_err(_("The corrupt inode was invalidated.\n"));
 out:
 	free_metalist(ip, &metalist[0]);
