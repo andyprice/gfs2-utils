@@ -854,7 +854,7 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 	struct gfs2_ea_header *ea_hdr, *ea_hdr_prev = NULL;
 	uint64_t *ea_data_ptr = NULL;
 	int i;
-	int error = 0;
+	int error = 0, err;
 	uint32_t offset = (uint32_t)sizeof(struct gfs2_meta_header);
 
 	if (!pass->check_eattr_entry)
@@ -891,41 +891,12 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 			** reuse...........  */
 
 			for(i = 0; i < ea_hdr->ea_num_ptrs; i++){
-				if (pass->check_eattr_extentry(ip,
-							      ea_data_ptr,
-							      bh, ea_hdr,
-							      ea_hdr_prev,
-							      pass->private)) {
-					log_err(_("Bad extended attribute "
-						  "found at block %lld "
-						  "(0x%llx)"),
-						(unsigned long long)
-						be64_to_cpu(*ea_data_ptr),
-						(unsigned long long)
-						be64_to_cpu(*ea_data_ptr));
-					if (query( _("Repair the bad Extended "
-						     "Attribute? (y/n) "))) {
-						ea_hdr->ea_num_ptrs = i;
-						ea_hdr->ea_data_len =
-							cpu_to_be32(tot_ealen);
-						*ea_data_ptr = 0;
-						bmodified(bh);
-						/* Endianness doesn't matter
-						   in this case because it's
-						   a single byte. */
-						fsck_blockmap_set(ip,
-						       ip->i_di.di_eattr,
-							_("extended attribute"),
-							sdp->gfs1 ? GFS2_BLKST_DINODE :
-								  GFS2_BLKST_USED);
-						log_err( _("The EA was "
-							   "fixed.\n"));
-					} else {
-						error = 1;
-						log_err( _("The bad EA was "
-							   "not fixed.\n"));
-					}
-				}
+				err = pass->check_eattr_extentry(ip, i,
+						ea_data_ptr, bh, tot_ealen,
+						ea_hdr, ea_hdr_prev,
+						pass->private);
+				if (err)
+					error = err;
 				tot_ealen += sdp->sd_sb.sb_bsize -
 					sizeof(struct gfs2_meta_header);
 				ea_data_ptr++;
