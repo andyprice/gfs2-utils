@@ -88,6 +88,27 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip);
 static int delete_block(struct gfs2_inode *ip, uint64_t block,
 			struct gfs2_buffer_head **bh, const char *btype,
 			void *private);
+/*
+ * _fsck_blockmap_set - Mark a block in the 4-bit blockmap and the 2-bit
+ *                      bitmap, and adjust free space accordingly.
+ */
+static int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
+			      const char *btype, int mark, int error_on_dinode,
+			      const char *caller, int fline)
+{
+	int error = _fsck_bitmap_set(ip, bblock, btype, mark, error_on_dinode,
+				     caller, fline);
+	if (error)
+		return error;
+
+	return gfs2_blockmap_set(bl, bblock, mark);
+}
+
+#define fsck_blockmap_set(ip, b, bt, m) \
+	_fsck_blockmap_set(ip, b, bt, m, 0, __FUNCTION__, __LINE__)
+#define fsck_blkmap_set_noino(ip, b, bt, m) \
+	_fsck_blockmap_set(ip, b, bt, m, 1, __FUNCTION__, __LINE__)
+
 /**
  * delete_block - delete a block associated with an inode
  */
