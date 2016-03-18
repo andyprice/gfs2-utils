@@ -229,14 +229,8 @@ static int check_statfs(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-struct fsck_pass {
-	const char *name;
-	int (*f)(struct gfs2_sbd *sdp);
-};
-
 static const struct fsck_pass passes[] = {
 	{ .name = "pass1",  .f = pass1 },
-	{ .name = "reconcile_bitmaps",  .f = pass5 },
 	{ .name = "pass1b", .f = pass1b },
 	{ .name = "pass2",  .f = pass2 },
 	{ .name = "pass3",  .f = pass3 },
@@ -244,34 +238,6 @@ static const struct fsck_pass passes[] = {
 	{ .name = "check_statfs", .f = check_statfs },
 	{ .name = NULL, }
 };
-
-static void print_pass_duration(const char *name, struct timeval *start)
-{
-	char duration[17] = ""; /* strlen("XXdXXhXXmXX.XXXs") + 1 */
-	struct timeval end, diff;
-	unsigned d, h, m, s;
-	char *p = duration;
-
-	gettimeofday(&end, NULL);
-	timersub(&end, start, &diff);
-
-	s = diff.tv_sec % 60;
-	diff.tv_sec /= 60;
-	m = diff.tv_sec % 60;
-	diff.tv_sec /= 60;
-	h = diff.tv_sec % 24;
-	d = diff.tv_sec / 24;
-
-	if (d)
-		p += snprintf(p, 4, "%ud", d > 99 ? 99U : d);
-	if (h)
-		p += snprintf(p, 4, "%uh", h);
-	if (m)
-		p += snprintf(p, 4, "%um", m);
-
-	snprintf(p, 8, "%u.%03lus", s, diff.tv_usec / 1000);
-	log_notice(_("%s completed in %s\n"), name, duration);
-}
 
 static int fsck_pass(const struct fsck_pass *p, struct gfs2_sbd *sdp)
 {
