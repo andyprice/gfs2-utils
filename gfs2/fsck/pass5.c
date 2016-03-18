@@ -12,9 +12,10 @@
 #include "fsck.h"
 #include "util.h"
 
-static int check_block_status(struct gfs2_sbd *sdp, char *buffer,
-			      unsigned int buflen, uint64_t *rg_block,
-			      uint64_t rg_data, uint32_t *count)
+static int check_block_status(struct gfs2_sbd *sdp,  struct gfs2_bmap *bl,
+			      char *buffer, unsigned int buflen,
+			      uint64_t *rg_block, uint64_t rg_data,
+			      uint32_t *count)
 {
 	unsigned char *byte, *end;
 	unsigned int bit;
@@ -34,7 +35,7 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer,
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return 0;
 
-		q = block_type(block);
+		q = block_type(bl, block);
 		/* GFS1 file systems will have to suffer from slower fsck run
 		 * times because in GFS, there's no 1:1 relationship between
 		 * bits and counts. If a bit is marked "dinode" in GFS1, it
@@ -124,7 +125,7 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer,
 }
 
 static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgp,
-			uint32_t *count)
+			struct gfs2_bmap *bl, uint32_t *count)
 {
 	uint32_t i;
 	struct gfs2_bitmap *bits;
@@ -136,7 +137,7 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgp,
 		bits = &rgp->bits[i];
 
 		/* update the bitmaps */
-		if (check_block_status(sdp, bits->bi_bh->b_data + bits->bi_offset,
+		if (check_block_status(sdp, bl, bits->bi_bh->b_data + bits->bi_offset,
 		                       bits->bi_len, &rg_block, rgp->ri.ri_data0, count))
 			return;
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
@@ -209,7 +210,7 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgp,
  * fix free block maps
  * fix used inode maps
  */
-int pass5(struct gfs2_sbd *sdp)
+int pass5(struct gfs2_sbd *sdp, struct gfs2_bmap *bl)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgp = NULL;
@@ -227,7 +228,7 @@ int pass5(struct gfs2_sbd *sdp)
 
 		rg_count++;
 		/* Compare the bitmaps and report the differences */
-		update_rgrp(sdp, rgp, count);
+		update_rgrp(sdp, rgp, bl, count);
 	}
 	/* Fix up superblock info based on this - don't think there's
 	 * anything to do here... */

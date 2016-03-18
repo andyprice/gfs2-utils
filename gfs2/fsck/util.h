@@ -32,7 +32,7 @@ struct fsck_pass {
 	int (*f)(struct gfs2_sbd *sdp);
 };
 
-static inline int block_type(uint64_t bblock)
+static inline int block_type(struct gfs2_bmap *bl, uint64_t bblock)
 {
 	static unsigned char *byte;
 	static uint64_t b;
@@ -100,10 +100,6 @@ static inline uint32_t gfs_to_gfs2_mode(struct gfs2_inode *ip)
 }
 
 extern enum dup_ref_type get_ref_type(struct inode_with_dups *id);
-extern struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
-					  uint64_t *addl_mem_needed);
-extern void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il);
-extern int gfs2_blockmap_set(struct gfs2_bmap *il, uint64_t block, int mark);
 extern char generic_interrupt(const char *caller, const char *where,
                        const char *progress, const char *question,
                        const char *answers);

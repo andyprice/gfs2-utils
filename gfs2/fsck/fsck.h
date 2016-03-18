@@ -119,7 +119,7 @@ extern int pass1c(struct gfs2_sbd *sdp);
 extern int pass2(struct gfs2_sbd *sdp);
 extern int pass3(struct gfs2_sbd *sdp);
 extern int pass4(struct gfs2_sbd *sdp);
-extern int pass5(struct gfs2_sbd *sdp);
+extern int pass5(struct gfs2_sbd *sdp, struct gfs2_bmap *bl);
 extern int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count,
 		     int *sane);
 extern int fsck_query(const char *format, ...)
@@ -142,7 +142,6 @@ struct gfs2_options {
 extern struct gfs2_options opts;
 extern struct gfs2_inode *lf_dip; /* Lost and found directory inode */
 extern int lf_was_created;
-extern struct gfs2_bmap *bl;
 extern uint64_t last_fs_block, last_reported_block;
 extern int64_t last_reported_fblock;
 extern int skip_this_pass, fsck_abort;

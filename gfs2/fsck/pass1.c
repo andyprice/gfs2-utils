@@ -30,6 +30,7 @@
 #include "fs_recovery.h"
 
 struct special_blocks gfs1_rindex_blks;
+struct gfs2_bmap *bl = NULL;
 
 struct block_count {
 	uint64_t indir_count;
@@ -88,6 +89,24 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip);
 static int delete_block(struct gfs2_inode *ip, uint64_t block,
 			struct gfs2_buffer_head **bh, const char *btype,
 			void *private);
+
+static int gfs2_blockmap_set(struct gfs2_bmap *bmap, uint64_t bblock, int mark)
+{
+	static unsigned char *byte;
+	static uint64_t b;
+
+	if (!bmap)
+		return 0;
+	if (bblock > bmap->size)
+		return -1;
+
+	byte = bmap->map + BLOCKMAP_SIZE2(bblock);
+	b = BLOCKMAP_BYTE_OFFSET2(bblock);
+	*byte &= ~(BLOCKMAP_MASK2 << b);
+	*byte |= (mark & BLOCKMAP_MASK2) << b;
+	return 0;
+}
+
 /*
  * _fsck_blockmap_set - Mark a block in the 4-bit blockmap and the 2-bit
  *                      bitmap, and adjust free space accordingly.
@@ -253,7 +272,7 @@ static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	   check in metawalk: gfs2_check_meta(lbh, GFS2_METATYPE_LF).
 	   So we know it's a leaf block. */
 	bc->indir_count++;
-	q = block_type(block);
+	q = block_type(bl, block);
 	if (q != GFS2_BLKST_FREE) {
 		log_err( _("Found duplicate block #%llu (0x%llx) referenced "
 			   "as a directory leaf in dinode "
@@ -311,7 +330,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 		iblk_type = GFS2_METATYPE_IN;
 		blktypedesc = _("a journaled data block");
 	}
-	q = block_type(block);
+	q = block_type(bl, block);
 	if (q != GFS2_BLKST_FREE) {
 		log_err( _("Found duplicate block #%llu (0x%llx) referenced "
 			   "as metadata in indirect block for dinode "
@@ -502,7 +521,7 @@ static int check_data(struct gfs2_inode *ip, uint64_t metablock,
 		return -1;
 	}
 	bc->data_count++; /* keep the count sane anyway */
-	q = block_type(block);
+	q = block_type(bl, block);
 	if (q != GFS2_BLKST_FREE) {
 		struct gfs2_buffer_head *bh;
 		struct gfs2_meta_header mh;
@@ -623,7 +642,7 @@ static int undo_eattr_indir_or_leaf(struct gfs2_inode *ip, uint64_t block,
 
 	/* Need to check block_type before undoing the reference, which can
 	   set it to free, which would cause the test below to fail. */
-	q = block_type(block);
+	q = block_type(bl, block);
 
 	error = undo_reference(ip, block, 0, private);
 	if (error)
@@ -672,7 +691,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 		 * in pass1c */
 		return 1;
 	}
-	q = block_type(indirect);
+	q = block_type(bl, indirect);
 
 	/* Special duplicate processing:  If we have an EA block,
 	   check if it really is an EA.  If it is, let duplicate
@@ -756,7 +775,7 @@ static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 	int q;
 	struct block_count *bc = (struct block_count *) private;
 
-	q = block_type(block);
+	q = block_type(bl, block);
 	/* Special duplicate processing:  If we have an EA block, check if it
 	   really is an EA.  If it is, let duplicate handling sort it out.
 	   If it isn't, clear it but don't count it as a duplicate. */
@@ -1027,7 +1046,7 @@ static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
 		return meta_is_good;
 	}
 
-	q = block_type(block);
+	q = block_type(bl, block);
 	if (q != GFS2_BLKST_FREE) {
 		if (was_duplicate)
 			*was_duplicate = 1;
@@ -1126,7 +1145,7 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 			return meta_error; /* Exits check_metatree quicker */
 	}
 	/* See how many duplicate blocks it has */
-	q = block_type(block);
+	q = block_type(bl, block);
 	if (q != GFS2_BLKST_FREE) {
 		(*bad_pointers)++;
 		log_info( _("Duplicated %s block pointer (violation %ld, block"
@@ -1595,7 +1614,7 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 		}
 	}
 	if (*sysinode) {
-		ds.q = block_type(iblock);
+		ds.q = block_type(bl, iblock);
 		/* If the inode exists but the block is marked free, we might
 		   be recovering from a corrupt bitmap.  In that case, don't
 		   rebuild the inode.  Just reuse the inode and fix the
@@ -1858,7 +1877,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 		check_magic = ((struct gfs2_meta_header *)
 			       (bh->b_data))->mh_magic;
 
-		q = block_type(block);
+		q = block_type(bl, block);
 		if (q != GFS2_BLKST_FREE) {
 			if (be32_to_cpu(check_magic) == GFS2_MAGIC &&
 			    sdp->gfs1 && !is_inode) {
@@ -1971,6 +1990,55 @@ out:
 	return ret;
 }
 
+static int gfs2_blockmap_create(struct gfs2_bmap *bmap, uint64_t size)
+{
+	bmap->size = size;
+
+	/* Have to add 1 to BLOCKMAP_SIZE since it's 0-based and mallocs
+	 * must be 1-based */
+	bmap->mapsize = BLOCKMAP_SIZE2(size) + 1;
+
+	if (!(bmap->map = calloc(bmap->mapsize, sizeof(char))))
+		return -ENOMEM;
+	return 0;
+}
+
+static struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
+					  uint64_t *addl_mem_needed)
+{
+	struct gfs2_bmap *il;
+
+	*addl_mem_needed = 0L;
+	il = calloc(1, sizeof(*il));
+	if (!il)
+		return NULL;
+
+	if (gfs2_blockmap_create(il, size)) {
+		*addl_mem_needed = il->mapsize;
+		free(il);
+		il = NULL;
+	}
+	return il;
+}
+
+static void gfs2_blockmap_destroy(struct gfs2_bmap *bmap)
+{
+	if (bmap->map)
+		free(bmap->map);
+	bmap->size = 0;
+	bmap->mapsize = 0;
+}
+
+static void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il)
+{
+	if (il) {
+		gfs2_blockmap_destroy(il);
+		free(il);
+		il = NULL;
+	}
+	return il;
+}
+
 /**
  * pass1 - walk through inodes and check inode state
  *
@@ -1990,9 +2058,18 @@ int pass1(struct gfs2_sbd *sdp)
 	struct rgrp_tree *rgd;
 	uint64_t i;
 	uint64_t rg_count = 0;
-	int ret;
 	struct timeval timer;
+	int ret = FSCK_OK;
+	uint64_t addl_mem_needed;
 
+	bl = gfs2_bmap_create(sdp, last_fs_block+1, &addl_mem_needed);
+	if (!bl) {
+		log_crit( _("This system doesn't have enough memory and swap space to fsck this file system.\n"));
+		log_crit( _("Additional memory needed is approximately: %lluMB\n"),
+			 (unsigned long long)(addl_mem_needed / 1048576ULL));
+		log_crit( _("Please increase your swap space by that amount and run gfs2_fsck again.\n"));
+		return FSCK_ERROR;
+	}
 	osi_list_init(&gfs1_rindex_blks.list);
 
 	/* FIXME: In the gfs fsck, we had to mark things like the
@@ -2014,8 +2091,10 @@ int pass1(struct gfs2_sbd *sdp)
 	 * things - we can change the method later if necessary.
 	 */
 	for (n = osi_first(&sdp->rgtree); n; n = next, rg_count++) {
-		if (fsck_abort)
-			return FSCK_CANCELED;
+		if (fsck_abort) {
+			ret = FSCK_CANCELED;
+			goto out;
+		}
 		next = osi_next(n);
 		log_debug( _("Checking metadata in Resource Group #%llu\n"),
 				 (unsigned long long)rg_count);
@@ -2028,7 +2107,8 @@ int pass1(struct gfs2_sbd *sdp)
 					      GFS2_BLKST_USED)) {
 				stack;
 				gfs2_special_free(&gfs1_rindex_blks);
-				return FSCK_ERROR;
+				ret = FSCK_ERROR;
+				goto out;
 			}
 			/* rgrps and bitmaps don't have bits to represent
 			   their blocks, so don't do this:
@@ -2038,13 +2118,15 @@ int pass1(struct gfs2_sbd *sdp)
 
 		ret = pass1_process_rgrp(sdp, rgd);
 		if (ret)
-			return ret;
-
+			goto out;
 	}
 	log_notice(_("Reconciling bitmaps.\n"));
 	gettimeofday(&timer, NULL);
-	pass5(sdp);
+	pass5(sdp, bl);
 	print_pass_duration("reconcile_bitmaps", &timer);
+out:
 	gfs2_special_free(&gfs1_rindex_blks);
-	return FSCK_OK;
+	if (bl)
+		gfs2_bmap_destroy(sdp, bl);
+	return ret;
 }

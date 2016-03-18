@@ -115,8 +115,6 @@ static void empty_super_block(struct gfs2_sbd *sdp)
 	log_info( _("Freeing buffers.\n"));
 	gfs2_rgrp_free(&sdp->rgtree);
 
-	if (bl)
-		gfs2_bmap_destroy(sdp, bl);
 	gfs2_inodetree_free();
 	gfs2_dirtree_free();
 	gfs2_dup_free();
@@ -674,7 +672,6 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	uint64_t inumbuf = 0;
 	char *buf;
 	struct gfs2_statfs_change sc;
-	uint64_t addl_mem_needed;
 	int err;
 
 	/*******************************************************************
@@ -841,14 +838,6 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 		goto fail;
 	}
 
-	bl = gfs2_bmap_create(sdp, last_fs_block+1, &addl_mem_needed);
-	if (!bl) {
-		log_crit( _("This system doesn't have enough memory and swap space to fsck this file system.\n"));
-		log_crit( _("Additional memory needed is approximately: %lluMB\n"),
-			 (unsigned long long)(addl_mem_needed / 1048576ULL));
-		log_crit( _("Please increase your swap space by that amount and run gfs2_fsck again.\n"));
-		goto fail;
-	}
 	return 0;
  fail:
 	empty_super_block(sdp);
