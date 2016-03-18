@@ -1991,6 +1991,7 @@ int pass1(struct gfs2_sbd *sdp)
 	uint64_t i;
 	uint64_t rg_count = 0;
 	int ret;
+	struct timeval timer;
 
 	osi_list_init(&gfs1_rindex_blks.list);
 
@@ -2040,6 +2041,10 @@ int pass1(struct gfs2_sbd *sdp)
 			return ret;
 
 	}
+	log_notice(_("Reconciling bitmaps.\n"));
+	gettimeofday(&timer, NULL);
+	pass5(sdp);
+	print_pass_duration("reconcile_bitmaps", &timer);
 	gfs2_special_free(&gfs1_rindex_blks);
 	return FSCK_OK;
 }

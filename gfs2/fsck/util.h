@@ -27,6 +27,11 @@ extern const char *reftypes[ref_types + 1];
 #define BLOCKMAP_BYTE_OFFSET2(x) ((x & 0x0000000000000003) << 1)
 #define BLOCKMAP_MASK2 (0x3)
 
+struct fsck_pass {
+	const char *name;
+	int (*f)(struct gfs2_sbd *sdp);
+};
+
 static inline int block_type(uint64_t bblock)
 {
 	static unsigned char *byte;
@@ -106,6 +111,7 @@ extern char gfs2_getch(void);
 extern uint64_t find_free_blk(struct gfs2_sbd *sdp);
 extern uint64_t *get_dir_hash(struct gfs2_inode *ip);
 extern void delete_all_dups(struct gfs2_inode *ip);
+extern void print_pass_duration(const char *name, struct timeval *start);
 
 #define stack log_debug("<backtrace> - %s()\n", __func__)
 
