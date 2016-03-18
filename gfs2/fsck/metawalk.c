@@ -177,22 +177,6 @@ int _fsck_bitmap_set(struct gfs2_inode *ip, uint64_t bblock,
 	return error;
 }
 
-/*
- * _fsck_blockmap_set - Mark a block in the 4-bit blockmap and the 2-bit
- *                      bitmap, and adjust free space accordingly.
- */
-int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
-		       const char *btype, int mark,
-		       int error_on_dinode, const char *caller, int fline)
-{
-	int error = _fsck_bitmap_set(ip, bblock, btype, mark, error_on_dinode,
-				     caller, fline);
-	if (error)
-		return error;
-
-	return gfs2_blockmap_set(bl, bblock, mark);
-}
-
 struct duptree *dupfind(uint64_t block)
 {
 	struct osi_node *node = dup_blocks.osi_node;

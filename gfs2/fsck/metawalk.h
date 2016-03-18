@@ -19,9 +19,6 @@ extern int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 extern int check_leaf(struct gfs2_inode *ip, int lindex,
 		      struct metawalk_fxns *pass, uint64_t *leaf_no,
 		      struct gfs2_leaf *leaf, int *ref_count);
-extern int _fsck_blockmap_set(struct gfs2_inode *ip, uint64_t bblock,
-			      const char *btype, int mark, int error_on_dinode,
-			      const char *caller, int line);
 extern int _fsck_bitmap_set(struct gfs2_inode *ip, uint64_t bblock,
 			    const char *btype, int mark, int error_on_dinode,
 			    const char *caller, int line);
@@ -37,11 +34,6 @@ extern struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
 	_fsck_bitmap_set(ip, b, bt, m, 0, __FUNCTION__, __LINE__)
 #define fsck_bitmap_set_noino(ip, b, bt, m) \
 	_fsck_bitmap_set(ip, b, bt, m, 1, __FUNCTION__, __LINE__)
-#define fsck_blockmap_set(ip, b, bt, m) \
-	_fsck_blockmap_set(ip, b, bt, m, 0, __FUNCTION__, __LINE__)
-#define fsck_blkmap_set_noino(ip, b, bt, m) \
-	_fsck_blockmap_set(ip, b, bt, m, 1, __FUNCTION__, __LINE__)
-
 enum meta_check_rc {
 	meta_error = -1,
 	meta_is_good = 0,
