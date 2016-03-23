@@ -885,7 +885,7 @@ int pass1b(struct gfs2_sbd *sdp)
 		}
 		q = bitmap_type(sdp, i);
 
-		if (q == GFS2_BLKST_FREE || q == GFS2_BLKST_USED)
+		if (q == GFS2_BLKST_FREE || q == GFS2_BLKST_USED || q < 0)
 			continue;
 
 		if (q == GFS2_BLKST_UNLINKED)
