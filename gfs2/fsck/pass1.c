@@ -1346,6 +1346,26 @@ struct metawalk_fxns alloc_fxns = {
 };
 
 /*
+ * pass1_check_metatree - wrapper function for check_metatree
+ *
+ * Generic function check_metatree sets the bitmap values, but not the
+ * corresponding values in the blockmap. If we get an error, the inode will
+ * have been freed in the bitmap. We need to set the inode address as free
+ * as well.
+ */
+static int pass1_check_metatree(struct gfs2_inode *ip,
+				struct metawalk_fxns *pass)
+{
+	int error;
+
+	error = check_metatree(ip, pass);
+	if (error)
+		gfs2_blockmap_set(bl, ip->i_di.di_num.no_addr,
+				  GFS2_BLKST_FREE);		
+	return error;
+}
+
+/*
  * reprocess_inode - fixes the blockmap to match the bitmap due to an
  *                   unexpected block allocation via libgfs2.
  *
@@ -1372,15 +1392,10 @@ static void reprocess_inode(struct gfs2_inode *ip, const char *desc)
 		  (unsigned long long)ip->i_di.di_num.no_addr,
 		  (unsigned long long)ip->i_di.di_num.no_addr,
 		  ip->i_di.di_height);
-	error = check_metatree(ip, &alloc_fxns);
-	if (error) {
-		/* check_metatree will have fixed the bitmap, but not the
-		   blockmap. */
-		gfs2_blockmap_set(bl, ip->i_di.di_num.no_addr,
-				  GFS2_BLKST_FREE);
+	error = pass1_check_metatree(ip, &alloc_fxns);
+	if (error)
 		log_err( _("Error %d reprocessing the %s metadata tree.\n"),
 			 error, desc);
-	}
 }
 
 /*
@@ -1400,7 +1415,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	   so it's better to check it up front and delete the inode if
 	   there is corruption. */
 	rangecheck_fxns.private = &bad_pointers;
-	error = check_metatree(ip, &rangecheck_fxns);
+	error = pass1_check_metatree(ip, &rangecheck_fxns);
 	if (bad_pointers > BAD_POINTER_TOLERANCE) {
 		log_err( _("Error: inode %llu (0x%llx) has more than "
 			   "%d bad pointers.\n"),
@@ -1433,7 +1448,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		lf_blks = lf_dip->i_di.di_blocks;
 
 	pass1_fxns.private = &bc;
-	error = check_metatree(ip, &pass1_fxns);
+	error = pass1_check_metatree(ip, &pass1_fxns);
 
 	/* Pass1 may have added some blocks to lost+found by virtue of leafs
 	   that were misplaced. If it did, we need to reprocess lost+found
@@ -1688,7 +1703,7 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 
 		sysdir_fxns.private = &bc;
 		if ((*sysinode)->i_di.di_flags & GFS2_DIF_EXHASH)
-			check_metatree(*sysinode, &sysdir_fxns);
+			pass1_check_metatree(*sysinode, &sysdir_fxns);
 		else {
 			err = check_linear_dir(*sysinode, (*sysinode)->i_bh,
 					       &sysdir_fxns);
