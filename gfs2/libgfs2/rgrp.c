@@ -430,6 +430,38 @@ unsigned lgfs2_rindex_read_fd(int fd, lgfs2_rgrps_t rgs)
 }
 
 /**
+ * Read a rindex entry into a set of resource groups
+ * rip: The inode of the rindex file
+ * rgs: The set of resource groups.
+ * i: The index of the entry to read from the rindex file
+ * Returns the new rindex entry added to the set or NULL on error with errno
+ * set.
+ */
+const struct gfs2_rindex *lgfs2_rindex_read_one(struct gfs2_inode *rip, lgfs2_rgrps_t rgs, unsigned i)
+{
+	uint64_t off = i * sizeof(struct gfs2_rindex);
+	char buf[sizeof(struct gfs2_rindex)];
+	struct gfs2_rindex ri;
+	lgfs2_rgrp_t rg;
+	int ret;
+
+	errno = EINVAL;
+	if (rip == NULL || rgs == NULL)
+		return NULL;
+
+	ret = gfs2_readi(rip, buf, off, sizeof(struct gfs2_rindex));
+	if (ret != sizeof(struct gfs2_rindex))
+		return NULL;
+
+	gfs2_rindex_in(&ri, buf);
+	rg = lgfs2_rgrps_append(rgs, &ri);
+	if (rg == NULL)
+		return NULL;
+
+	return &rg->ri;
+}
+
+/**
  * Free a set of resource groups created with lgfs2_rgrps_append() etc. This
  * does not write any dirty buffers to disk. See lgfs2_rgrp_write().
  * rgs: A pointer to the set of resource groups to be freed.

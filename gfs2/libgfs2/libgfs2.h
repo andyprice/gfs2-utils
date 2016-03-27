@@ -177,6 +177,7 @@ struct gfs2_bitmap
 };
 
 struct gfs2_sbd;
+struct gfs2_inode;
 typedef struct _lgfs2_rgrps *lgfs2_rgrps_t;
 
 struct rgrp_tree {
@@ -196,6 +197,7 @@ extern lgfs2_rgrps_t lgfs2_rgrps_init(struct gfs2_sbd *sdp, uint64_t align, uint
 extern void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs);
 extern uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, uint64_t addr, uint32_t len);
 extern unsigned lgfs2_rindex_read_fd(int fd, lgfs2_rgrps_t rgs);
+extern const struct gfs2_rindex *lgfs2_rindex_read_one(struct gfs2_inode *rip, lgfs2_rgrps_t rgs, unsigned i);
 extern uint64_t lgfs2_rgrp_align_addr(const lgfs2_rgrps_t rgs, uint64_t addr);
 extern uint32_t lgfs2_rgrp_align_len(const lgfs2_rgrps_t rgs, uint32_t len);
 extern unsigned lgfs2_rgsize_for_data(uint64_t blksreq, unsigned bsize);
