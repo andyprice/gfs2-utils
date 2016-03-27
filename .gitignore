@@ -47,6 +47,7 @@ gfs2/tune/tunegfs2
 test-driver
 tests/check_meta
 tests/check_rgrp
+tests/nukerg
 tests/testvol
 tests/testsuite.log
 tests/testsuite.dir
