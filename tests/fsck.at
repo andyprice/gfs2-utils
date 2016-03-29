@@ -14,3 +14,23 @@ AT_SETUP([Fix invalid goal blocks])
 AT_KEYWORDS(fsck.gfs2 fsck)
 GFS_LANG_CHECK([mkfs.gfs2 -O -p lock_nolock $GFS_TGT], [set '/' { di_goal_meta: 0 }])
 AT_CLEANUP
+
+AT_SETUP([Fix bad resource group #0])
+AT_KEYWORDS(fsck.gfs2 fsck)
+GFS_NUKERG_CHECK([mkfs.gfs2 -O -p lock_nolock $GFS_TGT], [-r 0])
+AT_CLEANUP
+
+#AT_SETUP([Fix bad resource group #1])
+#AT_KEYWORDS(fsck.gfs2 fsck)
+#GFS_NUKERG_CHECK([mkfs.gfs2 -O -p lock_nolock $GFS_TGT], [-r 1])
+#AT_CLEANUP
+
+#AT_SETUP([Fix bad rindex entry #0])
+#AT_KEYWORDS(fsck.gfs2 fsck)
+#GFS_NUKERG_CHECK([mkfs.gfs2 -O -p lock_nolock $GFS_TGT], [-i 0])
+#AT_CLEANUP
+
+AT_SETUP([Fix bad rindex entry #1])
+AT_KEYWORDS(fsck.gfs2 fsck)
+GFS_NUKERG_CHECK([mkfs.gfs2 -O -p lock_nolock $GFS_TGT], [-i 1])
+AT_CLEANUP
