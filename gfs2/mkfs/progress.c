@@ -62,7 +62,7 @@ void gfs2_progress_init(struct gfs2_progress_bar *progress, uint64_t max, const 
 	last_update = 0;
 }
 
-extern void gfs2_progress_update(struct gfs2_progress_bar *progress, uint64_t value)
+void gfs2_progress_update(struct gfs2_progress_bar *progress, uint64_t value)
 {
 	time_t current_time;
 
@@ -80,7 +80,7 @@ extern void gfs2_progress_update(struct gfs2_progress_bar *progress, uint64_t va
 	fprintf(stdout, "%.*s", (2 * progress->max_digits) + 3, backspaces);
 }
 
-extern void gfs2_progress_close(struct gfs2_progress_bar *progress, const char *message)
+void gfs2_progress_close(struct gfs2_progress_bar *progress, const char *message)
 {
 	if (progress->skip_progress)
 		return;
