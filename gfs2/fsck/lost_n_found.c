@@ -99,14 +99,15 @@ static void add_dotdot(struct gfs2_inode *ip)
 
 void make_sure_lf_exists(struct gfs2_inode *ip)
 {
-	int q;
 	struct dir_info *di;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint32_t mode;
+	int root_entries;
 
 	if (lf_dip)
 		return;
 
+	root_entries = sdp->md.rooti->i_di.di_entries;
 	log_info( _("Locating/Creating lost+found directory\n"));
 
 	/* if this is gfs1, we have to trick createi into using
@@ -131,8 +132,7 @@ void make_sure_lf_exists(struct gfs2_inode *ip)
 	   them in sync so that pass4 can detect and fix any descrepancies. */
 	set_di_nlink(sdp->md.rooti);
 
-	q = bitmap_type(sdp, lf_dip->i_di.di_num.no_addr);
-	if (q != GFS2_BLKST_DINODE) {
+	if (sdp->md.rooti->i_di.di_entries > root_entries) {
 		lf_was_created = 1;
 		/* This is a new lost+found directory, so set its block type
 		   and increment link counts for the directories */
