@@ -65,7 +65,7 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 					       struct dir_info *di)
 {
 	struct dir_info *pdi;
-	uint8_t q_dotdot, q_treewalk;
+	int q_dotdot, q_treewalk;
 	int error = 0;
 	struct dir_info *dt_dotdot, *dt_treewalk;
 
@@ -181,7 +181,7 @@ int pass3(struct gfs2_sbd *sdp)
 	struct osi_node *tmp, *next = NULL;
 	struct dir_info *di, *tdi;
 	struct gfs2_inode *ip;
-	uint8_t q;
+	int q;
 	struct alloc_state lf_as = {.as_blocks = 0, .as_meta_goal = 0};
 
 	di = dirtree_find(sdp->md.rooti->i_di.di_num.no_addr);

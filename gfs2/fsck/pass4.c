@@ -47,7 +47,7 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 	struct inode_info *ii;
 	struct gfs2_inode *ip;
 	int lf_addition = 0;
-	uint8_t q;
+	int q;
 	struct alloc_state lf_as = {.as_blocks = 0, .as_meta_goal = 0};
 
 	/* FIXME: should probably factor this out into a generic

@@ -53,7 +53,7 @@ struct dir_info
 struct dir_status {
 	uint8_t dotdir:1;
 	uint8_t dotdotdir:1;
-	uint8_t q;
+	int q;
 	uint32_t entry_count;
 };
 

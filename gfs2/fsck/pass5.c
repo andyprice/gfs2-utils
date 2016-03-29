@@ -19,7 +19,7 @@ static int check_block_status(struct gfs2_sbd *sdp, char *buffer,
 	unsigned char *byte, *end;
 	unsigned int bit;
 	unsigned char rg_status;
-	uint8_t q;
+	int q;
 	uint64_t block;
 
 	/* FIXME verify cast */

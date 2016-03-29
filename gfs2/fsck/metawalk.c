@@ -1040,7 +1040,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 				  const char *btype, int *was_duplicate,
 				  void *private)
 {
-	uint8_t q;
+	int q;
 
 	if (!valid_block(ip->i_sbd, block))
 		return meta_error;
@@ -1760,7 +1760,7 @@ int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 {
 	struct metawalk_fxns remove_dentry_fxns = {0};
 	struct gfs2_inode *ip;
-	uint8_t q;
+	int q;
 	int error;
 
 	log_debug( _("Removing dentry %llu (0x%llx) from directory %llu"
@@ -1822,7 +1822,7 @@ static int del_eattr_generic(struct gfs2_inode *ip, uint64_t block,
 {
 	int ret = 0;
 	int was_free = 0;
-	uint8_t q;
+	int q;
 
 	if (valid_block(ip->i_sbd, block)) {
 		q = bitmap_type(ip->i_sbd, block);
@@ -1916,7 +1916,7 @@ static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,
 			  struct gfs2_buffer_head **bh, int h, int *is_valid,
 			  int *was_duplicate, void *private)
 {
-	uint8_t q;
+	int q;
 	const char *desc = (const char *)private;
 
 	/* No need to range_check here--if it was added, it's in range. */
@@ -1941,7 +1941,7 @@ static int alloc_data(struct gfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
 		      struct gfs2_buffer_head *bh, uint64_t *ptr)
 {
-	uint8_t q;
+	int q;
 	const char *desc = (const char *)private;
 
 	/* No need to range_check here--if it was added, it's in range. */
@@ -1960,7 +1960,7 @@ static int alloc_data(struct gfs2_inode *ip, uint64_t metablock,
 
 static int alloc_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 {
-	uint8_t q;
+	int q;
 
 	/* No need to range_check here--if it was added, it's in range. */
 	/* We can't check the bitmap here because this function is called

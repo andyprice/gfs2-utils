@@ -135,7 +135,7 @@ static const char *de_type_string(uint8_t de_type)
 	return de_types[3]; /* invalid */
 }
 
-static int check_file_type(uint64_t block, uint8_t de_type, uint8_t q,
+static int check_file_type(uint64_t block, uint8_t de_type, int q,
 			   int gfs1, int *isdir)
 {
 	struct dir_info *dt;
@@ -176,7 +176,7 @@ struct metawalk_fxns pass2_fxns_delete = {
  */
 static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			  struct gfs2_inum entry, const char *tmp_name,
-			  uint8_t q, struct gfs2_dirent *de,
+			  int q, struct gfs2_dirent *de,
 			  struct gfs2_buffer_head *bh)
 {
 	struct inode_info *ii;
@@ -299,7 +299,7 @@ static int wrong_leaf(struct gfs2_inode *ip, struct gfs2_inum *entry,
 		      int hash_index, struct gfs2_buffer_head *bh,
 		      struct dir_status *ds, struct gfs2_dirent *dent,
 		      struct gfs2_dirent *de, struct gfs2_dirent *prev_de,
-		      uint32_t *count, uint8_t q)
+		      uint32_t *count, int q)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct gfs2_buffer_head *dest_lbh;
@@ -437,7 +437,7 @@ static int wrong_leaf(struct gfs2_inode *ip, struct gfs2_inum *entry,
 static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			       struct gfs2_inum *entry, const char *tmp_name,
 			       uint32_t *count, struct gfs2_dirent *de,
-			       struct dir_status *ds, uint8_t *q,
+			       struct dir_status *ds, int *q,
 			       struct gfs2_buffer_head *bh, int *isdir)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -643,7 +643,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			uint32_t *count, int *lindex, void *priv)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	uint8_t q = 0;
+	int q = 0;
 	char tmp_name[MAX_FILENAME];
 	struct gfs2_inum entry;
 	struct dir_status *ds = (struct dir_status *) priv;
@@ -955,7 +955,7 @@ static int lost_leaf(struct gfs2_inode *ip, uint64_t *tbl, uint64_t leafno,
 		} else {
 			uint32_t count;
 			struct dir_status ds = {0};
-			uint8_t q = 0;
+			int q = 0;
 
 			error = basic_dentry_checks(ip, dent, &de.de_inum,
 						    tmp_name, &count, &de,
@@ -1013,7 +1013,7 @@ static int basic_check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			      struct gfs2_buffer_head *bh, char *filename,
 			      uint32_t *count, int *lindex, void *priv)
 {
-	uint8_t q = 0;
+	int q = 0;
 	char tmp_name[MAX_FILENAME];
 	struct gfs2_inum entry;
 	struct dir_status *ds = (struct dir_status *) priv;
@@ -1953,7 +1953,7 @@ static int pass2_check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 int pass2(struct gfs2_sbd *sdp)
 {
 	uint64_t dirblk;
-	uint8_t q;
+	int q;
 
 	/* Check all the system directory inodes. */
 	if (!sdp->gfs1 &&
