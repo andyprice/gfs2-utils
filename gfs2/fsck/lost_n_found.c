@@ -99,7 +99,7 @@ static void add_dotdot(struct gfs2_inode *ip)
 
 void make_sure_lf_exists(struct gfs2_inode *ip)
 {
-	uint8_t q;
+	int q;
 	struct dir_info *di;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint32_t mode;

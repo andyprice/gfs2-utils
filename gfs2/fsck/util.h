@@ -47,11 +47,11 @@ static inline int astate_changed(struct gfs2_inode *ip, struct alloc_state *as)
 	return 0;
 }
 
-static inline uint8_t block_type(uint64_t bblock)
+static inline int block_type(uint64_t bblock)
 {
 	static unsigned char *byte;
 	static uint64_t b;
-	static uint8_t btype;
+	static int btype;
 
 	byte = bl->map + BLOCKMAP_SIZE2(bblock);
 	b = BLOCKMAP_BYTE_OFFSET2(bblock);
@@ -59,7 +59,7 @@ static inline uint8_t block_type(uint64_t bblock)
 	return btype;
 }
 
-static inline uint8_t bitmap_type(struct gfs2_sbd *sdp, uint64_t bblock)
+static inline int bitmap_type(struct gfs2_sbd *sdp, uint64_t bblock)
 {
 	struct rgrp_tree *rgd;
 
@@ -67,10 +67,10 @@ static inline uint8_t bitmap_type(struct gfs2_sbd *sdp, uint64_t bblock)
 	return lgfs2_get_bitmap(sdp, bblock, rgd);
 }
 
-static const inline char *block_type_string(uint8_t q)
+static const inline char *block_type_string(int q)
 {
 	const char *blktyp[] = {"free", "data", "other", "inode", "invalid"};
-	if (q <= GFS2_BLKST_DINODE)
+	if (q >= GFS2_BLKST_FREE && q <= GFS2_BLKST_DINODE)
 		return (blktyp[q]);
 	return blktyp[4];
 }

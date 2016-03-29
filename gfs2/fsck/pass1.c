@@ -214,7 +214,7 @@ struct metawalk_fxns sysdir_fxns = {
 static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 {
 	struct block_count *bc = (struct block_count *) private;
-	uint8_t q;
+	int q;
 
 	/* Note if we've gotten this far, the block has already passed the
 	   check in metawalk: gfs2_check_meta(lbh, GFS2_METATYPE_LF).
@@ -247,7 +247,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			  struct gfs2_buffer_head **bh, int h, int *is_valid,
 			  int *was_duplicate, void *private)
 {
-	uint8_t q;
+	int q;
 	int iblk_type;
 	struct gfs2_buffer_head *nbh;
 	struct block_count *bc = (struct block_count *)private;
@@ -445,7 +445,7 @@ static int check_data(struct gfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
 		      struct gfs2_buffer_head *bbh, uint64_t *ptr)
 {
-	uint8_t q;
+	int q;
 	struct block_count *bc = (struct block_count *) private;
 
 	if (!valid_block(ip->i_sbd, block)) {
@@ -581,7 +581,7 @@ static int undo_eattr_indir_or_leaf(struct gfs2_inode *ip, uint64_t block,
 				    void *private)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	uint8_t q;
+	int q;
 	int error;
 	struct block_count *bc = (struct block_count *) private;
 
@@ -629,7 +629,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	int ret = 0;
-	uint8_t q;
+	int q;
 	struct block_count *bc = (struct block_count *) private;
 
 	/* This inode contains an eattr - it may be invalid, but the
@@ -720,7 +720,7 @@ static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 {
 	struct gfs2_buffer_head *leaf_bh = NULL;
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	uint8_t q;
+	int q;
 	struct block_count *bc = (struct block_count *) private;
 
 	q = block_type(block);
@@ -948,7 +948,7 @@ static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
 			      enum dup_ref_type reftype, const char *btype,
 			      int *is_valid, int *was_duplicate)
 {
-	uint8_t q;
+	int q;
 
 	/* If the block isn't valid, we obviously can't invalidate it.
 	 * However, if we return an error, invalidating will stop, and
@@ -1051,7 +1051,7 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 			    void *private)
 {
 	long *bad_pointers = (long *)private;
-	uint8_t q;
+	int q;
 
 	if (!valid_block(ip->i_sbd, block)) {
 		(*bad_pointers)++;
@@ -1583,7 +1583,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 	unsigned i;
 	uint64_t block;
 	struct gfs2_inode *ip;
-	uint8_t q;
+	int q;
 	/* Readahead numbers arrived at by experiment */
 	unsigned rawin = 50;
 	unsigned ralen = 100 * sdp->bsize;

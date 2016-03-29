@@ -364,7 +364,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 
 	if (id == NULL) {
 		/* Check for the inode on the invalid inode reference list. */
-		uint8_t q;
+		int q;
 
 		id = calloc(1, sizeof(*id));
 		if (!id) {

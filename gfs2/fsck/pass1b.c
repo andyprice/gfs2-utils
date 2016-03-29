@@ -203,7 +203,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 	enum dup_ref_type this_ref;
 	struct inode_info *ii;
 	int found_good_ref = 0;
-	uint8_t q;
+	int q;
 
 	osi_list_foreach_safe(tmp, ref_list, x) {
 		if (skip_this_pass || fsck_abort)
@@ -502,7 +502,7 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 	struct gfs2_inode *ip;
 	struct inode_with_dups *id;
 	osi_list_t *tmp;
-	uint8_t q;
+	int q;
 
 	log_notice( _("Block %llu (0x%llx) has only one remaining "
 		      "valid inode referencing it.\n"),
@@ -856,7 +856,7 @@ int pass1b(struct gfs2_sbd *sdp)
 {
 	struct duptree *dt;
 	uint64_t i;
-	uint8_t q;
+	int q;
 	struct osi_node *n;
 	int rc = FSCK_OK;
 
