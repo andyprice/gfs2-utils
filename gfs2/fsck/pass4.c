@@ -125,10 +125,38 @@ static int handle_unlinked(struct gfs2_sbd *sdp, uint64_t no_addr,
 	return 0;
 }
 
-static int scan_inode_list(struct gfs2_sbd *sdp) {
+static void handle_inconsist(struct gfs2_sbd *sdp, uint64_t no_addr,
+			     uint32_t *di_nlink, uint32_t counted_links)
+{
+	log_err( _("Link count inconsistent for inode %llu"
+		   " (0x%llx) has %u but fsck found %u.\n"),
+		 (unsigned long long)no_addr, (unsigned long long)no_addr,
+		 *di_nlink, counted_links);
+	/* Read in the inode, adjust the link count, and write it back out */
+	if (query( _("Update link count for inode %llu (0x%llx) ? (y/n) "),
+		   (unsigned long long)no_addr, (unsigned long long)no_addr)) {
+		struct gfs2_inode *ip;
+
+		ip = fsck_load_inode(sdp, no_addr); /* bread, inode_get */
+		fix_link_count(counted_links, ip);
+		*di_nlink = counted_links;
+		fsck_inode_put(&ip); /* out, brelse, free */
+		log_warn(_("Link count updated to %d for inode %llu "
+			   "(0x%llx)\n"), *di_nlink,
+			 (unsigned long long)no_addr,
+			 (unsigned long long)no_addr);
+	} else {
+		log_err( _("Link count for inode %llu (0x%llx) still "
+			   "incorrect\n"),
+			 (unsigned long long)no_addr,
+			 (unsigned long long)no_addr);
+	}
+}
+
+static int scan_inode_list(struct gfs2_sbd *sdp)
+{
 	struct osi_node *tmp, *next = NULL;
 	struct inode_info *ii;
-	struct gfs2_inode *ip;
 	int lf_addition = 0;
 
 	/* FIXME: should probably factor this out into a generic
@@ -151,32 +179,8 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 				continue;
 		} /* if (ii->counted_links == 0) */
 		else if (ii->di_nlink != ii->counted_links) {
-			log_err( _("Link count inconsistent for inode %llu"
-				" (0x%llx) has %u but fsck found %u.\n"),
-				(unsigned long long)ii->di_num.no_addr, 
-				(unsigned long long)ii->di_num.no_addr, ii->di_nlink,
-				ii->counted_links);
-			/* Read in the inode, adjust the link count,
-			 * and write it back out */
-			if (query( _("Update link count for inode %llu"
-				    " (0x%llx) ? (y/n) "),
-				  (unsigned long long)ii->di_num.no_addr,
-				  (unsigned long long)ii->di_num.no_addr)) {
-				ip = fsck_load_inode(sdp, ii->di_num.no_addr); /* bread, inode_get */
-				fix_link_count(ii->counted_links, ip);
-				ii->di_nlink = ii->counted_links;
-				fsck_inode_put(&ip); /* out, brelse, free */
-				log_warn( _("Link count updated to %d for "
-					    "inode %llu (0x%llx)\n"),
-					  ii->di_nlink,
-					  (unsigned long long)ii->di_num.no_addr,
-					  (unsigned long long)ii->di_num.no_addr);
-			} else {
-				log_err( _("Link count for inode %llu (0x%llx"
-					   ") still incorrect\n"),
-					 (unsigned long long)ii->di_num.no_addr,
-					 (unsigned long long)ii->di_num.no_addr);
-			}
+			handle_inconsist(sdp, ii->di_num.no_addr,
+					 &ii->di_nlink, ii->counted_links);
 		}
 		log_debug( _("block %llu (0x%llx) has link count %d\n"),
 			 (unsigned long long)ii->di_num.no_addr,
