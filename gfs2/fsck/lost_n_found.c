@@ -43,7 +43,7 @@ static void add_dotdot(struct gfs2_inode *ip)
 		if (dip->i_di.di_num.no_formal_ino ==
 		    di->dotdot_parent.no_formal_ino) {
 			decr_link_count(di->dotdot_parent.no_addr,
-					ip->i_di.di_num.no_addr,
+					ip->i_di.di_num.no_addr, sdp->gfs1,
 					_(".. unlinked, moving to lost+found"));
 			if (dip->i_di.di_nlink > 0) {
 			  dip->i_di.di_nlink--;

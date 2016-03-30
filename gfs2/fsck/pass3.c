@@ -38,7 +38,7 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 	if (gfs2_dirent_del(ip, filename, filename_len))
 		log_warn( _("Unable to remove \"..\" directory entry.\n"));
 	else
-		decr_link_count(olddotdot, block, _("old \"..\""));
+		decr_link_count(olddotdot, block, sdp->gfs1, _("old \"..\""));
 	err = dir_add(ip, filename, filename_len, &pip->i_di.di_num,
 		      (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 	if (err) {

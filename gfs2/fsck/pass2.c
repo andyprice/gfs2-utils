@@ -181,12 +181,21 @@ static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			  struct gfs2_buffer_head *bh)
 {
 	struct inode_info *ii;
+	struct dir_info *di = NULL;
 	struct gfs2_inode *child_ip;
 	struct gfs2_inum childs_dotdot;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	int error;
+	struct gfs2_inum inum = { 0 };
 
 	ii = inodetree_find(entry.no_addr);
+	if (ii)
+		inum = ii->di_num;
+	else {
+		di = dirtree_find(entry.no_addr);
+		if (di)
+			inum = di->dinode;
+	}
 	log_err( _("Directory entry '%s' pointing to block %llu (0x%llx) in "
 		   "directory %llu (0x%llx) has the wrong 'formal' inode "
 		   "number.\n"), tmp_name, (unsigned long long)entry.no_addr,
@@ -196,8 +205,8 @@ static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	log_err( _("The directory entry has %llu (0x%llx) but the inode has "
 		   "%llu (0x%llx)\n"), (unsigned long long)entry.no_formal_ino,
 		 (unsigned long long)entry.no_formal_ino,
-		 (unsigned long long)ii->di_num.no_formal_ino,
-		 (unsigned long long)ii->di_num.no_formal_ino);
+		 (unsigned long long)inum.no_formal_ino,
+		 (unsigned long long)inum.no_formal_ino);
 	if (q != GFS2_BLKST_DINODE || !strcmp("..", tmp_name)) {
 		if (query( _("Remove the corrupt directory entry? (y/n) ")))
 			return 1;
@@ -214,7 +223,7 @@ static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			   "linkage.\n"));
 		if (query( _("Fix the bad directory entry? (y/n) "))) {
 			log_err( _("Fixing the corrupt directory entry.\n"));
-			entry.no_formal_ino = ii->di_num.no_formal_ino;
+			entry.no_formal_ino = inum.no_formal_ino;
 			de->de_inum.no_formal_ino = entry.no_formal_ino;
 			gfs2_dirent_out(de, (char *)dent);
 			bmodified(bh);
@@ -446,6 +455,8 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	struct gfs2_inode *entry_ip = NULL;
 	int error;
 	struct inode_info *ii;
+	struct dir_info *di = NULL;
+	struct gfs2_inum inum = { 0 };
 
 	*isdir = 0;
 	if (!valid_block(ip->i_sbd, entry->no_addr)) {
@@ -541,7 +552,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 
 		/* Don't decrement the link here: Here in pass2, we increment
 		   only when we know it's okay.
-		   decr_link_count(ip->i_di.di_num.no_addr); */
+		   decr_link_count(ip->i_di.di_num.no_addr, blah); */
 		/* If it was previously marked invalid (i.e. known
 		   to be bad, not just a free block, etc.) then the temptation
 		   would be to delete any metadata it holds.  The trouble is:
@@ -596,7 +607,14 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	/* We need to verify the formal inode number matches. If it doesn't,
 	   it needs to be deleted. */
 	ii = inodetree_find(entry->no_addr);
-	if (ii && ii->di_num.no_formal_ino != entry->no_formal_ino) {
+	if (ii)
+		inum = ii->di_num;
+	else {
+		di = dirtree_find(entry->no_addr);
+		if (di)
+			inum = di->dinode;
+	}
+	if (inum.no_formal_ino != entry->no_formal_ino) {
 		log_err( _("Directory entry '%s' pointing to block %llu "
 			   "(0x%llx) in directory %llu (0x%llx) has the "
 			   "wrong 'formal' inode number.\n"), tmp_name,
@@ -608,15 +626,15 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			   "inode has %llu (0x%llx)\n"),
 			 (unsigned long long)entry->no_formal_ino,
 			 (unsigned long long)entry->no_formal_ino,
-			 (unsigned long long)ii->di_num.no_formal_ino,
-			 (unsigned long long)ii->di_num.no_formal_ino);
+			 (unsigned long long)inum.no_formal_ino,
+			 (unsigned long long)inum.no_formal_ino);
 		return 1;
 	}
 	/* Check for a special case where a (bad) GFS1 dirent points to what
 	 * is not a known inode. It could be other GFS1 metadata, such as an
 	 * eattr or indirect block, but marked "dinode" in the bitmap because
 	 * gfs1 marked all gfs1 metadata that way. */
-	if (ii == NULL && sdp->gfs1) {
+	if (ii == NULL && di == NULL && sdp->gfs1) {
 		struct gfs2_buffer_head *tbh;
 
 		tbh = bread(sdp, entry->no_addr);
