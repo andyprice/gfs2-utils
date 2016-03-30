@@ -42,12 +42,94 @@ static int fix_link_count(uint32_t counted_links, struct gfs2_inode *ip)
 	return 0;
 }
 
+/**
+ * handle_unlinked - handle an unlinked dinode
+ *
+ * Note: We need to pass in *counted_links here, not counted_links because
+ *       add_inode_to_lf may be called here, and that might change the original
+ *       value, whether that's in the dirtree or the inodetree.
+ *
+ * Returns: 1 if caller should do "continue", 0 if not.
+ */
+static int handle_unlinked(struct gfs2_sbd *sdp, uint64_t no_addr,
+			   uint32_t *counted_links, int *lf_addition)
+{
+	struct gfs2_inode *ip;
+	int q;
+
+	log_err( _("Found unlinked inode at %llu (0x%llx)\n"),
+		 (unsigned long long)no_addr, (unsigned long long)no_addr);
+	q = bitmap_type(sdp, no_addr);
+	if (q == GFS2_BLKST_UNLINKED) {
+		log_err( _("Unlinked inode %llu (0x%llx) contains bad "
+			   "blocks\n"), (unsigned long long)no_addr,
+			 (unsigned long long)no_addr);
+		if (query(_("Delete unlinked inode with bad blocks? "
+			    "(y/n) "))) {
+			ip = fsck_load_inode(sdp, no_addr);
+			check_inode_eattr(ip, &pass4_fxns_delete);
+			check_metatree(ip, &pass4_fxns_delete);
+			fsck_bitmap_set(ip, no_addr, _("bad unlinked"),
+					GFS2_BLKST_FREE);
+			fsck_inode_put(&ip);
+			return 1;
+		} else {
+			log_err( _("Unlinked inode with bad blocks not "
+				   "cleared\n"));
+		}
+	}
+	if (q != GFS2_BLKST_DINODE) {
+		log_err( _("Unlinked block %lld (0x%llx) marked as inode is "
+			   "not an inode (%d)\n"),
+			 (unsigned long long)no_addr,
+			 (unsigned long long)no_addr, q);
+		ip = fsck_load_inode(sdp, no_addr);
+		if (query(_("Delete unlinked inode? (y/n) "))) {
+			check_inode_eattr(ip, &pass4_fxns_delete);
+			check_metatree(ip, &pass4_fxns_delete);
+			fsck_bitmap_set(ip, no_addr, _("invalid unlinked"),
+					GFS2_BLKST_FREE);
+			fsck_inode_put(&ip);
+			log_err( _("The inode was deleted\n"));
+		} else {
+			log_err( _("The inode was not deleted\n"));
+			fsck_inode_put(&ip);
+		}
+		return 1;
+	}
+	ip = fsck_load_inode(sdp, no_addr);
+
+	/* We don't want to clear zero-size files with eattrs - there might be
+	   relevent info in them. */
+	if (!ip->i_di.di_size && !ip->i_di.di_eattr){
+		log_err( _("Unlinked inode has zero size\n"));
+		if (query(_("Clear zero-size unlinked inode? (y/n) "))) {
+			fsck_bitmap_set(ip, no_addr, _("unlinked zero-length"),
+					GFS2_BLKST_FREE);
+			fsck_inode_put(&ip);
+			return 1;
+		}
+	}
+	if (query( _("Add unlinked inode to lost+found? (y/n)"))) {
+		if (add_inode_to_lf(ip)) {
+			stack;
+			fsck_inode_put(&ip);
+			return -1;
+		} else {
+			fix_link_count(*counted_links, ip);
+			*lf_addition = 1;
+		}
+	} else
+		log_err( _("Unlinked inode left unlinked\n"));
+	fsck_inode_put(&ip);
+	return 0;
+}
+
 static int scan_inode_list(struct gfs2_sbd *sdp) {
 	struct osi_node *tmp, *next = NULL;
 	struct inode_info *ii;
 	struct gfs2_inode *ip;
 	int lf_addition = 0;
-	int q;
 
 	/* FIXME: should probably factor this out into a generic
 	 * scanning fxn */
@@ -64,82 +146,9 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 		     (ii->di_num.no_addr == sdp->md.statfs->i_di.di_num.no_addr)))
 			continue;
 		if (ii->counted_links == 0) {
-			log_err( _("Found unlinked inode at %llu (0x%llx)\n"),
-				(unsigned long long)ii->di_num.no_addr,
-				(unsigned long long)ii->di_num.no_addr);
-			q = bitmap_type(sdp, ii->di_num.no_addr);
-			if (q == GFS2_BLKST_UNLINKED) {
-				log_err( _("Unlinked inode %llu (0x%llx) contains "
-					"bad blocks\n"),
-					(unsigned long long)ii->di_num.no_addr,
-					(unsigned long long)ii->di_num.no_addr);
-				if (query(  _("Delete unlinked inode with bad "
-					     "blocks? (y/n) "))) {
-					ip = fsck_load_inode(sdp, ii->di_num.no_addr);
-					check_inode_eattr(ip,
-							  &pass4_fxns_delete);
-					check_metatree(ip, &pass4_fxns_delete);
-					fsck_bitmap_set(ip, ii->di_num.no_addr,
-							_("bad unlinked"),
-							GFS2_BLKST_FREE);
-					fsck_inode_put(&ip);
-					continue;
-				} else
-					log_err( _("Unlinked inode with bad blocks not cleared\n"));
-			}
-			if (q != GFS2_BLKST_DINODE) {
-				log_err( _("Unlinked block %lld (0x%llx) "
-					   "marked as inode is "
-					   "not an inode (%d)\n"),
-					 (unsigned long long)ii->di_num.no_addr,
-					 (unsigned long long)ii->di_num.no_addr, q);
-				ip = fsck_load_inode(sdp, ii->di_num.no_addr);
-				if (query(_("Delete unlinked inode? (y/n) "))) {
-					check_inode_eattr(ip,
-							  &pass4_fxns_delete);
-					check_metatree(ip, &pass4_fxns_delete);
-					fsck_bitmap_set(ip, ii->di_num.no_addr,
-							_("invalid unlinked"),
-							GFS2_BLKST_FREE);
-					fsck_inode_put(&ip);
-					log_err( _("The inode was deleted\n"));
-				} else {
-					log_err( _("The inode was not "
-						   "deleted\n"));
-					fsck_inode_put(&ip);
-				}
+			if (handle_unlinked(sdp, ii->di_num.no_addr,
+					    &ii->counted_links, &lf_addition))
 				continue;
-			}
-			ip = fsck_load_inode(sdp, ii->di_num.no_addr);
-
-			/* We don't want to clear zero-size files with
-			 * eattrs - there might be relevent info in
-			 * them. */
-			if (!ip->i_di.di_size && !ip->i_di.di_eattr){
-				log_err( _("Unlinked inode has zero size\n"));
-				if (query(_("Clear zero-size unlinked inode? "
-					   "(y/n) "))) {
-					fsck_bitmap_set(ip, ii->di_num.no_addr,
-						_("unlinked zero-length"),
-							GFS2_BLKST_FREE);
-					fsck_inode_put(&ip);
-					continue;
-				}
-
-			}
-			if (query( _("Add unlinked inode to lost+found? "
-				    "(y/n)"))) {
-				if (add_inode_to_lf(ip)) {
-					stack;
-					fsck_inode_put(&ip);
-					return -1;
-				} else {
-					fix_link_count(ii->counted_links, ip);
-					lf_addition = 1;
-				}
-			} else
-				log_err( _("Unlinked inode left unlinked\n"));
-			fsck_inode_put(&ip);
 		} /* if (ii->counted_links == 0) */
 		else if (ii->di_nlink != ii->counted_links) {
 			log_err( _("Link count inconsistent for inode %llu"
