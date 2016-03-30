@@ -203,6 +203,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 	};
 	enum dup_ref_type this_ref;
 	struct inode_info *ii;
+	struct dir_info *di;
 	int found_good_ref = 0;
 	int q;
 
@@ -349,6 +350,9 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 				ii = inodetree_find(ip->i_di.di_num.no_addr);
 				if (ii)
 					inodetree_delete(ii);
+				di = dirtree_find(ip->i_di.di_num.no_addr);
+				if (di)
+					dirtree_delete(di);
 				fsck_bitmap_set(ip, ip->i_di.di_num.no_addr,
 						_("duplicate referencing bad"),
 						GFS2_BLKST_UNLINKED);

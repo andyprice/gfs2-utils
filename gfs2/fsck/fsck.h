@@ -46,6 +46,8 @@ struct dir_info
 	struct gfs2_inum dinode;
 	uint64_t treewalk_parent;
 	struct gfs2_inum dotdot_parent;
+	uint32_t di_nlink;
+	uint32_t counted_links;
 	uint8_t  checked:1;
 };
 

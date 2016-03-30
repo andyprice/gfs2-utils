@@ -53,8 +53,7 @@ struct inode_info *inodetree_insert(struct gfs2_inum di_num)
 		return NULL;
 	}
 	/* Add new node and rebalance tree. */
-	data->di_num.no_addr = di_num.no_addr;
-	data->di_num.no_formal_ino = di_num.no_formal_ino;
+	data->di_num = di_num;
 	osi_link_node(&data->node, parent, newn);
 	osi_insert_color(&data->node, &inodetree);
 

@@ -157,6 +157,7 @@ static int scan_inode_list(struct gfs2_sbd *sdp)
 {
 	struct osi_node *tmp, *next = NULL;
 	struct inode_info *ii;
+	struct dir_info *lf_di;
 	int lf_addition = 0;
 
 	/* FIXME: should probably factor this out into a generic
@@ -169,7 +170,6 @@ static int scan_inode_list(struct gfs2_sbd *sdp)
 		/* Don't check reference counts on the special gfs files */
 		if (sdp->gfs1 &&
 		    ((ii->di_num.no_addr == sdp->md.riinode->i_di.di_num.no_addr) ||
-		     (ii->di_num.no_addr == sdp->md.jiinode->i_di.di_num.no_addr) ||
 		     (ii->di_num.no_addr == sdp->md.qinode->i_di.di_num.no_addr) ||
 		     (ii->di_num.no_addr == sdp->md.statfs->i_di.di_num.no_addr)))
 			continue;
@@ -191,11 +191,56 @@ static int scan_inode_list(struct gfs2_sbd *sdp)
 		return 0;
 
 	if (lf_addition) {
-		if (!(ii = inodetree_find(lf_dip->i_di.di_num.no_addr))) {
+		if (!(lf_di = dirtree_find(lf_dip->i_di.di_num.no_addr))) {
 			log_crit( _("Unable to find lost+found inode in inode_hash!!\n"));
 			return -1;
 		} else {
-			fix_link_count(ii->counted_links, lf_dip);
+			fix_link_count(lf_di->counted_links, lf_dip);
+		}
+	}
+
+	return 0;
+}
+
+static int scan_dir_list(struct gfs2_sbd *sdp)
+{
+	struct osi_node *tmp, *next = NULL;
+	struct dir_info *di, *lf_di;
+	int lf_addition = 0;
+
+	/* FIXME: should probably factor this out into a generic
+	 * scanning fxn */
+	for (tmp = osi_first(&dirtree); tmp; tmp = next) {
+		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
+			return 0;
+		next = osi_next(tmp);
+		di = (struct dir_info *)tmp;
+		/* Don't check reference counts on the special gfs files */
+		if (sdp->gfs1 &&
+		    di->dinode.no_addr == sdp->md.jiinode->i_di.di_num.no_addr)
+			continue;
+		if (di->counted_links == 0) {
+			if (handle_unlinked(sdp, di->dinode.no_addr,
+					    &di->counted_links, &lf_addition))
+				continue;
+		} else if (di->di_nlink != di->counted_links) {
+			handle_inconsist(sdp, di->dinode.no_addr,
+					 &di->di_nlink, di->counted_links);
+		}
+		log_debug( _("block %llu (0x%llx) has link count %d\n"),
+			 (unsigned long long)di->dinode.no_addr,
+			 (unsigned long long)di->dinode.no_addr, di->di_nlink);
+	} /* osi_list_foreach(tmp, list) */
+
+	if (lf_dip == NULL)
+		return 0;
+
+	if (lf_addition) {
+		if (!(lf_di = dirtree_find(lf_dip->i_di.di_num.no_addr))) {
+			log_crit( _("Unable to find lost+found inode in inode_hash!!\n"));
+			return -1;
+		} else {
+			fix_link_count(lf_di->counted_links, lf_dip);
 		}
 	}
 
@@ -218,6 +263,10 @@ int pass4(struct gfs2_sbd *sdp)
 				  lf_dip->i_di.di_entries);
 	log_info( _("Checking inode reference counts.\n"));
 	if (scan_inode_list(sdp)) {
+		stack;
+		return FSCK_ERROR;
+	}
+	if (scan_dir_list(sdp)) {
 		stack;
 		return FSCK_ERROR;
 	}
