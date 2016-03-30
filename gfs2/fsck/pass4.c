@@ -25,21 +25,20 @@ struct metawalk_fxns pass4_fxns_delete = {
 
 /* Updates the link count of an inode to what the fsck has seen for
  * link count */
-static int fix_link_count(struct inode_info *ii, struct gfs2_inode *ip)
+static int fix_link_count(uint32_t counted_links, struct gfs2_inode *ip)
 {
 	log_info( _("Fixing inode link count (%d->%d) for %llu (0x%llx) \n"),
-		  ip->i_di.di_nlink, ii->counted_links,
+		  ip->i_di.di_nlink, counted_links,
 		 (unsigned long long)ip->i_di.di_num.no_addr,
 		 (unsigned long long)ip->i_di.di_num.no_addr);
-	if (ip->i_di.di_nlink == ii->counted_links)
+	if (ip->i_di.di_nlink == counted_links)
 		return 0;
-	ip->i_di.di_nlink = ii->counted_links;
+	ip->i_di.di_nlink = counted_links;
 	bmodified(ip->i_bh);
 
 	log_debug( _("Changing inode %llu (0x%llx) to have %u links\n"),
 		  (unsigned long long)ip->i_di.di_num.no_addr,
-		  (unsigned long long)ip->i_di.di_num.no_addr,
-		  ii->counted_links);
+		  (unsigned long long)ip->i_di.di_num.no_addr, counted_links);
 	return 0;
 }
 
@@ -135,7 +134,7 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 					fsck_inode_put(&ip);
 					return -1;
 				} else {
-					fix_link_count(ii, ip);
+					fix_link_count(ii->counted_links, ip);
 					lf_addition = 1;
 				}
 			} else
@@ -155,7 +154,7 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 				  (unsigned long long)ii->di_num.no_addr,
 				  (unsigned long long)ii->di_num.no_addr)) {
 				ip = fsck_load_inode(sdp, ii->di_num.no_addr); /* bread, inode_get */
-				fix_link_count(ii, ip);
+				fix_link_count(ii->counted_links, ip);
 				ii->di_nlink = ii->counted_links;
 				fsck_inode_put(&ip); /* out, brelse, free */
 				log_warn( _("Link count updated to %d for "
@@ -183,7 +182,7 @@ static int scan_inode_list(struct gfs2_sbd *sdp) {
 			log_crit( _("Unable to find lost+found inode in inode_hash!!\n"));
 			return -1;
 		} else {
-			fix_link_count(ii, lf_dip);
+			fix_link_count(ii->counted_links, lf_dip);
 		}
 	}
 
