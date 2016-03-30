@@ -33,21 +33,20 @@ struct gfs2_bmap {
 
 struct inode_info
 {
-        struct osi_node node;
-        struct gfs2_inum di_num;
-        uint32_t   di_nlink;    /* the number of links the inode
+	struct osi_node node;
+	struct gfs2_inum di_num;
+	uint32_t   di_nlink;    /* the number of links the inode
 				 * thinks it has */
-        uint32_t   counted_links; /* the number of links we've found */
+	uint32_t   counted_links; /* the number of links we've found */
 };
 
 struct dir_info
 {
-        struct osi_node node;
-        struct gfs2_inum dinode;
-        uint64_t treewalk_parent;
-        struct gfs2_inum dotdot_parent;
-        uint8_t  checked:1;
-
+	struct osi_node node;
+	struct gfs2_inum dinode;
+	uint64_t treewalk_parent;
+	struct gfs2_inum dotdot_parent;
+	uint8_t  checked:1;
 };
 
 struct dir_status {
