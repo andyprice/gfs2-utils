@@ -854,7 +854,7 @@ static void open_dev(struct mkfs_dev *dev)
 {
 	int error;
 
-	dev->fd = open(dev->path, O_RDWR | O_CLOEXEC);
+	dev->fd = open(dev->path, O_RDWR|O_CLOEXEC|O_EXCL);
 	if (dev->fd < 0) {
 		perror(dev->path);
 		exit(1);
