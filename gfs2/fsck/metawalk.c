@@ -14,6 +14,7 @@
 
 #include <logging.h>
 #include "libgfs2.h"
+#include "link.h"
 #include "osi_tree.h"
 #include "fsck.h"
 #include "util.h"
@@ -88,6 +89,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 					ii = inodetree_find(blk);
 					if (ii)
 						inodetree_delete(ii);
+					link1_set(&nlink1map, blk, 0);
 				}
 				rgd->rg.rg_free++;
 				if (sdp->gfs1)

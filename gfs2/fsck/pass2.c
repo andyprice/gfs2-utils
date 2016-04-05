@@ -195,6 +195,8 @@ static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		di = dirtree_find(entry.no_addr);
 		if (di)
 			inum = di->dinode;
+		else if (link1_type(&clink1map, entry.no_addr) == 1)
+			inum = entry;
 	}
 	log_err( _("Directory entry '%s' pointing to block %llu (0x%llx) in "
 		   "directory %llu (0x%llx) has the wrong 'formal' inode "
@@ -613,6 +615,12 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		di = dirtree_find(entry->no_addr);
 		if (di)
 			inum = di->dinode;
+		else if (link1_type(&nlink1map, entry->no_addr) == 1) {
+			/* Since we don't have ii or di, the only way to
+			   validate formal_ino is to read in the inode, which
+			   would kill performance. So skip it for now. */
+			return 0;
+		}
 	}
 	if (inum.no_formal_ino != entry->no_formal_ino) {
 		log_err( _("Directory entry '%s' pointing to block %llu "

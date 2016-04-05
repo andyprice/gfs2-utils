@@ -9,6 +9,7 @@
 #include <logging.h>
 #include "libgfs2.h"
 #include "fsck.h"
+#include "link.h"
 #include "lost_n_found.h"
 #include "inode_hash.h"
 #include "metawalk.h"
@@ -153,11 +154,30 @@ static void handle_inconsist(struct gfs2_sbd *sdp, uint64_t no_addr,
 	}
 }
 
+static int adjust_lf_links(int lf_addition)
+{
+	struct dir_info *lf_di;
+
+	if (lf_dip == NULL)
+		return 0;
+
+	if (!lf_addition)
+		return 0;
+
+	if (!(lf_di = dirtree_find(lf_dip->i_di.di_num.no_addr))) {
+		log_crit(_("Unable to find lost+found inode in "
+			   "inode_hash!!\n"));
+		return -1;
+	} else {
+		fix_link_count(lf_di->counted_links, lf_dip);
+	}
+	return 0;
+}
+
 static int scan_inode_list(struct gfs2_sbd *sdp)
 {
 	struct osi_node *tmp, *next = NULL;
 	struct inode_info *ii;
-	struct dir_info *lf_di;
 	int lf_addition = 0;
 
 	/* FIXME: should probably factor this out into a generic
@@ -187,25 +207,13 @@ static int scan_inode_list(struct gfs2_sbd *sdp)
 			 (unsigned long long)ii->di_num.no_addr, ii->di_nlink);
 	} /* osi_list_foreach(tmp, list) */
 
-	if (lf_dip == NULL)
-		return 0;
-
-	if (lf_addition) {
-		if (!(lf_di = dirtree_find(lf_dip->i_di.di_num.no_addr))) {
-			log_crit( _("Unable to find lost+found inode in inode_hash!!\n"));
-			return -1;
-		} else {
-			fix_link_count(lf_di->counted_links, lf_dip);
-		}
-	}
-
-	return 0;
+	return adjust_lf_links(lf_addition);
 }
 
 static int scan_dir_list(struct gfs2_sbd *sdp)
 {
 	struct osi_node *tmp, *next = NULL;
-	struct dir_info *di, *lf_di;
+	struct dir_info *di;
 	int lf_addition = 0;
 
 	/* FIXME: should probably factor this out into a generic
@@ -232,19 +240,33 @@ static int scan_dir_list(struct gfs2_sbd *sdp)
 			 (unsigned long long)di->dinode.no_addr, di->di_nlink);
 	} /* osi_list_foreach(tmp, list) */
 
-	if (lf_dip == NULL)
-		return 0;
+	return adjust_lf_links(lf_addition);
+}
 
-	if (lf_addition) {
-		if (!(lf_di = dirtree_find(lf_dip->i_di.di_num.no_addr))) {
-			log_crit( _("Unable to find lost+found inode in inode_hash!!\n"));
-			return -1;
-		} else {
-			fix_link_count(lf_di->counted_links, lf_dip);
+static int scan_nlink1_list(struct gfs2_sbd *sdp)
+{
+	uint64_t blk;
+	uint32_t counted_links;
+	int lf_addition = 0;
+
+	for (blk = 0; blk < last_fs_block; blk++) {
+		if (skip_this_pass || fsck_abort)
+			return 0;
+		if (link1_type(&nlink1map, blk) == 0)
+			continue;
+
+		if (link1_type(&clink1map, blk) == 0) {
+			/* In other cases, counted_links is a pointer to a
+			   real count that gets incremented when it's added
+			   to lost+found. In this case, however, there's not a
+			   real count, so we fake it out to be 1. */
+			counted_links = 1;
+			if (handle_unlinked(sdp, blk, &counted_links,
+					    &lf_addition))
+				continue;
 		}
 	}
-
-	return 0;
+	return adjust_lf_links(lf_addition);
 }
 
 /**
@@ -261,12 +283,18 @@ int pass4(struct gfs2_sbd *sdp)
 	if (lf_dip)
 		log_debug( _("At beginning of pass4, lost+found entries is %u\n"),
 				  lf_dip->i_di.di_entries);
-	log_info( _("Checking inode reference counts.\n"));
+	log_info( _("Checking inode reference counts: multi-links.\n"));
 	if (scan_inode_list(sdp)) {
 		stack;
 		return FSCK_ERROR;
 	}
+	log_info( _("Checking inode reference counts: directories.\n"));
 	if (scan_dir_list(sdp)) {
+		stack;
+		return FSCK_ERROR;
+	}
+	log_info( _("Checking inode reference counts: normal links.\n"));
+	if (scan_nlink1_list(sdp)) {
 		stack;
 		return FSCK_ERROR;
 	}
