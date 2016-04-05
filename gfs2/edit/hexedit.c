@@ -943,9 +943,6 @@ static int block_has_extended_info(void)
 	return FALSE;
 }
 
-/* ------------------------------------------------------------------------ */
-/* read_superblock - read the superblock                                    */
-/* ------------------------------------------------------------------------ */
 static void read_superblock(int fd)
 {
 	sbd1 = (struct gfs_sb *)&sbd.sd_sb;
@@ -1013,6 +1010,8 @@ static void read_superblock(int fd)
 			gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
 		}
 	}
+	brelse(bh);
+	bh = NULL;
 }
 
 static int read_rindex(void)
@@ -1032,26 +1031,17 @@ static int read_rindex(void)
 	return 0;
 }
 
-/* ------------------------------------------------------------------------ */
-/* read_master_dir - read the master directory                              */
-/* ------------------------------------------------------------------------ */
-static void read_master_dir(void)
+static int read_master_dir(void)
 {
 	ioctl(sbd.device_fd, BLKFLSBUF, 0);
-	lseek(sbd.device_fd, sbd.sd_sb.sb_master_dir.no_addr * sbd.bsize,
-	      SEEK_SET);
-	if (read(sbd.device_fd, bh->b_data, sbd.bsize) != sbd.bsize) {
-		fprintf(stderr, "read error: %s from %s:%d: "
-			"master dir block %lld (0x%llx)\n",
-			strerror(errno), __FUNCTION__,
-			__LINE__,
-			(unsigned long long)sbd.sd_sb.sb_master_dir.no_addr,
-			(unsigned long long)sbd.sd_sb.sb_master_dir.no_addr);
-		exit(-1);
-	}
+
+	bh = bread(&sbd, sbd.sd_sb.sb_master_dir.no_addr);
+	if (bh == NULL)
+		return 1;
 	gfs2_dinode_in(&di, bh); /* parse disk inode into structure */
 	do_dinode_extended(&di, bh); /* get extended data, if any */
 	memcpy(&masterdir, &indirect[0], sizeof(struct indirect_info));
+	return 0;
 }
 
 int display(int identify_only, int trunc_zeros, uint64_t flagref,
@@ -2535,8 +2525,8 @@ int main(int argc, char *argv[])
 	max_block = lseek(fd, 0, SEEK_END) / sbd.bsize;
 	if (sbd.gfs1)
 		edit_row[GFS2_MODE]++;
-	else
-		read_master_dir();
+	else if (read_master_dir() != 0)
+		exit(-1);
 
 	process_parameters(argc, argv, 1); /* get what to print from cmdline */
 
