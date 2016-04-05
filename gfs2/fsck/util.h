@@ -23,9 +23,12 @@ extern void dup_listent_delete(struct duptree *dt, struct inode_with_dups *id);
 
 extern const char *reftypes[ref_types + 1];
 
+#define BLOCKMAP_SIZE1(size) ((size) >> 3)
 #define BLOCKMAP_SIZE2(size) ((size) >> 2)
 #define BLOCKMAP_BYTE_OFFSET2(x) ((x & 0x0000000000000003) << 1)
+#define BLOCKMAP_BYTE_OFFSET1(x) (x & 0x0000000000000007)
 #define BLOCKMAP_MASK2 (0x3)
+#define BLOCKMAP_MASK1 (1)
 
 struct fsck_pass {
 	const char *name;
@@ -42,6 +45,26 @@ static inline int block_type(struct gfs2_bmap *bl, uint64_t bblock)
 	b = BLOCKMAP_BYTE_OFFSET2(bblock);
 	btype = (*byte & (BLOCKMAP_MASK2 << b )) >> b;
 	return btype;
+}
+
+static inline int link1_type(struct gfs2_bmap *bl, uint64_t bblock)
+{
+	static unsigned char *byte;
+	static uint64_t b;
+	static int btype;
+
+	byte = bl->map + BLOCKMAP_SIZE1(bblock);
+	b = BLOCKMAP_BYTE_OFFSET1(bblock);
+	btype = (*byte & (BLOCKMAP_MASK1 << b )) >> b;
+	return btype;
+}
+
+static inline void link1_destroy(struct gfs2_bmap *bmap)
+{
+	if (bmap->map)
+		free(bmap->map);
+	bmap->size = 0;
+	bmap->mapsize = 0;
 }
 
 static inline int bitmap_type(struct gfs2_sbd *sdp, uint64_t bblock)

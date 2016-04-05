@@ -2018,6 +2018,20 @@ static int gfs2_blockmap_create(struct gfs2_bmap *bmap, uint64_t size)
 	return 0;
 }
 
+
+static int link1_create(struct gfs2_bmap *bmap, uint64_t size)
+{
+	bmap->size = size;
+
+	/* Have to add 1 to BLOCKMAP_SIZE since it's 0-based and mallocs
+	 * must be 1-based */
+	bmap->mapsize = BLOCKMAP_SIZE1(size) + 1;
+
+	if (!(bmap->map = calloc(bmap->mapsize, sizeof(char))))
+		return -ENOMEM;
+	return 0;
+}
+
 static struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
 					  uint64_t *addl_mem_needed)
 {
@@ -2054,6 +2068,14 @@ static void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il)
 	return il;
 }
 
+static void enomem(uint64_t addl_mem_needed)
+{
+	log_crit( _("This system doesn't have enough memory and swap space to fsck this file system.\n"));
+	log_crit( _("Additional memory needed is approximately: %lluMB\n"),
+		  (unsigned long long)(addl_mem_needed / 1048576ULL));
+	log_crit( _("Please increase your swap space by that amount and run gfs2_fsck again.\n"));
+}
+
 /**
  * pass1 - walk through inodes and check inode state
  *
@@ -2079,10 +2101,20 @@ int pass1(struct gfs2_sbd *sdp)
 
 	bl = gfs2_bmap_create(sdp, last_fs_block+1, &addl_mem_needed);
 	if (!bl) {
-		log_crit( _("This system doesn't have enough memory and swap space to fsck this file system.\n"));
-		log_crit( _("Additional memory needed is approximately: %lluMB\n"),
-			 (unsigned long long)(addl_mem_needed / 1048576ULL));
-		log_crit( _("Please increase your swap space by that amount and run gfs2_fsck again.\n"));
+		enomem(addl_mem_needed);
+		return FSCK_ERROR;
+	}
+	addl_mem_needed = link1_create(&nlink1map, last_fs_block+1);
+	if (addl_mem_needed) {
+		enomem(addl_mem_needed);
+		gfs2_bmap_destroy(sdp, bl);
+		return FSCK_ERROR;
+	}
+	addl_mem_needed = link1_create(&clink1map, last_fs_block+1);
+	if (addl_mem_needed) {
+		enomem(addl_mem_needed);
+		link1_destroy(&nlink1map);
+		gfs2_bmap_destroy(sdp, bl);
 		return FSCK_ERROR;
 	}
 	osi_list_init(&gfs1_rindex_blks.list);

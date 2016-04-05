@@ -10,6 +10,7 @@
 
 #include <logging.h>
 #include "libgfs2.h"
+#include "link.h"
 #include "fsck.h"
 #include "osi_list.h"
 #include "util.h"
@@ -353,6 +354,8 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 				di = dirtree_find(ip->i_di.di_num.no_addr);
 				if (di)
 					dirtree_delete(di);
+				link1_set(&nlink1map, ip->i_di.di_num.no_addr,
+					  0);
 				fsck_bitmap_set(ip, ip->i_di.di_num.no_addr,
 						_("duplicate referencing bad"),
 						GFS2_BLKST_UNLINKED);

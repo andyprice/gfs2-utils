@@ -20,6 +20,7 @@
 #include "copyright.cf"
 #include "libgfs2.h"
 #include "fsck.h"
+#include "link.h"
 #include "osi_list.h"
 #include "metawalk.h"
 #include "util.h"
@@ -352,6 +353,8 @@ int main(int argc, char **argv)
 	if (!opts.no && errors_corrected)
 		log_notice( _("Writing changes to disk\n"));
 	fsync(sdp->device_fd);
+	link1_destroy(&nlink1map);
+	link1_destroy(&clink1map);
 	destroy(sdp);
 	if (sb_fixed)
 		log_warn(_("Superblock was reset. Use tunegfs2 to manually "
