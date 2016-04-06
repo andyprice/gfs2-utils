@@ -34,6 +34,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 {
 	int old_bitmap_state;
 	struct rgrp_tree *rgd;
+	int treat_as_inode = 0;
 	const char *allocdesc[2][5] = { /* gfs2 descriptions */
 		{"free", "data", "unlinked", "inode", "reserved"},
 		/* gfs1 descriptions: */
@@ -85,11 +86,33 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 			struct inode_info *ii;
 
 			dt = dirtree_find(blk);
-			if (dt)
+			if (dt) {
 				dirtree_delete(dt);
+				treat_as_inode = 1;
+			}
 			ii = inodetree_find(blk);
-			if (ii)
+			if (ii) {
 				inodetree_delete(ii);
+				treat_as_inode = 1;
+			} else if (!sdp->gfs1) {
+				treat_as_inode = 1;
+			} else {
+				/* This is a GFS1 fs (so all metadata is marked
+				   inode). We need to verify it is an inode
+				   before we can decr the rgrp inode count. */
+				if (link1_type(&nlink1map, blk) == 1)
+					treat_as_inode = 1;
+			}
+			if (old_bitmap_state == GFS2_BLKST_DINODE) {
+				if (treat_as_inode && rgd->rg.rg_dinodes > 0)
+					rgd->rg.rg_dinodes--;
+				else if (sdp->gfs1) {
+					struct gfs_rgrp *gfs1rg =
+						(struct gfs_rgrp *)&rgd->rg;
+					if (gfs1rg->rg_usedmeta > 0)
+						gfs1rg->rg_usedmeta--;
+				}
+			}
 			link1_set(&nlink1map, blk, 0);
 		}
 		rgd->rg.rg_free++;
@@ -99,6 +122,24 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 		else
 			gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[0].bi_bh);
 	} else if (old_bitmap_state == GFS2_BLKST_FREE) {
+		if (!sdp->gfs1) {
+			treat_as_inode = 1;
+		} else {
+			/* This is a GFS1 fs (so all metadata is marked inode).
+			   We need to verify it is an inode before we can decr
+			   the rgrp inode count. */
+			if (link1_type(&nlink1map, blk) == 1)
+				treat_as_inode = 1;
+		}
+		if (new_blockmap_state == GFS2_BLKST_DINODE) {
+			if (treat_as_inode)
+				rgd->rg.rg_dinodes++;
+			else if (sdp->gfs1) {
+				struct gfs_rgrp *gfs1rg =
+					(struct gfs_rgrp *)&rgd->rg;
+				gfs1rg->rg_usedmeta++;
+			}
+		}
 		rgd->rg.rg_free--;
 		if (sdp->gfs1)
 			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
