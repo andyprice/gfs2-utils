@@ -61,7 +61,7 @@ static int handle_unlinked(struct gfs2_sbd *sdp, uint64_t no_addr,
 	log_err( _("Found unlinked inode at %llu (0x%llx)\n"),
 		 (unsigned long long)no_addr, (unsigned long long)no_addr);
 	q = bitmap_type(sdp, no_addr);
-	if (q == GFS2_BLKST_UNLINKED) {
+	if (q == GFS2_BLKST_FREE) {
 		log_err( _("Unlinked inode %llu (0x%llx) contains bad "
 			   "blocks\n"), (unsigned long long)no_addr,
 			 (unsigned long long)no_addr);

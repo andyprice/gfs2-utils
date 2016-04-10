@@ -1889,7 +1889,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 	ds.q = bitmap_type(sysinode->i_sbd, iblock);
 
 	pass2_fxns.private = (void *) &ds;
-	if (ds.q == GFS2_BLKST_UNLINKED) {
+	if (ds.q == GFS2_BLKST_FREE) {
 		/* First check that the directory's metatree is valid */
 		error = check_metatree(sysinode, &pass2_fxns);
 		if (error < 0) {
@@ -1996,14 +1996,6 @@ static int pass2_check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	int error;
 
 	pass2_fxns.private = &ds;
-	if (ds.q == GFS2_BLKST_UNLINKED) {
-		/* First check that the directory's metatree is valid */
-		error = check_metatree(ip, &pass2_fxns);
-		if (error < 0) {
-			stack;
-			return error;
-		}
-	}
 	error = check_dir(sdp, ip, &pass2_fxns);
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 		return FSCK_OK;

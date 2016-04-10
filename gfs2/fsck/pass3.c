@@ -239,7 +239,7 @@ int pass3(struct gfs2_sbd *sdp)
 			}
 			q = bitmap_type(sdp, di->dinode.no_addr);
 			ip = fsck_load_inode(sdp, di->dinode.no_addr);
-			if (q == GFS2_BLKST_UNLINKED) {
+			if (q == GFS2_BLKST_FREE) {
 				log_err( _("Found unlinked directory "
 					   "containing bad block at block %llu"
 					   " (0x%llx)\n"),
