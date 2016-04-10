@@ -358,7 +358,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 					  0);
 				fsck_bitmap_set(ip, ip->i_di.di_num.no_addr,
 						_("duplicate referencing bad"),
-						GFS2_BLKST_UNLINKED);
+						GFS2_BLKST_FREE);
 				/* We delete the dup_handler inode count and
 				   duplicate id BEFORE clearing the metadata,
 				   because if this is the last reference to
@@ -574,13 +574,11 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 		clone_dup_ref_in_inode(ip, dt);
 
 	q = bitmap_type(sdp, id->block_no);
-	if (q == GFS2_BLKST_UNLINKED) {
-		log_debug( _("The remaining reference inode %lld (0x%llx) is "
-			     "marked invalid: Marking the block as free.\n"),
+	if (q == GFS2_BLKST_FREE) {
+		log_debug( _("The remaining reference inode %lld (0x%llx) was "
+			     "already marked free.\n"),
 			   (unsigned long long)id->block_no,
 			   (unsigned long long)id->block_no);
-		fsck_bitmap_set(ip, dt->block, _("reference-repaired leaf"),
-				  GFS2_BLKST_FREE);
 	} else if (id->reftypecount[ref_is_inode]) {
 		set_ip_bitmap(ip);
 	} else if (id->reftypecount[ref_as_data]) {
@@ -941,11 +939,13 @@ int pass1b(struct gfs2_sbd *sdp)
 		if (q == GFS2_BLKST_FREE || q == GFS2_BLKST_USED || q < 0)
 			continue;
 
-		if (q == GFS2_BLKST_UNLINKED)
-			log_debug( _("Checking invalidated duplicate block "
-				     "%lld (0x%llx)\n"),
+		if (q == GFS2_BLKST_UNLINKED) {
+			log_debug( _("Error: block %lld (0x%llx) is still "
+				     "marked UNLINKED.\n"),
 				   (unsigned long long)i,
 				   (unsigned long long)i);
+			return FSCK_ERROR;
+		}
 
 		warm_fuzzy_stuff(i);
 		if (find_block_ref(sdp, i) < 0) {
