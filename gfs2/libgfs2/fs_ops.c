@@ -1139,7 +1139,18 @@ static int get_next_leaf(struct gfs2_inode *dip,struct gfs2_buffer_head *bh_in,
 
 	if (!leaf->lf_next)
 		return -1;
+	/* Check for a leaf that points to itself as "next" */
+	if (be64_to_cpu(leaf->lf_next) == bh_in->b_blocknr)
+		return -1;
 	*bh_out = bread(dip->i_sbd, be64_to_cpu(leaf->lf_next));
+	if (*bh_out == NULL)
+		return -ENOENT;
+	/* Check for a leaf pointing to a non-leaf */
+	if (gfs2_check_meta(*bh_out, GFS2_METATYPE_LF)) {
+		brelse(*bh_out);
+		*bh_out = NULL;
+		return -ENOENT;
+	}
 	return 0;
 }
 
