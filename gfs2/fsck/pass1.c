@@ -142,6 +142,52 @@ static int delete_block(struct gfs2_inode *ip, uint64_t block,
 	return -1;
 }
 
+/* This is a pass1-specific leaf repair. Since we are not allowed to do
+ * block allocations, we do what we can. */
+static int pass1_repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no,
+			     int lindex, int ref_count, const char *msg)
+{
+	uint64_t *cpyptr;
+	char *padbuf;
+	int pad_size, i;
+
+	log_err( _("Directory Inode %llu (0x%llx) points to leaf %llu"
+		   " (0x%llx) %s.\n"),
+		 (unsigned long long)ip->i_di.di_num.no_addr,
+		 (unsigned long long)ip->i_di.di_num.no_addr,
+		 (unsigned long long)*leaf_no,
+		 (unsigned long long)*leaf_no, msg);
+	if (!query( _("Attempt to patch around it? (y/n) "))) {
+		log_err( _("Bad leaf left in place.\n"));
+		goto out;
+	}
+
+	padbuf = malloc(ref_count * sizeof(uint64_t));
+	cpyptr = (uint64_t *)padbuf;
+	for (i = 0; i < ref_count; i++) {
+		*cpyptr = 0;
+		cpyptr++;
+	}
+	pad_size = ref_count * sizeof(uint64_t);
+	log_err(_("Writing zeros to the hash table of directory %lld "
+		  "(0x%llx) at index: 0x%x for 0x%x pointers.\n"),
+		(unsigned long long)ip->i_di.di_num.no_addr,
+		(unsigned long long)ip->i_di.di_num.no_addr, lindex,
+		ref_count);
+	if (ip->i_sbd->gfs1)
+		gfs1_writei(ip, padbuf, lindex * sizeof(uint64_t), pad_size);
+	else
+		gfs2_writei(ip, padbuf, lindex * sizeof(uint64_t), pad_size);
+	free(padbuf);
+	log_err( _("Directory Inode %llu (0x%llx) patched.\n"),
+		 (unsigned long long)ip->i_di.di_num.no_addr,
+		 (unsigned long long)ip->i_di.di_num.no_addr);
+
+out:
+	*leaf_no = 0;
+	return 0;
+}
+
 struct metawalk_fxns pass1_fxns = {
 	.private = NULL,
 	.check_leaf = p1check_leaf,
@@ -153,6 +199,7 @@ struct metawalk_fxns pass1_fxns = {
 	.check_eattr_entry = check_eattr_entries,
 	.check_eattr_extentry = check_extended_leaf_eattr,
 	.big_file_msg = big_file_comfort,
+	.repair_leaf = pass1_repair_leaf,
 	.undo_check_meta = undo_check_metalist,
 	.undo_check_data = undo_check_data,
 	.delete_block = delete_block,
