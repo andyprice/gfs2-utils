@@ -137,7 +137,7 @@ static uint64_t find_free_block(struct rgrp_tree *rgd)
 	return blkno;
 }
 
-static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned state, struct rgrp_tree *rgd, uint64_t blkno)
+static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned state, struct rgrp_tree *rgd, uint64_t blkno, int dinode)
 {
 	if (blkno == 0)
 		return -1;
@@ -145,8 +145,14 @@ static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned state, struct rgrp_tre
 	if (gfs2_set_bitmap(rgd, blkno, state))
 		return -1;
 
-	if (state == GFS2_BLKST_DINODE)
-		rgd->rg.rg_dinodes++;
+	if (state == GFS2_BLKST_DINODE) {
+		struct gfs_rgrp *gfs1rg = (struct gfs_rgrp *)&rgd->rg;
+
+		if (dinode)
+			rgd->rg.rg_dinodes++;
+		else if (sdp->gfs1)
+			gfs1rg->rg_usedmeta++;
+	}
 
 	rgd->rg.rg_free--;
 	if (sdp->gfs1)
@@ -163,7 +169,7 @@ static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned state, struct rgrp_tre
  * resource group with blksreq free blocks but only allocate the one block.
  * Returns 0 on success with the allocated block number in *blkno or non-zero otherwise.
  */
-static int block_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, int state, uint64_t *blkno)
+static int block_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, int state, uint64_t *blkno, int dinode)
 {
 	int ret;
 	int release = 0;
@@ -186,7 +192,7 @@ static int block_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, int state, 
 	}
 
 	bn = find_free_block(rgt);
-	ret = blk_alloc_in_rg(sdp, state, rgt, bn);
+	ret = blk_alloc_in_rg(sdp, state, rgt, bn, dinode);
 	if (release)
 		gfs2_rgrp_relse(rgt);
 	*blkno = bn;
@@ -195,7 +201,7 @@ static int block_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, int state, 
 
 int lgfs2_dinode_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, uint64_t *blkno)
 {
-	int ret = block_alloc(sdp, blksreq, GFS2_BLKST_DINODE, blkno);
+	int ret = block_alloc(sdp, blksreq, GFS2_BLKST_DINODE, blkno, TRUE);
 	if (ret == 0)
 		sdp->dinodes_alloced++;
 	return ret;
@@ -203,7 +209,9 @@ int lgfs2_dinode_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, uint64_t *b
 
 int lgfs2_meta_alloc(struct gfs2_inode *ip, uint64_t *blkno)
 {
-	int ret = block_alloc(ip->i_sbd, 1, GFS2_BLKST_USED, blkno);
+	int ret = block_alloc(ip->i_sbd, 1,
+			      ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
+			      GFS2_BLKST_USED, blkno, FALSE);
 	if (ret == 0) {
 		ip->i_di.di_goal_meta = *blkno;
 		bmodified(ip->i_bh);
