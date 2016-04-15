@@ -293,6 +293,28 @@ struct inode_with_dups *find_dup_ref_inode(struct duptree *dt,
 	return NULL;
 }
 
+/**
+ * count_dup_meta_refs - count the number of remaining references as metadata
+ */
+int count_dup_meta_refs(struct duptree *dt)
+{
+	osi_list_t *ref;
+	struct inode_with_dups *id;
+	int metarefs = 0;
+
+	osi_list_foreach(ref, &dt->ref_invinode_list) {
+		id = osi_list_entry(ref, struct inode_with_dups, list);
+		if (id->reftypecount[ref_as_meta])
+			metarefs++;
+	}
+	osi_list_foreach(ref, &dt->ref_inode_list) {
+		id = osi_list_entry(ref, struct inode_with_dups, list);
+		if (id->reftypecount[ref_as_meta])
+			metarefs++;
+	}
+	return metarefs;
+}
+
 /*
  * add_duplicate_ref - Add a duplicate reference to the duplicates tree list
  * A new element of the tree will be created as needed

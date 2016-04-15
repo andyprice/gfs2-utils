@@ -22,10 +22,13 @@
  *
  * Returns: 1 if there are any remaining references to this block, else 0.
  */
-int find_remove_dup(struct gfs2_inode *ip, uint64_t block, const char *btype)
+static int find_remove_dup(struct gfs2_inode *ip, uint64_t block,
+			   const char *btype, int *removed_last_meta)
 {
 	struct duptree *dt;
 	struct inode_with_dups *id;
+	int deleted_a_meta_ref = 0;
+	int meta_refs_left = 0;
 
 	dt = dupfind(block);
 	if (!dt)
@@ -36,15 +39,30 @@ int find_remove_dup(struct gfs2_inode *ip, uint64_t block, const char *btype)
 	if (!id)
 		goto more_refs;
 
+	if (id->reftypecount[ref_as_meta])
+		deleted_a_meta_ref = 1;
 	dup_listent_delete(dt, id);
 	if (dt->refs == 0) {
 		log_info( _("This was the last reference: it's no longer a "
 			    "duplicate.\n"));
 		dup_delete(dt); /* not duplicate now */
+		if (deleted_a_meta_ref) {
+			log_debug("Removed the last reference as metadata.\n");
+			*removed_last_meta = 1;
+		}
 		return 0;
+	} else if (deleted_a_meta_ref) {
+		/* If we deleted a metadata reference, see if there are more
+		   references as meta, or if it was the last one. */
+		meta_refs_left = count_dup_meta_refs(dt);
 	}
 more_refs:
-	log_info( _("%d block reference(s) remain.\n"), dt->refs);
+	log_info(_("%d block reference(s) remain (%d as metadata).\n"),
+		 dt->refs, meta_refs_left);
+	if (deleted_a_meta_ref && meta_refs_left == 0) {
+		log_debug("Removed the last reference as metadata.\n");
+		*removed_last_meta = 1;
+	}
 	return 1; /* references still exist so do not free the block. */
 }
 
@@ -61,6 +79,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 				  void *private)
 {
 	int q;
+	int removed_lastmeta;
 
 	if (!valid_block(ip->i_sbd, block))
 		return meta_error;
@@ -75,9 +94,13 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
 		return meta_is_good;
 	}
-	if (find_remove_dup(ip, block, btype)) { /* a dup */
-		if (was_duplicate)
-			*was_duplicate = 1;
+	if (find_remove_dup(ip, block, btype, &removed_lastmeta)) { /* a dup */
+		if (was_duplicate) {
+			if (removed_lastmeta)
+				log_debug("Removed last reference as meta.\n");
+			else
+				*was_duplicate = 1;
+		}
 		log_err( _("Not clearing duplicate reference in inode "
 			   "at block #%llu (0x%llx) to block #%llu (0x%llx) "
 			   "because it's referenced by another inode.\n"),

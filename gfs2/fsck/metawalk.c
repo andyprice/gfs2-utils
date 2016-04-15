@@ -1217,7 +1217,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 	struct gfs2_buffer_head *bh, *nbh, *metabh = ip->i_bh;
 	osi_list_t *prev_list, *cur_list, *tmp;
 	int h, head_size, iblk_type;
-	uint64_t *ptr, block;
+	uint64_t *ptr, block, *undoptr;
 	int error, was_duplicate, is_valid;
 	int maxptrs;
 
@@ -1297,7 +1297,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 						   "(0x%llx).\n"),
 						 (unsigned long long)block,
 						 (unsigned long long)block);
-					return error;
+					goto error_undo;
 				}
 				if (error == meta_skip_further) {
 					log_info(_("\nUnrecoverable metadata "
@@ -1306,18 +1306,24 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 						   " will be skipped.\n"),
 						 (unsigned long long)block,
 						 (unsigned long long)block);
-					return error;
+					goto error_undo;
 				}
 				if (!is_valid) {
 					log_debug( _("Skipping rejected block "
 						     "%llu (0x%llx)\n"),
 						   (unsigned long long)block,
 						   (unsigned long long)block);
-					if (pass->invalid_meta_is_fatal)
-						return meta_error;
-
+					if (pass->invalid_meta_is_fatal) {
+						error = meta_error;
+						goto error_undo;
+					}
 					continue;
 				}
+				/* Note that there's a special case in which
+				   we need to process the metadata block, even
+				   if it was a duplicate. That's for cases
+				   where we deleted the last reference as
+				   metadata. */
 				if (was_duplicate) {
 					log_debug( _("Skipping duplicate %llu "
 						     "(0x%llx)\n"),
@@ -1330,9 +1336,10 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 						     "%lld (0x%llx)\n"),
 						   (unsigned long long)block,
 						   (unsigned long long)block);
-					if (pass->invalid_meta_is_fatal)
-						return meta_error;
-
+					if (pass->invalid_meta_is_fatal) {
+						error = meta_error;
+						goto error_undo;
+					}
 					continue;
 				}
 				if (!nbh)
@@ -1342,6 +1349,24 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 		} /* for blocks at that height */
 	} /* for height */
 	return 0;
+
+error_undo: /* undo what we've done so far for this block */
+	if (pass->undo_check_meta == NULL)
+		return error;
+
+	log_info(_("Undoing the work we did before the error on block %llu "
+		   "(0x%llx).\n"), (unsigned long long)bh->b_blocknr,
+		 (unsigned long long)bh->b_blocknr);
+	for (undoptr = (uint64_t *)(bh->b_data + head_size); undoptr < ptr &&
+		     (char *)undoptr < (bh->b_data + ip->i_sbd->bsize);
+	     undoptr++) {
+		if (!*undoptr)
+			continue;
+
+		block = be64_to_cpu(*undoptr);
+		pass->undo_check_meta(ip, block, h, pass->private);
+	}
+	return error;
 }
 
 /**

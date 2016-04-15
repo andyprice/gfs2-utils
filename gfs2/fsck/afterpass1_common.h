@@ -26,8 +26,6 @@ extern int delete_eattr_extentry(struct gfs2_inode *ip, int i,
 				 struct gfs2_ea_header *ea_hdr,
 				 struct gfs2_ea_header *ea_hdr_prev,
 				 void *private);
-extern int find_remove_dup(struct gfs2_inode *ip, uint64_t block,
-			   const char *btype);
 extern int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 						   uint64_t dentryblock);
 #endif
