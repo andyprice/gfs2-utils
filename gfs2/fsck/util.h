@@ -20,7 +20,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 extern struct inode_with_dups *find_dup_ref_inode(struct duptree *dt,
 						  struct gfs2_inode *ip);
 extern void dup_listent_delete(struct duptree *dt, struct inode_with_dups *id);
-
+extern int count_dup_meta_refs(struct duptree *dt);
 extern const char *reftypes[ref_types + 1];
 
 #define BLOCKMAP_SIZE1(size) ((size) >> 3)
