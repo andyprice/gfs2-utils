@@ -165,6 +165,40 @@ the statfs information on a local basis before it is synced back
 to the master statfs file, even if the time period has not
 expired. If the setting of statfs_quantum is 0, then this setting
 is ignored.
+.TP
+\fBrgrplvb\fP
+This flag tells gfs2 to look for information about a resource group's free
+space and unlinked inodes in its glock lock value block. This keeps gfs2 from
+having to read in the resource group data from disk, speeding up allocations in
+some cases.  This option was added in the 3.6 Linux kernel. Prior to this
+kernel, no information was saved to the resource group lvb. \fBNote:\fP To
+safely turn on this option, all nodes mounting the filesystem must be running
+at least a 3.6 Linux kernel. If any nodes had previously mounted the filesystem
+using older kernels, the filesystem must be unmounted on all nodes before it
+can be mounted with this option enabled. This option does not need to be
+enabled on all nodes using a filesystem.
+.TP
+\fBloccookie\fP
+This flag tells gfs2 to use location based readdir cookies, instead of its
+usual filename hash readdir cookies.  The filename hash cookies are not
+guaranteed to be unique, and as the number of files in a directory increases,
+so does the likelihood of a collision.  NFS requires readdir cookies to be
+unique, which can cause problems with very large directories (over 100,000
+files). With this flag set, gfs2 will try to give out location based cookies.
+Since the cookie is 31 bits, gfs2 will eventually run out of unique cookies,
+and will fail back to using hash cookies. The maximum number of files that
+could have unique location cookies assuming perfectly even hashing and names of
+8 or fewer characters is 1,073,741,824. An average directory should be able to
+give out well over half a billion location based cookies. This option was added
+in the 4.5 Linux kernel. Prior to this kernel, gfs2 did not add directory
+entries in a way that allowed it to use location based readdir cookies.
+\fBNote:\fP To safely turn on this option, all nodes mounting the filesystem
+must be running at least a 4.5 Linux kernel. If this option is only enabled on
+some of the nodes mounting a filesystem, the cookies returned by nodes using
+this option will not be valid on nodes that are not using this option, and vice
+versa.  Finally, when first enabling this option on a filesystem that had been
+previously mounted without it, you must make sure that there are no outstanding
+cookies being cached by other software, such as NFS.
 
 .SH BUGS
 
