@@ -185,17 +185,6 @@ int _fsck_bitmap_set(struct gfs2_inode *ip, uint64_t bblock,
 			       (unsigned long long)ip->i_di.di_num.no_addr,
 			       block_type_string(mark));
 
-		} else if (mark == GFS2_BLKST_UNLINKED) {
-			if (prevcount) {
-				log_info("\n");
-				prevcount = 0;
-			}
-			printf( _("(%s:%d) inode (0x%llx) references %s block"
-				  " (0x%llx): marking as '%s'\n"),
-			       caller, fline,
-			       (unsigned long long)ip->i_di.di_num.no_addr,
-			       btype, (unsigned long long)bblock,
-			       block_type_string(mark));
 		} else {
 			if (prevcount) {
 				log_info("\n");
