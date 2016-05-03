@@ -198,14 +198,14 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				 int *fixit, int *this_rg_fixed,
 				 int *this_rg_bad, int *this_rg_cleaned)
 {
-	uint32_t rg_free, rg_reclaimed, rg_unlinked;
+	uint32_t rg_free, rg_reclaimed, rg_unlinked, rg_usedmeta, rg_useddi;
 	int rgb, x, y, off, bytes_to_check, total_bytes_to_check, asked = 0;
 	unsigned int state;
 	struct gfs_rgrp *gfs1rg = (struct gfs_rgrp *)&rgd->rg;
 	uint64_t diblock;
 	struct gfs2_buffer_head *bh;
 
-	rg_free = rg_reclaimed = rg_unlinked = 0;
+	rg_free = rg_reclaimed = rg_unlinked = rg_usedmeta = rg_useddi = 0;
 	total_bytes_to_check = rgd->ri.ri_bitbytes;
 
 	*this_rg_fixed = *this_rg_bad = *this_rg_cleaned = 0;
@@ -241,6 +241,15 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 					continue;
 				}
 				if (state == GFS2_BLKST_DINODE) {
+					if (sdp->gfs1) {
+						bh = bread(sdp, diblock);
+						if (!gfs2_check_meta(bh,
+							GFS2_METATYPE_DI))
+							rg_useddi++;
+						else
+							rg_usedmeta++;
+						brelse(bh);
+					}
 					diblock++;
 					continue;
 				}
@@ -344,7 +353,10 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 		} else
 			log_err( _("The rgrp was not fixed.\n"));
 	}
-	if (sdp->gfs1 && gfs1rg->rg_freemeta != rg_unlinked) {
+	if (!sdp->gfs1)
+		return;
+
+	if (gfs1rg->rg_freemeta != rg_unlinked) {
 		*this_rg_bad = 1;
 		*this_rg_cleaned = 0;
 		log_err( _("Error: resource group %lld (0x%llx): "
@@ -355,6 +367,40 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 		if (query( _("Fix the rgrp free meta blocks count? (y/n)"))) {
 			gfs1rg->rg_freemeta = rg_unlinked;
 			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
+			*this_rg_fixed = 1;
+			log_err( _("The rgrp was fixed.\n"));
+		} else
+			log_err( _("The rgrp was not fixed.\n"));
+	}
+	if (gfs1rg->rg_useddi != rg_useddi) {
+		*this_rg_bad = 1;
+		*this_rg_cleaned = 0;
+		log_err( _("Error: resource group %lld (0x%llx): used dinode "
+			   "count (%d) does not match bitmap (%d)\n"),
+			 (unsigned long long)rgd->ri.ri_addr,
+			 (unsigned long long)rgd->ri.ri_addr,
+			 gfs1rg->rg_useddi, rg_useddi);
+		if (query( _("Fix the rgrp used dinode block count? (y/n)"))) {
+			gfs1rg->rg_useddi = rg_useddi;
+			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg,
+				     rgd->bits[0].bi_bh);
+			*this_rg_fixed = 1;
+			log_err( _("The rgrp was fixed.\n"));
+		} else
+			log_err( _("The rgrp was not fixed.\n"));
+	}
+	if (gfs1rg->rg_usedmeta != rg_usedmeta) {
+		*this_rg_bad = 1;
+		*this_rg_cleaned = 0;
+		log_err( _("Error: resource group %lld (0x%llx): used "
+			   "metadata (%d) does not match bitmap (%d)\n"),
+			 (unsigned long long)rgd->ri.ri_addr,
+			 (unsigned long long)rgd->ri.ri_addr,
+			 gfs1rg->rg_usedmeta, rg_usedmeta);
+		if (query( _("Fix the rgrp used meta blocks count? (y/n)"))) {
+			gfs1rg->rg_usedmeta = rg_usedmeta;
+			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg,
+				     rgd->bits[0].bi_bh);
 			*this_rg_fixed = 1;
 			log_err( _("The rgrp was fixed.\n"));
 		} else
