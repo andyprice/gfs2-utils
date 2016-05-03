@@ -145,50 +145,53 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgp,
 	}
 
 	/* actually adjust counters and write out to disk */
-	if (rgp->rg.rg_free != count[0]) {
+	if (rgp->rg.rg_free != count[GFS2_BLKST_FREE]) {
 		log_err( _("RG #%llu (0x%llx) free count inconsistent: "
 			"is %u should be %u\n"),
 			(unsigned long long)rgp->ri.ri_addr,
 			(unsigned long long)rgp->ri.ri_addr,
-			rgp->rg.rg_free, count[0]);
-		rgp->rg.rg_free = count[0];
+			rgp->rg.rg_free, count[GFS2_BLKST_FREE]);
+		rgp->rg.rg_free = count[GFS2_BLKST_FREE];
 		update = 1;
 	}
-	if (rgp->rg.rg_dinodes != count[3]) {
+	if (rgp->rg.rg_dinodes != count[GFS2_BLKST_DINODE]) {
 		log_err( _("RG #%llu (0x%llx) Inode count inconsistent: is "
 			   "%u should be %u\n"),
 			 (unsigned long long)rgp->ri.ri_addr,
 			 (unsigned long long)rgp->ri.ri_addr,
-			 rgp->rg.rg_dinodes, count[3]);
-		rgp->rg.rg_dinodes = count[3];
+			 rgp->rg.rg_dinodes, count[GFS2_BLKST_DINODE]);
+		rgp->rg.rg_dinodes = count[GFS2_BLKST_DINODE];
 		update = 1;
 	}
-	if (sdp->gfs1 && gfs1rg->rg_usedmeta != count[1]) {
+	if (sdp->gfs1 && gfs1rg->rg_usedmeta != count[GFS2_BLKST_USED]) {
 		log_err( _("RG #%llu (0x%llx) Used metadata count "
 			   "inconsistent: is %u should be %u\n"),
 			 (unsigned long long)rgp->ri.ri_addr,
 			 (unsigned long long)rgp->ri.ri_addr,
-			 gfs1rg->rg_usedmeta, count[1]);
-		gfs1rg->rg_usedmeta = count[1];
+			 gfs1rg->rg_usedmeta, count[GFS2_BLKST_USED]);
+		gfs1rg->rg_usedmeta = count[GFS2_BLKST_USED];
 		update = 1;
 	}
-	if (sdp->gfs1 && gfs1rg->rg_freemeta != count[2]) {
+	if (sdp->gfs1 && gfs1rg->rg_freemeta != count[GFS2_BLKST_UNLINKED]) {
 		log_err( _("RG #%llu (0x%llx) Free metadata count "
 			   "inconsistent: is %u should be %u\n"),
 			 (unsigned long long)rgp->ri.ri_addr,
 			 (unsigned long long)rgp->ri.ri_addr,
-			 gfs1rg->rg_freemeta, count[2]);
-		gfs1rg->rg_freemeta = count[2];
+			 gfs1rg->rg_freemeta, count[GFS2_BLKST_UNLINKED]);
+		gfs1rg->rg_freemeta = count[GFS2_BLKST_UNLINKED];
 		update = 1;
 	}
-	if (!sdp->gfs1 && (rgp->ri.ri_data != count[0] + count[1] +
-			   count[2] + count[3])) {
+	if (!sdp->gfs1 && (rgp->ri.ri_data != count[GFS2_BLKST_FREE] +
+			   count[GFS2_BLKST_USED] +
+			   count[GFS2_BLKST_UNLINKED] +
+			   count[GFS2_BLKST_DINODE])) {
 		/* FIXME not sure how to handle this case ATM - it
 		 * means that the total number of blocks we've counted
 		 * exceeds the blocks in the rg */
 		log_err( _("Internal fsck error: %u != %u + %u + %u + %u\n"),
-			 rgp->ri.ri_data, count[0], count[1], count[2],
-			 count[3]);
+			 rgp->ri.ri_data, count[GFS2_BLKST_FREE],
+			 count[GFS2_BLKST_USED], count[GFS2_BLKST_UNLINKED],
+			 count[GFS2_BLKST_DINODE]);
 		exit(FSCK_ERROR);
 	}
 	if (update) {
