@@ -12,6 +12,8 @@
 #include "fsck.h"
 #include "util.h"
 
+#define GFS1_BLKST_USEDMETA 4
+
 static int check_block_status(struct gfs2_sbd *sdp,  struct gfs2_bmap *bl,
 			      char *buffer, unsigned int buflen,
 			      uint64_t *rg_block, uint64_t rg_data,
@@ -50,7 +52,7 @@ static int check_block_status(struct gfs2_sbd *sdp,  struct gfs2_bmap *bl,
 			if (gfs2_check_meta(bh, GFS2_METATYPE_DI) == 0)
 				count[GFS2_BLKST_DINODE]++;
 			else
-				count[GFS2_BLKST_USED]++;
+				count[GFS1_BLKST_USEDMETA]++;
 			brelse(bh);
 		} else {
 			count[q]++;
@@ -163,13 +165,13 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgp,
 		rgp->rg.rg_dinodes = count[GFS2_BLKST_DINODE];
 		update = 1;
 	}
-	if (sdp->gfs1 && gfs1rg->rg_usedmeta != count[GFS2_BLKST_USED]) {
+	if (sdp->gfs1 && gfs1rg->rg_usedmeta != count[GFS1_BLKST_USEDMETA]) {
 		log_err( _("RG #%llu (0x%llx) Used metadata count "
 			   "inconsistent: is %u should be %u\n"),
 			 (unsigned long long)rgp->ri.ri_addr,
 			 (unsigned long long)rgp->ri.ri_addr,
-			 gfs1rg->rg_usedmeta, count[GFS2_BLKST_USED]);
-		gfs1rg->rg_usedmeta = count[GFS2_BLKST_USED];
+			 gfs1rg->rg_usedmeta, count[GFS1_BLKST_USEDMETA]);
+		gfs1rg->rg_usedmeta = count[GFS1_BLKST_USEDMETA];
 		update = 1;
 	}
 	if (sdp->gfs1 && gfs1rg->rg_freemeta != count[GFS2_BLKST_UNLINKED]) {
@@ -217,7 +219,7 @@ int pass5(struct gfs2_sbd *sdp, struct gfs2_bmap *bl)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgp = NULL;
-	uint32_t count[5];
+	uint32_t count[5]; /* we need 5 because of GFS1 usedmeta */
 	uint64_t rg_count = 0;
 
 	/* Reconcile RG bitmaps with fsck bitmap */
