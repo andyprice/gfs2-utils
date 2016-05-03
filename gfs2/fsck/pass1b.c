@@ -877,9 +877,10 @@ static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
 	/* double-check the meta header just to be sure it's metadata */
 	if (ip->i_di.di_header.mh_magic != GFS2_MAGIC ||
 	    ip->i_di.di_header.mh_type != GFS2_METATYPE_DI) {
-		log_debug( _("Block %lld (0x%llx) is not gfs2 metadata.\n"),
-			     (unsigned long long)inode,
-			     (unsigned long long)inode);
+		if (!sdp->gfs1)
+			log_debug( _("Block %lld (0x%llx) is not a dinode.\n"),
+				   (unsigned long long)inode,
+				   (unsigned long long)inode);
 		error = 1;
 		goto out;
 	}
