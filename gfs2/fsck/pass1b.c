@@ -347,6 +347,13 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 			if ((this_ref != ref_as_ea) &&
 			    (inval || id->reftypecount[ref_as_data] ||
 			     id->reftypecount[ref_as_meta])) {
+				/* Fix the bitmap first, while the inodetree
+				   and dirtree entries exist. That way, the
+				   bitmap_set will do proper accounting for
+				   the rgrp dinode count. */
+				fsck_bitmap_set(ip, ip->i_di.di_num.no_addr,
+						_("duplicate referencing bad"),
+						GFS2_BLKST_FREE);
 				/* Remove the inode from the inode tree */
 				ii = inodetree_find(ip->i_di.di_num.no_addr);
 				if (ii)
@@ -356,9 +363,6 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 					dirtree_delete(di);
 				link1_set(&nlink1map, ip->i_di.di_num.no_addr,
 					  0);
-				fsck_bitmap_set(ip, ip->i_di.di_num.no_addr,
-						_("duplicate referencing bad"),
-						GFS2_BLKST_FREE);
 				/* We delete the dup_handler inode count and
 				   duplicate id BEFORE clearing the metadata,
 				   because if this is the last reference to
