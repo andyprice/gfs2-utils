@@ -35,6 +35,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 	int old_bitmap_state;
 	struct rgrp_tree *rgd;
 	int treat_as_inode = 0;
+	int rewrite_rgrp = 0;
 	struct gfs_rgrp *gfs1rg;
 	const char *allocdesc[2][5] = { /* gfs2 descriptions */
 		{"free", "data", "unlinked", "inode", "reserved"},
@@ -80,75 +81,73 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 	   data or data to dinode, no change in free space. */
 	gfs2_set_bitmap(rgd, blk, new_blockmap_state);
 	if (new_blockmap_state == GFS2_BLKST_FREE) {
-		/* If we're freeing a dinode, get rid of the hash table
-		   entries for it. */
-		if (old_bitmap_state == GFS2_BLKST_DINODE ||
-		    old_bitmap_state == GFS2_BLKST_UNLINKED) {
-			struct dir_info *dt;
-			struct inode_info *ii;
-
-			dt = dirtree_find(blk);
-			if (dt) {
-				dirtree_delete(dt);
-				treat_as_inode = 1;
-			}
-			ii = inodetree_find(blk);
-			if (ii) {
-				inodetree_delete(ii);
-				treat_as_inode = 1;
-			} else if (!sdp->gfs1) {
-				treat_as_inode = 1;
-			} else {
-				/* This is a GFS1 fs (so all metadata is marked
-				   inode). We need to verify it is an inode
-				   before we can decr the rgrp inode count. */
-				if (link1_type(&nlink1map, blk) == 1)
-					treat_as_inode = 1;
-			}
-			if (old_bitmap_state == GFS2_BLKST_DINODE) {
-				if (treat_as_inode && rgd->rg.rg_dinodes > 0)
-					rgd->rg.rg_dinodes--;
-				if (sdp->gfs1 && gfs1rg->rg_usedmeta > 0)
-					gfs1rg->rg_usedmeta--;
-			}
-			link1_set(&nlink1map, blk, 0);
-		}
 		rgd->rg.rg_free++;
-		if (sdp->gfs1)
-			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg,
-				     rgd->bits[0].bi_bh);
-		else
-			gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[0].bi_bh);
+		rewrite_rgrp = 1;
 	} else if (old_bitmap_state == GFS2_BLKST_FREE) {
-		if (new_blockmap_state == GFS2_BLKST_DINODE) {
-			if (!sdp->gfs1) {
+		rgd->rg.rg_free--;
+		rewrite_rgrp = 1;
+	}
+	/* If we're freeing a dinode, get rid of the data structs for it. */
+	if (old_bitmap_state == GFS2_BLKST_DINODE ||
+	    old_bitmap_state == GFS2_BLKST_UNLINKED) {
+		struct dir_info *dt;
+		struct inode_info *ii;
+
+		dt = dirtree_find(blk);
+		if (dt) {
+			dirtree_delete(dt);
+			treat_as_inode = 1;
+		}
+		ii = inodetree_find(blk);
+		if (ii) {
+			inodetree_delete(ii);
+			treat_as_inode = 1;
+		} else if (!sdp->gfs1) {
+			treat_as_inode = 1;
+		} else if (link1_type(&nlink1map, blk) == 1) {
+			/* This is a GFS1 fs (so all metadata is marked inode).
+			   We need to verify it is an inode before we can decr
+			   the rgrp inode count. */
+			treat_as_inode = 1;
+		}
+		if (old_bitmap_state == GFS2_BLKST_DINODE) {
+			if (treat_as_inode && rgd->rg.rg_dinodes > 0)
+				rgd->rg.rg_dinodes--;
+			else if (sdp->gfs1 && gfs1rg->rg_usedmeta > 0)
+				gfs1rg->rg_usedmeta--;
+			rewrite_rgrp = 1;
+		}
+		link1_set(&nlink1map, blk, 0);
+	} else if (new_blockmap_state == GFS2_BLKST_DINODE) {
+		if (!sdp->gfs1) {
+			treat_as_inode = 1;
+		} else {
+			/* This is GFS1 (so all metadata is marked inode). We
+			   need to verify it is an inode before we can decr
+			   the rgrp inode count. */
+			if (link1_type(&nlink1map, blk) == 1)
 				treat_as_inode = 1;
-			} else {
-				/* This is GFS1 (so all metadata is marked
-				   inode). We need to verify it is an inode
-				   before we can decr the rgrp inode count. */
-				if (link1_type(&nlink1map, blk) == 1)
+			else {
+				struct dir_info *dt;
+				struct inode_info *ii;
+
+				dt = dirtree_find(blk);
+				if (dt)
 					treat_as_inode = 1;
 				else {
-					struct dir_info *dt;
-					struct inode_info *ii;
-
-					dt = dirtree_find(blk);
-					if (dt)
+					ii = inodetree_find(blk);
+					if (ii)
 						treat_as_inode = 1;
-					else {
-						ii = inodetree_find(blk);
-						if (ii)
-							treat_as_inode = 1;
-					}
 				}
 			}
-			if (treat_as_inode)
-				rgd->rg.rg_dinodes++;
-			if (sdp->gfs1)
-				gfs1rg->rg_usedmeta++;
 		}
-		rgd->rg.rg_free--;
+		if (treat_as_inode)
+			rgd->rg.rg_dinodes++;
+		else if (sdp->gfs1)
+			gfs1rg->rg_usedmeta++;
+		rewrite_rgrp = 1;
+	}
+	if (rewrite_rgrp) {
 		if (sdp->gfs1)
 			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
 		else
