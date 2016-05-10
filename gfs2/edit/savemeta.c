@@ -712,7 +712,7 @@ static void get_journal_inode_blocks(void)
 static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 {
 	int blktype;
-	uint64_t blk;
+	uint64_t blk = 0;
 	unsigned i, j, m;
 	uint64_t *ibuf = malloc(sbd.bsize * GFS2_NBBY * sizeof(uint64_t));
 
