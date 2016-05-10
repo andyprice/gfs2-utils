@@ -267,6 +267,7 @@ int pass3(struct gfs2_sbd *sdp)
 					    " (y/n) "))) {
 					log_err( _("The block was not "
 						   "cleared\n"));
+					fsck_inode_put(&ip);
 					break;
 				}
 				log_warn( _("inode %lld (0x%llx) is now "
