@@ -1,6 +1,5 @@
 EXTRA_DIST = \
 	$(TESTSUITE_AT) \
-	$(TESTSUITE) \
 	package.m4 \
 	atlocal \
 	atconfig
@@ -60,7 +59,7 @@ check_rgrp_CPPFLAGS = $(UNIT_CPPFLAGS)
 endif
 
 # The `:;' works around a Bash 3.2 bug when the output is not writable.
-$(srcdir)/package.m4: $(top_srcdir)/configure.ac
+package.m4: $(top_srcdir)/configure.ac
 	:;{ \
 		echo '# Signature of the current package.' && \
 		echo 'm4_define([AT_PACKAGE_NAME],' && \
@@ -88,7 +87,7 @@ if HAVE_CHECK
 ENABLE_UNIT=yes
 endif
 
-TESTSUITE = $(srcdir)/testsuite
+TESTSUITE = testsuite
 
 check-local: atconfig atlocal $(TESTSUITE)
 	$(SHELL) '$(TESTSUITE)' ENABLE_UNIT_TESTS=$(ENABLE_UNIT) $(TOPTS)
