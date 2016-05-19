@@ -6,7 +6,8 @@ EXTRA_DIST = \
 
 DISTCLEANFILES = \
 	atlocal \
-	atconfig
+	atconfig \
+	$(TESTSUITE)
 
 CLEANFILES = testvol
 
