@@ -93,7 +93,8 @@ check-local: atconfig atlocal $(TESTSUITE)
 	$(SHELL) '$(TESTSUITE)' ENABLE_UNIT_TESTS=$(ENABLE_UNIT) $(TOPTS)
 
 installcheck-local: atconfig atlocal $(TESTSUITE)
-	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(sbindir):tests' ENABLE_UNIT_TESTS=$(ENABLE_UNIT) $(TOPTS)
+	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(sbindir):gfs2/libgfs2:tests' \
+	                        ENABLE_UNIT_TESTS=$(ENABLE_UNIT) $(TOPTS)
 
 clean-local:
 	test ! -f '$(TESTSUITE)' || $(SHELL) '$(TESTSUITE)' --clean
