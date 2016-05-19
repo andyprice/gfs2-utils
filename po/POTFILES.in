@@ -7,6 +7,7 @@ gfs2/tune/main.c
 gfs2/tune/super.c
 gfs2/tune/tunegfs2.h
 gfs2/convert/gfs2_convert.c
+gfs2/fsck/afterpass1_common.c
 gfs2/fsck/inode_hash.c
 gfs2/fsck/initialize.c
 gfs2/fsck/util.h
@@ -25,7 +26,6 @@ gfs2/fsck/fs_recovery.h
 gfs2/fsck/lost_n_found.h
 gfs2/fsck/link.c
 gfs2/fsck/pass4.c
-gfs2/fsck/pass1c.c
 gfs2/fsck/pass1b.c
 gfs2/fsck/link.h
 gfs2/fsck/pass5.c
