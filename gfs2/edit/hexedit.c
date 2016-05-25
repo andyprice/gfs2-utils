@@ -545,6 +545,17 @@ static const struct lgfs2_metadata *find_mtype(uint32_t mtype, const unsigned ve
 	return NULL;
 }
 
+static int get_pnum(int ptroffset)
+{
+	int pnum;
+
+	pnum = pgnum * screen_chunk_size;
+	pnum += (ptroffset - struct_len);
+	pnum /= sizeof(uint64_t);
+
+	return pnum;
+}
+
 /* ------------------------------------------------------------------------ */
 /* hexdump - hex dump the filesystem block to the screen                    */
 /* ------------------------------------------------------------------------ */
@@ -559,6 +570,7 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 	int print_field, cursor_line;
 	const uint32_t block_type = get_block_type(bh, NULL);
 	uint64_t *ref;
+	int ptroffset = 0;
 
 	strcpy(edit_fmt,"%02x");
 	pointer = (unsigned char *)lpBuffer + offset;
@@ -679,19 +691,17 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 		}
 		if (cursor_line) {
 			if (block_type == GFS2_METATYPE_IN ||
+			    block_type == GFS2_METATYPE_LD ||
 			    ((block_type == GFS2_METATYPE_DI) &&
 			     ((struct gfs2_dinode*)bh->b_data)->di_height) ||
 			     S_ISDIR(di.di_mode)) {
-				int ptroffset = edit_row[dmode] * 16 +
+				ptroffset = edit_row[dmode] * 16 +
 					edit_col[dmode];
 
 				if (ptroffset >= struct_len || pgnum) {
-					int pnum;
-
-					pnum = pgnum * screen_chunk_size;
-					pnum += (ptroffset - struct_len);
-					pnum /= sizeof(uint64_t);
-
+					int pnum = get_pnum(ptroffset);
+					if (block_type == GFS2_METATYPE_LD)
+						print_gfs2("*");
 					print_gfs2("pointer 0x%x", pnum);
 				}
 			}
@@ -713,6 +723,13 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 		if ((const char *)pointer >= zeros_strt)
 			break;
 	} /* while */
+	if (block_type == GFS2_METATYPE_LD && ptroffset >= struct_len) {
+		COLORS_NORMAL;
+		eol(0);
+		print_gfs2("         * 'j' will jump to the journaled block, "
+			   "not the absolute block.");
+		eol(0);
+	}
 	if (sbd.gfs1) {
 		COLORS_NORMAL;
 		print_gfs2("         *** This seems to be a GFS-1 file system ***");
@@ -1610,18 +1627,28 @@ static void pagedn(void)
 
 /* ------------------------------------------------------------------------ */
 /* jump - jump to the address the cursor is on                              */
+/*                                                                          */
+/* If the cursor is in a log descriptor, jump to the log-descriptor version */
+/* of the block instead of the "real" block.                                */
 /* ------------------------------------------------------------------------ */
 static void jump(void)
 {
 	if (dmode == HEX_MODE) {
 		unsigned int col2;
 		uint64_t *b;
+		const uint32_t block_type = get_block_type(bh, NULL);
 		
-		if (edit_row[dmode] >= 0) {
+		/* special exception for log descriptors: jump the journaled
+		   version of the block, not the "real" block */
+		if (block_type == GFS2_METATYPE_LD) {
+			int ptroffset = edit_row[dmode] * 16 + edit_col[dmode];
+			int pnum = get_pnum(ptroffset);
+			temp_blk = bh->b_blocknr + pnum + 1;
+		} else if (edit_row[dmode] >= 0) {
 			col2 = edit_col[dmode] & 0x08;/* thus 0-7->0, 8-15->8 */
 			b = (uint64_t *)&bh->b_data[edit_row[dmode]*16 +
 						    offset + col2];
-			temp_blk=be64_to_cpu(*b);
+			temp_blk = be64_to_cpu(*b);
 		}
 	}
 	else
