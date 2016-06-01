@@ -248,8 +248,9 @@ static int resuscitate_metalist(struct gfs2_inode *ip, uint64_t block,
 				  ip->i_sbd->gfs1 ?
 				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	else
-		check_n_fix_bitmap(ip->i_sbd, block, 0, ip->i_sbd->gfs1 ?
-				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
+		check_n_fix_bitmap(ip->i_sbd, ip->i_rgd, block, 0,
+				   ip->i_sbd->gfs1 ?
+				   GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	bc->indir_count++;
 	return meta_is_good;
 }
@@ -296,7 +297,8 @@ static int resuscitate_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		fsck_blockmap_set(ip, block, _("system file"),
 				  GFS2_BLKST_DINODE);
 	else
-		check_n_fix_bitmap(sdp, block, 0, GFS2_BLKST_DINODE);
+		check_n_fix_bitmap(sdp, ip->i_rgd, block, 0,
+				   GFS2_BLKST_DINODE);
 	/* Return the number of leaf entries so metawalk doesn't flag this
 	   leaf as having none. */
 	*count = be16_to_cpu(((struct gfs2_leaf *)bh->b_data)->lf_entries);
@@ -1594,13 +1596,14 @@ static void check_i_goal(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
  * handle_di - This is now a wrapper function that takes a gfs2_buffer_head
  *             and calls handle_ip, which takes an in-code dinode structure.
  */
-static int handle_di(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
+static int handle_di(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
+		     struct gfs2_buffer_head *bh)
 {
 	int error = 0;
 	uint64_t block = bh->b_blocknr;
 	struct gfs2_inode *ip;
 
-	ip = fsck_inode_get(sdp, bh);
+	ip = fsck_inode_get(sdp, rgd, bh);
 
 	if (ip->i_di.di_num.no_addr != block) {
 		log_err( _("Inode #%llu (0x%llx): Bad inode address found: %llu "
@@ -1671,7 +1674,8 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 				 (unsigned long long)iblock,
 				 (unsigned long long)iblock);
 			gfs2_blockmap_set(bl, iblock, GFS2_BLKST_FREE);
-			check_n_fix_bitmap(sdp, iblock, 0, GFS2_BLKST_FREE);
+			check_n_fix_bitmap(sdp, (*sysinode)->i_rgd, iblock, 0,
+					   GFS2_BLKST_FREE);
 			inode_put(sysinode);
 		}
 	}
@@ -1955,7 +1959,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 				 (unsigned long long)block,
 				 (unsigned long long)block,
 				 block_type_string(q));
-			ip = fsck_inode_get(sdp, bh);
+			ip = fsck_inode_get(sdp, rgd, bh);
 			if (is_inode && ip->i_di.di_num.no_addr == block)
 				add_duplicate_ref(ip, block, ref_is_inode, 0,
 						  INODE_VALID);
@@ -1991,8 +1995,9 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 				   "%llu (0x%llx)\n"),
 				 (unsigned long long)block,
 				 (unsigned long long)block);
-			check_n_fix_bitmap(sdp, block, 0, GFS2_BLKST_FREE);
-		} else if (handle_di(sdp, bh) < 0) {
+			check_n_fix_bitmap(sdp, rgd, block, 0,
+					   GFS2_BLKST_FREE);
+		} else if (handle_di(sdp, rgd, bh) < 0) {
 			stack;
 			brelse(bh);
 			gfs2_special_free(&gfs1_rindex_blks);
@@ -2206,7 +2211,7 @@ int pass1(struct gfs2_sbd *sdp)
 			}
 			/* rgrps and bitmaps don't have bits to represent
 			   their blocks, so don't do this:
-			check_n_fix_bitmap(sdp, rgd->ri.ri_addr + i, 0,
+			check_n_fix_bitmap(sdp, rgd, rgd->ri.ri_addr + i, 0,
 			gfs2_meta_rgrp);*/
 		}
 

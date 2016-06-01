@@ -29,11 +29,10 @@
    is used to set the latter.  The two must be kept in sync, otherwise
    you'll get bitmap mismatches.  This function checks the status of the
    bitmap whenever the blockmap changes, and fixes it accordingly. */
-int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
-		       int new_state)
+int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
+		       uint64_t blk, int error_on_dinode, int new_state)
 {
 	int old_state;
-	struct rgrp_tree *rgd;
 	int treat_as_inode = 0;
 	int rewrite_rgrp = 0;
 	struct gfs_rgrp *gfs1rg;
@@ -42,7 +41,9 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 		/* gfs1 descriptions: */
 		{"free", "data", "free meta", "metadata", "reserved"}};
 
-	rgd = gfs2_blk2rgrpd(sdp, blk);
+	if (rgd == NULL || !rgrp_contains_block(rgd, blk))
+		rgd = gfs2_blk2rgrpd(sdp, blk);
+
 	gfs1rg = (struct gfs_rgrp *)&rgd->rg;
 
 	old_state = lgfs2_get_bitmap(sdp, blk, rgd);
@@ -208,7 +209,8 @@ int _fsck_bitmap_set(struct gfs2_inode *ip, uint64_t bblock,
 		prev_mark = mark;
 		prev_caller = caller;
 	}
-	error = check_n_fix_bitmap(ip->i_sbd, bblock, error_on_dinode, mark);
+	error = check_n_fix_bitmap(ip->i_sbd, ip->i_rgd, bblock,
+				   error_on_dinode, mark);
 	if (error < 0)
 		log_err(_("This block is not represented in the bitmap.\n"));
 	return error;
@@ -273,18 +275,23 @@ struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sdp, uint64_t block)
 
 /* fsck_inode_get - same as inode_get() in libgfs2 but system inodes
    get special treatment. */
-struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp,
+struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				  struct gfs2_buffer_head *bh)
 {
 	struct gfs2_inode *sysip;
+	struct gfs2_inode *ip;
 
 	sysip = fsck_system_inode(sdp, bh->b_blocknr);
 	if (sysip)
 		return sysip;
 
 	if (sdp->gfs1)
-		return lgfs2_gfs_inode_get(sdp, bh);
-	return lgfs2_inode_get(sdp, bh);
+		ip = lgfs2_gfs_inode_get(sdp, bh);
+	else
+		ip = lgfs2_inode_get(sdp, bh);
+	if (ip)
+		ip->i_rgd = rgd;
+	return ip;
 }
 
 /* fsck_inode_put - same as inode_put() in libgfs2 but system inodes

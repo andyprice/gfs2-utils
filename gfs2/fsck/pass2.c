@@ -2036,7 +2036,7 @@ static int pass2_check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 
 		log_debug(_("Directory block %lld (0x%llx) is now marked as 'invalid'\n"),
 			   (unsigned long long)dirblk, (unsigned long long)dirblk);
-		check_n_fix_bitmap(sdp, dirblk, 0, GFS2_BLKST_FREE);
+		check_n_fix_bitmap(sdp, ip->i_rgd, dirblk, 0, GFS2_BLKST_FREE);
 	}
 
 	if (!ds.dotdir) {

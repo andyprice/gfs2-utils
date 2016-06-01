@@ -108,7 +108,8 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)block, (unsigned long long)block);
 	} else {
-		check_n_fix_bitmap(ip->i_sbd, block, 0, GFS2_BLKST_FREE);
+		check_n_fix_bitmap(ip->i_sbd, ip->i_rgd, block, 0,
+				   GFS2_BLKST_FREE);
 	}
 	return meta_is_good;
 }

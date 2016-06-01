@@ -300,7 +300,7 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				bh = bread(sdp, diblock);
 				if (!gfs2_check_meta(bh, GFS2_METATYPE_DI)) {
 					struct gfs2_inode *ip =
-						fsck_inode_get(sdp, bh);
+						fsck_inode_get(sdp, rgd, bh);
 					if (ip->i_di.di_blocks > 1) {
 						blks_2free +=
 							ip->i_di.di_blocks - 1;
