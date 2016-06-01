@@ -30,9 +30,9 @@
    you'll get bitmap mismatches.  This function checks the status of the
    bitmap whenever the blockmap changes, and fixes it accordingly. */
 int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
-		       int new_blockmap_state)
+		       int new_state)
 {
-	int old_bitmap_state;
+	int old_state;
 	struct rgrp_tree *rgd;
 	int treat_as_inode = 0;
 	int rewrite_rgrp = 0;
@@ -45,22 +45,22 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 	rgd = gfs2_blk2rgrpd(sdp, blk);
 	gfs1rg = (struct gfs_rgrp *)&rgd->rg;
 
-	old_bitmap_state = lgfs2_get_bitmap(sdp, blk, rgd);
-	if (old_bitmap_state < 0) {
+	old_state = lgfs2_get_bitmap(sdp, blk, rgd);
+	if (old_state < 0) {
 		log_err( _("Block %llu (0x%llx) is not represented in the "
 			   "system bitmap; part of an rgrp or superblock.\n"),
 			 (unsigned long long)blk, (unsigned long long)blk);
 		return -1;
 	}
-	if (old_bitmap_state == new_blockmap_state)
+	if (old_state == new_state)
 		return 0;
 
-	if (error_on_dinode && old_bitmap_state == GFS2_BLKST_DINODE &&
-	    new_blockmap_state != GFS2_BLKST_FREE) {
+	if (error_on_dinode && old_state == GFS2_BLKST_DINODE &&
+	    new_state != GFS2_BLKST_FREE) {
 		log_debug(_("Reference as '%s' to block %llu (0x%llx) which "
 			    "was marked as dinode. Needs further "
 			    "investigation.\n"),
-			  allocdesc[sdp->gfs1][new_blockmap_state],
+			  allocdesc[sdp->gfs1][new_state],
 			  (unsigned long long)blk, (unsigned long long)blk);
 		return 1;
 	}
@@ -68,8 +68,8 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 	   huge and unmanageable. */
 	log_err( _("Block %llu (0x%llx) was '%s', should be %s.\n"),
 		 (unsigned long long)blk, (unsigned long long)blk,
-		 allocdesc[sdp->gfs1][old_bitmap_state],
-		 allocdesc[sdp->gfs1][new_blockmap_state]);
+		 allocdesc[sdp->gfs1][old_state],
+		 allocdesc[sdp->gfs1][new_state]);
 	if (!query( _("Fix the bitmap? (y/n)"))) {
 		log_err( _("The bitmap inconsistency was ignored.\n"));
 		return 0;
@@ -79,17 +79,17 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 	   bitmap state was free (and therefore it no longer is) we have to
 	   subtract to the free space.  If the type changed from dinode to 
 	   data or data to dinode, no change in free space. */
-	gfs2_set_bitmap(rgd, blk, new_blockmap_state);
-	if (new_blockmap_state == GFS2_BLKST_FREE) {
+	gfs2_set_bitmap(rgd, blk, new_state);
+	if (new_state == GFS2_BLKST_FREE) {
 		rgd->rg.rg_free++;
 		rewrite_rgrp = 1;
-	} else if (old_bitmap_state == GFS2_BLKST_FREE) {
+	} else if (old_state == GFS2_BLKST_FREE) {
 		rgd->rg.rg_free--;
 		rewrite_rgrp = 1;
 	}
 	/* If we're freeing a dinode, get rid of the data structs for it. */
-	if (old_bitmap_state == GFS2_BLKST_DINODE ||
-	    old_bitmap_state == GFS2_BLKST_UNLINKED) {
+	if (old_state == GFS2_BLKST_DINODE ||
+	    old_state == GFS2_BLKST_UNLINKED) {
 		struct dir_info *dt;
 		struct inode_info *ii;
 
@@ -110,7 +110,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 			   the rgrp inode count. */
 			treat_as_inode = 1;
 		}
-		if (old_bitmap_state == GFS2_BLKST_DINODE) {
+		if (old_state == GFS2_BLKST_DINODE) {
 			if (treat_as_inode && rgd->rg.rg_dinodes > 0)
 				rgd->rg.rg_dinodes--;
 			else if (sdp->gfs1 && gfs1rg->rg_usedmeta > 0)
@@ -118,7 +118,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, uint64_t blk, int error_on_dinode,
 			rewrite_rgrp = 1;
 		}
 		link1_set(&nlink1map, blk, 0);
-	} else if (new_blockmap_state == GFS2_BLKST_DINODE) {
+	} else if (new_state == GFS2_BLKST_DINODE) {
 		if (!sdp->gfs1) {
 			treat_as_inode = 1;
 		} else {
