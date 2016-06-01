@@ -235,6 +235,7 @@ struct gfs2_inode {
 	struct gfs2_dinode i_di;
 	struct gfs2_buffer_head *i_bh;
 	struct gfs2_sbd *i_sbd;
+	struct rgrp_tree *i_rgd; /* performance hint */
 };
 
 struct master_dir

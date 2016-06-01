@@ -775,7 +775,8 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 				    (unsigned long long)dup_blk);
 			if (dh.dt)
 				dup_delete(dh.dt);
-			check_n_fix_bitmap(sdp, dup_blk, 0, GFS2_BLKST_FREE);
+			check_n_fix_bitmap(sdp, NULL, dup_blk, 0,
+					   GFS2_BLKST_FREE);
 		}
 	}
 	return 0;

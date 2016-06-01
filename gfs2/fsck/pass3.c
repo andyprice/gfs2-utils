@@ -253,7 +253,8 @@ int pass3(struct gfs2_sbd *sdp)
 						  di->dinode.no_addr,
 						  (unsigned long long)
 						  di->dinode.no_addr);
-					check_n_fix_bitmap(sdp, di->dinode.no_addr,
+					check_n_fix_bitmap(sdp, ip->i_rgd,
+							   di->dinode.no_addr,
 							   0, GFS2_BLKST_FREE);
 					fsck_inode_put(&ip);
 					break;
@@ -274,7 +275,8 @@ int pass3(struct gfs2_sbd *sdp)
 					    "marked as free\n"),
 					  (unsigned long long)di->dinode.no_addr,
 					  (unsigned long long)di->dinode.no_addr);
-				check_n_fix_bitmap(sdp, di->dinode.no_addr, 0,
+				check_n_fix_bitmap(sdp, ip->i_rgd,
+						   di->dinode.no_addr, 0,
 						   GFS2_BLKST_FREE);
 				log_err( _("The block was cleared\n"));
 				fsck_inode_put(&ip);
