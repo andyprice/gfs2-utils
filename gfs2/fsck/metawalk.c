@@ -539,7 +539,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	int di_depth = ip->i_di.di_depth;
 
 	/* Make sure the block number is in range. */
-	if (!valid_block(ip->i_sbd, *leaf_no)) {
+	if (!valid_block_ip(ip, *leaf_no)) {
 		log_err( _("Leaf block #%llu (0x%llx) is out of range for "
 			   "directory #%llu (0x%llx) at index %d (0x%x).\n"),
 			 (unsigned long long)*leaf_no,
@@ -698,7 +698,7 @@ static void dir_leaf_reada(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize)
 
 	for (i = 0; i < hsize; i++) {
 		leaf_no = be64_to_cpu(tbl[i]);
-		if (valid_block(ip->i_sbd, leaf_no))
+		if (valid_block_ip(ip, leaf_no))
 			t[n++] = leaf_no * sdp->bsize;
 	}
 	qsort(t, n, sizeof(uint64_t), u64cmp);
@@ -760,7 +760,7 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	first_ok_leaf = leaf_no = -1;
 	for (lindex = 0; lindex < hsize; lindex++) {
 		leaf_no = be64_to_cpu(tbl[lindex]);
-		if (valid_block(ip->i_sbd, leaf_no)) {
+		if (valid_block_ip(ip, leaf_no)) {
 			lbh = bread(sdp, leaf_no);
 			/* Make sure it's really a valid leaf block. */
 			if (gfs2_check_meta(lbh, GFS2_METATYPE_LF) == 0) {
@@ -1334,7 +1334,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 						   (unsigned long long)block);
 					continue;
 				}
-				if (!valid_block(ip->i_sbd, block)) {
+				if (!valid_block_ip(ip, block)) {
 					log_debug( _("Skipping invalid block "
 						     "%lld (0x%llx)\n"),
 						   (unsigned long long)block,
