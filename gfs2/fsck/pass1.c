@@ -135,7 +135,7 @@ static int delete_block(struct gfs2_inode *ip, uint64_t block,
 			struct gfs2_buffer_head **bh, const char *btype,
 			void *private)
 {
-	if (valid_block(ip->i_sbd, block)) {
+	if (valid_block_ip(ip, block)) {
 		fsck_blockmap_set(ip, block, btype, GFS2_BLKST_FREE);
 		return 0;
 	}
@@ -233,7 +233,7 @@ static int resuscitate_metalist(struct gfs2_inode *ip, uint64_t block,
 	*is_valid = 1;
 	*was_duplicate = 0;
 	*bh = NULL;
-	if (!valid_block(ip->i_sbd, block)){ /* blk outside of FS */
+	if (!valid_block_ip(ip, block)){ /* blk outside of FS */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
 				  _("itself"), GFS2_BLKST_UNLINKED);
 		log_err( _("Bad indirect block pointer (invalid or out of "
@@ -281,7 +281,7 @@ static int resuscitate_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		strncpy(tmp_name, filename, de->de_name_len);
 	else
 		strncpy(tmp_name, filename, sizeof(tmp_name) - 1);
-	if (!valid_block(sdp, block)) {
+	if (!valid_block_ip(ip, block)) {
 		log_err( _("Block # referenced by system directory entry %s "
 			   "in inode %lld (0x%llx) is invalid or out of range;"
 			   " ignored.\n"),
@@ -358,7 +358,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 
 	*was_duplicate = 0;
 	*is_valid = 0;
-	if (!valid_block(ip->i_sbd, block)) { /* blk outside of FS */
+	if (!valid_block_ip(ip, block)) { /* blk outside of FS */
 		/* The bad dinode should be invalidated later due to
 		   "unrecoverable" errors.  The inode itself should be
 		   set "free" and removed from the inodetree by
@@ -441,7 +441,7 @@ static int undo_reference(struct gfs2_inode *ip, uint64_t block, int meta,
 	int old_bitmap_state = 0;
 	struct rgrp_tree *rgd;
 
-	if (!valid_block(ip->i_sbd, block)) { /* blk outside of FS */
+	if (!valid_block_ip(ip, block)) { /* blk outside of FS */
 		fsck_blockmap_set(ip, ip->i_di.di_num.no_addr,
 				  _("bad block referencing"), GFS2_BLKST_FREE);
 		return 1;
@@ -549,7 +549,7 @@ static int check_data(struct gfs2_inode *ip, uint64_t metablock,
 	int q;
 	struct block_count *bc = (struct block_count *) private;
 
-	if (!valid_block(ip->i_sbd, block)) {
+	if (!valid_block_ip(ip, block)) {
 		log_err( _("inode %lld (0x%llx) has a bad data block pointer "
 			   "%lld (0x%llx) (invalid or out of range) "),
 			 (unsigned long long)ip->i_di.di_num.no_addr,
@@ -686,7 +686,7 @@ static int undo_eattr_indir_or_leaf(struct gfs2_inode *ip, uint64_t block,
 	int error;
 	struct block_count *bc = (struct block_count *) private;
 
-	if (!valid_block(ip->i_sbd, block))
+	if (!valid_block_ip(ip, block))
 		return meta_error;
 
 	/* Need to check block_type before undoing the reference, which can
@@ -735,7 +735,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 
 	/* This inode contains an eattr - it may be invalid, but the
 	 * eattr attributes points to a non-zero block */
-	if (!valid_block(sdp, indirect)) {
+	if (!valid_block_ip(ip, indirect)) {
 		/* Doesn't help to mark this here - this gets checked
 		 * in pass1c */
 		return 1;
@@ -893,7 +893,7 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, int i,
 	struct gfs2_buffer_head *bh = NULL;
 	int error = 0;
 
-	if (!valid_block(sdp, el_blk)) {
+	if (!valid_block_ip(ip, el_blk)) {
 		log_err( _("Inode #%llu (0x%llx): Extended Attribute block "
 			   "%llu (0x%llx) has an extended leaf block #%llu "
 			   "(0x%llx) that is invalid or out of range.\n"),
@@ -943,9 +943,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			    uint64_t parent, struct gfs2_buffer_head **bh,
 			    void *private)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
-
-	if (!valid_block(sdp, block)) {
+	if (!valid_block_ip(ip, block)) {
 		log_warn( _("Inode #%llu (0x%llx): Extended Attribute leaf "
 			    "block #%llu (0x%llx) is invalid or out of "
 			    "range.\n"),
@@ -1089,7 +1087,7 @@ static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
 		*is_valid = 1;
 	if (was_duplicate)
 		*was_duplicate = 0;
-	if (!valid_block(ip->i_sbd, block)) {
+	if (!valid_block_ip(ip, block)) {
 		if (is_valid)
 			*is_valid = 0;
 		return meta_is_good;
@@ -1181,7 +1179,7 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 	long *bad_pointers = (long *)private;
 	int q;
 
-	if (!valid_block(ip->i_sbd, block)) {
+	if (!valid_block_ip(ip, block)) {
 		(*bad_pointers)++;
 		log_info( _("Bad %s block pointer (invalid or out of range "
 			    "#%ld) found in inode %lld (0x%llx).\n"),

@@ -81,7 +81,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 	int q;
 	int removed_lastmeta;
 
-	if (!valid_block(ip->i_sbd, block))
+	if (!valid_block_ip(ip, block))
 		return meta_error;
 
 	q = bitmap_type(ip->i_sbd, block);
@@ -207,7 +207,7 @@ static int del_eattr_generic(struct gfs2_inode *ip, uint64_t block,
 	int was_free = 0;
 	int q;
 
-	if (valid_block(ip->i_sbd, block)) {
+	if (valid_block_ip(ip, block)) {
 		q = bitmap_type(ip->i_sbd, block);
 		if (q == GFS2_BLKST_FREE)
 			was_free = 1;

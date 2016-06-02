@@ -461,7 +461,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	struct gfs2_inum inum = { 0 };
 
 	*isdir = 0;
-	if (!valid_block(ip->i_sbd, entry->no_addr)) {
+	if (!valid_block_ip(ip, entry->no_addr)) {
 		log_err( _("Block # referenced by directory entry %s in inode "
 			   "%lld (0x%llx) is invalid\n"),
 			 tmp_name, (unsigned long long)ip->i_di.di_num.no_addr,
@@ -1481,7 +1481,7 @@ static int check_hash_tbl_dups(struct gfs2_inode *ip, uint64_t *tbl,
 		   or the duplicate we found. */
 		memset(&leaf, 0, sizeof(leaf));
 		leaf_no = leafblk;
-		if (!valid_block(ip->i_sbd, leaf_no)) /* Checked later */
+		if (!valid_block_ip(ip, leaf_no)) /* Checked later */
 			continue;
 
 		lbh = bread(ip->i_sbd, leafblk);
@@ -1614,7 +1614,7 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 		/* See if that leaf block is valid. If not, write a new one
 		   that falls on a proper boundary. If it doesn't naturally,
 		   we may need more. */
-		if (!valid_block(ip->i_sbd, leafblk)) {
+		if (!valid_block_ip(ip, leafblk)) {
 			uint64_t new_leafblk;
 
 			log_err(_("Dinode %llu (0x%llx) has bad leaf pointers "
@@ -1776,7 +1776,7 @@ static int check_data_qc(struct gfs2_inode *ip, uint64_t metablock,
 
 	/* At this point, basic data block checks have already been done,
 	   so we only need to make sure they're QC blocks. */
-	if (!valid_block(ip->i_sbd, block))
+	if (!valid_block_ip(ip, block))
 		return -1;
 
 	bh = bread(ip->i_sbd, block);

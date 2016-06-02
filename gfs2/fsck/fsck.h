@@ -173,4 +173,22 @@ static inline int rgrp_contains_block(struct rgrp_tree *rgd, uint64_t blk)
 	return 1;
 }
 
+static inline int valid_block_ip(struct gfs2_inode *ip, uint64_t blk)
+{
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct rgrp_tree *rgd = ip->i_rgd;
+
+	if (blk > sdp->fssize)
+		return 0;
+	if (blk <= sdp->sb_addr)
+		return 0;
+	if (rgd == NULL || !rgrp_contains_block(rgd, blk)) {
+		rgd = gfs2_blk2rgrpd(sdp, blk);
+		if (rgd == NULL)
+			return 0;
+	}
+
+	return rgrp_contains_block(rgd, blk);
+}
+
 #endif /* _FSCK_H */
