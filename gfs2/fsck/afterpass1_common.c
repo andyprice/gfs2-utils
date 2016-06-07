@@ -79,7 +79,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 				  void *private)
 {
 	int q;
-	int removed_lastmeta;
+	int removed_lastmeta = 0;
 
 	if (!valid_block_ip(ip, block))
 		return meta_error;
