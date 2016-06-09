@@ -204,12 +204,10 @@ void gfs2_rindex_in(struct gfs2_rindex *ri, char *buf)
 
 	CPIN_64(ri, str, ri_addr);
 	CPIN_32(ri, str, ri_length);
-
+	CPIN_32(ri, str, __pad);
 	CPIN_64(ri, str, ri_data0);
 	CPIN_32(ri, str, ri_data);
-
 	CPIN_32(ri, str, ri_bitbytes);
-
 	CPIN_08(ri, str, ri_reserved, 64);
 }
 
