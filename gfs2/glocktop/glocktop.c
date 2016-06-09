@@ -673,11 +673,14 @@ static const char *show_details(const char *id, const char *fsname, int btype,
 	memset(dlm_rsbtbl_size, 0, sizeof(dlm_rsbtbl_size));
 	memset(dlm_lkbtbl_size, 0, sizeof(dlm_lkbtbl_size));
 	if (!strcmp(sd_sb[mnt_num].sb_lockproto, "lock_dlm")) {
+		char *sp;
 		char *p;
 
 		dlmf = fopen(DLM_DIRTBL, "rt");
 		if (dlmf) {
-			fgets(dlm_dirtbl_size, sizeof(dlm_dirtbl_size), dlmf);
+			sp = fgets(dlm_dirtbl_size, sizeof(dlm_dirtbl_size), dlmf);
+			if (sp == NULL)
+				goto out_err;
 			p = strchr(dlm_dirtbl_size, '\n');
 			if (p)
 				*p = '\0';
@@ -687,7 +690,9 @@ static const char *show_details(const char *id, const char *fsname, int btype,
 		}
 		dlmf = fopen(DLM_RSBTBL, "rt");
 		if (dlmf) {
-			fgets(dlm_rsbtbl_size, sizeof(dlm_rsbtbl_size), dlmf);
+			sp = fgets(dlm_rsbtbl_size, sizeof(dlm_rsbtbl_size), dlmf);
+			if (sp == NULL)
+				goto out_err;
 			p = strchr(dlm_rsbtbl_size, '\n');
 			if (p)
 				*p = '\0';
@@ -697,7 +702,9 @@ static const char *show_details(const char *id, const char *fsname, int btype,
 		}
 		dlmf = fopen(DLM_LKBTBL, "rt");
 		if (dlmf) {
-			fgets(dlm_lkbtbl_size, sizeof(dlm_lkbtbl_size), dlmf);
+			sp = fgets(dlm_lkbtbl_size, sizeof(dlm_lkbtbl_size), dlmf);
+			if (sp == NULL)
+				goto out_err;
 			p = strchr(dlm_lkbtbl_size, '\n');
 			if (p)
 				*p = '\0';
@@ -727,6 +734,9 @@ static const char *show_details(const char *id, const char *fsname, int btype,
 			blk_type = "";
 	}
 	return blk_type;
+out_err:
+	fclose(dlmf);
+	return "error";
 }
 
 static int is_dlm_waiting(int dlmwaiters, int locktype, char *id)
