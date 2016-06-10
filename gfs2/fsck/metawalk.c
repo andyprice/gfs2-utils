@@ -40,9 +40,14 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 		{"free", "data", "unlinked", "inode", "reserved"},
 		/* gfs1 descriptions: */
 		{"free", "data", "free meta", "metadata", "reserved"}};
+	static struct rgrp_tree *prevrgd = NULL;
 
-	if (rgd == NULL || !rgrp_contains_block(rgd, blk))
+	if (prevrgd && rgrp_contains_block(prevrgd, blk)) {
+		rgd = prevrgd;
+	} else if (rgd == NULL || !rgrp_contains_block(rgd, blk)) {
 		rgd = gfs2_blk2rgrpd(sdp, blk);
+		prevrgd = rgd;
+	}
 
 	gfs1rg = (struct gfs_rgrp *)&rgd->rg;
 
