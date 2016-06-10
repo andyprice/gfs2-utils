@@ -422,34 +422,29 @@ static void test_locking(struct mkfs_opts *opts)
 
 static void are_you_sure(void)
 {
-	char *line = NULL;
-	size_t len = 0;
-	int ret = -1;
-	int res = 0;
+	while (1) {
+		char *line = NULL;
+		size_t len = 0;
+		int ret;
+		int res;
 
-	do{
 		/* Translators: We use rpmatch(3) to match the answers to y/n
 		   questions in the user's own language, so the [y/n] here must also be
 		   translated to match one of the letters in the pattern printed by
 		   `locale -k yesexpr` and one of the letters in the pattern printed by
 		   `locale -k noexpr` */
-		printf( _("Are you sure you want to proceed? [y/n]"));
+		printf( _("Are you sure you want to proceed? [y/n] "));
 		ret = getline(&line, &len, stdin);
 		res = rpmatch(line);
-		
-		if (res > 0){
-			free(line);
-			return;
-		}
-		if (!res){
-			printf("\n");
-			die( _("Aborted.\n"));
-		}
-		
-	}while(ret >= 0);
-
-	if(line)
 		free(line);
+		if (ret <= 0)
+			continue;
+		if (res == 1) /* Yes */
+			return;
+		if (res == 0) /* No */
+			exit(1);
+		/* Unrecognized input; go again. */
+	};
 }
 
 static unsigned choose_blocksize(struct mkfs_opts *opts)
