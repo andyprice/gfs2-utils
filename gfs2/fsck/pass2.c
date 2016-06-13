@@ -2203,8 +2203,11 @@ static int pass2_check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
  */
 int pass2(struct gfs2_sbd *sdp)
 {
+	struct osi_node *tmp, *next = NULL;
+	struct gfs2_inode *ip;
+	struct dir_info *dt;
 	uint64_t dirblk;
-	int q;
+	int error;
 
 	/* Check all the system directory inodes. */
 	if (!sdp->gfs1 &&
@@ -2236,25 +2239,17 @@ int pass2(struct gfs2_sbd *sdp)
 		return FSCK_OK;
 	log_info( _("Checking directory inodes.\n"));
 	/* Grab each directory inode, and run checks on it */
-	for (dirblk = 0; dirblk < last_fs_block; dirblk++) {
-		struct gfs2_inode *ip;
-		struct dir_info *dt;
-		int error;
+	for (tmp = osi_first(&dirtree); tmp; tmp = next) {
+		next = osi_next(tmp);
 
+		dt = (struct dir_info *)tmp;
+		dirblk = dt->dinode.no_addr;
 		warm_fuzzy_stuff(dirblk);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
 
 		/* Skip the system inodes - they're checked above */
 		if (is_system_dir(sdp, dirblk))
-			continue;
-
-		q = bitmap_type(sdp, dirblk);
-		if (q != GFS2_BLKST_DINODE)
-			continue;
-
-		dt = dirtree_find(dirblk);
-		if (dt == NULL)
 			continue;
 
 		/* If we created lost+found, its links should have been
