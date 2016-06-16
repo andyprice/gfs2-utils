@@ -92,6 +92,10 @@ AC_ARG_ENABLE([debug],
 AC_ARG_ENABLE([gcov],
 	AC_HELP_STRING([--enable-gcov],[enable coverage instrumentation [default=no]]),
 	[], [enable_gcov="no"])
+AC_ARG_ENABLE([gprof],
+	AC_HELP_STRING([--enable-gprof],[enable profiling instrumentation [default=no]]),
+	[], [enable_gprof="no"])
+
 
 # We use the Check framework for unit tests
 PKG_CHECK_MODULES([check], [check >= 0.9.8],
@@ -162,6 +166,14 @@ if test "x${enable_gcov}" = xyes; then
 	OPT_CFLAGS="-O0 $GCOV_CFLAGS"
 fi
 
+if test "x${enable_gprof}" = xyes; then
+	GPROF_CFLAGS="-pg"
+	if ! cc_supports_flag $GPROF_CFLAGS; then
+		AC_MSG_ERROR([your compiler does not support gprof instrumentation])
+	fi
+	OPT_CFLAGS="$OPT_CFLAGS $GPROF_CFLAGS"
+fi
+
 # extra warnings
 EXTRA_WARNINGS=""
 
@@ -226,6 +238,7 @@ echo " udevdir           : $udevdir"
 echo " ------------------"
 echo " debug build       : $enable_debug"
 echo " C unit tests      : $have_check"
+echo " gprof build       : $enable_gprof"
 echo " gcov build        : $enable_gcov"
 echo
 echo "Now run 'make' to build and 'make check' to run tests"
