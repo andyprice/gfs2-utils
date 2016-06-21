@@ -1387,7 +1387,7 @@ error_undo: /* undo what we've done so far for this block */
  */
 static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		      struct gfs2_buffer_head *bh, int head_size,
-		      uint64_t *blks_checked, uint64_t *error_blk)
+		      uint64_t *blks_checked, struct error_block *error_blk)
 {
 	int error = 0, rc = 0;
 	uint64_t block, *ptr;
@@ -1418,21 +1418,36 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 			log_info("\n");
 			if (rc < 0) {
 				/* A fatal error trumps a non-fatal one. */
-				if ((*error_blk == 0) || (rc < error)) {
-					log_debug(_("Fatal error on block 0x"
-						    "%llx preempts non-fatal "
-						    "error on block 0x%llx\n"),
+				if ((error_blk->errblk == 0) ||
+				    (rc < error)) {
+					log_debug(_("Fatal error on metadata "
+						    "block 0x%llx, offset "
+						    "0x%x, referencing block "
+						    "0x%llx preempts non-fatal"
+						    " error on block 0x%llx\n"),
+						  (unsigned long long)metablock,
+						  (int)(ptr - ptr_start),
 						  (unsigned long long)block,
-						  (unsigned long long)*error_blk);
-					*error_blk = block;
+						  (unsigned long long)error_blk->errblk);
+					error_blk->metablk = metablock;
+					error_blk->metaoff = ptr - ptr_start;
+					error_blk->errblk = block;
 				}
 				log_info(_("Unrecoverable "));
 			} else { /* nonfatal error */
-				if ((*error_blk) == 0)
-					*error_blk = block;
+				if (error_blk->errblk == 0) {
+					error_blk->metablk = metablock;
+					error_blk->metaoff = ptr - ptr_start;
+					error_blk->errblk = block;
+				}
 			}
-			log_info(_("data block error %d on block %llu "
-				   "(0x%llx).\n"), rc,
+			log_info(_("data block error %d on metadata block "
+				   "%lld (0x%llx), offset %d (0x%x), "
+				   "referencing data block %lld (0x%llx).\n"),
+				 rc, (unsigned long long)metablock,
+				 (unsigned long long)metablock,
+				 (int)(ptr - ptr_start),
+				 (int)(ptr - ptr_start),
 				 (unsigned long long)block,
 				 (unsigned long long)block);
 			error = rc;
@@ -1445,8 +1460,9 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 }
 
 static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
+			   uint64_t metablock,
 			   uint64_t *ptr_start, char *ptr_end,
-			   uint64_t error_blk, int error)
+			   struct error_block *error_blk, int error)
 {
 	int rc = 0;
 	uint64_t block, *ptr;
@@ -1460,19 +1476,27 @@ static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		if (skip_this_pass || fsck_abort)
 			return 1;
 		block =  be64_to_cpu(*ptr);
-		if (block == error_blk) {
+		if (metablock == error_blk->metablk &&
+		    (ptr - ptr_start == error_blk->metaoff) &&
+		    block == error_blk->errblk) {
 			if (error < 0) { /* A fatal error that stopped it? */
 				log_debug(_("Stopping the undo process: "
 					    "fatal error block 0x%llx was "
-					    "found.\n"),
-					  (unsigned long long)error_blk);
+					    "found at metadata block 0x%llx,"
+					    "offset 0x%x.\n"),
+					  (unsigned long long)error_blk->errblk,
+					  (unsigned long long)error_blk->metablk,
+					  error_blk->metaoff);
 				return 1;
 			}
 			found_error_blk = 1;
 			log_debug(_("The non-fatal error block 0x%llx was "
-				    "found, but undo processing will continue "
+				    "found at metadata block 0x%llx, offset "
+				    "0x%d, but undo processing will continue "
 				    "until the end of this metadata block.\n"),
-				  (unsigned long long)error_blk);
+				  (unsigned long long)error_blk->errblk,
+				  (unsigned long long)error_blk->metablk,
+				  error_blk->metaoff);
 		}
 		rc = pass->undo_check_data(ip, block, pass->private);
 		if (rc < 0)
@@ -1514,7 +1538,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	uint64_t blks_checked = 0;
 	int error, rc;
 	int metadata_clean = 0;
-	uint64_t error_blk = 0;
+	struct error_block error_blk = {0, 0, 0};
 	int hit_error_blk = 0;
 
 	if (!height && !is_dir(&ip->i_di, ip->i_sbd->gfs1))
@@ -1577,10 +1601,15 @@ undo_metalist:
 	if (!error)
 		goto out;
 	log_err( _("Error: inode %llu (0x%llx) had unrecoverable errors at "
+		   "metadata block %lld (0x%llx), offset %d (0x%x), block "
 		   "%lld (0x%llx).\n"),
 		 (unsigned long long)ip->i_di.di_num.no_addr,
 		 (unsigned long long)ip->i_di.di_num.no_addr,
-		 (unsigned long long)error_blk, (unsigned long long)error_blk);
+		 (unsigned long long)error_blk.metablk,
+		 (unsigned long long)error_blk.metablk,
+		 error_blk.metaoff, error_blk.metaoff,
+		 (unsigned long long)error_blk.errblk,
+		 (unsigned long long)error_blk.errblk);
 	if (!query( _("Remove the invalid inode? (y/n) "))) {
 		free_metalist(ip, &metalist[0]);
 		log_err(_("Invalid inode not deleted.\n"));
@@ -1606,12 +1635,20 @@ undo_metalist:
 				head_size = hdr_size(bh, height);
 				if (head_size) {
 					rc = undo_check_data(ip, pass,
+							     bh->b_blocknr,
 							     (uint64_t *)
 					      (bh->b_data + head_size),
 					      (bh->b_data + ip->i_sbd->bsize),
-							     error_blk, error);
+							     &error_blk,
+							     error);
 					if (rc > 0) {
 						hit_error_blk = 1;
+						log_err("Reached the error "
+							"block undoing work "
+							"for inode %lld "
+							"(0x%llx).\n",
+							(unsigned long long)ip->i_di.di_num.no_addr,
+							(unsigned long long)ip->i_di.di_num.no_addr);
 						rc = 0;
 					}
 				}
