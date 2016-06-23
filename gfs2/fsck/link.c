@@ -112,7 +112,7 @@ int incr_link_count(struct gfs2_inum no, struct gfs2_inode *ip,
 
 	link_ip = fsck_load_inode(ip->i_sbd, no.no_addr);
 	/* Check formal ino against dinode before adding to inode tree. */
-	if (no.no_formal_ino != ip->i_di.di_num.no_formal_ino) {
+	if (no.no_formal_ino != link_ip->i_di.di_num.no_formal_ino) {
 		fsck_inode_put(&link_ip);
 		return 1;
 	}
