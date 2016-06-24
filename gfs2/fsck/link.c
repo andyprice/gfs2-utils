@@ -88,33 +88,33 @@ int incr_link_count(struct gfs2_inum no, struct gfs2_inode *ip,
 	di = dirtree_find(no.no_addr);
 	if (di) {
 		if (di->dinode.no_formal_ino != no.no_formal_ino)
-			return 1;
+			return incr_link_ino_mismatch;
 
 		di->counted_links++;
 		whyincr(no.no_addr, why, referenced_from, di->counted_links);
-		return 0;
+		return incr_link_good;
 	}
 	ii = inodetree_find(no.no_addr);
 	/* If the list has entries, look for one that matches inode_no */
 	if (ii) {
 		if (ii->di_num.no_formal_ino != no.no_formal_ino)
-			return 1;
+			return incr_link_ino_mismatch;
 
 		ii->counted_links++;
 		whyincr(no.no_addr, why, referenced_from, ii->counted_links);
-		return 0;
+		return incr_link_good;
 	}
 	if (link1_type(&clink1map, no.no_addr) != 1) {
 		link1_set(&clink1map, no.no_addr, 1);
 		whyincr(no.no_addr, why, referenced_from, 1);
-		return 0;
+		return incr_link_good;
 	}
 
 	link_ip = fsck_load_inode(ip->i_sbd, no.no_addr);
 	/* Check formal ino against dinode before adding to inode tree. */
 	if (no.no_formal_ino != link_ip->i_di.di_num.no_formal_ino) {
 		fsck_inode_put(&link_ip);
-		return 1;
+		return incr_link_ino_mismatch; /* inode mismatch */
 	}
 	/* Move it from the link1 maps to a real inode tree entry */
 	link1_set(&nlink1map, no.no_addr, 0);
@@ -130,7 +130,7 @@ int incr_link_count(struct gfs2_inum no, struct gfs2_inode *ip,
 			   (unsigned long long)referenced_from,
 			   (unsigned long long)no.no_addr);
 		fsck_inode_put(&link_ip);
-		return -1;
+		return incr_link_bad;
 	}
 	ii->di_num = link_ip->i_di.di_num;
 	fsck_inode_put(&link_ip);
@@ -138,7 +138,11 @@ int incr_link_count(struct gfs2_inum no, struct gfs2_inode *ip,
 			     nlink1map */
 	ii->counted_links = 2;
 	whyincr(no.no_addr, why, referenced_from, ii->counted_links);
-	return 0;
+	/* We transitioned a dentry link count from 1 to 2, and we know it's
+	   not a directory. But the new reference has the correct formal
+	   inode number, so the first reference is suspect: we need to
+	   check it in case it's a bad reference, and not just a hard link. */
+	return incr_link_check_orig;
 }
 
 #define whydecr(no_addr, why, referenced_from, counted_links)		\
