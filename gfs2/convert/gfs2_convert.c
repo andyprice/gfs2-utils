@@ -1070,11 +1070,11 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 			bh = bread(sbp, block);
 			if (!gfs2_check_meta(bh, GFS_METATYPE_DI)) {/* if it is an dinode */
 				/* Skip the rindex and jindex inodes for now. */
-				if (block != rindex_addr && block != jindex_addr)
+				if (block != rindex_addr && block != jindex_addr) {
 					error = adjust_inode(sbp, bh);
-					if (error) {
+					if (error)
 						return error;
-					}
+				}
 			} else { /* It's metadata, but not an inode, so fix the bitmap. */
 				int blk, buf_offset;
 				int bitmap_byte; /* byte within the bitmap to fix */
