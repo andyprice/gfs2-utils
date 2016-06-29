@@ -143,8 +143,10 @@ ENV_LDFLAGS="$LDFLAGS"
 if test "x${enable_debug}" = xyes; then
 	AC_DEFINE_UNQUOTED([DEBUG], [1], [Compiling Debugging code])
 	OPT_CFLAGS="-O0"
+	OPT_CPPFLAGS=""
 else
 	OPT_CFLAGS="-O2"
+	OPT_CPPFLAGS="-D_FORTIFY_SOURCE=2"
 fi
 
 # gdb flags
@@ -203,7 +205,7 @@ for j in $WARNLIST; do
 done
 
 CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS $EXTRA_WARNINGS $WERROR_CFLAGS"
-CPPFLAGS="-I\$(top_builddir)/make -I\$(top_srcdir)/make -I. $ENV_CPPFLAGS"
+CPPFLAGS="-I\$(top_builddir)/make -I\$(top_srcdir)/make -I. $ENV_CPPFLAGS $OPT_CPPFLAGS"
 LDFLAGS="$ENV_LDFLAGS"
 
 AC_CONFIG_TESTDIR([tests], [gfs2/libgfs2:gfs2/mkfs:gfs2/fsck:gfs2/edit:gfs2/convert:gfs2/tune:tests])
