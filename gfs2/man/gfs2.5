@@ -193,7 +193,7 @@ give out well over half a billion location based cookies. This option was added
 in the 4.5 Linux kernel. Prior to this kernel, gfs2 did not add directory
 entries in a way that allowed it to use location based readdir cookies.
 \fBNote:\fP To safely turn on this option, all nodes mounting the filesystem
-must be running at least a 4.5 Linux kernel. If this option is only enabled on
+must be running at least a 4.5 Linux kernel or RHEL 7.3. If this option is only enabled on
 some of the nodes mounting a filesystem, the cookies returned by nodes using
 this option will not be valid on nodes that are not using this option, and vice
 versa.  Finally, when first enabling this option on a filesystem that had been
