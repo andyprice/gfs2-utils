@@ -20,6 +20,9 @@
 #include "extended.h"
 #include "gfs2hex.h"
 #include "libgfs2.h"
+#ifdef GFS2_HAS_UUID
+#include <uuid.h>
+#endif
 
 #define pv(struct, member, fmt, fmt2) do {				\
 		print_it("  "#member, fmt, fmt2, struct->member);	\
@@ -415,7 +418,12 @@ static void gfs2_sb_print2(struct gfs2_sb *sbp2)
 		gfs2_inum_print2("license   ", &gfs1_license_di);
 	}
 #ifdef GFS2_HAS_UUID
-	print_it("  sb_uuid", "%s", NULL, str_uuid(sbp2->sb_uuid));
+	{
+	char readable_uuid[36+1];
+
+	uuid_unparse(sbp2->sb_uuid, readable_uuid);
+	print_it("  sb_uuid", "%s", NULL, readable_uuid);
+	}
 #endif
 }
 

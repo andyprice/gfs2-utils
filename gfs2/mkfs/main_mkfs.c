@@ -30,6 +30,10 @@
 #include "gfs2_mkfs.h"
 #include "progress.h"
 
+#ifdef GFS2_HAS_UUID
+#include <uuid.h>
+#endif
+
 static void print_usage(const char *prog_name)
 {
 	int i;
@@ -537,8 +541,13 @@ static void print_results(struct gfs2_sb *sb, struct mkfs_opts *opts, uint64_t r
 	printf("%-27s\"%s\"\n", _("Locking protocol:"), opts->lockproto);
 	printf("%-27s\"%s\"\n", _("Lock table:"), opts->locktable);
 #ifdef GFS2_HAS_UUID
+	{
+	char readable_uuid[36+1];
+
+	uuid_unparse(sb->sb_uuid, readable_uuid);
 	/* Translators: "UUID" = universally unique identifier. */
-	printf("%-27s%s\n", _("UUID:"), str_uuid(sb->sb_uuid));
+	printf("%-27s%s\n", _("UUID:"), readable_uuid);
+	}
 #endif
 }
 

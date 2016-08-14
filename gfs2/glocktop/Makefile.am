@@ -10,7 +10,8 @@ glocktop_CFLAGS = \
 	$(ncurses_CFLAGS)
 
 glocktop_LDFLAGS = \
-	$(ncurses_LIBS)
+	$(ncurses_LIBS) \
+	$(uuid_LIBS)
 
 glocktop_CPPFLAGS = \
 	-D_FILE_OFFSET_BITS=64 \

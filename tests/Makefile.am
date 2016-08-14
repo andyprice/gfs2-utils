@@ -23,6 +23,8 @@ nukerg_CFLAGS = \
 	-I$(top_srcdir)/gfs2/include
 nukerg_LDADD = \
 	$(top_builddir)/gfs2/libgfs2/libgfs2.la
+nukerg_LDFLAGS = \
+	$(uuid_LIBS)
 
 if HAVE_CHECK
 UNIT_TESTS = \
@@ -49,6 +51,7 @@ check_meta_SOURCES = \
 	check_meta.c
 check_meta_CFLAGS = $(UNIT_CFLAGS)
 check_meta_LDADD = $(UNIT_LDADD)
+check_meta_LDFLAGS = $(uuid_LIBS)
 check_meta_CPPFLAGS = $(UNIT_CPPFLAGS)
 
 check_rgrp_SOURCES = \
@@ -56,6 +59,7 @@ check_rgrp_SOURCES = \
 	check_rgrp.c
 check_rgrp_CFLAGS = $(UNIT_CFLAGS)
 check_rgrp_LDADD = $(UNIT_LDADD)
+check_rgrp_LDFLAGS = $(uuid_LIBS)
 check_rgrp_CPPFLAGS = $(UNIT_CPPFLAGS)
 endif
 

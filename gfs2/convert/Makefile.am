@@ -8,3 +8,4 @@ gfs2_convert_CPPFLAGS = \
 	-I$(top_srcdir)/gfs2/libgfs2
 
 gfs2_convert_LDADD = $(top_builddir)/gfs2/libgfs2/libgfs2.la
+gfs2_convert_LDFLAGS = $(uuid_LIBS)
