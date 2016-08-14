@@ -14,78 +14,9 @@
 #include <linux/gfs2_ondisk.h>
 #include "tunegfs2.h"
 
-static int str_to_hexchar(const char *estring)
-{
-	int ch = 0;
-
-	if (isdigit(*estring))
-		ch = (*estring - '0') * 0x10;
-	else if (*estring >= 'a' && *estring <= 'f')
-		ch = (*estring - 'a' + 0x0a) * 0x10;
-	else if (*estring >= 'A' && *estring <= 'F')
-		ch = (*estring - 'A' + 0x0a) * 0x10;
-
-	estring++;
-	if (isdigit(*estring))
-		ch += (*estring - '0');
-	else if (*estring >= 'a' && *estring <= 'f')
-		ch += (*estring - 'a' + 0x0a);
-	else if (*estring >= 'A' && *estring <= 'F')
-		ch += (*estring - 'A' + 0x0a);
-	return ch;
-}
-
-
-
-static const char *uuid2str(const unsigned char *uuid)
-{
-	static char str[64];
-	char *ch;
-	int i;
-
-	memset(str, 0, 64);
-	ch = str;
-	for (i = 0; i < 16; i++) {
-		sprintf(ch, "%02x", uuid[i]);
-		ch += 2;
-		if ((i == 3) || (i == 5) || (i == 7) || (i == 9)) {
-			*ch = '-';
-			ch++;
-		}
-	}
-	return str;
-}
-
-static int str2uuid(const char *newval, char *uuid)
-{
-	char *cp;
-	int i;
-
-	if (strlen(newval) != 36) {
-		fprintf(stderr, _("Invalid UUID: %s\n"), newval);
-		return EX_DATAERR;
-	}
-
-	cp = uuid;
-	for (i = 0; i < 36; i++) {
-		if ((i == 8) || (i == 13) ||
-				(i == 18) || (i == 23)) {
-			if (newval[i] == '-')
-				continue;
-			fprintf(stderr, _("Invalid UUID: %s\n"), newval);
-			return EX_DATAERR;
-		}
-		if (!isxdigit(newval[i])) {
-			fprintf(stderr, _("Invalid UUID: %s\n"), newval);
-			fprintf(stderr, _("Bad digit '%c' at position %d\n"),
-			                newval[i], i + 1);
-			return EX_DATAERR;
-		}
-		*cp = str_to_hexchar(&newval[i++]);
-		cp++;
-	}
-	return 0;
-}
+#ifdef GFS2_HAS_UUID
+#include <uuid.h>
+#endif
 
 int read_super(struct tunegfs2 *tfs)
 {
@@ -125,7 +56,12 @@ int print_super(const struct tunegfs2 *tfs)
 {
 	printf(_("File system volume name: %s\n"), tfs->sb->sb_locktable);
 #ifdef GFS2_HAS_UUID
-	printf(_("File system UUID: %s\n"), uuid2str(tfs->sb->sb_uuid));
+	{
+	char readable_uuid[36+1];
+
+	uuid_unparse(tfs->sb->sb_uuid, readable_uuid);
+	printf(_("File system UUID: %s\n"), readable_uuid);
+	}
 #endif
 	printf( _("File system magic number: 0x%X\n"), be32_to_cpu(tfs->sb->sb_header.mh_magic));
 	printf(_("Block size: %d\n"), be32_to_cpu(tfs->sb->sb_bsize));
@@ -152,12 +88,18 @@ int write_super(const struct tunegfs2 *tfs)
 
 int change_uuid(struct tunegfs2 *tfs, const char *str)
 {
-	char uuid[16];
-	int status = 0;
-	status = str2uuid(str, uuid);
-	if (!status)
-		memcpy(tfs->sb->sb_uuid, uuid, 16);
+#ifdef GFS2_HAS_UUID
+	uuid_t uuid;
+	int status;
+
+	status = uuid_parse(str, uuid);
+	if (status == 0)
+		uuid_copy(tfs->sb->sb_uuid, uuid);
 	return status;
+#else
+	fprintf(stderr, _("UUID support unavailable in this build\n"));
+	return 1;
+#endif
 }
 
 int change_lockproto(struct tunegfs2 *tfs, const char *lockproto)

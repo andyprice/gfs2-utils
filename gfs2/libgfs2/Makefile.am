@@ -48,10 +48,12 @@ libgfs2_la_CPPFLAGS = \
 	-D_FILE_OFFSET_BITS=64 \
 	-D_LARGEFILE64_SOURCE \
 	-D_GNU_SOURCE \
-	-I$(top_srcdir)/gfs2/include
+	-I$(top_srcdir)/gfs2/include \
+	$(uuid_CFLAGS)
 
 gfs2l_SOURCES = gfs2l.c
 gfs2l_LDADD = libgfs2.la
+gfs2l_LDFLAGS = $(uuid_LIBS)
 gfs2l_CPPFLAGS = \
 	-I$(top_srcdir)/gfs2/include \
 	-D_FILE_OFFSET_BITS=64

@@ -9,6 +9,9 @@
 
 #include "lang.h"
 #include "parser.h"
+#ifdef GFS2_HAS_UUID
+#include <uuid.h>
+#endif
 
 const char* ast_type_string[] = {
 	[AST_NONE] = "NONE",
@@ -312,7 +315,14 @@ static int field_print(const struct gfs2_buffer_head *bh, const struct lgfs2_met
 
 	printf("%s\t%"PRIu64"\t%u\t%u\t%s\t", mtype->name, bh->b_blocknr, field->offset, field->length, field->name);
 	if (field->flags & LGFS2_MFF_UUID) {
-		printf("'%s'\n", str_uuid((const unsigned char *)fieldp));
+#ifdef GFS2_HAS_UUID
+		char readable_uuid[36+1];
+		uuid_t uuid;
+
+		memcpy(uuid, fieldp, sizeof(uuid_t));
+		uuid_unparse(uuid, readable_uuid);
+		printf("'%s'\n", readable_uuid);
+#endif
 	} else if (field->flags & LGFS2_MFF_STRING) {
 		printf("'%s'\n", fieldp);
 	} else {
@@ -431,40 +441,6 @@ static struct lgfs2_lang_result *ast_interp_get(struct lgfs2_lang_state *state,
 }
 
 /**
- * Interpret a UUID string by removing hyphens from the string and then
- * interprets 16 pairs of hex digits as octets.
- */
-static int ast_str_to_uuid(const char *str, uint8_t *uuid)
-{
-	char s[33];
-	int head, tail, tmp;
-
-	for (head = tail = 0; head < strlen(str) && tail < 33; head++) {
-		if (str[head] == '-')
-			continue;
-		s[tail] = tolower(str[head]);
-		if (!((s[tail] >= 'a' && s[tail] <= 'f') ||
-		      (s[tail] >= '0' && s[tail] <= '9')))
-			goto invalid;
-		tail++;
-	}
-	if (tail != 32) {
-		goto invalid;
-	}
-	s[tail] = '\0';
-	for (head = 0; head < 16; head++) {
-		if (sscanf(s+(head*2), "%02x", &tmp) != 1) {
-			goto invalid;
-		}
-		*(uuid + head) = tmp;
-	}
-	return AST_INTERP_SUCCESS;
-invalid:
-	fprintf(stderr, "Invalid UUID\n");
-	return AST_INTERP_INVAL;
-}
-
-/**
  * Set a field of a gfs2 block of a given type to a given value.
  * Returns AST_INTERP_* to signal success, an invalid field/value or an error.
  */
@@ -474,12 +450,18 @@ static int ast_field_set(struct gfs2_buffer_head *bh, const struct lgfs2_metafie
 	int err = 0;
 
 	if (field->flags & LGFS2_MFF_UUID) {
-		uint8_t uuid[16];
-		int ret = ast_str_to_uuid(val->ast_str, uuid);
+#ifdef GFS2_HAS_UUID
+		uuid_t uuid;
 
-		if (ret != AST_INTERP_SUCCESS)
-			return ret;
+		if (uuid_parse(val->ast_str, uuid) != 0) {
+			fprintf(stderr, "Invalid UUID\n");
+			return AST_INTERP_INVAL;
+		}
 		err = lgfs2_field_assign(bh->b_data, field, uuid);
+#else
+		fprintf(stderr, "No UUID support\n");
+		err = 1;
+#endif
 	} else if (field->flags & LGFS2_MFF_STRING) {
 		err = lgfs2_field_assign(bh->b_data, field, val->ast_str);
 	} else {

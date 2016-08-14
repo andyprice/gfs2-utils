@@ -35,4 +35,7 @@ fsck_gfs2_CPPFLAGS = \
 	-I$(top_srcdir)/gfs2/include \
 	-I$(top_srcdir)/gfs2/libgfs2
 
-fsck_gfs2_LDADD = $(top_builddir)/gfs2/libgfs2/libgfs2.la
+fsck_gfs2_LDADD = \
+	$(top_builddir)/gfs2/libgfs2/libgfs2.la
+fsck_gfs2_LDFLAGS = \
+	$(uuid_LIBS)
