@@ -924,8 +924,7 @@ static off_t restore_init(gzFile gzfd, struct savemeta_header *smh)
 	size_t rs;
 	char buf[256];
 	off_t startpos = 0;
-	struct saved_metablock *svb;
-	struct gfs2_meta_header *sbmh;
+	struct gfs2_meta_header sbmh;
 
 	err = read_header(gzfd, smh);
 	if (err < 0) {
@@ -943,14 +942,15 @@ static off_t restore_init(gzFile gzfd, struct savemeta_header *smh)
 		exit(1);
 	}
 	/* Scan for the beginning of the file body. Required to support old formats(?). */
-	for (i = 0; i < (256 - sizeof(*svb) - sizeof(*sbmh)); i++) {
-		svb = (struct saved_metablock *)&buf[i];
-		sbmh = (struct gfs2_meta_header *)svb->buf;
-		if (sbmh->mh_magic == cpu_to_be32(GFS2_MAGIC) &&
-		     sbmh->mh_type == cpu_to_be32(GFS2_METATYPE_SB))
+	for (i = 0; i < (256 - sizeof(struct saved_metablock) - sizeof(sbmh)); i++) {
+		off_t off = i + sizeof(struct saved_metablock);
+
+		memcpy(&sbmh, &buf[off], sizeof(sbmh));
+		if (sbmh.mh_magic == cpu_to_be32(GFS2_MAGIC) &&
+		     sbmh.mh_type == cpu_to_be32(GFS2_METATYPE_SB))
 			break;
 	}
-	if (i == (sizeof(buf) - sizeof(*svb) - sizeof(*sbmh)))
+	if (i == (sizeof(buf) - sizeof(struct saved_metablock) - sizeof(sbmh)))
 		i = 0;
 	return startpos + i; /* File offset of saved sb */
 }
