@@ -44,7 +44,6 @@ struct savemeta_header {
 struct saved_metablock {
 	uint64_t blk;
 	uint16_t siglen; /* significant data length */
-	char buf[];
 /* This needs to be packed because old versions of gfs2_edit read and write the
    individual fields separately, so the hole after siglen must be eradicated
    before the struct reflects what's on disk. */
@@ -435,7 +434,7 @@ static int save_bh(struct metafd *mfd, struct gfs2_buffer_head *savebh, uint64_t
 	}
 	savedata->blk = cpu_to_be64(savebh->b_blocknr);
 	savedata->siglen = cpu_to_be16(blklen);
-	memcpy(savedata->buf, savebh->b_data, blklen);
+	memcpy(savedata + 1, savebh->b_data, blklen);
 
 	if (savemetawrite(mfd, savedata, outsz) != outsz) {
 		fprintf(stderr, "write error: %s from %s:%d: block %lld (0x%llx)\n",
@@ -956,7 +955,7 @@ static off_t restore_init(gzFile gzfd, struct savemeta_header *smh)
 }
 
 
-static int restore_block(gzFile gzfd, struct saved_metablock *svb, uint16_t maxlen)
+static int restore_block(gzFile gzfd, struct saved_metablock *svb, char *buf, uint16_t maxlen)
 {
 	int gzerr;
 	int ret;
@@ -988,8 +987,8 @@ static int restore_block(gzFile gzfd, struct saved_metablock *svb, uint16_t maxl
 		return -1;
 	}
 
-	if (maxlen) {
-		ret = gzread(gzfd, svb + 1, svb->siglen);
+	if (buf != NULL && maxlen != 0) {
+		ret = gzread(gzfd, buf, svb->siglen);
 		if (ret < svb->siglen) {
 			goto gzread_err;
 		}
@@ -1011,17 +1010,16 @@ gzread_err:
 static int restore_super(gzFile gzfd, off_t pos)
 {
 	int ret;
-	struct saved_metablock *svb;
+	struct saved_metablock svb = {0};
 	struct gfs2_buffer_head dummy_bh;
-	size_t len = sizeof(*svb) + sizeof(struct gfs2_sb);
 
-	svb = calloc(1, len);
-	if (svb == NULL) {
+	dummy_bh.b_data = calloc(1, sizeof(struct gfs2_sb));
+	if (dummy_bh.b_data == NULL) {
 		perror("Failed to restore super block");
 		exit(1);
 	}
 	gzseek(gzfd, pos, SEEK_SET);
-	ret = restore_block(gzfd, svb, sizeof(struct gfs2_sb));
+	ret = restore_block(gzfd, &svb, dummy_bh.b_data, sizeof(struct gfs2_sb));
 	if (ret == 1) {
 		fprintf(stderr, "Reached end of file while restoring superblock\n");
 		goto err;
@@ -1029,7 +1027,6 @@ static int restore_super(gzFile gzfd, off_t pos)
 		goto err;
 	}
 
-	dummy_bh.b_data = (char *)svb->buf;
 	gfs2_sb_in(&sbd.sd_sb, &dummy_bh);
 	sbd1 = (struct gfs_sb *)&sbd.sd_sb;
 	ret = check_sb(&sbd.sd_sb);
@@ -1040,11 +1037,11 @@ static int restore_super(gzFile gzfd, off_t pos)
 	if (ret == 1)
 		sbd.gfs1 = 1;
 	sbd.bsize = sbd.sd_sb.sb_bsize;
-	free(svb);
+	free(dummy_bh.b_data);
 	printf("Block size is %uB\n", sbd.bsize);
 	return 0;
 err:
-	free(svb);
+	free(dummy_bh.b_data);
 	return -1;
 }
 
@@ -1056,7 +1053,7 @@ static int find_highest_block(gzFile gzfd, off_t pos, uint64_t fssize)
 
 	while (1) {
 		gzseek(gzfd, pos, SEEK_SET);
-		err = restore_block(gzfd, &svb, 0);
+		err = restore_block(gzfd, &svb, NULL, 0);
 		if (err == 1)
 			break;
 		if (err != 0)
@@ -1081,12 +1078,12 @@ static int find_highest_block(gzFile gzfd, off_t pos, uint64_t fssize)
 
 static int restore_data(int fd, gzFile gzin_fd, off_t pos, int printonly)
 {
-	struct saved_metablock *savedata;
-	size_t insz = sizeof(*savedata) + sbd.bsize;
+	struct saved_metablock savedata = {0};
 	uint64_t writes = 0;
+	char *buf;
 
-	savedata = calloc(1, insz);
-	if (savedata == NULL) {
+	buf = calloc(1, sbd.bsize);
+	if (buf == NULL) {
 		perror("Failed to restore data");
 		exit(1);
 	}
@@ -1095,36 +1092,36 @@ static int restore_data(int fd, gzFile gzin_fd, off_t pos, int printonly)
 	blks_saved = 0;
 	while (TRUE) {
 		int err;
-		err = restore_block(gzin_fd, savedata, sbd.bsize);
+		err = restore_block(gzin_fd, &savedata, buf, sbd.bsize);
 		if (err == 1)
 			break;
 		if (err != 0) {
-			free(savedata);
+			free(buf);
 			return -1;
 		}
 
 		if (printonly) {
 			struct gfs2_buffer_head dummy_bh = {
-				.b_data = savedata->buf,
-				.b_blocknr = savedata->blk,
+				.b_data = buf,
+				.b_blocknr = savedata.blk,
 			};
-			if (printonly > 1 && printonly == savedata->blk) {
+			if (printonly > 1 && printonly == savedata.blk) {
 				display_block_type(&dummy_bh, TRUE);
 				display_gfs2(&dummy_bh);
 				break;
 			} else if (printonly == 1) {
-				print_gfs2("%"PRId64" (l=0x%x): ", blks_saved, savedata->siglen);
+				print_gfs2("%"PRId64" (l=0x%x): ", blks_saved, savedata.siglen);
 				display_block_type(&dummy_bh, TRUE);
 			}
 		} else {
-			warm_fuzzy_stuff(savedata->blk, FALSE);
-			memset(savedata->buf + savedata->siglen, 0, sbd.bsize - savedata->siglen);
-			if (pwrite(fd, savedata->buf, sbd.bsize, savedata->blk * sbd.bsize) != sbd.bsize) {
+			warm_fuzzy_stuff(savedata.blk, FALSE);
+			memset(buf + savedata.siglen, 0, sbd.bsize - savedata.siglen);
+			if (pwrite(fd, buf, sbd.bsize, savedata.blk * sbd.bsize) != sbd.bsize) {
 				fprintf(stderr, "write error: %s from %s:%d: block %lld (0x%llx)\n",
 					strerror(errno), __FUNCTION__, __LINE__,
-					(unsigned long long)savedata->blk,
-					(unsigned long long)savedata->blk);
-				free(savedata);
+					(unsigned long long)savedata.blk,
+					(unsigned long long)savedata.blk);
+				free(buf);
 				return -1;
 			}
 			writes++;
@@ -1135,7 +1132,7 @@ static int restore_data(int fd, gzFile gzin_fd, off_t pos, int printonly)
 	}
 	if (!printonly)
 		warm_fuzzy_stuff(sbd.fssize, 1);
-	free(savedata);
+	free(buf);
 	return 0;
 }
 
