@@ -170,9 +170,12 @@ static int check_statfs(struct gfs2_sbd *sdp)
 	/* Read the current statfs values */
 	count = gfs2_readi(sdp->md.statfs, buf, 0,
 			   sdp->md.statfs->i_di.di_size);
-	if (count == sizeof(struct gfs2_statfs_change))
-		gfs2_statfs_change_in(&sc, buf);
-
+	if (count != sizeof(struct gfs2_statfs_change)) {
+		log_err(_("Failed to read statfs values (%d of %"PRIu64" read)\n"),
+		        count, (uint64_t)sdp->md.statfs->i_di.di_size);
+		return FSCK_ERROR;
+	}
+	gfs2_statfs_change_in(&sc, buf);
 	/* Calculate the real values from the rgrp information */
 	sdp->blks_total = 0;
 	sdp->blks_alloced = 0;
