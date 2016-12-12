@@ -539,12 +539,41 @@ static void save_indirect_blocks(struct metafd *mfd, osi_list_t *cur_list,
 	} /* for all data on the indirect block */
 }
 
+static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, uint64_t blk)
+{
+	struct gfs2_buffer_head *bh;
+	struct gfs2_leaf leaf;
+
+	do {
+		if (gfs2_check_range(sdp, blk) != 0)
+			return 0;
+		bh = bread(sdp, blk);
+		if (bh == NULL) {
+			perror("Failed to read leaf block");
+			return 1;
+		}
+		warm_fuzzy_stuff(blk, FALSE);
+		if (gfs2_check_meta(bh, GFS2_METATYPE_LF) == 0) {
+			int ret = save_bh(mfd, bh, blk, NULL);
+			if (ret != 0) {
+				brelse(bh);
+				return ret;
+			}
+		}
+		gfs2_leaf_in(&leaf, bh);
+		brelse(bh);
+		blk = leaf.lf_next;
+	} while (leaf.lf_next != 0);
+
+	return 0;
+}
+
 /*
  * save_inode_data - save off important data associated with an inode
  *
  * mfd - destination file descriptor
  * iblk - block number of the inode to save the data for
- * 
+ *
  * For user files, we don't want anything except all the indirect block
  * pointers that reside on blocks on all but the highest height.
  *
@@ -626,15 +655,9 @@ static void save_inode_data(struct metafd *mfd, uint64_t iblk)
 				        (uint64_t)inode->i_di.di_num.no_addr);
 				exit(-1);
 			}
-			if (leaf_no == old_leaf ||
-			    gfs2_check_range(&sbd, leaf_no) != 0)
-				continue;
+			if (leaf_no != old_leaf && save_leaf_chain(mfd, &sbd, leaf_no) != 0)
+				exit(-1);
 			old_leaf = leaf_no;
-			mybh = bread(&sbd, leaf_no);
-			warm_fuzzy_stuff(iblk, FALSE);
-			if (gfs2_check_meta(mybh, GFS2_METATYPE_LF) == 0)
-				save_block(sbd.device_fd, mfd, leaf_no, iblk, NULL);
-			brelse(mybh);
 		}
 	}
 	if (inode->i_di.di_eattr) { /* if this inode has extended attributes */
