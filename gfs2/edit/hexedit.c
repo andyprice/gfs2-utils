@@ -2167,6 +2167,7 @@ static void usage(void)
 	fprintf(stderr,"rgflags rgnum [new flags] - print or modify flags for rg #rgnum (0 - X)\n");
 	fprintf(stderr,"rgbitmaps <rgnum> - print out the bitmaps for rgrp "
 		"rgnum.\n");
+	fprintf(stderr,"rgrepair - find and repair damaged rgrp.\n");
 	fprintf(stderr,"-V   prints version number.\n");
 	fprintf(stderr,"-c 1 selects alternate color scheme 1\n");
 	fprintf(stderr,"-d   prints details (for printing journals)\n");
@@ -2259,6 +2260,135 @@ static void getgziplevel(char *argv[], int *i)
 	(*i)++;
 }
 
+static int count_dinode_blks(struct rgrp_tree *rgd, int bitmap,
+			     struct gfs2_buffer_head *rbh)
+{
+	struct gfs2_buffer_head *tbh;
+	uint64_t b;
+	int dinodes = 0;
+	char *byte, cur_state, new_state;
+	int bit, off;
+
+	if (bitmap)
+		off = sizeof(struct gfs2_meta_header);
+	else
+		off = sizeof(struct gfs2_rgrp);
+
+	for (b = 0; b < rgd->bits[bitmap].bi_len << GFS2_BIT_SIZE; b++) {
+		tbh = bread(&sbd, rgd->ri.ri_data0 +
+			    rgd->bits[bitmap].bi_start + b);
+		byte = rbh->b_data + off + (b / GFS2_NBBY);
+		bit = (b % GFS2_NBBY) * GFS2_BIT_SIZE;
+		if (gfs2_check_meta(tbh, GFS2_METATYPE_DI) == 0) {
+			dinodes++;
+			new_state = GFS2_BLKST_DINODE;
+		} else {
+			new_state = GFS2_BLKST_USED;
+		}
+		cur_state = (*byte >> bit) & GFS2_BIT_MASK;
+		*byte ^= cur_state << bit;
+		*byte |= new_state << bit;
+		brelse(tbh);
+	}
+	bmodified(rbh);
+	return dinodes;
+}
+
+static int count_dinode_bits(struct gfs2_buffer_head *rbh)
+{
+	uint64_t blk;
+	struct gfs2_meta_header *mh = (struct gfs2_meta_header *)rbh->b_data;
+	char *byte;
+	int bit;
+	int dinodes = 0;
+
+	if (be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RG)
+		blk = sizeof(struct gfs2_rgrp);
+	else
+		blk = sizeof(struct gfs2_meta_header);
+
+	for (; blk < sbd.bsize; blk++) {
+		byte = rbh->b_data + (blk / GFS2_NBBY);
+		bit = (blk % GFS2_NBBY) * GFS2_BIT_SIZE;
+		if (((*byte >> bit) & GFS2_BIT_MASK) == GFS2_BLKST_DINODE)
+			dinodes++;
+	}
+	return dinodes;
+}
+
+static void rg_repair(void)
+{
+	struct gfs2_buffer_head *rbh;
+	struct rgrp_tree *rgd;
+	struct osi_node *n;
+	int b;
+	int rgs_fixed = 0;
+	int dinodes_found = 0, dinodes_total = 0;
+
+	/* Walk through the resource groups saving everything within */
+	for (n = osi_first(&sbd.rgtree); n; n = osi_next(n)) {
+		rgd = (struct rgrp_tree *)n;
+		if (gfs2_rgrp_read(&sbd, rgd) == 0) { /* was read in okay */
+			gfs2_rgrp_relse(rgd);
+			continue; /* ignore it */
+		}
+		/* If we get here, it's because we have an rgrp in the rindex
+		   file that can't be read in. So attempt to repair it.
+		   If we find a damaged rgrp or bitmap, fix the metadata.
+		   Then scan all its blocks: if we find a dinode, set the
+		   repaired bitmap to GFS2_BLKST_DINODE. Set all others to
+		   GFS2_BLKST_USED so fsck can sort it out. If we set them
+		   to FREE, fsck would just nuke it all. */
+		printf("Resource group at block %llu (0x%llx) appears to be "
+		       "damaged. Attempting to fix it (in reverse order).\n",
+		       (unsigned long long)rgd->ri.ri_addr,
+		       (unsigned long long)rgd->ri.ri_addr);
+
+		for (b = rgd->ri.ri_length - 1; b >= 0; b--) {
+			int mtype = (b ? GFS2_METATYPE_RB : GFS2_METATYPE_RG);
+			struct gfs2_meta_header *mh;
+
+			printf("Bitmap #%d:", b);
+			rbh = bread(&sbd, rgd->ri.ri_addr + b);
+			if (gfs2_check_meta(rbh, mtype)) { /* wrong type */
+				printf("Damaged. Repairing...");
+				/* Fix the meta header */
+				memset(rbh->b_data, 0, sbd.bsize);
+				mh = (struct gfs2_meta_header *)rbh->b_data;
+				mh->mh_magic = cpu_to_be32(GFS2_MAGIC);
+				mh->mh_type = cpu_to_be32(mtype);
+				if (b)
+					mh->mh_format =
+						cpu_to_be32(GFS2_FORMAT_RB);
+				else
+					mh->mh_format =
+						cpu_to_be32(GFS2_FORMAT_RG);
+				bmodified(rbh);
+				/* Count the dinode blocks */
+				dinodes_found = count_dinode_blks(rgd, b, rbh);
+			} else { /* bitmap info is okay: tally it. */
+				printf("Undamaged. Analyzing...");
+				dinodes_found = count_dinode_bits(rbh);
+			}
+			printf("Dinodes found: %d\n", dinodes_found);
+			dinodes_total += dinodes_found;
+			if (b == 0) { /* rgrp itself was damaged */
+				rgd->rg.rg_dinodes = dinodes_total;
+				rgd->rg.rg_free = 0;
+			}
+			brelse(rbh);
+		}
+		rgs_fixed++;
+	}
+	if (rgs_fixed)
+		printf("%d resource groups fixed.\n"
+		       "You should run fsck.gfs2 to reconcile the bitmaps.\n",
+		       rgs_fixed);
+	else
+		printf("All resource groups are okay. No repairs needed.\n");
+	exit(0);
+}
+
 /* ------------------------------------------------------------------------ */
 /* parameterpass1 - pre-processing for command-line parameters              */
 /* ------------------------------------------------------------------------ */
@@ -2306,6 +2436,8 @@ static void parameterpass1(int argc, char *argv[], int i)
 	} else if (!strcmp(argv[i], "rgcount"))
 		termlines = 0;
 	else if (!strcmp(argv[i], "rgflags"))
+		termlines = 0;
+	else if (!strcmp(argv[i], "rgrepair"))
 		termlines = 0;
 	else if (!strcmp(argv[i], "rg"))
 		termlines = 0;
@@ -2483,6 +2615,8 @@ static void process_parameters(int argc, char *argv[], int pass)
 			for (bmap = 0; bmap < rgd->ri.ri_length; bmap++)
 				push_block(rgblk + bmap);
 		}
+		else if (!strcmp(argv[i], "rgrepair"))
+			rg_repair();
 		else if (!strcasecmp(argv[i], "savemeta")) {
 			getgziplevel(argv, &i);
 			savemeta(argv[i+2], 0, gziplevel);
