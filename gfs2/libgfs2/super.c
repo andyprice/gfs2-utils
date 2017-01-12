@@ -127,6 +127,59 @@ int read_sb(struct gfs2_sbd *sdp)
 	return 0;
 }
 
+/* rgd_seems_sane - check some general things about the rindex entry
+ *
+ * If rg lengths are not consistent, it's not sane (or it's converted from
+ * gfs1). The first RG will be a different length due to space reserved for
+ * the superblock, so we can't detect this until we check rgrp 3, when we
+ * can compare the distance between rgrp 1 and rgrp 2.
+ *
+ * Returns: 1 if the rgd seems relatively sane
+ */
+static int rgd_seems_sane(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
+{
+	uint32_t most_bitmaps_possible;
+
+	/* rg length must be at least 1 */
+	if (rgd->ri.ri_length == 0)
+		return 0;
+
+	/* A max rgrp, 2GB, divided into blocksize, divided by blocks/byte
+	   represented in the bitmap, NBBY. Rough approximation only, due to
+	   metadata headers. I'm doing the math this way to avoid overflow. */
+	most_bitmaps_possible = (GFS2_MAX_RGSIZE * 1024 * 256) / sdp->bsize;
+	if (rgd->ri.ri_length > most_bitmaps_possible)
+		return 0;
+
+	if (rgd->ri.ri_data0 != rgd->ri.ri_addr + rgd->ri.ri_length)
+		return 0;
+
+	if (rgd->ri.ri_bitbytes != rgd->ri.ri_data / GFS2_NBBY)
+		return 0;
+
+	return 1;
+}
+
+/* good_on_disk - check if the rindex points to what looks like an rgrp on disk
+ *
+ * This is only called when the rindex pointers aren't spaced evenly, which
+ * isn't often. The rindex is pointing to an unexpected location, so we
+ * check if the block it is pointing to is really an rgrp. If so, we count the
+ * rindex entry as "sane" (after all, it did pass the previous checks above.)
+ * If not, we count it as not sane, and therefore, the whole rindex is not to
+ * be trusted by fsck.gfs2.
+ */
+static int good_on_disk(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
+{
+	struct gfs2_buffer_head *bh;
+	int is_rgrp;
+
+	bh = bread(sdp, rgd->ri.ri_addr);
+	is_rgrp = (gfs2_check_meta(bh, GFS2_METATYPE_RG) == 0);
+	brelse(bh);
+	return is_rgrp;
+}
+
 /**
  * rindex_read - read in the rg index file
  * @sdp: the incore superblock pointer
@@ -182,17 +235,12 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, uint64_t *count1, int *sane)
 			if (!sdp->gfs1) {
 				if (prev_rgd->start >= rgd->start)
 					*sane = 0;
-				/* If rg lengths are not consistent, it's not
-				   sane (or it's converted from gfs1).  The
-				   first RG will be a different length due to
-				   space allocated for the superblock, so we
-				   can't detect this until we check rgrp 3,
-				   when we can compare the distance between
-				   rgrp 1 and rgrp 2. */
-				if (rg > 2 && prev_length &&
+				else if (!rgd_seems_sane(sdp, rgd))
+					*sane = 0;
+				else if (*sane && rg > 2 && prev_length &&
 				    prev_length != rgd->start -
 				    prev_rgd->start)
-					*sane = 0;
+					*sane = good_on_disk(sdp, rgd);
 			}
 			prev_length = rgd->start - prev_rgd->start;
 			prev_rgd->length = rgrp_size(prev_rgd);
