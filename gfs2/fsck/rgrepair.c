@@ -164,6 +164,8 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 				/* That last one didn't pan out, so: */
 				dist_cnt[gsegment]--;
 				gsegment++;
+				if (gsegment >= MAX_RGSEGMENTS)
+					break;
 			}
 			if ((blk - block_last_rg) > (524288 * 2)) {
 				log_info(_("No rgrps were found within 4GB "
@@ -217,6 +219,8 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 			}
 		} else {
 			gsegment++;
+			if (gsegment >= MAX_RGSEGMENTS)
+				break;
 		}
 		block_last_rg = blk;
 		if (rgs_sampled < 6)
@@ -224,7 +228,7 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 		else
 			blk += shortest_dist_btwn_rgs - 1;
 	}
-	if (gsegment > MAX_RGSEGMENTS) {
+	if (gsegment >= MAX_RGSEGMENTS) {
 		log_err(_("Maximum number of rgrp grow segments reached.\n"));
 		log_err(_("This file system cannot be repaired with fsck.\n"));
 		gsegment = 0;
