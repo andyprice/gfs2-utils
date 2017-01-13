@@ -230,9 +230,8 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 	}
 	if (gsegment >= MAX_RGSEGMENTS) {
 		log_err(_("Maximum number of rgrp grow segments reached.\n"));
-		log_err(_("This file system cannot be repaired with fsck.\n"));
-		gsegment = 0;
-		goto out;
+		log_err(_("This file system has more than %d resource "
+			  "group segments.\n"), MAX_RGSEGMENTS);
 	}
 	/* -------------------------------------------------------------- */
 	/* Sanity-check our first_rg_dist. If RG #2 got nuked, the        */
@@ -260,7 +259,6 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 			   (unsigned long long)*dist_array);
 	} /* if first RG distance is within tolerance */
 
-out:
 	gfs2_special_free(&false_rgrps);
 	return gsegment;
 }
