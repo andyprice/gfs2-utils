@@ -1137,10 +1137,14 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 			next = osi_next(n);
 		enext = osi_next(e);
 		expected = (struct rgrp_tree *)e;
+		actual = (struct rgrp_tree *)n;
 
-		/* If we ran out of actual rindex entries due to rindex
+		/* If the next "actual" rgrp in memory is too far away,
+		   fill in a new one with the expected value. -or-
+		   If we ran out of actual rindex entries due to rindex
 		   damage, fill in a new one with the expected values. */
-		if (!n) { /* end of actual rindex */
+		if (!n || /* end of actual rindex */
+		    expected->ri.ri_addr < actual->ri.ri_addr) {
 			log_err( _("Entry missing from rindex: 0x%llx\n"),
 				 (unsigned long long)expected->ri.ri_addr);
 			actual = rgrp_insert(&sdp->rgtree,
@@ -1150,8 +1154,9 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 				break;
 			}
 			rindex_modified = 1;
+			next = n; /* Ensure that the old actual gets checked
+				     against a new expected, since we added */
 		} else {
-			actual = (struct rgrp_tree *)n;
 			ri_compare(rg, actual->ri, expected->ri, ri_addr,
 				   "llx", unsigned long long);
 			ri_compare(rg, actual->ri, expected->ri, ri_length,
