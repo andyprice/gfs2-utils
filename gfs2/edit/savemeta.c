@@ -417,7 +417,8 @@ static int save_bh(struct metafd *mfd, struct gfs2_buffer_head *savebh, uint64_t
 	   because we want to know if the source inode is a system inode
 	   not the block within the inode "blk". They may or may not
 	   be the same thing. */
-	if (get_gfs_struct_info(savebh, owner, blktype, &blklen) && !block_is_systemfile(owner))
+	if (get_gfs_struct_info(savebh, owner, blktype, &blklen) &&
+	    !block_is_systemfile(owner) && owner != 0)
 		return 0; /* Not metadata, and not system file, so skip it */
 
 	/* No need to save trailing zeroes */
@@ -770,12 +771,41 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 	free(ibuf);
 }
 
+/* We don't use gfs2_rgrp_read() here as it checks for metadata sanity and we
+   want to save rgrp headers even if they're corrupt. */
+static int rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
+{
+	unsigned x, length = rgd->ri.ri_length;
+	struct gfs2_buffer_head **bhs;
+
+	if (length == 0 || gfs2_check_range(sdp, rgd->ri.ri_addr))
+		return -1;
+
+	bhs = calloc(length, sizeof(struct gfs2_buffer_head *));
+	if (bhs == NULL)
+		return -1;
+
+	if (breadm(sdp, bhs, length, rgd->ri.ri_addr)) {
+		free(bhs);
+		return -1;
+	}
+	for (x = 0; x < length; x++)
+		rgd->bits[x].bi_bh = bhs[x];
+
+	if (sdp->gfs1)
+		gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
+	else
+		gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_bh);
+	free(bhs);
+	return 0;
+}
+
 static void save_rgrp(struct metafd *mfd, struct rgrp_tree *rgd, int withcontents)
 {
 	uint64_t addr = rgd->ri.ri_addr;
 	uint32_t i;
 
-	if (gfs2_rgrp_read(&sbd, rgd))
+	if (rgrp_read(&sbd, rgd))
 		return;
 	log_debug("RG at %"PRIu64" (0x%"PRIx64") is %u long\n",
 		  addr, addr, rgd->ri.ri_length);
