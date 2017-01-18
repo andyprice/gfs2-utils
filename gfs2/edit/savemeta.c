@@ -770,6 +770,26 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 	free(ibuf);
 }
 
+static void save_rgrp(struct metafd *mfd, struct rgrp_tree *rgd, int withcontents)
+{
+	uint64_t addr = rgd->ri.ri_addr;
+	uint32_t i;
+
+	if (gfs2_rgrp_read(&sbd, rgd))
+		return;
+	log_debug("RG at %"PRIu64" (0x%"PRIx64") is %u long\n",
+		  addr, addr, rgd->ri.ri_length);
+	/* Save the rg and bitmaps */
+	for (i = 0; i < rgd->ri.ri_length; i++) {
+		warm_fuzzy_stuff(rgd->ri.ri_addr + i, FALSE);
+		save_bh(mfd, rgd->bits[i].bi_bh, 0, NULL);
+	}
+	/* Save the other metadata: inodes, etc. if mode is not 'savergs' */
+	if (withcontents)
+		save_allocated(rgd, mfd);
+	gfs2_rgrp_relse(rgd);
+}
+
 static int save_header(struct metafd *mfd, uint64_t fsbytes)
 {
 	struct savemeta_header smh = {
@@ -878,25 +898,9 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	/* Walk through the resource groups saving everything within */
 	for (n = osi_first(&sbd.rgtree); n; n = osi_next(n)) {
 		struct rgrp_tree *rgd;
-		unsigned i;
 
 		rgd = (struct rgrp_tree *)n;
-		if (gfs2_rgrp_read(&sbd, rgd))
-			continue;
-		log_debug("RG at %lld (0x%llx) is %u long\n",
-			  (unsigned long long)rgd->ri.ri_addr,
-			  (unsigned long long)rgd->ri.ri_addr,
-			  rgd->ri.ri_length);
-		/* Save off the rg and bitmaps */
-		for (i = 0; i < rgd->ri.ri_length; i++) {
-			warm_fuzzy_stuff(rgd->ri.ri_addr + i, FALSE);
-			save_bh(&mfd, rgd->bits[i].bi_bh, 0, NULL);
-		}
-		/* Save off the other metadata: inodes, etc. if mode is not 'savergs' */
-		if (saveoption != 2) {
-			save_allocated(rgd, &mfd);
-		}
-		gfs2_rgrp_relse(rgd);
+		save_rgrp(&mfd, rgd, (saveoption != 2));
 	}
 	/* Clean up */
 	/* There may be a gap between end of file system and end of device */
