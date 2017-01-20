@@ -1,4 +1,4 @@
-EXTRA_DIST = autogen.sh README.build
+EXTRA_DIST = autogen.sh README
 
 AUTOMAKE_OPTIONS = foreign
 
