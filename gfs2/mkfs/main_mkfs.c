@@ -256,6 +256,33 @@ static unsigned parse_bool(struct mkfs_opts *opts, const char *key, const char *
 	exit(-1);
 }
 
+static int parse_topology(struct mkfs_opts *opts, char *str)
+{
+	char *opt;
+	unsigned i = 0;
+	unsigned long *topol[5] = {
+		&opts->dev.alignment_offset,
+		&opts->dev.logical_sector_size,
+		&opts->dev.minimum_io_size,
+		&opts->dev.optimal_io_size,
+		&opts->dev.physical_sector_size
+	};
+
+	while ((opt = strsep(&str, ":")) != NULL) {
+		if (i > 4) {
+			fprintf(stderr, "Too many topology values.\n");
+			return 1;
+		}
+		*topol[i] = parse_ulong(opts, "test_topology", opt);
+		i++;
+	}
+	if (i < 5) {
+		fprintf(stderr, "Too few topology values.\n");
+		return 1;
+	}
+	return 0;
+}
+
 static void opt_parse_extended(char *str, struct mkfs_opts *opts)
 {
 	char *opt;
@@ -274,6 +301,10 @@ static void opt_parse_extended(char *str, struct mkfs_opts *opts)
 			opts->got_swidth = 1;
 		} else if (strcmp("align", key) == 0) {
 			opts->align = parse_bool(opts, "align", val);
+		} else if (strcmp("test_topology", key) == 0) {
+			if (parse_topology(opts, val) != 0)
+				exit(-1);
+			opts->dev.got_topol = 1;
 		} else if (strcmp("help", key) == 0) {
 			print_ext_opts();
 			exit(0);
@@ -854,7 +885,7 @@ static int probe_contents(struct mkfs_dev *dev)
 	return 0;
 }
 
-static void open_dev(struct mkfs_dev *dev)
+static void open_dev(struct mkfs_dev *dev, int withprobe)
 {
 	int error;
 
@@ -882,9 +913,7 @@ static void open_dev(struct mkfs_dev *dev)
 		fprintf(stderr, _("'%s' is not a block device or regular file\n"), dev->path);
 		exit(1);
 	}
-
-	error = probe_contents(dev);
-	if (error)
+	if (withprobe && (probe_contents(dev) != 0))
 		exit(1);
 }
 
@@ -905,7 +934,7 @@ int main(int argc, char *argv[])
 	opts_get(argc, argv, &opts);
 	opts_check(&opts);
 
-	open_dev(&opts.dev);
+	open_dev(&opts.dev, !opts.dev.got_topol);
 	bsize = choose_blocksize(&opts);
 
 	if (S_ISREG(opts.dev.stat.st_mode)) {
