@@ -495,7 +495,11 @@ static unsigned choose_blocksize(struct mkfs_opts *opts)
 		printf("optimal_io_size: %lu\n", dev->optimal_io_size);
 		printf("physical_sector_size: %lu\n", dev->physical_sector_size);
 	}
-
+	if (dev->got_topol && dev->alignment_offset != 0) {
+		fprintf(stderr,
+		  _("Warning: device is not properly aligned. This may harm performance.\n"));
+		dev->physical_sector_size = dev->logical_sector_size;
+	}
 	if (!opts->got_bsize && dev->got_topol) {
 		if (dev->optimal_io_size <= getpagesize() &&
 		    dev->optimal_io_size >= dev->minimum_io_size)
