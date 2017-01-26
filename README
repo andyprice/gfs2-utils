@@ -20,7 +20,8 @@ The following development packages are required to build gfs2-utils:
  o flex
  o zlib
  o libblkid
- o check (optional, enables the test suite)
+ o libuuid
+ o check (optional, enables unit tests)
 
 The kernel header include/linux/gfs2-ondisk.h and its dependencies are also
 required.
@@ -50,6 +51,7 @@ gfs2-utils requires the following libraries:
  o zlib
  o ncurses
  o libblkid
+ o libuuid
 
 To install gfs2-utils, run:
 
