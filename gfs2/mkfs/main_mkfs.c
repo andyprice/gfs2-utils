@@ -136,6 +136,7 @@ struct mkfs_opts {
 	unsigned got_lockproto:1;
 	unsigned got_locktable:1;
 	unsigned got_device:1;
+	unsigned got_topol:1;
 
 	unsigned override:1;
 	unsigned quiet:1;
@@ -304,7 +305,8 @@ static void opt_parse_extended(char *str, struct mkfs_opts *opts)
 		} else if (strcmp("test_topology", key) == 0) {
 			if (parse_topology(opts, val) != 0)
 				exit(-1);
-			opts->dev.got_topol = 1;
+			opts->got_topol = (opts->dev.logical_sector_size != 0 &&
+	                                   opts->dev.physical_sector_size != 0);
 		} else if (strcmp("help", key) == 0) {
 			print_ext_opts();
 			exit(0);
@@ -487,20 +489,21 @@ static unsigned choose_blocksize(struct mkfs_opts *opts)
 	unsigned int x;
 	unsigned int bsize = opts->bsize;
 	struct mkfs_dev *dev = &opts->dev;
+	int got_topol = (dev->got_topol || opts->got_topol);
 
-	if (dev->got_topol && opts->debug) {
+	if (got_topol && opts->debug) {
 		printf("alignment_offset: %lu\n", dev->alignment_offset);
 		printf("logical_sector_size: %lu\n", dev->logical_sector_size);
 		printf("minimum_io_size: %lu\n", dev->minimum_io_size);
 		printf("optimal_io_size: %lu\n", dev->optimal_io_size);
 		printf("physical_sector_size: %lu\n", dev->physical_sector_size);
 	}
-	if (dev->got_topol && dev->alignment_offset != 0) {
+	if (got_topol && dev->alignment_offset != 0) {
 		fprintf(stderr,
 		  _("Warning: device is not properly aligned. This may harm performance.\n"));
 		dev->physical_sector_size = dev->logical_sector_size;
 	}
-	if (!opts->got_bsize && dev->got_topol) {
+	if (!opts->got_bsize && got_topol) {
 		if (dev->optimal_io_size <= getpagesize() &&
 		    dev->optimal_io_size >= dev->minimum_io_size)
 			bsize = dev->optimal_io_size;
@@ -887,7 +890,8 @@ static int probe_contents(struct mkfs_dev *dev)
 			dev->minimum_io_size = blkid_topology_get_minimum_io_size(tp);
 			dev->optimal_io_size = blkid_topology_get_optimal_io_size(tp);
 			dev->physical_sector_size = blkid_topology_get_physical_sector_size(tp);
-			dev->got_topol = 1;
+			dev->got_topol = (dev->logical_sector_size != 0 &&
+	                                  dev->physical_sector_size != 0);
 		}
 	}
 
@@ -944,7 +948,7 @@ int main(int argc, char *argv[])
 	opts_get(argc, argv, &opts);
 	opts_check(&opts);
 
-	open_dev(&opts.dev, !opts.dev.got_topol);
+	open_dev(&opts.dev, !opts.got_topol);
 	bsize = choose_blocksize(&opts);
 
 	if (S_ISREG(opts.dev.stat.st_mode)) {
