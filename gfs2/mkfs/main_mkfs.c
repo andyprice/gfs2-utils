@@ -629,8 +629,14 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 			al_off = opts->sunit / sdp->bsize;
 		}
 	} else if (opts->align) {
-		if ((opts->dev.minimum_io_size > opts->dev.physical_sector_size) &&
-		    (opts->dev.optimal_io_size > opts->dev.physical_sector_size)) {
+		if (opts->dev.optimal_io_size <= opts->dev.physical_sector_size ||
+		    opts->dev.minimum_io_size <= opts->dev.physical_sector_size ||
+		    (opts->dev.optimal_io_size % opts->dev.minimum_io_size) != 0) {
+			/* If optimal_io_size is not a multiple of minimum_io_size then
+			   the values are not reliable swidth and sunit values, so disable
+			   rgrp alignment */
+			opts->align = 0;
+		} else {
 			al_base = opts->dev.optimal_io_size / sdp->bsize;
 			al_off = opts->dev.minimum_io_size / sdp->bsize;
 		}
