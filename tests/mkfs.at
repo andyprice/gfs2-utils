@@ -101,3 +101,11 @@ AT_CHECK([$GFS_MKFS -p lock_dlm -t "quite_long_cluster_name_test_here:intec34p" 
 AT_CHECK([$GFS_MKFS -p lock_dlm -t "financial_cluster:this_time_we_test_fs_naming_len" $GFS_TGT], 255, [ignore], [ignore])
 GFS_FSCK_CHECK([$GFS_MKFS -p lock_dlm -t "a_really_long_named_cluster_here:concurrently_lets_check_fs_len" $GFS_TGT])
 AT_CLEANUP
+
+AT_SETUP([Device i/o limits handling])
+AT_KEYWORDS(mkfs.gfs2 mkfs)
+AT_CHECK([$GFS_MKFS -p lock_nolock -o test_topology=0:0:0:0:0 $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_nolock -o test_topology=7168:512:0:33553920:512 $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_nolock -o test_topology=7168:512:8192:33553920:512 $GFS_TGT], 0, [ignore], [Warning: device is not properly aligned. This may harm performance.
+])
+AT_CLEANUP
