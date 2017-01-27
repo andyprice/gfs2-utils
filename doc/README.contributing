@@ -6,9 +6,9 @@ Here are some brief guidelines to follow when contributing to gfs2-utils.
 Translations
 ------------
 
-We use the Transifex translation service:
+We use the Zanata translation service:
 
-    https://transifex.com/projects/p/gfs2-utils/
+    https://fedora.zanata.org/project/view/gfs2-utils
 
 See the documentation there for submitting translations.
 
@@ -25,7 +25,7 @@ We use git for managing our source code and we assume here that you're familiar
 with git. Patches should apply cleanly to the latest master branch of
 gfs2-utils.git
 
-    http://git.fedorahosted.org/cgit/gfs2-utils.git
+    https://pagure.io/gfs2-utils
 
 For ease of review and maintenance each of your patches should address a single
 issue and if there are multiple issues please consider spreading your work over
