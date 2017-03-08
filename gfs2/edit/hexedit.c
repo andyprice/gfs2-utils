@@ -2158,7 +2158,7 @@ static void usage(void)
 	fprintf(stderr,"If only the device is specified, it enters into hexedit mode.\n");
 	fprintf(stderr,"identify - prints out only the block type, not the details.\n");
 	fprintf(stderr,"printsavedmeta - prints out the saved metadata blocks from a savemeta file.\n");
-	fprintf(stderr,"savemeta <file_system> <file> - save off your metadata for analysis and debugging.\n");
+	fprintf(stderr,"savemeta <file_system> <file.gz> - save off your metadata for analysis and debugging.\n");
 	fprintf(stderr,"   (The intelligent way: assume bitmap is correct).\n");
 	fprintf(stderr,"savemetaslow - save off your metadata for analysis and debugging.  The SLOW way (block by block).\n");
 	fprintf(stderr,"savergs - save off only the resource group information (rindex and rgs).\n");
@@ -2227,8 +2227,8 @@ static void usage(void)
 	fprintf(stderr,"     gfs2_edit -p quota find di /dev/x/y\n");
 	fprintf(stderr,"   To set the Resource Group flags for rg #7 to 3.\n");
 	fprintf(stderr,"     gfs2_edit rgflags 7 3 /dev/sdc2\n");
-	fprintf(stderr,"   To save off all metadata for /dev/vg/lv without compression:\n");
-	fprintf(stderr,"     gfs2_edit savemeta -z 0 /dev/vg/lv /tmp/metasave\n");
+	fprintf(stderr,"   To save off all metadata for /dev/vg/lv:\n");
+	fprintf(stderr,"     gfs2_edit savemeta /dev/vg/lv /tmp/metasave.gz\n");
 }/* usage */
 
 /**
