@@ -159,11 +159,11 @@ If \fInew_value\fR is not specified, the current rg_flags value will be
 printed but not modified.  If \fInew_value\fR is specified, the rg_flags
 field will be overwritten with the new value.
 .TP
-\fBprintsavedmeta\fP \fI<filename>\fR
-Print off a list of blocks from <filename> that were saved with the savemeta
+\fBprintsavedmeta\fP \fI<filename.gz>\fR
+Print off a list of blocks from <filename.gz> that were saved with the savemeta
 option.
 .TP
-\fBsavemeta\fP \fI<device>\fR \fI<filename>\fR
+\fBsavemeta\fP \fI<device>\fR \fI<filename.gz>\fR
 Save off the GFS2 metadata (not user data) for the file system on the
 specified device to a file given by <filename>.  You can use this option
 to analyze file system problems without revealing sensitive information
@@ -174,14 +174,14 @@ in the bitmaps, resource groups or rindex file, this method may fail and
 you may need to use the savemetaslow option.  The destination file is
 compressed using gzip unless -z 0 is specified.
 .TP
-\fBsavemetaslow\fP \fI<device>\fR \fI<filename>\fR
+\fBsavemetaslow\fP \fI<device>\fR \fI<filename.gz>\fR
 Save off GFS2 metadata, as with the savemeta option, examining every
 block in the file system for metadata.  This option is less prone to failure
 due to file system corruption than the savemeta option, but it is 
 extremely slow.  The destination file is compressed using gzip unless
 -z 0 is specified.
 .TP
-\fBsavergs\fP \fI<device>\fR \fI<filename>\fR
+\fBsavergs\fP \fI<device>\fR \fI<filename.gz>\fR
 Save off only the GFS2 resource group metadata for the file system on the
 specified device to a file given by <filename>.  The destination file is
 compressed using gzip unless -z 0 is specified.
@@ -345,8 +345,8 @@ Print the resource group index system file located on device
 /dev/sda1.
 
 .TP
-gfs2_edit savemeta /dev/sda1 /tmp/our_fs
-Save off all metadata (but no user data) to file /tmp/our_fs.
+gfs2_edit savemeta /dev/sda1 /tmp/our_fs.gz
+Save off all metadata (but no user data) to file /tmp/our_fs.gz
 
 .TP
 gfs2_edit -p root /dev/my_vg/my_lv
