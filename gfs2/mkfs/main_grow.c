@@ -169,8 +169,12 @@ static lgfs2_rgrps_t rgrps_init(struct gfs2_sbd *sdp)
 			unsigned long min_io_sz = blkid_topology_get_minimum_io_size(tp);
 			unsigned long opt_io_sz = blkid_topology_get_optimal_io_size(tp);
 			unsigned long phy_sector_sz = blkid_topology_get_physical_sector_size(tp);
+			/* If optimal_io_size is not a multiple of minimum_io_size then
+			   the values are not reliable swidth and sunit values, so don't
+			   attempt rgrp alignment */
 			if ((min_io_sz > phy_sector_sz) &&
-			    (opt_io_sz > phy_sector_sz)) {
+			    (opt_io_sz > phy_sector_sz) &&
+			    (opt_io_sz % min_io_sz == 0)) {
 					al_base = opt_io_sz / sdp->bsize;
 					al_off = min_io_sz / sdp->bsize;
 			}
