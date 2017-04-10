@@ -132,7 +132,7 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 	do {
 		lh.lh_sequence = seq;
 		lh.lh_blkno = bh->b_blocknr - jext0;
-		gfs2_log_header_out(&lh, bh);
+		gfs2_log_header_out_bh(&lh, bh);
 		hash = gfs2_disk_hash(bh->b_data, sizeof(struct gfs2_log_header));
 		((struct gfs2_log_header *)bh->b_data)->lh_hash = cpu_to_be32(hash);
 
@@ -184,7 +184,7 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 		memset(bh->b_data, 0, bsize);
 		lh.lh_sequence = seq;
 		lh.lh_blkno = x;
-		gfs2_log_header_out(&lh, bh);
+		gfs2_log_header_out_bh(&lh, bh);
 		hash = gfs2_disk_hash(bh->b_data, sizeof(struct gfs2_log_header));
 		((struct gfs2_log_header *)bh->b_data)->lh_hash = cpu_to_be32(hash);
 

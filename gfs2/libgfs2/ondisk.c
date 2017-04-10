@@ -531,17 +531,21 @@ void gfs2_log_header_in(struct gfs2_log_header *lh,
 	CPIN_32(lh, str, lh_hash);
 }
 
-void gfs2_log_header_out(struct gfs2_log_header *lh,
-			 struct gfs2_buffer_head *bh)
+void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf)
 {
-	struct gfs2_log_header *str = (struct gfs2_log_header *)bh->b_data;
+	struct gfs2_log_header *str = (struct gfs2_log_header *)buf;
 
-	gfs2_meta_header_out_bh(&lh->lh_header, bh);
+	gfs2_meta_header_out(&lh->lh_header, buf);
 	CPOUT_64(lh, str, lh_sequence);
 	CPOUT_32(lh, str, lh_flags);
 	CPOUT_32(lh, str, lh_tail);
 	CPOUT_32(lh, str, lh_blkno);
 	CPOUT_32(lh, str, lh_hash);
+}
+
+void gfs2_log_header_out_bh(struct gfs2_log_header *lh, struct gfs2_buffer_head *bh)
+{
+	gfs2_log_header_out(lh, bh->iov.iov_base);
 	bmodified(bh);
 }
 

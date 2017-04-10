@@ -454,12 +454,10 @@ static void add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 
 		for (x=0; x<blocks; x++) {
 			uint32_t hash;
-			struct gfs2_buffer_head dummy_bh;
 
-			dummy_bh.b_data = buf;
 			lh.lh_sequence = seq;
 			lh.lh_blkno = x;
-			gfs2_log_header_out(&lh, &dummy_bh);
+			gfs2_log_header_out(&lh, buf);
 			hash = gfs2_disk_hash(buf, sizeof(struct gfs2_log_header));
 			((struct gfs2_log_header *)buf)->lh_hash = cpu_to_be32(hash);
 

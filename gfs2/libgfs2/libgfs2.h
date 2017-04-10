@@ -743,8 +743,8 @@ extern void gfs2_leaf_out(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh);
 extern void gfs2_ea_header_in(struct gfs2_ea_header *ea, char *buf);
 extern void gfs2_log_header_in(struct gfs2_log_header *lh,
 			       struct gfs2_buffer_head *bh);
-extern void gfs2_log_header_out(struct gfs2_log_header *lh,
-				struct gfs2_buffer_head *bh);
+extern void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf);
+extern void gfs2_log_header_out_bh(struct gfs2_log_header *lh, struct gfs2_buffer_head *bh);
 extern void gfs2_log_descriptor_in(struct gfs2_log_descriptor *ld,
 				   struct gfs2_buffer_head *bh);
 extern void gfs2_log_descriptor_out(struct gfs2_log_descriptor *ld,
