@@ -319,11 +319,11 @@ void gfs2_dinode_in(struct gfs2_dinode *di, struct gfs2_buffer_head *bh)
 	CPIN_08(di, str, di_reserved, 32);
 }
 
-void gfs2_dinode_out(struct gfs2_dinode *di, struct gfs2_buffer_head *bh)
+void gfs2_dinode_out(struct gfs2_dinode *di, char *buf)
 {
-	struct gfs2_dinode *str = (struct gfs2_dinode *)bh->b_data;
+	struct gfs2_dinode *str = (struct gfs2_dinode *)buf;
 
-	gfs2_meta_header_out_bh(&di->di_header, bh);
+	gfs2_meta_header_out(&di->di_header, buf);
 	gfs2_inum_out(&di->di_num, (char *)&str->di_num);
 
 	CPOUT_32(di, str, di_mode);
@@ -352,6 +352,11 @@ void gfs2_dinode_out(struct gfs2_dinode *di, struct gfs2_buffer_head *bh)
 	CPOUT_64(di, str, di_eattr);
 
 	CPOUT_08(di, str, di_reserved, 32);
+}
+
+void gfs2_dinode_out_bh(struct gfs2_dinode *di, struct gfs2_buffer_head *bh)
+{
+	gfs2_dinode_out(di, bh->iov.iov_base);
 	bmodified(bh);
 }
 

@@ -295,7 +295,7 @@ int build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 		return errno;
 	}
 	ip->i_di.di_size = sizeof(struct gfs2_inum_range);
-	gfs2_dinode_out(&ip->i_di, ip->i_bh);
+	gfs2_dinode_out_bh(&ip->i_di, ip->i_bh);
 
 	if (cfg_debug) {
 		printf("\nInum Range %u:\n", j);
@@ -318,7 +318,7 @@ int build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 		return errno;
 	}
 	ip->i_di.di_size = sizeof(struct gfs2_statfs_change);
-	gfs2_dinode_out(&ip->i_di, ip->i_bh);
+	gfs2_dinode_out_bh(&ip->i_di, ip->i_bh);
 
 	if (cfg_debug) {
 		printf("\nStatFS Change %u:\n", j);

@@ -2321,7 +2321,7 @@ int main(int argc, char **argv)
 		{
 			struct gfs2_inode *ip = sb2.master_dir;
 			if (ip->i_bh->b_modified)
-				gfs2_dinode_out(&ip->i_di, ip->i_bh);
+				gfs2_dinode_out_bh(&ip->i_di, ip->i_bh);
 		}
 		/* Copy old quotas */
 		copy_quotas(&sb2);

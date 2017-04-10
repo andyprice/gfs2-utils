@@ -1237,8 +1237,8 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 	   permission. */
 	if (sdp->md.riinode->i_bh->b_modified) {
 		log_debug("Syncing rindex inode changes to disk.\n");
-		gfs2_dinode_out(&sdp->md.riinode->i_di,
-				sdp->md.riinode->i_bh);
+		gfs2_dinode_out_bh(&sdp->md.riinode->i_di,
+		                    sdp->md.riinode->i_bh);
 		bwrite(sdp->md.riinode->i_bh);
 	}
 	return 0;

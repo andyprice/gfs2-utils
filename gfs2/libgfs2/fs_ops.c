@@ -95,7 +95,7 @@ void inode_put(struct gfs2_inode **ip_in)
 	struct gfs2_sbd *sdp = ip->i_sbd;
 
 	if (ip->i_bh->b_modified) {
-		gfs2_dinode_out(&ip->i_di, ip->i_bh);
+		gfs2_dinode_out_bh(&ip->i_di, ip->i_bh);
 		if (!ip->bh_owned && is_system_inode(sdp, block))
 			fprintf(stderr, "Warning: Change made to inode "
 				"were discarded.\n");
@@ -1317,7 +1317,7 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 	for (x = sdp->sd_hash_ptrs, y = -1; x; x >>= 1, y++) ;
 	dip->i_di.di_depth = y;
 
-	gfs2_dinode_out(&dip->i_di, dip->i_bh);
+	gfs2_dinode_out_bh(&dip->i_di, dip->i_bh);
 	bwrite(dip->i_bh);
 }
 
@@ -1424,7 +1424,7 @@ static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, st
 		di.di_entries = 2;
 	}
 
-	gfs2_dinode_out(&di, bh);
+	gfs2_dinode_out_bh(&di, bh);
 
 	return 0;
 }
@@ -1487,7 +1487,7 @@ int lgfs2_write_filemeta(struct gfs2_inode *ip)
 			char *start = bh->b_data;
 			if (height == 0) {
 				start += sizeof(struct gfs2_dinode);
-				gfs2_dinode_out(&ip->i_di, bh);
+				gfs2_dinode_out_bh(&ip->i_di, bh);
 			} else {
 				start += sizeof(struct gfs2_meta_header);
 				gfs2_meta_header_out(&mh, bh->b_data);
