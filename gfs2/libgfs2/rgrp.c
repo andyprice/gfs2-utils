@@ -11,6 +11,7 @@
 #include "rgrp.h"
 
 #define RG_SYNC_TOLERANCE 1000
+#define ROUND_UP(N, S) ((((N) + (S) - 1) / (S)) * (S))
 
 static void compute_bitmaps(lgfs2_rgrp_t rg, const unsigned bsize)
 {
@@ -109,23 +110,30 @@ struct rgrp_tree *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
 int lgfs2_rgrp_bitbuf_alloc(lgfs2_rgrp_t rg)
 {
 	struct gfs2_sbd *sdp = rg->rgrps->sdp;
+	struct gfs2_buffer_head *bhs;
+	size_t len = rg->ri.ri_length * sdp->bsize;
+	unsigned long io_align = sdp->bsize;
 	unsigned i;
 	char *bufs;
 
-	bufs = calloc(rg->ri.ri_length, sizeof(struct gfs2_buffer_head) + sdp->bsize);
-	if (bufs == NULL)
+	if (rg->rgrps->align > 0) {
+		len = ROUND_UP(len, rg->rgrps->align * sdp->bsize);
+		io_align = rg->rgrps->align_off * sdp->bsize;
+	}
+	bhs = calloc(rg->ri.ri_length, sizeof(struct gfs2_buffer_head));
+	if (bhs == NULL)
 		return 1;
 
-	rg->bits[0].bi_bh = (struct gfs2_buffer_head *)bufs;
-	rg->bits[0].bi_bh->iov.iov_base = (char *)(rg->bits[0].bi_bh + 1);
-	rg->bits[0].bi_bh->iov.iov_len = sdp->bsize;
-	rg->bits[0].bi_bh->b_blocknr = rg->ri.ri_addr;
-	rg->bits[0].bi_bh->sdp = sdp;
+	if (posix_memalign((void **)&bufs, io_align, len) != 0) {
+		errno = ENOMEM;
+		free(bhs);
+		return 1;
+	}
+	memset(bufs, 0, len);
 
-	for (i = 1; i < rg->ri.ri_length; i++) {
-		char *nextbuf = rg->bits[i - 1].bi_bh->b_data + sdp->bsize;
-		rg->bits[i].bi_bh = (struct gfs2_buffer_head *)(nextbuf);
-		rg->bits[i].bi_bh->iov.iov_base = (char *)(rg->bits[i].bi_bh + 1);
+	for (i = 0; i < rg->ri.ri_length; i++) {
+		rg->bits[i].bi_bh = bhs + i;
+		rg->bits[i].bi_bh->iov.iov_base = bufs + (i * sdp->bsize);
 		rg->bits[i].bi_bh->iov.iov_len = sdp->bsize;
 		rg->bits[i].bi_bh->b_blocknr = rg->ri.ri_addr + i;
 		rg->bits[i].bi_bh->sdp = sdp;
@@ -143,6 +151,7 @@ int lgfs2_rgrp_bitbuf_alloc(lgfs2_rgrp_t rg)
 void lgfs2_rgrp_bitbuf_free(lgfs2_rgrp_t rg)
 {
 	unsigned i;
+	free(rg->bits[0].bi_bh->iov.iov_base);
 	free(rg->bits[0].bi_bh);
 	for (i = 0; i < rg->ri.ri_length; i++)
 		rg->bits[i].bi_bh = NULL;
@@ -618,7 +627,7 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry)
  */
 int lgfs2_rgrp_write(int fd, const lgfs2_rgrp_t rg)
 {
-	int ret = 0;
+	struct gfs2_sbd *sdp = rg->rgrps->sdp;
 	unsigned int i;
 	const struct gfs2_meta_header bmh = {
 		.mh_magic = GFS2_MAGIC,
@@ -626,25 +635,29 @@ int lgfs2_rgrp_write(int fd, const lgfs2_rgrp_t rg)
 		.mh_format = GFS2_FORMAT_RB,
 	};
 	int freebufs = 0;
+	ssize_t ret;
+	size_t len;
 
 	if (rg->bits[0].bi_bh == NULL) {
 		freebufs = 1;
 		if (lgfs2_rgrp_bitbuf_alloc(rg) != 0)
 			return -1;
 	}
-
 	gfs2_rgrp_out(&rg->rg, rg->bits[0].bi_bh->b_data);
-	ret = bwrite(rg->bits[0].bi_bh);
-
-	for (i = 1; ret == 0 && i < rg->ri.ri_length; i++) {
+	for (i = 1; i < rg->ri.ri_length; i++)
 		gfs2_meta_header_out(&bmh, rg->bits[i].bi_bh->b_data);
-		ret = bwrite(rg->bits[i].bi_bh);
-	}
+
+	len = sdp->bsize * rg->ri.ri_length;
+	if (rg->rgrps->align > 0)
+		len = ROUND_UP(len, rg->rgrps->align * sdp->bsize);
+
+	ret = pwrite(sdp->device_fd, rg->bits[0].bi_bh->b_data, len,
+	             rg->bits[0].bi_bh->b_blocknr * sdp->bsize);
 
 	if (freebufs)
 		lgfs2_rgrp_bitbuf_free(rg);
 
-	return ret;
+	return ret == len ? 0 : -1;
 }
 
 lgfs2_rgrp_t lgfs2_rgrp_first(lgfs2_rgrps_t rgs)
