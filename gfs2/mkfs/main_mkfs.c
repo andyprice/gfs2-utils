@@ -721,6 +721,7 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 	if (mkfs_journals == NULL)
 		return 1;
 	*rgaddr = lgfs2_rgrp_align_addr(rgs, sdp->sb_addr + 1);
+	rgsize = lgfs2_rgrp_align_len(rgs, rgsize);
 
 	for (j = 0; j < opts->journals; j++) {
 		int result;
