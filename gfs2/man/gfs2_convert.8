@@ -53,7 +53,7 @@ This will convert the Global File System on the block device
 
 .SH NOTES
 If gfs2_convert is interrupted for some reason other than a conversion 
-failure, DO NOT run \fBgfs2_fsck\fP on this partially converted filesystem.
+failure, DO NOT run \fBfsck.gfs2\fP on this partially converted filesystem.
 When this occurs, reissue the gfs2_convert command on the partially converted
 filesystem to complete the conversion process.
 

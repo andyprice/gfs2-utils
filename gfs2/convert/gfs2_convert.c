@@ -393,7 +393,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 /*                                                                           */
 /* Returns: 0 on success, -1 on failure                                      */
 /*                                                                           */
-/* Adapted from gfs2_fsck metawalk.c's build_and_check_metalist              */
+/* Adapted from fsck.gfs2 metawalk.c's build_and_check_metalist              */
 /* ------------------------------------------------------------------------- */
 
 static void jdata_mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,

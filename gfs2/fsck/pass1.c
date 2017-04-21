@@ -2123,7 +2123,7 @@ static void enomem(uint64_t addl_mem_needed)
 	log_crit( _("This system doesn't have enough memory and swap space to fsck this file system.\n"));
 	log_crit( _("Additional memory needed is approximately: %lluMB\n"),
 		  (unsigned long long)(addl_mem_needed / 1048576ULL));
-	log_crit( _("Please increase your swap space by that amount and run gfs2_fsck again.\n"));
+	log_crit( _("Please increase your swap space by that amount and run fsck.gfs2 again.\n"));
 }
 
 /**

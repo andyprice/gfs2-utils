@@ -140,8 +140,8 @@ static void interrupt(int sig)
 			(unsigned long long)last_reported_block,
 			(unsigned long long)last_fs_block);
 	
-	response = generic_interrupt("gfs2_fsck", pass, progress,
-				     _("Do you want to abort gfs2_fsck, skip " \
+	response = generic_interrupt("fsck.gfs2", pass, progress,
+				     _("Do you want to abort fsck.gfs2, skip " \
 				     "the rest of this pass or continue " \
 				     "(a/s/c)?"), "asc");
 	if (tolower(response) == 's') {
@@ -362,7 +362,7 @@ int main(int argc, char **argv)
 	if (sb_fixed)
 		log_warn(_("Superblock was reset. Use tunegfs2 to manually "
 		           "set lock table before mounting.\n"));
-	log_notice( _("gfs2_fsck complete\n"));
+	log_notice( _("fsck.gfs2 complete\n"));
 
 	if (!error) {
 		if (!errors_found)
