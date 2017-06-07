@@ -39,6 +39,7 @@ gfs2/libgfs2/parser.h
 gfs2/libgfs2/lexer.c
 gfs2/libgfs2/lexer.h
 gfs2/fsck/fsck.gfs2
+gfs2/fsck/fscan
 gfs2/glocktop/glocktop
 gfs2/mkfs/mkfs.gfs2
 gfs2/mkfs/gfs2_grow

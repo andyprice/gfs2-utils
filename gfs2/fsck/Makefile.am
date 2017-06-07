@@ -1,6 +1,7 @@
 MAINTAINERCLEANFILES = Makefile.in
 
 sbin_PROGRAMS = fsck.gfs2
+noinst_PROGRAMS = fscan
 
 noinst_HEADERS = \
 	afterpass1_common.h \
@@ -39,3 +40,16 @@ fsck_gfs2_LDADD = \
 	$(top_builddir)/gfs2/libgfs2/libgfs2.la
 fsck_gfs2_LDFLAGS = \
 	$(uuid_LIBS)
+
+fscan_SOURCES = \
+	fscan.c
+fscan_CPPFLAGS = \
+	-D_FILE_OFFSET_BITS=64 \
+	-I$(top_srcdir)/gfs2/include \
+	-I$(top_srcdir)/gfs2/libgfs2
+fscan_LDADD = \
+	$(top_builddir)/gfs2/libgfs2/libgfs2.la
+fscan_LDFLAGS = \
+	$(blkid_LIBS) \
+	-laio \
+	-lm
