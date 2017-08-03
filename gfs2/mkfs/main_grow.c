@@ -262,42 +262,44 @@ static void fix_rindex(int rindex_fd, lgfs2_rgrps_t rgs, unsigned old_rg_count, 
 	char *buf;
 	ssize_t count;
 	ssize_t writelen;
+	off_t rindex_size;
 	const size_t entrysize = sizeof(struct gfs2_rindex);
 
 	log_info( _("%d new rindex entries.\n"), rgcount);
 	buf = rindex_buffer(rgs, rgcount);
 	writelen = rgcount * entrysize;
 
-	if (!test) {
-		off_t rindex_size = lseek(rindex_fd, 0, SEEK_END);
-		if (rindex_size != old_rg_count * entrysize) {
-			log_crit(_("Incorrect rindex size. Want %ld (%d resource groups), have %ld\n"),
-				 (long)(old_rg_count * entrysize), old_rg_count,
-				 (long)rindex_size);
-			goto out;
-		}
-		/* Write the first entry separately to ensure there's enough
-		   space in the fs for the rest  */
-		count = write(rindex_fd, buf, entrysize);
-		if (count != entrysize) {
-			log_crit(_("Error writing first new rindex entry; aborted.\n"));
-			if (count > 0)
-				goto trunc;
-			else
-				goto out;
-		}
-		count = write(rindex_fd, (buf + entrysize), (writelen - entrysize));
-		if (count != (writelen - entrysize)) {
-			log_crit(_("Error writing new rindex entries; aborted.\n"));
-			if (count > 0)
-				goto trunc;
-			else
-				goto out;
-		}
-		if (fallocate(rindex_fd, FALLOC_FL_KEEP_SIZE, (rindex_size + writelen), entrysize) != 0)
-			perror("fallocate");
-		fsync(rindex_fd);
+	if (test)
+		goto out;
+
+	rindex_size = lseek(rindex_fd, 0, SEEK_END);
+	if (rindex_size != old_rg_count * entrysize) {
+		log_crit(_("Incorrect rindex size. Want %ld (%d resource groups), have %ld\n"),
+			 (long)(old_rg_count * entrysize), old_rg_count,
+			 (long)rindex_size);
+		goto out;
 	}
+	/* Write the first entry separately to ensure there's enough
+	   space in the fs for the rest  */
+	count = write(rindex_fd, buf, entrysize);
+	if (count != entrysize) {
+		log_crit(_("Error writing first new rindex entry; aborted.\n"));
+		if (count > 0)
+			goto trunc;
+		else
+			goto out;
+	}
+	count = write(rindex_fd, (buf + entrysize), (writelen - entrysize));
+	if (count != (writelen - entrysize)) {
+		log_crit(_("Error writing new rindex entries; aborted.\n"));
+		if (count > 0)
+			goto trunc;
+		else
+			goto out;
+	}
+	if (fallocate(rindex_fd, FALLOC_FL_KEEP_SIZE, (rindex_size + writelen), entrysize) != 0)
+		perror("fallocate");
+	fsync(rindex_fd);
 out:
 	free(buf);
 	return;
