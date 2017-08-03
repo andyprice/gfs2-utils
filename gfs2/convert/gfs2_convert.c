@@ -2123,8 +2123,7 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 
 static int gfs2_query(struct gfs2_options *opts, const char *dev)
 {
-	char response[3] = { 0, 0 };
-	int ret = 0;
+	int res = 0;
 
 	if(opts->yes)
 		return 1;
@@ -2133,27 +2132,25 @@ static int gfs2_query(struct gfs2_options *opts, const char *dev)
 
 	opts->query = TRUE;
 	while (1) {
+		char *line = NULL;
+		size_t len = 0;
+		int ret;
+
 		printf(_("Convert %s from GFS1 to GFS2? (y/n)"), dev);
-		/* Make sure query is printed out */
-		fflush(NULL);
-		fgets(response, 3, stdin);
-		printf("\n");
-		fflush(NULL);
-		response[1] = 0;
-		ret = rpmatch(response);
-
-		if (ret >= 0)
+		fflush(stdout);
+		ret = getline(&line, &len, stdin);
+		res = rpmatch(line);
+		free(line);
+		if (ret <= 0)
+			continue;
+		if (res == 1 || res == 0)
 			break;
-		printf(_("Bad response '%s', please type 'y' or 'n'.\n"), response);
+		/* Unrecognized input; go again. */
 	}
-
 	opts->query = FALSE;
-	return ret;
+	return res;
 }
 
-/* ------------------------------------------------------------------------- */
-/* main - mainline code                                                      */
-/* ------------------------------------------------------------------------- */
 int main(int argc, char **argv)
 {
 	int error;
