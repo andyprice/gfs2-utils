@@ -16,7 +16,7 @@
 #include "metawalk.h"
 #include "util.h"
 
-#define JOURNAL_NAME_SIZE 16
+#define JOURNAL_NAME_SIZE 18
 #define JOURNAL_SEQ_TOLERANCE 10
 
 unsigned int sd_found_jblocks = 0, sd_replayed_jblocks = 0;
