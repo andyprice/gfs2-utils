@@ -1700,10 +1700,12 @@ void destroy(struct gfs2_sbd *sdp)
 	if (was_mounted_ro && errors_corrected) {
 		sdp->device_fd = open("/proc/sys/vm/drop_caches", O_WRONLY);
 		if (sdp->device_fd >= 0) {
-			write(sdp->device_fd, "2", 1);
+			if (write(sdp->device_fd, "2", 1) == 2) {
+				close(sdp->device_fd);
+				return;
+			}
 			close(sdp->device_fd);
-		} else
-			log_err( _("fsck.gfs2: Non-fatal error dropping "
-				   "caches.\n"));
+		}
+		log_warn(_("fsck.gfs2: Could not flush caches (non-fatal).\n"));
 	}
 }
