@@ -305,7 +305,8 @@ trunc:
 	count = (count / sizeof(struct gfs2_rindex)) + old_rg_count;
 	log_crit(_("truncating rindex to %ld entries\n"),
 		 (long)count * sizeof(struct gfs2_rindex));
-	ftruncate(rindex_fd, (off_t)count * sizeof(struct gfs2_rindex));
+	if (ftruncate(rindex_fd, (off_t)count * sizeof(struct gfs2_rindex)))
+		log_crit(_("Could not truncate rindex: %s\n"), strerror(errno));
 	free(buf);
 }
 
