@@ -190,11 +190,11 @@ static const char *anthropomorphize(unsigned long long inhuman_value)
 	return out_val;
 }
 
-static int di_save_len(struct gfs2_buffer_head *bh, uint64_t owner)
+static size_t di_save_len(struct gfs2_buffer_head *bh, uint64_t owner)
 {
 	struct gfs2_inode *inode;
 	struct gfs2_dinode *dn;
-	int len;
+	size_t len;
 
 	if (sbd.gfs1)
 		inode = lgfs2_gfs_inode_get(&sbd, bh);
@@ -234,7 +234,7 @@ static int di_save_len(struct gfs2_buffer_head *bh, uint64_t owner)
  *          -1 if this isn't gfs metadata.
  */
 static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, uint64_t owner,
-                               int *block_type, int *gstruct_len)
+                               int *block_type, size_t *gstruct_len)
 {
 	struct gfs2_meta_header mh;
 
@@ -423,8 +423,8 @@ static int savemetaclose(struct metafd *mfd)
 static int save_bh(struct metafd *mfd, struct gfs2_buffer_head *savebh, uint64_t owner, int *blktype)
 {
 	struct saved_metablock *savedata;
+	size_t blklen;
 	size_t outsz;
-	int blklen;
 
 	/* If this isn't metadata and isn't a system file, we don't want it.
 	   Note that we're checking "owner" here rather than blk.  That's
