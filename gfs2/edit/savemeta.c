@@ -190,6 +190,38 @@ static const char *anthropomorphize(unsigned long long inhuman_value)
 	return out_val;
 }
 
+static int di_save_len(struct gfs2_buffer_head *bh, uint64_t owner)
+{
+	struct gfs2_inode *inode;
+	struct gfs2_dinode *dn;
+	int len;
+
+	if (sbd.gfs1)
+		inode = lgfs2_gfs_inode_get(&sbd, bh);
+	else
+		inode = lgfs2_inode_get(&sbd, bh);
+
+	if (inode == NULL) {
+		fprintf(stderr, "Error reading inode at %"PRIu64": %s\n",
+		        bh->b_blocknr, strerror(errno));
+		return 0; /* Skip the block */
+	}
+	dn = &inode->i_di;
+	len = sizeof(struct gfs2_dinode);
+
+	/* Do not save (user) data from the inode block unless they are
+	   indirect pointers, dirents, symlinks or fs internal data */
+	if (dn->di_height != 0 ||
+	    S_ISDIR(dn->di_mode) ||
+	    S_ISLNK(dn->di_mode) ||
+	    (sbd.gfs1 && dn->__pad1 == GFS_FILE_DIR) ||
+	    block_is_systemfile(owner))
+		len = sbd.bsize;
+
+	inode_put(&inode);
+	return len;
+}
+
 /*
  * get_gfs_struct_info - get block type and structure length
  *
@@ -205,7 +237,6 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, uint64_t owner,
                                int *block_type, int *gstruct_len)
 {
 	struct gfs2_meta_header mh;
-	struct gfs2_inode *inode;
 
 	if (block_type != NULL)
 		*block_type = 0;
@@ -229,24 +260,7 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, uint64_t owner,
 		*gstruct_len = sbd.bsize;
 		break;
 	case GFS2_METATYPE_DI:   /* 4 (disk inode) */
-		if (sbd.gfs1) {
-			inode = lgfs2_gfs_inode_get(&sbd, lbh);
-		} else {
-			inode = lgfs2_inode_get(&sbd, lbh);
-		}
-		if (inode == NULL) {
-			perror("Error reading inode");
-			exit(-1);
-		}
-		if (S_ISDIR(inode->i_di.di_mode) ||
-		     (sbd.gfs1 && inode->i_di.__pad1 == GFS_FILE_DIR))
-			*gstruct_len = sbd.bsize;
-		else if (!inode->i_di.di_height && !block_is_systemfile(owner) &&
-			 !S_ISDIR(inode->i_di.di_mode))
-			*gstruct_len = sizeof(struct gfs2_dinode);
-		else
-			*gstruct_len = sbd.bsize;
-		inode_put(&inode);
+		*gstruct_len = di_save_len(lbh, owner);
 		break;
 	case GFS2_METATYPE_IN:   /* 5 (indir inode blklst) */
 		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_indirect);*/
