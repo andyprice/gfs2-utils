@@ -713,7 +713,6 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 	uint32_t rgsize = lgfs2_rgsize_for_data(jfsize, sdp->bsize);
 	unsigned j;
 
-	/* Initialise a progress bar for resource group creation. */
 	gfs2_progress_init(&progress, opts->journals, _("Adding journals: "), opts->quiet);
 
 	/* We'll build the jindex later so remember where we put the journals */
@@ -728,7 +727,6 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 		lgfs2_rgrp_t rg;
 		struct gfs2_inode in = {0};
 
-		/* Update progress bar for journal creation. */
 		gfs2_progress_update(&progress, (j + 1));
 
 		if (opts->debug)
@@ -783,26 +781,19 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 	return 0;
 }
 
-static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts)
+static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, uint64_t *rgaddr, struct mkfs_opts *opts)
 {
 	struct gfs2_progress_bar progress;
-	uint64_t rgaddr = lgfs2_rgrp_align_addr(rgs, sdp->sb_addr + 1);
 	uint32_t rgblks = ((opts->rgsize << 20) / sdp->bsize);
 	uint32_t rgnum;
 	int result;
 
-	result = place_journals(sdp, rgs, opts, &rgaddr);
-	if (result != 0)
-		return result;
-
-	rgnum = lgfs2_rgrps_plan(rgs, sdp->device.length - rgaddr, rgblks);
-
-	/* Initialise a progress bar for resource group creation (after journal creation). */
+	rgnum = lgfs2_rgrps_plan(rgs, sdp->device.length - *rgaddr, rgblks);
 	gfs2_progress_init(&progress, (rgnum + opts->journals), _("Building resource groups: "), opts->quiet);
 
 	while (1) {
 		lgfs2_rgrp_t rg;
-		result = add_rgrp(rgs, &rgaddr, 0, &rg);
+		result = add_rgrp(rgs, rgaddr, 0, &rg);
 		if (result > 0)
 			break;
 		else if (result < 0)
@@ -814,7 +805,6 @@ static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts
 			return result;
 		}
 
-		/* Update progress bar with resource group address. */
 		gfs2_progress_update(&progress, (sdp->rgrps));
 	}
 	gfs2_progress_close(&progress, _("Done\n"));
@@ -944,6 +934,7 @@ int main(int argc, char *argv[])
 	struct gfs2_sb sb;
 	struct mkfs_opts opts;
 	lgfs2_rgrps_t rgs;
+	uint64_t rgaddr;
 	int error;
 	unsigned bsize;
 
@@ -993,8 +984,13 @@ int main(int argc, char *argv[])
 		if (!opts.quiet)
 			printf("%s", _("Done\n"));
 	}
-
-	error = place_rgrps(&sbd, rgs, &opts);
+	rgaddr = lgfs2_rgrp_align_addr(rgs, sbd.sb_addr + 1);
+	error = place_journals(&sbd, rgs, &opts, &rgaddr);
+	if (error != 0) {
+		fprintf(stderr, _("Failed to create journals\n"));
+		exit(1);
+	}
+	error = place_rgrps(&sbd, rgs, &rgaddr, &opts);
 	if (error) {
 		fprintf(stderr, _("Failed to build resource groups\n"));
 		exit(1);
