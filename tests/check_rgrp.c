@@ -31,7 +31,7 @@ static lgfs2_rgrps_t mockup_rgrp(void)
 	addr = lgfs2_rindex_entry_new(rgs, &ri, 16, rgsize);
 	ck_assert(addr != 0);
 
-	rg = lgfs2_rgrps_append(rgs, &ri);
+	rg = lgfs2_rgrps_append(rgs, &ri, 0);
 	fail_unless(rg != NULL);
 
 	for (i = 0; i < rg->ri.ri_length; i++) {

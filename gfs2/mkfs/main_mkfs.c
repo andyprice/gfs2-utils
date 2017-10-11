@@ -685,11 +685,12 @@ static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrp_t rg, int debug)
 static int add_rgrp(lgfs2_rgrps_t rgs, uint64_t *addr, uint32_t len, lgfs2_rgrp_t *rg)
 {
 	struct gfs2_rindex ri;
+	uint64_t nextaddr;
 
 	/* When we get to the end of the device, it's only an error if we have
 	   more structures left to write, i.e. when len is != 0. */
-	*addr = lgfs2_rindex_entry_new(rgs, &ri, *addr, len);
-	if (*addr == 0) {
+	nextaddr = lgfs2_rindex_entry_new(rgs, &ri, *addr, len);
+	if (nextaddr == 0) {
 		if (len != 0) {
 			perror(_("Failed to create resource group index entry"));
 			return -1;
@@ -697,12 +698,12 @@ static int add_rgrp(lgfs2_rgrps_t rgs, uint64_t *addr, uint32_t len, lgfs2_rgrp_
 			return 1;
 		}
 	}
-
-	*rg = lgfs2_rgrps_append(rgs, &ri);
+	*rg = lgfs2_rgrps_append(rgs, &ri, nextaddr - *addr);
 	if (*rg == NULL) {
 		perror(_("Failed to create resource group"));
 		return -1;
 	}
+	*addr = nextaddr;
 	return 0;
 }
 

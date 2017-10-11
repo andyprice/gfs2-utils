@@ -123,3 +123,19 @@ AT_CHECK([$GFS_MKFS -p lock_nolock -o test_topology=0:512:65536:393216:512 $GFS_
 # Check rgrp alignment to minimum_io_size: 65536 / 4096 == 16
 AT_CHECK([gfs2_edit -p rindex $GFS_TGT | grep ri_addr | awk '{print $2, $2 % 16; if ($2 % 16 != 0) { exit 1 }}'], 0, [ignore], [ignore])
 AT_CLEANUP
+
+AT_SETUP([Values of rg_skip])
+AT_KEYWORDS(mkfs.gfs2 mkfs)
+AT_CHECK([$GFS_MKFS -p lock_nolock -r 2048 $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([rgskipcheck.sh $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_nolock -r 1024 $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([rgskipcheck.sh $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_nolock -r 512 $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([rgskipcheck.sh $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_nolock -r 219 $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([rgskipcheck.sh $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_nolock -r 32 $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([rgskipcheck.sh $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_nolock -o test_topology=0:512:65536:393216:512 $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([rgskipcheck.sh $GFS_TGT], 0, [ignore], [ignore])
+AT_CLEANUP

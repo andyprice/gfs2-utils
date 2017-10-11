@@ -213,14 +213,17 @@ static unsigned initialize_new_portion(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs)
 		int err = 0;
 		lgfs2_rgrp_t rg;
 		struct gfs2_rindex ri;
-		rgaddr = lgfs2_rindex_entry_new(rgs, &ri, rgaddr, 0);
-		if (rgaddr == 0)
+		uint64_t nextaddr;
+
+		nextaddr = lgfs2_rindex_entry_new(rgs, &ri, rgaddr, 0);
+		if (nextaddr == 0)
 			break;
-		rg = lgfs2_rgrps_append(rgs, &ri);
+		rg = lgfs2_rgrps_append(rgs, &ri, nextaddr - rgaddr);
 		if (rg == NULL) {
 			perror(_("Failed to create resource group"));
 			return 0;
 		}
+		rgaddr = nextaddr;
 		if (metafs_interrupted)
 			return 0;
 		if (!test)

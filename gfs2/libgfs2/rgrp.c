@@ -430,7 +430,7 @@ unsigned lgfs2_rindex_read_fd(int fd, lgfs2_rgrps_t rgs)
 			return 0;
 
 		gfs2_rindex_in(&ri, buf);
-		rg = lgfs2_rgrps_append(rgs, &ri);
+		rg = lgfs2_rgrps_append(rgs, &ri, 0);
 		if (rg == NULL)
 			return 0;
 		count++;
@@ -463,7 +463,7 @@ const struct gfs2_rindex *lgfs2_rindex_read_one(struct gfs2_inode *rip, lgfs2_rg
 		return NULL;
 
 	gfs2_rindex_in(&ri, buf);
-	rg = lgfs2_rgrps_append(rgs, &ri);
+	rg = lgfs2_rgrps_append(rgs, &ri, 0);
 	if (rg == NULL)
 		return NULL;
 
@@ -582,9 +582,10 @@ struct osi_node *lgfs2_rgrps_root(lgfs2_rgrps_t rgs)
  * Insert a new resource group after the last resource group in a set.
  * rgs: The set of resource groups
  * entry: The entry to be added
+ * rg_skip: The value to be used for this resource group's rg_skip field
  * Returns the new resource group on success or NULL on failure with errno set.
  */
-lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry)
+lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, uint32_t rg_skip)
 {
 	lgfs2_rgrp_t rg;
 	struct osi_node **link = &rgs->root.osi_node;
@@ -615,6 +616,9 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry)
 	rg->rg.rg_header.mh_type = GFS2_METATYPE_RG;
 	rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
 	rg->rg.rg_free = rg->ri.ri_data;
+#ifdef GFS2_HAS_RG_SKIP
+	rg->rg.rg_skip = rg_skip;
+#endif
 
 	compute_bitmaps(rg, rgs->sdp->bsize);
 	rg->rgrps = rgs;
