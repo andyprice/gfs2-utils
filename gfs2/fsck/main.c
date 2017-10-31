@@ -75,6 +75,11 @@ static int read_cmdline(int argc, char **argv, struct gfs2_options *gopts)
 		switch(c) {
 
 		case 'a':
+		case 'p':
+			if (gopts->yes || gopts->no) {
+				fprintf(stderr, _("Options -p/-a, -y and -n may not be used together\n"));
+				return FSCK_USAGE;
+			}
 			preen = 1;
 			gopts->yes = 1;
 			break;
@@ -86,11 +91,11 @@ static int read_cmdline(int argc, char **argv, struct gfs2_options *gopts)
 			exit(FSCK_OK);
 			break;
 		case 'n':
+			if (gopts->yes || preen) {
+				fprintf(stderr, _("Options -p/-a, -y and -n may not be used together\n"));
+				return FSCK_USAGE;
+			}
 			gopts->no = 1;
-			break;
-		case 'p':
-			preen = 1;
-			gopts->yes = 1;
 			break;
 		case 'q':
 			decrease_verbosity();
@@ -103,6 +108,10 @@ static int read_cmdline(int argc, char **argv, struct gfs2_options *gopts)
 			exit(FSCK_OK);
 			break;
 		case 'y':
+			if (gopts->no || preen) {
+				fprintf(stderr, _("Options -p/-a, -y and -n may not be used together\n"));
+				return FSCK_USAGE;
+			}
 			gopts->yes = 1;
 			break;
 		case ':':
