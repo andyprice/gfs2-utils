@@ -40,7 +40,7 @@ administration.
 .SH OPTIONS
 .TP
 \fB-a\fP
-Same as the -p (preen) option.
+Same as the \fB-p\fP (preen) option.
 .TP
 \fB-f\fP
 Force checking even if the file system seems clean.
@@ -54,29 +54,26 @@ This prints out the proper command line usage syntax.
 Quiet.
 .TP
 \fB-n\fP
-No to all questions.
-
-By specifying this option, fsck.gfs2 will only show the changes that
+No to all questions. By specifying this option, fsck.gfs2 will only show the changes that
 would be made, but not make any changes to the filesystem.
+
+This option may not be used with the \fB-y\fP or \fB-p\fP/\fB-a\fP options.
 .TP
 \fB-p\fP
-Preen (same as -a: automatically repair the file system if it is dirty,
-and safe to do so, otherwise exit.)
+Automatically repair ("preen") the file system if it is dirty and safe to do so,
+otherwise exit.
 
-Note: If the file system has locking protocol lock_nolock, the file system
-is considered a non-shared storage device and the fsck is deemed safe.
-However, fsck.gfs2 does not know whether it was called automatically
-from the init process, due to options in the /etc/fstab file.  Therefore, if
-the locking protocol is lock_dlm and -a or -p was specified, fsck.gfs2
-cannot determine whether the disk is mounted by other nodes in the cluster.
-Therefore, the fsck is deemed to be unsafe and a warning is given
-if any damage or dirty journals are found.  In that case, the file system
-should be unmounted from all nodes in the cluster and fsck.gfs2 should be
-run manually without the -a or -p options.
+If the file system has locking protocol \fIlock_nolock\fR, it is considered a
+non-shared storage device and it is considered safe.  If the locking protocol
+is lock_dlm and \fB-a\fP or \fB-p\fP was specified, the check is considered unsafe as it
+cannot be determined whether the device is mounted by other nodes in the cluster.
+In this case a warning is given if any damage or dirty journals are found. The
+file system should then be unmounted from all nodes in the cluster and
+fsck.gfs2 should be run manually without the \fB-a\fP or \fB-p\fP options.
+
+This option may not be used with the \fB-n\fP or \fB-y\fP options.
 .TP
 \fB-V\fP
-Version.
-
 Print out the program version information.
 .TP
 \fB-v\fP
@@ -85,7 +82,7 @@ Verbose operation.
 Print more information while running.
 .TP
 \fB-y\fP
-Yes to all questions.
-
-By specifying this option, fsck.gfs2 will not prompt before making
+Yes to all questions. By specifying this option, fsck.gfs2 will not prompt before making
 changes.
+
+This option may not be used with the \fB-n\fP or \fB-p\fP/\fB-a\fP options.
