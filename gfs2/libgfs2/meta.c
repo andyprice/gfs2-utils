@@ -207,6 +207,11 @@ FP(rg_skip, .points_to = (1 << LGFS2_MT_GFS2_RGRP))
 RF(__pad)
 #endif
 F(rg_igeneration)
+#ifdef GFS2_HAS_RG_RI_FIELDS
+FP(rg_data0, .points_to = ANY_GFS2_BLOCK|(1 << LGFS2_MT_FREE))
+F(rg_data, .flags = LGFS2_MFF_FSBLOCKS)
+F(rg_bitbytes, .flags = LGFS2_MFF_BYTES)
+#endif
 RF(rg_reserved)
 };
 
