@@ -81,6 +81,7 @@ struct indirect_info {
 	struct gfs2_leaf lf;
 	struct metapath mp;
 	struct gfs2_dirents dirent[64];
+	uint64_t ptroff;
 };
 
 struct iinfo {
