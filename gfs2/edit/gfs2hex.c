@@ -255,6 +255,8 @@ void do_dinode_extended(struct gfs2_dinode *dine, struct gfs2_buffer_head *lbh)
 				indirect->ii[indirect_blocks].mp.mp_list[0] =
 					ptroff;
 				indirect->ii[indirect_blocks].is_dir = FALSE;
+				indirect->ii[indirect_blocks].ptroff =
+				              (x - sizeof(*dine)) / sizeof(uint64_t);
 				indirect_blocks++;
 			}
 			ptroff++;

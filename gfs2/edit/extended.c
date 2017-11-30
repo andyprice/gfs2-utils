@@ -51,6 +51,7 @@ static int get_height(void)
 static int _do_indirect_extended(char *diebuf, struct iinfo *iinf, int hgt)
 {
 	unsigned int x, y;
+	off_t headoff;
 	uint64_t p;
 	int i_blocks;
 
@@ -62,15 +63,14 @@ static int _do_indirect_extended(char *diebuf, struct iinfo *iinf, int hgt)
 		iinf->ii[x].dirents = 0;
 		memset(&iinf->ii[x].dirent, 0, sizeof(struct gfs2_dirents));
 	}
-	for (x = (sbd.gfs1 ? sizeof(struct gfs_indirect):
-			  sizeof(struct gfs2_meta_header)), y = 0;
-		 x < sbd.bsize;
-		 x += sizeof(uint64_t), y++) {
+	headoff = sbd.gfs1 ? sizeof(struct gfs_indirect) : sizeof(struct gfs2_meta_header);
+	for (x = headoff, y = 0; x < sbd.bsize; x += sizeof(uint64_t), y++) {
 		p = be64_to_cpu(*(uint64_t *)(diebuf + x));
 		if (p) {
 			iinf->ii[i_blocks].block = p;
 			iinf->ii[i_blocks].mp.mp_list[hgt] = i_blocks;
 			iinf->ii[i_blocks].is_dir = FALSE;
+			iinf->ii[i_blocks].ptroff = (x - headoff) / sizeof(uint64_t);
 			i_blocks++;
 		}
 	}
@@ -177,7 +177,7 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 			for (h = 0; h < level; h++)
 				print_gfs2("   ");
 		}
-		print_gfs2("%d => ", pndx);
+		print_gfs2("%d: 0x%"PRIx64" => ", pndx, ind->ii[pndx].ptroff);
 		if (termlines)
 			move(line,9);
 		print_gfs2("0x%"PRIx64" / %"PRId64, ind->ii[pndx].block,
