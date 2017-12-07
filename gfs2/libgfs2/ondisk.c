@@ -237,7 +237,8 @@ void gfs2_rgrp_in(struct gfs2_rgrp *rg, struct gfs2_buffer_head *bh)
 	CPIN_64(rg, str, rg_data0);
 	CPIN_32(rg, str, rg_data);
 	CPIN_32(rg, str, rg_bitbytes);
-	CPIN_08(rg, str, rg_reserved, 64);
+	CPIN_32(rg, str, rg_crc);
+	CPIN_08(rg, str, rg_reserved, 60);
 #else
 	CPIN_08(rg, str, rg_reserved, 80);
 #endif
@@ -261,7 +262,8 @@ void gfs2_rgrp_out(const struct gfs2_rgrp *rg, char *buf)
 	CPOUT_64(rg, str, rg_data0);
 	CPOUT_32(rg, str, rg_data);
 	CPOUT_32(rg, str, rg_bitbytes);
-	CPOUT_08(rg, str, rg_reserved, 64);
+	CPOUT_08(rg, str, rg_reserved, 60);
+	lgfs2_rgrp_crc_set(buf);
 #else
 	CPOUT_08(rg, str, rg_reserved, 80);
 #endif
@@ -289,6 +291,7 @@ void gfs2_rgrp_print(const struct gfs2_rgrp *rg)
 	pv(rg, rg_data0, "%llu", "0x%llx");
 	pv(rg, rg_data, "%u", "0x%x");
 	pv(rg, rg_bitbytes, "%u", "0x%x");
+	pv(rg, rg_crc, "%u", "0x%x");
 #endif
 }
 

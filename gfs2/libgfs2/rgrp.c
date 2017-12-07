@@ -158,6 +158,43 @@ void lgfs2_rgrp_bitbuf_free(lgfs2_rgrp_t rg)
 }
 
 /**
+ * Check a resource group's crc
+ * Returns 0 on success, non-zero if crc is bad
+ */
+int lgfs2_rgrp_crc_check(char *buf)
+{
+	int ret = 0;
+#ifdef GFS2_HAS_RG_RI_FIELDS
+	struct gfs2_rgrp *rg = (struct gfs2_rgrp *)buf;
+	uint32_t crc = rg->rg_crc;
+
+	if (crc == 0)
+		return 0;
+
+	rg->rg_crc = 0;
+	if (be32_to_cpu(crc) != gfs2_disk_hash(buf, sizeof(struct gfs2_rgrp)))
+		ret = 1;
+	rg->rg_crc = crc;
+#endif
+	return ret;
+}
+
+/**
+ * Set the crc of an on-disk resource group
+ */
+void lgfs2_rgrp_crc_set(char *buf)
+{
+#ifdef GFS2_HAS_RG_RI_FIELDS
+	struct gfs2_rgrp *rg = (struct gfs2_rgrp *)buf;
+	uint32_t crc;
+
+	rg->rg_crc = 0;
+	crc = gfs2_disk_hash(buf, sizeof(struct gfs2_rgrp));
+	rg->rg_crc = cpu_to_be32(crc);
+#endif
+}
+
+/**
  * gfs2_rgrp_read - read in the resource group information from disk.
  * @rgd - resource group structure
  * returns: 0 if no error, otherwise the block number that failed
@@ -194,11 +231,18 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 			return rgd->ri.ri_addr + err;
 		}
 	}
-	if (x > 0) {
-		if (sdp->gfs1)
-			gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
-		else
-			gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_bh);
+	if (x <= 0) {
+		free(bhs);
+		return 0;
+	}
+	if (sdp->gfs1)
+		gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
+	else {
+		if (lgfs2_rgrp_crc_check(rgd->bits[0].bi_bh->b_data)) {
+			free(bhs);
+			return rgd->ri.ri_addr;
+		}
+		gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_bh);
 	}
 	free(bhs);
 	return 0;
@@ -623,6 +667,7 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, ui
 	rg->rg.rg_data0 = rg->ri.ri_data0;
 	rg->rg.rg_data = rg->ri.ri_data;
 	rg->rg.rg_bitbytes = rg->ri.ri_bitbytes;
+	rg->rg.rg_crc = 0;
 #endif
 	compute_bitmaps(rg, rgs->sdp->bsize);
 	rg->rgrps = rgs;

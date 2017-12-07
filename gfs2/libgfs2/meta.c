@@ -211,6 +211,7 @@ F(rg_igeneration)
 FP(rg_data0, .points_to = ANY_GFS2_BLOCK|(1 << LGFS2_MT_FREE))
 F(rg_data, .flags = LGFS2_MFF_FSBLOCKS)
 F(rg_bitbytes, .flags = LGFS2_MFF_BYTES)
+F(rg_crc, .flags = LGFS2_MFF_CHECK)
 #endif
 RF(rg_reserved)
 };
