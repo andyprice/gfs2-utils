@@ -118,7 +118,6 @@ const unsigned int lgfs2_ld1_type_size = ARRAY_SIZE(lgfs2_ld1_types);
 
 #define INR(f,...) RF(f.no_formal_ino) \
 		   RFP(f.no_addr, __VA_ARGS__)
-
 #define ANY_COMMON_BLOCK (1 << LGFS2_MT_DIR_LEAF) | \
 			 (1 << LGFS2_MT_JRNL_DATA) | \
 			 (1 << LGFS2_MT_EA_ATTR) | \
@@ -363,6 +362,18 @@ F(lh_flags)
 F(lh_tail)
 F(lh_blkno)
 F(lh_hash, .flags = LGFS2_MFF_CHECK)
+#ifdef GFS2_HAS_LH_V2
+F(lh_crc, .flags = LGFS2_MFF_CHECK)
+F(lh_nsec, .flags = LGFS2_MFF_NSECS)
+F(lh_sec, .flags = LGFS2_MFF_SECS)
+FP(lh_addr, .points_to = (1 << LGFS2_MT_GFS2_LOG_BLOCK))
+FP(lh_jinode, .points_to = (1 << LGFS2_MT_GFS2_DINODE))
+FP(lh_statfs_addr, .points_to = (1 << LGFS2_MT_GFS2_DINODE))
+FP(lh_quota_addr, .points_to = (1 << LGFS2_MT_GFS2_DINODE))
+F(lh_local_total, .flags = LGFS2_MFF_FSBLOCKS)
+F(lh_local_free, .flags = LGFS2_MFF_FSBLOCKS)
+F(lh_local_dinodes, .flags = LGFS2_MFF_FSBLOCKS)
+#endif
 };
 
 #undef STRUCT

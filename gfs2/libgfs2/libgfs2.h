@@ -469,6 +469,8 @@ extern unsigned int calc_tree_height(struct gfs2_inode *ip, uint64_t size);
 extern int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned blocks);
 extern int lgfs2_write_journal_data(struct gfs2_inode *ip);
 extern int lgfs2_write_filemeta(struct gfs2_inode *ip);
+extern uint32_t lgfs2_log_header_hash(char *buf);
+extern uint32_t lgfs2_log_header_crc(char *buf, unsigned bsize);
 
 /* gfs1.c - GFS1 backward compatibility structures and functions */
 
@@ -743,8 +745,9 @@ extern void gfs2_dirent_out(struct gfs2_dirent *de, char *buf);
 extern void gfs2_leaf_in(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh);
 extern void gfs2_leaf_out(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh);
 extern void gfs2_ea_header_in(struct gfs2_ea_header *ea, char *buf);
-extern void gfs2_log_header_in(struct gfs2_log_header *lh,
-			       struct gfs2_buffer_head *bh);
+extern void gfs2_log_header_v1_in(struct gfs2_log_header *lh, struct gfs2_buffer_head *bh);
+extern void gfs2_log_header_in(struct gfs2_log_header *lh, struct gfs2_buffer_head *bh);
+extern void gfs2_log_header_v1_out(struct gfs2_log_header *lh, char *buf);
 extern void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf);
 extern void gfs2_log_header_out_bh(struct gfs2_log_header *lh, struct gfs2_buffer_head *bh);
 extern void gfs2_log_descriptor_in(struct gfs2_log_descriptor *ld,
@@ -769,6 +772,7 @@ extern void gfs2_quota_print(const struct gfs2_quota *qu);
 extern void gfs2_dinode_print(const struct gfs2_dinode *di);
 extern void gfs2_leaf_print(const struct gfs2_leaf *lf);
 extern void gfs2_ea_header_print(const struct gfs2_ea_header *ea, char *name);
+extern void gfs2_log_header_v1_print(const struct gfs2_log_header *lh);
 extern void gfs2_log_header_print(const struct gfs2_log_header *lh);
 extern void gfs2_log_descriptor_print(const struct gfs2_log_descriptor *ld);
 extern void gfs2_statfs_change_print(const struct gfs2_statfs_change *sc);

@@ -15,6 +15,7 @@ AM_YFLAGS = -d
 
 noinst_HEADERS = \
 	libgfs2.h \
+	crc32c.h \
 	lang.h \
 	config.h \
 	rgrp.h
@@ -24,6 +25,7 @@ noinst_LTLIBRARIES = libgfs2.la
 noinst_PROGRAMS = gfs2l
 
 libgfs2_la_SOURCES = \
+	crc32c.c \
 	block_list.c \
 	fs_bits.c \
 	gfs1.c \

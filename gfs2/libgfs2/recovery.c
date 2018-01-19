@@ -57,6 +57,8 @@ int get_log_header(struct gfs2_inode *ip, unsigned int blk,
 	struct gfs2_buffer_head *bh;
 	struct gfs2_log_header lh, *tmp;
 	uint32_t hash, saved_hash;
+	uint32_t lh_crc = 0;
+	uint32_t crc;
 	int error;
 
 	error = gfs2_replay_read_block(ip, blk, &bh);
@@ -66,12 +68,15 @@ int get_log_header(struct gfs2_inode *ip, unsigned int blk,
 	tmp = (struct gfs2_log_header *)bh->b_data;
 	saved_hash = tmp->lh_hash;
 	tmp->lh_hash = 0;
-	hash = gfs2_disk_hash(bh->b_data, sizeof(struct gfs2_log_header));
+	hash = lgfs2_log_header_hash(bh->b_data);
 	tmp->lh_hash = saved_hash;
+	crc = lgfs2_log_header_crc(bh->b_data, ip->i_sbd->bsize);
 	gfs2_log_header_in(&lh, bh);
 	brelse(bh);
-
-	if (error || lh.lh_blkno != blk || lh.lh_hash != hash)
+#ifdef GFS2_HAS_LH_V2
+	lh_crc = lh.lh_crc;
+#endif
+	if (error || lh.lh_blkno != blk || lh.lh_hash != hash || lh_crc != crc)
 		return 1;
 
 	*head = lh;

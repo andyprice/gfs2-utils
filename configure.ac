@@ -141,6 +141,8 @@ AC_CHECK_MEMBER([struct gfs2_rgrp.rg_skip],[AC_DEFINE([GFS2_HAS_RG_SKIP],[],[Nex
                 [], [[#include <linux/gfs2_ondisk.h>]])
 AC_CHECK_MEMBER([struct gfs2_rgrp.rg_data0],[AC_DEFINE([GFS2_HAS_RG_RI_FIELDS],[],[Resource group fields duplicated from the rindex])],
                 [], [[#include <linux/gfs2_ondisk.h>]])
+AC_CHECK_MEMBER([struct gfs2_log_header.lh_crc],[AC_DEFINE([GFS2_HAS_LH_V2],[],[v2 log header format])],
+                [], [[#include <linux/gfs2_ondisk.h>]])
 
 # libuuid is only required if struct gfs2_sb.sb_uuid exists
 if test "$sb_has_uuid" = "yes" -a "$have_uuid" = "no"; then
