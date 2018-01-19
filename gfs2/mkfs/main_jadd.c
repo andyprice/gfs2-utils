@@ -21,6 +21,8 @@
 #define _(String) gettext(String)
 
 #include <linux/types.h>
+#include <linux/fiemap.h>
+#include <linux/fs.h>
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
 #include "metafs.h"
@@ -238,7 +240,7 @@ static void print_results(struct jadd_opts *opts)
 	printf( _("New journals: %u\n"), opts->journals);
 }
 
-static int create_new_inode(struct jadd_opts *opts)
+static int create_new_inode(struct jadd_opts *opts, uint64_t *addr)
 {
 	char *name = opts->new_inode;
 	int fd;
@@ -259,6 +261,12 @@ static int create_new_inode(struct jadd_opts *opts)
 			exit(EXIT_FAILURE);
 		}
 	}
+	if (addr != NULL) {
+		struct stat st;
+
+		fstat(fd, &st);
+		*addr = st.st_ino;
+	}
 
 	return fd;
 }
@@ -269,7 +277,7 @@ static void add_ir(struct jadd_opts *opts)
 	char new_name[256];
 	int error;
 
-	fd = create_new_inode(opts);
+	fd = create_new_inode(opts, NULL);
 
 	{
 		struct gfs2_inum_range ir;
@@ -299,7 +307,7 @@ static void add_sc(struct jadd_opts *opts)
 	char new_name[256];
 	int error;
 
-	fd = create_new_inode(opts);
+	fd = create_new_inode(opts, NULL);
 
 	{
 		struct gfs2_statfs_change sc;
@@ -329,7 +337,7 @@ static void add_qc(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	char new_name[256];
 	int error;
 
-	fd = create_new_inode(opts);
+	fd = create_new_inode(opts, NULL);
 
 	{
 		char buf[sdp->bsize];
@@ -419,13 +427,35 @@ close:
 	opts->orig_journals = existing_journals;
 }
 
+static uint64_t find_block_address(int fd, off_t offset, unsigned bsize)
+{
+	struct {
+		struct fiemap fm;
+		struct fiemap_extent fe;
+	} fme;
+	int ret;
+
+	fme.fm.fm_start = offset;
+	fme.fm.fm_length = 1;
+	fme.fm.fm_flags = FIEMAP_FLAG_SYNC;
+	fme.fm.fm_extent_count = 1;
+
+	ret = ioctl(fd, FS_IOC_FIEMAP, &fme.fm);
+	if (ret != 0 || fme.fm.fm_mapped_extents != 1) {
+		fprintf(stderr, "Failed to find log header block address\n");
+		return 0;
+	}
+	return fme.fe.fe_physical / bsize;
+}
+
 static void add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	int fd;
 	char new_name[256];
 	int error;
+	uint64_t addr;
 
-	fd = create_new_inode(opts);
+	fd = create_new_inode(opts, &addr);
 
 	{
 		char buf[sdp->bsize];
@@ -434,6 +464,7 @@ static void add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 		unsigned int x;
 		struct gfs2_log_header lh;
 		uint64_t seq = RANDOM(blocks);
+		off_t off = 0;
 
 		set_flags(fd, JA_FL_CLEAR, FS_JOURNAL_DATA_FL);
 		memset(buf, 0, sdp->bsize);
@@ -451,16 +482,24 @@ static void add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 		lh.lh_header.mh_type = GFS2_METATYPE_LH;
 		lh.lh_header.mh_format = GFS2_FORMAT_LH;
 		lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
-
+#ifdef GFS2_HAS_LH_V2
+		lh.lh_jinode = addr;
+		lh.lh_log_origin = GFS2_LOG_HEAD_USERSPACE;
+#endif
 		for (x=0; x<blocks; x++) {
 			uint32_t hash;
 
 			lh.lh_sequence = seq;
 			lh.lh_blkno = x;
 			gfs2_log_header_out(&lh, buf);
-			hash = gfs2_disk_hash(buf, sizeof(struct gfs2_log_header));
+			hash = lgfs2_log_header_hash(buf);
 			((struct gfs2_log_header *)buf)->lh_hash = cpu_to_be32(hash);
-
+#ifdef GFS2_HAS_LH_V2
+			((struct gfs2_log_header *)buf)->lh_addr = cpu_to_be64(
+			                           find_block_address(fd, off, sdp->bsize));
+			hash = lgfs2_log_header_crc(buf, sdp->bsize);
+			((struct gfs2_log_header *)buf)->lh_crc = cpu_to_be32(hash);
+#endif
 			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
 				perror("add_j");
 				exit(EXIT_FAILURE);
@@ -468,6 +507,7 @@ static void add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 
 			if (++seq == blocks)
 				seq = 0;
+			off += sdp->bsize;
 		}
 
 		error = fsync(fd);

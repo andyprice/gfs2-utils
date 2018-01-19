@@ -15,6 +15,7 @@
 
 #include "libgfs2.h"
 #include "config.h"
+#include "crc32c.h"
 
 #ifdef GFS2_HAS_UUID
 #include <uuid.h>
@@ -102,6 +103,28 @@ out_buf:
 	return err;
 }
 
+uint32_t lgfs2_log_header_hash(char *buf)
+{
+	/* lh_hash only CRCs the fields in the old lh, which ends where lh_crc is now */
+	const off_t v1_end = offsetof(struct gfs2_log_header, lh_hash) + 4;
+
+	return gfs2_disk_hash(buf, v1_end);
+}
+
+uint32_t lgfs2_log_header_crc(char *buf, unsigned bsize)
+{
+#ifdef GFS2_HAS_LH_V2
+	/* lh_crc CRCs the rest of the block starting after lh_crc */
+	const off_t v1_end = offsetof(struct gfs2_log_header, lh_hash) + 4;
+	const unsigned char *lb = (const unsigned char *)buf;
+
+	return crc32c(~0, lb + v1_end + sizeof(((struct gfs2_log_header*)0)->lh_crc),
+	               bsize - v1_end - sizeof(((struct gfs2_log_header*)0)->lh_crc));
+#else
+	return 0;
+#endif
+}
+
 /**
  * Intialise and write the data blocks for a new journal as a contiguous
  * extent. The indirect blocks pointing to these data blocks should have been
@@ -112,12 +135,26 @@ out_buf:
  */
 int lgfs2_write_journal_data(struct gfs2_inode *ip)
 {
-	uint32_t hash;
 	struct gfs2_log_header lh = {
 		.lh_header.mh_magic = GFS2_MAGIC,
 		.lh_header.mh_type = GFS2_METATYPE_LH,
 		.lh_header.mh_format = GFS2_FORMAT_LH,
 		.lh_flags = GFS2_LOG_HEAD_UNMOUNT,
+		.lh_tail = 0,
+		.lh_blkno = 0,
+		.lh_hash = 0,
+#ifdef GFS2_HAS_LH_V2
+		.lh_crc = 0,
+		.lh_nsec = 0,
+		.lh_sec = 0,
+		.lh_jinode = ip->i_di.di_num.no_addr,
+		.lh_statfs_addr = 0,
+		.lh_quota_addr = 0,
+		.lh_local_total = 0,
+		.lh_local_free = 0,
+		.lh_local_dinodes = 0,
+		.lh_log_origin = GFS2_LOG_HEAD_USERSPACE
+#endif
 	};
 	struct gfs2_buffer_head *bh;
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -129,12 +166,19 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 	if (bh == NULL)
 		return -1;
 
+	crc32c_optimization_init();
 	do {
+		struct gfs2_log_header *buflh = (struct gfs2_log_header *)bh->b_data;
+
 		lh.lh_sequence = seq;
 		lh.lh_blkno = bh->b_blocknr - jext0;
-		gfs2_log_header_out_bh(&lh, bh);
-		hash = gfs2_disk_hash(bh->b_data, sizeof(struct gfs2_log_header));
-		((struct gfs2_log_header *)bh->b_data)->lh_hash = cpu_to_be32(hash);
+		gfs2_log_header_out(&lh, bh->b_data);
+
+		buflh->lh_hash = cpu_to_be32(lgfs2_log_header_hash(bh->b_data));
+#ifdef GFS2_HAS_LH_V2
+		buflh->lh_addr = cpu_to_be32(bh->b_blocknr);
+		buflh->lh_crc = cpu_to_be32(lgfs2_log_header_crc(bh->b_data, sdp->bsize));
+#endif
 
 		if (bwrite(bh)) {
 			free(bh);
@@ -168,7 +212,10 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 	lh.lh_header.mh_type = GFS2_METATYPE_LH;
 	lh.lh_header.mh_format = GFS2_FORMAT_LH;
 	lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
-
+#ifdef GFS2_HAS_LH_V2
+	lh.lh_jinode = jnl->i_di.di_num.no_addr;
+	lh.lh_log_origin = GFS2_LOG_HEAD_USERSPACE;
+#endif
 	for (x = 0; x < blocks; x++) {
 		struct gfs2_buffer_head *bh = get_file_buf(jnl, x, TRUE);
 		if (!bh)
@@ -176,6 +223,7 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 		bmodified(bh);
 		brelse(bh);
 	}
+	crc32c_optimization_init();
 	for (x = 0; x < blocks; x++) {
 		struct gfs2_buffer_head *bh = get_file_buf(jnl, x, FALSE);
 		if (!bh)
@@ -185,9 +233,13 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 		lh.lh_sequence = seq;
 		lh.lh_blkno = x;
 		gfs2_log_header_out_bh(&lh, bh);
-		hash = gfs2_disk_hash(bh->b_data, sizeof(struct gfs2_log_header));
+		hash = lgfs2_log_header_hash(bh->b_data);
 		((struct gfs2_log_header *)bh->b_data)->lh_hash = cpu_to_be32(hash);
-
+#ifdef GFS2_HAS_LH_V2
+		((struct gfs2_log_header *)bh->b_data)->lh_addr = cpu_to_be32(bh->b_blocknr);
+		hash = lgfs2_log_header_crc(bh->b_data, bsize);
+		((struct gfs2_log_header *)bh->b_data)->lh_hash = cpu_to_be32(hash);
+#endif
 		bmodified(bh);
 		brelse(bh);
 

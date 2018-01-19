@@ -556,8 +556,7 @@ void gfs2_ea_header_print(const struct gfs2_ea_header *ea, char *name)
 	print_it("  name", "%s", NULL, buf);
 }
 
-void gfs2_log_header_in(struct gfs2_log_header *lh,
-			struct gfs2_buffer_head *bh)
+void gfs2_log_header_v1_in(struct gfs2_log_header *lh, struct gfs2_buffer_head *bh)
 {
 	struct gfs2_log_header *str = (struct gfs2_log_header *)bh->b_data;
 
@@ -569,7 +568,28 @@ void gfs2_log_header_in(struct gfs2_log_header *lh,
 	CPIN_32(lh, str, lh_hash);
 }
 
-void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf)
+void gfs2_log_header_in(struct gfs2_log_header *lh, struct gfs2_buffer_head *bh)
+{
+	struct gfs2_log_header *str = (struct gfs2_log_header *)bh->b_data;
+
+	gfs2_log_header_v1_in(lh, bh);
+#ifdef GFS2_HAS_LH_V2
+	CPIN_32(lh, str, lh_crc);
+	CPIN_32(lh, str, lh_nsec);
+	CPIN_64(lh, str, lh_sec);
+	CPIN_64(lh, str, lh_addr);
+	CPIN_64(lh, str, lh_jinode);
+	CPIN_64(lh, str, lh_statfs_addr);
+	CPIN_64(lh, str, lh_quota_addr);
+	CPIN_64(lh, str, lh_local_total);
+	CPIN_64(lh, str, lh_local_free);
+	CPIN_64(lh, str, lh_local_dinodes);
+	CPIN_32(lh, str, lh_log_origin);
+	CPIN_32(lh, str, __pad);
+#endif
+}
+
+void gfs2_log_header_v1_out(struct gfs2_log_header *lh, char *buf)
 {
 	struct gfs2_log_header *str = (struct gfs2_log_header *)buf;
 
@@ -581,13 +601,34 @@ void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf)
 	CPOUT_32(lh, str, lh_hash);
 }
 
+void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf)
+{
+	struct gfs2_log_header *str = (struct gfs2_log_header *)buf;
+
+	gfs2_log_header_v1_out(lh, buf);
+#ifdef GFS2_HAS_LH_V2
+	CPOUT_32(lh, str, lh_crc);
+	CPOUT_32(lh, str, lh_nsec);
+	CPOUT_64(lh, str, lh_sec);
+	CPOUT_64(lh, str, lh_addr);
+	CPOUT_64(lh, str, lh_jinode);
+	CPOUT_64(lh, str, lh_statfs_addr);
+	CPOUT_64(lh, str, lh_quota_addr);
+	CPOUT_64(lh, str, lh_local_total);
+	CPOUT_64(lh, str, lh_local_free);
+	CPOUT_64(lh, str, lh_local_dinodes);
+	CPOUT_32(lh, str, lh_log_origin);
+	CPOUT_32(lh, str, __pad);
+#endif
+}
+
 void gfs2_log_header_out_bh(struct gfs2_log_header *lh, struct gfs2_buffer_head *bh)
 {
 	gfs2_log_header_out(lh, bh->iov.iov_base);
 	bmodified(bh);
 }
 
-void gfs2_log_header_print(const struct gfs2_log_header *lh)
+void gfs2_log_header_v1_print(const struct gfs2_log_header *lh)
 {
 	gfs2_meta_header_print(&lh->lh_header);
 	pv(lh, lh_sequence, "%llu", "0x%llx");
@@ -595,6 +636,23 @@ void gfs2_log_header_print(const struct gfs2_log_header *lh)
 	pv(lh, lh_tail, "%u", "0x%x");
 	pv(lh, lh_blkno, "%u", "0x%x");
 	pv(lh, lh_hash, "0x%.8X", NULL);
+}
+
+void gfs2_log_header_print(const struct gfs2_log_header *lh)
+{
+	gfs2_log_header_v1_print(lh);
+	pv(lh, lh_crc, "0x%.8X", NULL);
+	pv(lh, lh_nsec, "%u", "0x%x");
+	pv(lh, lh_sec, "%llu", "0x%llx");
+	pv(lh, lh_addr, "%llu", "0x%llx");
+	pv(lh, lh_jinode, "%llu", "0x%llx");
+	pv(lh, lh_statfs_addr, "%llu", "0x%llx");
+	pv(lh, lh_quota_addr, "%llu", "0x%llx");
+	pv(lh, lh_local_total, "%llu", "0x%llx");
+	pv(lh, lh_local_free, "%llu", "0x%llx");
+	pv(lh, lh_local_dinodes, "%llu", "0x%llx");
+	pv(lh, lh_log_origin, "0x%.8X", NULL);
+	pv(lh, __pad, "0x%.8X", NULL);
 }
 
 void gfs2_log_descriptor_in(struct gfs2_log_descriptor *ld,
