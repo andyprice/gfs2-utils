@@ -176,7 +176,7 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 
 		buflh->lh_hash = cpu_to_be32(lgfs2_log_header_hash(bh->b_data));
 #ifdef GFS2_HAS_LH_V2
-		buflh->lh_addr = cpu_to_be32(bh->b_blocknr);
+		buflh->lh_addr = cpu_to_be64(bh->b_blocknr);
 		buflh->lh_crc = cpu_to_be32(lgfs2_log_header_crc(bh->b_data, sdp->bsize));
 #endif
 
@@ -236,7 +236,7 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 		hash = lgfs2_log_header_hash(bh->b_data);
 		((struct gfs2_log_header *)bh->b_data)->lh_hash = cpu_to_be32(hash);
 #ifdef GFS2_HAS_LH_V2
-		((struct gfs2_log_header *)bh->b_data)->lh_addr = cpu_to_be32(bh->b_blocknr);
+		((struct gfs2_log_header *)bh->b_data)->lh_addr = cpu_to_be64(bh->b_blocknr);
 		hash = lgfs2_log_header_crc(bh->b_data, bsize);
 		((struct gfs2_log_header *)bh->b_data)->lh_hash = cpu_to_be32(hash);
 #endif
