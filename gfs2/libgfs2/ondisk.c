@@ -648,9 +648,9 @@ void gfs2_log_header_print(const struct gfs2_log_header *lh)
 	pv(lh, lh_jinode, "%llu", "0x%llx");
 	pv(lh, lh_statfs_addr, "%llu", "0x%llx");
 	pv(lh, lh_quota_addr, "%llu", "0x%llx");
-	pv(lh, lh_local_total, "%llu", "0x%llx");
-	pv(lh, lh_local_free, "%llu", "0x%llx");
-	pv(lh, lh_local_dinodes, "%llu", "0x%llx");
+	pv(lh, lh_local_total, "%lld", "0x%llx");
+	pv(lh, lh_local_free, "%lld", "0x%llx");
+	pv(lh, lh_local_dinodes, "%lld", "0x%llx");
 	pv(lh, lh_log_origin, "0x%.8X", NULL);
 	pv(lh, __pad, "0x%.8X", NULL);
 }
