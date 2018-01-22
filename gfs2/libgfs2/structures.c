@@ -118,8 +118,7 @@ uint32_t lgfs2_log_header_crc(char *buf, unsigned bsize)
 	const off_t v1_end = offsetof(struct gfs2_log_header, lh_hash) + 4;
 	const unsigned char *lb = (const unsigned char *)buf;
 
-	return crc32c(~0, lb + v1_end + sizeof(((struct gfs2_log_header*)0)->lh_crc),
-	               bsize - v1_end - sizeof(((struct gfs2_log_header*)0)->lh_crc));
+	return crc32c(~0, lb + v1_end + 4, bsize - v1_end - 4);
 #else
 	return 0;
 #endif
