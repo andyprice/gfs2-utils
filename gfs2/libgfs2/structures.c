@@ -138,7 +138,7 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 		.lh_header.mh_magic = GFS2_MAGIC,
 		.lh_header.mh_type = GFS2_METATYPE_LH,
 		.lh_header.mh_format = GFS2_FORMAT_LH,
-		.lh_flags = GFS2_LOG_HEAD_UNMOUNT,
+		.lh_flags = GFS2_LOG_HEAD_UNMOUNT | GFS2_LOG_HEAD_USERSPACE;
 		.lh_tail = 0,
 		.lh_blkno = 0,
 		.lh_hash = 0,
@@ -152,7 +152,7 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 		.lh_local_total = 0,
 		.lh_local_free = 0,
 		.lh_local_dinodes = 0,
-		.lh_log_origin = GFS2_LOG_HEAD_USERSPACE
+		.lh_log_origin = 0;
 #endif
 	};
 	struct gfs2_buffer_head *bh;
@@ -210,10 +210,9 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 	lh.lh_header.mh_magic = GFS2_MAGIC;
 	lh.lh_header.mh_type = GFS2_METATYPE_LH;
 	lh.lh_header.mh_format = GFS2_FORMAT_LH;
-	lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
+	lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT | GFS2_LOG_HEAD_USERSPACE;
 #ifdef GFS2_HAS_LH_V2
 	lh.lh_jinode = jnl->i_di.di_num.no_addr;
-	lh.lh_log_origin = GFS2_LOG_HEAD_USERSPACE;
 #endif
 	for (x = 0; x < blocks; x++) {
 		struct gfs2_buffer_head *bh = get_file_buf(jnl, x, TRUE);

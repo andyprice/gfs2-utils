@@ -481,10 +481,9 @@ static void add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 		lh.lh_header.mh_magic = GFS2_MAGIC;
 		lh.lh_header.mh_type = GFS2_METATYPE_LH;
 		lh.lh_header.mh_format = GFS2_FORMAT_LH;
-		lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
+		lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT | GFS2_LOG_HEAD_USERSPACE;
 #ifdef GFS2_HAS_LH_V2
 		lh.lh_jinode = addr;
-		lh.lh_log_origin = GFS2_LOG_HEAD_USERSPACE;
 #endif
 		for (x=0; x<blocks; x++) {
 			uint32_t hash;
