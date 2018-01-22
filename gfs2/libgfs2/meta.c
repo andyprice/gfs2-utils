@@ -373,8 +373,6 @@ FP(lh_quota_addr, .points_to = (1 << LGFS2_MT_GFS2_DINODE))
 F(lh_local_total, .flags = LGFS2_MFF_FSBLOCKS)
 F(lh_local_free, .flags = LGFS2_MFF_FSBLOCKS)
 F(lh_local_dinodes, .flags = LGFS2_MFF_FSBLOCKS)
-F(lh_log_origin)
-RF(__pad)
 #endif
 };
 

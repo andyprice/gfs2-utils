@@ -138,7 +138,7 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 		.lh_header.mh_magic = GFS2_MAGIC,
 		.lh_header.mh_type = GFS2_METATYPE_LH,
 		.lh_header.mh_format = GFS2_FORMAT_LH,
-		.lh_flags = GFS2_LOG_HEAD_UNMOUNT | GFS2_LOG_HEAD_USERSPACE;
+		.lh_flags = GFS2_LOG_HEAD_UNMOUNT | GFS2_LOG_HEAD_USERSPACE,
 		.lh_tail = 0,
 		.lh_blkno = 0,
 		.lh_hash = 0,
@@ -152,7 +152,6 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 		.lh_local_total = 0,
 		.lh_local_free = 0,
 		.lh_local_dinodes = 0,
-		.lh_log_origin = 0;
 #endif
 	};
 	struct gfs2_buffer_head *bh;

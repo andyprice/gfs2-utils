@@ -584,8 +584,6 @@ void gfs2_log_header_in(struct gfs2_log_header *lh, struct gfs2_buffer_head *bh)
 	CPIN_64(lh, str, lh_local_total);
 	CPIN_64(lh, str, lh_local_free);
 	CPIN_64(lh, str, lh_local_dinodes);
-	CPIN_32(lh, str, lh_log_origin);
-	CPIN_32(lh, str, __pad);
 #endif
 }
 
@@ -617,8 +615,6 @@ void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf)
 	CPOUT_64(lh, str, lh_local_total);
 	CPOUT_64(lh, str, lh_local_free);
 	CPOUT_64(lh, str, lh_local_dinodes);
-	CPOUT_32(lh, str, lh_log_origin);
-	CPOUT_32(lh, str, __pad);
 #endif
 }
 
@@ -651,8 +647,6 @@ void gfs2_log_header_print(const struct gfs2_log_header *lh)
 	pv(lh, lh_local_total, "%lld", "0x%llx");
 	pv(lh, lh_local_free, "%lld", "0x%llx");
 	pv(lh, lh_local_dinodes, "%lld", "0x%llx");
-	pv(lh, lh_log_origin, "0x%.8X", NULL);
-	pv(lh, __pad, "0x%.8X", NULL);
 }
 
 void gfs2_log_descriptor_in(struct gfs2_log_descriptor *ld,
