@@ -319,6 +319,8 @@ struct metapath {
 
 #define GFS2_DEFAULT_BSIZE          (4096)
 #define GFS2_DEFAULT_JSIZE          (128)
+#define GFS2_MAX_JSIZE              (1024)
+#define GFS2_MIN_JSIZE              (8)
 #define GFS2_DEFAULT_RGSIZE         (256)
 #define GFS2_DEFAULT_UTSIZE         (1)
 #define GFS2_DEFAULT_QCSIZE         (1)

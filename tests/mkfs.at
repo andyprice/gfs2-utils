@@ -155,3 +155,13 @@ AT_CHECK([rgrifieldscheck.sh $GFS_TGT], 0, [ignore], [ignore])
 AT_CHECK([$GFS_MKFS -p lock_nolock -o test_topology=0:512:65536:393216:512 $GFS_TGT], 0, [ignore], [ignore])
 AT_CHECK([rgrifieldscheck.sh $GFS_TGT], 0, [ignore], [ignore])
 AT_CLEANUP
+
+AT_SETUP([Small filesystems])
+AT_KEYWORDS(mkfs.gfs2 mkfs)
+GFS_TGT_SIZE(32M)
+AT_CHECK([$GFS_MKFS -p lock_nolock $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([fsck.gfs2 -n $GFS_TGT], 0, [ignore], [ignore])
+GFS_TGT_SIZE(64M)
+AT_CHECK([$GFS_MKFS -p lock_nolock -j2 $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([fsck.gfs2 -n $GFS_TGT], 0, [ignore], [ignore])
+AT_CLEANUP
