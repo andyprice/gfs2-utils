@@ -552,7 +552,7 @@ static void opts_check(struct mkfs_opts *opts)
 	if (!opts->journals)
 		die( _("no journals specified\n"));
 
-	if (opts->jsize < 8 || opts->jsize > 1024)
+	if (opts->jsize < GFS2_MIN_JSIZE || opts->jsize > GFS2_MAX_JSIZE)
 		die( _("bad journal size\n"));
 
 	if (!opts->qcsize || opts->qcsize > 64)
@@ -575,6 +575,7 @@ static void print_results(struct gfs2_sb *sb, struct mkfs_opts *opts, uint64_t r
 	printf("%-27s%.2f %s (%"PRIu64" %s)\n", _("Filesystem size:"),
 	       (fssize / ((float)(1 << 30)) * sb->sb_bsize), _("GB"), fssize, _("blocks"));
 	printf("%-27s%u\n", _("Journals:"), opts->journals);
+	printf("%-27s%uMB\n", _("Journal size:"), opts->jsize);
 	printf("%-27s%"PRIu64"\n", _("Resource groups:"), rgrps);
 	printf("%-27s\"%s\"\n", _("Locking protocol:"), opts->lockproto);
 	printf("%-27s\"%s\"\n", _("Lock table:"), opts->locktable);
@@ -823,6 +824,36 @@ static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts
 	return 0;
 }
 
+/*
+ * Find a reasonable journal file size (in blocks) given the number of blocks
+ * in the filesystem.  For very small filesystems, it is not reasonable to
+ * have a journal that fills more than half of the filesystem.
+ *
+ * n.b. comments assume 4k blocks
+ *
+ * This was copied and adapted from e2fsprogs.
+ */
+static int default_journal_size(unsigned bsize, uint64_t num_blocks)
+{
+	int min_blocks = (GFS2_MIN_JSIZE << 20) / bsize;
+
+	if (num_blocks < 2 * min_blocks)
+		return -1;
+	if (num_blocks < 131072)        /* 512 MB */
+		return min_blocks;              /* 8 MB */
+	if (num_blocks < 512*1024)      /* 2 GB */
+		return (4096);                  /* 16 MB */
+	if (num_blocks < 2048*1024)     /* 8 GB */
+		return (8192);                  /* 32 MB */
+	if (num_blocks < 4096*1024)     /* 16 GB */
+		return (16384);                 /* 64 MB */
+	if (num_blocks < 262144*1024)   /*  1 TB */
+		return (32768);                 /* 128 MB */
+	if (num_blocks < 2621440*1024)  /* 10 TB */
+		return (131072);                /* 512 MB */
+	return 262144;                          /*   1 GB */
+}
+
 static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsize)
 {
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
@@ -847,9 +878,28 @@ static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsiz
 			       opts->dev.size / ((float)(1 << 30)), _("GB"),
 			       opts->dev.size / sdp->bsize, _("blocks"));
 		}
-		/* TODO: Check if the fssize is too small, somehow */
 		sdp->device.length = opts->fssize;
 	}
+	/* opts->jsize has already been max/min checked but we need to check it
+	   makes sense for the device size, or set a sensible default, if one
+	   will fit. For user-provided journal sizes, limit it to half of the fs. */
+	if (!opts->got_jsize) {
+		int default_jsize = default_journal_size(sdp->bsize, sdp->device.length / opts->journals);
+		if (default_jsize < 0) {
+			fprintf(stderr, _("gfs2 will not fit on this device.\n"));
+			exit(1);
+		}
+		opts->jsize = (default_jsize * sdp->bsize) >> 20;
+	} else if ((((opts->jsize * opts->journals) << 20) / sdp->bsize) > (sdp->device.length / 2)) {
+		unsigned max_jsize = (sdp->device.length / 2 * sdp->bsize / opts->journals) >> 20;
+
+		fprintf(stderr, _("gfs2 will not fit on this device.\n"));
+		if (max_jsize >= GFS2_MIN_JSIZE)
+			fprintf(stderr, _("Maximum size for %u journals on this device is %uMB.\n"),
+			        opts->journals, max_jsize);
+		exit(1);
+	}
+	sdp->jsize = opts->jsize;
 }
 
 static int probe_contents(struct mkfs_dev *dev)

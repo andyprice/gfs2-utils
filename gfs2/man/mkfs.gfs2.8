@@ -32,8 +32,9 @@ Enable debugging output.
 Print out a help message describing the available options, then exit.
 .TP
 \fB-J\fP \fImegabytes\fR
-The size of each journal. The default journal size is 128 megabytes and the
-minimum size is 8 megabytes.
+The size of each journal. The minimum size is 8 megabytes and the maximum is
+1024. If this is not specified, a value based on a sensible proportion of the
+file system will be chosen.
 .TP
 \fB-j\fP \fIjournals\fR
 The number of journals for mkfs.gfs2 to create.  At least one journal is
