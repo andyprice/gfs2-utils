@@ -1630,8 +1630,7 @@ static void parse_glocks_file(int fd, const char *fsname, int dlmwaiters,
 static void usage(void)
 {
 	printf("Usage:\n");
-	printf("glocktop [-i] [-d <delay sec>] [-f] [-n <iter>] [-sX] "
-	       "[-c] [-D] [-H] [-r] [-t]\n");
+	printf("glocktop [-i] [-d <delay sec>] [-n <iter>] [-sX] [-c] [-D] [-H] [-r] [-t]\n");
 	printf("\n");
 	printf("-i : Runs glocktop in interactive mode.\n");
 	printf("-d : delay between refreshes, in seconds (default: %d).\n", REFRESH_TIME);
