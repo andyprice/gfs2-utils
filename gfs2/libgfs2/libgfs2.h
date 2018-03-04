@@ -231,11 +231,11 @@ struct special_blocks {
 };
 
 struct gfs2_inode {
-	int bh_owned; /* Is this bh owned, iow, should we release it later? */
 	struct gfs2_dinode i_di;
 	struct gfs2_buffer_head *i_bh;
 	struct gfs2_sbd *i_sbd;
 	struct rgrp_tree *i_rgd; /* performance hint */
+	int bh_owned; /* Is this bh owned, iow, should we release it later? */
 };
 
 struct master_dir
