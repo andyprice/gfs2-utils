@@ -255,12 +255,13 @@ void unstuff_dinode(struct gfs2_inode *ip)
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_JD;
 			mh.mh_format = GFS2_FORMAT_JD;
-			gfs2_meta_header_out_bh(&mh, bh);
+			gfs2_meta_header_out(&mh, bh->b_data);
 
 			buffer_copy_tail(sdp, bh,
 					 sizeof(struct gfs2_meta_header),
 					 ip->i_bh, sizeof(struct gfs2_dinode));
 
+			bmodified(bh);
 			brelse(bh);
 		} else {
 			bh = bget(sdp, block);
@@ -410,10 +411,11 @@ void build_height(struct gfs2_inode *ip, int height)
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_IN;
 			mh.mh_format = GFS2_FORMAT_IN;
-			gfs2_meta_header_out_bh(&mh, bh);
+			gfs2_meta_header_out(&mh, bh->b_data);
 			buffer_copy_tail(sdp, bh,
 					 sizeof(struct gfs2_meta_header),
 					 ip->i_bh, sizeof(struct gfs2_dinode));
+			bmodified(bh);
 			brelse(bh);
 		}
 
@@ -521,7 +523,8 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_IN;
 			mh.mh_format = GFS2_FORMAT_IN;
-			gfs2_meta_header_out_bh(&mh, bh);
+			gfs2_meta_header_out(&mh, bh->b_data);
+			bmodified(bh);
 		} else {
 			if (*dblock == ip->i_di.di_num.no_addr)
 				bh = ip->i_bh;
@@ -712,7 +715,8 @@ int __gfs2_writei(struct gfs2_inode *ip, void *buf,
 				mh.mh_magic = GFS2_MAGIC;
 				mh.mh_type = GFS2_METATYPE_JD;
 				mh.mh_format = GFS2_FORMAT_JD;
-				gfs2_meta_header_out_bh(&mh, bh);
+				gfs2_meta_header_out(&mh, bh->b_data);
+				bmodified(bh);
 			}
 		} else {
 			if (dblock == ip->i_di.di_num.no_addr)
@@ -938,7 +942,8 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
 		mh.mh_magic = GFS2_MAGIC;
 		mh.mh_type = GFS2_METATYPE_LF;
 		mh.mh_format = GFS2_FORMAT_LF;
-		gfs2_meta_header_out_bh(&mh, nbh);
+		gfs2_meta_header_out(&mh, nbh->b_data);
+		bmodified(nbh);
 		buffer_clear_tail(dip->i_sbd, nbh,
 				  sizeof(struct gfs2_meta_header));
 	}
@@ -1218,7 +1223,8 @@ restart:
 				mh.mh_magic = GFS2_MAGIC;
 				mh.mh_type = GFS2_METATYPE_LF;
 				mh.mh_format = GFS2_FORMAT_LF;
-				gfs2_meta_header_out_bh(&mh, nbh);
+				gfs2_meta_header_out(&mh, nbh->b_data);
+				bmodified(nbh);
 
 				leaf->lf_next = cpu_to_be64(bn);
 
@@ -1272,7 +1278,8 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 		mh.mh_magic = GFS2_MAGIC;
 		mh.mh_type = GFS2_METATYPE_LF;
 		mh.mh_format = GFS2_FORMAT_LF;
-		gfs2_meta_header_out_bh(&mh, bh);
+		gfs2_meta_header_out(&mh, bh->b_data);
+		bmodified(bh);
 	}
 
 	leaf = (struct gfs2_leaf *)bh->b_data;

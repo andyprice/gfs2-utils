@@ -85,13 +85,6 @@ void gfs2_meta_header_out(const struct gfs2_meta_header *mh, char *buf)
 	str->__pad1 = 0;
 }
 
-void gfs2_meta_header_out_bh(const struct gfs2_meta_header *mh,
-                             struct gfs2_buffer_head *bh)
-{
-	gfs2_meta_header_out(mh, bh->iov.iov_base);
-	bmodified(bh);
-}
-
 void gfs2_meta_header_print(const struct gfs2_meta_header *mh)
 {
 	pv(mh, mh_magic, "0x%08X", NULL);
@@ -496,7 +489,7 @@ void gfs2_leaf_out(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh)
 {
 	struct gfs2_leaf *str = (struct gfs2_leaf *)bh->b_data;
 
-	gfs2_meta_header_out_bh(&lf->lf_header, bh);
+	gfs2_meta_header_out(&lf->lf_header, bh->b_data);
 	CPOUT_16(lf, str, lf_depth);
 	CPOUT_16(lf, str, lf_entries);
 	CPOUT_32(lf, str, lf_dirent_format);
@@ -670,7 +663,7 @@ void gfs2_log_descriptor_out(struct gfs2_log_descriptor *ld,
 {
 	struct gfs2_log_descriptor *str = (struct gfs2_log_descriptor *)bh->b_data;
 
-	gfs2_meta_header_out_bh(&ld->ld_header, bh);
+	gfs2_meta_header_out(&ld->ld_header, bh->b_data);
 	CPOUT_32(ld, str, ld_type);
 	CPOUT_32(ld, str, ld_length);
 	CPOUT_32(ld, str, ld_data1);

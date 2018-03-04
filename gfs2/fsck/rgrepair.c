@@ -898,7 +898,8 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_RB;
 			mh.mh_format = GFS2_FORMAT_RB;
-			gfs2_meta_header_out_bh(&mh, rg->bits[x].bi_bh);
+			gfs2_meta_header_out(&mh, rg->bits[x].bi_bh->b_data);
+			bmodified(rg->bits[x].bi_bh);
 		} else {
 			if (sdp->gfs1)
 				memset(&rg->rg, 0, sizeof(struct gfs_rgrp));

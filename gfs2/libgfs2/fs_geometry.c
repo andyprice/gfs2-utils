@@ -89,9 +89,10 @@ int build_rgrps(struct gfs2_sbd *sdp, int do_write)
 			for (x = 0; x < bitblocks; x++) {
 				rl->bits[x].bi_bh = bget(sdp, rl->start + x);
 				if (x)
-					gfs2_meta_header_out_bh(&mh, rl->bits[x].bi_bh);
+					gfs2_meta_header_out(&mh, rl->bits[x].bi_bh->b_data);
 				else
 					gfs2_rgrp_out_bh(&rl->rg, rl->bits[x].bi_bh);
+				bmodified(rl->bits[x].bi_bh);
 			}
 		}
 

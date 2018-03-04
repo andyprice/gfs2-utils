@@ -345,9 +345,7 @@ static void add_qc(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 			sdp->qcsize << (20 - sdp->sd_sb.sb_bsize_shift);
 		unsigned int x;
 		struct gfs2_meta_header mh;
-		struct gfs2_buffer_head dummy_bh;
 
-		dummy_bh.b_data = buf;
 		set_flags(fd, JA_FL_CLEAR, FS_JOURNAL_DATA_FL);
 		memset(buf, 0, sdp->bsize);
 
@@ -359,12 +357,12 @@ static void add_qc(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 		}
 
 		lseek(fd, 0, SEEK_SET);
-		
+
 		memset(&mh, 0, sizeof(struct gfs2_meta_header));
 		mh.mh_magic = GFS2_MAGIC;
 		mh.mh_type = GFS2_METATYPE_QC;
 		mh.mh_format = GFS2_FORMAT_QC;
-		gfs2_meta_header_out_bh(&mh, &dummy_bh);
+		gfs2_meta_header_out(&mh, buf);
 
 		for (x=0; x<blocks; x++) {
 			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
@@ -381,7 +379,7 @@ static void add_qc(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	}
 
 	close(fd);
-	
+
 	sprintf(new_name, "quota_change%u", opts->journals);
 	error = rename2system(opts, opts->per_node, new_name);
 	if (error < 0 && errno != EEXIST){

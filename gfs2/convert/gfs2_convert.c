@@ -312,7 +312,8 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 			bh = bread(sbp, block);
 			if (new)
 				memset(bh->b_data, 0, sbp->bsize);
-			gfs2_meta_header_out_bh(&mh, bh);
+			gfs2_meta_header_out(&mh, bh->b_data);
+			bmodified(bh);
 		}
 
 		hdrsize = blk->height ? sizeof(struct gfs2_meta_header) :
@@ -469,8 +470,10 @@ static uint64_t fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 			bh = bread(sbp, block);
 			if (new)
 				memset(bh->b_data, 0, sbp->bsize);
-			if (h < (blk->height - 1))
-				gfs2_meta_header_out_bh(&mh, bh);
+			if (h < (blk->height - 1)) {
+				gfs2_meta_header_out(&mh, bh->b_data);
+				bmodified(bh);
+			}
 		}
 
 		if (amount > sbp->bsize - ptramt)
@@ -1875,9 +1878,10 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 		convert_bitmaps(sdp, rgd);
 		for (x = 0; x < rgd->ri.ri_length; x++) {
 			if (x)
-				gfs2_meta_header_out_bh(&mh, rgd->bits[x].bi_bh);
+				gfs2_meta_header_out(&mh, rgd->bits[x].bi_bh->b_data);
 			else
 				gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[x].bi_bh);
+			bmodified(rgd->bits[x].bi_bh);
 		}
 	} /* for each journal */
 	return error;

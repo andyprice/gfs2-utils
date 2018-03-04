@@ -125,7 +125,8 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_IN;
 			mh.mh_format = GFS2_FORMAT_IN;
-			gfs2_meta_header_out_bh(&mh, bh);
+			gfs2_meta_header_out(&mh, bh->b_data);
+			bmodified(bh);
 		} else {
 			if (*dblock == ip->i_di.di_num.no_addr)
 				bh = ip->i_bh;
@@ -221,7 +222,7 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 			mh.mh_magic = GFS2_MAGIC;
 			mh.mh_type = GFS2_METATYPE_JD;
 			mh.mh_format = GFS2_FORMAT_JD;
-			gfs2_meta_header_out_bh(&mh, bh);
+			gfs2_meta_header_out(&mh, bh->b_data);
 		}
 
 		memcpy(bh->b_data + offset, buf + copied, amount);
@@ -377,7 +378,7 @@ void gfs_rgrp_out(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh)
 {
 	struct gfs_rgrp *str = (struct gfs_rgrp *)rbh->b_data;
 
-	gfs2_meta_header_out_bh(&rgrp->rg_header, rbh);
+	gfs2_meta_header_out(&rgrp->rg_header, rbh->b_data);
 	str->rg_flags = cpu_to_be32(rgrp->rg_flags);
 	str->rg_free = cpu_to_be32(rgrp->rg_free);
 	str->rg_useddi = cpu_to_be32(rgrp->rg_useddi);
