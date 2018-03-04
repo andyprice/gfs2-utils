@@ -276,8 +276,8 @@ struct gfs2_sbd {
 	uint32_t sd_blocks_per_bitmap;
 	uint32_t sd_max_dirres;
 	uint32_t sd_max_height;
-	uint64_t sd_heightsize[GFS2_MAX_META_HEIGHT];
 	uint32_t sd_max_jheight;
+	uint64_t sd_heightsize[GFS2_MAX_META_HEIGHT];
 	uint64_t sd_jheightsize[GFS2_MAX_META_HEIGHT];
 
 	/* Not specified on the command line, but... */
