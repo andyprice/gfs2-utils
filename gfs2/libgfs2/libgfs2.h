@@ -256,8 +256,6 @@ struct master_dir
 
 struct gfs2_sbd {
 	struct gfs2_sb sd_sb;    /* a copy of the ondisk structure */
-	char lockproto[GFS2_LOCKNAME_LEN];
-	char locktable[GFS2_LOCKNAME_LEN];
 
 	unsigned int bsize;	     /* The block size of the FS (in bytes) */
 	unsigned int jsize;	     /* Size of journals (in MB) */
