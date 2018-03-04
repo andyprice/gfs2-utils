@@ -254,6 +254,7 @@ struct master_dir
 	uint32_t journals;                /* Journal count */
 };
 
+#define LGFS2_SB_ADDR(sdp) (GFS2_SB_ADDR >> (sdp)->sd_fsb2bb_shift)
 struct gfs2_sbd {
 	struct gfs2_sb sd_sb;    /* a copy of the ondisk structure */
 
@@ -288,8 +289,6 @@ struct gfs2_sbd {
 
 	int device_fd;
 	int path_fd;
-
-	uint64_t sb_addr;
 
 	uint64_t fssize;
 	uint64_t blks_total;

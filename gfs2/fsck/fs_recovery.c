@@ -626,7 +626,7 @@ reinit:
  * through initialization properly yet. */
 static int rangecheck_jblock(struct gfs2_inode *ip, uint64_t block)
 {
-	if((block > ip->i_sbd->fssize) || (block <= ip->i_sbd->sb_addr)) {
+	if((block > ip->i_sbd->fssize) || (block <= LGFS2_SB_ADDR(ip->i_sbd))) {
 		log_info( _("Bad block pointer (out of range) found in "
 			    "journal inode %lld (0x%llx).\n"),
 			  (unsigned long long)ip->i_di.di_num.no_addr,

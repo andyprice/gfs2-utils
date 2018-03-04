@@ -213,7 +213,7 @@ static uint64_t ast_lookup_id(const char *id, struct gfs2_sbd *sbd)
 	}
 	switch (i) {
 	case ID_SB:
-		bn = sbd->sb_addr;
+		bn = LGFS2_SB_ADDR(sbd);
 		break;
 	case ID_MASTER:
 		bn = sbd->sd_sb.sb_master_dir.no_addr;

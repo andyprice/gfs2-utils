@@ -116,13 +116,13 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 	find_journaled_rgs(sdp);
 
 	initial_first_rg_dist = dist_array[0] = block_last_rg =
-		sdp->sb_addr + 1;
+		LGFS2_SB_ADDR(sdp) + 1;
 	shortest_dist_btwn_rgs = sdp->device.length;
 
-	for (blk = sdp->sb_addr + 1; blk < sdp->device.length; blk++) {
+	for (blk = LGFS2_SB_ADDR(sdp) + 1; blk < sdp->device.length; blk++) {
 		uint64_t dist;
 
-		if (blk == sdp->sb_addr + 1)
+		if (blk == LGFS2_SB_ADDR(sdp) + 1)
 			is_rgrp = 1;
 		else if (is_false_rg(blk))
 			is_rgrp = 0;
@@ -187,7 +187,7 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 		log_info(_("segment %d: rgrp found at block 0x%llx\n"),
 			 gsegment + 1, (unsigned long long)blk);
 		dist = blk - block_last_rg;
-		if (blk > sdp->sb_addr + 1) { /* not the very first rgrp */
+		if (blk > LGFS2_SB_ADDR(sdp) + 1) { /* not the very first rgrp */
 
 			log_info("dist 0x%llx = 0x%llx - 0x%llx ",
 				 (unsigned long long)dist,
@@ -245,9 +245,9 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 			   sizeof(struct gfs2_rindex),
 			   sizeof(struct gfs2_rindex));
 		gfs2_rindex_in(&tmpndx, (char *)&buf);
-		if (tmpndx.ri_addr > sdp->sb_addr + 1) { /* sanity check */
+		if (tmpndx.ri_addr > LGFS2_SB_ADDR(sdp) + 1) { /* sanity check */
 			log_warn( _("rgrp 2 is damaged: getting dist from index: "));
-			*dist_array = tmpndx.ri_addr - (sdp->sb_addr + 1);
+			*dist_array = tmpndx.ri_addr - (LGFS2_SB_ADDR(sdp) + 1);
 			log_warn("0x%llx\n", (unsigned long long)*dist_array);
 		} else {
 			log_warn( _("rgrp index 2 is damaged: extrapolating dist: "));
@@ -558,7 +558,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 	/* -------------------------------------------------------------- */
 	prev_rgd = NULL;
 	block_bump = rg_dist[0];
-	blk = sdp->sb_addr + 1;
+	blk = LGFS2_SB_ADDR(sdp) + 1;
 	while (blk <= sdp->device.length) {
 		log_debug( _("Block 0x%llx\n"), (unsigned long long)blk);
 		bh = bread(sdp, blk);
@@ -631,7 +631,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 		/*
 		 * Figure out where our next rgrp should be.
 		 */
-		if ((blk == sdp->sb_addr + 1) || (!gfs_grow)) {
+		if ((blk == LGFS2_SB_ADDR(sdp) + 1) || (!gfs_grow)) {
 			block_bump = rg_dist[segment];
 			if (segment_rgs >= rg_dcnt[segment]) {
 				log_debug(_("End of segment %d\n"), ++segment);
@@ -772,7 +772,7 @@ static void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree, i
 	/* of rgs based on the size of the device.                     */
 	/* If we have existing RGs (i.e. gfs2_grow) find the last one. */
 	if (!rgtree->osi_node) {
-		dev->length -= sdp->sb_addr + 1;
+		dev->length -= LGFS2_SB_ADDR(sdp) + 1;
 		nrgrp = how_many_rgrps(sdp, dev, rgsize_specified);
 		rglength = dev->length / nrgrp;
 		sdp->new_rgrps = nrgrp;
@@ -807,7 +807,7 @@ static void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree, i
 			rl = rgrp_insert(rgtree, rgaddr);
 			rl->length = rglength;
 		} else {
-			rgaddr = sdp->sb_addr + 1;
+			rgaddr = LGFS2_SB_ADDR(sdp) + 1;
 			rl = rgrp_insert(rgtree, rgaddr);
 			rl->length = dev->length -
 				(nrgrp - 1) * (dev->length / nrgrp);

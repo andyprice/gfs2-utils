@@ -721,7 +721,7 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 	mkfs_journals = calloc(opts->journals, sizeof(*mkfs_journals));
 	if (mkfs_journals == NULL)
 		return 1;
-	*rgaddr = lgfs2_rgrp_align_addr(rgs, sdp->sb_addr + 1);
+	*rgaddr = lgfs2_rgrp_align_addr(rgs, LGFS2_SB_ADDR(sdp) + 1);
 	rgsize = lgfs2_rgrp_align_len(rgs, rgsize);
 
 	for (j = 0; j < opts->journals; j++) {
@@ -1035,7 +1035,7 @@ int main(int argc, char *argv[])
 		if (!opts.quiet)
 			printf("%s", _("Done\n"));
 	}
-	rgaddr = lgfs2_rgrp_align_addr(rgs, sbd.sb_addr + 1);
+	rgaddr = lgfs2_rgrp_align_addr(rgs, LGFS2_SB_ADDR(&sbd) + 1);
 	error = place_journals(&sbd, rgs, &opts, &rgaddr);
 	if (error != 0) {
 		fprintf(stderr, _("Failed to create journals\n"));

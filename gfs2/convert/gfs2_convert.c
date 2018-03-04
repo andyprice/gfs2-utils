@@ -2343,7 +2343,7 @@ int main(int argc, char **argv)
 		/* end because if the tool is interrupted in the middle, we want */
 		/* it to not reject the partially converted fs as already done   */
 		/* when it's run a second time.                                  */
-		bh = bread(&sb2, sb2.sb_addr);
+		bh = bread(&sb2, LGFS2_SB_ADDR(&sb2));
 		sb2.sd_sb.sb_fs_format = GFS2_FORMAT_FS;
 		sb2.sd_sb.sb_multihost_format = GFS2_FORMAT_MULTI;
 		gfs2_sb_out(&sb2.sd_sb, bh->b_data);

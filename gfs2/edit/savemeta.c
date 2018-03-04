@@ -470,7 +470,7 @@ static int save_block(int fd, struct metafd *mfd, uint64_t blk, uint64_t owner, 
 	struct gfs2_buffer_head *savebh;
 	int err;
 
-	if (gfs2_check_range(&sbd, blk) && blk != sbd.sb_addr) {
+	if (gfs2_check_range(&sbd, blk) && blk != LGFS2_SB_ADDR(&sbd)) {
 		fprintf(stderr, "\nWarning: bad block pointer '0x%llx' "
 			"ignored in block (block %llu (0x%llx))",
 			(unsigned long long)blk,

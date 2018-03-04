@@ -108,7 +108,7 @@ unsigned long gfs2_bitfit(const unsigned char *buf, const unsigned int len,
  */
 int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno)
 {
-	if((blkno > sdp->fssize) || (blkno <= sdp->sb_addr))
+	if((blkno > sdp->fssize) || (blkno <= LGFS2_SB_ADDR(sdp)))
 		return -1;
 	return 0;
 }

@@ -166,7 +166,7 @@ extern struct gfs_sb *sbd1;
 
 static inline int valid_block(struct gfs2_sbd *sdp, uint64_t blkno)
 {
-	return !((blkno > sdp->fssize) || (blkno <= sdp->sb_addr) ||
+	return !((blkno > sdp->fssize) || (blkno <= LGFS2_SB_ADDR(sdp)) ||
 	         (lgfs2_get_bitmap(sdp, blkno, NULL) < 0));
 }
 
@@ -186,7 +186,7 @@ static inline int valid_block_ip(struct gfs2_inode *ip, uint64_t blk)
 
 	if (blk > sdp->fssize)
 		return 0;
-	if (blk <= sdp->sb_addr)
+	if (blk <= LGFS2_SB_ADDR(sdp))
 		return 0;
 	if (rgd == NULL || !rgrp_contains_block(rgd, blk)) {
 		rgd = gfs2_blk2rgrpd(sdp, blk);

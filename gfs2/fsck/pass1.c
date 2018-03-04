@@ -1569,7 +1569,7 @@ static void check_i_goal(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	if (sdp->gfs1 || ip->i_di.di_flags & GFS2_DIF_SYSTEM)
 		return;
 
-	if (ip->i_di.di_goal_meta <= sdp->sb_addr ||
+	if (ip->i_di.di_goal_meta <= LGFS2_SB_ADDR(sdp) ||
 	    ip->i_di.di_goal_meta > sdp->fssize) {
 		log_err(_("Inode #%llu (0x%llx): Bad allocation goal block "
 			  "found: %llu (0x%llx)\n"),

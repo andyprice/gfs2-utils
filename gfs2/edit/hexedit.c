@@ -1708,7 +1708,7 @@ static void find_print_block_rg(int bitmap)
 	struct rgrp_tree *rgd;
 
 	rblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
-	if (rblock == sbd.sb_addr)
+	if (rblock == LGFS2_SB_ADDR(&sbd))
 		printf("0 (the superblock is not in the bitmap)\n");
 	else {
 		rgd = gfs2_blk2rgrpd(&sbd, rblock);
@@ -1762,7 +1762,7 @@ static void find_change_block_alloc(int *newval)
 		exit(-1);
 	}
 	ablock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
-	if (ablock == sbd.sb_addr)
+	if (ablock == LGFS2_SB_ADDR(&sbd))
 		printf("3 (the superblock is not in the bitmap)\n");
 	else {
 		rgd = gfs2_blk2rgrpd(&sbd, ablock);
