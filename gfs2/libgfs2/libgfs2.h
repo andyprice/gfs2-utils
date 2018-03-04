@@ -217,12 +217,12 @@ extern struct osi_node *lgfs2_rgrps_root(lgfs2_rgrps_t rgs) __attribute__((depre
 struct gfs2_buffer_head {
 	osi_list_t b_altlist; /* alternate list */
 	uint64_t b_blocknr;
-	int b_modified;
 	union {
 		char *b_data;
 		struct iovec iov;
 	};
 	struct gfs2_sbd *sdp;
+	int b_modified;
 };
 
 struct special_blocks {
