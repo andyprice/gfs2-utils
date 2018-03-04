@@ -53,7 +53,6 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 	int j, new = 0;
 	unsigned int jblocks;
 	uint64_t b, dblock;
-	uint32_t extlen;
 	struct gfs2_inode *ip;
 	struct gfs2_buffer_head *bh;
 	int false_count;
@@ -67,7 +66,7 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 		jblocks = ip->i_di.di_size / sdp->sd_sb.sb_bsize;
 		false_count = 0;
 		for (b = 0; b < jblocks; b++) {
-			block_map(ip, b, &new, &dblock, &extlen, 0);
+			block_map(ip, b, &new, &dblock, NULL, 0);
 			if (!dblock)
 				break;
 			bh = bread(sdp, dblock);

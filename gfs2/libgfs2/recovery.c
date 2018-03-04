@@ -27,9 +27,8 @@ int gfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
 {
 	int new = 0;
 	uint64_t dblock;
-	uint32_t extlen;
 
-	block_map(ip, blk, &new, &dblock, &extlen, FALSE);
+	block_map(ip, blk, &new, &dblock, NULL, FALSE);
 	if (!dblock)
 		return -EIO;
 
@@ -220,14 +219,14 @@ int clean_journal(struct gfs2_inode *ip, struct gfs2_log_header *head)
 {
 	unsigned int lblock;
 	struct gfs2_log_header *lh;
-	uint32_t hash, extlen;
+	uint32_t hash;
 	struct gfs2_buffer_head *bh;
 	int new = 0;
 	uint64_t dblock;
 
 	lblock = head->lh_blkno;
 	gfs2_replay_incr_blk(ip, &lblock);
-	block_map(ip, lblock, &new, &dblock, &extlen, 0);
+	block_map(ip, lblock, &new, &dblock, NULL, 0);
 	if (!dblock)
 		return -EIO;
 
