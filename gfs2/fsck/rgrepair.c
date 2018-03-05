@@ -361,7 +361,7 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 		if (block >= prevrgd->ri.ri_addr + twogigs)
 			break;
 		bh = bread(sdp, block);
-		gfs2_meta_header_in(&mh, bh);
+		gfs2_meta_header_in(&mh, bh->b_data);
 		if ((mh.mh_magic != GFS2_MAGIC) ||
 		    (first && mh.mh_type != GFS2_METATYPE_RG) ||
 		    (!first && mh.mh_type != GFS2_METATYPE_RB)) {
@@ -394,7 +394,7 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 			if (next_block >= sdp->device.length)
 				break;
 			bh = bread(sdp, next_block + b);
-			gfs2_meta_header_in(&mh, bh);
+			gfs2_meta_header_in(&mh, bh->b_data);
 			brelse(bh);
 			if (mh.mh_magic == GFS2_MAGIC) {
 				if (mh.mh_type == GFS2_METATYPE_RG) {
@@ -444,7 +444,7 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 		return sdp->fssize - blk;
 
 	bh = bread(sdp, blk + last_bump);
-	gfs2_meta_header_in(&mh, bh);
+	gfs2_meta_header_in(&mh, bh->b_data);
 	brelse(bh);
 	if (mh.mh_magic == GFS2_MAGIC && mh.mh_type == GFS2_METATYPE_RG) {
 		log_info( _("rgrp found at 0x%llx, length=%lld\n"),
@@ -471,7 +471,7 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 	}
 	for (b = AWAY_FROM_BITMAPS; b < last_block; b++) {
 		bh = bread(sdp, block + b);
-		gfs2_meta_header_in(&mh, bh);
+		gfs2_meta_header_in(&mh, bh->b_data);
 		brelse(bh);
 		if (mh.mh_magic == GFS2_MAGIC) {
 			if (mh.mh_type == GFS2_METATYPE_RG)

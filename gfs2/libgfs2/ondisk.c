@@ -64,10 +64,9 @@ void gfs2_inum_print(const struct gfs2_inum *no)
 	pv(no, no_addr, "%llu", "0x%llx");
 }
 
-void gfs2_meta_header_in(struct gfs2_meta_header *mh,
-			 struct gfs2_buffer_head *bh)
+void gfs2_meta_header_in(struct gfs2_meta_header *mh, char *buf)
 {
-	struct gfs2_meta_header *str = (struct gfs2_meta_header *)bh->b_data;
+	struct gfs2_meta_header *str = (struct gfs2_meta_header *)buf;
 
 	CPIN_32(mh, str, mh_magic);
 	CPIN_32(mh, str, mh_type);
@@ -96,7 +95,7 @@ void gfs2_sb_in(struct gfs2_sb *sb, struct gfs2_buffer_head *bh)
 {
 	struct gfs2_sb *str = (struct gfs2_sb *)bh->b_data;
 
-	gfs2_meta_header_in(&sb->sb_header, bh);
+	gfs2_meta_header_in(&sb->sb_header, bh->b_data);
 
 	CPIN_32(sb, str, sb_fs_format);
 	CPIN_32(sb, str, sb_multihost_format);
@@ -216,7 +215,7 @@ void gfs2_rgrp_in(struct gfs2_rgrp *rg, struct gfs2_buffer_head *bh)
 {
 	struct gfs2_rgrp *str = (struct gfs2_rgrp *)bh->b_data;
 
-	gfs2_meta_header_in(&rg->rg_header, bh);
+	gfs2_meta_header_in(&rg->rg_header, bh->b_data);
 	CPIN_32(rg, str, rg_flags);
 	CPIN_32(rg, str, rg_free);
 	CPIN_32(rg, str, rg_dinodes);
@@ -319,7 +318,7 @@ void gfs2_dinode_in(struct gfs2_dinode *di, struct gfs2_buffer_head *bh)
 {
 	struct gfs2_dinode *str = (struct gfs2_dinode *)bh->b_data;
 
-	gfs2_meta_header_in(&di->di_header, bh);
+	gfs2_meta_header_in(&di->di_header, bh->b_data);
 	gfs2_inum_in(&di->di_num, (char *)&str->di_num);
 
 	CPIN_32(di, str, di_mode);
@@ -469,7 +468,7 @@ void gfs2_leaf_in(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh)
 {
 	struct gfs2_leaf *str = (struct gfs2_leaf *)bh->b_data;
 
-	gfs2_meta_header_in(&lf->lf_header, bh);
+	gfs2_meta_header_in(&lf->lf_header, bh->b_data);
 	CPIN_16(lf, str, lf_depth);
 	CPIN_16(lf, str, lf_entries);
 	CPIN_32(lf, str, lf_dirent_format);
@@ -553,7 +552,7 @@ void gfs2_log_header_v1_in(struct gfs2_log_header *lh, struct gfs2_buffer_head *
 {
 	struct gfs2_log_header *str = (struct gfs2_log_header *)bh->b_data;
 
-	gfs2_meta_header_in(&lh->lh_header, bh);
+	gfs2_meta_header_in(&lh->lh_header, bh->b_data);
 	CPIN_64(lh, str, lh_sequence);
 	CPIN_32(lh, str, lh_flags);
 	CPIN_32(lh, str, lh_tail);
@@ -649,7 +648,7 @@ void gfs2_log_descriptor_in(struct gfs2_log_descriptor *ld,
 {
 	struct gfs2_log_descriptor *str = (struct gfs2_log_descriptor *)bh->b_data;
 
-	gfs2_meta_header_in(&ld->ld_header, bh);
+	gfs2_meta_header_in(&ld->ld_header, bh->b_data);
 	CPIN_32(ld, str, ld_type);
 	CPIN_32(ld, str, ld_length);
 	CPIN_32(ld, str, ld_data1);

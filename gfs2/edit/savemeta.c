@@ -242,7 +242,7 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, uint64_t owner,
 		*block_type = 0;
 	*gstruct_len = sbd.bsize;
 
-	gfs2_meta_header_in(&mh, lbh);
+	gfs2_meta_header_in(&mh, lbh->b_data);
 	if (mh.mh_magic != GFS2_MAGIC)
 		return -1;
 
@@ -680,7 +680,7 @@ static void save_inode_data(struct metafd *mfd, uint64_t iblk)
 
 		lbh = bread(&sbd, inode->i_di.di_eattr);
 		save_block(sbd.device_fd, mfd, inode->i_di.di_eattr, iblk, NULL);
-		gfs2_meta_header_in(&mh, lbh);
+		gfs2_meta_header_in(&mh, lbh->b_data);
 		if (mh.mh_magic == GFS2_MAGIC &&
 		    mh.mh_type == GFS2_METATYPE_EA)
 			save_ea_block(mfd, lbh, iblk);

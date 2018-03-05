@@ -436,7 +436,7 @@ static void gfs1_rgrp_in(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh)
 {
         struct gfs_rgrp *str = (struct gfs_rgrp *)rbh->b_data;
 
-        gfs2_meta_header_in(&rgrp->rg_header, rbh);
+        gfs2_meta_header_in(&rgrp->rg_header, rbh->b_data);
         rgrp->rg_flags = be32_to_cpu(str->rg_flags);
         rgrp->rg_free = be32_to_cpu(str->rg_free);
         rgrp->rg_useddi = be32_to_cpu(str->rg_useddi);
@@ -480,7 +480,7 @@ int display_gfs2(struct gfs2_buffer_head *dbh)
 	switch (magic)
 	{
 	case GFS2_MAGIC:
-		gfs2_meta_header_in(&mh, dbh);
+		gfs2_meta_header_in(&mh, dbh->b_data);
 		if (mh.mh_type > GFS2_METATYPE_QC)
 			print_gfs2("Unknown metadata type");
 		else

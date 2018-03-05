@@ -256,7 +256,7 @@ static void gfs_dinode_in(struct gfs_dinode *di, struct gfs2_buffer_head *bh)
 {
 	struct gfs_dinode *str = (struct gfs_dinode *)bh->b_data;
 
-	gfs2_meta_header_in(&di->di_header, bh);
+	gfs2_meta_header_in(&di->di_header, bh->b_data);
 	gfs2_inum_in(&di->di_num, (char *)&str->di_num);
 
 	di->di_mode = be32_to_cpu(str->di_mode);
@@ -359,7 +359,7 @@ void gfs_rgrp_in(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh)
 {
 	struct gfs_rgrp *str = (struct gfs_rgrp *)rbh->b_data;
 
-	gfs2_meta_header_in(&rgrp->rg_header, rbh);
+	gfs2_meta_header_in(&rgrp->rg_header, rbh->b_data);
 	rgrp->rg_flags = be32_to_cpu(str->rg_flags);
 	rgrp->rg_free = be32_to_cpu(str->rg_free);
 	rgrp->rg_useddi = be32_to_cpu(str->rg_useddi);

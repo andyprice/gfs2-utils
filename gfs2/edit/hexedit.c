@@ -2120,7 +2120,7 @@ void gfs_log_header_in(struct gfs_log_header *head,
 {
 	struct gfs_log_header *str = lbh->iov.iov_base;
 
-	gfs2_meta_header_in(&head->lh_header, lbh);
+	gfs2_meta_header_in(&head->lh_header, lbh->b_data);
 
 	head->lh_flags = be32_to_cpu(str->lh_flags);
 	head->lh_pad = be32_to_cpu(str->lh_pad);

@@ -602,7 +602,7 @@ static int check_data(struct gfs2_inode *ip, uint64_t metablock,
 			return 1;
 		case GFS2_BLKST_USED: /* tough decision: May be data or meta */
 			bh = bread(ip->i_sbd, block);
-			gfs2_meta_header_in(&mh, bh);
+			gfs2_meta_header_in(&mh, bh->b_data);
 			brelse(bh);
 			if (mh.mh_magic == GFS2_MAGIC &&
 			    mh.mh_type >= GFS2_METATYPE_RG &&

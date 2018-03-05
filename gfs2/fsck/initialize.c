@@ -1130,7 +1130,7 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
 				(bsize / bsize2) + 1;
 			sdp->bsize = bsize2; /* temporarily */
 			rb_bh = bread(sdp, rb_addr);
-			gfs2_meta_header_in(&mh, rb_bh);
+			gfs2_meta_header_in(&mh, rb_bh->b_data);
 			brelse(rb_bh);
 			if (mh.mh_magic == GFS2_MAGIC &&
 			    mh.mh_type == GFS2_METATYPE_RB) {

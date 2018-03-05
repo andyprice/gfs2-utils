@@ -721,8 +721,7 @@ extern void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 
 extern void gfs2_inum_in(struct gfs2_inum *no, char *buf);
 extern void gfs2_inum_out(const struct gfs2_inum *no, char *buf);
-extern void gfs2_meta_header_in(struct gfs2_meta_header *mh,
-				struct gfs2_buffer_head *bh);
+extern void gfs2_meta_header_in(struct gfs2_meta_header *mh, char *buf);
 extern void gfs2_meta_header_out(const struct gfs2_meta_header *mh, char *buf);
 extern void gfs2_sb_in(struct gfs2_sb *sb, struct gfs2_buffer_head *bh);
 extern void gfs2_sb_out(const struct gfs2_sb *sb, char *buf);
