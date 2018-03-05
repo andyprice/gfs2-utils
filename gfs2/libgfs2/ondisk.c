@@ -378,12 +378,6 @@ void gfs2_dinode_out(struct gfs2_dinode *di, char *buf)
 	CPOUT_08(di, str, di_reserved, 32);
 }
 
-void gfs2_dinode_out_bh(struct gfs2_dinode *di, struct gfs2_buffer_head *bh)
-{
-	gfs2_dinode_out(di, bh->iov.iov_base);
-	bmodified(bh);
-}
-
 void gfs2_dinode_print(const struct gfs2_dinode *di)
 {
 	gfs2_meta_header_print(&di->di_header);

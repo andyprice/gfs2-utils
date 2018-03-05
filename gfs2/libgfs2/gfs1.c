@@ -243,9 +243,8 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 		ip->i_di.di_size = start + copied;
 	}
 	ip->i_di.di_mtime = ip->i_di.di_ctime = time(NULL);
-
-	gfs2_dinode_out_bh(&ip->i_di, ip->i_bh);
-
+	gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
+	bmodified(ip->i_bh);
 	return copied;
 }
 
