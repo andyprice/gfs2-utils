@@ -742,10 +742,8 @@ extern void gfs2_log_header_v1_in(struct gfs2_log_header *lh, char *buf);
 extern void gfs2_log_header_in(struct gfs2_log_header *lh, char *buf);
 extern void gfs2_log_header_v1_out(struct gfs2_log_header *lh, char *buf);
 extern void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf);
-extern void gfs2_log_descriptor_in(struct gfs2_log_descriptor *ld,
-				   struct gfs2_buffer_head *bh);
-extern void gfs2_log_descriptor_out(struct gfs2_log_descriptor *ld,
-				    struct gfs2_buffer_head *bh);
+extern void gfs2_log_descriptor_in(struct gfs2_log_descriptor *ld, char *buf);
+extern void gfs2_log_descriptor_out(struct gfs2_log_descriptor *ld, char *buf);
 extern void gfs2_statfs_change_in(struct gfs2_statfs_change *sc, char *buf);
 extern void gfs2_statfs_change_out(struct gfs2_statfs_change *sc, char *buf);
 extern void gfs2_quota_change_in(struct gfs2_quota_change *qc,

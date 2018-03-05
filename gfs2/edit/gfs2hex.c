@@ -536,7 +536,7 @@ int display_gfs2(struct gfs2_buffer_head *dbh)
 			break;
 
 		case GFS2_METATYPE_LD:
-			gfs2_log_descriptor_in(&ld, dbh);
+			gfs2_log_descriptor_in(&ld, dbh->b_data);
 			gfs2_log_descriptor_print(&ld);
 			break;
 

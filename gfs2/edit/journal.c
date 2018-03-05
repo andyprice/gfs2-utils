@@ -364,7 +364,7 @@ static uint64_t find_wrap_pt(struct gfs2_inode *ji, char *jbuf, uint64_t jblock,
  * process_ld - process a log descriptor
  */
 static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
-		      uint64_t jb, struct gfs2_buffer_head *dummy_bh, int tblk,
+		      uint64_t jb, char *buf, int tblk,
 		      uint64_t *tblk_off, uint64_t bitblk,
 		      struct rgrp_tree *rgd, int *prnt, uint64_t *bblk_off)
 {
@@ -383,15 +383,12 @@ static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 		{"Metadata", "Unlinked inode", "Dealloc inode",
 		 "Quota", "Final Entry", "Unknown"}};
 
-	gfs2_log_descriptor_in(&ld, dummy_bh);
+	gfs2_log_descriptor_in(&ld, buf);
 	if (sbd.gfs1)
-		b = (uint64_t *)(dummy_bh->b_data +
-				 sizeof(struct gfs_log_descriptor));
+		b = (uint64_t *)(buf + sizeof(struct gfs_log_descriptor));
 	else
-		b = (uint64_t *)(dummy_bh->b_data +
-				 sizeof(struct gfs2_log_descriptor));
-	*prnt = ld_is_pertinent(b, (dummy_bh->b_data + sbd.bsize), tblk, rgd,
-			       bitblk);
+		b = (uint64_t *)(buf + sizeof(struct gfs2_log_descriptor));
+	*prnt = ld_is_pertinent(b, (buf + sbd.bsize), tblk, rgd, bitblk);
 
 	if (*prnt) {
 		print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log descriptor, ",
@@ -412,9 +409,9 @@ static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 	if (ld.ld_type == GFS2_LOG_DESC_METADATA ||
 	    ld.ld_type == GFS_LOG_DESC_METADATA)
 		is_meta_ld = 1;
-	ld_blocks -= print_ld_blks(b, (dummy_bh->b_data + sbd.bsize), line,
-				   tblk, tblk_off, bitblk, rgd, abs_block,
-				   *prnt, bblk_off, is_meta_ld);
+	ld_blocks -= print_ld_blks(b, (buf + sbd.bsize), line, tblk, tblk_off,
+	                           bitblk, rgd, abs_block, *prnt, bblk_off,
+	                           is_meta_ld);
 
 	return ld_blocks;
 }
@@ -575,7 +572,7 @@ void dump_journal(const char *journal, int tblk)
 		block_type = get_block_type(&dummy_bh, NULL);
 		if (block_type == GFS2_METATYPE_LD) {
 			ld_blocks = process_ld(abs_block, wrappt, j_size, jb,
-					       &dummy_bh, tblk, &tblk_off,
+					       dummy_bh.b_data, tblk, &tblk_off,
 					       bitblk, rgd, &is_pertinent,
 					       &bblk_off);
 			offset_from_ld = 0;
