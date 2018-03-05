@@ -549,10 +549,11 @@ void gfs2_log_header_v1_in(struct gfs2_log_header *lh, char *buf)
 
 void gfs2_log_header_in(struct gfs2_log_header *lh, char *buf)
 {
-	struct gfs2_log_header *str = (struct gfs2_log_header *)buf;
-
 	gfs2_log_header_v1_in(lh, buf);
 #ifdef GFS2_HAS_LH_V2
+	{
+	struct gfs2_log_header *str = (struct gfs2_log_header *)buf;
+
 	CPIN_32(lh, str, lh_crc);
 	CPIN_32(lh, str, lh_nsec);
 	CPIN_64(lh, str, lh_sec);
@@ -563,6 +564,7 @@ void gfs2_log_header_in(struct gfs2_log_header *lh, char *buf)
 	CPIN_64(lh, str, lh_local_total);
 	CPIN_64(lh, str, lh_local_free);
 	CPIN_64(lh, str, lh_local_dinodes);
+	}
 #endif
 }
 
@@ -580,10 +582,11 @@ void gfs2_log_header_v1_out(struct gfs2_log_header *lh, char *buf)
 
 void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf)
 {
-	struct gfs2_log_header *str = (struct gfs2_log_header *)buf;
-
 	gfs2_log_header_v1_out(lh, buf);
 #ifdef GFS2_HAS_LH_V2
+	{
+	struct gfs2_log_header *str = (struct gfs2_log_header *)buf;
+
 	CPOUT_32(lh, str, lh_crc);
 	CPOUT_32(lh, str, lh_nsec);
 	CPOUT_64(lh, str, lh_sec);
@@ -594,6 +597,7 @@ void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf)
 	CPOUT_64(lh, str, lh_local_total);
 	CPOUT_64(lh, str, lh_local_free);
 	CPOUT_64(lh, str, lh_local_dinodes);
+	}
 #endif
 }
 
