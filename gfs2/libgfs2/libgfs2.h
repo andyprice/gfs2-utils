@@ -746,10 +746,8 @@ extern void gfs2_log_descriptor_in(struct gfs2_log_descriptor *ld, char *buf);
 extern void gfs2_log_descriptor_out(struct gfs2_log_descriptor *ld, char *buf);
 extern void gfs2_statfs_change_in(struct gfs2_statfs_change *sc, char *buf);
 extern void gfs2_statfs_change_out(struct gfs2_statfs_change *sc, char *buf);
-extern void gfs2_quota_change_in(struct gfs2_quota_change *qc,
-				 struct gfs2_buffer_head *bh);
-extern void gfs2_quota_change_out(struct gfs2_quota_change *qc,
-				  struct gfs2_buffer_head *bh);
+extern void gfs2_quota_change_in(struct gfs2_quota_change *qc, char *buf);
+extern void gfs2_quota_change_out(struct gfs2_quota_change *qc, char *buf);
 
 /* Printing functions */
 

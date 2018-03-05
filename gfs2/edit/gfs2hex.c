@@ -553,7 +553,7 @@ int display_gfs2(struct gfs2_buffer_head *dbh)
 			break;
 
 		case GFS2_METATYPE_QC:
-			gfs2_quota_change_in(&qc, dbh);
+			gfs2_quota_change_in(&qc, dbh->b_data);
 			gfs2_quota_change_print(&qc);
 			break;
 

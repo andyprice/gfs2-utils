@@ -32,11 +32,11 @@
 /*
  * gfs2_xxx_in - read in an xxx struct
  * first arg: the cpu-order structure
- * bh: the disk-order buffer_head
+ * buf: the disk-order block data
  *
  * gfs2_xxx_out - write out an xxx struct
  * first arg: the cpu-order structure
- * bh: the disk-order buffer_head
+ * buf: the disk-order block data
  *
  * gfs2_xxx_print - print out an xxx struct
  * first arg: the cpu-order structure
@@ -684,27 +684,24 @@ void gfs2_statfs_change_print(const struct gfs2_statfs_change *sc)
 	pv(sc, sc_dinodes, "%lld", "0x%llx");
 }
 
-void gfs2_quota_change_in(struct gfs2_quota_change *qc,
-			  struct gfs2_buffer_head *bh)
+void gfs2_quota_change_in(struct gfs2_quota_change *qc, char *buf)
 {
-	struct gfs2_quota_change *str = (struct gfs2_quota_change *)(bh->b_data +
-		sizeof(struct gfs2_meta_header));
+	struct gfs2_quota_change *str = (struct gfs2_quota_change *)(buf +
+	                                 sizeof(struct gfs2_meta_header));
 
 	CPIN_64(qc, str, qc_change);
 	CPIN_32(qc, str, qc_flags);
 	CPIN_32(qc, str, qc_id);
 }
 
-void gfs2_quota_change_out(struct gfs2_quota_change *qc,
-			   struct gfs2_buffer_head *bh)
+void gfs2_quota_change_out(struct gfs2_quota_change *qc, char *buf)
 {
-	struct gfs2_quota_change *str = (struct gfs2_quota_change *)(bh->b_data +
-		sizeof(struct gfs2_meta_header));
+	struct gfs2_quota_change *str = (struct gfs2_quota_change *)(buf +
+	                                 sizeof(struct gfs2_meta_header));
 
 	CPOUT_64(qc, str, qc_change);
 	CPOUT_32(qc, str, qc_flags);
 	CPOUT_32(qc, str, qc_id);
-	bmodified(bh);
 }
 
 void gfs2_quota_change_print(const struct gfs2_quota_change *qc)
@@ -713,5 +710,4 @@ void gfs2_quota_change_print(const struct gfs2_quota_change *qc)
 	pv(qc, qc_flags, "0x%.8X", NULL);
 	pv(qc, qc_id, "%u", "0x%x");
 }
-
 
