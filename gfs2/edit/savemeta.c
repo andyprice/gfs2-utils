@@ -574,7 +574,7 @@ static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, uint64_t bl
 				return ret;
 			}
 		}
-		gfs2_leaf_in(&leaf, bh);
+		gfs2_leaf_in(&leaf, bh->b_data);
 		brelse(bh);
 		blk = leaf.lf_next;
 	} while (leaf.lf_next != 0);

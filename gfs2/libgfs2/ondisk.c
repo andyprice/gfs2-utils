@@ -452,11 +452,11 @@ void gfs2_dirent_out(struct gfs2_dirent *de, char *buf)
 #endif /* GFS2_HAS_DE_RAHEAD */
 }
 
-void gfs2_leaf_in(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh)
+void gfs2_leaf_in(struct gfs2_leaf *lf, char *buf)
 {
-	struct gfs2_leaf *str = (struct gfs2_leaf *)bh->b_data;
+	struct gfs2_leaf *str = (struct gfs2_leaf *)buf;
 
-	gfs2_meta_header_in(&lf->lf_header, bh->b_data);
+	gfs2_meta_header_in(&lf->lf_header, buf);
 	CPIN_16(lf, str, lf_depth);
 	CPIN_16(lf, str, lf_entries);
 	CPIN_32(lf, str, lf_dirent_format);
@@ -472,11 +472,11 @@ void gfs2_leaf_in(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh)
 #endif
 }
 
-void gfs2_leaf_out(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh)
+void gfs2_leaf_out(struct gfs2_leaf *lf, char *buf)
 {
-	struct gfs2_leaf *str = (struct gfs2_leaf *)bh->b_data;
+	struct gfs2_leaf *str = (struct gfs2_leaf *)buf;
 
-	gfs2_meta_header_out(&lf->lf_header, bh->b_data);
+	gfs2_meta_header_out(&lf->lf_header, buf);
 	CPOUT_16(lf, str, lf_depth);
 	CPOUT_16(lf, str, lf_entries);
 	CPOUT_32(lf, str, lf_dirent_format);
@@ -490,7 +490,6 @@ void gfs2_leaf_out(struct gfs2_leaf *lf, struct gfs2_buffer_head *bh)
 #else
 	CPOUT_08(lf, str, lf_reserved, 64);
 #endif
-	bmodified(bh);
 }
 
 void gfs2_leaf_print(const struct gfs2_leaf *lf)

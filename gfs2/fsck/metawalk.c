@@ -583,12 +583,13 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	   to use cpu_to_be32(), but we should check for incorrect values and
 	   replace them with the correct value. */
 
-	gfs2_leaf_in(leaf, lbh);
+	gfs2_leaf_in(leaf, lbh->b_data);
 	if (leaf->lf_dirent_format == (GFS2_FORMAT_DE << 16)) {
 		log_debug( _("incorrect lf_dirent_format at leaf #%" PRIu64
 			     "\n"), *leaf_no);
 		leaf->lf_dirent_format = GFS2_FORMAT_DE;
-		gfs2_leaf_out(leaf, lbh);
+		gfs2_leaf_out(leaf, lbh->b_data);
+		bmodified(lbh);
 		log_debug( _("Fixing lf_dirent_format.\n"));
 	}
 
@@ -623,7 +624,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 		   changed it. */
 		brelse(lbh);
 		lbh = bread(sdp, *leaf_no);
-		gfs2_leaf_in(leaf, lbh);
+		gfs2_leaf_in(leaf, lbh->b_data);
 		if (count != leaf->lf_entries) {
 			log_err( _("Leaf %llu (0x%llx) entry count in "
 				   "directory %llu (0x%llx) does not match "
@@ -635,7 +636,8 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 				 leaf->lf_entries, count);
 			if (query( _("Update leaf entry count? (y/n) "))) {
 				leaf->lf_entries = count;
-				gfs2_leaf_out(leaf, lbh);
+				gfs2_leaf_out(leaf, lbh->b_data);
+				bmodified(lbh);
 				log_warn( _("Leaf entry count updated\n"));
 			} else
 				log_err( _("Leaf entry count left in "

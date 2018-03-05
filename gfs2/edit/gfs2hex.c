@@ -298,7 +298,7 @@ void do_dinode_extended(struct gfs2_dinode *dine, struct gfs2_buffer_head *lbh)
 				if (last >= max_block)
 					break;
 				tmp_bh = bread(&sbd, last);
-				gfs2_leaf_in(&leaf, tmp_bh);
+				gfs2_leaf_in(&leaf, tmp_bh->b_data);
 				indirect->ii[indirect_blocks].dirents = 0;
 				for (direntcount = 0, bufoffset = sizeof(struct gfs2_leaf);
 					 bufoffset < sbd.bsize;
@@ -325,12 +325,10 @@ uint64_t do_leaf_extended(char *dlebuf, struct iinfo *indir)
 {
 	int x, i;
 	struct gfs2_dirent de;
-	struct gfs2_buffer_head tbh; /* kludge */
 
 	x = 0;
 	memset(indir, 0, sizeof(*indir));
-	tbh.b_data = dlebuf;
-	gfs2_leaf_in(&indir->ii[0].lf, &tbh);
+	gfs2_leaf_in(&indir->ii[0].lf, dlebuf);
 	/* Directory Entries: */
 	for (i = sizeof(struct gfs2_leaf); i < sbd.bsize;
 	     i += de.de_rec_len) {
@@ -519,7 +517,7 @@ int display_gfs2(struct gfs2_buffer_head *dbh)
 			break;
 
 		case GFS2_METATYPE_LF:
-			gfs2_leaf_in(&lf, dbh);
+			gfs2_leaf_in(&lf, dbh->b_data);
 			gfs2_leaf_print(&lf);
 			break;
 

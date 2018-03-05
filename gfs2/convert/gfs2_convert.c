@@ -1303,7 +1303,7 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip
 				 (unsigned long long)leaf_block);
 			break;
 		}
-		gfs2_leaf_in(&leaf, bh_leaf); /* buffer to structure */
+		gfs2_leaf_in(&leaf, bh_leaf->b_data);
 		error = process_dirent_info(dip, sbp, bh_leaf, leaf.lf_entries, dentmod);
 		bmodified(bh_leaf);
 		brelse(bh_leaf);
