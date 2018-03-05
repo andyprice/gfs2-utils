@@ -840,7 +840,7 @@ static int default_journal_size(unsigned bsize, uint64_t num_blocks)
 		return (16384);                 /* 64 MB */
 	if (num_blocks < 262144*1024)   /*  1 TB */
 		return (32768);                 /* 128 MB */
-	if (num_blocks < 2621440*1024)  /* 10 TB */
+	if (num_blocks < 2621440UL*1024)  /* 10 TB */
 		return (131072);                /* 512 MB */
 	return 262144;                          /*   1 GB */
 }
