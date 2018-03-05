@@ -308,11 +308,11 @@ void gfs2_quota_print(const struct gfs2_quota *qu)
 	pv(qu, qu_value, "%lld", "0x%llx");
 }
 
-void gfs2_dinode_in(struct gfs2_dinode *di, struct gfs2_buffer_head *bh)
+void gfs2_dinode_in(struct gfs2_dinode *di, char *buf)
 {
-	struct gfs2_dinode *str = (struct gfs2_dinode *)bh->b_data;
+	struct gfs2_dinode *str = (struct gfs2_dinode *)buf;
 
-	gfs2_meta_header_in(&di->di_header, bh->b_data);
+	gfs2_meta_header_in(&di->di_header, buf);
 	gfs2_inum_in(&di->di_num, (char *)&str->di_num);
 
 	CPIN_32(di, str, di_mode);

@@ -731,8 +731,7 @@ extern void gfs2_rgrp_in(struct gfs2_rgrp *rg, char *buf);
 extern void gfs2_rgrp_out(const struct gfs2_rgrp *rg, char *buf);
 extern void gfs2_quota_in(struct gfs2_quota *qu, char *buf);
 extern void gfs2_quota_out(struct gfs2_quota *qu, char *buf);
-extern void gfs2_dinode_in(struct gfs2_dinode *di,
-			   struct gfs2_buffer_head *bh);
+extern void gfs2_dinode_in(struct gfs2_dinode *di, char *buf);
 extern void gfs2_dinode_out(struct gfs2_dinode *di, char *buf);
 extern void gfs2_dinode_out_bh(struct gfs2_dinode *di, struct gfs2_buffer_head *bh);
 extern void gfs2_dirent_in(struct gfs2_dirent *de, char *buf);

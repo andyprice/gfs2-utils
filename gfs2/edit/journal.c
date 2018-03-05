@@ -54,7 +54,7 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 	/* read in the block */
 	jindex_bh = bread(&sbd, jindex_block);
 	/* get the dinode data from it. */
-	gfs2_dinode_in(&di, jindex_bh); /* parse disk inode to struct*/
+	gfs2_dinode_in(&di, jindex_bh->b_data);
 
 	if (!sbd.gfs1)
 		do_dinode_extended(&di, jindex_bh); /* parse dir. */
@@ -82,7 +82,7 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 			return 0;
 		jblock = indirect->ii[0].dirent[journal_num + 2].block;
 		j_bh = bread(&sbd, jblock);
-		gfs2_dinode_in(&jdi, j_bh);/* parse dinode to struct */
+		gfs2_dinode_in(&jdi, j_bh->b_data);
 		*j_size = jdi.di_size;
 		brelse(j_bh);
 	}

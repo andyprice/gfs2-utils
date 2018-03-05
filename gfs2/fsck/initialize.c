@@ -1175,7 +1175,7 @@ static int peruse_metadata(struct gfs2_sbd *sdp, uint64_t startblock)
 			brelse(bh);
 			continue;
 		}
-		gfs2_dinode_in(&di, bh);
+		gfs2_dinode_in(&di, bh->b_data);
 		if (di.di_flags & GFS2_DIF_SYSTEM)
 			peruse_system_dinode(sdp, &di, bh);
 		else

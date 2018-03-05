@@ -901,7 +901,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	else
 		jindex_block = masterblock("jindex");
 	lbh = bread(&sbd, jindex_block);
-	gfs2_dinode_in(&di, lbh);
+	gfs2_dinode_in(&di, lbh->b_data);
 	if (!sbd.gfs1)
 		do_dinode_extended(&di, lbh);
 	brelse(lbh);

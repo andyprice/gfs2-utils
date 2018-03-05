@@ -1056,7 +1056,7 @@ static int read_master_dir(void)
 	bh = bread(&sbd, sbd.sd_sb.sb_master_dir.no_addr);
 	if (bh == NULL)
 		return 1;
-	gfs2_dinode_in(&di, bh); /* parse disk inode into structure */
+	gfs2_dinode_in(&di, bh->b_data);
 	do_dinode_extended(&di, bh); /* get extended data, if any */
 	memcpy(&masterdir, &indirect[0], sizeof(struct indirect_info));
 	return 0;
@@ -1127,7 +1127,7 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 		indirect->ii[0].dirent[1].dirent.de_type = DT_DIR;
 	}
 	else if (gfs2_struct_type == GFS2_METATYPE_DI) {
-		gfs2_dinode_in(&di, bh); /* parse disk inode into structure */
+		gfs2_dinode_in(&di, bh->b_data);
 		do_dinode_extended(&di, bh); /* get extended data, if any */
 	}
 	else if (gfs2_struct_type == GFS2_METATYPE_IN) { /* indirect block list */

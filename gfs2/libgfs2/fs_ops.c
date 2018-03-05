@@ -39,7 +39,7 @@ struct gfs2_inode *lgfs2_inode_get(struct gfs2_sbd *sdp, struct gfs2_buffer_head
 	if (ip == NULL) {
 		return NULL;
 	}
-	gfs2_dinode_in(&ip->i_di, bh);
+	gfs2_dinode_in(&ip->i_di, bh->b_data);
 	ip->i_bh = bh;
 	ip->i_sbd = sdp;
 	return ip;
