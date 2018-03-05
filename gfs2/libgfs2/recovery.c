@@ -76,7 +76,10 @@ int get_log_header(struct gfs2_inode *ip, unsigned int blk,
 #ifdef GFS2_HAS_LH_V2
 	lh_crc = lh.lh_crc;
 #endif
-	if (error || lh.lh_blkno != blk || lh.lh_hash != hash || lh_crc != crc)
+	if (error || lh.lh_blkno != blk || lh.lh_hash != hash)
+		return 1;
+	/* Don't check the crc if it's zero, as it is in pre-v2 log headers */
+	if (lh_crc != 0 && lh_crc != crc)
 		return 1;
 
 	*head = lh;
