@@ -861,7 +861,8 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 		if (sbd.gfs1)
 			gfs_rgrp_out(&rg.rg1, rbh);
 		else
-			gfs2_rgrp_out_bh(&rg.rg2, rbh);
+			gfs2_rgrp_out(&rg.rg2, rbh->b_data);
+		bmodified(rbh);
 		brelse(rbh);
 	} else {
 		if (full) {

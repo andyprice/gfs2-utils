@@ -326,7 +326,8 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 		if (sdp->gfs1)
 			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
 		else
-			gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[0].bi_bh);
+			gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_bh->b_data);
+		bmodified(rgd->bits[0].bi_bh);
 		*this_rg_cleaned = 1;
 		log_info( _("The rgrp at %lld (0x%llx) was cleaned of %d "
 			    "free metadata blocks.\n"),
@@ -347,7 +348,8 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 			if (sdp->gfs1)
 				gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
 			else
-				gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[0].bi_bh);
+				gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_bh->b_data);
+			bmodified(rgd->bits[0].bi_bh);
 			*this_rg_fixed = 1;
 			log_err( _("The rgrp was fixed.\n"));
 		} else

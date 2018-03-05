@@ -190,7 +190,8 @@ static int convert_rgs(struct gfs2_sbd *sbp)
 		sbp->dinodes_alloced += rgd1->rg_useddi;
 		convert_bitmaps(sbp, rgd);
 		/* Write the updated rgrp to the gfs2 buffer */
-		gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[0].bi_bh);
+		gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_bh->b_data);
+		bmodified(rgd->bits[0].bi_bh);
 		rgs++;
 		if (rgs % 100 == 0) {
 			printf(".");
@@ -1880,7 +1881,7 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 			if (x)
 				gfs2_meta_header_out(&mh, rgd->bits[x].bi_bh->b_data);
 			else
-				gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[x].bi_bh);
+				gfs2_rgrp_out(&rgd->rg, rgd->bits[x].bi_bh->b_data);
 			bmodified(rgd->bits[x].bi_bh);
 		}
 	} /* for each journal */

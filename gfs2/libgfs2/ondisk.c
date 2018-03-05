@@ -261,12 +261,6 @@ void gfs2_rgrp_out(const struct gfs2_rgrp *rg, char *buf)
 #endif
 }
 
-void gfs2_rgrp_out_bh(const struct gfs2_rgrp *rg, struct gfs2_buffer_head *bh)
-{
-	gfs2_rgrp_out(rg, bh->iov.iov_base);
-	bmodified(bh);
-}
-
 void gfs2_rgrp_print(const struct gfs2_rgrp *rg)
 {
 	gfs2_meta_header_print(&rg->rg_header);

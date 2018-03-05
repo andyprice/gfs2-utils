@@ -91,7 +91,7 @@ int build_rgrps(struct gfs2_sbd *sdp, int do_write)
 				if (x)
 					gfs2_meta_header_out(&mh, rl->bits[x].bi_bh->b_data);
 				else
-					gfs2_rgrp_out_bh(&rl->rg, rl->bits[x].bi_bh);
+					gfs2_rgrp_out(&rl->rg, rl->bits[x].bi_bh->b_data);
 				bmodified(rl->bits[x].bi_bh);
 			}
 		}

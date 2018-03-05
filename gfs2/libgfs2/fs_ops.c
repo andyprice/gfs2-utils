@@ -158,8 +158,8 @@ static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned state, struct rgrp_tre
 	if (sdp->gfs1)
 		gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
 	else
-		gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[0].bi_bh);
-
+		gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_bh->b_data);
+	bmodified(rgd->bits[0].bi_bh);
 	sdp->blks_alloced++;
 	return 0;
 }
@@ -1931,7 +1931,8 @@ void gfs2_free_block(struct gfs2_sbd *sdp, uint64_t block)
 		if (sdp->gfs1)
 			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
 		else
-			gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[0].bi_bh);
+			gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_bh->b_data);
+		bmodified(rgd->bits[0].bi_bh);
 		sdp->blks_alloced--;
 	}
 }
@@ -2000,7 +2001,8 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 	if (sdp->gfs1)
 		gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
 	else
-		gfs2_rgrp_out_bh(&rgd->rg, rgd->bits[0].bi_bh);
+		gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_bh->b_data);
+	bmodified(rgd->bits[0].bi_bh);
 	sdp->dinodes_alloced--;
 	return 0;
 }
