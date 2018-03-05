@@ -809,7 +809,7 @@ static int rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 	if (sdp->gfs1)
 		gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
 	else
-		gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_bh);
+		gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_bh->b_data);
 	free(bhs);
 	return 0;
 }

@@ -114,7 +114,7 @@ static void refresh_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg,
 					    rgd->bits[0].bi_bh);
 			else
-				gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_bh);
+				gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_bh->b_data);
 		}
 		break;
 	}

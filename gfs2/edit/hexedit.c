@@ -852,7 +852,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 	if (sbd.gfs1)
 		gfs_rgrp_in(&rg.rg1, rbh);
 	else
-		gfs2_rgrp_in(&rg.rg2, rbh);
+		gfs2_rgrp_in(&rg.rg2, rbh->b_data);
 	if (modify) {
 		printf("RG #%d (block %llu / 0x%llx) rg_flags changed from 0x%08x to 0x%08x\n",
 		       rgnum, (unsigned long long)rgblk,

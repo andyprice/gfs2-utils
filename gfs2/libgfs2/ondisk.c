@@ -211,11 +211,11 @@ void gfs2_rindex_print(const struct gfs2_rindex *ri)
 	pv(ri, ri_bitbytes, "%u", "0x%x");
 }
 
-void gfs2_rgrp_in(struct gfs2_rgrp *rg, struct gfs2_buffer_head *bh)
+void gfs2_rgrp_in(struct gfs2_rgrp *rg, char *buf)
 {
-	struct gfs2_rgrp *str = (struct gfs2_rgrp *)bh->b_data;
+	struct gfs2_rgrp *str = (struct gfs2_rgrp *)buf;
 
-	gfs2_meta_header_in(&rg->rg_header, bh->b_data);
+	gfs2_meta_header_in(&rg->rg_header, buf);
 	CPIN_32(rg, str, rg_flags);
 	CPIN_32(rg, str, rg_free);
 	CPIN_32(rg, str, rg_dinodes);

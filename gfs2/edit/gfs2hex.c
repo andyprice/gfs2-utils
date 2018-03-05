@@ -501,7 +501,7 @@ int display_gfs2(struct gfs2_buffer_head *dbh)
 				gfs1_rgrp_in(&rg1, dbh);
 				gfs1_rgrp_print(&rg1);
 			} else {
-				gfs2_rgrp_in(&rg, dbh);
+				gfs2_rgrp_in(&rg, dbh->b_data);
 				gfs2_rgrp_print(&rg);
 			}
 			break;

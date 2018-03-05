@@ -561,11 +561,11 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 				tmp_bh = bread(&sbd, ri.ri_addr);
 				if (sbd.gfs1) {
 					struct gfs_rgrp rg1;
-					gfs_rgrp_in(&rg1, tmp_bh);
+					gfs_rgrp_in(&rg1, tmp_bh->b_data);
 					gfs_rgrp_print(&rg1);
 				} else {
 					struct gfs2_rgrp rg;
-					gfs2_rgrp_in(&rg, tmp_bh);
+					gfs2_rgrp_in(&rg, tmp_bh->b_data);
 					gfs2_rgrp_print(&rg);
 				}
 				brelse(tmp_bh);
