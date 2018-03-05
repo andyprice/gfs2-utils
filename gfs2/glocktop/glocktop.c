@@ -234,7 +234,7 @@ static void read_superblock(int fd, int mntpt)
 
 	ioctl(fd, BLKFLSBUF, 0);
 	bh = bread(&sbd, GFS2_SB_ADDR);
-	gfs2_sb_in(&sd_sb[mntpt], bh); /* parse it out into the sb structure */
+	gfs2_sb_in(&sd_sb[mntpt], bh->b_data);
 	bsize = sd_sb[mntpt].sb_bsize;
 	if (!bsize)
 		bsize = 4096;

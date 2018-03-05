@@ -1587,7 +1587,7 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 	bh = bread(sbp, GFS2_SB_ADDR >> sbp->sd_fsb2bb_shift);
 	memcpy(&raw_gfs1_ondisk_sb, (struct gfs_sb *)bh->b_data,
 		   sizeof(struct gfs_sb));
-	gfs2_sb_in(&sbp->sd_sb, bh);
+	gfs2_sb_in(&sbp->sd_sb, bh->b_data);
 
 	jindex_addr = be64_to_cpu(raw_gfs1_ondisk_sb.sb_jindex_di.no_addr);
 	rindex_addr = be64_to_cpu(raw_gfs1_ondisk_sb.sb_rindex_di.no_addr);

@@ -973,7 +973,7 @@ static void read_superblock(int fd)
 	sbd.qcsize = GFS2_DEFAULT_QCSIZE;
 	sbd.time = time(NULL);
 	sbd.rgtree.osi_node = NULL;
-	gfs2_sb_in(&sbd.sd_sb, bh); /* parse it out into the sb structure */
+	gfs2_sb_in(&sbd.sd_sb, bh->b_data);
 	/* Check to see if this is really gfs1 */
 	if (sbd1->sb_fs_format == GFS_FORMAT_FS &&
 		sbd1->sb_header.mh_type == GFS_METATYPE_SB &&
@@ -1103,7 +1103,7 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 	indirect_blocks = 0;
 	lines_per_row[dmode] = 1;
 	if (gfs2_struct_type == GFS2_METATYPE_SB || blk == 0x10 * (4096 / sbd.bsize)) {
-		gfs2_sb_in(&sbd.sd_sb, bh); /* parse it out into the sb structure */
+		gfs2_sb_in(&sbd.sd_sb, bh->b_data);
 		memset(indirect, 0, sizeof(struct iinfo));
 		indirect->ii[0].block = sbd.sd_sb.sb_master_dir.no_addr;
 		indirect->ii[0].is_dir = TRUE;

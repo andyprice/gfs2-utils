@@ -57,7 +57,7 @@ int read_sb(struct gfs2_sbd *sdp)
 	int ret;
 
 	bh = bread(sdp, GFS2_SB_ADDR >> sdp->sd_fsb2bb_shift);
-	gfs2_sb_in(&sdp->sd_sb, bh);
+	gfs2_sb_in(&sdp->sd_sb, bh->b_data);
 	brelse(bh);
 
 	ret = check_sb(&sdp->sd_sb);

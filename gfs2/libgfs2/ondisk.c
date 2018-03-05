@@ -91,11 +91,11 @@ void gfs2_meta_header_print(const struct gfs2_meta_header *mh)
 	pv(mh, mh_format, "%u", "0x%x");
 }
 
-void gfs2_sb_in(struct gfs2_sb *sb, struct gfs2_buffer_head *bh)
+void gfs2_sb_in(struct gfs2_sb *sb, char *buf)
 {
-	struct gfs2_sb *str = (struct gfs2_sb *)bh->b_data;
+	struct gfs2_sb *str = (struct gfs2_sb *)buf;
 
-	gfs2_meta_header_in(&sb->sb_header, bh->b_data);
+	gfs2_meta_header_in(&sb->sb_header, buf);
 
 	CPIN_32(sb, str, sb_fs_format);
 	CPIN_32(sb, str, sb_multihost_format);

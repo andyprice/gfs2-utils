@@ -490,7 +490,7 @@ int display_gfs2(struct gfs2_buffer_head *dbh)
 		switch (mh.mh_type)
 		{
 		case GFS2_METATYPE_SB:
-			gfs2_sb_in(&sbd.sd_sb, dbh);
+			gfs2_sb_in(&sbd.sd_sb, dbh->b_data);
 			gfs2_sb_print2(&sbd.sd_sb);
 			break;
 

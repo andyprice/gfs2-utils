@@ -1059,15 +1059,15 @@ static int restore_super(gzFile gzfd, off_t pos)
 {
 	int ret;
 	struct saved_metablock svb = {0};
-	struct gfs2_buffer_head dummy_bh;
+	char *buf;
 
-	dummy_bh.b_data = calloc(1, sizeof(struct gfs2_sb));
-	if (dummy_bh.b_data == NULL) {
+	buf = calloc(1, sizeof(struct gfs2_sb));
+	if (buf == NULL) {
 		perror("Failed to restore super block");
 		exit(1);
 	}
 	gzseek(gzfd, pos, SEEK_SET);
-	ret = restore_block(gzfd, &svb, dummy_bh.b_data, sizeof(struct gfs2_sb));
+	ret = restore_block(gzfd, &svb, buf, sizeof(struct gfs2_sb));
 	if (ret == 1) {
 		fprintf(stderr, "Reached end of file while restoring superblock\n");
 		goto err;
@@ -1075,7 +1075,7 @@ static int restore_super(gzFile gzfd, off_t pos)
 		goto err;
 	}
 
-	gfs2_sb_in(&sbd.sd_sb, &dummy_bh);
+	gfs2_sb_in(&sbd.sd_sb, buf);
 	sbd1 = (struct gfs_sb *)&sbd.sd_sb;
 	ret = check_sb(&sbd.sd_sb);
 	if (ret < 0) {
@@ -1085,11 +1085,11 @@ static int restore_super(gzFile gzfd, off_t pos)
 	if (ret == 1)
 		sbd.gfs1 = 1;
 	sbd.bsize = sbd.sd_sb.sb_bsize;
-	free(dummy_bh.b_data);
+	free(buf);
 	printf("Block size is %uB\n", sbd.bsize);
 	return 0;
 err:
-	free(dummy_bh.b_data);
+	free(buf);
 	return -1;
 }
 
