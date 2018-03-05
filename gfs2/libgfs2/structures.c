@@ -232,7 +232,7 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 		memset(bh->b_data, 0, bsize);
 		lh.lh_sequence = seq;
 		lh.lh_blkno = x;
-		gfs2_log_header_out_bh(&lh, bh);
+		gfs2_log_header_out(&lh, bh->b_data);
 		hash = lgfs2_log_header_hash(bh->b_data);
 		((struct gfs2_log_header *)bh->b_data)->lh_hash = cpu_to_be32(hash);
 #ifdef GFS2_HAS_LH_V2

@@ -444,7 +444,8 @@ static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 		log_warn( _("Renumbering it as 0x%llx\n"), lh.lh_sequence);
 		block_map(ip, blk, &new, &dblock, NULL, FALSE);
 		bh = bread(ip->i_sbd, dblock);
-		gfs2_log_header_out_bh(&lh, bh);
+		gfs2_log_header_out(&lh, bh->b_data);
+		bmodified(bh);
 		brelse(bh);
 	}
 	if (seq_errors && fix) {

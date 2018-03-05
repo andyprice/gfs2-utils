@@ -597,12 +597,6 @@ void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf)
 #endif
 }
 
-void gfs2_log_header_out_bh(struct gfs2_log_header *lh, struct gfs2_buffer_head *bh)
-{
-	gfs2_log_header_out(lh, bh->iov.iov_base);
-	bmodified(bh);
-}
-
 void gfs2_log_header_v1_print(const struct gfs2_log_header *lh)
 {
 	gfs2_meta_header_print(&lh->lh_header);
