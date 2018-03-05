@@ -530,7 +530,7 @@ int display_gfs2(struct gfs2_buffer_head *dbh)
 				gfs_log_header_in(&lh1, dbh);
 				gfs_log_header_print(&lh1);
 			} else {
-				gfs2_log_header_in(&lh, dbh);
+				gfs2_log_header_in(&lh, dbh->b_data);
 				gfs2_log_header_print(&lh);
 			}
 			break;

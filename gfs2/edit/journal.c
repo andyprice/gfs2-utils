@@ -317,7 +317,7 @@ static int is_wrap_pt(char *buf, uint64_t *highest_seq)
 			seq = lh.lh_sequence;
 		} else {
 			struct gfs2_log_header lh;
-			gfs2_log_header_in(&lh, &tbh);
+			gfs2_log_header_in(&lh, buf);
 			seq = lh.lh_sequence;
 		}
 		if (seq < *highest_seq)
@@ -596,7 +596,7 @@ void dump_journal(const char *journal, int tblk)
 					   lh1.lh_first, lh1.lh_tail,
 					   lh1.lh_last_dump);
 			} else {
-				gfs2_log_header_in(&lh, &dummy_bh);
+				gfs2_log_header_in(&lh, dummy_bh.b_data);
 				check_journal_wrap(lh.lh_sequence,
 						   &highest_seq);
 				print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: Seq"

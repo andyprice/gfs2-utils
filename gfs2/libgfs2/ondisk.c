@@ -535,11 +535,11 @@ void gfs2_ea_header_print(const struct gfs2_ea_header *ea, char *name)
 	print_it("  name", "%s", NULL, buf);
 }
 
-void gfs2_log_header_v1_in(struct gfs2_log_header *lh, struct gfs2_buffer_head *bh)
+void gfs2_log_header_v1_in(struct gfs2_log_header *lh, char *buf)
 {
-	struct gfs2_log_header *str = (struct gfs2_log_header *)bh->b_data;
+	struct gfs2_log_header *str = (struct gfs2_log_header *)buf;
 
-	gfs2_meta_header_in(&lh->lh_header, bh->b_data);
+	gfs2_meta_header_in(&lh->lh_header, buf);
 	CPIN_64(lh, str, lh_sequence);
 	CPIN_32(lh, str, lh_flags);
 	CPIN_32(lh, str, lh_tail);
@@ -547,11 +547,11 @@ void gfs2_log_header_v1_in(struct gfs2_log_header *lh, struct gfs2_buffer_head *
 	CPIN_32(lh, str, lh_hash);
 }
 
-void gfs2_log_header_in(struct gfs2_log_header *lh, struct gfs2_buffer_head *bh)
+void gfs2_log_header_in(struct gfs2_log_header *lh, char *buf)
 {
-	struct gfs2_log_header *str = (struct gfs2_log_header *)bh->b_data;
+	struct gfs2_log_header *str = (struct gfs2_log_header *)buf;
 
-	gfs2_log_header_v1_in(lh, bh);
+	gfs2_log_header_v1_in(lh, buf);
 #ifdef GFS2_HAS_LH_V2
 	CPIN_32(lh, str, lh_crc);
 	CPIN_32(lh, str, lh_nsec);
