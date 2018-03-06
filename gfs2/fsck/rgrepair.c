@@ -324,7 +324,8 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 	struct rgrp_tree *rgd = NULL, *next_rgd;
 	struct gfs2_buffer_head *bh;
 	struct gfs2_meta_header mh;
-	int first, length, b, found, mega_in_blocks;
+	int first, length, b, found;
+	uint64_t mega_in_blocks;
 	uint32_t free_blocks;
 
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
