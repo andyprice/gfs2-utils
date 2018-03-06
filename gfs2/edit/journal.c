@@ -72,7 +72,7 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 		if (amtread) {
 			gfs_jindex_in(&ji, jbuf);
 			jblock = ji.ji_addr;
-			*j_size = ji.ji_nsegment * 0x10;
+			*j_size = (uint64_t)ji.ji_nsegment * 0x10;
 		}
 		inode_put(&jiinode);
 	} else {
