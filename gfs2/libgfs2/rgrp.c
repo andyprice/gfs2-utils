@@ -231,10 +231,6 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 			return rgd->ri.ri_addr + err;
 		}
 	}
-	if (x <= 0) {
-		free(bhs);
-		return 0;
-	}
 	if (sdp->gfs1)
 		gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
 	else {
