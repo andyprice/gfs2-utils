@@ -642,7 +642,8 @@ void dump_journal(const char *journal, int tblk)
 			block = saveblk;
 		}
 	}
-	inode_put(&j_inode);
+	if (j_inode != NULL)
+		inode_put(&j_inode);
 	brelse(j_bh);
 	blockhist = -1; /* So we don't print anything else */
 	free(jbuf);
