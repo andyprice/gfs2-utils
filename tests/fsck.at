@@ -45,3 +45,12 @@ AT_SETUP([Fix bad rindex entry #1])
 AT_KEYWORDS(fsck.gfs2 fsck)
 GFS_NUKERG_CHECK([mkfs.gfs2 -O -p lock_nolock $GFS_TGT], [-i 1])
 AT_CLEANUP
+
+AT_SETUP([Rebuild bad journal])
+AT_KEYWORDS(fsck.gfs2 fsck)
+GFS_TGT_REGEN
+AT_CHECK([mkfs.gfs2 -O -p lock_nolock $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([gfs2_edit -p journal0 field di_header.mh_magic 0 $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([fsck.gfs2 -y $GFS_TGT], 1, [ignore], [ignore])
+AT_CHECK([fsck.gfs2 -n $GFS_TGT], 0, [ignore], [ignore])
+AT_CLEANUP

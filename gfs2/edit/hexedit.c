@@ -2486,8 +2486,9 @@ static void process_parameters(int argc, char *argv[], int pass)
 		}
 		if (termlines || strchr(argv[i],'/')) /* if print or slash */
 			continue;
-			
-		if (!strncmp(argv[i], "journal", 7) && isdigit(argv[i][7])) {
+
+		if (!strncmp(argv[i], "journal", 7) && isdigit(argv[i][7]) &&
+		    strcmp(argv[i+1], "field")) {
 			int blk = 0;
 
 			if (i < argc - 1 && isdigit(argv[i + 1][0])) {
