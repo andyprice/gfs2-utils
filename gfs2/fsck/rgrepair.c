@@ -341,7 +341,7 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 		return rgrp_dist;
 	}
 	mega_in_blocks = (1024 * 1024)  / sdp->bsize;
-	twogigs = 2048 * mega_in_blocks;
+	twogigs = (uint64_t)mega_in_blocks * 2048;
 	/* Unfortunately, if we fall through to here we can't trust the
 	   rindex.  So we have to analyze the current rgrp to figure out
 	   the bare minimum block number where it ends. If we don't have

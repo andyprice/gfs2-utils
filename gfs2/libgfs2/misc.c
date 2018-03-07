@@ -16,7 +16,7 @@ int compute_heightsize(unsigned bsize, uint64_t *heightsize,
 	uint32_t *maxheight, uint32_t bsize1, int diptrs, int inptrs)
 {
 	heightsize[0] = bsize - sizeof(struct gfs2_dinode);
-	heightsize[1] = bsize1 * diptrs;
+	heightsize[1] = (uint64_t)bsize1 * diptrs;
 	for (*maxheight = 2;; (*maxheight)++) {
 		uint64_t space, d;
 		uint32_t m;

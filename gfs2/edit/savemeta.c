@@ -744,7 +744,7 @@ static void get_journal_inode_blocks(void)
 				break;
 			gfs_jindex_in(&ji, jbuf);
 			jblock = ji.ji_addr;
-			gfs1_journal_size = ji.ji_nsegment * 16;
+			gfs1_journal_size = (uint64_t)ji.ji_nsegment * 16;
 		} else {
 			if (journal > indirect->ii[0].dirents - 3)
 				break;
