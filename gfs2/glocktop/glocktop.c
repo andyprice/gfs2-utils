@@ -625,8 +625,10 @@ static const char *show_inode(const char *id, int fd, unsigned long long block)
 				break;
 			/* Stop at the root inode */
 			if (ip->i_di.di_num.no_addr ==
-			    parent->i_di.di_num.no_addr)
+			    parent->i_di.di_num.no_addr) {
+				inode_put(&parent);
 				break;
+			}
 			inode_put(&ip);
 			ip = parent;
 			dirarray[subdepth++] = parent->i_di.di_num.no_addr;
