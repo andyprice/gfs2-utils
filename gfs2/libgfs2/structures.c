@@ -293,8 +293,10 @@ int lgfs2_build_jindex(struct gfs2_inode *master, struct gfs2_inum *jnls, size_t
 	for (j = 0; j < nmemb; j++) {
 		snprintf(fname, GFS2_FNAMESIZE, "journal%u", j);
 		ret = dir_add(jindex, fname, strlen(fname), &jnls[j], IF2DT(S_IFREG | 0600));
-		if (ret)
+		if (ret) {
+			inode_put(&jindex);
 			return 1;
+		}
 	}
 
 	if (cfg_debug) {
