@@ -530,7 +530,7 @@ void dump_journal(const char *journal, int tblk)
 				   rgd->ri.ri_length);
 			o = tblk - rgd->ri.ri_data0;
 			if (o >= (rgd->bits->bi_start +
-				  rgd->bits->bi_len) * GFS2_NBBY)
+				  rgd->bits->bi_len) * (uint64_t)GFS2_NBBY)
 				o += (sizeof(struct gfs2_rgrp) -
 				      sizeof(struct gfs2_meta_header))
 					* GFS2_NBBY;
