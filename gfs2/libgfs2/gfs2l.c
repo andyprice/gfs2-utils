@@ -178,10 +178,6 @@ int main(int argc, char *argv[])
 	for (result = lgfs2_lang_result_next(state, &sbd);
 	     result != NULL;
 	     result = lgfs2_lang_result_next(state, &sbd)) {
-		if (result == NULL) {
-			fprintf(stderr, "Failed to interpret script\n");
-			return -1;
-		}
 		lgfs2_lang_result_print(result);
 		lgfs2_lang_result_free(&result);
 	}
