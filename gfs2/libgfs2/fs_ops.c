@@ -562,33 +562,24 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 		brelse(bh);
 }
 
-static void
-copy2mem(struct gfs2_buffer_head *bh, void **buf, unsigned int offset,
-	 unsigned int size)
-{
-	char **p = (char **)buf;
-
-	if (bh)
-		memcpy(*p, bh->b_data + offset, size);
-	else
-		memset(*p, 0, size);
-
-	*p += size;
-}
-
-int gfs2_readi(struct gfs2_inode *ip, void *buf,
-			   uint64_t offset, unsigned int size)
+int gfs2_readi(struct gfs2_inode *ip, void *_buf, uint64_t offset, unsigned int size)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_buffer_head *bh;
 	uint64_t lblock, dblock;
+	char *buf = _buf;
 	unsigned int o;
 	uint32_t extlen = 0;
 	unsigned int amount;
 	int not_new = 0;
-	int isdir = !!(S_ISDIR(ip->i_di.di_mode));
+	int isdir = S_ISDIR(ip->i_di.di_mode);
 	int journaled = ip->i_di.di_flags & GFS2_DIF_JDATA;
 	int copied = 0;
+	unsigned hoff;
+
+	if (sdp->gfs1)
+		hoff = (journaled) ? sizeof(struct gfs2_meta_header) : 0;
+	else
+		hoff = (isdir) ? sizeof(struct gfs2_meta_header) : 0;
 
 	if (offset >= ip->i_di.di_size)
 		return 0;
@@ -614,40 +605,60 @@ int gfs2_readi(struct gfs2_inode *ip, void *buf,
 		o += sizeof(struct gfs2_meta_header);
 
 	while (copied < size) {
-		amount = size - copied;
-		if (amount > sdp->bsize - o)
-			amount = sdp->bsize - o;
-
-		if (!extlen) {
-			if (sdp->gfs1)
-				gfs1_block_map(ip, lblock, &not_new, &dblock,
-					       &extlen, FALSE);
-			else
-				block_map(ip, lblock, &not_new, &dblock,
-					  &extlen, FALSE);
-		}
-
-		if (dblock) {
-			if (dblock == ip->i_di.di_num.no_addr)
-				bh = ip->i_bh;
-			else
-				bh = bread(sdp, dblock);
-			dblock++;
-			extlen--;
-		} else
-			bh = NULL;
-
-		copy2mem(bh, &buf, o, amount);
-		if (bh && bh != ip->i_bh)
-			brelse(bh);
-
-		copied += amount;
-		lblock++;
+		char *dbuf = NULL;
+		uint32_t i;
 
 		if (sdp->gfs1)
-			o = (journaled) ? sizeof(struct gfs2_meta_header) : 0;
+			gfs1_block_map(ip, lblock, &not_new, &dblock, &extlen, FALSE);
 		else
-			o = (isdir) ? sizeof(struct gfs2_meta_header) : 0;
+			block_map(ip, lblock, &not_new, &dblock, &extlen, FALSE);
+
+		if (dblock) {
+			size_t count;
+			ssize_t ret;
+			off_t off;
+
+			if (extlen * sdp->bsize > size - copied)
+				extlen = ((size - copied) + sdp->bsize - 1) >>
+				                     sdp->sd_sb.sb_bsize_shift;
+
+			/* inode block might be dirty so use its contents if starting there */
+			if (dblock == ip->i_di.di_num.no_addr) {
+				amount = size - copied;
+				if (amount > sdp->bsize - o)
+					amount = sdp->bsize - o;
+
+				memcpy(buf + copied, ip->i_bh->b_data + o, amount);
+				copied += amount;
+				if (copied == size)
+					return copied;
+				extlen--;
+				dblock++;
+				lblock++;
+				o = hoff;
+			}
+			count = extlen * sdp->bsize;
+			off = dblock * sdp->bsize;
+			dbuf = malloc(count);
+			ret = pread(sdp->device_fd, dbuf, count, off);
+			if (ret != count) {
+				free(dbuf);
+				continue;
+			}
+		}
+		for (i = 0; i < extlen && copied < size; i++) {
+			char *b = dbuf + (i * sdp->bsize);
+
+			amount = size - copied;
+			if (amount > sdp->bsize - o)
+				amount = sdp->bsize - o;
+
+			memcpy(buf + copied, b + o, amount);
+			copied += amount;
+			lblock++;
+			o = hoff;
+		}
+		free(dbuf);
 	}
 
 	return copied;
