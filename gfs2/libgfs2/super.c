@@ -191,33 +191,41 @@ static int good_on_disk(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
  */
 int rindex_read(struct gfs2_sbd *sdp, int fd, uint64_t *count1, int *sane)
 {
-	unsigned int rg;
-	int error;
-	union {
-		struct gfs2_rindex bufgfs2;
-	} buf;
+	unsigned int rgs;
+	size_t ri_size;
+	size_t bytes;
+	char *buf;
 	struct gfs2_rindex ri;
 	struct rgrp_tree *rgd = NULL, *prev_rgd = NULL;
 	uint64_t prev_length = 0;
+	unsigned int i;
 
 	*sane = 1;
 	*count1 = 0;
-	if (!fd && sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex))
-		*sane = 0; /* rindex file size must be a multiple of 96 */
-	for (rg = 0; ; rg++) {
-		if (fd > 0)
-			error = read(fd, &buf, sizeof(struct gfs2_rindex));
-		else
-			error = gfs2_readi(sdp->md.riinode,
-					   (char *)&buf.bufgfs2,
-					   rg * sizeof(struct gfs2_rindex),
-					   sizeof(struct gfs2_rindex));
-		if (!error)
-			break;
-		if (error != sizeof(struct gfs2_rindex))
-			return -1;
+	if (fd > 0) {
+		struct stat st;
 
-		gfs2_rindex_in(&ri, (char *)&buf.bufgfs2);
+		if (fstat(fd, &st) != 0)
+			return -1;
+		ri_size = st.st_size;
+	} else {
+		ri_size = sdp->md.riinode->i_di.di_size;
+	}
+	if (ri_size % sizeof(struct gfs2_rindex))
+		*sane = 0; /* rindex file size must be a multiple of 96 */
+	if ((buf = malloc(ri_size)) == NULL)
+		return -1;
+	if (fd > 0)
+		bytes = read(fd, buf, ri_size);
+	else
+		bytes = gfs2_readi(sdp->md.riinode, buf, 0, ri_size);
+	if (bytes != ri_size) {
+		free(buf);
+		return -1;
+	}
+	rgs = ri_size / sizeof(struct gfs2_rindex);
+	for (i = 0; i < rgs; i++) {
+		gfs2_rindex_in(&ri, buf + (sizeof(ri) * i));
 		if (gfs2_check_range(sdp, ri.ri_addr) != 0) {
 			*sane = 0;
 			if (prev_rgd == NULL)
@@ -236,7 +244,7 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, uint64_t *count1, int *sane)
 					*sane = 0;
 				else if (!rgd_seems_sane(sdp, rgd))
 					*sane = 0;
-				else if (*sane && rg > 2 && prev_length &&
+				else if (*sane && i > 2 && prev_length &&
 				    prev_length != rgd->start -
 				    prev_rgd->start)
 					*sane = good_on_disk(sdp, rgd);
@@ -251,6 +259,7 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, uint64_t *count1, int *sane)
 		(*count1)++;
 		prev_rgd = rgd;
 	}
+	free(buf);
 	if (prev_rgd)
 		prev_rgd->length = rgrp_size(prev_rgd);
 	if (*count1 == 0)
