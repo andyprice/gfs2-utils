@@ -660,6 +660,7 @@ extern int gfs2_revoke_add(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int wh
 extern int gfs2_revoke_check(struct gfs2_sbd *sdp, uint64_t blkno,
 			     unsigned int where);
 extern void gfs2_revoke_clean(struct gfs2_sbd *sdp);
+extern int lgfs2_get_log_header(char *buf, unsigned bsize, struct gfs2_log_header *lh);
 extern int get_log_header(struct gfs2_inode *ip, unsigned int blk,
 			  struct gfs2_log_header *head);
 extern int gfs2_find_jhead(struct gfs2_inode *ip, struct gfs2_log_header *head);

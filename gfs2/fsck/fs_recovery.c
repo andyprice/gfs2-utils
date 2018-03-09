@@ -391,6 +391,39 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 }
 
 /**
+ * Read an extent from a gfs2 inode.
+ * lblk: The logical data block to read
+ * extlen: The length of the extent (in fs blocks) that is read
+ * Returns a buffer (*extlen * bsize) in size containing the inode data
+ * or NULL on error.
+ */
+static char *readi_extent(struct gfs2_inode *ip, uint64_t lblk, uint32_t *extlen)
+{
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	uint64_t dblock;
+	int notnew = 0;
+	ssize_t bytes;
+	ssize_t bufsz;
+	char *buf;
+
+	block_map(ip, lblk, &notnew, &dblock, extlen, FALSE);
+	if (dblock == 0)
+		return NULL;
+
+	bufsz = *extlen * sdp->bsize;
+	buf = malloc(bufsz);
+	if (buf == NULL)
+		return NULL;
+
+	bytes = pread(sdp->device_fd, buf, bufsz, dblock * sdp->bsize);
+	if (bytes != bufsz) {
+		free(buf);
+		return NULL;
+	}
+	return buf;
+}
+
+/**
  * check_journal_seq_no - Check and Fix log header sequencing problems
  * @ip: the journal incore inode
  * @fix: if 1, fix the sequence numbers, otherwise just report the problem
@@ -399,6 +432,7 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
  */
 static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 {
+	struct gfs2_sbd *sdp = ip->i_sbd;
 	int error = 0, wrapped = 0;
 	uint32_t jd_blocks = ip->i_di.di_size / ip->i_sbd->sd_sb.sb_bsize;
 	uint32_t blk;
@@ -407,12 +441,22 @@ static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 	int new = 0;
 	uint64_t dblock;
 	struct gfs2_buffer_head *bh;
+	uint32_t extlen = 0;
 	int seq_errors = 0;
+	char *buf = NULL;
+	int b;
 
 	memset(&lh, 0, sizeof(lh));
-	for (blk = 0; blk < jd_blocks; blk++) {
-		error = get_log_header(ip, blk, &lh);
-		if (error == 1) /* if not a log header */
+	for (blk = 0, b = 0; blk < jd_blocks; blk++, b++) {
+		if (extlen - b == 0) {
+			free(buf);
+			buf = readi_extent(ip, blk, &extlen);
+			if (buf == NULL)
+				return -1;
+			b = 0;
+		}
+		error = lgfs2_get_log_header(buf + (b * sdp->bsize), sdp->bsize, &lh);
+		if (error == 1 || lh.lh_blkno != blk) /* if not a log header */
 			continue; /* just journal data--ignore it */
 		if (!lowest_seq || lh.lh_sequence < lowest_seq)
 			lowest_seq = lh.lh_sequence;
@@ -448,6 +492,7 @@ static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 		bmodified(bh);
 		brelse(bh);
 	}
+	free(buf);
 	if (seq_errors && fix) {
 		log_err(_("%d sequence errors fixed.\n"), seq_errors);
 		seq_errors = 0;

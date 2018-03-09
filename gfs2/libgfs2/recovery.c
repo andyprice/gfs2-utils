@@ -36,6 +36,31 @@ int gfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
 	return 0;
 }
 
+int lgfs2_get_log_header(char *buf, unsigned bsize, struct gfs2_log_header *lh)
+{
+	struct gfs2_log_header *dlh = (struct gfs2_log_header *)buf;
+	uint32_t saved_hash;
+	uint32_t lh_crc = 0;
+	uint32_t hash;
+	uint32_t crc;
+
+	saved_hash = dlh->lh_hash;
+	dlh->lh_hash = 0;
+	hash = lgfs2_log_header_hash(buf);
+	dlh->lh_hash = saved_hash;
+	crc = lgfs2_log_header_crc(buf, bsize);
+	gfs2_log_header_in(lh, buf);
+#ifdef GFS2_HAS_LH_V2
+	lh_crc = lh->lh_crc;
+#endif
+	if (lh->lh_hash != hash)
+		return 1;
+	/* Don't check the crc if it's zero, as it is in pre-v2 log headers */
+	if (lh_crc != 0 && lh_crc != crc)
+		return 1;
+	return 0;
+}
+
 /**
  * get_log_header - read the log header for a given segment
  * @ip: the journal incore inode
@@ -54,35 +79,17 @@ int get_log_header(struct gfs2_inode *ip, unsigned int blk,
 		   struct gfs2_log_header *head)
 {
 	struct gfs2_buffer_head *bh;
-	struct gfs2_log_header lh, *tmp;
-	uint32_t hash, saved_hash;
-	uint32_t lh_crc = 0;
-	uint32_t crc;
 	int error;
 
 	error = gfs2_replay_read_block(ip, blk, &bh);
 	if (error)
 		return error;
 
-	tmp = (struct gfs2_log_header *)bh->b_data;
-	saved_hash = tmp->lh_hash;
-	tmp->lh_hash = 0;
-	hash = lgfs2_log_header_hash(bh->b_data);
-	tmp->lh_hash = saved_hash;
-	crc = lgfs2_log_header_crc(bh->b_data, ip->i_sbd->bsize);
-	gfs2_log_header_in(&lh, bh->b_data);
-	brelse(bh);
-#ifdef GFS2_HAS_LH_V2
-	lh_crc = lh.lh_crc;
-#endif
-	if (error || lh.lh_blkno != blk || lh.lh_hash != hash)
+	error = lgfs2_get_log_header(bh->b_data, ip->i_sbd->bsize, head);
+	if (error)
+		return error;
+	if (head->lh_blkno != blk)
 		return 1;
-	/* Don't check the crc if it's zero, as it is in pre-v2 log headers */
-	if (lh_crc != 0 && lh_crc != crc)
-		return 1;
-
-	*head = lh;
-
 	return 0;
 }
 
