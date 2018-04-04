@@ -1125,7 +1125,7 @@ msgstr ""
 #: gfs2/convert/gfs2_convert.c:2176
 #, c-format
 msgid ""
-"%s is not a clean gfs filesytem. Please use the fsck.gfs2 utility to correct "
+"%s is not a clean gfs filesystem. Please use the fsck.gfs2 utility to correct "
 "these errors and try again.\n"
 msgstr ""
 
@@ -3196,7 +3196,7 @@ msgid "Leaf entry count updated\n"
 msgstr ""
 
 #: gfs2/fsck/metawalk.c:640
-msgid "Leaf entry count left in inconsistant state\n"
+msgid "Leaf entry count left in inconsistent state\n"
 msgstr ""
 
 #: gfs2/fsck/metawalk.c:646

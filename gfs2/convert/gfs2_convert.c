@@ -2175,7 +2175,7 @@ int main(int argc, char **argv)
 	 */
 	if (!error) {
 		if (sanity_check(&sb2)) {
-			log_crit(_("%s is not a clean gfs filesytem. Please use the"
+			log_crit(_("%s is not a clean gfs filesystem. Please use the"
 				   " fsck.gfs2 utility to correct these errors and"
 				   " try again.\n"), opts.device);
 			exit(0);

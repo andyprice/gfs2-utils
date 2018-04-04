@@ -641,7 +641,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 				log_warn( _("Leaf entry count updated\n"));
 			} else
 				log_err( _("Leaf entry count left in "
-					   "inconsistant state\n"));
+					   "inconsistent state\n"));
 		}
 	}
 out:
