@@ -119,7 +119,7 @@ class FileUtils:
                 fout.write(data + "\n")
                 fout.close()
                 return True
-            except UnicodeEncodeError, e:
+            except UnicodeEncodeError as e:
                 message = "There was a unicode encode error writing to the file: %s." %(pathToFilename)
                 logging.getLogger(MAIN_LOGGER_NAME).error(message)
                 return False
@@ -319,7 +319,7 @@ class TraceEvents:
         @return: Returns a list of all the trace event names found.
         @rtype: Array
         """
-        return self.__traceEventsMap.keys()
+        return list(self.__traceEventsMap.keys())
 
     def getTraceEvent(self, traceEventName):
         """
@@ -330,7 +330,7 @@ class TraceEvents:
         match is found then None is returned.
         @rtype: TraceEvent
         """
-        if (self.__traceEventsMap.has_key(traceEventName)):
+        if (traceEventName in self.__traceEventsMap):
             return self.__traceEventsMap.get(traceEventName)
         return None
 
@@ -555,7 +555,7 @@ class OptionParserExtended(OptionParser):
         exampleMessage += "# %s -N -e gfs2_demote_rq,gfs2_glock_state_change,gfs2_promote -c /tmp/gfs2_trace.log\n" %(self.__commandName)
         self.print_version()
         OptionParser.print_help(self)
-        print exampleMessage
+        print(exampleMessage)
 
 class ExtendOption (Option):
         """
@@ -699,9 +699,9 @@ if __name__ == "__main__":
             # Disable logging to console except for debug when we print into information to console.
             logging.disable(logging.CRITICAL)
             if (len(traceEventsString) > 0):
-                print "trace event name           trace event status"
-                print "----------------           ------------------"
-                print traceEventsString.rstrip()
+                print("trace event name           trace event status")
+                print("----------------           ------------------")
+                print(traceEventsString.rstrip())
             exitScript()
         # #######################################################################
         # Enable or Disable Trace Events
@@ -758,7 +758,7 @@ if __name__ == "__main__":
                 fout.close()
                 message = "The data was written to this file: %s" %(cmdLineOpts.pathToOutputFilename)
                 logging.getLogger(MAIN_LOGGER_NAME).info(message)
-            except UnicodeEncodeError, e:
+            except UnicodeEncodeError as e:
                 message = "There was a unicode encode error writing to the file: %s." %(cmdLineOpts.pathToOutputFilename)
                 logging.getLogger(MAIN_LOGGER_NAME).error(message)
             except IOError:
@@ -780,7 +780,7 @@ if __name__ == "__main__":
                 message = "There was an error creating the tarfile: %s." %(pathToTarFilename)
                 logging.getLogger(MAIN_LOGGER_NAME).error(message)
     except KeyboardInterrupt:
-        print ""
+        print("")
         message =  "This script will exit since control-c was executed by end user."
         logging.getLogger(MAIN_LOGGER_NAME).error(message)
         exitScript()
