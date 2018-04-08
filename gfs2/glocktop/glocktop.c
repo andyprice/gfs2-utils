@@ -921,7 +921,7 @@ static void show_dlm_grants(int locktype, const char *g_line, int dlmgrants,
 			    int summary)
 {
 	int i;
-	char dlm_resid[64];
+	char dlm_resid[75];
 	unsigned int lkb_id, lkbnodeid, remid, ownpid, exflags, flags, status;
 	unsigned int grmode, rqmode, nodeid, length;
 	unsigned long long xid, us;
@@ -1596,7 +1596,7 @@ static void parse_glocks_file(int fd, const char *fsname, int dlmwaiters,
 			      int dlmgrants, int trace_dir_path,
 			      int show_held, int help, int summary)
 {
-	char fstitle[96], fsdlm[96];
+	char fstitle[96], fsdlm[105];
 	char ctimestr[64];
 	time_t t;
 	int i;
@@ -1652,7 +1652,7 @@ int main(int argc, char **argv)
 {
 	int fd;
 	DIR *dir = NULL;
-	char fn[PATH_MAX];
+	char *fn;
 	struct dirent *dent;
 	int retval;
 	int refresh_time = REFRESH_TIME;
@@ -1772,8 +1772,12 @@ int main(int argc, char **argv)
 	while (!done) {
 		struct timeval tv;
 
-		sprintf(fn, "%s/gfs2/", debugfs);
+		if (asprintf(&fn, "%s/gfs2/", debugfs) == -1) {
+			perror(argv[0]);
+			exit(-1);
+		}
 		dir = opendir(fn);
+		free(fn);
 
 		if (!dir) {
 			if (interactive) {
@@ -1787,7 +1791,7 @@ int main(int argc, char **argv)
 		display_title_lines();
 		while ((dent = readdir(dir))) {
 			const char *fsname;
-			char dlm_fn[PATH_MAX];
+			char dlm_fn[PATH_MAX+5+8]; /* "/dlm/" and "_waiters" */
 			FILE *dlmf;
 			int dlmfd;
 
@@ -1822,8 +1826,10 @@ int main(int argc, char **argv)
 				}
 			}
 
-			sprintf(fn, "%s/gfs2/%s/glocks", debugfs,
-				dent->d_name);
+			if (asprintf(&fn, "%s/gfs2/%s/glocks", debugfs, dent->d_name) == -1) {
+				perror(argv[0]);
+				exit(-1);
+			}
 			fd = open(fn, O_RDONLY);
 			if (fd < 0) {
 				if (interactive) {
@@ -1831,8 +1837,10 @@ int main(int argc, char **argv)
 					endwin();
 				}
 				perror(fn);
+				free(fn);
 				exit(-1);
 			}
+			free(fn);
 			parse_glocks_file(fd, fsname, dlmwaiters, dlmgrants,
 					  trace_dir_path, show_held, help,
 					  summary);
