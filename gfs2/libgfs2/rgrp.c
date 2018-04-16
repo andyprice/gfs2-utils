@@ -719,6 +719,11 @@ lgfs2_rgrp_t lgfs2_rgrp_next(lgfs2_rgrp_t rg)
 	return (lgfs2_rgrp_t)osi_next(&rg->node);
 }
 
+lgfs2_rgrp_t lgfs2_rgrp_prev(lgfs2_rgrp_t rg)
+{
+	return (lgfs2_rgrp_t)osi_prev(&rg->node);
+}
+
 lgfs2_rgrp_t lgfs2_rgrp_last(lgfs2_rgrps_t rgs)
 {
 	return (lgfs2_rgrp_t)osi_last(&rgs->root);

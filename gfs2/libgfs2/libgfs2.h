@@ -211,6 +211,7 @@ extern const struct gfs2_rgrp *lgfs2_rgrp_rgrp(lgfs2_rgrp_t rg);
 extern lgfs2_rgrp_t lgfs2_rgrp_first(lgfs2_rgrps_t rgs);
 extern lgfs2_rgrp_t lgfs2_rgrp_last(lgfs2_rgrps_t rgs);
 extern lgfs2_rgrp_t lgfs2_rgrp_next(lgfs2_rgrp_t rg);
+extern lgfs2_rgrp_t lgfs2_rgrp_prev(lgfs2_rgrp_t rg);
 // Temporary function to aid API migration
 extern struct osi_node *lgfs2_rgrps_root(lgfs2_rgrps_t rgs) __attribute__((deprecated));
 

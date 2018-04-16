@@ -613,6 +613,42 @@ static void warn_of_destruction(const char *path)
 	free(abspath);
 }
 
+static int zero_gap(struct gfs2_sbd *sdp, uint64_t addr, size_t blocks)
+{
+	struct iovec *iov;
+	char *zerobuf;
+	ssize_t wrote;
+	unsigned i;
+
+	if (blocks == 0)
+		return 0;
+	iov = calloc(blocks, sizeof(*iov));
+	if (iov == NULL) {
+		perror(_("Failed to zero blocks\n"));
+		return 1;
+	}
+	zerobuf = calloc(1, sdp->bsize);
+	if (zerobuf == NULL) {
+		perror(_("Failed to zero blocks\n"));
+		free(iov);
+		return 1;
+	}
+	for (i = 0; i < blocks; i++) {
+		iov[i].iov_base = zerobuf;
+		iov[i].iov_len = sdp->bsize;
+	}
+	wrote = pwritev(sdp->device_fd, iov, blocks, addr * sdp->bsize);
+	if (wrote != blocks * sdp->bsize) {
+		fprintf(stderr, _("Zeroing write failed at block %"PRIu64"\n"), addr);
+		free(zerobuf);
+		free(iov);
+		return 1;
+	}
+	free(zerobuf);
+	free(iov);
+	return 0;
+}
+
 static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 {
 	lgfs2_rgrps_t rgs;
@@ -665,9 +701,18 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 
 static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrp_t rg, int debug)
 {
-	int err = 0;
+	uint64_t prev_end = (GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sdp->bsize) + 1;
 	const struct gfs2_rindex *ri = lgfs2_rgrp_index(rg);
+	lgfs2_rgrp_t prev = lgfs2_rgrp_prev(rg);
+	int err = 0;
 
+	if (prev != NULL) {
+		prev_end = lgfs2_rgrp_index(prev)->ri_data0 +
+		           lgfs2_rgrp_index(prev)->ri_data;
+	}
+	err = zero_gap(sdp, prev_end, ri->ri_addr - prev_end);
+	if (err != 0)
+		return -1;
 	err = lgfs2_rgrp_write(sdp->device_fd, rg);
 	if (err != 0) {
 		perror(_("Failed to write resource group"));
