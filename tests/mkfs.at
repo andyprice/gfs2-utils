@@ -52,7 +52,7 @@ AT_CLEANUP
 
 AT_SETUP([Max. blocks, max. block size])
 AT_KEYWORDS(mkfs.gfs2 mkfs)
-GFS_FSCK_CHECK([$GFS_MKFS -p lock_nolock -b 4096 $GFS_TGT $(util_max_blocks 4096)])
+GFS_FSCK_CHECK([$GFS_MKFS -p lock_nolock -b 4096 $GFS_TGT $(gfs_max_blocks 4096)])
 AT_CLEANUP
 
 AT_SETUP([Max. resource group size])
