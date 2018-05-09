@@ -6,8 +6,7 @@ EXTRA_DIST = \
 
 DISTCLEANFILES = \
 	atlocal \
-	atconfig \
-	$(TESTSUITE)
+	atconfig
 
 CLEANFILES = testvol
 
@@ -103,6 +102,7 @@ installcheck-local: atconfig atlocal $(TESTSUITE)
 
 clean-local:
 	test ! -f '$(TESTSUITE)' || $(SHELL) '$(TESTSUITE)' --clean
+	rm -f '$(TESTSUITE)'
 
 atconfig: $(top_builddir)/config.status
 	cd $(top_builddir) && ./config.status tests/$@
