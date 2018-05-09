@@ -181,7 +181,7 @@ void gfs2_rindex_in(struct gfs2_rindex *ri, char *buf)
 	CPIN_64(ri, str, ri_data0);
 	CPIN_32(ri, str, ri_data);
 	CPIN_32(ri, str, ri_bitbytes);
-	CPIN_08(ri, str, ri_reserved, 64);
+	CPIN_08(ri, str, ri_reserved, sizeof(ri->ri_reserved));
 }
 
 void gfs2_rindex_out(const struct gfs2_rindex *ri, char *buf)
@@ -197,7 +197,7 @@ void gfs2_rindex_out(const struct gfs2_rindex *ri, char *buf)
 
 	CPOUT_32(ri, str, ri_bitbytes);
 
-	CPOUT_08(ri, str, ri_reserved, 64);
+	CPOUT_08(ri, str, ri_reserved, sizeof(ri->ri_reserved));
 }
 
 void gfs2_rindex_print(const struct gfs2_rindex *ri)
@@ -230,10 +230,8 @@ void gfs2_rgrp_in(struct gfs2_rgrp *rg, char *buf)
 	CPIN_32(rg, str, rg_data);
 	CPIN_32(rg, str, rg_bitbytes);
 	CPIN_32(rg, str, rg_crc);
-	CPIN_08(rg, str, rg_reserved, 60);
-#else
-	CPIN_08(rg, str, rg_reserved, 80);
 #endif
+	CPIN_08(rg, str, rg_reserved, sizeof(rg->rg_reserved));
 }
 
 void gfs2_rgrp_out(const struct gfs2_rgrp *rg, char *buf)
@@ -254,10 +252,10 @@ void gfs2_rgrp_out(const struct gfs2_rgrp *rg, char *buf)
 	CPOUT_64(rg, str, rg_data0);
 	CPOUT_32(rg, str, rg_data);
 	CPOUT_32(rg, str, rg_bitbytes);
-	CPOUT_08(rg, str, rg_reserved, 60);
+	CPOUT_08(rg, str, rg_reserved, sizeof(rg->rg_reserved));
 	lgfs2_rgrp_crc_set(buf);
 #else
-	CPOUT_08(rg, str, rg_reserved, 80);
+	CPOUT_08(rg, str, rg_reserved, sizeof(rg->rg_reserved));
 #endif
 }
 
