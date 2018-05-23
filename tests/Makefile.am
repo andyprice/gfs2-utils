@@ -1,5 +1,10 @@
+TESTSCRIPTS = \
+	rgrifieldscheck.sh \
+	rgskipcheck.sh
+
 EXTRA_DIST = \
 	$(TESTSUITE_AT) \
+	$(TESTSCRIPTS) \
 	package.m4 \
 	atlocal \
 	atconfig
