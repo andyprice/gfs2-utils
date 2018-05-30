@@ -366,26 +366,27 @@ uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgts
 {
 	uint32_t maxlen = (GFS2_MAX_RGSIZE << 20) / rgs->sdp->bsize;
 	uint32_t minlen = (GFS2_MIN_RGSIZE << 20) / rgs->sdp->bsize;
+	struct rg_spec *spec = rgs->plan->rg_specs;
 
 	/* Apps should already have checked that the rg size is <=
 	   GFS2_MAX_RGSIZE but just in case alignment pushes it over we clamp
 	   it back down while calculating the initial rgrp length.  */
 	do {
-		rgs->plan[0].len = lgfs2_rgrp_align_len(rgs, tgtsize);
+		spec[0].len = lgfs2_rgrp_align_len(rgs, tgtsize);
 		tgtsize -= (rgs->align + 1);
-	} while (rgs->plan[0].len > maxlen);
+	} while (spec[0].len > maxlen);
 
-	rgs->plan[0].num = space / rgs->plan[0].len;
+	spec[0].num = space / spec[0].len;
 
-	if ((space - (rgs->plan[0].num * rgs->plan[0].len)) > rgs->align) {
+	if ((space - (spec[0].num * spec[0].len)) > rgs->align) {
 		unsigned adj = (rgs->align > 0) ? rgs->align : 1;
 
 		/* Spread the adjustment required to fit a new rgrp at the end
 		   over all of the rgrps so that we don't end with a single
 		   tiny one.  */
-		rgs->plan[0].num++;
-		while (((rgs->plan[0].len - adj) * (uint64_t)rgs->plan[0].num) >= space)
-			rgs->plan[0].len -= adj;
+		spec[0].num++;
+		while (((spec[0].len - adj) * (uint64_t)spec[0].num) >= space)
+			spec[0].len -= adj;
 
 		/* We've adjusted the size of the rgrps down as far as we can
 		   without leaving a large gap at the end of the device now,
@@ -394,25 +395,25 @@ uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgts
 		   specify a second length for a subset of the resource groups.
 		   If plan[0].len already divides the space with no remainder,
 		   plan[1].num will stay 0 and it won't be used.  */
-		rgs->plan[1].len = rgs->plan[0].len - adj;
-		rgs->plan[1].num = 0;
+		spec[1].len = spec[0].len - adj;
+		spec[1].num = 0;
 
-		while (((rgs->plan[0].len * rgs->plan[0].num) +
-		        (rgs->plan[1].len * rgs->plan[1].num)) >= space) {
+		while (((spec[0].len * spec[0].num) +
+		        (spec[1].len * spec[1].num)) >= space) {
 			/* Total number of rgrps stays constant now. We just
 			   need to shift some weight around */
-			rgs->plan[0].num--;
-			rgs->plan[1].num++;
+			spec[0].num--;
+			spec[1].num++;
 		}
 	}
 
 	/* Once we've reached this point,
-	   (plan[0].num * plan[0].len) + (plan[1].num * plan[1].len)
+	   (spec[0].num * spec[0].len) + (spec[1].num * spec[1].len)
 	   will be less than one adjustment smaller than 'space'.  */
-	if (rgs->plan[0].len < minlen)
+	if (spec[0].len < minlen)
 		return 0;
 
-	return rgs->plan[0].num + rgs->plan[1].num;
+	return spec[0].num + spec[1].num;
 }
 
 /**
@@ -435,6 +436,13 @@ lgfs2_rgrps_t lgfs2_rgrps_init(struct gfs2_sbd *sdp, uint64_t align, uint64_t of
 	if (rgs == NULL)
 		return NULL;
 
+	rgs->plan = calloc(1, sizeof(struct rgs_plan) + (5 * sizeof(struct rg_spec)));
+	if (rgs->plan == NULL) {
+		free(rgs);
+		return NULL;
+	}
+	rgs->plan->length = 0;
+	rgs->plan->capacity = 5;
 	rgs->sdp = sdp;
 	rgs->align = align;
 	rgs->align_off = offset;
@@ -531,6 +539,7 @@ void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs)
 		osi_erase(&rg->node, tree);
 		free(rg);
 	}
+	free((*rgs)->plan);
 	free(*rgs);
 	*rgs = NULL;
 }
@@ -547,22 +556,23 @@ void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs)
  */
 uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *ri, uint64_t addr, uint32_t len)
 {
+	struct rg_spec *spec = rgs->plan->rg_specs;
 	int plan = -1;
 	errno = EINVAL;
 	if (!ri)
 		return 0;
 
 	errno = ENOSPC;
-	if (rgs->plan[0].num > 0)
+	if (spec[0].num > 0)
 		plan = 0;
-	else if (rgs->plan[1].num > 0)
+	else if (spec[1].num > 0)
 		plan = 1;
 	else if (len == 0)
 		return 0;
 
-	if (plan >= 0 && (len == 0 || len == rgs->plan[plan].len)) {
-		len = rgs->plan[plan].len;
-		rgs->plan[plan].num--;
+	if (plan >= 0 && (len == 0 || len == spec[plan].len)) {
+		len = spec[plan].len;
+		spec[plan].num--;
 	}
 
 	if (addr + len > rgs->sdp->device.length)

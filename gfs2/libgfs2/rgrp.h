@@ -3,9 +3,16 @@
 
 #include "libgfs2.h"
 
-struct rgplan {
-	uint32_t num;
-	uint32_t len;
+struct rg_spec {
+	uint32_t len; /* Rgrp length */
+	uint32_t num; /* Number of contiguous rgrps of this length */
+};
+
+/* Heads a buffer of rg_specs */
+struct rgs_plan {
+	unsigned length; /* # entries */
+	unsigned capacity; /* # entries for which memory has been allocated */
+	struct rg_spec rg_specs[];
 };
 
 /**
@@ -15,7 +22,7 @@ struct rgplan {
  */
 struct _lgfs2_rgrps {
 	struct osi_root root;
-	struct rgplan plan[2];
+	struct rgs_plan *plan;
 	struct gfs2_sbd *sdp;
 	unsigned long align;
 	unsigned long align_off;
