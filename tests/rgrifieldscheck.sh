@@ -16,5 +16,5 @@ do
 		exit 1
 	fi
 
-	test $field = ri_bitbytes && let i++
+	test $field = ri_bitbytes && i=$((i+1))
 done
