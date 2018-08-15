@@ -1500,13 +1500,13 @@ int lgfs2_write_filemeta(struct gfs2_inode *ip)
 			}
 			lgfs2_fill_indir(start, bh->b_data + sdp->bsize, ptr0, ptrs, &p);
 			if (bwrite(bh)) {
-				free(bh);
+				free(bh->iov.iov_base);
 				return 1;
 			}
 		}
 		ptr0 += ptrs;
 	}
-	free(bh);
+	free(bh->iov.iov_base);
 	return 0;
 }
 

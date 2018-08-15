@@ -683,37 +683,6 @@ bad_leaf:
 	return 1;
 }
 
-static int u64cmp(const void *p1, const void *p2)
-{
-	uint64_t a = *(uint64_t *)p1;
-	uint64_t b = *(uint64_t *)p2;
-
-	if (a > b)
-		return 1;
-	if (a < b)
-		return -1;
-
-	return 0;
-}
-
-static void dir_leaf_reada(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize)
-{
-	uint64_t *t = alloca(hsize * sizeof(uint64_t));
-	uint64_t leaf_no;
-	struct gfs2_sbd *sdp = ip->i_sbd;
-	unsigned n = 0;
-	unsigned i;
-
-	for (i = 0; i < hsize; i++) {
-		leaf_no = be64_to_cpu(tbl[i]);
-		if (valid_block_ip(ip, leaf_no))
-			t[n++] = leaf_no * sdp->bsize;
-	}
-	qsort(t, n, sizeof(uint64_t), u64cmp);
-	for (i = 0; i < n; i++)
-		posix_fadvise(sdp->device_fd, t[i], sdp->bsize, POSIX_FADV_WILLNEED);
-}
-
 /* Checks exhash directory entries */
 int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 {
@@ -738,17 +707,10 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	orig_di_height = ip->i_di.di_height;
 	orig_di_blocks = ip->i_di.di_blocks;
 
-	/* Turn off system readahead */
-	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_RANDOM);
-
-	/* Readahead */
-	dir_leaf_reada(ip, tbl, hsize);
-
 	if (pass->check_hash_tbl) {
 		error = pass->check_hash_tbl(ip, tbl, hsize, pass->private);
 		if (error < 0) {
 			free(tbl);
-			posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 			return error;
 		}
 		/* If hash table changes were made, read it in again. */
@@ -785,7 +747,6 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)ip->i_di.di_num.no_addr);
 		free(tbl);
-		posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 		return 1;
 	}
 	lindex = 0;
@@ -830,7 +791,6 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			struct gfs2_leaf leaf;
 			if (fsck_abort) {
 				free(tbl);
-				posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 				return 0;
 			}
 			error = check_leaf(ip, lindex, pass, &leaf_no, &leaf,
@@ -879,7 +839,6 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		lindex += ref_count;
 	} /* for every leaf block */
 	free(tbl);
-	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 	return 0;
 }
 
@@ -1157,59 +1116,6 @@ static void free_metalist(struct gfs2_inode *ip, osi_list_t *mlp)
 	}
 }
 
-static void file_ra(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
-		    int head_size, int maxptrs, int h)
-{
-	struct gfs2_sbd *sdp = ip->i_sbd;
-	uint64_t *p, sblock = 0, block;
-	int extlen = 0;
-
-	if (h + 2 == ip->i_di.di_height) {
-		p = (uint64_t *)(bh->b_data + head_size);
-		if (*p && *(p + 1)) {
-			sblock = be64_to_cpu(*p);
-			p++;
-			block = be64_to_cpu(*p);
-			extlen = block - sblock;
-			if (extlen > 1 && extlen <= maxptrs) {
-				posix_fadvise(sdp->device_fd,
-					      sblock * sdp->bsize,
-					      (extlen + 1) * sdp->bsize,
-					      POSIX_FADV_WILLNEED);
-				return;
-			}
-		}
-		extlen = 0;
-	}
-	for (p = (uint64_t *)(bh->b_data + head_size);
-	     p < (uint64_t *)(bh->b_data + sdp->bsize); p++) {
-		if (*p) {
-			if (!sblock) {
-				sblock = be64_to_cpu(*p);
-				extlen = 1;
-				continue;
-			}
-			block = be64_to_cpu(*p);
-			if (block == sblock + extlen) {
-				extlen++;
-				continue;
-			}
-		}
-		if (extlen && sblock) {
-			if (extlen > 1)
-				extlen--;
-			posix_fadvise(sdp->device_fd, sblock * sdp->bsize,
-				      extlen * sdp->bsize,
-				      POSIX_FADV_WILLNEED);
-			extlen = 0;
-			p--;
-		}
-	}
-	if (extlen)
-		posix_fadvise(sdp->device_fd, sblock * sdp->bsize,
-			      extlen * sdp->bsize, POSIX_FADV_WILLNEED);
-}
-
 /**
  * build_and_check_metalist - check a bunch of indirect blocks
  *                            This includes hash table blocks for directories
@@ -1230,7 +1136,6 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 	int h, head_size, iblk_type;
 	uint64_t *ptr, block, *undoptr;
 	int error, was_duplicate, is_valid;
-	int maxptrs;
 
 	osi_list_add(&metabh->b_altlist, &mlp[0]);
 
@@ -1254,16 +1159,12 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 				iblk_type = GFS2_METATYPE_IN;
 			if (ip->i_sbd->gfs1) {
 				head_size = sizeof(struct gfs_indirect);
-				maxptrs = (ip->i_sbd->bsize - head_size) /
-					sizeof(uint64_t);
 			} else {
 				head_size = sizeof(struct gfs2_meta_header);
-				maxptrs = ip->i_sbd->sd_inptrs;
 			}
 		} else {
 			iblk_type = GFS2_METATYPE_DI;
 			head_size = sizeof(struct gfs2_dinode);
-			maxptrs = ip->i_sbd->sd_diptrs;
 		}
 		prev_list = &mlp[h - 1];
 		cur_list = &mlp[h];
@@ -1278,8 +1179,6 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 				continue;
 			}
 
-			if (pass->readahead)
-				file_ra(ip, bh, head_size, maxptrs, h);
 			/* Now check the metadata itself */
 			for (ptr = (uint64_t *)(bh->b_data + head_size);
 			     (char *)ptr < (bh->b_data + ip->i_sbd->bsize);

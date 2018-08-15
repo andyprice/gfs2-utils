@@ -26,14 +26,16 @@
 struct gfs2_buffer_head *bget(struct gfs2_sbd *sdp, uint64_t num)
 {
 	struct gfs2_buffer_head *bh;
+	void *buf;
 
-	bh = calloc(1, sizeof(struct gfs2_buffer_head) + sdp->bsize);
-	if (bh == NULL)
+	if (posix_memalign(&buf, getpagesize(), sizeof(*bh) + sdp->bsize))
 		return NULL;
+	memset(buf, 0, sizeof(*bh) + sdp->bsize);
 
+	bh = (struct gfs2_buffer_head *)((char *)buf + sdp->bsize);
 	bh->b_blocknr = num;
 	bh->sdp = sdp;
-	bh->iov.iov_base = (char *)bh + sizeof(struct gfs2_buffer_head);
+	bh->iov.iov_base = buf;
 	bh->iov.iov_len = sdp->bsize;
 
 	return bh;
@@ -106,7 +108,7 @@ int brelse(struct gfs2_buffer_head *bh)
 	bh->b_blocknr = -1;
 	if (bh->b_altlist.next && !osi_list_empty(&bh->b_altlist))
 		osi_list_del(&bh->b_altlist);
-	free(bh);
+	free(bh->iov.iov_base);
 	return error;
 }
 

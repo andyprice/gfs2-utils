@@ -74,12 +74,15 @@ int lgfs2_sb_write(const struct gfs2_sb *sb, int fd, const unsigned bsize)
 	struct iovec *iov;
 	const size_t sb_addr = GFS2_SB_ADDR * GFS2_BASIC_BLOCK / bsize;
 	const size_t len = sb_addr + 1;
+	ssize_t bytes;
+	void *buf;
 
 	/* We only need 2 blocks: one for zeroing and a second for the superblock */
-	char *buf = calloc(2, bsize);
-	if (buf == NULL)
+	if ((err = posix_memalign(&buf, getpagesize(), 2 * bsize))) {
+		errno = err;
 		return -1;
-
+	}
+	memset(buf, 0, 2 * bsize);
 	iov = malloc(len * sizeof(*iov));
 	if (iov == NULL)
 		goto out_buf;
@@ -89,10 +92,11 @@ int lgfs2_sb_write(const struct gfs2_sb *sb, int fd, const unsigned bsize)
 		iov[i].iov_len = bsize;
 	}
 
-	gfs2_sb_out(sb, buf + bsize);
-	iov[sb_addr].iov_base = buf + bsize;
+	iov[sb_addr].iov_base = (char *)buf + bsize;
+	gfs2_sb_out(sb, iov[sb_addr].iov_base);
 
-	if (pwritev(fd, iov, len, 0) < (len * bsize))
+	bytes = pwritev(fd, iov, len, 0);
+	if (bytes < (long)(len * bsize))
 		goto out_iov;
 
 	err = 0;
@@ -181,7 +185,7 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 #endif
 
 		if (bwrite(bh)) {
-			free(bh);
+			free(bh->iov.iov_base);
 			return -1;
 		}
 
@@ -190,7 +194,7 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 
 	} while (++bh->b_blocknr < jext0 + blocks);
 
-	free(bh);
+	free(bh->iov.iov_base);
 	return 0;
 }
 

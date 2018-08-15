@@ -1,5 +1,6 @@
 #include "clusterautoconfig.h"
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -135,10 +136,12 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgd;
 	struct gfs2_rindex *ri;
-	char buf[sdp->sd_sb.sb_bsize];
 	uint64_t rmax = 0;
 	uint64_t rmin = 0;
-	int error;
+	ssize_t bytes;
+	off_t off;
+	void *buf;
+	int err;
 
 	log_info( _("Setting block ranges..."));
 
@@ -165,28 +168,32 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	last_data_block = rmax;
 	first_data_block = rmin;
 
-	if (fsck_lseek(sdp->device_fd, (last_fs_block * sdp->sd_sb.sb_bsize))){
-		log_crit( _("Can't seek to last block in file system: %llu"
-			 " (0x%llx)\n"), (unsigned long long)last_fs_block,
-			 (unsigned long long)last_fs_block);
+	err = posix_memalign(&buf, getpagesize(), sdp->sd_sb.sb_bsize);
+	if (err != 0) {
+		log_crit(_("Failed to allocate memory for buffer: %s\n"),
+		         strerror(err));
 		goto fail;
 	}
-
-	memset(buf, 0, sdp->sd_sb.sb_bsize);
-	error = read(sdp->device_fd, buf, sdp->sd_sb.sb_bsize);
-	if (error != sdp->sd_sb.sb_bsize){
-		log_crit( _("Can't read last block in file system (error %u), "
-			 "last_fs_block: %llu (0x%llx)\n"), error,
-			 (unsigned long long)last_fs_block,
-			 (unsigned long long)last_fs_block);
-		goto fail;
+	off = last_fs_block * sdp->sd_sb.sb_bsize;
+	bytes = pread(sdp->device_fd, buf, sdp->sd_sb.sb_bsize, off);
+	if (bytes == -1) {
+		log_crit(_("Error reading last filesystem block (%"PRIu64"): %s\n"),
+		         last_fs_block, strerror(errno));
+		goto fail_free;
+	}
+	if (bytes != sdp->sd_sb.sb_bsize) {
+		log_crit(_("Bad read of %ldB for last filesystem block (%"PRIu64")\n"),
+		         (long int)bytes, last_fs_block);
+		goto fail_free;
 	}
 
 	log_info(_("0x%llx to 0x%llx\n"), (unsigned long long)first_data_block,
 		 (unsigned long long)last_data_block);
+	free(buf);
 	return 0;
-
- fail:
+fail_free:
+	free(buf);
+fail:
 	log_info( _("Error\n"));
 	return -1;
 }
@@ -1569,6 +1576,7 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 		open_flag = O_RDONLY;
 	else
 		open_flag = O_RDWR | O_EXCL;
+	open_flag |= O_DIRECT|O_CLOEXEC|O_NOATIME;
 
 	sdp->device_fd = open(opts.device, open_flag);
 	if (sdp->device_fd < 0) {
