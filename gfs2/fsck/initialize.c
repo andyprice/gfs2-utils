@@ -1334,12 +1334,12 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 	if (sizeof(struct gfs2_sb) > sdp->sd_sb.sb_bsize){
 		log_crit( _("GFS superblock is larger than the blocksize!\n"));
 		log_debug("sizeof(struct gfs2_sb) > sdp->sd_sb.sb_bsize\n");
-		return -1;
+		return FSCK_ERROR;
 	}
 
 	if (compute_constants(sdp)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));
-		exit(FSCK_ERROR);
+		return FSCK_ERROR;
 	}
 	ret = read_sb(sdp);
 	if (ret < 0) {
@@ -1348,10 +1348,15 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 		/* Now that we've tried to repair it, re-read it. */
 		ret = read_sb(sdp);
 		if (ret < 0)
-			return -1;
+			return FSCK_ERROR;
 	}
 	if (sdp->gfs1)
 		sbd1 = (struct gfs_sb *)&sdp->sd_sb;
+	else if (sdp->sd_sb.sb_fs_format > FSCK_MAX_FORMAT) {
+		log_crit(_("Unsupported gfs2 format found: %"PRIu32"\n"), sdp->sd_sb.sb_fs_format);
+		log_crit(_("A newer fsck.gfs2 is required to check this file system.\n"));
+		return FSCK_USAGE;
+	}
 	return 0;
 }
 
@@ -1556,6 +1561,7 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 	       int *all_clean)
 {
 	int clean_journals = 0, open_flag;
+	int err;
 
 	*all_clean = 0;
 
@@ -1601,8 +1607,9 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 	}
 
 	/* read in sb from disk */
-	if (fill_super_block(sdp))
-		return FSCK_ERROR;
+	err = fill_super_block(sdp);
+	if (err != FSCK_OK)
+		return err;
 
 	/* Change lock protocol to be fsck_* instead of lock_* */
 	if (!opts.no && preen_is_safe(sdp, preen, force_check)) {

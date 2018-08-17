@@ -54,3 +54,16 @@ AT_CHECK([gfs2_edit -p journal0 field di_header.mh_magic 0 $GFS_TGT], 0, [ignore
 AT_CHECK([fsck.gfs2 -y $GFS_TGT], 1, [ignore], [ignore])
 AT_CHECK([fsck.gfs2 -n $GFS_TGT], 0, [ignore], [ignore])
 AT_CLEANUP
+
+AT_SETUP([gfs2 format versions])
+AT_KEYWORDS(fsck.gfs2 fsck)
+GFS_TGT_REGEN
+AT_CHECK([mkfs.gfs2 -O -p lock_nolock ${GFS_TGT}], 0, [ignore], [ignore])
+AT_CHECK([echo "set sb { sb_fs_format: 1802 }" | gfs2l ${GFS_TGT}], 0, [ignore], [ignore])
+# Unsupported format, FSCK_USAGE == 16
+AT_CHECK([fsck.gfs2 -y $GFS_TGT], 16, [ignore], [ignore])
+# Format out of range
+AT_CHECK([echo "set sb { sb_fs_format: 4242 }" | gfs2l ${GFS_TGT}], 0, [ignore], [ignore])
+AT_CHECK([fsck.gfs2 -y $GFS_TGT], 1, [ignore], [ignore])
+AT_CHECK([fsck.gfs2 -n $GFS_TGT], 0, [ignore], [ignore])
+AT_CLEANUP
