@@ -29,10 +29,17 @@ int check_sb(struct gfs2_sb *sb)
 		errno = EIO;
 		return -1;
 	}
+	/* Check for gfs1 */
 	if (sb->sb_fs_format == GFS_FORMAT_FS &&
 	    sb->sb_header.mh_format == GFS_FORMAT_SB &&
 	    sb->sb_multihost_format == GFS_FORMAT_MULTI) {
 		return 1;
+	}
+	/* It's gfs2. Check format number is in a sensible range. */
+	if (sb->sb_fs_format < GFS2_FORMAT_FS ||
+	    sb->sb_fs_format > 1899) {
+		errno = EINVAL;
+		return -1;
 	}
 	return 2;
 }
