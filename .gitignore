@@ -43,6 +43,7 @@ gfs2/glocktop/glocktop
 gfs2/mkfs/mkfs.gfs2
 gfs2/mkfs/gfs2_grow
 gfs2/mkfs/gfs2_jadd
+gfs2/scripts/82-gfs2-withdraw.rules
 gfs2/tune/tunegfs2
 test-driver
 tests/check_meta
