@@ -940,6 +940,7 @@ int lgfs2_field_str(char *str, const size_t size, const char *blk, const struct 
 int lgfs2_field_assign(char *blk, const struct lgfs2_metafield *field, const void *val)
 {
 	char *fieldp = blk + field->offset;
+	uint64_t num = *(uint64_t *)val;
 
 	if (field->flags & LGFS2_MFF_UUID) {
 		memcpy(fieldp, val, 16);
@@ -959,16 +960,16 @@ int lgfs2_field_assign(char *blk, const struct lgfs2_metafield *field, const voi
 
 	switch(field->length) {
 	case sizeof(uint8_t):
-		*fieldp = *(uint8_t *)val;
+		*fieldp = (uint8_t)num;
 		return 0;
 	case sizeof(uint16_t):
-		*(uint16_t *)fieldp = cpu_to_be16(*(uint16_t *)val);
+		*(uint16_t *)fieldp = cpu_to_be16((uint16_t)num);
 		return 0;
 	case sizeof(uint32_t):
-		*(uint32_t *)fieldp = cpu_to_be32(*(uint32_t *)val);
+		*(uint32_t *)fieldp = cpu_to_be32((uint32_t)num);
 		return 0;
 	case sizeof(uint64_t):
-		*(uint64_t *)fieldp = cpu_to_be64(*(uint64_t *)val);
+		*(uint64_t *)fieldp = cpu_to_be64((uint64_t)num);
 		return 0;
 	default:
 		/* Will never happen */
