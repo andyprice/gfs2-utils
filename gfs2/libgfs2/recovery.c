@@ -241,7 +241,7 @@ int clean_journal(struct gfs2_inode *ip, struct gfs2_log_header *head)
 	lh->lh_sequence = cpu_to_be64(head->lh_sequence + 1);
 	lh->lh_flags = cpu_to_be32(GFS2_LOG_HEAD_UNMOUNT);
 	lh->lh_blkno = cpu_to_be32(lblock);
-	hash = gfs2_disk_hash((const char *)lh, sizeof(struct gfs2_log_header));
+	hash = lgfs2_log_header_hash(bh->b_data);
 	lh->lh_hash = cpu_to_be32(hash);
 	bmodified(bh);
 	brelse(bh);
