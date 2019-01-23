@@ -117,7 +117,7 @@ int change_lockproto(struct tunegfs2 *tfs, const char *lockproto)
 		return EX_DATAERR;
 	}
 	memset(tfs->sb->sb_lockproto, '\0', GFS2_LOCKNAME_LEN);
-	strncpy(tfs->sb->sb_lockproto, lockproto, l);
+	memcpy(tfs->sb->sb_lockproto, lockproto, l);
 	return 0;
 }
 

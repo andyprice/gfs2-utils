@@ -1143,8 +1143,8 @@ int main(int argc, char *argv[])
 	build_root(&sbd);
 	sb.sb_root_dir = sbd.md.rooti->i_di.di_num;
 
-	strncpy(sb.sb_lockproto, opts.lockproto, GFS2_LOCKNAME_LEN);
-	strncpy(sb.sb_locktable, opts.locktable, GFS2_LOCKNAME_LEN);
+	memcpy(sb.sb_lockproto, opts.lockproto, GFS2_LOCKNAME_LEN);
+	memcpy(sb.sb_locktable, opts.locktable, GFS2_LOCKNAME_LEN);
 	sb.sb_lockproto[GFS2_LOCKNAME_LEN - 1] = '\0';
 	sb.sb_locktable[GFS2_LOCKNAME_LEN - 1] = '\0';
 

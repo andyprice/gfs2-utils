@@ -1607,7 +1607,7 @@ static void parse_glocks_file(int fd, const char *fsname, int dlmwaiters,
 	ctimestr[63] = '\0';
 	memset(fstitle, 0, sizeof(fstitle));
 	memset(fsdlm, 0, sizeof(fsdlm));
-	sprintf(fstitle, "@ %s       %s ", fsname, ctimestr);
+	sprintf(fstitle, "@ %.22s       %s ", fsname, ctimestr);
 	if (dlmwaiters) {
 		sprintf(fsdlm, "dlm: %s/%s/%s [", dlm_dirtbl_size,
 			dlm_rsbtbl_size, dlm_lkbtbl_size);
@@ -1791,7 +1791,7 @@ int main(int argc, char **argv)
 		display_title_lines();
 		while ((dent = readdir(dir))) {
 			const char *fsname;
-			char dlm_fn[PATH_MAX+5+8]; /* "/dlm/" and "_waiters" */
+			char *dlm_fn;
 			FILE *dlmf;
 			int dlmfd;
 
@@ -1806,24 +1806,29 @@ int main(int argc, char **argv)
 			else
 				fsname = dent->d_name;
 
-			memset(dlm_fn, 0, sizeof(dlm_fn));
-			sprintf(dlm_fn, "%s/dlm/%s_waiters", debugfs, fsname);
+			if (asprintf(&dlm_fn, "%s/dlm/%s_waiters", debugfs, fsname) == -1) {
+				perror("Failed to construct dlm waiters debugfs path");
+				exit(-1);
+			}
 			dlmf = fopen(dlm_fn, "rt");
 			if (dlmf) {
 				dlmwaiters = parse_dlm_waiters(dlmf, fsname);
 				fclose(dlmf);
 			}
+			free(dlm_fn);
 
 			if (print_dlm_grants) {
-				memset(dlm_fn, 0, sizeof(dlm_fn));
-				sprintf(dlm_fn, "%s/dlm/%s_locks", debugfs,
-					fsname);
+				if (asprintf(&dlm_fn, "%s/dlm/%s_locks", debugfs, fsname) == -1) {
+					perror("Failed to construct dlm locks debugfs path");
+					exit(-1);
+				}
 				dlmfd = open(dlm_fn, O_RDONLY);
 				if (dlmfd > 0) {
 					dlmgrants = parse_dlm_grants(dlmfd,
 								     fsname);
 					close(dlmfd);
 				}
+				free(dlm_fn);
 			}
 
 			if (asprintf(&fn, "%s/gfs2/%s/glocks", debugfs, dent->d_name) == -1) {
