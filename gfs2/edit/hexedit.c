@@ -1275,7 +1275,7 @@ static int find_rg_metatype(struct rgrp_tree *rgd, uint64_t *blk, uint64_t start
 		for (j = 0; j < m; j++) {
 			*blk = ibuf[j];
 			bhp = bread(&sbd, *blk);
-			found = (*blk > startblk) && !gfs2_check_meta(bhp, mtype);
+			found = (*blk > startblk) && !gfs2_check_meta(bhp->b_data, mtype);
 			brelse(bhp);
 			if (found) {
 				free(ibuf);
@@ -2280,7 +2280,7 @@ static int count_dinode_blks(struct rgrp_tree *rgd, int bitmap,
 			    rgd->bits[bitmap].bi_start + b);
 		byte = rbh->b_data + off + (b / GFS2_NBBY);
 		bit = (b % GFS2_NBBY) * GFS2_BIT_SIZE;
-		if (gfs2_check_meta(tbh, GFS2_METATYPE_DI) == 0) {
+		if (gfs2_check_meta(tbh->b_data, GFS2_METATYPE_DI) == 0) {
 			dinodes++;
 			new_state = GFS2_BLKST_DINODE;
 		} else {
@@ -2351,7 +2351,7 @@ static void rg_repair(void)
 
 			printf("Bitmap #%d:", b);
 			rbh = bread(&sbd, rgd->ri.ri_addr + b);
-			if (gfs2_check_meta(rbh, mtype)) { /* wrong type */
+			if (gfs2_check_meta(rbh->b_data, mtype)) { /* wrong type */
 				printf("Damaged. Repairing...");
 				/* Fix the meta header */
 				memset(rbh->b_data, 0, sbd.bsize);

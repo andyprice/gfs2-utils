@@ -393,7 +393,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 	}
 	nbh = bread(ip->i_sbd, block);
 
-	*is_valid = (gfs2_check_meta(nbh, iblk_type) == 0);
+	*is_valid = (gfs2_check_meta(nbh->b_data, iblk_type) == 0);
 
 	if (!(*is_valid)) {
 		log_err( _("Inode %lld (0x%llx) has a bad indirect block "
@@ -519,7 +519,7 @@ static int blockmap_set_as_data(struct gfs2_inode *ip, uint64_t block)
 	/* The bitmap says it's a dinode, but a block reference begs to differ.
 	   So which is it? */
 	bh = bread(ip->i_sbd, block);
-	if (gfs2_check_meta(bh, GFS2_METATYPE_DI) != 0)
+	if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_DI) != 0)
 		goto out;
 
 	/* The meta header agrees it's a dinode. But it might be data in
@@ -747,7 +747,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 	   handling sort it out.  If it isn't, clear it but don't
 	   count it as a duplicate. */
 	*bh = bread(sdp, indirect);
-	if (gfs2_check_meta(*bh, GFS2_METATYPE_IN)) {
+	if (gfs2_check_meta((*bh)->b_data, GFS2_METATYPE_IN)) {
 		bc->ea_count++;
 		if (q != GFS2_BLKST_FREE) { /* Duplicate? */
 			add_duplicate_ref(ip, indirect, ref_as_ea, 0,
@@ -829,7 +829,7 @@ static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 	   really is an EA.  If it is, let duplicate handling sort it out.
 	   If it isn't, clear it but don't count it as a duplicate. */
 	leaf_bh = bread(sdp, block);
-	if (gfs2_check_meta(leaf_bh, btype)) {
+	if (gfs2_check_meta(leaf_bh->b_data, btype)) {
 		bc->ea_count++;
 		if (q != GFS2_BLKST_FREE) { /* Duplicate? */
 			add_duplicate_ref(ip, block, ref_as_ea, 0,
@@ -1666,7 +1666,7 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 			 " (0x%llx)\n"), filename,
 			 (unsigned long long)iblock,
 			 (unsigned long long)iblock);
-		if (gfs2_check_meta((*sysinode)->i_bh, GFS2_METATYPE_DI)) {
+		if (gfs2_check_meta((*sysinode)->i_bh->b_data, GFS2_METATYPE_DI)) {
 			log_err( _("Found invalid system dinode at block #"
 				   "%llu (0x%llx)\n"),
 				 (unsigned long long)iblock,
@@ -1935,7 +1935,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 		bh = bread(sdp, block);
 
 		is_inode = 0;
-		if (gfs2_check_meta(bh, GFS2_METATYPE_DI) == 0)
+		if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_DI) == 0)
 			is_inode = 1;
 
 		check_magic = ((struct gfs2_meta_header *)

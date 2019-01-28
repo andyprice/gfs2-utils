@@ -836,7 +836,7 @@ static int fix_xattr(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, struct g
 
 	/* Read in the i_di.di_eattr block */
 	eabh = bread(sbp, ip->i_di.di_eattr);
-        if (!gfs2_check_meta(eabh, GFS_METATYPE_IN)) {/* if it is an indirect block */
+        if (!gfs2_check_meta(eabh->b_data, GFS_METATYPE_IN)) {/* if it is an indirect block */
 		len = sbp->bsize - sizeof(struct gfs_indirect);
 		buf = malloc(len);
 		if (!buf) {
@@ -1012,7 +1012,7 @@ static int next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 			return -1;
 		bh = bread(sdp, *block);
 		first = 0;
-	} while(gfs2_check_meta(bh, type));
+	} while(gfs2_check_meta(bh->b_data, type));
 	brelse(bh);
 	return 0;
 }
@@ -1072,7 +1072,7 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 				sbp->sd_sb.sb_root_dir.no_formal_ino = sbp->md.next_inum;
 			}
 			bh = bread(sbp, block);
-			if (!gfs2_check_meta(bh, GFS_METATYPE_DI)) {/* if it is an dinode */
+			if (!gfs2_check_meta(bh->b_data, GFS_METATYPE_DI)) {/* if it is an dinode */
 				/* Skip the rindex and jindex inodes for now. */
 				if (block != rindex_addr && block != jindex_addr) {
 					error = adjust_inode(sbp, bh);

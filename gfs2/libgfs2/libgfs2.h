@@ -699,7 +699,7 @@ extern int build_quota(struct gfs2_sbd *sdp);
 extern int build_root(struct gfs2_sbd *sdp);
 extern int do_init_inum(struct gfs2_sbd *sdp);
 extern int do_init_statfs(struct gfs2_sbd *sdp);
-extern int gfs2_check_meta(struct gfs2_buffer_head *bh, int type);
+extern int gfs2_check_meta(const char *buf, int type);
 extern unsigned lgfs2_bm_scan(struct rgrp_tree *rgd, unsigned idx,
 			      uint64_t *buf, uint8_t state);
 extern int build_inum_range(struct gfs2_inode *per_node, unsigned int j);

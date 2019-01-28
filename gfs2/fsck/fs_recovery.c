@@ -211,7 +211,7 @@ static int revoke_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			return error;
 
 		if (!first) {
-			if (gfs2_check_meta(bh, GFS2_METATYPE_LB))
+			if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_LB))
 				continue;
 		}
 		while (offset + sizeof(uint64_t) <= sdp->sd_sb.sb_bsize) {
@@ -355,7 +355,7 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 			bmodified(bh);
 			brelse(bh);
 			return error;
-		} else if (gfs2_check_meta(bh, GFS2_METATYPE_LD)) {
+		} else if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_LD)) {
 			bmodified(bh);
 			brelse(bh);
 			return -EIO;
@@ -649,7 +649,7 @@ static int rangecheck_jmeta(struct gfs2_inode *ip, uint64_t block,
 	rc = rangecheck_jblock(ip, block);
 	if (rc == meta_is_good) {
 		*bh = bread(ip->i_sbd, block);
-		*is_valid = (gfs2_check_meta(*bh, GFS2_METATYPE_IN) == 0);
+		*is_valid = (gfs2_check_meta((*bh)->b_data, GFS2_METATYPE_IN) == 0);
 		if (!(*is_valid)) {
 			log_err( _("Journal at block %lld (0x%llx) has a bad "
 				   "indirect block pointer %lld (0x%llx) "
