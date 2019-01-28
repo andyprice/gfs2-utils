@@ -182,7 +182,7 @@ static int good_on_disk(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 	int is_rgrp;
 
 	bh = bread(sdp, rgd->ri.ri_addr);
-	is_rgrp = (gfs2_check_meta(bh, GFS2_METATYPE_RG) == 0);
+	is_rgrp = (gfs2_check_meta(bh->b_data, GFS2_METATYPE_RG) == 0);
 	brelse(bh);
 	return is_rgrp;
 }

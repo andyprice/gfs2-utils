@@ -651,7 +651,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		struct gfs2_buffer_head *tbh;
 
 		tbh = bread(sdp, entry->no_addr);
-		if (gfs2_check_meta(tbh, GFS2_METATYPE_DI)) { /* not dinode */
+		if (gfs2_check_meta(tbh->b_data, GFS2_METATYPE_DI)) { /* not dinode */
 			log_err( _("Directory entry '%s' pointing to block "
 				   "%llu (0x%llx) in directory %llu (0x%llx) "
 				   "is not really a GFS1 dinode.\n"), tmp_name,
@@ -1600,7 +1600,7 @@ static int check_hash_tbl_dups(struct gfs2_inode *ip, uint64_t *tbl,
 			continue;
 
 		lbh = bread(ip->i_sbd, leafblk);
-		if (gfs2_check_meta(lbh, GFS2_METATYPE_LF)) { /* Chked later */
+		if (gfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF)) { /* Chked later */
 			brelse(lbh);
 			continue;
 		}
@@ -1794,7 +1794,7 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 				proper_len, proper_len);
 			lbh = bread(ip->i_sbd, leafblk);
 			gfs2_leaf_in(&leaf, lbh);
-			if (gfs2_check_meta(lbh, GFS2_METATYPE_LF) ||
+			if (gfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF) ||
 			    leaf.lf_depth > ip->i_di.di_depth)
 				leaf.lf_depth = factor;
 			brelse(lbh);
@@ -1895,7 +1895,7 @@ static int check_data_qc(struct gfs2_inode *ip, uint64_t metablock,
 		return -1;
 
 	bh = bread(ip->i_sbd, block);
-	if (gfs2_check_meta(bh, GFS2_METATYPE_QC) != 0) {
+	if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_QC) != 0) {
 		log_crit(_("Error: quota_change block at %lld (0x%llx) is "
 			   "the wrong metadata type.\n"),
 			 (unsigned long long)block, (unsigned long long)block);

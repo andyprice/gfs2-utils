@@ -567,7 +567,7 @@ static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, uint64_t bl
 			return 1;
 		}
 		warm_fuzzy_stuff(blk, FALSE);
-		if (gfs2_check_meta(bh, GFS2_METATYPE_LF) == 0) {
+		if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_LF) == 0) {
 			int ret = save_bh(mfd, bh, blk, NULL);
 			if (ret != 0) {
 				brelse(bh);

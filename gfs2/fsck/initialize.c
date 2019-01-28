@@ -243,7 +243,7 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				if (state == GFS2_BLKST_DINODE) {
 					if (sdp->gfs1) {
 						bh = bread(sdp, diblock);
-						if (!gfs2_check_meta(bh,
+						if (!gfs2_check_meta(bh->b_data,
 							GFS2_METATYPE_DI))
 							rg_useddi++;
 						else
@@ -298,7 +298,7 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 					 (unsigned long long)diblock,
 					 (unsigned long long)diblock);
 				bh = bread(sdp, diblock);
-				if (!gfs2_check_meta(bh, GFS2_METATYPE_DI)) {
+				if (!gfs2_check_meta(bh->b_data, GFS2_METATYPE_DI)) {
 					struct gfs2_inode *ip =
 						fsck_inode_get(sdp, rgd, bh);
 					if (ip->i_di.di_blocks > 1) {
@@ -1169,7 +1169,7 @@ static int peruse_metadata(struct gfs2_sbd *sdp, uint64_t startblock)
 	/* Max RG size is 2GB. 2G / bsize. */
 	for (blk = startblock; blk < startblock + max_rg_size; blk++) {
 		bh = bread(sdp, blk);
-		if (gfs2_check_meta(bh, GFS2_METATYPE_DI)) {
+		if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_DI)) {
 			brelse(bh);
 			continue;
 		}

@@ -184,7 +184,7 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 		int mtype = (x ? GFS2_METATYPE_RB : GFS2_METATYPE_RG);
 
 		bi->bi_bh = bhs[x];
-		if (gfs2_check_meta(bi->bi_bh, mtype)) {
+		if (gfs2_check_meta(bi->bi_bh->b_data, mtype)) {
 			unsigned err = x;
 			do {
 				brelse(rgd->bits[x].bi_bh);

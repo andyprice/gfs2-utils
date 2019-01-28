@@ -559,7 +559,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	/* Try to read in the leaf block. */
 	lbh = bread(sdp, *leaf_no);
 	/* Make sure it's really a valid leaf block. */
-	if (gfs2_check_meta(lbh, GFS2_METATYPE_LF)) {
+	if (gfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF)) {
 		msg = _("that is not really a leaf");
 		goto bad_leaf;
 	}
@@ -768,7 +768,7 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		if (valid_block_ip(ip, leaf_no)) {
 			lbh = bread(sdp, leaf_no);
 			/* Make sure it's really a valid leaf block. */
-			if (gfs2_check_meta(lbh, GFS2_METATYPE_LF) == 0) {
+			if (gfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF) == 0) {
 				brelse(lbh);
 				first_ok_leaf = leaf_no;
 				break;
@@ -1268,7 +1268,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 		for (tmp = prev_list->next; tmp != prev_list; tmp = tmp->next){
 			bh = osi_list_entry(tmp, struct gfs2_buffer_head,
 					    b_altlist);
-			if (gfs2_check_meta(bh, iblk_type)) {
+			if (gfs2_check_meta(bh->b_data, iblk_type)) {
 				if (pass->invalid_meta_is_fatal)
 					return meta_error;
 
@@ -1513,7 +1513,7 @@ static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 static int hdr_size(struct gfs2_buffer_head *bh, int height)
 {
 	if (height > 1) {
-		if (gfs2_check_meta(bh, GFS2_METATYPE_IN))
+		if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_IN))
 			return 0;
 		if (bh->sdp->gfs1)
 			return sizeof(struct gfs_indirect);
@@ -1521,7 +1521,7 @@ static int hdr_size(struct gfs2_buffer_head *bh, int height)
 			return sizeof(struct gfs2_meta_header);
 	}
 	/* if this isn't really a dinode, skip it */
-	if (gfs2_check_meta(bh, GFS2_METATYPE_DI))
+	if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_DI))
 		return 0;
 
 	return sizeof(struct gfs2_dinode);

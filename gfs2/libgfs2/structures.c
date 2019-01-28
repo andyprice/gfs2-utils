@@ -593,10 +593,10 @@ int do_init_statfs(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-int gfs2_check_meta(struct gfs2_buffer_head *bh, int type)
+int gfs2_check_meta(const char *buf, int type)
 {
-	uint32_t check_magic = ((struct gfs2_meta_header *)(bh->b_data))->mh_magic;
-	uint32_t check_type = ((struct gfs2_meta_header *)(bh->b_data))->mh_type;
+	uint32_t check_magic = ((struct gfs2_meta_header *)buf)->mh_magic;
+	uint32_t check_type = ((struct gfs2_meta_header *)buf)->mh_type;
 
 	check_magic = be32_to_cpu(check_magic);
 	check_type = be32_to_cpu(check_type);
