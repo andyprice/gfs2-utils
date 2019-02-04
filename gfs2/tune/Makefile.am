@@ -13,5 +13,5 @@ tunegfs2_CPPFLAGS = \
 	-I$(top_srcdir)/group/include
 tunegfs2_CFLAGS = \
 	$(uuid_CFLAGS)
-tunegfs2_LDFLAGS = \
+tunegfs2_LDADD = \
 	$(uuid_LIBS)

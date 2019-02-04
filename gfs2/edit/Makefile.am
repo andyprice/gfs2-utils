@@ -25,9 +25,9 @@ gfs2_edit_CFLAGS = \
 	$(zlib_CFLAGS) \
 	$(uuid_CFLAGS)
 
-gfs2_edit_LDFLAGS = \
+gfs2_edit_LDADD = \
+	$(top_builddir)/gfs2/libgfs2/libgfs2.la \
 	$(ncurses_LIBS) \
 	$(zlib_LIBS) \
 	$(uuid_LIBS)
 
-gfs2_edit_LDADD = $(top_builddir)/gfs2/libgfs2/libgfs2.la
