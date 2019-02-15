@@ -17,6 +17,9 @@ filesystem extension.  When this operation is complete, the resource
 group index for the filesystem is updated so that all nodes in the
 cluster can use the extra storage space that has been added.
 
+See \fBlvmlockd(8)\fP for the procedure to extend and refresh the logical
+volume prior to running gfs2_grow.
+
 You may only run gfs2_grow on a mounted filesystem; expansion of 
 unmounted filesystems is not supported.  You only need to
 run gfs2_grow on one node in the cluster.  All the other nodes will
@@ -62,5 +65,8 @@ Version. Print out version information, then exit.
 There is no way to shrink a GFS2 filesystem.
 
 .SH SEE ALSO
-mkfs.gfs2(8) gfs2_jadd(8)
+.BR mkfs.gfs2(8)
+.BR gfs2_jadd(8)
+.BR lvextend(8)
+.BR lvmlockd(8)
 
