@@ -970,6 +970,31 @@ int lgfs2_field_str(char *str, const size_t size, const char *blk, const struct 
 			snprintf(str, size, "%"PRIx64, value);
 			goto out;
 		}
+		if (field->flags & LGFS2_MFF_MASK) {
+			char *s = str, *end = str + size;
+			unsigned n;
+
+			for (n = 0; n < field->nsyms; n++) {
+				const struct lgfs2_symbolic *sym = &field->symtab[n];
+
+				if (!(value & sym->key))
+					continue;
+				if (s != str && s < end)
+					*s++ = '/';
+				if (s < end) {
+					const char *v = sym->value + sym->prefix;
+					size_t len = strlen(v);
+
+					if (len > end - s)
+						len = end - s;
+					memcpy(s, v, len);
+					s += len;
+				}
+			}
+			if (s < end)
+				*s = '\0';
+			goto out;
+		}
 		snprintf(str, size, "%"PRIu64, value);
 	}
 out:
