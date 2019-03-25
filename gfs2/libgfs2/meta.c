@@ -388,7 +388,7 @@ MH(jd_header)
 static const struct lgfs2_metafield gfs2_log_header_fields[] = {
 MH(lh_header)
 F(lh_sequence)
-F(lh_flags)
+F(lh_flags, .flags = LGFS2_MFF_MASK, .symtab = lgfs2_lh_flags, .nsyms = ARRAY_SIZE(lgfs2_lh_flags))
 F(lh_tail)
 F(lh_blkno)
 F(lh_hash, .flags = LGFS2_MFF_CHECK)
@@ -411,7 +411,7 @@ F(lh_local_dinodes, .flags = LGFS2_MFF_FSBLOCKS)
 
 static const struct lgfs2_metafield gfs_log_header_fields[] = {
 MH(lh_header)
-F(lh_flags, .flags = LGFS2_MFF_MASK, .symtab = lgfs2_lh_flags, .nsyms = ARRAY_SIZE(lgfs2_lh_flags))
+F(lh_flags)
 RF(lh_pad)
 F(lh_first)
 F(lh_sequence)
