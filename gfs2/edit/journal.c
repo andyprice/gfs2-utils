@@ -476,6 +476,8 @@ static uint64_t get_ldref(uint64_t abs_ld, int offset_from_ld)
  */
 void dump_journal(const char *journal, int tblk)
 {
+	const struct lgfs2_metadata *mtype;
+	const struct lgfs2_metafield *lh_flags_field;
 	struct gfs2_buffer_head *j_bh = NULL, dummy_bh;
 	uint64_t jblock, j_size, jb, abs_block, saveblk, wrappt = 0;
 	int start_line, journal_num;
@@ -486,6 +488,9 @@ void dump_journal(const char *journal, int tblk)
 	char *jbuf = NULL;
 	struct rgrp_tree *rgd = NULL;
 	uint64_t abs_ld = 0;
+
+	mtype = lgfs2_find_mtype(GFS2_METATYPE_LH, sbd.gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2);
+	lh_flags_field = lgfs2_find_mfield_name("lh_flags", mtype);
 
 	start_line = line;
 	lines_per_row[dmode] = 1;
@@ -593,17 +598,20 @@ void dump_journal(const char *journal, int tblk)
 					   lh1.lh_first, lh1.lh_tail,
 					   lh1.lh_last_dump);
 			} else {
+				char flags_str[256];
+
 				gfs2_log_header_in(&lh, dummy_bh.b_data);
 				check_journal_wrap(lh.lh_sequence,
 						   &highest_seq);
+				lgfs2_field_str(flags_str, sizeof(flags_str),
+						dummy_bh.b_data, lh_flags_field,
+						(dmode == HEX_MODE));
 				print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: Seq"
-					   ": 0x%llx, tail: 0x%x, blk: 0x%x%s",
+					   ": 0x%llx, tail: 0x%x, blk: 0x%x [%s]",
 					   abs_block, ((jb + wrappt) % j_size)
 					   / sbd.bsize, lh.lh_sequence,
 					   lh.lh_tail, lh.lh_blkno,
-					   lh.lh_flags ==
-					   GFS2_LOG_HEAD_UNMOUNT ?
-					   " [UNMOUNTED]" : "");
+					   flags_str);
 			}
 			eol(0);
 		} else if ((ld_blocks > 0) &&
