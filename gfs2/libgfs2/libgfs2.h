@@ -105,6 +105,7 @@ enum lgfs2_meta_type {
 struct lgfs2_symbolic {
 	const uint32_t key;
 	const char *value;
+	unsigned int prefix;
 };
 
 struct lgfs2_metafield {
