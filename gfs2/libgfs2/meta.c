@@ -946,23 +946,33 @@ int lgfs2_field_str(char *str, const size_t size, const char *blk, const struct 
 	} else if (field->flags & LGFS2_MFF_STRING) {
 		snprintf(str, size, "%s", fieldp);
 	} else {
+		uint64_t value;
+
 		switch(field->length) {
 		case sizeof(uint8_t):
-			snprintf(str, size, hex? "%"PRIx8 : "%"PRIu8, *(uint8_t *)fieldp);
+			value = *(uint8_t *)fieldp;
 			break;
 		case sizeof(uint16_t):
-			snprintf(str, size, hex? "%"PRIx16 : "%"PRIu16, be16_to_cpu(*(uint16_t *)fieldp));
+			value = be16_to_cpu(*(uint16_t *)fieldp);
 			break;
 		case sizeof(uint32_t):
-			snprintf(str, size, hex? "%"PRIx32 : "%"PRIu32, be32_to_cpu(*(uint32_t *)fieldp));
+			value = be32_to_cpu(*(uint32_t *)fieldp);
 			break;
 		case sizeof(uint64_t):
-			snprintf(str, size, hex? "%"PRIx64 : "%"PRIu64, be64_to_cpu(*(uint64_t *)fieldp));
+			value = be64_to_cpu(*(uint64_t *)fieldp);
 			break;
 		default:
-			break;
+			*str = 0;
+			goto out;
 		}
+
+		if (hex) {
+			snprintf(str, size, "%"PRIx64, value);
+			goto out;
+		}
+		snprintf(str, size, "%"PRIu64, value);
 	}
+out:
 	str[size - 1] = '\0';
 	return 0;
 }
