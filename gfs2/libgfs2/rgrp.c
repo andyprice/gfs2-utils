@@ -332,7 +332,7 @@ static uint64_t align_block(const uint64_t base, const uint64_t align)
  */
 uint64_t lgfs2_rgrp_align_addr(const lgfs2_rgrps_t rgs, uint64_t addr)
 {
-	return align_block(addr, rgs->align);
+	return align_block(addr, rgs->align_off);
 }
 
 /**
