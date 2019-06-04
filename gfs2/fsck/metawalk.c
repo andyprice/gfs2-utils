@@ -1393,7 +1393,7 @@ error_undo: /* undo what we've done so far for this block */
  *          1 if errors were found and corrected
  *          2 (ENOENT) is there were too many bad pointers
  */
-static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
+static int metawalk_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		      struct gfs2_buffer_head *bh, int head_size,
 		      uint64_t *blks_checked, struct error_block *error_blk)
 {
@@ -1591,7 +1591,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			continue;
 
 		if (pass->check_data)
-			error = check_data(ip, pass, bh, head_size,
+			error = metawalk_check_data(ip, pass, bh, head_size,
 					   &blks_checked, &error_blk);
 		if (pass->big_file_msg && ip->i_di.di_blocks > COMFORTABLE_BLKS)
 			pass->big_file_msg(ip, blks_checked);

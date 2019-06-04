@@ -44,7 +44,7 @@ static int check_metalist(struct gfs2_inode *ip, uint64_t block,
 			  int *was_duplicate, void *private);
 static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
 			       int h, void *private);
-static int check_data(struct gfs2_inode *ip, uint64_t metablock,
+static int pass1_check_data(struct gfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
 		      struct gfs2_buffer_head *bh, uint64_t *ptr);
 static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
@@ -192,7 +192,7 @@ struct metawalk_fxns pass1_fxns = {
 	.private = NULL,
 	.check_leaf = p1check_leaf,
 	.check_metalist = check_metalist,
-	.check_data = check_data,
+	.check_data = pass1_check_data,
 	.check_eattr_indir = check_eattr_indir,
 	.check_eattr_leaf = check_eattr_leaf,
 	.check_dentry = NULL,
@@ -542,7 +542,7 @@ out:
 	return error;
 }
 
-static int check_data(struct gfs2_inode *ip, uint64_t metablock,
+static int pass1_check_data(struct gfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
 		      struct gfs2_buffer_head *bbh, uint64_t *ptr)
 {
