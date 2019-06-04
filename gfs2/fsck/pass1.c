@@ -511,7 +511,7 @@ static int blockmap_set_as_data(struct gfs2_inode *ip, uint64_t block)
 	struct gfs2_buffer_head *bh;
 	struct gfs2_dinode *di;
 
-	error = fsck_blkmap_set_noino(ip, block, _("data"), GFS2_BLKST_USED);
+	error = fsck_blkmap_set_noino(ip, block, "data", GFS2_BLKST_USED);
 	if (!error)
 		return 0;
 
@@ -537,7 +537,7 @@ static int blockmap_set_as_data(struct gfs2_inode *ip, uint64_t block)
 	error = -1;
 out:
 	if (!error)
-		fsck_blockmap_set(ip, block, _("data"),  GFS2_BLKST_USED);
+		fsck_blockmap_set(ip, block, "data",  GFS2_BLKST_USED);
 	brelse(bh);
 	return error;
 }
@@ -642,13 +642,13 @@ static int check_data(struct gfs2_inode *ip, uint64_t metablock,
 		log_info(_("Block %lld (0x%llx) is a GFS1 rindex block\n"),
 			 (unsigned long long)block, (unsigned long long)block);
 		gfs2_special_set(&gfs1_rindex_blks, block);
-		fsck_blockmap_set(ip, block, _("rgrp"), GFS2_BLKST_DINODE);
+		fsck_blockmap_set(ip, block, "rgrp", GFS2_BLKST_DINODE);
 		/*gfs2_meta_rgrp);*/
 	} else if (ip->i_sbd->gfs1 && ip->i_di.di_flags & GFS2_DIF_JDATA) {
 		log_info(_("Block %lld (0x%llx) is a GFS1 journaled data "
 			   "block\n"),
 			 (unsigned long long)block, (unsigned long long)block);
-		fsck_blockmap_set(ip, block, _("jdata"), GFS2_BLKST_DINODE);
+		fsck_blockmap_set(ip, block, "jdata", GFS2_BLKST_DINODE);
 	} else
 		return blockmap_set_as_data(ip, block);
 	return 0;
@@ -1286,25 +1286,25 @@ static int set_ip_blockmap(struct gfs2_inode *ip)
 
 	switch (mode) {
 	case S_IFDIR:
-		ty = _("directory");
+		ty = "directory";
 		break;
 	case S_IFREG:
-		ty = _("file");
+		ty = "file";
 		break;
 	case S_IFLNK:
-		ty = _("symlink");
+		ty = "symlink";
 		break;
 	case S_IFBLK:
-		ty = _("block device");
+		ty = "block device";
 		break;
 	case S_IFCHR:
-		ty = _("character device");
+		ty = "character device";
 		break;
 	case S_IFIFO:
-		ty = _("fifo");
+		ty = "fifo";
 		break;
 	case S_IFSOCK:
-		ty = _("socket");
+		ty = "socket";
 		break;
 	default:
 		return -EINVAL;
@@ -1372,7 +1372,7 @@ static int alloc_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	   after the bitmap has been set but before the blockmap has. */
 	q = bitmap_type(ip->i_sbd, block);
 	if (q == GFS2_BLKST_FREE)
-		fsck_blockmap_set(ip, block, _("newly allocated leaf"),
+		fsck_blockmap_set(ip, block, "newly allocated leaf",
 				  ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
 				  GFS2_BLKST_USED);
 	return 0;
@@ -2193,12 +2193,11 @@ int pass1(struct gfs2_sbd *sdp)
 			goto out;
 		}
 		next = osi_next(n);
-		log_debug( _("Checking metadata in Resource Group #%llu\n"),
+		log_debug("Checking metadata in resource group #%llu\n",
 				 (unsigned long long)rg_count);
 		rgd = (struct rgrp_tree *)n;
 		for (i = 0; i < rgd->ri.ri_length; i++) {
-			log_debug( _("rgrp block %lld (0x%llx) "
-				     "is now marked as 'rgrp data'\n"),
+			log_debug("rgrp block %lld (0x%llx) is now marked as 'rgrp data'\n",
 				   rgd->ri.ri_addr + i, rgd->ri.ri_addr + i);
 			if (gfs2_blockmap_set(bl, rgd->ri.ri_addr + i,
 					      GFS2_BLKST_USED)) {

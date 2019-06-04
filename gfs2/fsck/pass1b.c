@@ -521,25 +521,25 @@ static int set_ip_bitmap(struct gfs2_inode *ip)
 
 	switch (mode) {
 	case S_IFDIR:
-		ty = _("directory");
+		ty = "directory";
 		break;
 	case S_IFREG:
-		ty = _("file");
+		ty = "file";
 		break;
 	case S_IFLNK:
-		ty = _("symlink");
+		ty = "symlink";
 		break;
 	case S_IFBLK:
-		ty = _("block device");
+		ty = "block device";
 		break;
 	case S_IFCHR:
-		ty = _("character device");
+		ty = "character device";
 		break;
 	case S_IFIFO:
-		ty = _("fifo");
+		ty = "fifo";
 		break;
 	case S_IFSOCK:
-		ty = _("socket");
+		ty = "socket";
 		break;
 	default:
 		return -EINVAL;

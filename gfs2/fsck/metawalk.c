@@ -1404,8 +1404,7 @@ static int check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 	uint64_t metablock = bh->b_blocknr;
 
 	/* If there isn't much pointer corruption check the pointers */
-	log_debug(_("\nProcessing data blocks for inode 0x%llx, metadata "
-		    "block 0x%llx.\n"),
+	log_debug("Processing data blocks for inode 0x%llx, metadata block 0x%llx.\n",
 		  (unsigned long long)ip->i_di.di_num.no_addr,
 		  (unsigned long long)bh->b_blocknr);
 	for (ptr = ptr_start ; (char *)ptr < ptr_end && !fsck_abort; ptr++) {
@@ -1673,7 +1672,7 @@ undo_metalist:
 	   to undo. */
 	delete_all_dups(ip);
 	/* Set the dinode as "bad" so it gets deleted */
-	fsck_bitmap_set(ip, ip->i_di.di_num.no_addr, _("corrupt"),
+	fsck_bitmap_set(ip, ip->i_di.di_num.no_addr, "corrupt",
 			GFS2_BLKST_FREE);
 	log_err(_("The corrupt inode was invalidated.\n"));
 out:
