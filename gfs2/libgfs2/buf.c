@@ -77,12 +77,20 @@ struct gfs2_buffer_head *__bread(struct gfs2_sbd *sdp, uint64_t num, int line,
 				 const char *caller)
 {
 	struct gfs2_buffer_head *bh;
-	int ret;
+	ssize_t ret;
 
-	ret = __breadm(sdp, &bh, 1, num, line, caller);
-	if (ret >= 0)
-		return bh;
-	return NULL;
+	bh = bget(sdp, num);
+	if (bh == NULL)
+		return NULL;
+
+	ret = pread(sdp->device_fd, bh->b_data, sdp->bsize, num * sdp->bsize);
+	if (ret != sdp->bsize) {
+		fprintf(stderr, "%s:%d: Error reading block %"PRIu64": %s\n",
+		                caller, line, num, strerror(errno));
+		free(bh);
+		bh = NULL;
+	}
+	return bh;
 }
 
 int bwrite(struct gfs2_buffer_head *bh)
