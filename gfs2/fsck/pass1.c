@@ -39,7 +39,7 @@ struct block_count {
 };
 
 static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private);
-static int check_metalist(struct gfs2_inode *ip, uint64_t block,
+static int pass1_check_metalist(struct gfs2_inode *ip, uint64_t block,
 			  struct gfs2_buffer_head **bh, int h, int *is_valid,
 			  int *was_duplicate, void *private);
 static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
@@ -191,7 +191,7 @@ out:
 struct metawalk_fxns pass1_fxns = {
 	.private = NULL,
 	.check_leaf = p1check_leaf,
-	.check_metalist = check_metalist,
+	.check_metalist = pass1_check_metalist,
 	.check_data = pass1_check_data,
 	.check_eattr_indir = check_eattr_indir,
 	.check_eattr_leaf = check_eattr_leaf,
@@ -344,7 +344,7 @@ static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	return 0;
 }
 
-static int check_metalist(struct gfs2_inode *ip, uint64_t block,
+static int pass1_check_metalist(struct gfs2_inode *ip, uint64_t block,
 			  struct gfs2_buffer_head **bh, int h, int *is_valid,
 			  int *was_duplicate, void *private)
 {
