@@ -178,8 +178,6 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 				print_gfs2("   ");
 		}
 		print_gfs2("%d: 0x%"PRIx64" => ", pndx, ind->ii[pndx].ptroff);
-		if (termlines)
-			move(line,9);
 		print_gfs2("0x%"PRIx64" / %"PRId64, ind->ii[pndx].block,
 			   ind->ii[pndx].block);
 		if (termlines) {
