@@ -401,8 +401,15 @@ static int pass1_check_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, 
 			 (unsigned long long)ip->i_di.di_num.no_addr,
 			 (unsigned long long)block,
 			 (unsigned long long)block, blktypedesc);
-		brelse(nbh);
-		return meta_skip_further;
+		if (query(_("Zero the indirect block pointer? (y/n) "))){
+			*iptr_ptr(iptr) = 0;
+			bmodified(iptr.ipt_bh);
+			*is_valid = 1;
+			return meta_skip_one;
+		} else {
+			brelse(nbh);
+			return meta_skip_further;
+		}
 	}
 
 	bc->indir_count++;
