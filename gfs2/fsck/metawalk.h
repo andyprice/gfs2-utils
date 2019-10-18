@@ -42,6 +42,17 @@ enum meta_check_rc {
 	meta_skip_one = 2,
 };
 
+struct iptr {
+	struct gfs2_inode *ipt_ip;
+	struct gfs2_buffer_head *ipt_bh;
+	unsigned ipt_off;
+};
+
+#define iptr_ptr(i) ((uint64_t *)(i.ipt_bh->b_data + i.ipt_off))
+#define iptr_block(i) be64_to_cpu(*iptr_ptr(i))
+#define iptr_endptr(i) ((uint64_t *)(iptr.ipt_bh->b_data + i.ipt_ip->i_sbd->bsize))
+#define iptr_buf(i) (i.ipt_bh->b_data)
+
 /* metawalk_fxns: function pointers to check various parts of the fs
  *
  * The functions should return -1 on fatal errors, 1 if the block
@@ -66,7 +77,7 @@ struct metawalk_fxns {
 	int (*check_leaf) (struct gfs2_inode *ip, uint64_t block,
 			   void *private);
 	/* parameters to the check_metalist sub-functions:
-	   ip: incore inode pointer
+	   iptr: reference to the inode and its indirect pointer that we're analyzing
 	   block: block number of the metadata block to be checked
 	   bh: buffer_head to be returned
 	   h: height
@@ -79,7 +90,7 @@ struct metawalk_fxns {
 	   returns: 0 - everything is good, but there may be duplicates
 	            1 - skip further processing
 	*/
-	int (*check_metalist) (struct gfs2_inode *ip, uint64_t block,
+	int (*check_metalist) (struct iptr iptr,
 			       struct gfs2_buffer_head **bh, int h,
 			       int *is_valid, int *was_duplicate,
 			       void *private);

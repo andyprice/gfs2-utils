@@ -175,10 +175,12 @@ int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 	return error;
 }
 
-int delete_metadata(struct gfs2_inode *ip, uint64_t block,
-		    struct gfs2_buffer_head **bh, int h, int *is_valid,
+int delete_metadata(struct iptr iptr, struct gfs2_buffer_head **bh, int h, int *is_valid,
 		    int *was_duplicate, void *private)
 {
+	struct gfs2_inode *ip = iptr.ipt_ip;
+	uint64_t block = iptr_block(iptr);
+
 	*is_valid = 1;
 	*was_duplicate = 0;
 	return delete_block_if_notdup(ip, block, bh, _("metadata"),

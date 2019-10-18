@@ -636,11 +636,11 @@ static int rangecheck_jblock(struct gfs2_inode *ip, uint64_t block)
 	return meta_is_good;
 }
 
-static int rangecheck_jmeta(struct gfs2_inode *ip, uint64_t block,
-			       struct gfs2_buffer_head **bh, int h,
-			       int *is_valid, int *was_duplicate,
-			       void *private)
+static int rangecheck_jmeta(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+                            int *is_valid, int *was_duplicate, void *private)
 {
+	struct gfs2_inode *ip = iptr.ipt_ip;
+	uint64_t block = iptr_block(iptr);
 	int rc;
 
 	*bh = NULL;

@@ -2,9 +2,9 @@
 #define _AFTERPASS1_H
 
 #include "util.h"
+#include "metawalk.h"
 
-extern int delete_metadata(struct gfs2_inode *ip, uint64_t block,
-			   struct gfs2_buffer_head **bh, int h, int *is_valid,
+extern int delete_metadata(struct iptr iptr, struct gfs2_buffer_head **bh, int h, int *is_valid,
 			   int *was_duplicate, void *private);
 extern int delete_leaf(struct gfs2_inode *ip, uint64_t block, void *private);
 extern int delete_data(struct gfs2_inode *ip, uint64_t metablock,
