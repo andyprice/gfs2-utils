@@ -1210,6 +1210,51 @@ static void file_ra(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			      extlen * sdp->bsize, POSIX_FADV_WILLNEED);
 }
 
+static int do_check_metalist(struct gfs2_inode *ip, uint64_t block, int height,
+                             struct gfs2_buffer_head **bhp, struct metawalk_fxns *pass)
+{
+	int was_duplicate = 0;
+	int is_valid = 1;
+	int error;
+
+	if (pass->check_metalist == NULL)
+		return 0;
+
+	error = pass->check_metalist(ip, block, bhp, height, &is_valid,
+				     &was_duplicate, pass->private);
+	if (error == meta_error) {
+		stack;
+		log_info("\n");
+		log_info(_("Serious metadata error on block %"PRIu64" (0x%"PRIx64").\n"),
+		         block, block);
+		return error;
+	}
+	if (error == meta_skip_further) {
+		log_info("\n");
+		log_info(_("Unrecoverable metadata error on block %"PRIu64" (0x%"PRIx64")\n"),
+		         block, block);
+		log_info(_("Further metadata will be skipped.\n"));
+		return error;
+	}
+	if (!is_valid) {
+		log_debug("Skipping rejected block %"PRIu64" (0x%"PRIx64")\n", block, block);
+		if (pass->invalid_meta_is_fatal)
+			return meta_error;
+		return meta_skip_one;
+	}
+	if (was_duplicate) {
+		log_debug("Skipping duplicate %"PRIu64" (0x%"PRIx64")\n", block, block);
+		return meta_skip_one;
+	}
+	if (!valid_block_ip(ip, block)) {
+		log_debug("Skipping invalid block %"PRIu64" (0x%"PRIx64")\n", block, block);
+		if (pass->invalid_meta_is_fatal)
+			return meta_error;
+		return meta_skip_one;
+	}
+	return error;
+}
+
 /**
  * build_and_check_metalist - check a bunch of indirect blocks
  *                            This includes hash table blocks for directories
@@ -1229,8 +1274,8 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 	osi_list_t *prev_list, *cur_list, *tmp;
 	int h, head_size, iblk_type;
 	uint64_t *ptr, block, *undoptr;
-	int error, was_duplicate, is_valid;
 	int maxptrs;
+	int error;
 
 	osi_list_add(&metabh->b_altlist, &mlp[0]);
 
@@ -1294,65 +1339,11 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 					continue;
 
 				block = be64_to_cpu(*ptr);
-				was_duplicate = 0;
-				error = pass->check_metalist(ip, block, &nbh,
-							     h, &is_valid,
-							     &was_duplicate,
-							     pass->private);
-				/* check_metalist should hold any buffers
-				   it gets with "bread". */
-				if (error == meta_error) {
-					stack;
-					log_info(_("\nSerious metadata "
-						   "error on block %llu "
-						   "(0x%llx).\n"),
-						 (unsigned long long)block,
-						 (unsigned long long)block);
+				error = do_check_metalist(ip, block, h, &nbh, pass);
+				if (error == meta_error || error == meta_skip_further)
 					goto error_undo;
-				}
-				if (error == meta_skip_further) {
-					log_info(_("\nUnrecoverable metadata "
-						   "error on block %llu "
-						   "(0x%llx). Further metadata"
-						   " will be skipped.\n"),
-						 (unsigned long long)block,
-						 (unsigned long long)block);
-					goto error_undo;
-				}
-				if (!is_valid) {
-					log_debug( _("Skipping rejected block "
-						     "%llu (0x%llx)\n"),
-						   (unsigned long long)block,
-						   (unsigned long long)block);
-					if (pass->invalid_meta_is_fatal) {
-						error = meta_error;
-						goto error_undo;
-					}
+				if (error == meta_skip_one)
 					continue;
-				}
-				/* Note that there's a special case in which
-				   we need to process the metadata block, even
-				   if it was a duplicate. That's for cases
-				   where we deleted the last reference as
-				   metadata. */
-				if (was_duplicate) {
-					log_debug( _("Skipping duplicate %llu "
-						     "(0x%llx)\n"),
-						   (unsigned long long)block,
-						   (unsigned long long)block);
-					continue;
-				}
-				if (!valid_block_ip(ip, block)) {
-					log_debug( _("Skipping invalid block "
-						     "%lld (0x%llx)\n"),
-						   (unsigned long long)block,
-						   (unsigned long long)block);
-					if (pass->invalid_meta_is_fatal) {
-						error = meta_error;
-						goto error_undo;
-					}
-					continue;
-				}
 				if (!nbh)
 					nbh = bread(ip->i_sbd, block);
 				osi_list_add_prev(&nbh->b_altlist, cur_list);

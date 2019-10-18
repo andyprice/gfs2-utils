@@ -39,6 +39,7 @@ enum meta_check_rc {
 	meta_error = -1,
 	meta_is_good = 0,
 	meta_skip_further = 1,
+	meta_skip_one = 2,
 };
 
 /* metawalk_fxns: function pointers to check various parts of the fs
