@@ -39,9 +39,8 @@ struct block_count {
 };
 
 static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private);
-static int pass1_check_metalist(struct gfs2_inode *ip, uint64_t block,
-			  struct gfs2_buffer_head **bh, int h, int *is_valid,
-			  int *was_duplicate, void *private);
+static int pass1_check_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+                                int *is_valid, int *was_duplicate, void *private);
 static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
 			       int h, void *private);
 static int pass1_check_data(struct gfs2_inode *ip, uint64_t metablock,
@@ -69,10 +68,8 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, int i,
 				     void *private);
 static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 			      int leaf_pointer_errors, void *private);
-static int invalidate_metadata(struct gfs2_inode *ip, uint64_t block,
-			       struct gfs2_buffer_head **bh, int h,
-			       int *is_valid, int *was_duplicate,
-			       void *private);
+static int invalidate_metadata(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+                               int *is_valid, int *was_duplicate, void *private);
 static int invalidate_leaf(struct gfs2_inode *ip, uint64_t block,
 			   void *private);
 static int invalidate_data(struct gfs2_inode *ip, uint64_t metablock,
@@ -223,12 +220,12 @@ struct metawalk_fxns invalidate_fxns = {
  * marked "in use" by the bitmap.  You don't want root's indirect blocks
  * deleted, do you? Or worse, reused for lost+found.
  */
-static int resuscitate_metalist(struct gfs2_inode *ip, uint64_t block,
-				struct gfs2_buffer_head **bh, int h,
-				int *is_valid, int *was_duplicate,
-				void *private)
+static int resuscitate_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+                                int *is_valid, int *was_duplicate, void *private)
 {
 	struct block_count *bc = (struct block_count *)private;
+	struct gfs2_inode *ip = iptr.ipt_ip;
+	uint64_t block = iptr_block(iptr);
 
 	*is_valid = 1;
 	*was_duplicate = 0;
@@ -344,15 +341,16 @@ static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	return 0;
 }
 
-static int pass1_check_metalist(struct gfs2_inode *ip, uint64_t block,
-			  struct gfs2_buffer_head **bh, int h, int *is_valid,
-			  int *was_duplicate, void *private)
+static int pass1_check_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+                                int *is_valid, int *was_duplicate, void *private)
 {
-	int q;
-	int iblk_type;
-	struct gfs2_buffer_head *nbh;
 	struct block_count *bc = (struct block_count *)private;
+	struct gfs2_inode *ip = iptr.ipt_ip;
+	uint64_t block = iptr_block(iptr);
+	struct gfs2_buffer_head *nbh;
 	const char *blktypedesc;
+	int iblk_type;
+	int q;
 
 	*bh = NULL;
 
@@ -1111,11 +1109,12 @@ static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
 	return meta_is_good;
 }
 
-static int invalidate_metadata(struct gfs2_inode *ip, uint64_t block,
-			       struct gfs2_buffer_head **bh, int h,
-			       int *is_valid, int *was_duplicate,
-			       void *private)
+static int invalidate_metadata(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+                               int *is_valid, int *was_duplicate, void *private)
 {
+	struct gfs2_inode *ip = iptr.ipt_ip;
+	uint64_t block = iptr_block(iptr);
+
 	*is_valid = 1;
 	*was_duplicate = 0;
 	return mark_block_invalid(ip, block, ref_as_meta, _("metadata"),
@@ -1214,11 +1213,12 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 	return meta_is_good;
 }
 
-static int rangecheck_metadata(struct gfs2_inode *ip, uint64_t block,
-			       struct gfs2_buffer_head **bh, int h,
-			       int *is_valid, int *was_duplicate,
-			       void *private)
+static int rangecheck_metadata(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+                               int *is_valid, int *was_duplicate, void *private)
 {
+	struct gfs2_inode *ip = iptr.ipt_ip;
+	uint64_t block = iptr_block(iptr);
+
 	*is_valid = 1;
 	*was_duplicate = 0;
 	return rangecheck_block(ip, block, bh, btype_meta, private);
@@ -1317,12 +1317,13 @@ static int set_ip_blockmap(struct gfs2_inode *ip)
 	return 0;
 }
 
-static int alloc_metalist(struct gfs2_inode *ip, uint64_t block,
-			  struct gfs2_buffer_head **bh, int h, int *is_valid,
-			  int *was_duplicate, void *private)
+static int alloc_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+                          int *is_valid, int *was_duplicate, void *private)
 {
-	int q;
 	const char *desc = (const char *)private;
+	struct gfs2_inode *ip = iptr.ipt_ip;
+	uint64_t block = iptr_block(iptr);
+	int q;
 
 	/* No need to range_check here--if it was added, it's in range. */
 	/* We can't check the bitmap here because this function is called

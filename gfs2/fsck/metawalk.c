@@ -1207,9 +1207,11 @@ static void file_ra(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			      extlen * sdp->bsize, POSIX_FADV_WILLNEED);
 }
 
-static int do_check_metalist(struct gfs2_inode *ip, uint64_t block, int height,
-                             struct gfs2_buffer_head **bhp, struct metawalk_fxns *pass)
+static int do_check_metalist(struct iptr iptr, int height, struct gfs2_buffer_head **bhp,
+                             struct metawalk_fxns *pass)
 {
+	struct gfs2_inode *ip = iptr.ipt_ip;
+	uint64_t block = iptr_block(iptr);
 	int was_duplicate = 0;
 	int is_valid = 1;
 	int error;
@@ -1217,7 +1219,7 @@ static int do_check_metalist(struct gfs2_inode *ip, uint64_t block, int height,
 	if (pass->check_metalist == NULL)
 		return 0;
 
-	error = pass->check_metalist(ip, block, bhp, height, &is_valid,
+	error = pass->check_metalist(iptr, bhp, height, &is_valid,
 				     &was_duplicate, pass->private);
 	if (error == meta_error) {
 		stack;
@@ -1267,10 +1269,11 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 				    struct metawalk_fxns *pass)
 {
 	uint32_t height = ip->i_di.di_height;
-	struct gfs2_buffer_head *bh, *nbh, *metabh = ip->i_bh;
+	struct gfs2_buffer_head *metabh = ip->i_bh;
 	osi_list_t *prev_list, *cur_list, *tmp;
+	struct iptr iptr = { .ipt_ip = ip, 0};
 	int h, head_size, iblk_type;
-	uint64_t *ptr, block, *undoptr;
+	uint64_t *undoptr;
 	int maxptrs;
 	int error;
 
@@ -1310,39 +1313,37 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 		prev_list = &mlp[h - 1];
 		cur_list = &mlp[h];
 
-		for (tmp = prev_list->next; tmp != prev_list; tmp = tmp->next){
-			bh = osi_list_entry(tmp, struct gfs2_buffer_head,
-					    b_altlist);
-			if (gfs2_check_meta(bh->b_data, iblk_type)) {
+		for (tmp = prev_list->next; tmp != prev_list; tmp = tmp->next) {
+			iptr.ipt_off = head_size;
+			iptr.ipt_bh = osi_list_entry(tmp, struct gfs2_buffer_head, b_altlist);
+
+			if (gfs2_check_meta(iptr_buf(iptr), iblk_type)) {
 				if (pass->invalid_meta_is_fatal)
 					return meta_error;
 
 				continue;
 			}
-
 			if (pass->readahead)
-				file_ra(ip, bh, head_size, maxptrs, h);
+				file_ra(ip, iptr.ipt_bh, head_size, maxptrs, h);
+
 			/* Now check the metadata itself */
-			for (ptr = (uint64_t *)(bh->b_data + head_size);
-			     (char *)ptr < (bh->b_data + ip->i_sbd->bsize);
-			     ptr++) {
+			for (; iptr.ipt_off < ip->i_sbd->bsize; iptr.ipt_off += sizeof(uint64_t)) {
+				struct gfs2_buffer_head *nbh = NULL;
+
 				if (skip_this_pass || fsck_abort) {
 					free_metalist(ip, mlp);
 					return meta_is_good;
 				}
-				nbh = NULL;
-
-				if (!*ptr)
+				if (!iptr_block(iptr))
 					continue;
 
-				block = be64_to_cpu(*ptr);
-				error = do_check_metalist(ip, block, h, &nbh, pass);
+				error = do_check_metalist(iptr, h, &nbh, pass);
 				if (error == meta_error || error == meta_skip_further)
 					goto error_undo;
 				if (error == meta_skip_one)
 					continue;
 				if (!nbh)
-					nbh = bread(ip->i_sbd, block);
+					nbh = bread(ip->i_sbd, iptr_block(iptr));
 				osi_list_add_prev(&nbh->b_altlist, cur_list);
 			} /* for all data on the indirect block */
 		} /* for blocks at that height */
@@ -1353,16 +1354,16 @@ error_undo: /* undo what we've done so far for this block */
 	if (pass->undo_check_meta == NULL)
 		return error;
 
-	log_info(_("Undoing the work we did before the error on block %llu "
-		   "(0x%llx).\n"), (unsigned long long)bh->b_blocknr,
-		 (unsigned long long)bh->b_blocknr);
-	for (undoptr = (uint64_t *)(bh->b_data + head_size); undoptr < ptr &&
-		     (char *)undoptr < (bh->b_data + ip->i_sbd->bsize);
+	log_info(_("Undoing the work we did before the error on block %"PRIu64" (0x%"PRIx64").\n"),
+	         iptr.ipt_bh->b_blocknr, iptr.ipt_bh->b_blocknr);
+	for (undoptr = (uint64_t *)(iptr_buf(iptr) + head_size);
+	     undoptr < iptr_ptr(iptr) && undoptr < iptr_endptr(iptr);
 	     undoptr++) {
-		if (!*undoptr)
+		uint64_t block = be64_to_cpu(*undoptr);
+
+		if (block == 0)
 			continue;
 
-		block = be64_to_cpu(*undoptr);
 		pass->undo_check_meta(ip, block, h, pass->private);
 	}
 	return error;

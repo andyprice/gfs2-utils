@@ -69,9 +69,8 @@ static void log_inode_reference(struct duptree *dt, osi_list_t *tmp, int inval)
 		  (unsigned long long)dt->block, reftypestring);
 }
 
-static int findref_meta(struct gfs2_inode *ip, uint64_t block,
-			struct gfs2_buffer_head **bh, int h,
-			int *is_valid, int *was_duplicate, void *private)
+static int findref_meta(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+                        int *is_valid, int *was_duplicate, void *private)
 {
 	*is_valid = 1;
 	*was_duplicate = 0;
@@ -393,10 +392,12 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 	return;
 }
 
-static int clone_check_meta(struct gfs2_inode *ip, uint64_t block,
-			    struct gfs2_buffer_head **bh, int h,
-			    int *is_valid, int *was_duplicate, void *private)
+static int clone_check_meta(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+                            int *is_valid, int *was_duplicate, void *private)
 {
+	struct gfs2_inode *ip = iptr.ipt_ip;
+	uint64_t block = iptr_block(iptr);
+
 	*was_duplicate = 0;
 	*is_valid = 1;
 	*bh = bread(ip->i_sbd, block);
@@ -788,11 +789,12 @@ static int check_leaf_refs(struct gfs2_inode *ip, uint64_t block,
 	return add_duplicate_ref(ip, block, ref_as_meta, 1, INODE_VALID);
 }
 
-static int check_metalist_refs(struct gfs2_inode *ip, uint64_t block,
-			       struct gfs2_buffer_head **bh, int h,
-			       int *is_valid, int *was_duplicate,
-			       void *private)
+static int check_metalist_refs(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+                               int *is_valid, int *was_duplicate, void *private)
 {
+	struct gfs2_inode *ip = iptr.ipt_ip;
+	uint64_t block = iptr_block(iptr);
+
 	*was_duplicate = 0;
 	*is_valid = 1;
 	return add_duplicate_ref(ip, block, ref_as_meta, 1, INODE_VALID);

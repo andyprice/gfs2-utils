@@ -1873,10 +1873,12 @@ struct metawalk_fxns pass2_fxns = {
 	.repair_leaf = pass2_repair_leaf,
 };
 
-static int check_metalist_qc(struct gfs2_inode *ip, uint64_t block,
-			     struct gfs2_buffer_head **bh, int h,
-			     int *is_valid, int *was_duplicate, void *private)
+static int check_metalist_qc(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+                             int *is_valid, int *was_duplicate, void *private)
 {
+	struct gfs2_inode *ip = iptr.ipt_ip;
+	uint64_t block = iptr_block(iptr);
+
 	*was_duplicate = 0;
 	*is_valid = 1;
 	*bh = bread(ip->i_sbd, block);
