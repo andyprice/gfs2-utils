@@ -1191,13 +1191,33 @@ static void complain(const char *complaint)
 	    "<dest file system>\n");
 }
 
+static int open_metadata(const char *path, struct metafd *mfd)
+{
+	mfd->filename = path;
+	mfd->fd = open(path, O_RDONLY|O_CLOEXEC);
+	if (mfd->fd < 0) {
+		perror("Could not open metadata file");
+		return 1;
+	}
+	mfd->gzfd = gzdopen(mfd->fd, "rb");
+	if (!mfd->gzfd) {
+		perror("gzdopen");
+		return 1;
+	}
+	return 0;
+}
+
+static void close_metadata(struct metafd *mfd)
+{
+	gzclose(mfd->gzfd);
+}
+
 void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 {
 	int error;
-	gzFile gzfd;
 	off_t pos = 0;
 	struct savemeta_header smh = {0};
-	int fd;
+	struct metafd mfd = {0};
 
 	termlines = 0;
 	if (!in_fn)
@@ -1205,15 +1225,9 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 	if (!printonly && !out_device)
 		complain("No destination file system specified.");
 
-	fd = open(in_fn, O_RDONLY|O_CLOEXEC);
-	if (fd < 0) {
-		perror("Could not open file");
-		exit(1);
-	}
-	gzfd = gzdopen(fd, "rb");
-	if (!gzfd)
-		die("Can't open source file %s: %s\n",
-		    in_fn, strerror(errno));
+	error = open_metadata(in_fn, &mfd);
+	if (error != 0)
+		exit(error);
 
 	if (!printonly) {
 		sbd.device_fd = open(out_device, O_RDWR);
@@ -1224,8 +1238,8 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 				  optional block no */
 		printonly = check_keywords(out_device);
 
-	pos = restore_init(gzfd, &smh);
-	error = restore_super(gzfd, pos);
+	pos = restore_init(mfd.gzfd, &smh);
+	error = restore_super(mfd.gzfd, pos);
 	if (error)
 		exit(1);
 
@@ -1236,16 +1250,16 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 		printf("There are %"PRIu64" free blocks on the destination device.\n", space);
 	}
 
-	error = find_highest_block(gzfd, pos, sbd.fssize);
+	error = find_highest_block(mfd.gzfd, pos, sbd.fssize);
 	if (error)
 		exit(1);
 
-	error = restore_data(sbd.device_fd, gzfd, pos, printonly);
+	error = restore_data(sbd.device_fd, mfd.gzfd, pos, printonly);
 	printf("File %s %s %s.\n", in_fn,
 	       (printonly ? "print" : "restore"),
 	       (error ? "error" : "successful"));
 
-	gzclose(gzfd);
+	close_metadata(&mfd);
 	if (!printonly)
 		close(sbd.device_fd);
 	free(indirect);
