@@ -54,7 +54,42 @@ struct metafd {
 	gzFile gzfd;
 	const char *filename;
 	int gziplevel;
+	int (*seek)(struct metafd *mfd, off_t off, int whence);
+	int (*read)(struct metafd *mfd, void *buf, unsigned len);
+	int (*iseof)(struct metafd *mfd);
+	void (*close)(struct metafd *mfd);
+	const char* (*strerr)(struct metafd *mfd);
 };
+
+static const char *gz_strerr(struct metafd *mfd)
+{
+	int err;
+	const char *errstr = gzerror(mfd->gzfd, &err);
+
+	if (err == Z_ERRNO)
+		return strerror(errno);
+	return errstr;
+}
+
+static int gz_seek(struct metafd *mfd, off_t off, int whence)
+{
+	return gzseek(mfd->gzfd, off, whence);
+}
+
+static int gz_read(struct metafd *mfd, void *buf, unsigned len)
+{
+	return gzread(mfd->gzfd, buf, len);
+}
+
+static int gz_iseof(struct metafd *mfd)
+{
+	return gzeof(mfd->gzfd);
+}
+
+static void gz_close(struct metafd *mfd)
+{
+	gzclose(mfd->gzfd);
+}
 
 static uint64_t blks_saved;
 static uint64_t journal_blocks[MAX_JOURNALS_SAVED];
@@ -853,8 +888,8 @@ static int read_header(struct metafd *mfd, struct savemeta_header *smh)
 	size_t rs;
 	struct savemeta_header smh_be = {0};
 
-	gzseek(mfd->gzfd, 0, SEEK_SET);
-	rs = gzread(mfd->gzfd, &smh_be, sizeof(smh_be));
+	mfd->seek(mfd, 0, SEEK_SET);
+	rs = mfd->read(mfd, &smh_be, sizeof(smh_be));
 	if (rs == -1) {
 		perror("Failed to read savemeta file header");
 		return -1;
@@ -982,8 +1017,8 @@ static off_t restore_init(struct metafd *mfd, struct savemeta_header *smh)
 		startpos = sizeof(*smh);
 	}
 
-	gzseek(mfd->gzfd, startpos, SEEK_SET);
-	rs = gzread(mfd->gzfd, buf, sizeof(buf));
+	mfd->seek(mfd, startpos, SEEK_SET);
+	rs = mfd->read(mfd, buf, sizeof(buf));
 	if (rs != sizeof(buf)) {
 		fprintf(stderr, "Error: File is too small.\n");
 		exit(1);
@@ -1005,14 +1040,13 @@ static off_t restore_init(struct metafd *mfd, struct savemeta_header *smh)
 
 static int restore_block(struct metafd *mfd, struct saved_metablock *svb, char *buf, uint16_t maxlen)
 {
-	int gzerr;
 	int ret;
 	uint16_t checklen;
 	const char *errstr;
 
-	ret = gzread(mfd->gzfd, svb, sizeof(*svb));
+	ret = mfd->read(mfd, svb, sizeof(*svb));
 	if (ret < sizeof(*svb)) {
-		goto gzread_err;
+		goto read_err;
 	}
 	svb->blk = be64_to_cpu(svb->blk);
 	svb->siglen = be16_to_cpu(svb->siglen);
@@ -1036,21 +1070,19 @@ static int restore_block(struct metafd *mfd, struct saved_metablock *svb, char *
 	}
 
 	if (buf != NULL && maxlen != 0) {
-		ret = gzread(mfd->gzfd, buf, svb->siglen);
+		ret = mfd->read(mfd, buf, svb->siglen);
 		if (ret < svb->siglen) {
-			goto gzread_err;
+			goto read_err;
 		}
 	}
 
 	return 0;
 
-gzread_err:
-	if (gzeof(mfd->gzfd))
+read_err:
+	if (mfd->iseof(mfd))
 		return 1;
 
-	errstr = gzerror(mfd->gzfd, &gzerr);
-	if (gzerr == Z_ERRNO)
-		errstr = strerror(errno);
+	errstr = mfd->strerr(mfd);
 	fprintf(stderr, "Failed to restore block: %s\n", errstr);
 	return -1;
 }
@@ -1066,7 +1098,7 @@ static int restore_super(struct metafd *mfd, off_t pos)
 		perror("Failed to restore super block");
 		exit(1);
 	}
-	gzseek(mfd->gzfd, pos, SEEK_SET);
+	mfd->seek(mfd, pos, SEEK_SET);
 	ret = restore_block(mfd, &svb, buf, sizeof(struct gfs2_sb));
 	if (ret == 1) {
 		fprintf(stderr, "Reached end of file while restoring superblock\n");
@@ -1100,7 +1132,7 @@ static int find_highest_block(struct metafd *mfd, off_t pos, uint64_t fssize)
 	struct saved_metablock svb = {0};
 
 	while (1) {
-		gzseek(mfd->gzfd, pos, SEEK_SET);
+		mfd->seek(mfd, pos, SEEK_SET);
 		err = restore_block(mfd, &svb, NULL, 0);
 		if (err == 1)
 			break;
@@ -1199,17 +1231,17 @@ static int open_metadata(const char *path, struct metafd *mfd)
 		perror("Could not open metadata file");
 		return 1;
 	}
+	mfd->seek = gz_seek;
+	mfd->read = gz_read;
+	mfd->iseof = gz_iseof;
+	mfd->close = gz_close;
+	mfd->strerr = gz_strerr;
 	mfd->gzfd = gzdopen(mfd->fd, "rb");
 	if (!mfd->gzfd) {
 		perror("gzdopen");
 		return 1;
 	}
 	return 0;
-}
-
-static void close_metadata(struct metafd *mfd)
-{
-	gzclose(mfd->gzfd);
 }
 
 void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
@@ -1259,7 +1291,7 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 	       (printonly ? "print" : "restore"),
 	       (error ? "error" : "successful"));
 
-	close_metadata(&mfd);
+	mfd.close(&mfd);
 	if (!printonly)
 		close(sbd.device_fd);
 	free(indirect);
