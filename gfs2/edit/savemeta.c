@@ -848,13 +848,13 @@ static int save_header(struct metafd *mfd, uint64_t fsbytes)
 	return 0;
 }
 
-static int read_header(gzFile gzin_fd, struct savemeta_header *smh)
+static int read_header(struct metafd *mfd, struct savemeta_header *smh)
 {
 	size_t rs;
 	struct savemeta_header smh_be = {0};
 
-	gzseek(gzin_fd, 0, SEEK_SET);
-	rs = gzread(gzin_fd, &smh_be, sizeof(smh_be));
+	gzseek(mfd->gzfd, 0, SEEK_SET);
+	rs = gzread(mfd->gzfd, &smh_be, sizeof(smh_be));
 	if (rs == -1) {
 		perror("Failed to read savemeta file header");
 		return -1;
@@ -964,7 +964,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	exit(0);
 }
 
-static off_t restore_init(gzFile gzfd, struct savemeta_header *smh)
+static off_t restore_init(struct metafd *mfd, struct savemeta_header *smh)
 {
 	int err;
 	unsigned i;
@@ -973,7 +973,7 @@ static off_t restore_init(gzFile gzfd, struct savemeta_header *smh)
 	off_t startpos = 0;
 	struct gfs2_meta_header sbmh;
 
-	err = read_header(gzfd, smh);
+	err = read_header(mfd, smh);
 	if (err < 0) {
 		exit(1);
 	} else if (check_header(smh) != 0) {
@@ -982,8 +982,8 @@ static off_t restore_init(gzFile gzfd, struct savemeta_header *smh)
 		startpos = sizeof(*smh);
 	}
 
-	gzseek(gzfd, startpos, SEEK_SET);
-	rs = gzread(gzfd, buf, sizeof(buf));
+	gzseek(mfd->gzfd, startpos, SEEK_SET);
+	rs = gzread(mfd->gzfd, buf, sizeof(buf));
 	if (rs != sizeof(buf)) {
 		fprintf(stderr, "Error: File is too small.\n");
 		exit(1);
@@ -1003,14 +1003,14 @@ static off_t restore_init(gzFile gzfd, struct savemeta_header *smh)
 }
 
 
-static int restore_block(gzFile gzfd, struct saved_metablock *svb, char *buf, uint16_t maxlen)
+static int restore_block(struct metafd *mfd, struct saved_metablock *svb, char *buf, uint16_t maxlen)
 {
 	int gzerr;
 	int ret;
 	uint16_t checklen;
 	const char *errstr;
 
-	ret = gzread(gzfd, svb, sizeof(*svb));
+	ret = gzread(mfd->gzfd, svb, sizeof(*svb));
 	if (ret < sizeof(*svb)) {
 		goto gzread_err;
 	}
@@ -1036,7 +1036,7 @@ static int restore_block(gzFile gzfd, struct saved_metablock *svb, char *buf, ui
 	}
 
 	if (buf != NULL && maxlen != 0) {
-		ret = gzread(gzfd, buf, svb->siglen);
+		ret = gzread(mfd->gzfd, buf, svb->siglen);
 		if (ret < svb->siglen) {
 			goto gzread_err;
 		}
@@ -1045,17 +1045,17 @@ static int restore_block(gzFile gzfd, struct saved_metablock *svb, char *buf, ui
 	return 0;
 
 gzread_err:
-	if (gzeof(gzfd))
+	if (gzeof(mfd->gzfd))
 		return 1;
 
-	errstr = gzerror(gzfd, &gzerr);
+	errstr = gzerror(mfd->gzfd, &gzerr);
 	if (gzerr == Z_ERRNO)
 		errstr = strerror(errno);
 	fprintf(stderr, "Failed to restore block: %s\n", errstr);
 	return -1;
 }
 
-static int restore_super(gzFile gzfd, off_t pos)
+static int restore_super(struct metafd *mfd, off_t pos)
 {
 	int ret;
 	struct saved_metablock svb = {0};
@@ -1066,8 +1066,8 @@ static int restore_super(gzFile gzfd, off_t pos)
 		perror("Failed to restore super block");
 		exit(1);
 	}
-	gzseek(gzfd, pos, SEEK_SET);
-	ret = restore_block(gzfd, &svb, buf, sizeof(struct gfs2_sb));
+	gzseek(mfd->gzfd, pos, SEEK_SET);
+	ret = restore_block(mfd, &svb, buf, sizeof(struct gfs2_sb));
 	if (ret == 1) {
 		fprintf(stderr, "Reached end of file while restoring superblock\n");
 		goto err;
@@ -1093,15 +1093,15 @@ err:
 	return -1;
 }
 
-static int find_highest_block(gzFile gzfd, off_t pos, uint64_t fssize)
+static int find_highest_block(struct metafd *mfd, off_t pos, uint64_t fssize)
 {
 	int err = 0;
 	uint64_t highest = 0;
 	struct saved_metablock svb = {0};
 
 	while (1) {
-		gzseek(gzfd, pos, SEEK_SET);
-		err = restore_block(gzfd, &svb, NULL, 0);
+		gzseek(mfd->gzfd, pos, SEEK_SET);
+		err = restore_block(mfd, &svb, NULL, 0);
 		if (err == 1)
 			break;
 		if (err != 0)
@@ -1124,7 +1124,7 @@ static int find_highest_block(gzFile gzfd, off_t pos, uint64_t fssize)
 	return 0;
 }
 
-static int restore_data(int fd, gzFile gzin_fd, off_t pos, int printonly)
+static int restore_data(int fd, struct metafd *mfd, off_t pos, int printonly)
 {
 	struct saved_metablock savedata = {0};
 	uint64_t writes = 0;
@@ -1136,11 +1136,11 @@ static int restore_data(int fd, gzFile gzin_fd, off_t pos, int printonly)
 		exit(1);
 	}
 
-	gzseek(gzin_fd, pos, SEEK_SET);
+	gzseek(mfd->gzfd, pos, SEEK_SET);
 	blks_saved = 0;
 	while (TRUE) {
 		int err;
-		err = restore_block(gzin_fd, &savedata, buf, sbd.bsize);
+		err = restore_block(mfd, &savedata, buf, sbd.bsize);
 		if (err == 1)
 			break;
 		if (err != 0) {
@@ -1238,8 +1238,8 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 				  optional block no */
 		printonly = check_keywords(out_device);
 
-	pos = restore_init(mfd.gzfd, &smh);
-	error = restore_super(mfd.gzfd, pos);
+	pos = restore_init(&mfd, &smh);
+	error = restore_super(&mfd, pos);
 	if (error)
 		exit(1);
 
@@ -1250,11 +1250,11 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 		printf("There are %"PRIu64" free blocks on the destination device.\n", space);
 	}
 
-	error = find_highest_block(mfd.gzfd, pos, sbd.fssize);
+	error = find_highest_block(&mfd, pos, sbd.fssize);
 	if (error)
 		exit(1);
 
-	error = restore_data(sbd.device_fd, mfd.gzfd, pos, printonly);
+	error = restore_data(sbd.device_fd, &mfd, pos, printonly);
 	printf("File %s %s %s.\n", in_fn,
 	       (printonly ? "print" : "restore"),
 	       (error ? "error" : "successful"));
