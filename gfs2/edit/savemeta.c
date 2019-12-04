@@ -1197,6 +1197,7 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 	gzFile gzfd;
 	off_t pos = 0;
 	struct savemeta_header smh = {0};
+	int fd;
 
 	termlines = 0;
 	if (!in_fn)
@@ -1204,7 +1205,12 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 	if (!printonly && !out_device)
 		complain("No destination file system specified.");
 
-	gzfd = gzopen(in_fn, "rb");
+	fd = open(in_fn, O_RDONLY|O_CLOEXEC);
+	if (fd < 0) {
+		perror("Could not open file");
+		exit(1);
+	}
+	gzfd = gzdopen(fd, "rb");
 	if (!gzfd)
 		die("Can't open source file %s: %s\n",
 		    in_fn, strerror(errno));
