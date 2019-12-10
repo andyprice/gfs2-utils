@@ -888,7 +888,6 @@ static int read_header(struct metafd *mfd, struct savemeta_header *smh)
 	size_t rs;
 	struct savemeta_header smh_be = {0};
 
-	mfd->seek(mfd, 0, SEEK_SET);
 	rs = mfd->read(mfd, &smh_be, sizeof(smh_be));
 	if (rs == -1) {
 		perror("Failed to read savemeta file header");
