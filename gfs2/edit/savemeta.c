@@ -999,45 +999,6 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	exit(0);
 }
 
-static off_t restore_init(struct metafd *mfd, struct savemeta_header *smh)
-{
-	int err;
-	unsigned i;
-	size_t rs;
-	char buf[256];
-	off_t startpos = 0;
-	struct gfs2_meta_header sbmh;
-
-	err = read_header(mfd, smh);
-	if (err < 0) {
-		exit(1);
-	} else if (check_header(smh) != 0) {
-		printf("No valid file header found. Falling back to old format...\n");
-	} else if (err == 0) {
-		startpos = sizeof(*smh);
-	}
-
-	mfd->seek(mfd, startpos, SEEK_SET);
-	rs = mfd->read(mfd, buf, sizeof(buf));
-	if (rs != sizeof(buf)) {
-		fprintf(stderr, "Error: File is too small.\n");
-		exit(1);
-	}
-	/* Scan for the beginning of the file body. Required to support old formats(?). */
-	for (i = 0; i < (256 - sizeof(struct saved_metablock) - sizeof(sbmh)); i++) {
-		off_t off = i + sizeof(struct saved_metablock);
-
-		memcpy(&sbmh, &buf[off], sizeof(sbmh));
-		if (sbmh.mh_magic == cpu_to_be32(GFS2_MAGIC) &&
-		     sbmh.mh_type == cpu_to_be32(GFS2_METATYPE_SB))
-			break;
-	}
-	if (i == (sizeof(buf) - sizeof(struct saved_metablock) - sizeof(sbmh)))
-		i = 0;
-	return startpos + i; /* File offset of saved sb */
-}
-
-
 static int restore_block(struct metafd *mfd, struct saved_metablock *svb, char *buf, uint16_t maxlen)
 {
 	int ret;
@@ -1223,8 +1184,15 @@ static void complain(const char *complaint)
 	    "<dest file system>\n");
 }
 
-static int open_metadata(const char *path, struct metafd *mfd)
+static int restore_init(const char *path, struct metafd *mfd, struct savemeta_header *smh, off_t *pos)
 {
+	struct gfs2_meta_header sbmh;
+	off_t startpos = 0;
+	char buf[256];
+	unsigned i;
+	size_t rs;
+	int err;
+
 	mfd->filename = path;
 	mfd->fd = open(path, O_RDONLY|O_CLOEXEC);
 	if (mfd->fd < 0) {
@@ -1241,6 +1209,32 @@ static int open_metadata(const char *path, struct metafd *mfd)
 		perror("gzdopen");
 		return 1;
 	}
+	err = read_header(mfd, smh);
+	if (err < 0) {
+		return 1;
+	} else if (check_header(smh) != 0) {
+		printf("No valid file header found. Falling back to old format...\n");
+	} else if (err == 0) {
+		startpos = sizeof(*smh);
+	}
+	mfd->seek(mfd, startpos, SEEK_SET);
+	rs = mfd->read(mfd, buf, sizeof(buf));
+	if (rs != sizeof(buf)) {
+		fprintf(stderr, "Error: File is too small.\n");
+		return 1;
+	}
+	/* Scan for the beginning of the file body. Required to support old formats(?). */
+	for (i = 0; i < (256 - sizeof(struct saved_metablock) - sizeof(sbmh)); i++) {
+		off_t off = i + sizeof(struct saved_metablock);
+
+		memcpy(&sbmh, &buf[off], sizeof(sbmh));
+		if (sbmh.mh_magic == cpu_to_be32(GFS2_MAGIC) &&
+		     sbmh.mh_type == cpu_to_be32(GFS2_METATYPE_SB))
+			break;
+	}
+	if (i == (sizeof(buf) - sizeof(struct saved_metablock) - sizeof(sbmh)))
+		i = 0;
+	*pos = startpos + i; /* File offset of saved sb */
 	return 0;
 }
 
@@ -1257,7 +1251,7 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 	if (!printonly && !out_device)
 		complain("No destination file system specified.");
 
-	error = open_metadata(in_fn, &mfd);
+	error = restore_init(in_fn, &mfd, &smh, &pos);
 	if (error != 0)
 		exit(error);
 
@@ -1270,7 +1264,6 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 				  optional block no */
 		printonly = check_keywords(out_device);
 
-	pos = restore_init(&mfd, &smh);
 	error = restore_super(&mfd, pos);
 	if (error)
 		exit(1);
