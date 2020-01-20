@@ -206,25 +206,6 @@ static int block_is_systemfile(uint64_t blk)
 		block_is_per_node(blk) || block_is_in_per_node(blk);
 }
 
-/**
- * anthropomorphize - make a uint64_t number more human
- */
-static const char *anthropomorphize(unsigned long long inhuman_value)
-{
-	const char *symbols = " KMGTPE";
-	int i;
-	unsigned long long val = inhuman_value, remainder = 0;
-	static char out_val[32];
-
-	memset(out_val, 0, sizeof(out_val));
-	for (i = 0; i < 6 && val > 1024; i++) {
-		remainder = val % 1024;
-		val /= 1024;
-	}
-	sprintf(out_val, "%llu.%llu%cB", val, remainder, symbols[i]);
-	return out_val;
-}
-
 static size_t di_save_len(struct gfs2_buffer_head *bh, uint64_t owner)
 {
 	struct gfs2_inode *inode;
@@ -909,7 +890,7 @@ static int check_header(struct savemeta_header *smh)
 	if (smh->sh_magic != SAVEMETA_MAGIC || smh->sh_format > SAVEMETA_FORMAT)
 		return -1;
 	printf("Metadata saved at %s", ctime((time_t *)&smh->sh_time)); /* ctime() adds \n */
-	printf("File system size %s\n", anthropomorphize(smh->sh_fs_bytes));
+	printf("File system size %.2fGB\n", smh->sh_fs_bytes / ((float)(1 << 30)));
 	return 0;
 }
 
@@ -940,7 +921,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		do_dinode_extended(&di, lbh);
 	brelse(lbh);
 
-	printf("Filesystem size: %s\n", anthropomorphize(sbd.fssize * sbd.bsize));
+	printf("Filesystem size: %.2fGB\n", (sbd.fssize * sbd.bsize) / ((float)(1 << 30)));
 	get_journal_inode_blocks();
 
 	err = init_per_node_lookup();
@@ -1105,8 +1086,8 @@ static int find_highest_block(struct metafd *mfd, off_t pos, uint64_t fssize)
 	}
 
 	if (fssize > 0) {
-		printf("Saved file system size is %"PRIu64" (0x%"PRIx64") blocks, %s\n",
-		       fssize, fssize, anthropomorphize(fssize * sbd.bsize));
+		printf("Saved file system size is %"PRIu64" blocks, %.2fGB\n",
+		       fssize, (fssize * sbd.bsize) / ((float)(1 << 30)));
 		sbd.fssize = fssize;
 	} else {
 		sbd.fssize = highest + 1;
