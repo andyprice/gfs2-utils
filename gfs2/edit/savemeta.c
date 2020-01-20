@@ -54,7 +54,6 @@ struct metafd {
 	gzFile gzfd;
 	const char *filename;
 	int gziplevel;
-	int (*seek)(struct metafd *mfd, off_t off, int whence);
 	int (*read)(struct metafd *mfd, void *buf, unsigned len);
 	int (*iseof)(struct metafd *mfd);
 	void (*close)(struct metafd *mfd);
@@ -69,11 +68,6 @@ static const char *gz_strerr(struct metafd *mfd)
 	if (err == Z_ERRNO)
 		return strerror(errno);
 	return errstr;
-}
-
-static int gz_seek(struct metafd *mfd, off_t off, int whence)
-{
-	return gzseek(mfd->gzfd, off, whence);
 }
 
 static int gz_read(struct metafd *mfd, void *buf, unsigned len)
@@ -864,25 +858,14 @@ static int save_header(struct metafd *mfd, uint64_t fsbytes)
 	return 0;
 }
 
-static int read_header(struct metafd *mfd, struct savemeta_header *smh)
+static void parse_header(char *buf, struct savemeta_header *smh)
 {
-	size_t rs;
-	struct savemeta_header smh_be = {0};
+	struct savemeta_header *smh_be = (void *)buf;
 
-	rs = mfd->read(mfd, &smh_be, sizeof(smh_be));
-	if (rs == -1) {
-		perror("Failed to read savemeta file header");
-		return -1;
-	}
-	if (rs != sizeof(smh_be))
-		return 1;
-
-	smh->sh_magic = be32_to_cpu(smh_be.sh_magic);
-	smh->sh_format = be32_to_cpu(smh_be.sh_format);
-	smh->sh_time = be64_to_cpu(smh_be.sh_time);
-	smh->sh_fs_bytes = be64_to_cpu(smh_be.sh_fs_bytes);
-
-	return 0;
+	smh->sh_magic = be32_to_cpu(smh_be->sh_magic);
+	smh->sh_format = be32_to_cpu(smh_be->sh_format);
+	smh->sh_time = be64_to_cpu(smh_be->sh_time);
+	smh->sh_fs_bytes = be64_to_cpu(smh_be->sh_fs_bytes);
 }
 
 static int check_header(struct savemeta_header *smh)
@@ -979,18 +962,40 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	exit(0);
 }
 
-static int restore_block(struct metafd *mfd, struct saved_metablock *svb, char *buf, uint16_t maxlen)
-{
-	int ret;
-	uint16_t checklen;
-	const char *errstr;
+char *restore_buf;
+ssize_t restore_left;
+off_t restore_off;
+#define RESTORE_BUF_SIZE (2 * 1024 * 1024)
 
-	ret = mfd->read(mfd, svb, sizeof(*svb));
-	if (ret < sizeof(*svb)) {
-		goto read_err;
+static char *restore_buf_next(struct metafd *mfd, size_t required_len)
+{
+	if (restore_left < required_len) {
+		char *tail = restore_buf + restore_off;
+		int ret;
+
+		memmove(restore_buf, tail, restore_left);
+		ret = mfd->read(mfd, restore_buf + restore_left, RESTORE_BUF_SIZE - restore_left);
+		if (ret < required_len - restore_left)
+			return NULL;
+		restore_left += ret;
+		restore_off = 0;
 	}
-	svb->blk = be64_to_cpu(svb->blk);
-	svb->siglen = be16_to_cpu(svb->siglen);
+	restore_left -= required_len;
+	restore_off += required_len;
+	return &restore_buf[restore_off - required_len];
+}
+
+static int restore_block(struct metafd *mfd, struct saved_metablock *svb, char **buf, uint16_t maxlen)
+{
+	struct saved_metablock *svb_be;
+	const char *errstr;
+	uint16_t checklen;
+
+	svb_be = (struct saved_metablock *)(restore_buf_next(mfd, sizeof(*svb)));
+	if (svb_be == NULL)
+		goto read_err;
+	svb->blk = be64_to_cpu(svb_be->blk);
+	svb->siglen = be16_to_cpu(svb_be->siglen);
 
 	if (sbd.fssize && svb->blk >= sbd.fssize) {
 		fprintf(stderr, "Error: File system is too small to restore this metadata.\n");
@@ -1011,12 +1016,10 @@ static int restore_block(struct metafd *mfd, struct saved_metablock *svb, char *
 	}
 
 	if (buf != NULL && maxlen != 0) {
-		ret = mfd->read(mfd, buf, svb->siglen);
-		if (ret < svb->siglen) {
+		*buf = restore_buf_next(mfd, svb->siglen);
+		if (*buf == NULL)
 			goto read_err;
-		}
 	}
-
 	return 0;
 
 read_err:
@@ -1028,49 +1031,34 @@ read_err:
 	return -1;
 }
 
-static int restore_super(struct metafd *mfd, off_t pos)
+static int restore_super(struct metafd *mfd, char *buf, int printonly)
 {
 	int ret;
-	struct saved_metablock svb = {0};
-	char *buf;
-
-	buf = calloc(1, sizeof(struct gfs2_sb));
-	if (buf == NULL) {
-		perror("Failed to restore super block");
-		exit(1);
-	}
-	mfd->seek(mfd, pos, SEEK_SET);
-	ret = restore_block(mfd, &svb, buf, sizeof(struct gfs2_sb));
-	if (ret == 1) {
-		fprintf(stderr, "Reached end of file while restoring superblock\n");
-		goto err;
-	} else if (ret != 0) {
-		goto err;
-	}
 
 	gfs2_sb_in(&sbd.sd_sb, buf);
 	sbd1 = (struct gfs_sb *)&sbd.sd_sb;
 	ret = check_sb(&sbd.sd_sb);
 	if (ret < 0) {
-		fprintf(stderr,"Error: Invalid superblock data.\n");
-		goto err;
+		fprintf(stderr, "Error: Invalid superblock in metadata file.\n");
+		return -1;
 	}
 	if (ret == 1)
 		sbd.gfs1 = 1;
 	sbd.bsize = sbd.sd_sb.sb_bsize;
-	free(buf);
+	if ((!printonly) && lgfs2_sb_write(&sbd.sd_sb, sbd.device_fd, sbd.bsize)) {
+		fprintf(stderr, "Failed to write superblock\n");
+		return -1;
+	}
 	printf("Block size is %uB\n", sbd.bsize);
 	return 0;
-err:
-	free(buf);
-	return -1;
 }
 
-static int restore_data(int fd, struct metafd *mfd, off_t pos, int printonly)
+static int restore_data(int fd, struct metafd *mfd, int printonly)
 {
 	struct saved_metablock savedata = {0};
 	uint64_t writes = 0;
 	char *buf;
+	char *bp;
 
 	buf = calloc(1, sbd.bsize);
 	if (buf == NULL) {
@@ -1078,11 +1066,11 @@ static int restore_data(int fd, struct metafd *mfd, off_t pos, int printonly)
 		exit(1);
 	}
 
-	gzseek(mfd->gzfd, pos, SEEK_SET);
 	blks_saved = 0;
 	while (TRUE) {
 		int err;
-		err = restore_block(mfd, &savedata, buf, sbd.bsize);
+
+		err = restore_block(mfd, &savedata, &bp, sbd.bsize);
 		if (err == 1)
 			break;
 		if (err != 0) {
@@ -1092,7 +1080,7 @@ static int restore_data(int fd, struct metafd *mfd, off_t pos, int printonly)
 
 		if (printonly) {
 			struct gfs2_buffer_head dummy_bh = {
-				.b_data = buf,
+				.b_data = bp,
 				.b_blocknr = savedata.blk,
 			};
 			if (printonly > 1 && printonly == savedata.blk) {
@@ -1105,6 +1093,7 @@ static int restore_data(int fd, struct metafd *mfd, off_t pos, int printonly)
 			}
 		} else {
 			warm_fuzzy_stuff(savedata.blk, FALSE);
+			memcpy(buf, bp, savedata.siglen);
 			memset(buf + savedata.siglen, 0, sbd.bsize - savedata.siglen);
 			if (pwrite(fd, buf, sbd.bsize, savedata.blk * sbd.bsize) != sbd.bsize) {
 				fprintf(stderr, "write error: %s from %s:%d: block %lld (0x%llx)\n",
@@ -1133,14 +1122,20 @@ static void complain(const char *complaint)
 	    "<dest file system>\n");
 }
 
-static int restore_init(const char *path, struct metafd *mfd, struct savemeta_header *smh, off_t *pos)
+static int restore_init(const char *path, struct metafd *mfd, struct savemeta_header *smh, int printonly)
 {
-	struct gfs2_meta_header sbmh;
-	off_t startpos = 0;
-	char buf[256];
-	unsigned i;
-	size_t rs;
-	int err;
+	struct gfs2_meta_header *sbmh;
+	char *end;
+	char *bp;
+	int ret;
+
+	restore_buf = malloc(RESTORE_BUF_SIZE);
+	if (restore_buf == NULL) {
+		perror("Restore failed");
+		return -1;
+	}
+	restore_off = 0;
+	restore_left = 0;
 
 	mfd->filename = path;
 	mfd->fd = open(path, O_RDONLY|O_CLOEXEC);
@@ -1148,7 +1143,6 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 		perror("Could not open metadata file");
 		return 1;
 	}
-	mfd->seek = gz_seek;
 	mfd->read = gz_read;
 	mfd->iseof = gz_iseof;
 	mfd->close = gz_close;
@@ -1158,51 +1152,54 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 		perror("gzdopen");
 		return 1;
 	}
-	err = read_header(mfd, smh);
-	if (err < 0) {
-		return 1;
-	} else if (check_header(smh) != 0) {
+	restore_left = mfd->read(mfd, restore_buf, RESTORE_BUF_SIZE);
+	if (restore_left < 512) {
+		fprintf(stderr, "Failed to read metadata file header and superblock\n");
+		return -1;
+	}
+	bp = restore_buf;
+	parse_header(bp, smh);
+	if (check_header(smh) != 0)
 		printf("No valid file header found. Falling back to old format...\n");
-	} else if (err == 0) {
-		startpos = sizeof(*smh);
+	else {
+		bp = restore_buf + sizeof(*smh);
+		restore_off = sizeof(*smh);
 	}
-	mfd->seek(mfd, startpos, SEEK_SET);
-	rs = mfd->read(mfd, buf, sizeof(buf));
-	if (rs != sizeof(buf)) {
-		fprintf(stderr, "Error: File is too small.\n");
-		return 1;
-	}
-	/* Scan for the beginning of the file body. Required to support old formats(?). */
-	for (i = 0; i < (256 - sizeof(struct saved_metablock) - sizeof(sbmh)); i++) {
-		off_t off = i + sizeof(struct saved_metablock);
 
-		memcpy(&sbmh, &buf[off], sizeof(sbmh));
-		if (sbmh.mh_magic == cpu_to_be32(GFS2_MAGIC) &&
-		     sbmh.mh_type == cpu_to_be32(GFS2_METATYPE_SB))
+	/* Scan for the position of the superblock. Required to support old formats(?). */
+	end = &restore_buf[256 + sizeof(struct saved_metablock) + sizeof(*sbmh)];
+	while (bp <= end) {
+		sbmh = (struct gfs2_meta_header *)(bp + sizeof(struct saved_metablock));
+		if (sbmh->mh_magic == cpu_to_be32(GFS2_MAGIC) &&
+		    sbmh->mh_type == cpu_to_be32(GFS2_METATYPE_SB))
 			break;
+		bp++;
 	}
-	if (i == (sizeof(buf) - sizeof(struct saved_metablock) - sizeof(sbmh)))
-		i = 0;
-	*pos = startpos + i; /* File offset of saved sb */
+	if (bp > end) {
+		fprintf(stderr, "No superblock found in metadata file\n");
+		return -1;
+	}
+	ret = restore_super(mfd, bp + sizeof(struct saved_metablock), printonly);
+	if (ret != 0)
+		return ret;
+
+	bp += sizeof(struct saved_metablock) + sizeof(sbd.sd_sb);
+	restore_off = bp - restore_buf;
+	restore_left -= restore_off;
 	return 0;
 }
 
 void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 {
-	int error;
-	off_t pos = 0;
 	struct savemeta_header smh = {0};
 	struct metafd mfd = {0};
+	int error;
 
 	termlines = 0;
 	if (!in_fn)
 		complain("No source file specified.");
 	if (!printonly && !out_device)
 		complain("No destination file system specified.");
-
-	error = restore_init(in_fn, &mfd, &smh, &pos);
-	if (error != 0)
-		exit(error);
 
 	if (!printonly) {
 		sbd.device_fd = open(out_device, O_RDWR);
@@ -1213,9 +1210,9 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 				  optional block no */
 		printonly = check_keywords(out_device);
 
-	error = restore_super(&mfd, pos);
-	if (error)
-		exit(1);
+	error = restore_init(in_fn, &mfd, &smh, printonly);
+	if (error != 0)
+		exit(error);
 
 	if (smh.sh_fs_bytes > 0) {
 		sbd.fssize = smh.sh_fs_bytes / sbd.bsize;
@@ -1230,7 +1227,7 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 		printf("There are %"PRIu64" free blocks on the destination device.\n", space);
 	}
 
-	error = restore_data(sbd.device_fd, &mfd, pos, printonly);
+	error = restore_data(sbd.device_fd, &mfd, printonly);
 	printf("File %s %s %s.\n", in_fn,
 	       (printonly ? "print" : "restore"),
 	       (error ? "error" : "successful"));
