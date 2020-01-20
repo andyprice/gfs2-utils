@@ -1066,37 +1066,6 @@ err:
 	return -1;
 }
 
-static int find_highest_block(struct metafd *mfd, off_t pos, uint64_t fssize)
-{
-	int err = 0;
-	uint64_t highest = 0;
-	struct saved_metablock svb = {0};
-
-	while (1) {
-		mfd->seek(mfd, pos, SEEK_SET);
-		err = restore_block(mfd, &svb, NULL, 0);
-		if (err == 1)
-			break;
-		if (err != 0)
-			return -1;
-
-		if (svb.blk > highest)
-			highest = svb.blk;
-		pos += sizeof(svb) + svb.siglen;
-	}
-
-	if (fssize > 0) {
-		printf("Saved file system size is %"PRIu64" blocks, %.2fGB\n",
-		       fssize, (fssize * sbd.bsize) / ((float)(1 << 30)));
-		sbd.fssize = fssize;
-	} else {
-		sbd.fssize = highest + 1;
-	}
-
-	printf("Highest saved block is %"PRIu64" (0x%"PRIx64")\n", highest, highest);
-	return 0;
-}
-
 static int restore_data(int fd, struct metafd *mfd, off_t pos, int printonly)
 {
 	struct saved_metablock savedata = {0};
@@ -1248,16 +1217,18 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 	if (error)
 		exit(1);
 
+	if (smh.sh_fs_bytes > 0) {
+		sbd.fssize = smh.sh_fs_bytes / sbd.bsize;
+		printf("Saved file system size is %"PRIu64" blocks, %.2fGB\n",
+		       sbd.fssize, smh.sh_fs_bytes / ((float)(1 << 30)));
+	}
+
 	printf("This is gfs%c metadata.\n", sbd.gfs1 ? '1': '2');
 
 	if (!printonly) {
 		uint64_t space = lseek(sbd.device_fd, 0, SEEK_END) / sbd.bsize;
 		printf("There are %"PRIu64" free blocks on the destination device.\n", space);
 	}
-
-	error = find_highest_block(&mfd, pos, sbd.fssize);
-	if (error)
-		exit(1);
 
 	error = restore_data(sbd.device_fd, &mfd, pos, printonly);
 	printf("File %s %s %s.\n", in_fn,
