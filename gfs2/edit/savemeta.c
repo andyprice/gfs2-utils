@@ -54,8 +54,8 @@ struct metafd {
 	gzFile gzfd;
 	const char *filename;
 	int gziplevel;
+	int eof;
 	int (*read)(struct metafd *mfd, void *buf, unsigned len);
-	int (*iseof)(struct metafd *mfd);
 	void (*close)(struct metafd *mfd);
 	const char* (*strerr)(struct metafd *mfd);
 };
@@ -72,12 +72,10 @@ static const char *gz_strerr(struct metafd *mfd)
 
 static int gz_read(struct metafd *mfd, void *buf, unsigned len)
 {
-	return gzread(mfd->gzfd, buf, len);
-}
-
-static int gz_iseof(struct metafd *mfd)
-{
-	return gzeof(mfd->gzfd);
+	int ret = gzread(mfd->gzfd, buf, len);
+	if (ret < len && gzeof(mfd->gzfd))
+		mfd->eof = 1;
+	return ret;
 }
 
 static void gz_close(struct metafd *mfd)
@@ -1023,7 +1021,7 @@ static int restore_block(struct metafd *mfd, struct saved_metablock *svb, char *
 	return 0;
 
 read_err:
-	if (mfd->iseof(mfd))
+	if (mfd->eof)
 		return 1;
 
 	errstr = mfd->strerr(mfd);
@@ -1144,7 +1142,6 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 		return 1;
 	}
 	mfd->read = gz_read;
-	mfd->iseof = gz_iseof;
 	mfd->close = gz_close;
 	mfd->strerr = gz_strerr;
 	mfd->gzfd = gzdopen(mfd->fd, "rb");
