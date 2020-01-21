@@ -19,6 +19,7 @@
 #include <sys/time.h>
 #include <linux/gfs2_ondisk.h>
 #include <zlib.h>
+#include <bzlib.h>
 #include <time.h>
 
 #include <logging.h>
@@ -52,6 +53,7 @@ struct saved_metablock {
 struct metafd {
 	int fd;
 	gzFile gzfd;
+	BZFILE *bzfd;
 	const char *filename;
 	int gziplevel;
 	int eof;
@@ -59,6 +61,31 @@ struct metafd {
 	void (*close)(struct metafd *mfd);
 	const char* (*strerr)(struct metafd *mfd);
 };
+
+char *restore_buf;
+ssize_t restore_left;
+off_t restore_off;
+#define RESTORE_BUF_SIZE (2 * 1024 * 1024)
+
+static char *restore_buf_next(struct metafd *mfd, size_t required_len)
+{
+	if (restore_left < required_len) {
+		char *tail = restore_buf + restore_off;
+		int ret;
+
+		memmove(restore_buf, tail, restore_left);
+		ret = mfd->read(mfd, restore_buf + restore_left, RESTORE_BUF_SIZE - restore_left);
+		if (ret < (int)required_len - restore_left)
+			return NULL;
+		restore_left += ret;
+		restore_off = 0;
+	}
+	restore_left -= required_len;
+	restore_off += required_len;
+	return &restore_buf[restore_off - required_len];
+}
+
+/* gzip compression method */
 
 static const char *gz_strerr(struct metafd *mfd)
 {
@@ -81,6 +108,76 @@ static int gz_read(struct metafd *mfd, void *buf, unsigned len)
 static void gz_close(struct metafd *mfd)
 {
 	gzclose(mfd->gzfd);
+}
+
+/* This should be tried last because gzip doesn't distinguish between
+   decompressing a gzip file and reading an uncompressed file */
+static int restore_try_gzip(struct metafd *mfd)
+{
+	mfd->read = gz_read;
+	mfd->close = gz_close;
+	mfd->strerr = gz_strerr;
+	lseek(mfd->fd, 0, SEEK_SET);
+	mfd->gzfd = gzdopen(mfd->fd, "rb");
+	if (!mfd->gzfd)
+		return 1;
+	restore_left = mfd->read(mfd, restore_buf, RESTORE_BUF_SIZE);
+	if (restore_left < 512)
+		return -1;
+	return 0;
+}
+
+/* bzip2 compression method */
+
+static const char *bz_strerr(struct metafd *mfd)
+{
+	int err;
+	const char *errstr = BZ2_bzerror(mfd->bzfd, &err);
+
+	if (err == BZ_IO_ERROR)
+		return strerror(errno);
+	return errstr;
+}
+
+static int bz_read(struct metafd *mfd, void *buf, unsigned len)
+{
+	int bzerr = BZ_OK;
+	int ret;
+
+	ret = BZ2_bzRead(&bzerr, mfd->bzfd, buf, len);
+	if (bzerr == BZ_OK)
+		return ret;
+	if (bzerr == BZ_STREAM_END) {
+		mfd->eof = 1;
+		return ret;
+	}
+	return -1;
+}
+
+static void bz_close(struct metafd *mfd)
+{
+	BZ2_bzclose(mfd->bzfd);
+}
+
+static int restore_try_bzip(struct metafd *mfd)
+{
+	int bzerr;
+	FILE *f;
+
+	f = fdopen(mfd->fd, "r");
+	if (f == NULL)
+		return 1;
+
+	mfd->read = bz_read;
+	mfd->close = bz_close;
+	mfd->strerr = bz_strerr;
+	mfd->bzfd = BZ2_bzReadOpen(&bzerr, f, 0, 0, NULL, 0);
+	if (!mfd->bzfd)
+		return 1;
+	restore_left = mfd->read(mfd, restore_buf, RESTORE_BUF_SIZE);
+	if (restore_left < 512)
+		return -1;
+	return 0;
 }
 
 static uint64_t blks_saved;
@@ -345,10 +442,12 @@ static void warm_fuzzy_stuff(uint64_t wfsblock, int force)
  */
 static struct metafd savemetaopen(char *out_fn, int gziplevel)
 {
-	struct metafd mfd = {-1, NULL, NULL, gziplevel};
+	struct metafd mfd = {0};
 	char gzmode[3] = "w9";
 	char dft_fn[] = DFT_SAVE_FILE;
 	mode_t mask = umask(S_IXUSR | S_IRWXG | S_IRWXO);
+
+	mfd.gziplevel = gziplevel;
 
 	if (!out_fn) {
 		out_fn = dft_fn;
@@ -959,29 +1058,6 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	exit(0);
 }
 
-char *restore_buf;
-ssize_t restore_left;
-off_t restore_off;
-#define RESTORE_BUF_SIZE (2 * 1024 * 1024)
-
-static char *restore_buf_next(struct metafd *mfd, size_t required_len)
-{
-	if (restore_left < required_len) {
-		char *tail = restore_buf + restore_off;
-		int ret;
-
-		memmove(restore_buf, tail, restore_left);
-		ret = mfd->read(mfd, restore_buf + restore_left, RESTORE_BUF_SIZE - restore_left);
-		if (ret < required_len - restore_left)
-			return NULL;
-		restore_left += ret;
-		restore_off = 0;
-	}
-	restore_left -= required_len;
-	restore_off += required_len;
-	return &restore_buf[restore_off - required_len];
-}
-
 static int restore_block(struct metafd *mfd, struct saved_metablock *svb, char **buf, uint16_t maxlen)
 {
 	struct saved_metablock *svb_be;
@@ -1140,16 +1216,8 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 		perror("Could not open metadata file");
 		return 1;
 	}
-	mfd->read = gz_read;
-	mfd->close = gz_close;
-	mfd->strerr = gz_strerr;
-	mfd->gzfd = gzdopen(mfd->fd, "rb");
-	if (!mfd->gzfd) {
-		perror("gzdopen");
-		return 1;
-	}
-	restore_left = mfd->read(mfd, restore_buf, RESTORE_BUF_SIZE);
-	if (restore_left < 512) {
+	if (restore_try_bzip(mfd) != 0 &&
+	    restore_try_gzip(mfd) != 0) {
 		fprintf(stderr, "Failed to read metadata file header and superblock\n");
 		return -1;
 	}

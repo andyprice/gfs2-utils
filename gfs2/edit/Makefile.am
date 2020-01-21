@@ -23,11 +23,13 @@ gfs2_edit_CPPFLAGS = \
 gfs2_edit_CFLAGS = \
 	$(ncurses_CFLAGS) \
 	$(zlib_CFLAGS) \
+	$(bzip2_CFLAGS) \
 	$(uuid_CFLAGS)
 
 gfs2_edit_LDADD = \
 	$(top_builddir)/gfs2/libgfs2/libgfs2.la \
 	$(ncurses_LIBS) \
 	$(zlib_LIBS) \
+	$(bzip2_LIBS) \
 	$(uuid_LIBS)
 

@@ -104,6 +104,7 @@ PKG_CHECK_MODULES([check], [check >= 0.9.8],
 AM_CONDITIONAL([HAVE_CHECK], [test "x$have_check" = "xyes"])
 
 PKG_CHECK_MODULES([zlib],[zlib])
+PKG_CHECK_MODULES([bzip2],[bzip2])
 PKG_CHECK_MODULES([blkid],[blkid])
 PKG_CHECK_MODULES([uuid],[uuid],
                   [have_uuid=yes],
