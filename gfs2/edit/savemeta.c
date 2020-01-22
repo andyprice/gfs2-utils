@@ -856,20 +856,19 @@ static int save_header(struct metafd *mfd, uint64_t fsbytes)
 	return 0;
 }
 
-static void parse_header(char *buf, struct savemeta_header *smh)
+static int parse_header(char *buf, struct savemeta_header *smh)
 {
 	struct savemeta_header *smh_be = (void *)buf;
 
+	if (be32_to_cpu(smh_be->sh_magic) != SAVEMETA_MAGIC ||
+	    be32_to_cpu(smh_be->sh_format) > SAVEMETA_FORMAT) {
+		printf("No valid file header found. Falling back to old format...\n");
+		return -1;
+	}
 	smh->sh_magic = be32_to_cpu(smh_be->sh_magic);
 	smh->sh_format = be32_to_cpu(smh_be->sh_format);
 	smh->sh_time = be64_to_cpu(smh_be->sh_time);
 	smh->sh_fs_bytes = be64_to_cpu(smh_be->sh_fs_bytes);
-}
-
-static int check_header(struct savemeta_header *smh)
-{
-	if (smh->sh_magic != SAVEMETA_MAGIC || smh->sh_format > SAVEMETA_FORMAT)
-		return -1;
 	printf("Metadata saved at %s", ctime((time_t *)&smh->sh_time)); /* ctime() adds \n */
 	printf("File system size %.2fGB\n", smh->sh_fs_bytes / ((float)(1 << 30)));
 	return 0;
@@ -1155,14 +1154,10 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 		return -1;
 	}
 	bp = restore_buf;
-	parse_header(bp, smh);
-	if (check_header(smh) != 0)
-		printf("No valid file header found. Falling back to old format...\n");
-	else {
+	if (parse_header(bp, smh) == 0) {
 		bp = restore_buf + sizeof(*smh);
 		restore_off = sizeof(*smh);
 	}
-
 	/* Scan for the position of the superblock. Required to support old formats(?). */
 	end = &restore_buf[256 + sizeof(struct saved_metablock) + sizeof(*sbmh)];
 	while (bp <= end) {
