@@ -1198,6 +1198,7 @@ static void complain(const char *complaint)
 static int restore_init(const char *path, struct metafd *mfd, struct savemeta_header *smh, int printonly)
 {
 	struct gfs2_meta_header *sbmh;
+	uint16_t sb_siglen;
 	char *end;
 	char *bp;
 	int ret;
@@ -1229,6 +1230,7 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 	/* Scan for the position of the superblock. Required to support old formats(?). */
 	end = &restore_buf[256 + sizeof(struct saved_metablock) + sizeof(*sbmh)];
 	while (bp <= end) {
+		sb_siglen = be16_to_cpu(((struct saved_metablock *)bp)->siglen);
 		sbmh = (struct gfs2_meta_header *)(bp + sizeof(struct saved_metablock));
 		if (sbmh->mh_magic == cpu_to_be32(GFS2_MAGIC) &&
 		    sbmh->mh_type == cpu_to_be32(GFS2_METATYPE_SB))
@@ -1243,7 +1245,7 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 	if (ret != 0)
 		return ret;
 
-	bp += sizeof(struct saved_metablock) + sizeof(sbd.sd_sb);
+	bp += sizeof(struct saved_metablock) + sb_siglen;
 	restore_off = bp - restore_buf;
 	restore_left -= restore_off;
 	return 0;
