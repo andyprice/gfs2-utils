@@ -1,4 +1,5 @@
 TESTSCRIPTS = \
+	fsck.gfs2-tester.sh \
 	rgrifieldscheck.sh \
 	rgskipcheck.sh
 
