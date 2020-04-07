@@ -48,7 +48,7 @@ currently these are \fIlock_nolock\fR and \fIlock_dlm\fR.
 
 The default lock protocol name is written to disk initially when creating the
 filesystem with \fBmkfs.gfs2\fP(8), -p option.  It can be changed on-disk by
-using the \fBgfs2_tool\fP(8) utility's \fBsb proto\fP command.
+using the \fBtunegfs2\fP(8) command.
 
 The \fBlockproto\fP mount option should be used only under special
 circumstances in which you want to temporarily use a different lock protocol
@@ -70,7 +70,7 @@ The format of \fILockTableName\fR is lock-module-specific.  For
 
 The default cluster/filesystem name is written to disk initially when creating
 the filesystem with \fBmkfs.gfs2\fP(8), -t option.  It can be changed on-disk
-by using the \fBgfs2_tool\fP(8) utility's \fBsb table\fP command.
+by using the \fBtunegfs2\fP(8) command.
 
 The \fBlocktable\fP mount option should be used only under special
 circumstances in which you want to mount the filesystem in a different cluster,
