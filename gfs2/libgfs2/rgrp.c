@@ -232,7 +232,7 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 		}
 	}
 	if (sdp->gfs1)
-		gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
+		gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh->b_data);
 	else {
 		if (lgfs2_rgrp_crc_check(rgd->bits[0].bi_bh->b_data)) {
 			free(bhs);

@@ -64,9 +64,9 @@ void gfs2_inum_print(const struct gfs2_inum *no)
 	pv(no, no_addr, "%llu", "0x%llx");
 }
 
-void gfs2_meta_header_in(struct gfs2_meta_header *mh, char *buf)
+void gfs2_meta_header_in(struct gfs2_meta_header *mh, const char *buf)
 {
-	struct gfs2_meta_header *str = (struct gfs2_meta_header *)buf;
+	const struct gfs2_meta_header *str = (struct gfs2_meta_header *)buf;
 
 	CPIN_32(mh, str, mh_magic);
 	CPIN_32(mh, str, mh_type);

@@ -111,8 +111,7 @@ static void refresh_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 		bmodified(rgd->bits[i].bi_bh);
 		if (i == 0) { /* this is the rgrp itself */
 			if (sdp->gfs1)
-				gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg,
-					    rgd->bits[0].bi_bh);
+				gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh->b_data);
 			else
 				gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_bh->b_data);
 		}

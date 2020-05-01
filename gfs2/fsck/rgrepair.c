@@ -909,7 +909,7 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
 			rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
 			rg->rg.rg_free = rg->ri.ri_data;
 			if (sdp->gfs1)
-				gfs_rgrp_out((struct gfs_rgrp *)&rg->rg, rg->bits[x].bi_bh);
+				gfs_rgrp_out((struct gfs_rgrp *)&rg->rg, rg->bits[x].bi_bh->b_data);
 			else
 				gfs2_rgrp_out(&rg->rg, rg->bits[x].bi_bh->b_data);
 		}

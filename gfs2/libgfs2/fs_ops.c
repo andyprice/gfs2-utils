@@ -156,7 +156,7 @@ static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned state, struct rgrp_tre
 
 	rgd->rg.rg_free--;
 	if (sdp->gfs1)
-		gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
+		gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh->b_data);
 	else
 		gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_bh->b_data);
 	bmodified(rgd->bits[0].bi_bh);
@@ -1928,7 +1928,7 @@ void gfs2_free_block(struct gfs2_sbd *sdp, uint64_t block)
 		gfs2_set_bitmap(rgd, block, GFS2_BLKST_FREE);
 		rgd->rg.rg_free++; /* adjust the free count */
 		if (sdp->gfs1)
-			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
+			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh->b_data);
 		else
 			gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_bh->b_data);
 		bmodified(rgd->bits[0].bi_bh);
@@ -1998,7 +1998,7 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 	rgd->rg.rg_free++;
 	rgd->rg.rg_dinodes--;
 	if (sdp->gfs1)
-		gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
+		gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh->b_data);
 	else
 		gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_bh->b_data);
 	bmodified(rgd->bits[0].bi_bh);

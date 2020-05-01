@@ -554,19 +554,21 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 			if(print_rindex)
 				gfs2_rindex_print(&ri);
 			else {
-				struct gfs2_buffer_head *tmp_bh;
+				char buf[sizeof(struct gfs2_rgrp)] = {0};
+				ssize_t ret;
 
-				tmp_bh = bread(&sbd, ri.ri_addr);
-				if (sbd.gfs1) {
+				ret = pread(sbd.device_fd, buf, sizeof(buf), ri.ri_addr * sbd.bsize);
+				if (ret != sizeof(buf)) {
+					perror("Failed to read resource group");
+				} else if (sbd.gfs1) {
 					struct gfs_rgrp rg1;
-					gfs_rgrp_in(&rg1, tmp_bh);
+					gfs_rgrp_in(&rg1, buf);
 					gfs_rgrp_print(&rg1);
 				} else {
 					struct gfs2_rgrp rg;
-					gfs2_rgrp_in(&rg, tmp_bh->b_data);
+					gfs2_rgrp_in(&rg, buf);
 					gfs2_rgrp_print(&rg);
 				}
-				brelse(tmp_bh);
 			}
 			last_entry_onscreen[dmode] = print_entry_ndx;
 		}

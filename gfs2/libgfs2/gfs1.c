@@ -351,14 +351,11 @@ void gfs_jindex_in(struct gfs_jindex *jindex, char *jbuf)
 	memcpy(jindex->ji_reserved, str->ji_reserved, 64);
 }
 
-/* ------------------------------------------------------------------------ */
-/* gfs_rgrp_in - Read in a resource group header                            */
-/* ------------------------------------------------------------------------ */
-void gfs_rgrp_in(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh)
+void gfs_rgrp_in(struct gfs_rgrp *rgrp, const char *buf)
 {
-	struct gfs_rgrp *str = (struct gfs_rgrp *)rbh->b_data;
+	struct gfs_rgrp *str = (struct gfs_rgrp *)buf;
 
-	gfs2_meta_header_in(&rgrp->rg_header, rbh->b_data);
+	gfs2_meta_header_in(&rgrp->rg_header, buf);
 	rgrp->rg_flags = be32_to_cpu(str->rg_flags);
 	rgrp->rg_free = be32_to_cpu(str->rg_free);
 	rgrp->rg_useddi = be32_to_cpu(str->rg_useddi);
@@ -370,14 +367,11 @@ void gfs_rgrp_in(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh)
 	memcpy(rgrp->rg_reserved, str->rg_reserved, 64);
 }
 
-/* ------------------------------------------------------------------------ */
-/* gfs_rgrp_out */
-/* ------------------------------------------------------------------------ */
-void gfs_rgrp_out(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh)
+void gfs_rgrp_out(const struct gfs_rgrp *rgrp, char *buf)
 {
-	struct gfs_rgrp *str = (struct gfs_rgrp *)rbh->b_data;
+	struct gfs_rgrp *str = (struct gfs_rgrp *)buf;
 
-	gfs2_meta_header_out(&rgrp->rg_header, rbh->b_data);
+	gfs2_meta_header_out(&rgrp->rg_header, buf);
 	str->rg_flags = cpu_to_be32(rgrp->rg_flags);
 	str->rg_free = cpu_to_be32(rgrp->rg_free);
 	str->rg_useddi = cpu_to_be32(rgrp->rg_useddi);
@@ -387,5 +381,4 @@ void gfs_rgrp_out(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh)
 	str->rg_freemeta = cpu_to_be32(rgrp->rg_freemeta);
 
 	memcpy(str->rg_reserved, rgrp->rg_reserved, 64);
-	bmodified(rbh);
 }

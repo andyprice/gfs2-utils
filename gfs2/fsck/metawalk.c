@@ -155,7 +155,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 	}
 	if (rewrite_rgrp) {
 		if (sdp->gfs1)
-			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
+			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh->b_data);
 		else
 			gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_bh->b_data);
 		bmodified(rgd->bits[0].bi_bh);

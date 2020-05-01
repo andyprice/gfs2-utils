@@ -324,7 +324,7 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 	   will be reported. */
 	if (rg_reclaimed && *fixit) {
 		if (sdp->gfs1)
-			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
+			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh->b_data);
 		else
 			gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_bh->b_data);
 		bmodified(rgd->bits[0].bi_bh);
@@ -346,7 +346,7 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 		if (query( _("Fix the rgrp free blocks count? (y/n)"))) {
 			rgd->rg.rg_free = rg_free;
 			if (sdp->gfs1)
-				gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
+				gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh->b_data);
 			else
 				gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_bh->b_data);
 			bmodified(rgd->bits[0].bi_bh);
@@ -368,7 +368,8 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 			 gfs1rg->rg_freemeta, rg_unlinked);
 		if (query( _("Fix the rgrp free meta blocks count? (y/n)"))) {
 			gfs1rg->rg_freemeta = rg_unlinked;
-			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh);
+			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh->b_data);
+			bmodified(rgd->bits[0].bi_bh);
 			*this_rg_fixed = 1;
 			log_err( _("The rgrp was fixed.\n"));
 		} else
@@ -384,8 +385,8 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 			 gfs1rg->rg_useddi, rg_useddi);
 		if (query( _("Fix the rgrp used dinode block count? (y/n)"))) {
 			gfs1rg->rg_useddi = rg_useddi;
-			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg,
-				     rgd->bits[0].bi_bh);
+			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh->b_data);
+			bmodified(rgd->bits[0].bi_bh);
 			*this_rg_fixed = 1;
 			log_err( _("The rgrp was fixed.\n"));
 		} else
@@ -401,8 +402,8 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 			 gfs1rg->rg_usedmeta, rg_usedmeta);
 		if (query( _("Fix the rgrp used meta blocks count? (y/n)"))) {
 			gfs1rg->rg_usedmeta = rg_usedmeta;
-			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg,
-				     rgd->bits[0].bi_bh);
+			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh->b_data);
+			bmodified(rgd->bits[0].bi_bh);
 			*this_rg_fixed = 1;
 			log_err( _("The rgrp was fixed.\n"));
 		} else

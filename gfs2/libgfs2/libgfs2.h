@@ -643,8 +643,8 @@ extern struct gfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp,
 extern struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp,
 					 uint64_t di_addr);
 extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
-extern void gfs_rgrp_in(struct gfs_rgrp *rg, struct gfs2_buffer_head *bh);
-extern void gfs_rgrp_out(struct gfs_rgrp *rg, struct gfs2_buffer_head *bh);
+extern void gfs_rgrp_in(struct gfs_rgrp *rg, const char *buf);
+extern void gfs_rgrp_out(const struct gfs_rgrp *rg, char *buf);
 
 /* misc.c */
 extern int compute_heightsize(unsigned bsize, uint64_t *heightsize,
@@ -723,7 +723,7 @@ extern void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 
 extern void gfs2_inum_in(struct gfs2_inum *no, char *buf);
 extern void gfs2_inum_out(const struct gfs2_inum *no, char *buf);
-extern void gfs2_meta_header_in(struct gfs2_meta_header *mh, char *buf);
+extern void gfs2_meta_header_in(struct gfs2_meta_header *mh, const char *buf);
 extern void gfs2_meta_header_out(const struct gfs2_meta_header *mh, char *buf);
 extern void gfs2_sb_in(struct gfs2_sb *sb, char *buf);
 extern void gfs2_sb_out(const struct gfs2_sb *sb, char *buf);

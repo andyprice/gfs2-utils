@@ -850,7 +850,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 	rgblk = get_rg_addr(rgnum);
 	rbh = bread(&sbd, rgblk);
 	if (sbd.gfs1)
-		gfs_rgrp_in(&rg.rg1, rbh);
+		gfs_rgrp_in(&rg.rg1, rbh->b_data);
 	else
 		gfs2_rgrp_in(&rg.rg2, rbh->b_data);
 	if (modify) {
@@ -859,7 +859,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 		       (unsigned long long)rgblk, rg.rg2.rg_flags, new_flags);
 		rg.rg2.rg_flags = new_flags;
 		if (sbd.gfs1)
-			gfs_rgrp_out(&rg.rg1, rbh);
+			gfs_rgrp_out(&rg.rg1, rbh->b_data);
 		else
 			gfs2_rgrp_out(&rg.rg2, rbh->b_data);
 		bmodified(rbh);

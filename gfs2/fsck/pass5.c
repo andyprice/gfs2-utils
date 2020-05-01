@@ -201,7 +201,7 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgp,
 			log_warn( _("Resource group counts updated\n"));
 			/* write out the rgrp */
 			if (sdp->gfs1)
-				gfs_rgrp_out(gfs1rg, rgp->bits[0].bi_bh);
+				gfs_rgrp_out(gfs1rg, rgp->bits[0].bi_bh->b_data);
 			else
 				gfs2_rgrp_out(&rgp->rg, rgp->bits[0].bi_bh->b_data);
 		} else
