@@ -35,8 +35,8 @@ static lgfs2_rgrps_t mockup_rgrp(void)
 	fail_unless(rg != NULL);
 
 	for (i = 0; i < rg->ri.ri_length; i++) {
-		rg->bits[i].bi_bh = bget(sdp, rg->ri.ri_addr + i);
-		fail_unless(rg->bits[i].bi_bh != NULL);
+		rg->bits[i].bi_data = calloc(1, sdp->bsize);
+		fail_unless(rg->bits[i].bi_data != NULL);
 	}
 	return rgs;
 }
@@ -100,7 +100,7 @@ START_TEST(test_rbm_find_lastblock)
 
 	/* Flag all blocks as allocated... */
 	for (i = 0; i < rg->ri.ri_length; i++)
-		memset(rg->bits[i].bi_bh->b_data, 0xff, rgs->sdp->bsize);
+		memset(rg->bits[i].bi_data, 0xff, rgs->sdp->bsize);
 
 	/* ...except the final one */
 	err = gfs2_set_bitmap(rg, rg->ri.ri_data0 + rg->ri.ri_data - 1, GFS2_BLKST_FREE);

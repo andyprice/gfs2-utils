@@ -490,8 +490,8 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 }
 
 /*
- * gfs2_rindex_rebuild - rebuild a corrupt Resource Group (RG) index manually
- *                        where trust_lvl == distrust
+ * rindex_rebuild - rebuild a corrupt Resource Group (RG) index manually
+ *                  where trust_lvl == distrust
  *
  * If this routine is called, it means we have RGs in odd/unexpected places,
  * and there is a corrupt RG or RG index entry.  It also means we can't trust
@@ -517,8 +517,7 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
  * from gfs1 to gfs2 after a gfs_grow operation.  In that case, the rgrps
  * will not be on predictable boundaries.
  */
-static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
-			       int gfs_grow)
+static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 {
 	struct osi_node *n, *next = NULL;
 	struct gfs2_buffer_head *bh;
@@ -601,8 +600,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 			else
 				break; /* end of bitmap, so call it quits. */
 		} /* for subsequent bitmaps */
-		
-		gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, calc_rgd);
+
 		calc_rgd->ri.ri_data0 = calc_rgd->ri.ri_addr +
 			calc_rgd->ri.ri_length;
 		if (prev_rgd) {
@@ -700,6 +698,7 @@ static int gfs2_rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs,
 out:
 	for (j = 0; j < sdp->md.journals; j++)
 		inode_put(&sdp->md.journal[j]);
+	inode_put(&sdp->md.jiinode);
 	free(sdp->md.journal);
 	return error;
 }
@@ -865,7 +864,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 	}
 	/* Compute the default resource group layout as mkfs would have done */
 	compute_rgrp_layout(sdp, &sdp->rgcalc, TRUE);
-	if (build_rgrps(sdp, FALSE)) { /* FALSE = calc but don't write to disk. */
+	if (build_rgrps(sdp)) { /* Calculate but don't write to disk. */
 		fprintf(stderr, _("Failed to build resource groups\n"));
 		exit(-1);
 	}
@@ -884,41 +883,60 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
 {
 	int x = errblock - rg->ri.ri_addr;
 	const char *typedesc = x ? "GFS2_METATYPE_RB" : "GFS2_METATYPE_RG";
+	ssize_t ret;
+	char *buf;
 
 	log_err( _("Block #%lld (0x%llx) (%d of %d) is not %s.\n"),
 		 (unsigned long long)rg->ri.ri_addr + x,
 		 (unsigned long long)rg->ri.ri_addr + x,
 		 (int)x+1, (int)rg->ri.ri_length, typedesc);
-	if (query( _("Fix the Resource Group? (y/n)"))) {
-		log_err( _("Attempting to repair the rgrp.\n"));
-		rg->bits[x].bi_bh = bread(sdp, rg->ri.ri_addr + x);
-		if (x) {
-			struct gfs2_meta_header mh;
+	if (!query( _("Fix the resource group? (y/n)")))
+		return 1;
 
-			mh.mh_magic = GFS2_MAGIC;
-			mh.mh_type = GFS2_METATYPE_RB;
-			mh.mh_format = GFS2_FORMAT_RB;
-			gfs2_meta_header_out(&mh, rg->bits[x].bi_bh->b_data);
-		} else {
-			if (sdp->gfs1)
-				memset(&rg->rg, 0, sizeof(struct gfs_rgrp));
-			else
-				memset(&rg->rg, 0, sizeof(struct gfs2_rgrp));
-			rg->rg.rg_header.mh_magic = GFS2_MAGIC;
-			rg->rg.rg_header.mh_type = GFS2_METATYPE_RG;
-			rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
-			rg->rg.rg_free = rg->ri.ri_data;
-			if (sdp->gfs1)
-				gfs_rgrp_out((struct gfs_rgrp *)&rg->rg, rg->bits[x].bi_bh->b_data);
-			else
-				gfs2_rgrp_out(&rg->rg, rg->bits[x].bi_bh->b_data);
-		}
-		bmodified(rg->bits[x].bi_bh);
-		brelse(rg->bits[x].bi_bh);
-		rg->bits[x].bi_bh = NULL;
-		return 0;
+	log_err(_("Attempting to repair the resource group.\n"));
+
+	buf = calloc(1, sdp->bsize);
+	if (buf == NULL) {
+		log_err(_("Failed to allocate resource group block: %s"), strerror(errno));
+		return 1;
 	}
-	return 1;
+	ret = pread(sdp->device_fd, buf, sdp->bsize, errblock * sdp->bsize);
+	if (ret != sdp->bsize) {
+		log_err(_("Failed to read resource group block %"PRIu64": %s\n"),
+		        errblock, strerror(errno));
+		free(buf);
+		return 1;
+	}
+	if (x) {
+		struct gfs2_meta_header mh = {
+			.mh_magic = GFS2_MAGIC,
+			.mh_type = GFS2_METATYPE_RB,
+			.mh_format = GFS2_FORMAT_RB
+		};
+		gfs2_meta_header_out(&mh, buf);
+	} else {
+		if (sdp->gfs1)
+			memset(&rg->rg, 0, sizeof(struct gfs_rgrp));
+		else
+			memset(&rg->rg, 0, sizeof(struct gfs2_rgrp));
+		rg->rg.rg_header.mh_magic = GFS2_MAGIC;
+		rg->rg.rg_header.mh_type = GFS2_METATYPE_RG;
+		rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
+		rg->rg.rg_free = rg->ri.ri_data;
+		if (sdp->gfs1)
+			gfs_rgrp_out((struct gfs_rgrp *)&rg->rg, buf);
+		else
+			gfs2_rgrp_out(&rg->rg, buf);
+	}
+	ret = pwrite(sdp->device_fd, buf, sdp->bsize, errblock * sdp->bsize);
+	if (ret != sdp->bsize) {
+		log_err(_("Failed to write resource group block %"PRIu64": %s\n"),
+		        errblock, strerror(errno));
+		free(buf);
+		return 1;
+	}
+	free(buf);
+	return 0;
 }
 
 /*
@@ -982,37 +1000,37 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 		}
 		error = expect_rindex_sanity(sdp, &calc_rg_count);
 		if (error) {
-			gfs2_rgrp_free(&sdp->rgcalc);
+			gfs2_rgrp_free(sdp, &sdp->rgcalc);
 			return error;
 		}
 	} else if (trust_lvl == open_minded) { /* If we can't trust RG index */
 		/* Free previous incarnations in memory, if any. */
-		gfs2_rgrp_free(&sdp->rgtree);
+		gfs2_rgrp_free(sdp, &sdp->rgtree);
 
 		/* Calculate our own RG index for comparison */
 		error = gfs2_rindex_calculate(sdp, &calc_rg_count);
 		if (error) { /* If calculated RGs don't match the fs */
-			gfs2_rgrp_free(&sdp->rgcalc);
+			gfs2_rgrp_free(sdp, &sdp->rgcalc);
 			return -1;
 		}
 	} else if (trust_lvl == distrust) { /* If we can't trust RG index */
 		/* Free previous incarnations in memory, if any. */
-		gfs2_rgrp_free(&sdp->rgtree);
+		gfs2_rgrp_free(sdp, &sdp->rgtree);
 
-		error = gfs2_rindex_rebuild(sdp, &calc_rg_count, 0);
+		error = rindex_rebuild(sdp, &calc_rg_count, 0);
 		if (error) {
 			log_crit( _("Error rebuilding rgrp list.\n"));
-			gfs2_rgrp_free(&sdp->rgcalc);
+			gfs2_rgrp_free(sdp, &sdp->rgcalc);
 			return -1;
 		}
 	} else if (trust_lvl == indignation) { /* If we can't trust anything */
 		/* Free previous incarnations in memory, if any. */
-		gfs2_rgrp_free(&sdp->rgtree);
+		gfs2_rgrp_free(sdp, &sdp->rgtree);
 
-		error = gfs2_rindex_rebuild(sdp, &calc_rg_count, 1);
+		error = rindex_rebuild(sdp, &calc_rg_count, 1);
 		if (error) {
 			log_crit( _("Error rebuilding rgrp list.\n"));
-			gfs2_rgrp_free(&sdp->rgcalc);
+			gfs2_rgrp_free(sdp, &sdp->rgcalc);
 			return -1;
 		}
 	}
@@ -1023,8 +1041,8 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 		log_warn( _("WARNING: rindex file has an invalid size.\n"));
 		if (!query( _("Truncate the rindex size? (y/n)"))) {
 			log_err(_("The rindex was not repaired.\n"));
-			gfs2_rgrp_free(&sdp->rgcalc);
-			gfs2_rgrp_free(&sdp->rgtree);
+			gfs2_rgrp_free(sdp, &sdp->rgcalc);
+			gfs2_rgrp_free(sdp, &sdp->rgtree);
 			return -1;
 		}
 		sdp->md.riinode->i_di.di_size /= sizeof(struct gfs2_rindex);
@@ -1048,8 +1066,8 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 		   then try again with a little more distrust. */
 		if ((trust_lvl < distrust) ||
 		    !query( _("Attempt to use what rgrps we can? (y/n)"))) {
-			gfs2_rgrp_free(&sdp->rgcalc);
-			gfs2_rgrp_free(&sdp->rgtree);
+			gfs2_rgrp_free(sdp, &sdp->rgcalc);
+			gfs2_rgrp_free(sdp, &sdp->rgtree);
 			log_err(_("The rindex was not repaired.\n"));
 			return -1;
 		}
@@ -1118,8 +1136,8 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 			log_warn( _("%d out of %d rgrps (%d percent) did not "
 				    "match what was expected.\n"),
 				  discrepancies, rg, percent);
-			gfs2_rgrp_free(&sdp->rgcalc);
-			gfs2_rgrp_free(&sdp->rgtree);
+			gfs2_rgrp_free(sdp, &sdp->rgcalc);
+			gfs2_rgrp_free(sdp, &sdp->rgtree);
 			return -1;
 		}
 	}
@@ -1224,15 +1242,15 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 				prev_err = errblock;
 				rewrite_rg_block(sdp, rgd, errblock);
 			} else {
-				gfs2_rgrp_relse(rgd);
+				gfs2_rgrp_relse(sdp, rgd);
 				break;
 			}
 			i++;
 		} while (i < rgd->ri.ri_length);
 	}
 	*rg_count = rg;
-	gfs2_rgrp_free(&sdp->rgcalc);
-	gfs2_rgrp_free(&sdp->rgtree);
+	gfs2_rgrp_free(sdp, &sdp->rgcalc);
+	gfs2_rgrp_free(sdp, &sdp->rgtree);
 	/* We shouldn't need to worry about getting the user's permission to
 	   make changes here. If b_modified is true, they already gave their
 	   permission. */

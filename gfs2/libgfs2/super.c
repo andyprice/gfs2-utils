@@ -346,7 +346,7 @@ static int __ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane,
 
  fail:
 	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
-	gfs2_rgrp_free(&sdp->rgtree);
+	gfs2_rgrp_free(sdp, &sdp->rgtree);
 	return -1;
 }
 

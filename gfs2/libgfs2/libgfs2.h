@@ -171,10 +171,11 @@ struct device {
 
 struct gfs2_bitmap
 {
-	struct gfs2_buffer_head *bi_bh;
-	uint32_t   bi_offset;  /* The offset in the buffer of the first byte */
-	uint32_t   bi_start;   /* The position of the first byte in this block */
-	uint32_t   bi_len;     /* The number of bytes in this block */
+	char *bi_data;
+	uint32_t bi_offset;  /* The offset in the buffer of the first byte */
+	uint32_t bi_start;   /* The position of the first byte in this block */
+	uint32_t bi_len;     /* The number of bytes in this block */
+	unsigned bi_modified:1;
 };
 
 struct gfs2_sbd;
@@ -403,7 +404,7 @@ extern int gfs2_set_bitmap(lgfs2_rgrp_t rg, uint64_t blkno, int state);
 /* fs_geometry.c */
 extern uint32_t rgblocks2bitblocks(const unsigned int bsize, const uint32_t rgblocks,
                                     uint32_t *ri_data) __attribute__((nonnull(3)));
-extern int build_rgrps(struct gfs2_sbd *sdp, int write);
+extern int build_rgrps(struct gfs2_sbd *sdp);
 
 /* fs_ops.c */
 #define IS_LEAF     (1)
@@ -673,10 +674,10 @@ extern struct rgrp_tree *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk);
 extern int lgfs2_rgrp_crc_check(char *buf);
 extern void lgfs2_rgrp_crc_set(char *buf);
 extern uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd);
-extern void gfs2_rgrp_relse(struct rgrp_tree *rgd);
+extern void gfs2_rgrp_relse(struct gfs2_sbd *sdp, struct rgrp_tree *rgd);
 extern struct rgrp_tree *rgrp_insert(struct osi_root *rgtree,
 				     uint64_t rgblock);
-extern void gfs2_rgrp_free(struct osi_root *rgrp_tree);
+extern void gfs2_rgrp_free(struct gfs2_sbd *sdp, struct osi_root *rgrp_tree);
 /* figure out the size of the given resource group, in blocks */
 static inline unsigned int rgrp_size(struct rgrp_tree *rgrp)
 {

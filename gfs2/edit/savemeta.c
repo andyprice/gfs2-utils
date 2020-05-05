@@ -896,28 +896,28 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
    want to save rgrp headers even if they're corrupt. */
 static int rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
-	unsigned x, length = rgd->ri.ri_length;
-	struct gfs2_buffer_head **bhs;
+	unsigned length = rgd->ri.ri_length * sdp->bsize;
+	off_t off = rgd->ri.ri_addr * sdp->bsize;
+	char *buf;
 
 	if (length == 0 || gfs2_check_range(sdp, rgd->ri.ri_addr))
 		return -1;
 
-	bhs = calloc(length, sizeof(struct gfs2_buffer_head *));
-	if (bhs == NULL)
+	buf = calloc(1, length);
+	if (buf == NULL)
 		return -1;
 
-	if (breadm(sdp, bhs, length, rgd->ri.ri_addr)) {
-		free(bhs);
+	if (pread(sdp->device_fd, buf, length, off) != length) {
+		free(buf);
 		return -1;
 	}
-	for (x = 0; x < length; x++)
-		rgd->bits[x].bi_bh = bhs[x];
+	for (unsigned i = 0; i < rgd->ri.ri_length; i++)
+		rgd->bits[i].bi_data = buf + (i * sdp->bsize);
 
 	if (sdp->gfs1)
-		gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh->b_data);
+		gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_data);
 	else
-		gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_bh->b_data);
-	free(bhs);
+		gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_data);
 	return 0;
 }
 
@@ -932,13 +932,17 @@ static void save_rgrp(struct metafd *mfd, struct rgrp_tree *rgd, int withcontent
 		  addr, addr, rgd->ri.ri_length);
 	/* Save the rg and bitmaps */
 	for (i = 0; i < rgd->ri.ri_length; i++) {
+		struct gfs2_buffer_head tmpbh = {
+			.b_data = rgd->bits[i].bi_data,
+			.b_blocknr = rgd->ri.ri_addr + i
+		};
 		warm_fuzzy_stuff(rgd->ri.ri_addr + i, FALSE);
-		save_bh(mfd, rgd->bits[i].bi_bh, 0, NULL);
+		save_bh(mfd, &tmpbh, 0, NULL);
 	}
 	/* Save the other metadata: inodes, etc. if mode is not 'savergs' */
 	if (withcontents)
 		save_allocated(rgd, mfd);
-	gfs2_rgrp_relse(rgd);
+	gfs2_rgrp_relse(&sbd, rgd);
 }
 
 static int save_header(struct metafd *mfd, uint64_t fsbytes)
@@ -1054,7 +1058,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	close(sbd.device_fd);
 	destroy_per_node_lookup();
 	free(indirect);
-	gfs2_rgrp_free(&sbd.rgtree);
+	gfs2_rgrp_free(&sbd, &sbd.rgtree);
 	exit(0);
 }
 

@@ -253,7 +253,7 @@ static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 			if (tblk && rgd && (be64_to_cpu(*b) == bitblk)) {
 				int type, bmap = 0;
 				uint64_t o;
-				struct gfs2_buffer_head *save_bh;
+				char *save_ptr;
 
 				found_bblk = 1;
 				print_gfs2("<-------------------------");
@@ -266,17 +266,17 @@ static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 						      sizeof(struct gfs2_meta_header))
 							* GFS2_NBBY;
 					bmap = o / sbd.sd_blocks_per_bitmap;
-					save_bh = rgd->bits[bmap].bi_bh;
+					save_ptr = rgd->bits[bmap].bi_data;
 					j_bmap_bh = bread(&sbd, abs_block +
 							  bcount);
-					rgd->bits[bmap].bi_bh = j_bmap_bh;
+					rgd->bits[bmap].bi_data = j_bmap_bh->b_data;
 					type = lgfs2_get_bitmap(&sbd, tblk, rgd);
 					brelse(j_bmap_bh);
 					if (type < 0) {
 						perror("Error printing log descriptor blocks");
 						exit(1);
 					}
-					rgd->bits[bmap].bi_bh = save_bh;
+					rgd->bits[bmap].bi_data = save_ptr;
 					print_gfs2("bit for blk 0x%llx is %d "
 						   "(%s)",
 						   (unsigned long long)tblk,

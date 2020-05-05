@@ -555,7 +555,6 @@ uint64_t find_free_blk(struct gfs2_sbd *sdp)
 	struct gfs2_rgrp *rg;
 	unsigned int block, bn = 0, x = 0, y = 0;
 	unsigned int state;
-	struct gfs2_buffer_head *bh;
 
 	memset(&rg, 0, sizeof(rg));
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
@@ -572,12 +571,12 @@ uint64_t find_free_blk(struct gfs2_sbd *sdp)
 	rg = &rl->rg;
 
 	for (block = 0; block < ri->ri_length; block++) {
-		bh = rl->bits[block].bi_bh;
+		char *buf = rl->bits[block].bi_data;
 		x = (block) ? sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_rgrp);
 
 		for (; x < sdp->bsize; x++)
 			for (y = 0; y < GFS2_NBBY; y++) {
-				state = (bh->b_data[x] >> (GFS2_BIT_SIZE * y)) & 0x03;
+				state = (buf[x] >> (GFS2_BIT_SIZE * y)) & 0x03;
 				if (state == GFS2_BLKST_FREE)
 					return ri->ri_data0 + bn;
 				bn++;

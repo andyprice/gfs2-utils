@@ -386,7 +386,7 @@ static int ast_get_bitstate(uint64_t bn, struct gfs2_sbd *sbd)
 		return -1;
 	}
 
-	gfs2_rgrp_relse(rgd);
+	gfs2_rgrp_relse(sbd, rgd);
 	return state;
 }
 

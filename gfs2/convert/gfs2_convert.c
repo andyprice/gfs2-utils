@@ -149,11 +149,10 @@ static void convert_bitmaps(struct gfs2_sbd *sdp, struct rgrp_tree *rg)
 		bi = &rg->bits[blk];
 		for (; x < sdp->bsize; x++)
 			for (y = 0; y < GFS2_NBBY; y++) {
-				state = (bi->bi_bh->b_data[x] >>
-					 (GFS2_BIT_SIZE * y)) & 0x03;
+				state = (bi->bi_data[x] >> (GFS2_BIT_SIZE * y)) & 0x03;
 				if (state == 0x02) {/* unallocated metadata state invalid */
-					bi->bi_bh->b_data[x] &= ~(0x02 << (GFS2_BIT_SIZE * y));
-					bmodified(bi->bi_bh);
+					bi->bi_data[x] &= ~(0x02 << (GFS2_BIT_SIZE * y));
+					bi->bi_modified = 1;
 				}
 			}
 	}
@@ -190,8 +189,8 @@ static int convert_rgs(struct gfs2_sbd *sbp)
 		sbp->dinodes_alloced += rgd1->rg_useddi;
 		convert_bitmaps(sbp, rgd);
 		/* Write the updated rgrp to the gfs2 buffer */
-		gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_bh->b_data);
-		bmodified(rgd->bits[0].bi_bh);
+		gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_data);
+		rgd->bits[0].bi_modified = 1;
 		rgs++;
 		if (rgs % 100 == 0) {
 			printf(".");
@@ -986,7 +985,7 @@ static int next_rg_meta(struct rgrp_tree *rgd, uint64_t *block, int first)
 	}
 	for (; i < length; i++){
 		bits = &rgd->bits[i];
-		blk = gfs2_bitfit((uint8_t *)bits->bi_bh->b_data + bits->bi_offset,
+		blk = gfs2_bitfit((uint8_t *)bits->bi_data + bits->bi_offset,
 		                   bits->bi_len, blk, GFS2_BLKST_DINODE);
 		if(blk != BFITNOENT){
 			*block = blk + (bits->bi_start * GFS2_NBBY) +
@@ -1096,11 +1095,11 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 						sizeof(struct gfs2_rgrp);
 					/* if it's on this page */
 					if (buf_offset + bitmap_byte < sbp->bsize) {
-						bi->bi_bh->b_data[buf_offset + bitmap_byte] &=
-							~(0x03 << (GFS2_BIT_SIZE * byte_bit));
-						bi->bi_bh->b_data[buf_offset + bitmap_byte] |=
-							(0x01 << (GFS2_BIT_SIZE * byte_bit));
-						bmodified(bi->bi_bh);
+						bi->bi_data[buf_offset + bitmap_byte] &=
+						           ~(0x03 << (GFS2_BIT_SIZE * byte_bit));
+						bi->bi_data[buf_offset + bitmap_byte] |=
+						            (0x01 << (GFS2_BIT_SIZE * byte_bit));
+						bi->bi_modified = 1;
 						break;
 					}
 					bitmap_byte -= (sbp->bsize - buf_offset);
@@ -1806,7 +1805,7 @@ static uint64_t rgrp_length(uint64_t size, struct gfs2_sbd *sdp)
 static int journ_space_to_rg(struct gfs2_sbd *sdp)
 {
 	int error = 0;
-	int j, x;
+	int j;
 	struct gfs_jindex *jndx;
 	struct rgrp_tree *rgd, *rgdhigh;
 	struct osi_node *n, *next = NULL;
@@ -1873,16 +1872,21 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 			exit(-1);
 		}
 
-		for (x = 0; x < rgd->ri.ri_length; x++)
-			rgd->bits[x].bi_bh = bget(sdp, rgd->ri.ri_addr + x);
+		rgd->bits[0].bi_data = calloc(rgd->ri.ri_length, sdp->bsize);
+		if (rgd->bits[0].bi_data == NULL) {
+			perror("");
+			exit(-1);
+		}
+		for (unsigned i = 1; i < rgd->ri.ri_length; i++)
+			rgd->bits[i].bi_data = rgd->bits[0].bi_data + (i * sdp->bsize);
 
 		convert_bitmaps(sdp, rgd);
-		for (x = 0; x < rgd->ri.ri_length; x++) {
-			if (x)
-				gfs2_meta_header_out(&mh, rgd->bits[x].bi_bh->b_data);
-			else
-				gfs2_rgrp_out(&rgd->rg, rgd->bits[x].bi_bh->b_data);
-			bmodified(rgd->bits[x].bi_bh);
+		gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_data);
+		rgd->bits[0].bi_modified = 1;
+
+		for (unsigned i = 1; i < rgd->ri.ri_length; i++) {
+			gfs2_meta_header_out(&mh, rgd->bits[i].bi_data);
+			rgd->bits[i].bi_modified = 1;
 		}
 	} /* for each journal */
 	return error;
@@ -2341,7 +2345,7 @@ int main(int argc, char **argv)
 		fsync(sb2.device_fd); /* write the buffers to disk */
 
 		/* Now free all the in memory */
-		gfs2_rgrp_free(&sb2.rgtree);
+		gfs2_rgrp_free(&sb2, &sb2.rgtree);
 		log_notice(_("Committing changes to disk.\n"));
 		fflush(stdout);
 		/* Set filesystem type in superblock to gfs2.  We do this at the */

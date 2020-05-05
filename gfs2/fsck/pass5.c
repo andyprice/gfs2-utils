@@ -139,7 +139,7 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgp,
 		bits = &rgp->bits[i];
 
 		/* update the bitmaps */
-		if (check_block_status(sdp, bl, bits->bi_bh->b_data + bits->bi_offset,
+		if (check_block_status(sdp, bl, bits->bi_data + bits->bi_offset,
 		                       bits->bi_len, &rg_block, rgp->ri.ri_data0, count))
 			return;
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
@@ -201,9 +201,10 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgp,
 			log_warn( _("Resource group counts updated\n"));
 			/* write out the rgrp */
 			if (sdp->gfs1)
-				gfs_rgrp_out(gfs1rg, rgp->bits[0].bi_bh->b_data);
+				gfs_rgrp_out(gfs1rg, rgp->bits[0].bi_data);
 			else
-				gfs2_rgrp_out(&rgp->rg, rgp->bits[0].bi_bh->b_data);
+				gfs2_rgrp_out(&rgp->rg, rgp->bits[0].bi_data);
+			rgp->bits[0].bi_modified = 1;
 		} else
 			log_err( _("Resource group counts left inconsistent\n"));
 	}

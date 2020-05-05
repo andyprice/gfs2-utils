@@ -104,16 +104,16 @@ static void refresh_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 	log_debug(_("Block is part of rgrp 0x%llx; refreshing the rgrp.\n"),
 		  (unsigned long long)rgd->ri.ri_addr);
 	for (i = 0; i < rgd->ri.ri_length; i++) {
-		if (rgd->bits[i].bi_bh->b_blocknr != blkno)
+		if (rgd->ri.ri_addr + i != blkno)
 			continue;
 
-		memcpy(rgd->bits[i].bi_bh->b_data, bh->b_data, sdp->bsize);
-		bmodified(rgd->bits[i].bi_bh);
+		memcpy(rgd->bits[i].bi_data, bh->b_data, sdp->bsize);
+		rgd->bits[i].bi_modified = 1;
 		if (i == 0) { /* this is the rgrp itself */
 			if (sdp->gfs1)
-				gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_bh->b_data);
+				gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_data);
 			else
-				gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_bh->b_data);
+				gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_data);
 		}
 		break;
 	}

@@ -46,24 +46,14 @@ uint32_t rgblocks2bitblocks(const unsigned int bsize, const uint32_t rgblocks, u
  * If fd > 0, write the data to the given file handle.
  * Otherwise, use gfs2 buffering in buf.c.
  */
-int build_rgrps(struct gfs2_sbd *sdp, int do_write)
+int build_rgrps(struct gfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rl;
 	uint32_t rgblocks, bitblocks;
 	struct gfs2_rindex *ri;
-	struct gfs2_meta_header mh;
-	unsigned int x;
 
-	mh.mh_magic = GFS2_MAGIC;
-	mh.mh_type = GFS2_METATYPE_RB;
-	mh.mh_format = GFS2_FORMAT_RB;
-	if (do_write)
-		n = osi_first(&sdp->rgtree);
-	else
-		n = osi_first(&sdp->rgcalc);
-
-	for (; n; n = next) {
+	for (n = osi_first(&sdp->rgcalc); n; n = next) {
 		next = osi_next(n);
 		rl = (struct rgrp_tree *)n;
 		ri = &rl->ri;
@@ -84,17 +74,6 @@ int build_rgrps(struct gfs2_sbd *sdp, int do_write)
 
 		if (gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, rl))
 			return -1;
-
-		if (do_write) {
-			for (x = 0; x < bitblocks; x++) {
-				rl->bits[x].bi_bh = bget(sdp, rl->start + x);
-				if (x)
-					gfs2_meta_header_out(&mh, rl->bits[x].bi_bh->b_data);
-				else
-					gfs2_rgrp_out(&rl->rg, rl->bits[x].bi_bh->b_data);
-				bmodified(rl->bits[x].bi_bh);
-			}
-		}
 
 		if (cfg_debug) {
 			printf("\n");
