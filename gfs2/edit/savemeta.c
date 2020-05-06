@@ -962,9 +962,12 @@ static int parse_header(char *buf, struct savemeta_header *smh)
 {
 	struct savemeta_header *smh_be = (void *)buf;
 
-	if (be32_to_cpu(smh_be->sh_magic) != SAVEMETA_MAGIC ||
-	    be32_to_cpu(smh_be->sh_format) > SAVEMETA_FORMAT) {
+	if (be32_to_cpu(smh_be->sh_magic) != SAVEMETA_MAGIC) {
 		printf("No valid file header found. Falling back to old format...\n");
+		return 1;
+	}
+	if (be32_to_cpu(smh_be->sh_format) > SAVEMETA_FORMAT) {
+		printf("This version of gfs2_edit is too old to restore this metadata format.\n");
 		return -1;
 	}
 	smh->sh_magic = be32_to_cpu(smh_be->sh_magic);
@@ -1226,9 +1229,12 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 		return -1;
 	}
 	bp = restore_buf;
-	if (parse_header(bp, smh) == 0) {
+	ret = parse_header(bp, smh);
+	if (ret == 0) {
 		bp = restore_buf + sizeof(*smh);
 		restore_off = sizeof(*smh);
+	} else if (ret == -1) {
+		return -1;
 	}
 	/* Scan for the position of the superblock. Required to support old formats(?). */
 	end = &restore_buf[256 + sizeof(struct saved_metablock) + sizeof(*sbmh)];
