@@ -121,6 +121,7 @@ static int restore_try_gzip(struct metafd *mfd)
 	mfd->gzfd = gzdopen(mfd->fd, "rb");
 	if (!mfd->gzfd)
 		return 1;
+	gzbuffer(mfd->gzfd, (1<<20)); /* Increase zlib's buffers to 1MB */
 	restore_left = mfd->read(mfd, restore_buf, RESTORE_BUF_SIZE);
 	if (restore_left < 512)
 		return -1;
@@ -475,6 +476,7 @@ static struct metafd savemetaopen(char *out_fn, int gziplevel)
 			fprintf(stderr, "gzdopen error: %s\n", strerror(errno));
 			exit(1);
 		}
+		gzbuffer(mfd.gzfd, (1<<20)); /* Increase zlib's buffers to 1MB */
 	}
 
 	return mfd;
