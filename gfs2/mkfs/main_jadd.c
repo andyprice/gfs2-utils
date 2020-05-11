@@ -40,15 +40,13 @@ struct jadd_opts {
 
 #define JA_FL_SET   0
 #define JA_FL_CLEAR 1
-static void set_flags(int fd, int op, uint32_t flags)
+static int set_flags(int fd, int op, uint32_t flags)
 {
-        int err;
 	uint32_t val;
 
-        err = ioctl(fd, FS_IOC_GETFLAGS, &val);
-        if (err) {
+        if (ioctl(fd, FS_IOC_GETFLAGS, &val)) {
 		perror("GETFLAGS");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
         if (op == JA_FL_SET)
@@ -56,11 +54,11 @@ static void set_flags(int fd, int op, uint32_t flags)
         else if (op == JA_FL_CLEAR)
                 val &= ~flags;
 
-        err = ioctl(fd, FS_IOC_SETFLAGS, &val);
-        if (err) {
+        if (ioctl(fd, FS_IOC_SETFLAGS, &val)) {
 		perror("SETFLAGS");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
+	return 0;
 }
 
 static int rename2system(struct jadd_opts *opts, const char *new_dir, const char *new_name)
@@ -242,115 +240,126 @@ static int create_new_inode(struct jadd_opts *opts)
 {
 	char *name = opts->new_inode;
 	int fd;
-	int error;
 
 	for (;;) {
 		fd = open(name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
 		if (fd >= 0)
 			break;
 		if (errno == EEXIST) {
-			error = unlink(name);
-			if (error){
+			if (unlink(name)) {
 				perror("unlink");
-				exit(EXIT_FAILURE);
+				return -1;
 			}
-		} else{
-			perror("create");
-			exit(EXIT_FAILURE);
+			continue;
 		}
+		perror("create");
+		return -1;
 	}
 
 	return fd;
 }
 
-static void add_ir(struct jadd_opts *opts)
+static int add_ir(struct jadd_opts *opts)
 {
-	int fd;
+	int fd, error = 0;
 	char new_name[256];
-	int error;
+	struct gfs2_inum_range ir;
 
-	fd = create_new_inode(opts);
+	if ((fd = create_new_inode(opts)) < 0)
+		return fd;
 
-	{
-		struct gfs2_inum_range ir;
+	if ((error = set_flags(fd, JA_FL_SET, FS_JOURNAL_DATA_FL)))
+		goto close_fd;
 
-		set_flags(fd, JA_FL_SET, FS_JOURNAL_DATA_FL);
 		memset(&ir, 0, sizeof(struct gfs2_inum_range));
 		if (write(fd, (void*)&ir, sizeof(struct gfs2_inum_range)) !=
 		    sizeof(struct gfs2_inum_range)) {
-			perror("add_ir");
-			exit(EXIT_FAILURE);
-		}
+		perror("add_ir write");
+		error = -1;
+		goto close_fd;
 	}
 
-	close(fd);
+	if ((error = fsync(fd))) {
+		perror("add_ir fsync");
+		goto close_fd;
+	}
 
 	sprintf(new_name, "inum_range%u", opts->journals);
 	error = rename2system(opts, opts->per_node, new_name);
 	if (error < 0 && errno != EEXIST){
 		perror("add_ir rename2system");
-		exit(EXIT_FAILURE);
+		goto close_fd;
 	}
+close_fd:
+	return close(fd) || error;
 }
 
-static void add_sc(struct jadd_opts *opts)
+static int add_sc(struct jadd_opts *opts)
 {
-	int fd;
+	int fd, error = 0;
 	char new_name[256];
-	int error;
+	struct gfs2_statfs_change sc;
 
-	fd = create_new_inode(opts);
+	if ((fd = create_new_inode(opts)) < 0)
+		return fd;
 
-	{
-		struct gfs2_statfs_change sc;
-		set_flags(fd, JA_FL_SET, FS_JOURNAL_DATA_FL);
+	if ((error = set_flags(fd, JA_FL_SET, FS_JOURNAL_DATA_FL)))
+		goto close_fd;
 
 		memset(&sc, 0, sizeof(struct gfs2_statfs_change));
 		if (write(fd, (void*)&sc, sizeof(struct gfs2_statfs_change)) !=
 		    sizeof(struct gfs2_statfs_change)) {
-			perror("add_sc");
-			exit(EXIT_FAILURE);
-		}
+		perror("add_sc write");
+		error = -1;
+		goto close_fd;
 	}
 
-	close(fd);
+	if ((error = fsync(fd))) {
+		perror("add_sc fsync");
+		goto close_fd;
+	}
 
 	sprintf(new_name, "statfs_change%u", opts->journals);
 	error = rename2system(opts, opts->per_node, new_name);
 	if (error < 0 && errno != EEXIST){
 		perror("add_sc rename2system");
-		exit(EXIT_FAILURE);
+		goto close_fd;
 	}
+close_fd:
+	return close(fd) || error;
 }
 
-static void add_qc(struct gfs2_sbd *sdp, struct jadd_opts *opts)
-{
-	int fd;
-	char new_name[256];
-	int error;
-
-	fd = create_new_inode(opts);
-
+static int add_qc(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	{
-		char buf[sdp->bsize];
+	int fd, error = 0;
+	char new_name[256], buf[sdp->bsize];
 		unsigned int blocks =
 			sdp->qcsize << (20 - sdp->sd_sb.sb_bsize_shift);
 		unsigned int x;
 		struct gfs2_meta_header mh;
 		struct gfs2_buffer_head dummy_bh;
 
-		dummy_bh.b_data = buf;
-		set_flags(fd, JA_FL_CLEAR, FS_JOURNAL_DATA_FL);
-		memset(buf, 0, sdp->bsize);
+	if ((fd = create_new_inode(opts)) < 0)
+		return fd;
 
+		dummy_bh.b_data = buf;
+
+	if ((error = set_flags(fd, JA_FL_CLEAR, FS_JOURNAL_DATA_FL)))
+		goto close_fd;
+
+	memset(buf, 0, sdp->bsize);
 		for (x=0; x<blocks; x++) {
 			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
-				perror("add_qc");
-				exit(EXIT_FAILURE);
+			perror("add_qc write");
+			error = -1;
+			goto close_fd;
 			}
 		}
 
-		lseek(fd, 0, SEEK_SET);
+	if ((error = lseek(fd, 0, SEEK_SET)) < 0) {
+		perror("add_qc lseek");
+		goto close_fd;
+	}
 		
 		memset(&mh, 0, sizeof(struct gfs2_meta_header));
 		mh.mh_magic = GFS2_MAGIC;
@@ -360,100 +369,114 @@ static void add_qc(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 
 		for (x=0; x<blocks; x++) {
 			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
-				perror("add_qc");
-				exit(EXIT_FAILURE);
-			}
+			perror("add_qc write");
+			error = -1;
+			goto close_fd;
 		}
 
-		error = fsync(fd);
-		if (error){
+		if ((error = fsync(fd))) {
 			perror("add_qc fsync");
-			exit(EXIT_FAILURE);
+			goto close_fd;
 		}
 	}
 
-	close(fd);
-	
 	sprintf(new_name, "quota_change%u", opts->journals);
 	error = rename2system(opts, opts->per_node, new_name);
 	if (error < 0 && errno != EEXIST){
 		perror("add_qc rename2system");
-		exit(EXIT_FAILURE);
+		goto close_fd;
 	}
+close_fd:
+	return close(fd) || error;
 }
 
-static void gather_info(struct gfs2_sbd *sdp, struct jadd_opts *opts)
+static int gather_info(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	struct statfs statbuf;
+
 	if (statfs(opts->path, &statbuf) < 0) {
 		perror(opts->path);
-		exit(EXIT_FAILURE);
+		return -1;
 	}
+
 	sdp->bsize = statbuf.f_bsize;
 	sdp->blks_total = statbuf.f_blocks;
 	sdp->blks_alloced = sdp->blks_total - statbuf.f_bfree;
+
+	return 0;
 }
 
-static void find_current_journals(struct jadd_opts *opts)
+static int find_current_journals(struct jadd_opts *opts)
 {
 	struct dirent *dp;
 	DIR *dirp;
 	unsigned existing_journals = 0;
+	int ret = 0;
 
 	dirp = opendir(opts->jindex);
 	if (!dirp) {
 		perror("jindex");
-		exit(EXIT_FAILURE);
+		ret = -1;
+		goto out;
 	}
 	while (dirp) {
 		if ((dp = readdir(dirp)) != NULL) {
 			if (strncmp(dp->d_name, "journal", 7) == 0)
 				existing_journals++;
 		} else
-			goto close;
+			goto close_fd;
 	}
-close:
-	closedir(dirp);
+close_fd:
+	if ((ret = closedir(dirp)))
+		goto out;
+
 	if (existing_journals == 0) {
-		die( _("No journals found. Did you run mkfs.gfs2 correctly?\n"));
+		errno = EINVAL;
+		perror("No journals found. Did you run mkfs.gfs2 correctly?\n");
+		ret = -1;
+		goto out;
 	}
 
 	opts->orig_journals = existing_journals;
+out:
+	return ret;
 }
 
-static void add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
-{
-	int fd;
-	char new_name[256];
-	int error;
-
-	fd = create_new_inode(opts);
-
+static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	{
-		char buf[sdp->bsize];
+	int fd, error = 0;
+	char new_name[256], buf[sdp->bsize];
 		unsigned int blocks =
 			sdp->jsize << (20 - sdp->sd_sb.sb_bsize_shift);
 		unsigned int x;
 		struct gfs2_log_header lh;
-		uint64_t seq = RANDOM(blocks);
+	uint64_t seq = RANDOM(blocks);;
 
-		set_flags(fd, JA_FL_CLEAR, FS_JOURNAL_DATA_FL);
+	if ((fd = create_new_inode(opts)) < 0)
+		return fd;
+
+	if ((error = set_flags(fd, JA_FL_CLEAR, FS_JOURNAL_DATA_FL)))
+		goto close_fd;
+
 		memset(buf, 0, sdp->bsize);
 		for (x=0; x<blocks; x++) {
 			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
-				perror("add_j");
-				exit(EXIT_FAILURE);
+			perror("add_j write");
+			error = -1;
+			goto close_fd;
 			}
 		}
 
-		lseek(fd, 0, SEEK_SET);
+	if ((error = lseek(fd, 0, SEEK_SET)) < 0) {
+		perror("add_j lseek");
+		goto close_fd;
+	}
 
 		memset(&lh, 0, sizeof(struct gfs2_log_header));
 		lh.lh_header.mh_magic = GFS2_MAGIC;
 		lh.lh_header.mh_type = GFS2_METATYPE_LH;
 		lh.lh_header.mh_format = GFS2_FORMAT_LH;
 		lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
-
 		for (x=0; x<blocks; x++) {
 			uint32_t hash;
 			struct gfs2_buffer_head dummy_bh;
@@ -467,28 +490,27 @@ static void add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 
 			if (write(fd, buf, sdp->bsize) != sdp->bsize) {
 				perror("add_j");
-				exit(EXIT_FAILURE);
+			error = -1;
+			goto close_fd;
 			}
 
 			if (++seq == blocks)
 				seq = 0;
-		}
 
-		error = fsync(fd);
-		if (error){
+		if ((error = fsync(fd))){
 			perror("add_j fsync");
-			exit(EXIT_FAILURE);
+			goto close_fd;
 		}
 	}
-
-	close(fd);
 
 	sprintf(new_name, "journal%u", opts->journals);
 	error = rename2system(opts, opts->jindex, new_name);
 	if (error < 0 && errno != EEXIST){
 		perror("add_j rename2system");
-		exit(EXIT_FAILURE);
+		goto close_fd;
 	}
+close_fd:
+	return close(fd) || error;
 }
 
 static int check_fit(struct gfs2_sbd *sdp, struct jadd_opts *opts)
@@ -516,7 +538,7 @@ static int check_fit(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 		printf( _("Available space : %*lu blks\n\n"), 10,
 			sdp->blks_total - sdp->blks_alloced);
 		errno = ENOSPC;
-		return 1;
+		return -1;
 	}
 	return 0;
 }
@@ -543,35 +565,43 @@ int main(int argc, char *argv[])
 
 	sbd.path_fd = lgfs2_open_mnt_dir(opts.path, O_RDONLY|O_CLOEXEC, &mnt);
 	if (sbd.path_fd < 0) {
-		fprintf(stderr, _("Error looking up mount '%s': %s\n"), opts.path, strerror(errno));
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "Error looking up mount '%s': %s\n",
+			opts.path, strerror(errno));
+		ret = -1;
+		goto out;
 	}
 	if (mnt == NULL) {
-		fprintf(stderr, _("%s: not a mounted gfs2 file system\n"), opts.path);
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "%s: not a mounted gfs2 file system: %s\n",
+			opts.path, strerror(EINVAL));
+		ret = -1;
+		goto close_sb;
 	}
-	gather_info(sdp, &opts);
+
+	if ((ret = gather_info(sdp, &opts)))
+		goto close_sb;
+
 	mfs.context = copy_context_opt(mnt);
-	if (mount_gfs2_meta(&mfs, mnt->mnt_dir, opts.debug)) {
+	if ((ret = mount_gfs2_meta(&mfs, mnt->mnt_dir, opts.debug))) {
 		perror("GFS2 metafs");
-		exit(EXIT_FAILURE);
+		goto close_sb;
 	}
 
-	if (build_paths(mfs.path, &opts)) {
+	if ((ret = build_paths(mfs.path, &opts))) {
 		perror(_("Failed to build paths"));
-		exit(EXIT_FAILURE);
+		goto umount_meta;
 	}
 
-	if (compute_constants(sdp)) {
+	if ((ret = compute_constants(sdp))) {
 		perror(_("Failed to compute file system constants"));
-		exit(EXIT_FAILURE);
+		goto free_paths;
 	}
-	find_current_journals(&opts);
 
-	ret = check_fit(sdp, &opts);
-	if (ret) {
+	if ((ret = find_current_journals(&opts)))
+		goto free_paths;
+
+	if ((ret = check_fit(sdp, &opts))) {
 		perror(_("Failed to add journals"));
-		goto out;
+		goto free_paths;
 	}
 
 	total = opts.orig_journals + opts.journals;
@@ -579,23 +609,29 @@ int main(int argc, char *argv[])
 	     opts.journals < total;
 	     opts.journals++) {
 		if (metafs_interrupted) {
-			cleanup_metafs(&mfs);
-			exit(130);
+			errno = 130;
+			goto free_paths;
 		}
-		add_ir(&opts);
-		add_sc(&opts);
-		add_qc(sdp, &opts);
-		add_j(sdp, &opts);
+		if ((ret = add_ir(&opts)))
+			goto free_paths;
+		if ((ret = add_sc(&opts)))
+			goto free_paths;
+		if ((ret = add_qc(sdp, &opts)))
+			goto free_paths;
+		if ((ret = add_j(sdp, &opts)))
+			goto free_paths;
 	}
 
-out:
+free_paths:
 	free(opts.new_inode);
 	free(opts.per_node);
 	free(opts.jindex);
-	close(sdp->path_fd);
-	cleanup_metafs(&mfs);
+umount_meta:
 	sync();
-
+	cleanup_metafs(&mfs);
+close_sb:
+	close(sdp->path_fd);
+out:
 	if (!ret)
 		print_results(&opts);
 
