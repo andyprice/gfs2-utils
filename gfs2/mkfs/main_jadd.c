@@ -396,6 +396,8 @@ static void gather_info(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 		exit(EXIT_FAILURE);
 	}
 	sdp->bsize = statbuf.f_bsize;
+	sdp->blks_total = statbuf.f_blocks;
+	sdp->blks_alloced = sdp->blks_total - statbuf.f_bfree;
 }
 
 static void find_current_journals(struct jadd_opts *opts)
@@ -527,13 +529,43 @@ static void add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	}
 }
 
+static int check_fit(struct gfs2_sbd *sdp, struct jadd_opts *opts)
+{
+	/* Compute how much space we'll need for the new journals
+	 * Number of blocks needed per added journal:
+	 * 1 block for the ir inode
+	 * 1 block for the sc inode
+	 * for sizes of the qc and journal inodes, use lgfs2_space_for_data()
+	 * to calculate.
+	 */
+	uint64_t blks_per_j, total_blks;
+
+	blks_per_j = 1 + 1 +
+		lgfs2_space_for_data(sdp, sdp->bsize, sdp->qcsize << 20) +
+		lgfs2_space_for_data(sdp, sdp->bsize, sdp->jsize << 20);
+	total_blks = opts->journals * blks_per_j;
+
+	if (total_blks > (sdp->blks_total - sdp->blks_alloced)) {
+		printf( _("\nInsufficient space on the device to add %u %uMB "
+			  "journals (%uMB QC size)\n\n"),
+			opts->journals, sdp->jsize, sdp->qcsize);
+		printf( _("Required space  : %*lu blks (%lu blks per "
+			  "journal)\n"), 10, total_blks, blks_per_j);
+		printf( _("Available space : %*lu blks\n\n"), 10,
+			sdp->blks_total - sdp->blks_alloced);
+		errno = ENOSPC;
+		return 1;
+	}
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	struct jadd_opts opts = {0};
 	struct gfs2_sbd sbd, *sdp = &sbd;
 	struct metafs mfs = {0};
 	struct mntent *mnt;
-	unsigned int total;
+	unsigned int total, ret = 0;
 
 	setlocale(LC_ALL, "");
 	textdomain("gfs2-utils");
@@ -574,6 +606,12 @@ int main(int argc, char *argv[])
 	}
 	find_current_journals(&opts);
 
+	ret = check_fit(sdp, &opts);
+	if (ret) {
+		perror(_("Failed to add journals"));
+		goto out;
+	}
+
 	total = opts.orig_journals + opts.journals;
 	for (opts.journals = opts.orig_journals;
 	     opts.journals < total;
@@ -588,13 +626,16 @@ int main(int argc, char *argv[])
 		add_j(sdp, &opts);
 	}
 
+out:
 	free(opts.new_inode);
 	free(opts.per_node);
 	free(opts.jindex);
 	close(sdp->path_fd);
 	cleanup_metafs(&mfs);
 	sync();
-	print_results(&opts);
 
-	return 0;
+	if (!ret)
+		print_results(&opts);
+
+	return ret;
 }
