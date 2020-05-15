@@ -789,31 +789,15 @@ static void save_inode_data(struct metafd *mfd, uint64_t iblk)
 		}
 	}
 	if (inode->i_di.di_eattr) { /* if this inode has extended attributes */
-		struct gfs2_meta_header mh;
 		struct gfs2_buffer_head *lbh;
+		int mhtype;
 
 		lbh = bread(&sbd, inode->i_di.di_eattr);
-		save_block(sbd.device_fd, mfd, inode->i_di.di_eattr, iblk, NULL);
-		gfs2_meta_header_in(&mh, lbh->b_data);
-		if (mh.mh_magic == GFS2_MAGIC &&
-		    mh.mh_type == GFS2_METATYPE_EA)
+		save_block(sbd.device_fd, mfd, inode->i_di.di_eattr, iblk, &mhtype);
+		if (mhtype == GFS2_METATYPE_EA)
 			save_ea_block(mfd, lbh->b_data, iblk);
-		else if (mh.mh_magic == GFS2_MAGIC &&
-			 mh.mh_type == GFS2_METATYPE_IN)
+		else if (mhtype == GFS2_METATYPE_IN)
 			save_indirect_blocks(mfd, cur_list, lbh, iblk, 2, 2);
-		else {
-			if (mh.mh_magic == GFS2_MAGIC) /* if it's metadata */
-				save_block(sbd.device_fd, mfd, inode->i_di.di_eattr,
-				           iblk, NULL);
-			fprintf(stderr,
-				"\nWarning: corrupt extended "
-				"attribute at block %llu (0x%llx) "
-				"detected in inode %lld (0x%llx).\n",
-				(unsigned long long)inode->i_di.di_eattr,
-				(unsigned long long)inode->i_di.di_eattr,
-				(unsigned long long)iblk,
-				(unsigned long long)iblk);
-		}
 		brelse(lbh);
 	}
 	inode_put(&inode);
