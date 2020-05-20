@@ -194,6 +194,30 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 	return 0;
 }
 
+static struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip, uint64_t lbn, int prealloc)
+{
+	struct gfs2_sbd *sdp = ip->i_sbd;
+	uint64_t dbn;
+	int new = TRUE;
+
+	if (ip->i_di.di_height == 0)
+		unstuff_dinode(ip);
+
+	block_map(ip, lbn, &new, &dbn, NULL, prealloc);
+	if (!dbn)
+		return NULL;
+
+	if (!prealloc && new &&
+	    ip->i_di.di_size < (lbn + 1) << sdp->sd_sb.sb_bsize_shift) {
+		bmodified(ip->i_bh);
+		ip->i_di.di_size = (lbn + 1) << sdp->sd_sb.sb_bsize_shift;
+	}
+	if (dbn == ip->i_di.di_num.no_addr)
+		return ip->i_bh;
+	else
+		return bread(sdp, dbn);
+}
+
 int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 {
 	struct gfs2_log_header lh;

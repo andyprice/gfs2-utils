@@ -744,33 +744,6 @@ int __gfs2_writei(struct gfs2_inode *ip, void *buf,
 	return copied;
 }
 
-struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip, uint64_t lbn,
-				      int prealloc)
-{
-	struct gfs2_sbd *sdp = ip->i_sbd;
-	uint64_t dbn;
-	int new = TRUE;
-
-	if (inode_is_stuffed(ip))
-		unstuff_dinode(ip);
-
-	block_map(ip, lbn, &new, &dbn, NULL, prealloc);
-	if (!dbn) {
-		fprintf(stderr, "get_file_buf\n");
-		exit(1);
-	}
-
-	if (!prealloc && new &&
-	    ip->i_di.di_size < (lbn + 1) << sdp->sd_sb.sb_bsize_shift) {
-		bmodified(ip->i_bh);
-		ip->i_di.di_size = (lbn + 1) << sdp->sd_sb.sb_bsize_shift;
-	}
-	if (dbn == ip->i_di.di_num.no_addr)
-		return ip->i_bh;
-	else
-		return bread(sdp, dbn);
-}
-
 int gfs2_dirent_first(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 					  struct gfs2_dirent **dent)
 {

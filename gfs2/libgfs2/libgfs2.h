@@ -432,8 +432,6 @@ extern int gfs2_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
 	__gfs2_writei(ip, buf, offset, size, 1)
 extern int __gfs2_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
 			 unsigned int size, int resize);
-extern struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip,
-					     uint64_t lbn, int prealloc);
 extern int init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, struct gfs2_inum *inum,
                        unsigned int mode, uint32_t flags, struct gfs2_inum *parent);
 extern struct gfs2_inode *createi(struct gfs2_inode *dip, const char *filename,
