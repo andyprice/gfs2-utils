@@ -248,14 +248,11 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 	return copied;
 }
 
-/* ------------------------------------------------------------------------ */
-/* gfs_dinode_in */
-/* ------------------------------------------------------------------------ */
-static void gfs_dinode_in(struct gfs_dinode *di, struct gfs2_buffer_head *bh)
+static void gfs_dinode_in(struct gfs_dinode *di, char *buf)
 {
-	struct gfs_dinode *str = (struct gfs_dinode *)bh->b_data;
+	struct gfs_dinode *str = (struct gfs_dinode *)buf;
 
-	gfs2_meta_header_in(&di->di_header, bh->b_data);
+	gfs2_meta_header_in(&di->di_header, buf);
 	gfs2_inum_in(&di->di_num, (char *)&str->di_num);
 
 	di->di_mode = be32_to_cpu(str->di_mode);
@@ -297,7 +294,7 @@ static struct gfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp,
 		bh = bread(sdp, di_addr);
 		ip->bh_owned = 1;
 	}
-	gfs_dinode_in(&gfs1_dinode, bh);
+	gfs_dinode_in(&gfs1_dinode, bh->b_data);
 	memcpy(&ip->i_di.di_header, &gfs1_dinode.di_header,
 	       sizeof(struct gfs2_meta_header));
 	memcpy(&ip->i_di.di_num, &gfs1_dinode.di_num,
