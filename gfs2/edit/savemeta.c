@@ -303,7 +303,7 @@ static size_t di_save_len(struct gfs2_buffer_head *bh, uint64_t owner)
 	size_t len;
 
 	if (sbd.gfs1)
-		inode = lgfs2_gfs_inode_get(&sbd, bh);
+		inode = lgfs2_gfs_inode_get(&sbd, bh->b_data);
 	else
 		inode = lgfs2_inode_get(&sbd, bh);
 
@@ -724,7 +724,7 @@ static void save_inode_data(struct metafd *mfd, uint64_t iblk)
 		osi_list_init(&metalist[i]);
 	metabh = bread(&sbd, iblk);
 	if (sbd.gfs1) {
-		inode = lgfs2_gfs_inode_get(&sbd, metabh);
+		inode = lgfs2_gfs_inode_get(&sbd, metabh->b_data);
 	} else {
 		inode = lgfs2_inode_get(&sbd, metabh);
 	}

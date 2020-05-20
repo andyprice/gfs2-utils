@@ -292,7 +292,7 @@ struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 		return sysip;
 
 	if (sdp->gfs1)
-		ip = lgfs2_gfs_inode_get(sdp, bh);
+		ip = lgfs2_gfs_inode_get(sdp, bh->b_data);
 	else
 		ip = lgfs2_inode_get(sdp, bh);
 	if (ip)

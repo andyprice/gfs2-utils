@@ -867,7 +867,7 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 	struct inode_block *fixdir;
 	int inode_was_gfs1;
 
-	inode = lgfs2_gfs_inode_get(sbp, bh);
+	inode = lgfs2_gfs_inode_get(sbp, bh->b_data);
 	if (inode == NULL) {
 		log_crit(_("Error reading inode: %s\n"), strerror(errno));
 		return -1;

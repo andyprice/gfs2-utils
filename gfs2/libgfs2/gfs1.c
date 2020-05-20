@@ -277,9 +277,7 @@ static void gfs_dinode_in(struct gfs_dinode *di, char *buf)
 	di->di_eattr = be64_to_cpu(str->di_eattr);
 }
 
-static struct gfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp,
-					  struct gfs2_buffer_head *bh,
-					  uint64_t di_addr)
+static struct gfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp, char *buf, uint64_t di_addr)
 {
 	struct gfs_dinode gfs1_dinode;
 	struct gfs2_inode *ip;
@@ -288,13 +286,7 @@ static struct gfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp,
 	if (ip == NULL) {
 		return NULL;
 	}
-
-	ip->bh_owned = 0;
-	if (!bh) {
-		bh = bread(sdp, di_addr);
-		ip->bh_owned = 1;
-	}
-	gfs_dinode_in(&gfs1_dinode, bh->b_data);
+	gfs_dinode_in(&gfs1_dinode, buf);
 	memcpy(&ip->i_di.di_header, &gfs1_dinode.di_header,
 	       sizeof(struct gfs2_meta_header));
 	memcpy(&ip->i_di.di_num, &gfs1_dinode.di_num,
@@ -319,20 +311,31 @@ static struct gfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp,
 	ip->i_di.di_depth = gfs1_dinode.di_depth;
 	ip->i_di.di_entries = gfs1_dinode.di_entries;
 	ip->i_di.di_eattr = gfs1_dinode.di_eattr;
-	ip->i_bh = bh;
 	ip->i_sbd = sdp;
 	return ip;
 }
 
-struct gfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp,
-				 struct gfs2_buffer_head *bh)
+struct gfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp, char *buf)
 {
-	return __gfs_inode_get(sdp, bh, 0);
+	return __gfs_inode_get(sdp, buf, 0);
 }
 
 struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 {
-	return __gfs_inode_get(sdp, NULL, di_addr);
+	struct gfs2_buffer_head *bh;
+	struct gfs2_inode *ip;
+
+	bh = bget(sdp, di_addr);
+	if (bh == NULL)
+		return NULL;
+	if (pread(sdp->device_fd, bh->b_data, sdp->bsize, di_addr * sdp->bsize) != sdp->bsize) {
+		brelse(bh);
+		return NULL;
+	}
+	ip = __gfs_inode_get(sdp, bh->b_data, di_addr);
+	ip->i_bh = bh;
+	ip->bh_owned = 1;
+	return ip;
 }
 
 /* ------------------------------------------------------------------------ */
