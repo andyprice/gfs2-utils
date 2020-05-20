@@ -156,41 +156,41 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 		.lh_flags = GFS2_LOG_HEAD_UNMOUNT,
 #endif
 	};
-	struct gfs2_buffer_head *bh;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	unsigned blocks = (ip->i_di.di_size + sdp->bsize - 1) / sdp->bsize;
 	uint64_t jext0 = ip->i_di.di_num.no_addr + ip->i_di.di_blocks - blocks;
 	uint64_t seq = ((blocks) * (random() / (RAND_MAX + 1.0)));
+	uint64_t jblk = jext0;
+	char *buf;
 
-	bh = bget(sdp, jext0);
-	if (bh == NULL)
+	buf = calloc(1, sdp->bsize);
+	if (buf == NULL)
 		return -1;
 
 	crc32c_optimization_init();
 	do {
-		struct gfs2_log_header *buflh = (struct gfs2_log_header *)bh->b_data;
+		struct gfs2_log_header *buflh = (struct gfs2_log_header *)buf;
 
 		lh.lh_sequence = seq;
-		lh.lh_blkno = bh->b_blocknr - jext0;
-		gfs2_log_header_out(&lh, bh->b_data);
+		lh.lh_blkno = jblk - jext0;
+		gfs2_log_header_out(&lh, buf);
 
-		buflh->lh_hash = cpu_to_be32(lgfs2_log_header_hash(bh->b_data));
+		buflh->lh_hash = cpu_to_be32(lgfs2_log_header_hash(buf));
 #ifdef GFS2_HAS_LH_V2
-		buflh->lh_addr = cpu_to_be64(bh->b_blocknr);
-		buflh->lh_crc = cpu_to_be32(lgfs2_log_header_crc(bh->b_data, sdp->bsize));
+		buflh->lh_addr = cpu_to_be64(jblk);
+		buflh->lh_crc = cpu_to_be32(lgfs2_log_header_crc(buf, sdp->bsize));
 #endif
-
-		if (bwrite(bh)) {
-			free(bh);
+		if (pwrite(sdp->device_fd, buf, sdp->bsize, jblk * sdp->bsize) != sdp->bsize) {
+			free(buf);
 			return -1;
 		}
 
 		if (++seq == blocks)
 			seq = 0;
 
-	} while (++bh->b_blocknr < jext0 + blocks);
+	} while (++jblk < jext0 + blocks);
 
-	free(bh);
+	free(buf);
 	return 0;
 }
 
