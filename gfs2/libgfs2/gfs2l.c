@@ -1,6 +1,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include "lang.h"
 #include "libgfs2.h"
 
 static void usage(const char *cmd)

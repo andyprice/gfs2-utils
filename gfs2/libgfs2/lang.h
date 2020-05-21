@@ -12,6 +12,21 @@ struct lgfs2_lang_state {
 	struct ast_node *ls_interp_curr;
 };
 
+struct lgfs2_lang_result {
+	uint64_t lr_blocknr;
+	struct gfs2_buffer_head *lr_bh;
+	const struct lgfs2_metadata *lr_mtype;
+	int lr_state; // GFS2_BLKST_*
+};
+
+extern struct lgfs2_lang_state *lgfs2_lang_init(void);
+extern int lgfs2_lang_parsef(struct lgfs2_lang_state *state, FILE *script);
+extern int lgfs2_lang_parses(struct lgfs2_lang_state *state, const char *script);
+extern struct lgfs2_lang_result *lgfs2_lang_result_next(struct lgfs2_lang_state *state, struct gfs2_sbd *sbd);
+extern int lgfs2_lang_result_print(struct lgfs2_lang_result *result);
+extern void lgfs2_lang_result_free(struct lgfs2_lang_result **result);
+extern void lgfs2_lang_free(struct lgfs2_lang_state **state);
+
 typedef enum {
 	AST_NONE,
 	// Statements

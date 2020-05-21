@@ -41,10 +41,7 @@ libgfs2_la_SOURCES = \
 	fs_ops.c \
 	recovery.c \
 	structures.c \
-	meta.c \
-	lang.c \
-	parser.y \
-	lexer.l
+	meta.c
 
 libgfs2_la_CPPFLAGS = \
 	-D_FILE_OFFSET_BITS=64 \
@@ -53,13 +50,18 @@ libgfs2_la_CPPFLAGS = \
 	-I$(top_srcdir)/gfs2/include \
 	$(uuid_CFLAGS)
 
-gfs2l_SOURCES = gfs2l.c
+gfs2l_SOURCES = \
+	gfs2l.c \
+	lang.c \
+	parser.y \
+	lexer.l
 gfs2l_LDADD = \
 	libgfs2.la \
 	$(uuid_LIBS)
 gfs2l_CPPFLAGS = \
 	-I$(top_srcdir)/gfs2/include \
-	-D_FILE_OFFSET_BITS=64
+	-D_FILE_OFFSET_BITS=64 \
+	$(uuid_CFLAGS)
 
 # Autotools can't handle header files output by flex so we have to generate it manually
 lexer.h: lexer.l
