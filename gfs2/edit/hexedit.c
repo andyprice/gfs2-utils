@@ -1057,7 +1057,7 @@ static int read_master_dir(void)
 	if (bh == NULL)
 		return 1;
 	gfs2_dinode_in(&di, bh->b_data);
-	do_dinode_extended(&di, bh); /* get extended data, if any */
+	do_dinode_extended(&di, bh->b_data); /* get extended data, if any */
 	memcpy(&masterdir, &indirect[0], sizeof(struct indirect_info));
 	return 0;
 }
@@ -1128,7 +1128,7 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 	}
 	else if (gfs2_struct_type == GFS2_METATYPE_DI) {
 		gfs2_dinode_in(&di, bh->b_data);
-		do_dinode_extended(&di, bh); /* get extended data, if any */
+		do_dinode_extended(&di, bh->b_data); /* get extended data, if any */
 	}
 	else if (gfs2_struct_type == GFS2_METATYPE_IN) { /* indirect block list */
 		if (blockhist) {

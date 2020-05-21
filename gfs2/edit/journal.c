@@ -57,7 +57,7 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 	gfs2_dinode_in(&di, jindex_bh->b_data);
 
 	if (!sbd.gfs1)
-		do_dinode_extended(&di, jindex_bh); /* parse dir. */
+		do_dinode_extended(&di, jindex_bh->b_data); /* parse dir. */
 
 	if (sbd.gfs1) {
 		struct gfs2_inode *jiinode;

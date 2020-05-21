@@ -274,7 +274,7 @@ static int init_per_node_lookup(void)
 		return 1;
 	}
 
-	do_dinode_extended(&per_node_di->i_di, per_node_di->i_bh);
+	do_dinode_extended(&per_node_di->i_di, per_node_di->i_bh->b_data);
 	inode_put(&per_node_di);
 
 	for (i = 0; i < indirect_blocks; i++) {
@@ -993,7 +993,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	lbh = bread(&sbd, jindex_block);
 	gfs2_dinode_in(&di, lbh->b_data);
 	if (!sbd.gfs1)
-		do_dinode_extended(&di, lbh);
+		do_dinode_extended(&di, lbh->b_data);
 	brelse(lbh);
 
 	printf("Filesystem size: %.2fGB\n", (sbd.fssize * sbd.bsize) / ((float)(1 << 30)));

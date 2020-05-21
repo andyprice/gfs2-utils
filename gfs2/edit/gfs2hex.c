@@ -236,7 +236,7 @@ static int indirect_dirent(struct indirect_info *indir, char *ptr, int d)
 	return de.de_rec_len;
 }
 
-void do_dinode_extended(struct gfs2_dinode *dine, struct gfs2_buffer_head *lbh)
+void do_dinode_extended(struct gfs2_dinode *dine, char *buf)
 {
 	unsigned int x, y, ptroff = 0;
 	uint64_t p, last;
@@ -249,7 +249,7 @@ void do_dinode_extended(struct gfs2_dinode *dine, struct gfs2_buffer_head *lbh)
 		/* Indirect pointers */
 		for (x = sizeof(struct gfs2_dinode); x < sbd.bsize;
 			 x += sizeof(uint64_t)) {
-			p = be64_to_cpu(*(uint64_t *)(lbh->b_data + x));
+			p = be64_to_cpu(*(uint64_t *)(buf + x));
 			if (p) {
 				indirect->ii[indirect_blocks].block = p;
 				indirect->ii[indirect_blocks].mp.mp_list[0] =
@@ -270,7 +270,7 @@ void do_dinode_extended(struct gfs2_dinode *dine, struct gfs2_buffer_head *lbh)
 		indirect->ii[0].block = block;
 		indirect->ii[0].is_dir = TRUE;
 		for (x = sizeof(struct gfs2_dinode); x < sbd.bsize; x += skip) {
-			skip = indirect_dirent(indirect->ii, lbh->b_data + x,
+			skip = indirect_dirent(indirect->ii, buf + x,
 					       indirect->ii[0].dirents);
 			if (skip <= 0)
 				break;
@@ -280,14 +280,13 @@ void do_dinode_extended(struct gfs2_dinode *dine, struct gfs2_buffer_head *lbh)
 			 (dine->di_flags & GFS2_DIF_EXHASH) &&
 			 dine->di_height == 0) {
 		/* Leaf Pointers: */
-		
-		last = be64_to_cpu(*(uint64_t *)(lbh->b_data +
-						 sizeof(struct gfs2_dinode)));
-    
+
+		last = be64_to_cpu(*(uint64_t *)(buf + sizeof(struct gfs2_dinode)));
+
 		for (x = sizeof(struct gfs2_dinode), y = 0;
 			 y < (1 << dine->di_depth);
 			 x += sizeof(uint64_t), y++) {
-			p = be64_to_cpu(*(uint64_t *)(lbh->b_data + x));
+			p = be64_to_cpu(*(uint64_t *)(buf + x));
 
 			if (p != last || ((y + 1) * sizeof(uint64_t) == dine->di_size)) {
 				struct gfs2_buffer_head *tmp_bh;
