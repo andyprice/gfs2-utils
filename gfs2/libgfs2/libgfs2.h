@@ -146,7 +146,8 @@ struct lgfs2_metadata {
 	const unsigned header:1;
 	const uint32_t mh_type;
 	const uint32_t mh_format;
-	const char *name;
+	const char *name; /* Struct name */
+	const char *display; /* Short name for non-programmers */
 	const struct lgfs2_metafield *fields;
 	const unsigned nfields;
 	const unsigned size;
