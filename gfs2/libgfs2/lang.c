@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <sys/queue.h>
 #include <errno.h>
 #include <limits.h>
@@ -286,15 +287,14 @@ static uint64_t ast_lookup_block_num(struct ast_node *ast, struct gfs2_sbd *sbd)
 	return bn;
 }
 
-static struct gfs2_buffer_head *ast_lookup_block(struct ast_node *node, struct gfs2_sbd *sbd)
+static uint64_t ast_lookup_block(struct ast_node *node, struct gfs2_sbd *sbd)
 {
 	uint64_t bn = ast_lookup_block_num(node, sbd);
 	if (bn == 0) {
 		fprintf(stderr, "Block not found: %s\n", node->ast_text);
-		return NULL;
+		return 0;
 	}
-
-	return bread(sbd, bn);
+	return bn;
 }
 
 static const char *bitstate_strings[] = {
@@ -308,12 +308,12 @@ static const char *bitstate_strings[] = {
  * Print a representation of an arbitrary field of an arbitrary GFS2 block to stdout
  * Returns 0 if successful, 1 otherwise
  */
-static int field_print(const struct gfs2_buffer_head *bh, const struct lgfs2_metadata *mtype,
+static int field_print(char *buf, uint64_t addr, const struct lgfs2_metadata *mtype,
                       const struct lgfs2_metafield *field)
 {
-	const char *fieldp = (char *)bh->iov.iov_base + field->offset;
+	const char *fieldp = buf + field->offset;
 
-	printf("%s\t%"PRIu64"\t%u\t%u\t%s\t", mtype->name, bh->b_blocknr, field->offset, field->length, field->name);
+	printf("%s\t%"PRIu64"\t%u\t%u\t%s\t", mtype->name, addr, field->offset, field->length, field->name);
 	if (field->flags & LGFS2_MFF_UUID) {
 #ifdef GFS2_HAS_UUID
 		char readable_uuid[36+1];
@@ -356,7 +356,8 @@ int lgfs2_lang_result_print(struct lgfs2_lang_result *result)
 	int i;
 	if (result->lr_mtype != NULL) {
 		for (i = 0; i < result->lr_mtype->nfields; i++) {
-			field_print(result->lr_bh, result->lr_mtype, &result->lr_mtype->fields[i]);
+			field_print(result->lr_buf, result->lr_blocknr,
+			            result->lr_mtype, &result->lr_mtype->fields[i]);
 		}
 	} else {
 		printf("%"PRIu64": %s\n", result->lr_blocknr, bitstate_strings[result->lr_state]);
@@ -390,21 +391,37 @@ static int ast_get_bitstate(uint64_t bn, struct gfs2_sbd *sbd)
 	return state;
 }
 
-static const struct lgfs2_metadata *ast_lookup_mtype(const struct gfs2_buffer_head *bh)
+static void result_lookup_mtype(struct lgfs2_lang_result *result, int gfs1)
 {
-	const struct lgfs2_metadata *mtype;
-	const uint32_t mh_type = lgfs2_get_block_type(bh);
-	if (mh_type == 0) {
-		fprintf(stderr, "Could not determine type for block %"PRIu64"\n", bh->b_blocknr);
-		return NULL;
-	}
+	const uint32_t mh_type = lgfs2_get_block_type(result->lr_buf);
+	uint64_t addr = result->lr_blocknr;
 
-	mtype = lgfs2_find_mtype(mh_type, bh->sdp->gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2);
-	if (mtype == NULL) {
-		fprintf(stderr, "Could not determine meta type for block %"PRIu64"\n", bh->b_blocknr);
+	result->lr_mtype = NULL;
+	if (mh_type == 0) {
+		fprintf(stderr, "Could not determine type for block %"PRIu64"\n", addr);
+		return;
+	}
+	result->lr_mtype = lgfs2_find_mtype(mh_type, gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2);
+	if (result->lr_mtype == NULL)
+		fprintf(stderr, "Could not determine meta type for block %"PRIu64"\n", addr);
+}
+
+static char *lang_read_block(int fd, unsigned bsize, uint64_t addr)
+{
+	off_t off = addr * bsize;
+	char *buf;
+
+	buf = calloc(1, bsize);
+	if (buf == NULL) {
+		perror("Failed to read block");
 		return NULL;
 	}
-	return mtype;
+	if (pread(fd, buf, bsize, off) != bsize) {
+		fprintf(stderr, "Failed to read block %"PRIu64": %s\n", addr, strerror(errno));
+		free(buf);
+		return NULL;
+	}
+	return buf;
 }
 
 /**
@@ -420,13 +437,17 @@ static struct lgfs2_lang_result *ast_interp_get(struct lgfs2_lang_state *state,
 	}
 
 	if (ast->ast_right->ast_right == NULL) {
-		result->lr_bh = ast_lookup_block(ast->ast_right, sbd);
-		if (result->lr_bh == NULL) {
+		result->lr_blocknr = ast_lookup_block(ast->ast_right, sbd);
+		if (result->lr_blocknr == 0) {
 			free(result);
 			return NULL;
 		}
-		result->lr_blocknr = result->lr_bh->b_blocknr;
-		result->lr_mtype = ast_lookup_mtype(result->lr_bh);
+		result->lr_buf = lang_read_block(sbd->device_fd, sbd->bsize, result->lr_blocknr);
+		if (result->lr_buf == NULL) {
+			free(result);
+			return NULL;
+		}
+		result_lookup_mtype(result, sbd->gfs1);
 
 	} else if (ast->ast_right->ast_right->ast_type == AST_KW_STATE) {
 		result->lr_blocknr = ast_lookup_block_num(ast->ast_right, sbd);
@@ -444,8 +465,8 @@ static struct lgfs2_lang_result *ast_interp_get(struct lgfs2_lang_state *state,
  * Set a field of a gfs2 block of a given type to a given value.
  * Returns AST_INTERP_* to signal success, an invalid field/value or an error.
  */
-static int ast_field_set(struct gfs2_buffer_head *bh, const struct lgfs2_metafield *field,
-                                                                        struct ast_node *val)
+static int ast_field_set(char *buf, const struct lgfs2_metafield *field,
+                         struct ast_node *val)
 {
 	int err = 0;
 
@@ -457,15 +478,15 @@ static int ast_field_set(struct gfs2_buffer_head *bh, const struct lgfs2_metafie
 			fprintf(stderr, "Invalid UUID\n");
 			return AST_INTERP_INVAL;
 		}
-		err = lgfs2_field_assign(bh->b_data, field, uuid);
+		err = lgfs2_field_assign(buf, field, uuid);
 #else
 		fprintf(stderr, "No UUID support\n");
 		err = 1;
 #endif
 	} else if (field->flags & LGFS2_MFF_STRING) {
-		err = lgfs2_field_assign(bh->b_data, field, val->ast_str);
+		err = lgfs2_field_assign(buf, field, val->ast_str);
 	} else {
-		err = lgfs2_field_assign(bh->b_data, field, &val->ast_num);
+		err = lgfs2_field_assign(buf, field, &val->ast_num);
 	}
 
 	if (err) {
@@ -473,12 +494,10 @@ static int ast_field_set(struct gfs2_buffer_head *bh, const struct lgfs2_metafie
 	                field->name, field->length, val->ast_text);
 		return AST_INTERP_INVAL;
 	}
-
-	bmodified(bh);
 	return AST_INTERP_SUCCESS;
 }
 
-static const struct lgfs2_metadata *lang_find_mtype(struct ast_node *node, struct gfs2_buffer_head *bh, unsigned ver)
+static const struct lgfs2_metadata *lang_find_mtype(struct ast_node *node, const char *buf, unsigned ver)
 {
 	const struct lgfs2_metadata *mtype = NULL;
 
@@ -487,12 +506,24 @@ static const struct lgfs2_metadata *lang_find_mtype(struct ast_node *node, struc
 		if (mtype == NULL)
 			fprintf(stderr, "Invalid block type: %s\n", node->ast_text);
 	} else {
-		mtype = lgfs2_find_mtype(lgfs2_get_block_type(bh), ver);
+		mtype = lgfs2_find_mtype(lgfs2_get_block_type(buf), ver);
 		if (mtype == NULL)
 			fprintf(stderr, "Unrecognised block at: %s\n", node->ast_text);
 	}
 
 	return mtype;
+}
+
+static int lang_write_result(int fd, unsigned bsize, struct lgfs2_lang_result *result)
+{
+	off_t off = bsize * result->lr_blocknr;
+
+	if (pwrite(fd, result->lr_buf, bsize, off) != bsize) {
+		fprintf(stderr, "Failed to write modified block %"PRIu64": %s\n",
+		                result->lr_blocknr, strerror(errno));
+		return -1;
+	}
+	return 0;
 }
 
 /**
@@ -514,12 +545,14 @@ static struct lgfs2_lang_result *ast_interp_set(struct lgfs2_lang_state *state,
 		return NULL;
 	}
 
-	result->lr_bh = ast_lookup_block(lookup, sbd);
-	if (result->lr_bh == NULL) {
+	result->lr_blocknr = ast_lookup_block(lookup, sbd);
+	if (result->lr_blocknr == 0)
 		goto out_err;
-	}
+	result->lr_buf = lang_read_block(sbd->device_fd, sbd->bsize, result->lr_blocknr);
+	if (result->lr_buf == NULL)
+		goto out_err;
 
-	result->lr_mtype = lang_find_mtype(lookup->ast_right, result->lr_bh, ver);
+	result->lr_mtype = lang_find_mtype(lookup->ast_right, result->lr_buf, ver);
 	if (result->lr_mtype == NULL) {
 		fprintf(stderr, "Unrecognised block at: %s\n", lookup->ast_str);
 		goto out_err;
@@ -531,7 +564,7 @@ static struct lgfs2_lang_result *ast_interp_set(struct lgfs2_lang_state *state,
 			.mh_type = result->lr_mtype->mh_type,
 			.mh_format = result->lr_mtype->mh_format,
 		};
-		gfs2_meta_header_out(&mh, result->lr_bh->iov.iov_base);
+		gfs2_meta_header_out(&mh, result->lr_buf);
 		lookup = lookup->ast_right;
 	}
 
@@ -550,21 +583,17 @@ static struct lgfs2_lang_result *ast_interp_set(struct lgfs2_lang_state *state,
 			goto out_err;
 		}
 
-		ret = ast_field_set(result->lr_bh, mfield, fieldval);
+		ret = ast_field_set(result->lr_buf, mfield, fieldval);
 		if (ret != AST_INTERP_SUCCESS) {
 			goto out_err;
 		}
 	}
 
-	ret = bwrite(result->lr_bh);
-	if (ret != 0) {
-		fprintf(stderr, "Failed to write modified block %"PRIu64": %s\n",
-		                        result->lr_bh->b_blocknr, strerror(errno));
+	ret = lang_write_result(sbd->device_fd, sbd->bsize, result);
+	if (ret != 0)
 		goto out_err;
-	}
 
 	return result;
-
 out_err:
 	lgfs2_lang_result_free(&result);
 	return NULL;
@@ -606,13 +635,7 @@ void lgfs2_lang_result_free(struct lgfs2_lang_result **result)
 		fprintf(stderr, "Warning: attempted to free a null result\n");
 		return;
 	}
-
-	if ((*result)->lr_mtype != NULL) {
-		(*result)->lr_bh->b_modified = 0;
-		brelse((*result)->lr_bh);
-		(*result)->lr_bh = NULL;
-	}
-
+	free((*result)->lr_buf);
 	free(*result);
 	*result = NULL;
 }

@@ -231,7 +231,7 @@ static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 							  bcount);
 					sprintf(str, "0x%llx %2s",
 						(unsigned long long)be64_to_cpu(*b),
-						mtypes[lgfs2_get_block_type(j_bmap_bh)]);
+						mtypes[lgfs2_get_block_type(j_bmap_bh->b_data)]);
 					brelse(j_bmap_bh);
 				} else {
 					sprintf(str, "0x%llx",

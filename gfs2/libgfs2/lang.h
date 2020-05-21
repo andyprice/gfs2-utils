@@ -14,7 +14,7 @@ struct lgfs2_lang_state {
 
 struct lgfs2_lang_result {
 	uint64_t lr_blocknr;
-	struct gfs2_buffer_head *lr_bh;
+	char *lr_buf;
 	const struct lgfs2_metadata *lr_mtype;
 	int lr_state; // GFS2_BLKST_*
 };

@@ -369,7 +369,7 @@ extern struct gfs2_buffer_head *__bread(struct gfs2_sbd *sdp, uint64_t num,
 extern int __breadm(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhs, size_t n, uint64_t block, int line, const char *caller);
 extern int bwrite(struct gfs2_buffer_head *bh);
 extern int brelse(struct gfs2_buffer_head *bh);
-extern uint32_t lgfs2_get_block_type(const struct gfs2_buffer_head *lbh);
+extern uint32_t lgfs2_get_block_type(const char *buf);
 
 #define bmodified(bh) do { bh->b_modified = 1; } while(0)
 

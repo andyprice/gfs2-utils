@@ -296,7 +296,7 @@ static void print_usage(void)
 /* ------------------------------------------------------------------------ */
 uint32_t get_block_type(const struct gfs2_buffer_head *lbh, int *structlen)
 {
-	uint32_t ty = lgfs2_get_block_type(lbh);
+	uint32_t ty = lgfs2_get_block_type(lbh->b_data);
 
 	if (ty != 0 && structlen != NULL) {
 		unsigned ver = sbd.gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2;

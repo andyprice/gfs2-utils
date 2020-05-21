@@ -118,9 +118,9 @@ int brelse(struct gfs2_buffer_head *bh)
 	return error;
 }
 
-uint32_t lgfs2_get_block_type(const struct gfs2_buffer_head *lbh)
+uint32_t lgfs2_get_block_type(const char *buf)
 {
-	const struct gfs2_meta_header *mh = lbh->iov.iov_base;
+	const struct gfs2_meta_header *mh = (void *)buf;
 
 	if (be32_to_cpu(mh->mh_magic) == GFS2_MAGIC)
 		return be32_to_cpu(mh->mh_type);
