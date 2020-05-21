@@ -25,13 +25,12 @@ static __inline__ int fs_is_jdata(struct gfs2_inode *ip)
 }
 
 static __inline__ uint64_t *
-gfs1_metapointer(struct gfs2_buffer_head *bh, unsigned int height,
-		 struct metapath *mp)
+gfs1_metapointer(char *buf, unsigned int height, struct metapath *mp)
 {
 	unsigned int head_size = (height > 0) ?
 		sizeof(struct gfs_indirect) : sizeof(struct gfs_dinode);
 
-	return ((uint64_t *)(bh->b_data + head_size)) + mp->mp_list[height];
+	return ((uint64_t *)(buf + head_size)) + mp->mp_list[height];
 }
 
 int is_gfs_dir(struct gfs2_dinode *dinode)
@@ -45,7 +44,7 @@ void gfs1_lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		  unsigned int height, struct metapath *mp,
 		  int create, int *new, uint64_t *block)
 {
-	uint64_t *ptr = gfs1_metapointer(bh, height, mp);
+	uint64_t *ptr = gfs1_metapointer(bh->b_data, height, mp);
 
 	if (*ptr) {
 		*block = be64_to_cpu(*ptr);

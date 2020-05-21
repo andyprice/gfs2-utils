@@ -15,14 +15,14 @@
 #include "libgfs2.h"
 #include "rgrp.h"
 
-static __inline__ uint64_t *metapointer(struct gfs2_buffer_head *bh,
+static __inline__ uint64_t *metapointer(char *buf,
 					unsigned int height,
 					struct metapath *mp)
 {
 	unsigned int head_size = (height > 0) ?
 		sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_dinode);
 
-	return ((uint64_t *)(bh->b_data + head_size)) + mp->mp_list[height];
+	return ((uint64_t *)(buf + head_size)) + mp->mp_list[height];
 }
 
 /* Detect directory is a stuffed inode */
@@ -447,7 +447,7 @@ void lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		  unsigned int height, struct metapath *mp,
 		  int create, int *new, uint64_t *block)
 {
-	uint64_t *ptr = metapointer(bh, height, mp);
+	uint64_t *ptr = metapointer(bh->b_data, height, mp);
 
 	if (*ptr) {
 		*block = be64_to_cpu(*ptr);
