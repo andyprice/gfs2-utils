@@ -658,30 +658,40 @@ static void save_indirect_blocks(struct metafd *mfd, osi_list_t *cur_list,
 
 static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, uint64_t blk)
 {
-	struct gfs2_buffer_head *bh;
 	struct gfs2_leaf leaf;
+	char *buf = calloc(1, sdp->bsize);
+
+	if (buf == NULL) {
+		perror("Failed to save leaf blocks");
+		return 1;
+	}
 
 	do {
+		ssize_t r;
+
 		if (gfs2_check_range(sdp, blk) != 0)
 			return 0;
-		bh = bread(sdp, blk);
-		if (bh == NULL) {
-			perror("Failed to read leaf block");
+
+		r = pread(sdp->device_fd, buf, sdp->bsize, sdp->bsize * blk);
+		if (r != sdp->bsize) {
+			fprintf(stderr, "Failed to read leaf block %"PRIx64": %s\n",
+			        blk, strerror(errno));
+			free(buf);
 			return 1;
 		}
 		warm_fuzzy_stuff(blk, FALSE);
-		if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_LF) == 0) {
-			int ret = save_buf(mfd, bh->b_data, blk, blk, NULL);
+		if (gfs2_check_meta(buf, GFS2_METATYPE_LF) == 0) {
+			int ret = save_buf(mfd, buf, blk, blk, NULL);
 			if (ret != 0) {
-				brelse(bh);
+				free(buf);
 				return ret;
 			}
 		}
-		gfs2_leaf_in(&leaf, bh->b_data);
-		brelse(bh);
+		gfs2_leaf_in(&leaf, buf);
 		blk = leaf.lf_next;
 	} while (leaf.lf_next != 0);
 
+	free(buf);
 	return 0;
 }
 
