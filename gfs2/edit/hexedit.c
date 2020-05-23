@@ -289,24 +289,13 @@ static void print_usage(void)
 	Erase();
 }
 
-/* ------------------------------------------------------------------------ */
-/* get_block_type                                                           */
-/* returns: metatype if block is a GFS2 structure block type                */
-/*          0 if block is not a GFS2 structure                              */
-/* ------------------------------------------------------------------------ */
-uint32_t get_block_type(const struct gfs2_buffer_head *lbh, int *structlen)
+const struct lgfs2_metadata *get_block_type(char *buf)
 {
-	uint32_t ty = lgfs2_get_block_type(lbh->b_data);
+	uint32_t t = lgfs2_get_block_type(buf);
 
-	if (ty != 0 && structlen != NULL) {
-		unsigned ver = sbd.gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2;
-		const struct lgfs2_metadata *mtype = lgfs2_find_mtype(ty, ver);
-		if (mtype != NULL)
-			*structlen = mtype->size;
-		else
-			*structlen = sbd.bsize;
-	}
-	return ty;
+	if (t != 0)
+		return lgfs2_find_mtype(t, sbd.gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2);
+	return NULL;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -316,6 +305,7 @@ uint32_t get_block_type(const struct gfs2_buffer_head *lbh, int *structlen)
 /* ------------------------------------------------------------------------ */
 int display_block_type(struct gfs2_buffer_head *dbh, int from_restore)
 {
+	const struct lgfs2_metadata *mtype;
 	const struct gfs2_meta_header *mh;
 	int ret_type = 0; /* return type */
 
@@ -350,53 +340,14 @@ int display_block_type(struct gfs2_buffer_head *dbh, int from_restore)
 		ret_type = GFS2_METATYPE_DI;
 		struct_len = 0;
 	} else {
-		ret_type = get_block_type(dbh, &struct_len);
-		switch (ret_type) {
-		case GFS2_METATYPE_SB:   /* 1 */
-			print_gfs2("(superblock)");
-			break;
-		case GFS2_METATYPE_RG:   /* 2 */
-			print_gfs2("(rsrc grp hdr)");
-			break;
-		case GFS2_METATYPE_RB:   /* 3 */
-			print_gfs2("(rsrc grp bitblk)");
-			break;
-		case GFS2_METATYPE_DI:   /* 4 */
-			print_gfs2("(disk inode)");
-			break;
-		case GFS2_METATYPE_IN:   /* 5 */
-			print_gfs2("(indir blklist)");
-			break;
-		case GFS2_METATYPE_LF:   /* 6 */
-			print_gfs2("(directory leaf)");
-			break;
-		case GFS2_METATYPE_JD:
-			print_gfs2("(journal data)");
-			break;
-		case GFS2_METATYPE_LH:
-			print_gfs2("(log header)");
-			break;
-		case GFS2_METATYPE_LD:
-		 	print_gfs2("(log descriptor)");
-			break;
-		case GFS2_METATYPE_EA:
-			print_gfs2("(extended attr hdr)");
-			break;
-		case GFS2_METATYPE_ED:
-			print_gfs2("(extended attr data)");
-			break;
-		case GFS2_METATYPE_LB:
-			print_gfs2("(log buffer)");
-			break;
-		case GFS2_METATYPE_QC:
-			print_gfs2("(quota change)");
-			break;
-		case 0:
+		mtype = get_block_type(dbh->b_data);
+		if (mtype != NULL) {
+			print_gfs2("(%s)", mtype->display);
+			struct_len = mtype->size;
+			ret_type = mtype->mh_type;
+		} else {
 			struct_len = sbd.bsize;
-			break;
-		default:
-			print_gfs2("(wtf?)");
-			break;
+			ret_type = 0;
 		}
 	}
 	mh = dbh->iov.iov_base;
@@ -531,20 +482,6 @@ int display_block_type(struct gfs2_buffer_head *dbh, int from_restore)
 	return ret_type;
 }
 
-static const struct lgfs2_metadata *find_mtype(uint32_t mtype, const unsigned versions)
-{
-	const struct lgfs2_metadata *m = lgfs2_metadata;
-	unsigned n = 0;
-
-	do {
-		if ((m[n].versions & versions) && m[n].mh_type == mtype)
-			return &m[n];
-		n++;
-	} while (n < lgfs2_metadata_size);
-
-	return NULL;
-}
-
 static int get_pnum(int ptroffset)
 {
 	int pnum;
@@ -568,7 +505,7 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 	const char *lpBuffer = bh->b_data;
 	const char *zeros_strt = lpBuffer + sbd.bsize;
 	int print_field, cursor_line;
-	const uint32_t block_type = get_block_type(bh, NULL);
+	const struct lgfs2_metadata *m = get_block_type(bh->b_data);
 	uint64_t *ref;
 	int ptroffset = 0;
 
@@ -673,8 +610,6 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 		}
 		print_gfs2("] ");
 		if (print_field >= 0) {
-			const struct lgfs2_metadata *m = find_mtype(block_type,
-			               sbd.gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2);
 			if (m) {
 				const struct lgfs2_metafield *f;
 				unsigned n;
@@ -689,7 +624,9 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 			}
 
 		}
-		if (cursor_line) {
+		if (m && cursor_line) {
+			const uint32_t block_type = m->mh_type;
+
 			if (block_type == GFS2_METATYPE_IN ||
 			    block_type == GFS2_METATYPE_LD ||
 			    ((block_type == GFS2_METATYPE_DI) &&
@@ -723,7 +660,7 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 		if ((const char *)pointer >= zeros_strt)
 			break;
 	} /* while */
-	if (block_type == GFS2_METATYPE_LD && ptroffset >= struct_len) {
+	if (m && m->mh_type == GFS2_METATYPE_LD && ptroffset >= struct_len) {
 		COLORS_NORMAL;
 		eol(0);
 		print_gfs2("         * 'j' will jump to the journaled block, "
@@ -1637,8 +1574,12 @@ static void jump(void)
 	if (dmode == HEX_MODE) {
 		unsigned int col2;
 		uint64_t *b;
-		const uint32_t block_type = get_block_type(bh, NULL);
-		
+		const struct lgfs2_metadata *mtype = get_block_type(bh->b_data);
+		uint32_t block_type = 0;
+
+		if (mtype != NULL)
+			block_type = mtype->mh_type;
+
 		/* special exception for log descriptors: jump the journaled
 		   version of the block, not the "real" block */
 		if (block_type == GFS2_METATYPE_LD) {
@@ -1667,33 +1608,26 @@ static void jump(void)
 	}
 }
 
-/* ------------------------------------------------------------------------ */
-/* print block type                                                         */
-/* ------------------------------------------------------------------------ */
-static void print_block_type(uint64_t tblock, int type, const char *additional)
+static void print_block_type(uint64_t tblock, const struct lgfs2_metadata *type)
 {
-	if (type <= GFS2_METATYPE_QC)
-		printf("%d (Block %lld is type %d: %s%s)\n", type,
-		       (unsigned long long)tblock, type, block_type_str[type],
-		       additional);
+	if (type != NULL && type->nfields > 0)
+		printf("%d (Block %"PRIu64" is type %d: %s)\n", type->mh_type,
+		       tblock, type->mh_type, type->display);
 	else
-		printf("%d (Block %lld is type %d: unknown%s)\n", type,
-		       (unsigned long long)tblock, type, additional);
+		printf("%d (Block %"PRIu64" is type %d: unknown)\n", type->mh_type,
+		       tblock, type->mh_type);
 }
 
-/* ------------------------------------------------------------------------ */
-/* find_print block type                                                    */
-/* ------------------------------------------------------------------------ */
 static void find_print_block_type(void)
 {
 	uint64_t tblock;
 	struct gfs2_buffer_head *lbh;
-	int type;
+	const struct lgfs2_metadata *type;
 
 	tblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
 	lbh = bread(&sbd, tblock);
-	type = get_block_type(lbh, NULL);
-	print_block_type(tblock, type, "");
+	type = get_block_type(lbh->b_data);
+	print_block_type(tblock, type);
 	brelse(lbh);
 	gfs2_rgrp_free(&sbd, &sbd.rgtree);
 	exit(0);
@@ -1803,17 +1737,15 @@ static void process_field(const char *field, const char *nstr)
 {
 	uint64_t fblock;
 	struct gfs2_buffer_head *rbh;
-	int type;
 	const struct lgfs2_metadata *mtype;
 	const struct lgfs2_metafield *mfield;
 
 	fblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
 	rbh = bread(&sbd, fblock);
-	type = get_block_type(rbh, NULL);
-
-	mtype = lgfs2_find_mtype(type, sbd.gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2);
+	mtype = get_block_type(rbh->b_data);
 	if (mtype == NULL) {
-		fprintf(stderr, "Metadata type '%d' invalid\n", type);
+		fprintf(stderr, "Metadata type of block %"PRIx64" not recognised\n",
+		        fblock);
 		exit(1);
 	}
 
@@ -2116,12 +2048,11 @@ static void interactive_mode(void)
 /* ------------------------------------------------------------------------ */
 /* gfs_log_header_in - read in a gfs1-style log header                      */
 /* ------------------------------------------------------------------------ */
-void gfs_log_header_in(struct gfs_log_header *head,
-		       struct gfs2_buffer_head *lbh)
+void gfs_log_header_in(struct gfs_log_header *head, const char *buf)
 {
-	struct gfs_log_header *str = lbh->iov.iov_base;
+	const struct gfs_log_header *str = (void *)buf;
 
-	gfs2_meta_header_in(&head->lh_header, lbh->b_data);
+	gfs2_meta_header_in(&head->lh_header, buf);
 
 	head->lh_flags = be32_to_cpu(str->lh_flags);
 	head->lh_pad = be32_to_cpu(str->lh_pad);

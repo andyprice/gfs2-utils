@@ -526,7 +526,7 @@ int display_gfs2(struct gfs2_buffer_head *dbh)
 
 		case GFS2_METATYPE_LH:
 			if (sbd.gfs1) {
-				gfs_log_header_in(&lh1, dbh);
+				gfs_log_header_in(&lh1, dbh->b_data);
 				gfs_log_header_print(&lh1);
 			} else {
 				gfs2_log_header_in(&lh, dbh->b_data);

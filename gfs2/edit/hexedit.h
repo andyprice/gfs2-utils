@@ -224,8 +224,7 @@ extern int block_is_quota_file(uint64_t blk);
 extern int block_is_per_node(uint64_t blk);
 extern int display_block_type(struct gfs2_buffer_head *bh, int from_restore);
 extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
-extern void gfs_log_header_in(struct gfs_log_header *head,
-			      struct gfs2_buffer_head *bh);
+extern void gfs_log_header_in(struct gfs_log_header *head, const char *buf);
 extern void gfs_log_header_print(struct gfs_log_header *lh);
 extern void savemeta(char *out_fn, int saveoption, int gziplevel);
 extern void restoremeta(const char *in_fn, const char *out_device,
@@ -236,7 +235,6 @@ extern uint64_t check_keywords(const char *kword);
 extern uint64_t masterblock(const char *fn);
 extern void gfs_rgrp_print(struct gfs_rgrp *rg);
 extern int has_indirect_blocks(void);
-extern uint32_t get_block_type(const struct gfs2_buffer_head *lbh,
-			       int *structlen);
+extern const struct lgfs2_metadata *get_block_type(char *buf);
 
 #endif /* __HEXVIEW_DOT_H__ */
