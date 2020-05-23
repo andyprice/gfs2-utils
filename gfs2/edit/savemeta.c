@@ -572,19 +572,28 @@ static int save_buf(struct metafd *mfd, const char *buf, uint64_t addr, uint64_t
 
 static int save_block(int fd, struct metafd *mfd, uint64_t blk, uint64_t owner, int *blktype)
 {
-	struct gfs2_buffer_head *savebh;
+	char *buf;
 	int err;
 
+	buf = calloc(1, sbd.bsize);
+	if (buf == NULL) {
+		fprintf(stderr, "Failed to read block 0x%"PRIx64" (in 0x%"PRIx64"): %s\n",
+		        blk, owner, strerror(errno));
+		return 1;
+	}
 	if (gfs2_check_range(&sbd, blk) && blk != LGFS2_SB_ADDR(&sbd)) {
 		fprintf(stderr, "Warning: bad pointer 0x%"PRIx64" ignored in block 0x%"PRIx64"\n",
 		        blk, owner);
 		return 0;
 	}
-	savebh = bread(&sbd, blk);
-	if (savebh == NULL)
+	if (pread(sbd.device_fd, buf, sbd.bsize, sbd.bsize * blk) != sbd.bsize) {
+		fprintf(stderr, "Failed to read block 0x%"PRIx64" (in 0x%"PRIx64"): %s\n",
+		        blk, owner, strerror(errno));
+		free(buf);
 		return 1;
-	err = save_buf(mfd, savebh->b_data, blk, owner, blktype);
-	brelse(savebh);
+	}
+	err = save_buf(mfd, buf, blk, owner, blktype);
+	free(buf);
 	return err;
 }
 
