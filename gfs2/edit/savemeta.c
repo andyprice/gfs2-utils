@@ -1054,15 +1054,15 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	exit(0);
 }
 
-static int restore_block(struct metafd *mfd, struct saved_metablock *svb, char **buf, uint16_t maxlen)
+static char *restore_block(struct metafd *mfd, struct saved_metablock *svb)
 {
 	struct saved_metablock *svb_be;
 	const char *errstr;
-	uint16_t checklen;
+	char *buf = NULL;
 
 	svb_be = (struct saved_metablock *)(restore_buf_next(mfd, sizeof(*svb)));
 	if (svb_be == NULL)
-		goto read_err;
+		goto nobuffer;
 	svb->blk = be64_to_cpu(svb_be->blk);
 	svb->siglen = be16_to_cpu(svb_be->siglen);
 
@@ -1070,34 +1070,25 @@ static int restore_block(struct metafd *mfd, struct saved_metablock *svb, char *
 		fprintf(stderr, "Error: File system is too small to restore this metadata.\n");
 		fprintf(stderr, "File system is %llu blocks. Restore block = %llu\n",
 		        (unsigned long long)sbd.fssize, (unsigned long long)svb->blk);
-		return -1;
+		return NULL;
 	}
 
-	if (maxlen)
-		checklen = maxlen;
-	else
-		checklen = sbd.bsize;
-
-	if (checklen && svb->siglen > checklen) {
+	if (svb->siglen > sbd.bsize) {
 		fprintf(stderr, "Bad record length: %u for block %"PRIu64" (0x%"PRIx64").\n",
 			svb->siglen, svb->blk, svb->blk);
-		return -1;
+		return NULL;
 	}
 
-	if (buf != NULL && maxlen != 0) {
-		*buf = restore_buf_next(mfd, svb->siglen);
-		if (*buf == NULL)
-			goto read_err;
-	}
-	return 0;
-
-read_err:
+	buf = restore_buf_next(mfd, svb->siglen);
+	if (buf != NULL)
+		return buf;
+nobuffer:
 	if (mfd->eof)
-		return 1;
+		return NULL;
 
 	errstr = mfd->strerr(mfd);
 	fprintf(stderr, "Failed to restore block: %s\n", errstr);
-	return -1;
+	return NULL;
 }
 
 static int restore_super(struct metafd *mfd, char *buf, int printonly)
@@ -1127,7 +1118,6 @@ static int restore_data(int fd, struct metafd *mfd, int printonly)
 	struct saved_metablock savedata = {0};
 	uint64_t writes = 0;
 	char *buf;
-	char *bp;
 
 	buf = calloc(1, sbd.bsize);
 	if (buf == NULL) {
@@ -1137,16 +1127,15 @@ static int restore_data(int fd, struct metafd *mfd, int printonly)
 
 	blks_saved = 0;
 	while (TRUE) {
-		int err;
+		char *bp;
 
-		err = restore_block(mfd, &savedata, &bp, sbd.bsize);
-		if (err == 1)
+		bp = restore_block(mfd, &savedata);
+		if (bp == NULL && mfd->eof)
 			break;
-		if (err != 0) {
+		if (bp == NULL) {
 			free(buf);
 			return -1;
 		}
-
 		if (printonly) {
 			if (printonly > 1 && printonly == savedata.blk) {
 				display_block_type(bp, savedata.blk, TRUE);
