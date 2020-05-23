@@ -298,12 +298,11 @@ const struct lgfs2_metadata *get_block_type(char *buf)
 	return NULL;
 }
 
-/* ------------------------------------------------------------------------ */
-/* display_block_type                                                       */
-/* returns: metatype if block is a GFS2 structure block type                */
-/*          0 if block is not a GFS2 structure                              */
-/* ------------------------------------------------------------------------ */
-int display_block_type(struct gfs2_buffer_head *dbh, int from_restore)
+/**
+ * returns: metatype if block is a GFS2 structure block type
+ *          0 if block is not a GFS2 structure
+ */
+int display_block_type(char *buf, uint64_t addr, int from_restore)
 {
 	const struct lgfs2_metadata *mtype;
 	const struct gfs2_meta_header *mh;
@@ -324,7 +323,7 @@ int display_block_type(struct gfs2_buffer_head *dbh, int from_restore)
 	else if (block == JOURNALS_DUMMY_BLOCK)
 		print_gfs2("Journal Status:      ");
 	else
-		print_gfs2("%"PRIu64"    (0x%"PRIx64")", dbh->b_blocknr, dbh->b_blocknr);
+		print_gfs2("%"PRIu64"    (0x%"PRIx64")", addr, addr);
 	if (termlines) {
 		if (edit_row[dmode] == -1)
 			COLORS_NORMAL;
@@ -340,7 +339,7 @@ int display_block_type(struct gfs2_buffer_head *dbh, int from_restore)
 		ret_type = GFS2_METATYPE_DI;
 		struct_len = 0;
 	} else {
-		mtype = get_block_type(dbh->b_data);
+		mtype = get_block_type(buf);
 		if (mtype != NULL) {
 			print_gfs2("(%s)", mtype->display);
 			struct_len = mtype->size;
@@ -350,7 +349,7 @@ int display_block_type(struct gfs2_buffer_head *dbh, int from_restore)
 			ret_type = 0;
 		}
 	}
-	mh = dbh->iov.iov_base;
+	mh = (void *)buf;
 	eol(0);
 	if (from_restore)
 		return ret_type;
@@ -1035,7 +1034,7 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 		}
 	}
 	line = 1;
-	gfs2_struct_type = display_block_type(bh, FALSE);
+	gfs2_struct_type = display_block_type(bh->b_data, bh->b_blocknr, FALSE);
 	if (identify_only)
 		return 0;
 	indirect_blocks = 0;
