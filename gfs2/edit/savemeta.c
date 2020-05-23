@@ -1148,13 +1148,9 @@ static int restore_data(int fd, struct metafd *mfd, int printonly)
 		}
 
 		if (printonly) {
-			struct gfs2_buffer_head dummy_bh = {
-				.b_data = bp,
-				.b_blocknr = savedata.blk,
-			};
 			if (printonly > 1 && printonly == savedata.blk) {
 				display_block_type(bp, savedata.blk, TRUE);
-				display_gfs2(&dummy_bh);
+				display_gfs2(bp);
 				break;
 			} else if (printonly == 1) {
 				print_gfs2("%"PRId64" (l=0x%x): ", blks_saved, savedata.siglen);

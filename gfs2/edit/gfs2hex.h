@@ -3,7 +3,7 @@
 
 #include "hexedit.h"
 
-extern int display_gfs2(struct gfs2_buffer_head *dbh);
+extern int display_gfs2(char *buf);
 extern int edit_gfs2(void);
 extern void do_dinode_extended(struct gfs2_dinode *di, char *buf);
 extern void print_gfs2(const char *fmt, ...) __attribute__((format (printf, 1, 2)));

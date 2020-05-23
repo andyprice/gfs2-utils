@@ -351,7 +351,7 @@ uint64_t do_leaf_extended(char *dlebuf, struct iinfo *indir)
 	return indir->ii[0].lf.lf_next;
 }
 
-static void do_eattr_extended(struct gfs2_buffer_head *ebh)
+static void do_eattr_extended(char *buf)
 {
 	struct gfs2_ea_header ea;
 	unsigned int x;
@@ -364,9 +364,8 @@ static void do_eattr_extended(struct gfs2_buffer_head *ebh)
 	     x += ea.ea_rec_len)
 	{
 		eol(0);
-		gfs2_ea_header_in(&ea, ebh->b_data + x);
-		gfs2_ea_header_print(&ea, ebh->b_data + x +
-				     sizeof(struct gfs2_ea_header));
+		gfs2_ea_header_in(&ea, buf + x);
+		gfs2_ea_header_print(&ea, buf + x + sizeof(struct gfs2_ea_header));
 	}
 }
 
@@ -429,11 +428,11 @@ static void gfs2_sb_print2(struct gfs2_sb *sbp2)
 /**
  * gfs1_rgrp_in - read in a gfs1 rgrp
  */
-static void gfs1_rgrp_in(struct gfs_rgrp *rgrp, struct gfs2_buffer_head *rbh)
+static void gfs1_rgrp_in(struct gfs_rgrp *rgrp, const char *buf)
 {
-        struct gfs_rgrp *str = (struct gfs_rgrp *)rbh->b_data;
+        struct gfs_rgrp *str = (struct gfs_rgrp *)buf;
 
-        gfs2_meta_header_in(&rgrp->rg_header, rbh->b_data);
+        gfs2_meta_header_in(&rgrp->rg_header, buf);
         rgrp->rg_flags = be32_to_cpu(str->rg_flags);
         rgrp->rg_free = be32_to_cpu(str->rg_free);
         rgrp->rg_useddi = be32_to_cpu(str->rg_useddi);
@@ -460,7 +459,7 @@ static void gfs1_rgrp_print(struct gfs_rgrp *rg)
         pv(rg, rg_freemeta, "%u", "0x%x");
 }
 
-int display_gfs2(struct gfs2_buffer_head *dbh)
+int display_gfs2(char *buf)
 {
 	struct gfs2_meta_header mh;
 	struct gfs2_rgrp rg;
@@ -472,12 +471,12 @@ int display_gfs2(struct gfs2_buffer_head *dbh)
 
 	uint32_t magic;
 
-	magic = be32_to_cpu(*(uint32_t *)dbh->b_data);
+	magic = be32_to_cpu(*(uint32_t *)buf);
 
 	switch (magic)
 	{
 	case GFS2_MAGIC:
-		gfs2_meta_header_in(&mh, dbh->b_data);
+		gfs2_meta_header_in(&mh, buf);
 		if (mh.mh_type > GFS2_METATYPE_QC)
 			print_gfs2("Unknown metadata type");
 		else
@@ -487,7 +486,7 @@ int display_gfs2(struct gfs2_buffer_head *dbh)
 		switch (mh.mh_type)
 		{
 		case GFS2_METATYPE_SB:
-			gfs2_sb_in(&sbd.sd_sb, dbh->b_data);
+			gfs2_sb_in(&sbd.sd_sb, buf);
 			gfs2_sb_print2(&sbd.sd_sb);
 			break;
 
@@ -495,10 +494,10 @@ int display_gfs2(struct gfs2_buffer_head *dbh)
 			if (sbd.gfs1) {
 				struct gfs_rgrp rg1;
 
-				gfs1_rgrp_in(&rg1, dbh);
+				gfs1_rgrp_in(&rg1, buf);
 				gfs1_rgrp_print(&rg1);
 			} else {
-				gfs2_rgrp_in(&rg, dbh->b_data);
+				gfs2_rgrp_in(&rg, buf);
 				gfs2_rgrp_print(&rg);
 			}
 			break;
@@ -516,7 +515,7 @@ int display_gfs2(struct gfs2_buffer_head *dbh)
 			break;
 
 		case GFS2_METATYPE_LF:
-			gfs2_leaf_in(&lf, dbh->b_data);
+			gfs2_leaf_in(&lf, buf);
 			gfs2_leaf_print(&lf);
 			break;
 
@@ -526,21 +525,21 @@ int display_gfs2(struct gfs2_buffer_head *dbh)
 
 		case GFS2_METATYPE_LH:
 			if (sbd.gfs1) {
-				gfs_log_header_in(&lh1, dbh->b_data);
+				gfs_log_header_in(&lh1, buf);
 				gfs_log_header_print(&lh1);
 			} else {
-				gfs2_log_header_in(&lh, dbh->b_data);
+				gfs2_log_header_in(&lh, buf);
 				gfs2_log_header_print(&lh);
 			}
 			break;
 
 		case GFS2_METATYPE_LD:
-			gfs2_log_descriptor_in(&ld, dbh->b_data);
+			gfs2_log_descriptor_in(&ld, buf);
 			gfs2_log_descriptor_print(&ld);
 			break;
 
 		case GFS2_METATYPE_EA:
-			do_eattr_extended(dbh);
+			do_eattr_extended(buf);
 			break;
 
 		case GFS2_METATYPE_ED:
@@ -552,7 +551,7 @@ int display_gfs2(struct gfs2_buffer_head *dbh)
 			break;
 
 		case GFS2_METATYPE_QC:
-			gfs2_quota_change_in(&qc, dbh->b_data);
+			gfs2_quota_change_in(&qc, buf);
 			gfs2_quota_change_print(&qc);
 			break;
 

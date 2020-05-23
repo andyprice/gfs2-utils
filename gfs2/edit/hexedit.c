@@ -1099,7 +1099,7 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 		        flagref, ref_blk);
 	else if (dmode == GFS2_MODE) { /* if structure display */
 		if (block != JOURNALS_DUMMY_BLOCK)
-			display_gfs2(bh);  /* display the gfs2 structure */
+			display_gfs2(bh->b_data);
 	} else
 		display_extended();        /* display extended blocks       */
 	/* No else here because display_extended can switch back to hex mode */
