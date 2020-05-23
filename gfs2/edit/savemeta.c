@@ -522,7 +522,7 @@ static int savemetaclose(struct metafd *mfd)
 	return close(mfd->fd);
 }
 
-static int save_buf(struct metafd *mfd, char *buf, uint64_t addr, unsigned blklen)
+static int do_save_buf(struct metafd *mfd, const char *buf, uint64_t addr, unsigned blklen)
 {
 	struct saved_metablock *savedata;
 	size_t outsz;
@@ -554,7 +554,7 @@ static int save_buf(struct metafd *mfd, char *buf, uint64_t addr, unsigned blkle
 	return 0;
 }
 
-static int save_bh(struct metafd *mfd, struct gfs2_buffer_head *savebh, uint64_t owner, int *blktype)
+static int save_buf(struct metafd *mfd, const char *buf, uint64_t addr, uint64_t owner, int *blktype)
 {
 	size_t blklen;
 
@@ -563,11 +563,11 @@ static int save_bh(struct metafd *mfd, struct gfs2_buffer_head *savebh, uint64_t
 	   because we want to know if the source inode is a system inode
 	   not the block within the inode "blk". They may or may not
 	   be the same thing. */
-	if (get_gfs_struct_info(savebh->b_data, owner, blktype, &blklen) &&
+	if (get_gfs_struct_info(buf, owner, blktype, &blklen) &&
 	    !block_is_systemfile(owner) && owner != 0)
 		return 0; /* Not metadata, and not system file, so skip it */
 
-	return save_buf(mfd, savebh->b_data, savebh->b_blocknr, blklen);
+	return do_save_buf(mfd, buf, addr, blklen);
 }
 
 static int save_block(int fd, struct metafd *mfd, uint64_t blk, uint64_t owner, int *blktype)
@@ -583,7 +583,7 @@ static int save_block(int fd, struct metafd *mfd, uint64_t blk, uint64_t owner, 
 	savebh = bread(&sbd, blk);
 	if (savebh == NULL)
 		return 1;
-	err = save_bh(mfd, savebh, owner, blktype);
+	err = save_buf(mfd, savebh->b_data, blk, owner, blktype);
 	brelse(savebh);
 	return err;
 }
@@ -671,7 +671,7 @@ static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, uint64_t bl
 		}
 		warm_fuzzy_stuff(blk, FALSE);
 		if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_LF) == 0) {
-			int ret = save_bh(mfd, bh, blk, NULL);
+			int ret = save_buf(mfd, bh->b_data, blk, blk, NULL);
 			if (ret != 0) {
 				brelse(bh);
 				return ret;
@@ -912,7 +912,7 @@ static void save_rgrp(struct gfs2_sbd *sdp, struct metafd *mfd, struct rgrp_tree
 	/* Save the rg and bitmaps */
 	for (unsigned i = 0; i < rgd->ri.ri_length; i++) {
 		warm_fuzzy_stuff(rgd->ri.ri_addr + i, FALSE);
-		save_buf(mfd, buf + (i * sdp->bsize), rgd->ri.ri_addr + i, sdp->bsize);
+		do_save_buf(mfd, buf + (i * sdp->bsize), rgd->ri.ri_addr + i, sdp->bsize);
 	}
 	/* Save the other metadata: inodes, etc. if mode is not 'savergs' */
 	if (withcontents)
