@@ -320,7 +320,7 @@ static size_t di_save_len(const char *buf, uint64_t owner)
 /*
  * get_gfs_struct_info - get block type and structure length
  *
- * @lbh - The block buffer to examine
+ * @buf - The block buffer to examine
  * @owner - The block address of the parent structure
  * @block_type - pointer to integer to hold the block type
  * @gstruct_len - pointer to integer to hold the structure length
@@ -328,8 +328,8 @@ static size_t di_save_len(const char *buf, uint64_t owner)
  * returns: 0 if successful
  *          -1 if this isn't gfs metadata.
  */
-static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, uint64_t owner,
-                               int *block_type, size_t *gstruct_len)
+static int get_gfs_struct_info(const char *buf, uint64_t owner, int *block_type,
+                               size_t *gstruct_len)
 {
 	struct gfs2_meta_header mh;
 
@@ -337,7 +337,7 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, uint64_t owner,
 		*block_type = 0;
 	*gstruct_len = sbd.bsize;
 
-	gfs2_meta_header_in(&mh, lbh->b_data);
+	gfs2_meta_header_in(&mh, buf);
 	if (mh.mh_magic != GFS2_MAGIC)
 		return -1;
 
@@ -355,7 +355,7 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, uint64_t owner,
 		*gstruct_len = sbd.bsize;
 		break;
 	case GFS2_METATYPE_DI:   /* 4 (disk inode) */
-		*gstruct_len = di_save_len(lbh->b_data, owner);
+		*gstruct_len = di_save_len(buf, owner);
 		break;
 	case GFS2_METATYPE_IN:   /* 5 (indir inode blklst) */
 		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_indirect);*/
@@ -563,7 +563,7 @@ static int save_bh(struct metafd *mfd, struct gfs2_buffer_head *savebh, uint64_t
 	   because we want to know if the source inode is a system inode
 	   not the block within the inode "blk". They may or may not
 	   be the same thing. */
-	if (get_gfs_struct_info(savebh, owner, blktype, &blklen) &&
+	if (get_gfs_struct_info(savebh->b_data, owner, blktype, &blklen) &&
 	    !block_is_systemfile(owner) && owner != 0)
 		return 0; /* Not metadata, and not system file, so skip it */
 
