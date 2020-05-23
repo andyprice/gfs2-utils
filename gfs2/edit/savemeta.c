@@ -296,36 +296,25 @@ static int block_is_systemfile(uint64_t blk)
 		block_is_per_node(blk) || block_is_in_per_node(blk);
 }
 
-static size_t di_save_len(struct gfs2_buffer_head *bh, uint64_t owner)
+static size_t di_save_len(const char *buf, uint64_t owner)
 {
-	struct gfs2_inode *inode;
-	struct gfs2_dinode *dn;
-	size_t len;
+	const struct gfs2_dinode *dn;
+	uint16_t di_height;
+	uint32_t di_mode;
+	int gfs1dir;
 
-	if (sbd.gfs1)
-		inode = lgfs2_gfs_inode_get(&sbd, bh->b_data);
-	else
-		inode = lgfs2_inode_get(&sbd, bh);
-
-	if (inode == NULL) {
-		fprintf(stderr, "Error reading inode at %"PRIu64": %s\n",
-		        bh->b_blocknr, strerror(errno));
-		return 0; /* Skip the block */
-	}
-	dn = &inode->i_di;
-	len = sizeof(struct gfs2_dinode);
+	dn = (void *)buf;
+	di_mode = be32_to_cpu(dn->di_mode);
+	di_height = be16_to_cpu(dn->di_height);
+	/* __pad1 is di_type in gfs1 */
+	gfs1dir = sbd.gfs1 && (be16_to_cpu(dn->__pad1) == GFS_FILE_DIR);
 
 	/* Do not save (user) data from the inode block unless they are
 	   indirect pointers, dirents, symlinks or fs internal data */
-	if (dn->di_height != 0 ||
-	    S_ISDIR(dn->di_mode) ||
-	    S_ISLNK(dn->di_mode) ||
-	    (sbd.gfs1 && dn->__pad1 == GFS_FILE_DIR) ||
-	    block_is_systemfile(owner))
-		len = sbd.bsize;
-
-	inode_put(&inode);
-	return len;
+	if (di_height > 0 || S_ISDIR(di_mode) || S_ISLNK(di_mode) || gfs1dir
+	    || block_is_systemfile(owner))
+		return sbd.bsize;
+	return sizeof(struct gfs2_dinode);
 }
 
 /*
@@ -366,7 +355,7 @@ static int get_gfs_struct_info(struct gfs2_buffer_head *lbh, uint64_t owner,
 		*gstruct_len = sbd.bsize;
 		break;
 	case GFS2_METATYPE_DI:   /* 4 (disk inode) */
-		*gstruct_len = di_save_len(lbh, owner);
+		*gstruct_len = di_save_len(lbh->b_data, owner);
 		break;
 	case GFS2_METATYPE_IN:   /* 5 (indir inode blklst) */
 		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_indirect);*/
