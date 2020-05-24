@@ -570,31 +570,25 @@ static int save_buf(struct metafd *mfd, const char *buf, uint64_t addr, uint64_t
 	return do_save_buf(mfd, buf, addr, blklen);
 }
 
-static int save_block(int fd, struct metafd *mfd, uint64_t blk, uint64_t owner, int *blktype)
+static char *check_read_block(int fd, uint64_t blk)
 {
-	char *buf;
-	int err;
-
-	buf = calloc(1, sbd.bsize);
+	char *buf = calloc(1, sbd.bsize);
 	if (buf == NULL) {
-		fprintf(stderr, "Failed to read block 0x%"PRIx64" (in 0x%"PRIx64"): %s\n",
-		        blk, owner, strerror(errno));
-		return 1;
+		perror("Failed to read block");
+		return NULL;
 	}
 	if (gfs2_check_range(&sbd, blk) && blk != LGFS2_SB_ADDR(&sbd)) {
-		fprintf(stderr, "Warning: bad pointer 0x%"PRIx64" ignored in block 0x%"PRIx64"\n",
-		        blk, owner);
-		return 0;
+		fprintf(stderr, "Warning: bad pointer 0x%"PRIx64" ignored.\n", blk);
+		free(buf);
+		return NULL;
 	}
 	if (pread(sbd.device_fd, buf, sbd.bsize, sbd.bsize * blk) != sbd.bsize) {
-		fprintf(stderr, "Failed to read block 0x%"PRIx64" (in 0x%"PRIx64"): %s\n",
-		        blk, owner, strerror(errno));
+		fprintf(stderr, "Failed to read block 0x%"PRIx64": %s\n",
+		        blk, strerror(errno));
 		free(buf);
-		return 1;
+		return NULL;
 	}
-	err = save_buf(mfd, buf, blk, owner, blktype);
-	free(buf);
-	return err;
+	return buf;
 }
 
 /*
@@ -611,6 +605,8 @@ static void save_ea_block(struct metafd *mfd, char *buf, uint64_t owner)
 
 		gfs2_ea_header_in(&ea, buf + e);
 		for (i = 0; i < ea.ea_num_ptrs; i++) {
+			char *_buf;
+
 			charoff = e + ea.ea_name_len +
 				sizeof(struct gfs2_ea_header) +
 				sizeof(uint64_t) - 1;
@@ -618,7 +614,11 @@ static void save_ea_block(struct metafd *mfd, char *buf, uint64_t owner)
 			b = (uint64_t *)buf;
 			b += charoff + i;
 			blk = be64_to_cpu(*b);
-			save_block(sbd.device_fd, mfd, blk, owner, NULL);
+			_buf = check_read_block(sbd.device_fd, blk);
+			if (_buf != NULL) {
+				save_buf(mfd, _buf, blk, owner, NULL);
+				free(_buf);
+			}
 		}
 		if (!ea.ea_rec_len)
 			break;
@@ -642,13 +642,21 @@ static void save_indirect_blocks(struct metafd *mfd, osi_list_t *cur_list,
 
 	for (ptr = (uint64_t *)(mybh->b_data + head_size);
 	     (char *)ptr < (mybh->b_data + sbd.bsize); ptr++) {
+		char *buf;
+
 		if (!*ptr)
 			continue;
 		indir_block = be64_to_cpu(*ptr);
 		if (indir_block == old_block)
 			continue;
 		old_block = indir_block;
-		save_block(sbd.device_fd, mfd, indir_block, owner, &blktype);
+
+		buf = check_read_block(sbd.device_fd, indir_block);
+		if (buf != NULL) {
+			save_buf(mfd, buf, indir_block, owner, &blktype);
+			free(buf);
+		}
+
 		if (blktype == GFS2_METATYPE_EA) {
 			nbh = bread(&sbd, indir_block);
 			save_ea_block(mfd, nbh->b_data, owner);
@@ -799,9 +807,14 @@ static void save_inode_data(struct metafd *mfd, uint64_t iblk)
 	if (inode->i_di.di_eattr) { /* if this inode has extended attributes */
 		struct gfs2_buffer_head *lbh;
 		int mhtype;
+		char *buf;
 
 		lbh = bread(&sbd, inode->i_di.di_eattr);
-		save_block(sbd.device_fd, mfd, inode->i_di.di_eattr, iblk, &mhtype);
+		buf = check_read_block(sbd.device_fd, inode->i_di.di_eattr);
+		if (buf != NULL) {
+			save_buf(mfd, buf, inode->i_di.di_eattr, iblk, &mhtype);
+			free(buf);
+		}
 		if (mhtype == GFS2_METATYPE_EA)
 			save_ea_block(mfd, lbh->b_data, iblk);
 		else if (mhtype == GFS2_METATYPE_IN)
@@ -871,9 +884,15 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_DINODE);
 
 		for (j = 0; j < m; j++) {
+			char *buf;
+
 			blk = ibuf[j];
 			warm_fuzzy_stuff(blk, FALSE);
-			save_block(sbd.device_fd, mfd, blk, blk, &blktype);
+			buf = check_read_block(sbd.device_fd, blk);
+			if (buf != NULL) {
+				save_buf(mfd, buf, blk, blk, &blktype);
+				free(buf);
+			}
 			if (blktype == GFS2_METATYPE_DI)
 				save_inode_data(mfd, blk);
 		}
@@ -884,7 +903,11 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 		 * If we don't, we may run into metadata allocation issues. */
 		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_UNLINKED);
 		for (j = 0; j < m; j++) {
-			save_block(sbd.device_fd, mfd, blk, blk, NULL);
+			char *buf = check_read_block(sbd.device_fd, blk);
+			if (buf != NULL) {
+				save_buf(mfd, buf, blk, blk, &blktype);
+				free(buf);
+			}
 		}
 	}
 	free(ibuf);
@@ -984,6 +1007,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	struct metafd mfd;
 	struct osi_node *n;
 	int err = 0;
+	char *buf;
 
 	sbd.md.journals = 1;
 
@@ -1018,7 +1042,11 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		exit(1);
 	}
 	/* Save off the superblock */
-	save_block(sbd.device_fd, &mfd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sbd.bsize, 0, NULL);
+	buf = check_read_block(sbd.device_fd, GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sbd.bsize);
+	if (buf != NULL) {
+		save_buf(&mfd, buf, GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sbd.bsize, 0, NULL);
+		free(buf);
+	}
 	/* If this is gfs1, save off the rindex because it's not
 	   part of the file system as it is in gfs2. */
 	if (sbd.gfs1) {
@@ -1026,15 +1054,24 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		int j;
 
 		blk = sbd1->sb_rindex_di.no_addr;
-		save_block(sbd.device_fd, &mfd, blk, blk, NULL);
+		buf = check_read_block(sbd.device_fd, blk);
+		if (buf != NULL) {
+			save_buf(&mfd, buf, blk, blk, NULL);
+			free(buf);
+		}
 		save_inode_data(&mfd, blk);
 		/* In GFS1, journals aren't part of the RG space */
 		for (j = 0; j < journals_found; j++) {
+			uint64_t jb = journal_blocks[j];
+
 			log_debug("Saving journal #%d\n", j + 1);
-			for (blk = journal_blocks[j];
-			     blk < journal_blocks[j] + gfs1_journal_size;
-			     blk++)
-				save_block(sbd.device_fd, &mfd, blk, blk, NULL);
+			for (blk = jb; blk < (jb + gfs1_journal_size); blk++) {
+				buf = check_read_block(sbd.device_fd, blk);
+				if (buf != NULL) {
+					save_buf(&mfd, buf, blk, blk, NULL);
+					free(buf);
+				}
+			}
 		}
 	}
 	/* Walk through the resource groups saving everything within */
