@@ -328,8 +328,8 @@ static size_t di_save_len(const char *buf, uint64_t owner)
  * returns: 0 if successful
  *          -1 if this isn't gfs metadata.
  */
-static int get_gfs_struct_info(const char *buf, uint64_t owner, int *block_type,
-                               size_t *gstruct_len)
+static int get_gfs_struct_info(const char *buf, uint64_t owner, unsigned *block_type,
+                               unsigned *gstruct_len)
 {
 	struct gfs2_meta_header mh;
 
@@ -559,30 +559,79 @@ static int save_buf(struct metafd *mfd, const char *buf, uint64_t addr, unsigned
 	return 0;
 }
 
+struct block_range {
+	uint64_t start;
+	unsigned len;
+	unsigned *blktype;
+	unsigned *blklen;
+	char *buf;
+};
+
+static int save_range(struct metafd *mfd, struct block_range *br)
+{
+	for (unsigned i = 0; i < br->len; i++) {
+		int err;
+
+		err = save_buf(mfd, br->buf + (i * sbd.bsize), br->start + i, br->blklen[i]);
+		if (err != 0)
+			return err;
+	}
+	return 0;
+}
+
+static int check_read_range(int fd, struct block_range *br, uint64_t owner)
+{
+	size_t size;
+
+	br->buf = calloc(br->len, sbd.bsize + sizeof(*br->blktype) + sizeof(*br->blklen));
+	if (br->buf == NULL) {
+		perror("Failed to read range");
+		return 1;
+	}
+	br->blktype = (unsigned *)(br->buf + (br->len * sbd.bsize));
+	br->blklen = br->blktype + br->len;
+	if (br->start < LGFS2_SB_ADDR(&sbd) || br->start + br->len > sbd.fssize) {
+		fprintf(stderr, "Warning: bad range 0x%"PRIx64" (%u blocks) ignored.\n",
+		        br->start, br->len);
+		free(br->buf);
+		br->buf = NULL;
+		return 1;
+	}
+	size = br->len * sbd.bsize;
+	if (pread(sbd.device_fd, br->buf, size, sbd.bsize * br->start) != size) {
+		fprintf(stderr, "Failed to read block range 0x%"PRIx64" (%u blocks): %s\n",
+		        br->start, br->len, strerror(errno));
+		free(br->buf);
+		br->buf = NULL;
+		return 1;
+	}
+	for (unsigned i = 0; i < br->len; i++) {
+		char *buf = br->buf + (i * sbd.bsize);
+		uint64_t addr = br->start + i;
+		uint64_t _owner = (owner == 0) ? addr : owner;
+
+		if (get_gfs_struct_info(buf, _owner, br->blktype + i, br->blklen + i) &&
+		    !block_is_systemfile(_owner)) {
+			br->blklen[i] = 0;
+		}
+	}
+	return 0;
+}
+
 static char *check_read_block(int fd, uint64_t blk, uint64_t owner, int *blktype, size_t *blklen)
 {
-	char *buf = calloc(1, sbd.bsize);
-	if (buf == NULL) {
-		perror("Failed to read block");
+	struct block_range br = {
+		.start = blk,
+		.len = 1
+	};
+
+	if (check_read_range(fd, &br, owner) != 0)
 		return NULL;
-	}
-	if (gfs2_check_range(&sbd, blk) && blk != LGFS2_SB_ADDR(&sbd)) {
-		fprintf(stderr, "Warning: bad pointer 0x%"PRIx64" ignored.\n", blk);
-		free(buf);
-		return NULL;
-	}
-	if (pread(sbd.device_fd, buf, sbd.bsize, sbd.bsize * blk) != sbd.bsize) {
-		fprintf(stderr, "Failed to read block 0x%"PRIx64": %s\n",
-		        blk, strerror(errno));
-		free(buf);
-		return NULL;
-	}
-	if (get_gfs_struct_info(buf, owner, blktype, blklen) &&
-	    !block_is_systemfile(owner) && owner != 0) {
-		free(buf);
-		return NULL;
-	}
-	return buf;
+	if (blklen != NULL)
+		*blklen = *br.blklen;
+	if (blktype != NULL)
+		*blktype = *br.blktype;
+	return br.buf;
 }
 
 /*
@@ -872,6 +921,19 @@ static void get_journal_inode_blocks(void)
 	}
 }
 
+static void save_allocated_range(struct metafd *mfd, struct block_range *br)
+{
+	if (check_read_range(sbd.device_fd, br, 0) != 0)
+		return;
+
+	save_range(mfd, br);
+	for (unsigned i = 0; i < br->len; i++) {
+		if (br->blktype[i] == GFS2_METATYPE_DI)
+			save_inode_data(mfd, br->start + i);
+	}
+	free(br->buf);
+}
+
 static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 {
 	uint64_t blk = 0;
@@ -879,24 +941,27 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 	uint64_t *ibuf = malloc(sbd.bsize * GFS2_NBBY * sizeof(uint64_t));
 
 	for (i = 0; i < rgd->ri.ri_length; i++) {
-		size_t blen;
-		int btype;
+		struct block_range br = {0};
 
 		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_DINODE);
 
 		for (j = 0; j < m; j++) {
-			char *buf;
-
 			blk = ibuf[j];
-			warm_fuzzy_stuff(blk, FALSE);
-			buf = check_read_block(sbd.device_fd, blk, blk, &btype, &blen);
-			if (buf != NULL) {
-				save_buf(mfd, buf, blk, blen);
-				free(buf);
-				if (btype == GFS2_METATYPE_DI)
-					save_inode_data(mfd, blk);
+			if (br.start == 0) {
+				br.start = blk;
+				br.len = 1;
+			} else if (blk == br.start + br.len) {
+				br.len++;
+			} else {
+				save_allocated_range(mfd, &br);
+				br.start = blk;
+				br.len = 1;
 			}
+			warm_fuzzy_stuff(blk, FALSE);
 		}
+		if (br.start != 0)
+			save_allocated_range(mfd, &br);
+
 		if (!sbd.gfs1)
 			continue;
 
@@ -904,7 +969,8 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 		 * If we don't, we may run into metadata allocation issues. */
 		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_UNLINKED);
 		for (j = 0; j < m; j++) {
-			char *buf = check_read_block(sbd.device_fd, blk, blk, &btype, &blen);
+			size_t blen;
+			char *buf = check_read_block(sbd.device_fd, blk, blk, NULL, &blen);
 			if (buf != NULL) {
 				save_buf(mfd, buf, blk, blen);
 				free(buf);
