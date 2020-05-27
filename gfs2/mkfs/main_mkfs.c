@@ -505,7 +505,7 @@ static unsigned choose_blocksize(struct mkfs_opts *opts)
 	}
 	if (!opts->got_bsize && got_topol) {
 		if (dev->optimal_io_size <= getpagesize() &&
-		    dev->optimal_io_size >= dev->minimum_io_size)
+		    dev->optimal_io_size >= GFS2_DEFAULT_BSIZE)
 			bsize = dev->optimal_io_size;
 		else if (dev->physical_sector_size <= getpagesize() &&
 		         dev->physical_sector_size >= GFS2_DEFAULT_BSIZE)
