@@ -532,8 +532,10 @@ static int save_buf(struct metafd *mfd, const char *buf, uint64_t addr, unsigned
 	struct saved_metablock *savedata;
 	size_t outsz;
 
-	/* No need to save trailing zeroes */
-	for (; blklen > 0 && buf[blklen - 1] == '\0'; blklen--);
+	/* No need to save trailing zeroes, but leave that for compression to
+	   deal with when enabled as this adds a significant overhead */
+	if (mfd->gziplevel == 0)
+		for (; blklen > 0 && buf[blklen - 1] == '\0'; blklen--);
 
 	if (blklen == 0) /* No significant data; skip. */
 		return 0;
