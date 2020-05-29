@@ -740,17 +740,14 @@ new_range:
 	free(br);
 }
 
-static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, uint64_t blk)
+static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, char *buf)
 {
 	struct gfs2_leaf leaf;
-	char *buf = calloc(1, sdp->bsize);
 
-	if (buf == NULL) {
-		perror("Failed to save leaf blocks");
-		return 1;
-	}
+	gfs2_leaf_in(&leaf, buf);
 
-	do {
+	while (leaf.lf_next != 0) {
+		uint64_t blk = leaf.lf_next;
 		ssize_t r;
 
 		if (gfs2_check_range(sdp, blk) != 0)
@@ -772,11 +769,24 @@ static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, uint64_t bl
 			}
 		}
 		gfs2_leaf_in(&leaf, buf);
-		blk = leaf.lf_next;
-	} while (leaf.lf_next != 0);
-
-	free(buf);
+	}
 	return 0;
+}
+
+static void save_leaf_blocks(struct metafd *mfd, struct block_range_queue *q)
+{
+	while (q->tail != NULL) {
+		struct block_range *br = q->tail;
+
+		for (unsigned i = 0; i < br->len; i++) {
+			char *buf = br->buf + (i * sbd.bsize);
+
+			save_leaf_chain(mfd, &sbd, buf);
+		}
+		q->tail = br->next;
+		free(br->buf);
+		free(br);
+	}
 }
 
 /*
@@ -802,6 +812,7 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 	uint32_t height;
 	struct gfs2_inode *inode;
 	struct gfs2_dinode _di = {0};
+	int is_exhash;
 
 	for (unsigned i = 0; i < GFS2_MAX_META_HEIGHT; i++)
 		indq[i].head = &indq[i].tail;
@@ -815,8 +826,9 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 	   is directories, where the height represents the level at which
 	   the hash table exists, and we have to save the directory data. */
 
-	if (_di.di_flags & GFS2_DIF_EXHASH && (S_ISDIR(_di.di_mode) ||
-	     (sbd.gfs1 && _di.__pad1 == GFS_FILE_DIR)))
+	is_exhash = (S_ISDIR(_di.di_mode) || (sbd.gfs1 && _di.__pad1 == GFS_FILE_DIR)) &&
+	             _di.di_flags & GFS2_DIF_EXHASH;
+	if (is_exhash)
 		height++;
 	else if (height > 0 && !(_di.di_flags & GFS2_DIF_SYSTEM) &&
 		 !block_is_systemfile(iblk) && !S_ISDIR(_di.di_mode))
@@ -827,7 +839,7 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 	for (unsigned i = 1; i < height; i++) {
 		struct block_range_queue *nextq = &indq[i];
 
-		if (i == height - 1)
+		if (!is_exhash && i == height - 1)
 			nextq = NULL;
 
 		while (indq[i - 1].tail != NULL) {
@@ -844,6 +856,8 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 			free(q);
 		}
 	}
+	if (is_exhash)
+		save_leaf_blocks(mfd, &indq[height - 1]);
 	metabh = bread(&sbd, iblk);
 	if (sbd.gfs1) {
 		inode = lgfs2_gfs_inode_get(&sbd, metabh->b_data);
@@ -853,23 +867,6 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 	if (inode == NULL) {
 		perror("Failed to read inode");
 		exit(-1);
-	}
-	/* Process directory exhash inodes */
-	if (S_ISDIR(inode->i_di.di_mode) &&
-	    inode->i_di.di_flags & GFS2_DIF_EXHASH) {
-		uint64_t  leaf_no, old_leaf = -1;
-		int li;
-
-		for (li = 0; li < (1 << inode->i_di.di_depth); li++) {
-			if (lgfs2_get_leaf_ptr(inode, li, &leaf_no)) {
-				fprintf(stderr, "Could not read leaf index %d in dinode %"PRIu64"\n", li,
-				        (uint64_t)inode->i_di.di_num.no_addr);
-				exit(-1);
-			}
-			if (leaf_no != old_leaf && save_leaf_chain(mfd, &sbd, leaf_no) != 0)
-				exit(-1);
-			old_leaf = leaf_no;
-		}
 	}
 	if (inode->i_di.di_eattr) { /* if this inode has extended attributes */
 		struct gfs2_buffer_head *lbh;
