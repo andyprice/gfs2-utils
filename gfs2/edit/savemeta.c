@@ -808,9 +808,7 @@ static void save_leaf_blocks(struct metafd *mfd, struct block_range_queue *q)
 static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 {
 	struct block_range_queue indq[GFS2_MAX_META_HEIGHT] = {{NULL}};
-	struct gfs2_buffer_head *metabh;
 	uint32_t height;
-	struct gfs2_inode *inode;
 	struct gfs2_dinode _di = {0};
 	int is_exhash;
 
@@ -858,38 +856,23 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 	}
 	if (is_exhash)
 		save_leaf_blocks(mfd, &indq[height - 1]);
-	metabh = bread(&sbd, iblk);
-	if (sbd.gfs1) {
-		inode = lgfs2_gfs_inode_get(&sbd, metabh->b_data);
-	} else {
-		inode = lgfs2_inode_get(&sbd, metabh);
-	}
-	if (inode == NULL) {
-		perror("Failed to read inode");
-		exit(-1);
-	}
-	if (inode->i_di.di_eattr) { /* if this inode has extended attributes */
-		struct gfs2_buffer_head *lbh;
+	if (_di.di_eattr) { /* if this inode has extended attributes */
 		size_t blklen;
 		uint64_t blk;
 		int mhtype;
 		char *buf;
 
-		blk = inode->i_di.di_eattr;
-		lbh = bread(&sbd, blk);
+		blk = _di.di_eattr;
 		buf = check_read_block(sbd.device_fd, blk, iblk, &mhtype, &blklen);
 		if (buf != NULL) {
 			save_buf(mfd, buf, blk, blklen);
+			if (mhtype == GFS2_METATYPE_EA)
+				save_ea_block(mfd, buf, iblk);
+			else if (mhtype == GFS2_METATYPE_IN)
+				save_indirect_blocks(mfd, buf, iblk, NULL, sizeof(_di.di_header));
 			free(buf);
 		}
-		if (mhtype == GFS2_METATYPE_EA)
-			save_ea_block(mfd, lbh->b_data, iblk);
-		else if (mhtype == GFS2_METATYPE_IN)
-			save_indirect_blocks(mfd, lbh->b_data, iblk, NULL, sizeof(di.di_header));
-		brelse(lbh);
 	}
-	inode_put(&inode);
-	brelse(metabh);
 }
 
 static void get_journal_inode_blocks(void)
