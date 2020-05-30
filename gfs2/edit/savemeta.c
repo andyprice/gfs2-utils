@@ -1073,8 +1073,6 @@ static int parse_header(char *buf, struct savemeta_header *smh)
 
 void savemeta(char *out_fn, int saveoption, int gziplevel)
 {
-	uint64_t jindex_block;
-	struct gfs2_buffer_head *lbh;
 	struct metafd mfd;
 	struct osi_node *n;
 	uint64_t sb_addr;
@@ -1090,15 +1088,6 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		sbd.bsize = sbd.sd_sb.sb_bsize;
 	printf("There are %llu blocks of %u bytes in the filesystem.\n",
 	                     (unsigned long long)sbd.fssize, sbd.bsize);
-	if (sbd.gfs1)
-		jindex_block = sbd1->sb_jindex_di.no_addr;
-	else
-		jindex_block = masterblock("jindex");
-	lbh = bread(&sbd, jindex_block);
-	gfs2_dinode_in(&di, lbh->b_data);
-	if (!sbd.gfs1)
-		do_dinode_extended(&di, lbh->b_data);
-	brelse(lbh);
 
 	printf("Filesystem size: %.2fGB\n", (sbd.fssize * sbd.bsize) / ((float)(1 << 30)));
 	get_journal_inode_blocks();
