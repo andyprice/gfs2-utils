@@ -570,10 +570,75 @@ struct block_range {
 	char *buf;
 };
 
+static int block_range_prepare(struct block_range *br)
+{
+	br->buf = calloc(br->len, sbd.bsize + sizeof(*br->blktype) + sizeof(*br->blklen));
+	if (br->buf == NULL) {
+		perror("Failed to allocate block range buffer");
+		return 1;
+	}
+	br->blktype = (unsigned *)(br->buf + (br->len * sbd.bsize));
+	br->blklen = br->blktype + br->len;
+	return 0;
+}
+
+static int block_range_check(struct block_range *br)
+{
+	if (br->start >= LGFS2_SB_ADDR(&sbd) && br->start + br->len <= sbd.fssize)
+		return 0;
+
+	fprintf(stderr, "Warning: bad range 0x%"PRIx64" (%u blocks) ignored.\n",
+		br->start, br->len);
+	free(br->buf);
+	br->buf = NULL;
+	return 1;
+}
+
+static void block_range_setinfo(struct block_range *br, uint64_t owner)
+{
+	for (unsigned i = 0; i < br->len; i++) {
+		char *buf = br->buf + (i * sbd.bsize);
+		uint64_t addr = br->start + i;
+		uint64_t _owner = (owner == 0) ? addr : owner;
+
+		if (get_gfs_struct_info(buf, _owner, br->blktype + i, br->blklen + i) &&
+		    !block_is_systemfile(_owner)) {
+			br->blklen[i] = 0;
+		}
+	}
+}
+
+static void block_range_free(struct block_range **brp)
+{
+	free((*brp)->buf);
+	free(*brp);
+	*brp = NULL;
+}
+
 struct block_range_queue {
 	struct block_range *tail;
 	struct block_range **head;
 };
+
+static void block_range_queue_init(struct block_range_queue *q)
+{
+	q->head = &q->tail;
+}
+
+static void block_range_queue_insert(struct block_range_queue *q, struct block_range *br)
+{
+	*q->head = br;
+	q->head = &br->next;
+}
+
+static struct block_range *block_range_queue_pop(struct block_range_queue *q)
+{
+	struct block_range *br = q->tail;
+
+	q->tail = br->next;
+	br->next = NULL;
+	return br;
+}
 
 static int save_range(struct metafd *mfd, struct block_range *br)
 {
@@ -591,20 +656,12 @@ static int check_read_range(int fd, struct block_range *br, uint64_t owner)
 {
 	size_t size;
 
-	br->buf = calloc(br->len, sbd.bsize + sizeof(*br->blktype) + sizeof(*br->blklen));
-	if (br->buf == NULL) {
-		perror("Failed to read range");
+	if (block_range_prepare(br) != 0)
 		return 1;
-	}
-	br->blktype = (unsigned *)(br->buf + (br->len * sbd.bsize));
-	br->blklen = br->blktype + br->len;
-	if (br->start < LGFS2_SB_ADDR(&sbd) || br->start + br->len > sbd.fssize) {
-		fprintf(stderr, "Warning: bad range 0x%"PRIx64" (%u blocks) ignored.\n",
-		        br->start, br->len);
-		free(br->buf);
-		br->buf = NULL;
+
+	if (block_range_check(br) != 0)
 		return 1;
-	}
+
 	size = br->len * sbd.bsize;
 	if (pread(sbd.device_fd, br->buf, size, sbd.bsize * br->start) != size) {
 		fprintf(stderr, "Failed to read block range 0x%"PRIx64" (%u blocks): %s\n",
@@ -613,16 +670,7 @@ static int check_read_range(int fd, struct block_range *br, uint64_t owner)
 		br->buf = NULL;
 		return 1;
 	}
-	for (unsigned i = 0; i < br->len; i++) {
-		char *buf = br->buf + (i * sbd.bsize);
-		uint64_t addr = br->start + i;
-		uint64_t _owner = (owner == 0) ? addr : owner;
-
-		if (get_gfs_struct_info(buf, _owner, br->blktype + i, br->blklen + i) &&
-		    !block_is_systemfile(_owner)) {
-			br->blklen[i] = 0;
-		}
-	}
+	block_range_setinfo(br, owner);
 	return 0;
 }
 
@@ -690,8 +738,7 @@ static void save_indirect_range(struct metafd *mfd, struct block_range **brp, ui
 			save_ea_block(mfd, br->buf + (i * sbd.bsize), owner);
 	}
 	if (q) {
-		*q->head = br;
-		q->head = &br->next;
+		block_range_queue_insert(q, br);
 		*brp = NULL; /* The list now has ownership of it */
 	} else {
 		free(br->buf);
@@ -813,7 +860,7 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 	int is_exhash;
 
 	for (unsigned i = 0; i < GFS2_MAX_META_HEIGHT; i++)
-		indq[i].head = &indq[i].tail;
+		block_range_queue_init(&indq[i]);
 
 	gfs2_dinode_in(&_di, ibuf);
 	height = _di.di_height;
@@ -841,7 +888,7 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 			nextq = NULL;
 
 		while (indq[i - 1].tail != NULL) {
-			struct block_range *q = indq[i - 1].tail;
+			struct block_range *q = block_range_queue_pop(&indq[i - 1]);
 
 			for (unsigned j = 0; j < q->len; j++) {
 				char *_buf = q->buf + (j * sbd.bsize);
@@ -849,9 +896,7 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 				save_indirect_blocks(mfd, _buf, iblk, nextq, sizeof(_di.di_header));
 			}
 			warm_fuzzy_stuff(q->start + q->len, 0);
-			indq[i - 1].tail = q->next;
-			free(q->buf);
-			free(q);
+			block_range_free(&q);
 		}
 	}
 	if (is_exhash)
