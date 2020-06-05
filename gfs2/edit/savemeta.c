@@ -351,7 +351,10 @@ static int get_gfs_struct_info(const char *buf, uint64_t owner, unsigned *block_
 
 	switch (mh.mh_type) {
 	case GFS2_METATYPE_SB:   /* 1 (superblock) */
-		*gstruct_len = sizeof(struct gfs_sb);
+		if (sbd.gfs1)
+			*gstruct_len = sizeof(struct gfs_sb);
+		else
+			*gstruct_len = sizeof(struct gfs2_sb);
 		break;
 	case GFS2_METATYPE_RG:   /* 2 (rsrc grp hdr) */
 		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_rgrp);*/
@@ -1151,7 +1154,10 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	sb_addr = GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sbd.bsize;
 	buf = check_read_block(sbd.device_fd, sb_addr, 0, NULL, NULL);
 	if (buf != NULL) {
-		save_buf(&mfd, buf, sb_addr, sizeof(struct gfs_sb));
+		if (sbd.gfs1)
+			save_buf(&mfd, buf, sb_addr, sizeof(struct gfs_sb));
+		else
+			save_buf(&mfd, buf, sb_addr, sizeof(struct gfs2_sb));
 		free(buf);
 	}
 	/* If this is gfs1, save off the rindex because it's not
@@ -1263,7 +1269,7 @@ static int restore_super(struct metafd *mfd, char *buf, int printonly)
 		fprintf(stderr, "Failed to write superblock\n");
 		return -1;
 	}
-	printf("Block size is %uB\n", sbd.bsize);
+	blks_saved++;
 	return 0;
 }
 
@@ -1279,7 +1285,6 @@ static int restore_data(int fd, struct metafd *mfd, int printonly)
 		exit(1);
 	}
 
-	blks_saved = 0;
 	while (TRUE) {
 		char *bp;
 
@@ -1338,6 +1343,7 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 	char *bp;
 	int ret;
 
+	blks_saved = 0;
 	restore_buf = malloc(RESTORE_BUF_SIZE);
 	if (restore_buf == NULL) {
 		perror("Restore failed");
@@ -1379,11 +1385,26 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 		fprintf(stderr, "No superblock found in metadata file\n");
 		return -1;
 	}
-	ret = restore_super(mfd, bp + sizeof(struct saved_metablock), printonly);
+	bp += sizeof(struct saved_metablock);
+	ret = restore_super(mfd, bp, printonly);
 	if (ret != 0)
 		return ret;
 
-	bp += sizeof(struct saved_metablock) + sb_siglen;
+	if (smh->sh_fs_bytes > 0) {
+		sbd.fssize = smh->sh_fs_bytes / sbd.bsize;
+		printf("Saved file system size is %"PRIu64" blocks, %.2fGB\n",
+		       sbd.fssize, smh->sh_fs_bytes / ((float)(1 << 30)));
+	}
+	printf("Block size is %uB\n", sbd.bsize);
+	printf("This is gfs%c metadata.\n", sbd.gfs1 ? '1': '2');
+	if (printonly > 1 && printonly == LGFS2_SB_ADDR(&sbd)) {
+		display_block_type(bp, LGFS2_SB_ADDR(&sbd), TRUE);
+		display_gfs2(bp);
+	} else if (printonly == 1) {
+		print_gfs2("0 (l=0x%x): ", sb_siglen);
+		display_block_type(bp, LGFS2_SB_ADDR(&sbd), TRUE);
+	}
+	bp += sb_siglen;
 	restore_off = bp - restore_buf;
 	restore_left -= restore_off;
 	return 0;
@@ -1413,14 +1434,6 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 	error = restore_init(in_fn, &mfd, &smh, printonly);
 	if (error != 0)
 		exit(error);
-
-	if (smh.sh_fs_bytes > 0) {
-		sbd.fssize = smh.sh_fs_bytes / sbd.bsize;
-		printf("Saved file system size is %"PRIu64" blocks, %.2fGB\n",
-		       sbd.fssize, smh.sh_fs_bytes / ((float)(1 << 30)));
-	}
-
-	printf("This is gfs%c metadata.\n", sbd.gfs1 ? '1': '2');
 
 	if (!printonly) {
 		uint64_t space = lseek(sbd.device_fd, 0, SEEK_END) / sbd.bsize;
