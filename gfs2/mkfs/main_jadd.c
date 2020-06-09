@@ -241,7 +241,7 @@ static void print_results(struct jadd_opts *opts)
 static int create_new_inode(struct jadd_opts *opts, uint64_t *addr)
 {
 	char *name = opts->new_inode;
-	int fd, error = 0;
+	int fd;
 
 	for (;;) {
 		fd = open(name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
@@ -261,9 +261,10 @@ static int create_new_inode(struct jadd_opts *opts, uint64_t *addr)
 	if (addr != NULL) {
 		struct stat st;
 
-		if ((error = fstat(fd, &st))) {
+		if (fstat(fd, &st) == -1) {
 			perror("fstat");
-			return close(fd);
+			close(fd);
+			return -1;
 		}
 		*addr = st.st_ino;
 	}
@@ -481,7 +482,7 @@ static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	unsigned int x, blocks =
 		sdp->jsize << (20 - sdp->sd_sb.sb_bsize_shift);
 	struct gfs2_log_header lh;
-	uint64_t seq = RANDOM(blocks), addr;
+	uint64_t seq = RANDOM(blocks), addr = 0;
 	off_t off = 0;
 
 	if ((fd = create_new_inode(opts, &addr)) < 0)
