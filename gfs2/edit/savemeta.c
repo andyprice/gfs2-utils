@@ -447,6 +447,7 @@ static struct metafd savemetaopen(char *out_fn, int gziplevel)
 	char gzmode[3] = "w9";
 	char dft_fn[] = DFT_SAVE_FILE;
 	mode_t mask = umask(S_IXUSR | S_IRWXG | S_IRWXO);
+	struct stat st;
 
 	mfd.gziplevel = gziplevel;
 
@@ -463,8 +464,11 @@ static struct metafd savemetaopen(char *out_fn, int gziplevel)
 		fprintf(stderr, "Can't open %s: %s\n", out_fn, strerror(errno));
 		exit(1);
 	}
-
-	if (ftruncate(mfd.fd, 0)) {
+	if (fstat(mfd.fd, &st) == -1) {
+		fprintf(stderr, "Failed to stat %s: %s\n", out_fn, strerror(errno));
+		exit(1);
+	}
+	if (S_ISREG(st.st_mode) && ftruncate(mfd.fd, 0)) {
 		fprintf(stderr, "Can't truncate %s: %s\n", out_fn, strerror(errno));
 		exit(1);
 	}
