@@ -311,7 +311,8 @@ static void opt_parse_extended(char *str, struct mkfs_opts *opts)
 			print_ext_opts();
 			exit(0);
 		} else {
-			fprintf(stderr, _("Invalid option '%s'\n"), key);
+			fprintf(stderr, _("Invalid extended option (specified with -o): '%s'\n"), key);
+			print_ext_opts();
 			exit(-1);
 		}
 	}
