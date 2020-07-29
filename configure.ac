@@ -98,7 +98,7 @@ AC_ARG_ENABLE([gprof],
 
 
 # We use the Check framework for unit tests
-PKG_CHECK_MODULES([check], [check >= 0.9.8],
+PKG_CHECK_MODULES([check], [check >= 0.10.0],
                   [have_check=yes],
                   [have_check=no])
 AM_CONDITIONAL([HAVE_CHECK], [test "x$have_check" = "xyes"])

@@ -16,7 +16,7 @@ static lgfs2_rgrps_t mockup_rgrp(void)
 	uint32_t rgsize = (1024 << 20) / 4096;
 
 	sdp = calloc(1, sizeof(*sdp));
-	fail_unless(sdp != NULL);
+	ck_assert(sdp != NULL);
 
 	sdp->device.length = rgsize + 20;
 	sdp->device_fd = -1;
@@ -24,7 +24,7 @@ static lgfs2_rgrps_t mockup_rgrp(void)
 	compute_constants(sdp);
 
 	rgs = lgfs2_rgrps_init(sdp, 0, 0);
-	fail_unless(rgs != NULL);
+	ck_assert(rgs != NULL);
 
 	lgfs2_rgrps_plan(rgs, sdp->device.length - 16, rgsize);
 
@@ -32,11 +32,11 @@ static lgfs2_rgrps_t mockup_rgrp(void)
 	ck_assert(addr != 0);
 
 	rg = lgfs2_rgrps_append(rgs, &ri, 0);
-	fail_unless(rg != NULL);
+	ck_assert(rg != NULL);
 
 	for (i = 0; i < rg->ri.ri_length; i++) {
 		rg->bits[i].bi_data = calloc(1, sdp->bsize);
-		fail_unless(rg->bits[i].bi_data != NULL);
+		ck_assert(rg->bits[i].bi_data != NULL);
 	}
 	return rgs;
 }
@@ -44,7 +44,7 @@ static lgfs2_rgrps_t mockup_rgrp(void)
 START_TEST(test_mockup_rgrp)
 {
 	lgfs2_rgrps_t rgs = mockup_rgrp();
-	fail_unless(rgs != NULL);
+	ck_assert(rgs != NULL);
 }
 END_TEST
 
@@ -66,7 +66,7 @@ START_TEST(test_rbm_find_good)
 		ck_assert_int_eq(err, 0);
 
 		addr = lgfs2_rbm_to_block(&rbm);
-		fail_unless(addr == rbm.rgd->ri.ri_data0);
+		ck_assert(addr == rbm.rgd->ri.ri_data0);
 	}
 }
 END_TEST
@@ -110,7 +110,7 @@ START_TEST(test_rbm_find_lastblock)
 	ck_assert_int_eq(err, 0);
 
 	addr = lgfs2_rbm_to_block(&rbm);
-	fail_unless(addr == (rg->ri.ri_data0 + rg->ri.ri_data - 1));
+	ck_assert(addr == (rg->ri.ri_data0 + rg->ri.ri_data - 1));
 }
 END_TEST
 

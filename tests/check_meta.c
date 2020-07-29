@@ -6,7 +6,7 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...) {}
 
 START_TEST(test_lgfs2_meta)
 {
-	fail_unless(lgfs2_selfcheck() == 0);
+	ck_assert(lgfs2_selfcheck() == 0);
 }
 END_TEST
 
