@@ -711,9 +711,16 @@ static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrp_t rg, int debug)
 		prev_end = lgfs2_rgrp_index(prev)->ri_data0 +
 		           lgfs2_rgrp_index(prev)->ri_data;
 	}
-	err = zero_gap(sdp, prev_end, ri->ri_addr - prev_end);
-	if (err != 0)
-		return -1;
+	while (prev_end < ri->ri_addr) {
+		size_t gap_len = ri->ri_addr - prev_end;
+
+		if (gap_len > IOV_MAX)
+			gap_len = IOV_MAX;
+		err = zero_gap(sdp, prev_end, gap_len);
+		if (err != 0)
+			return -1;
+		prev_end += gap_len;
+	}
 	err = lgfs2_rgrp_write(sdp->device_fd, rg);
 	if (err != 0) {
 		perror(_("Failed to write resource group"));

@@ -117,6 +117,7 @@ AT_CHECK([gfs2_edit -p sb field sb_bsize $GFS_TGT | tr -d '\n' ], 0, [4096], [ig
 AT_CHECK([$GFS_MKFS -p lock_nolock -o test_topology=7168:512:0:33553920:512 $GFS_TGT], 0, [ignore], [ignore])
 AT_CHECK([$GFS_MKFS -p lock_nolock -o test_topology=7168:512:8192:33553920:512 $GFS_TGT], 0, [ignore], [Warning: device is not properly aligned. This may harm performance.
 ])
+AT_CHECK([$GFS_MKFS -p lock_nolock -o test_topology=0:512:4194304:8388608:512 -b 1024 $GFS_TGT], 0, [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([Resource group alignment])
