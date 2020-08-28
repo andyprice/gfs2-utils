@@ -929,11 +929,17 @@ static void sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsiz
 	   will fit. For user-provided journal sizes, limit it to half of the fs. */
 	if (!opts->got_jsize) {
 		int default_jsize = default_journal_size(sdp->bsize, sdp->device.length / opts->journals);
+		unsigned jsize_mb;
+
 		if (default_jsize < 0) {
 			fprintf(stderr, _("gfs2 will not fit on this device.\n"));
 			exit(1);
 		}
-		opts->jsize = (default_jsize * sdp->bsize) >> 20;
+		jsize_mb = (default_jsize * sdp->bsize) >> 20;
+		if (jsize_mb < GFS2_MIN_JSIZE)
+			opts->jsize = GFS2_MIN_JSIZE;
+		else
+			opts->jsize = jsize_mb;
 	} else if ((((opts->jsize * opts->journals) << 20) / sdp->bsize) > (sdp->device.length / 2)) {
 		unsigned max_jsize = (sdp->device.length / 2 * sdp->bsize / opts->journals) >> 20;
 

@@ -78,6 +78,8 @@ AT_CLEANUP
 AT_SETUP([Min. journal size])
 AT_KEYWORDS(mkfs.gfs2 mkfs)
 GFS_FSCK_CHECK([$GFS_MKFS -p lock_nolock -J 8 $GFS_TGT])
+GFS_FSCK_CHECK([$GFS_MKFS -p lock_nolock -b 1024 $GFS_TGT 511996])
+AT_CHECK([gfs2_edit -p journal0 field di_size $GFS_TGT | tr -d '\n'], 0, [8388608], [ignore])
 AT_CLEANUP
 
 AT_SETUP([Max. quota change file size])
