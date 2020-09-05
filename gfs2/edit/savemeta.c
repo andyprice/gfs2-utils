@@ -1251,7 +1251,7 @@ nobuffer:
 	return NULL;
 }
 
-static int restore_super(struct metafd *mfd, char *buf, int printonly)
+static int restore_super(struct metafd *mfd, void *buf, int printonly)
 {
 	int ret;
 
@@ -1337,7 +1337,7 @@ static void complain(const char *complaint)
 
 static int restore_init(const char *path, struct metafd *mfd, struct savemeta_header *smh, int printonly)
 {
-	struct gfs2_meta_header *sbmh;
+	struct gfs2_sb rsb;
 	uint16_t sb_siglen;
 	char *end;
 	char *bp;
@@ -1372,12 +1372,12 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 		return -1;
 	}
 	/* Scan for the position of the superblock. Required to support old formats(?). */
-	end = &restore_buf[256 + sizeof(struct saved_metablock) + sizeof(*sbmh)];
+	end = &restore_buf[256 + sizeof(struct saved_metablock) + sizeof(struct gfs2_meta_header)];
 	while (bp <= end) {
+		memcpy(&rsb, bp + sizeof(struct saved_metablock), sizeof(rsb));
 		sb_siglen = be16_to_cpu(((struct saved_metablock *)bp)->siglen);
-		sbmh = (struct gfs2_meta_header *)(bp + sizeof(struct saved_metablock));
-		if (sbmh->mh_magic == cpu_to_be32(GFS2_MAGIC) &&
-		    sbmh->mh_type == cpu_to_be32(GFS2_METATYPE_SB))
+		if (be32_to_cpu(rsb.sb_header.mh_magic) == GFS2_MAGIC &&
+		    be32_to_cpu(rsb.sb_header.mh_type) == GFS2_METATYPE_SB)
 			break;
 		bp++;
 	}
@@ -1386,7 +1386,7 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 		return -1;
 	}
 	bp += sizeof(struct saved_metablock);
-	ret = restore_super(mfd, bp, printonly);
+	ret = restore_super(mfd, &rsb, printonly);
 	if (ret != 0)
 		return ret;
 
