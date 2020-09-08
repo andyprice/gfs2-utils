@@ -16,7 +16,7 @@
 #include "fsck.h"
 #include "fs_recovery.h"
 
-int rindex_modified = FALSE;
+int rindex_modified = 0;
 struct special_blocks false_rgrps;
 
 #define BAD_RG_PERCENT_TOLERANCE 11
@@ -31,7 +31,7 @@ struct special_blocks false_rgrps;
 			    fmt	" != expected: 0x%" fmt "\n"),		\
 			  rg + 1, (type)ondisk.field, (type)expected.field);	\
 		ondisk.field = expected.field;				\
-		rindex_modified = TRUE;					\
+		rindex_modified = 1;					\
 	}
 
 /*
@@ -527,7 +527,7 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 	uint64_t fwd_block, block_bump;
 	struct rgrp_tree *calc_rgd, *prev_rgd;
 	int number_of_rgs, rgi, segment_rgs;
-	int rg_was_fnd = FALSE, corrupt_rgs = 0;
+	int rg_was_fnd = 0, corrupt_rgs = 0;
 	int error = -1, j, i;
 	int grow_segments, segment = 0;
 
@@ -854,7 +854,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 	/* Try all possible rgrp sizes: 2048, 1024, 512, 256, 128, 64, 32 */
 	for (sdp->rgsize = GFS2_DEFAULT_RGSIZE; sdp->rgsize >= 32;
 	     sdp->rgsize /= 2) {
-		num_rgrps = how_many_rgrps(sdp, &sdp->device, TRUE);
+		num_rgrps = how_many_rgrps(sdp, &sdp->device, 1);
 		if (num_rgrps == *num_rgs) {
 			log_info(_("rgsize must be: %lld (0x%llx)\n"),
 				 (unsigned long long)sdp->rgsize,
@@ -863,7 +863,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 		}
 	}
 	/* Compute the default resource group layout as mkfs would have done */
-	compute_rgrp_layout(sdp, &sdp->rgcalc, TRUE);
+	compute_rgrp_layout(sdp, &sdp->rgcalc, 1);
 	if (build_rgrps(sdp)) { /* Calculate but don't write to disk. */
 		fprintf(stderr, _("Failed to build resource groups\n"));
 		exit(-1);
@@ -1212,7 +1212,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 			else
 				log_err( _("rindex not fixed.\n"));
 			gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, actual);
-			rindex_modified = FALSE;
+			rindex_modified = 0;
 		}
 		e = enext;
 		if (n)

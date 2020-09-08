@@ -958,13 +958,13 @@ static int probe_contents(struct mkfs_dev *dev)
 	const char *contents;
 	blkid_probe pr = blkid_new_probe();
 	if (pr == NULL || blkid_probe_set_device(pr, dev->fd, 0, 0) != 0
-	               || blkid_probe_enable_superblocks(pr, TRUE) != 0
-	               || blkid_probe_enable_partitions(pr, TRUE) != 0) {
+	               || blkid_probe_enable_superblocks(pr, 1) != 0
+	               || blkid_probe_enable_partitions(pr, 1) != 0) {
 		fprintf(stderr, _("Failed to create probe\n"));
 		return -1;
 	}
 
-	if (!S_ISREG(dev->stat.st_mode) && blkid_probe_enable_topology(pr, TRUE) != 0) {
+	if (!S_ISREG(dev->stat.st_mode) && blkid_probe_enable_topology(pr, 1) != 0) {
 		fprintf(stderr, _("Failed to create probe\n"));
 		return -1;
 	}

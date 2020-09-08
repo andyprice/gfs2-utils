@@ -145,8 +145,8 @@ static lgfs2_rgrps_t rgrps_init(struct gfs2_sbd *sdp)
 	struct stat st;
 	blkid_probe pr = blkid_new_probe();
 	if (pr == NULL || blkid_probe_set_device(pr, sdp->device_fd, 0, 0) != 0
-	               || blkid_probe_enable_superblocks(pr, TRUE) != 0
-	               || blkid_probe_enable_partitions(pr, TRUE) != 0) {
+	               || blkid_probe_enable_superblocks(pr, 1) != 0
+	               || blkid_probe_enable_partitions(pr, 1) != 0) {
 		fprintf(stderr, _("Failed to create probe\n"));
 		return NULL;
 	}
@@ -157,7 +157,7 @@ static lgfs2_rgrps_t rgrps_init(struct gfs2_sbd *sdp)
 		return NULL;
 	}
 
-	if (!S_ISREG(st.st_mode) && blkid_probe_enable_topology(pr, TRUE) != 0) {
+	if (!S_ISREG(st.st_mode) && blkid_probe_enable_topology(pr, 1) != 0) {
 		fprintf(stderr, _("Failed to create probe\n"));
 		return NULL;
 	}

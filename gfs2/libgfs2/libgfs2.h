@@ -20,14 +20,6 @@
 
 __BEGIN_DECLS
 
-#ifndef TRUE
-#define TRUE (1)
-#endif
-
-#ifndef FALSE
-#define FALSE (0)
-#endif
-
 #if __BYTE_ORDER == __BIG_ENDIAN
 
 #define be16_to_cpu(x) (x)

@@ -28,7 +28,7 @@ int gfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
 	int new = 0;
 	uint64_t dblock;
 
-	block_map(ip, blk, &new, &dblock, NULL, FALSE);
+	block_map(ip, blk, &new, &dblock, NULL, 0);
 	if (!dblock)
 		return -EIO;
 

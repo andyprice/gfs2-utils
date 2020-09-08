@@ -14,10 +14,10 @@
 
 #define pv(struct, member, fmt, fmt2) do {				\
 		print_it("  "#member, fmt, fmt2, struct->member);	\
-	} while (FALSE);
+	} while (0);
 #define pv2(struct, member, fmt, fmt2) do {				\
 		print_it("  ", fmt, fmt2, struct->member);		\
-	} while (FALSE);
+	} while (0);
 
 
 #define CPIN_08(s1, s2, member, count) {memcpy((s1->member), (s2->member), (count));}

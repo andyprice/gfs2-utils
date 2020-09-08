@@ -150,7 +150,7 @@ static void print_usage(const char *prog_name)
 
 static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp, struct jadd_opts *opts)
 {
-	int cont = TRUE;
+	int cont = 1;
 	int optchar;
 
 	while (cont) {
@@ -189,7 +189,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp, struc
 			exit(EXIT_FAILURE);
 			break;
 		case EOF:
-			cont = FALSE;
+			cont = 0;
 			break;
 		default:
 			die( _("Invalid option: %c\n"), optchar);

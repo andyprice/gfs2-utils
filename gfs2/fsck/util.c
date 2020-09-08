@@ -143,7 +143,7 @@ char generic_interrupt(const char *caller, const char *where,
 			break;
 		}
 	}
-	while (TRUE) {
+	while (1) {
 		printf("\n%s interrupted during %s:  ", caller, where);
 		if (progress)
 			printf("%s.\n", progress);
@@ -181,7 +181,7 @@ int fsck_query(const char *format, ...)
 	if (opts.no)
 		return 0;
 
-	opts.query = TRUE;
+	opts.query = 1;
 	while (1) {
 		va_start(args, format);
 		vprintf(format, args);
@@ -218,7 +218,7 @@ int fsck_query(const char *format, ...)
 		}
 	}
 
-	opts.query = FALSE;
+	opts.query = 0;
 	return ret;
 }
 

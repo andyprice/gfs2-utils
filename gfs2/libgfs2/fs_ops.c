@@ -201,7 +201,7 @@ static int block_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, int state, 
 
 int lgfs2_dinode_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, uint64_t *blkno)
 {
-	int ret = block_alloc(sdp, blksreq, GFS2_BLKST_DINODE, blkno, TRUE);
+	int ret = block_alloc(sdp, blksreq, GFS2_BLKST_DINODE, blkno, 1);
 	if (ret == 0)
 		sdp->dinodes_alloced++;
 	return ret;
@@ -211,7 +211,7 @@ int lgfs2_meta_alloc(struct gfs2_inode *ip, uint64_t *blkno)
 {
 	int ret = block_alloc(ip->i_sbd, 1,
 			      ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
-			      GFS2_BLKST_USED, blkno, FALSE);
+			      GFS2_BLKST_USED, blkno, 0);
 	if (ret == 0) {
 		ip->i_di.di_goal_meta = *blkno;
 		bmodified(ip->i_bh);
@@ -394,11 +394,11 @@ void build_height(struct gfs2_inode *ip, int height)
 	int new_block;
 
 	while (ip->i_di.di_height < height) {
-		new_block = FALSE;
+		new_block = 0;
 		bp = (uint64_t *)(ip->i_bh->b_data + sizeof(struct gfs2_dinode));
 		for (x = 0; x < sdp->sd_diptrs; x++, bp++)
 			if (*bp) {
-				new_block = TRUE;
+				new_block = 1;
 				break;
 			}
 
@@ -547,7 +547,7 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			nptrs = (end_of_metadata) ? sdp->sd_inptrs : sdp->sd_diptrs;
 
 			while (++mp.mp_list[end_of_metadata] < nptrs) {
-				lookup_block(ip, bh, end_of_metadata, &mp, FALSE, &tmp_new,
+				lookup_block(ip, bh, end_of_metadata, &mp, 0, &tmp_new,
 							 &tmp_dblock);
 
 				if (*dblock + *extlen != tmp_dblock)
@@ -621,10 +621,10 @@ int gfs2_readi(struct gfs2_inode *ip, void *buf,
 		if (!extlen) {
 			if (sdp->gfs1)
 				gfs1_block_map(ip, lblock, &not_new, &dblock,
-					       &extlen, FALSE);
+					       &extlen, 0);
 			else
 				block_map(ip, lblock, &not_new, &dblock,
-					  &extlen, FALSE);
+					  &extlen, 0);
 		}
 
 		if (dblock) {
@@ -704,8 +704,8 @@ int __gfs2_writei(struct gfs2_inode *ip, void *buf,
 			amount = sdp->bsize - o;
 
 		if (!extlen) {
-			new = TRUE;
-			block_map(ip, lblock, &new, &dblock, &extlen, FALSE);
+			new = 1;
+			block_map(ip, lblock, &new, &dblock, &extlen, 0);
 		}
 
 		if (new) {
@@ -904,7 +904,7 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
 	uint32_t len, half_len, divider;
 	uint64_t bn, *lp;
 	uint32_t name_len;
-	int x, moved = FALSE;
+	int x, moved = 0;
 	int count;
 
 	if (lgfs2_meta_alloc(dip, &bn))
@@ -981,7 +981,7 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
 			if (!prev)
 				prev = dent;
 
-			moved = TRUE;
+			moved = 1;
 		} else
 			prev = dent;
 

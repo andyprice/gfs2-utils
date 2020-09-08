@@ -150,7 +150,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 
 			while (++mp.mp_list[end_of_metadata] < nptrs) {
 				gfs1_lookup_block(ip, bh, end_of_metadata, &mp,
-						  FALSE, &tmp_new,
+						  0, &tmp_new,
 						  &tmp_dblock);
 
 				if (*dblock + *extlen != tmp_dblock)
@@ -204,7 +204,7 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 			amount = sdp->bsize - offset;
 
 		if (!extlen){
-			new = TRUE;
+			new = 1;
 			gfs1_block_map(ip, lblock, &new, &dblock, &extlen, 0);
 			if (!dblock)
 				return -1;

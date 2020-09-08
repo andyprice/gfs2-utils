@@ -198,7 +198,7 @@ static struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip, uint64_t lbn
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint64_t dbn;
-	int new = TRUE;
+	int new = 1;
 
 	if (ip->i_di.di_height == 0)
 		unstuff_dinode(ip);
@@ -241,7 +241,7 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 	lh.lh_jinode = jnl->i_di.di_num.no_addr;
 #endif
 	for (x = 0; x < blocks; x++) {
-		struct gfs2_buffer_head *bh = get_file_buf(jnl, x, TRUE);
+		struct gfs2_buffer_head *bh = get_file_buf(jnl, x, 1);
 		if (!bh)
 			return -1;
 		bmodified(bh);
@@ -249,7 +249,7 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 	}
 	crc32c_optimization_init();
 	for (x = 0; x < blocks; x++) {
-		struct gfs2_buffer_head *bh = get_file_buf(jnl, x, FALSE);
+		struct gfs2_buffer_head *bh = get_file_buf(jnl, x, 0);
 		if (!bh)
 			return -1;
 
@@ -433,7 +433,7 @@ int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 	build_height(ip, hgt);
 
 	for (x = 0; x < blocks; x++) {
-		bh = get_file_buf(ip, x, FALSE);
+		bh = get_file_buf(ip, x, 0);
 		if (!bh)
 			return -1;
 

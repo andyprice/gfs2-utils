@@ -30,7 +30,7 @@ struct gfs2_inode *lf_dip = NULL; /* Lost and found directory inode */
 int lf_was_created = 0;
 uint64_t last_fs_block, last_reported_block = -1;
 int64_t last_reported_fblock = -1000000;
-int skip_this_pass = FALSE, fsck_abort = FALSE;
+int skip_this_pass = 0, fsck_abort = 0;
 int errors_found = 0, errors_corrected = 0;
 const char *pass = "";
 uint64_t last_data_block;
@@ -154,11 +154,11 @@ static void interrupt(int sig)
 				     "the rest of this pass or continue " \
 				     "(a/s/c)?"), "asc");
 	if (tolower(response) == 's') {
-		skip_this_pass = TRUE;
+		skip_this_pass = 1;
 		return;
 	}
 	else if (tolower(response) == 'a') {
-		fsck_abort = TRUE;
+		fsck_abort = 1;
 		return;
 	}
 }

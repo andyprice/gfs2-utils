@@ -1929,7 +1929,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 		}
 		if (skip_this_pass) {
 			printf( _("Skipping pass 1 is not a good idea.\n"));
-			skip_this_pass = FALSE;
+			skip_this_pass = 0;
 			fflush(stdout);
 		}
 		if (fsck_system_inode(sdp, block)) {

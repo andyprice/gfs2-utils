@@ -2139,7 +2139,7 @@ static int gfs2_query(struct gfs2_options *opts, const char *dev)
 	if(opts->no)
 		return 0;
 
-	opts->query = TRUE;
+	opts->query = 1;
 	while (1) {
 		char *line = NULL;
 		size_t len = 0;
@@ -2156,7 +2156,7 @@ static int gfs2_query(struct gfs2_options *opts, const char *dev)
 			break;
 		/* Unrecognized input; go again. */
 	}
-	opts->query = FALSE;
+	opts->query = 0;
 	return res;
 }
 

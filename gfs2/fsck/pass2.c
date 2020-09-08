@@ -2096,14 +2096,14 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 static inline int is_system_dir(struct gfs2_sbd *sdp, uint64_t block)
 {
 	if (block == sdp->md.rooti->i_di.di_num.no_addr)
-		return TRUE;
+		return 1;
 	if (sdp->gfs1)
-		return FALSE;
+		return 0;
 	if (block == sdp->md.jiinode->i_di.di_num.no_addr ||
 	    block == sdp->md.pinode->i_di.di_num.no_addr ||
 	    block == sdp->master_dir->i_di.di_num.no_addr)
-		return TRUE;
-	return FALSE;
+		return 1;
+	return 0;
 }
 
 static int pass2_check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
