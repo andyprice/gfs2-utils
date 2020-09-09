@@ -30,45 +30,6 @@ nukerg_LDADD = \
 	$(top_builddir)/gfs2/libgfs2/libgfs2.la \
 	$(uuid_LIBS)
 
-if HAVE_CHECK
-UNIT_TESTS = \
-	check_meta \
-	check_rgrp
-UNIT_SOURCES = \
-	$(top_srcdir)/gfs2/libgfs2/libgfs2.h
-UNIT_CFLAGS = \
-	-I$(top_srcdir)/gfs2/libgfs2 \
-        -I$(top_srcdir)/gfs2/include \
-	@check_CFLAGS@
-UNIT_LDADD = \
-	$(top_builddir)/gfs2/libgfs2/libgfs2.la \
-	@check_LIBS@
-UNIT_CPPFLAGS = \
-	-D_FILE_OFFSET_BITS=64 \
-	-D_LARGEFILE64_SOURCE \
-	-D_GNU_SOURCE
-
-check_PROGRAMS = $(UNIT_TESTS)
-
-check_meta_SOURCES = \
-	$(UNIT_SOURCES) \
-	check_meta.c
-check_meta_CFLAGS = $(UNIT_CFLAGS)
-check_meta_LDADD = \
-	$(UNIT_LDADD) \
-	$(uuid_LIBS)
-check_meta_CPPFLAGS = $(UNIT_CPPFLAGS)
-
-check_rgrp_SOURCES = \
-	$(UNIT_SOURCES) \
-	check_rgrp.c
-check_rgrp_CFLAGS = $(UNIT_CFLAGS)
-check_rgrp_LDADD = \
-	$(UNIT_LDADD) \
-	$(uuid_LIBS)
-check_rgrp_CPPFLAGS = $(UNIT_CPPFLAGS)
-endif
-
 # The `:;' works around a Bash 3.2 bug when the output is not writable.
 package.m4: $(top_srcdir)/configure.ac
 	:;{ \
@@ -91,21 +52,15 @@ TESTSUITE_AT = \
 	testsuite.at \
 	mkfs.at \
 	fsck.at \
-	edit.at \
-	libgfs2.at
-
-if HAVE_CHECK
-ENABLE_UNIT=yes
-endif
+	edit.at
 
 TESTSUITE = testsuite
 
 check-local: atconfig atlocal $(TESTSUITE)
-	$(SHELL) '$(TESTSUITE)' ENABLE_UNIT_TESTS=$(ENABLE_UNIT) $(TOPTS)
+	$(SHELL) '$(TESTSUITE)' $(TOPTS)
 
 installcheck-local: atconfig atlocal $(TESTSUITE)
-	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(sbindir):gfs2/libgfs2:tests' \
-	                        ENABLE_UNIT_TESTS=$(ENABLE_UNIT) $(TOPTS)
+	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(sbindir):gfs2/libgfs2:tests' $(TOPTS)
 
 clean-local:
 	test ! -f '$(TESTSUITE)' || $(SHELL) '$(TESTSUITE)' --clean
@@ -117,6 +72,6 @@ atconfig: $(top_builddir)/config.status
 AUTOM4TE = $(SHELL) $(top_srcdir)/missing --run autom4te
 AUTOTEST = $(AUTOM4TE) --language=autotest
 
-$(TESTSUITE): $(TESTSUITE_AT) package.m4 $(UNIT_TESTS)
+$(TESTSUITE): $(TESTSUITE_AT) package.m4
 	$(AUTOTEST) -I '$(srcdir)' -o $@.tmp $@.at
 	mv $@.tmp $@

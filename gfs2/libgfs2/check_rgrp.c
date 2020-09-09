@@ -1,19 +1,20 @@
 #include <check.h>
-#include <libgfs2.h>
-#include <rgrp.h> /* Private header libgfs2/rgrp.h for convenience */
+#include "libgfs2.h"
+#include "rgrp.h" /* Private header libgfs2/rgrp.h for convenience */
 
-// TODO: Remove this when the extern is removed from libgfs2
-void print_it(const char *label, const char *fmt, const char *fmt2, ...) {}
+Suite *suite_rgrp(void);
 
-static lgfs2_rgrps_t mockup_rgrp(void)
+lgfs2_rgrps_t tc_rgrps;
+
+static void mockup_rgrps(void)
 {
 	struct gfs2_sbd *sdp;
 	lgfs2_rgrps_t rgs;
-	unsigned i;
 	uint64_t addr;
 	struct gfs2_rindex ri = {0};
 	lgfs2_rgrp_t rg;
 	uint32_t rgsize = (1024 << 20) / 4096;
+	int ret;
 
 	sdp = calloc(1, sizeof(*sdp));
 	ck_assert(sdp != NULL);
@@ -34,25 +35,25 @@ static lgfs2_rgrps_t mockup_rgrp(void)
 	rg = lgfs2_rgrps_append(rgs, &ri, 0);
 	ck_assert(rg != NULL);
 
-	for (i = 0; i < rg->ri.ri_length; i++) {
-		rg->bits[i].bi_data = calloc(1, sdp->bsize);
-		ck_assert(rg->bits[i].bi_data != NULL);
-	}
-	return rgs;
+	ret = lgfs2_rgrp_bitbuf_alloc(rg);
+	ck_assert(ret == 0);
+	ck_assert(rg->bits[0].bi_data != NULL);
+
+	tc_rgrps = rgs;
 }
 
-START_TEST(test_mockup_rgrp)
+static void teardown_rgrps(void)
 {
-	lgfs2_rgrps_t rgs = mockup_rgrp();
-	ck_assert(rgs != NULL);
+	free(tc_rgrps->sdp);
+	lgfs2_rgrp_bitbuf_free(lgfs2_rgrp_first(tc_rgrps));
+	lgfs2_rgrps_free(&tc_rgrps);
 }
-END_TEST
 
 START_TEST(test_rbm_find_good)
 {
 	uint32_t minext;
 	struct lgfs2_rbm rbm = {0};
-	lgfs2_rgrps_t rgs = mockup_rgrp();
+	lgfs2_rgrps_t rgs = tc_rgrps;
 	rbm.rgd = lgfs2_rgrp_first(rgs);
 
 	/* Check that extent sizes up to the whole rg can be found */
@@ -76,7 +77,7 @@ START_TEST(test_rbm_find_bad)
 	int err;
 	uint32_t minext;
 	struct lgfs2_rbm rbm = {0};
-	lgfs2_rgrps_t rgs = mockup_rgrp();
+	lgfs2_rgrps_t rgs = tc_rgrps;
 
 	rbm.rgd = lgfs2_rgrp_first(rgs);
 	minext = rbm.rgd->ri.ri_data + 1;
@@ -94,7 +95,7 @@ START_TEST(test_rbm_find_lastblock)
 	uint32_t minext = 1; /* Only looking for one block */
 	struct lgfs2_rbm rbm = {0};
 	lgfs2_rgrp_t rg;
-	lgfs2_rgrps_t rgs = mockup_rgrp();
+	lgfs2_rgrps_t rgs = tc_rgrps;
 
 	rbm.rgd = rg = lgfs2_rgrp_first(rgs);
 
@@ -114,30 +115,18 @@ START_TEST(test_rbm_find_lastblock)
 }
 END_TEST
 
-static Suite * libgfs2_suite(void)
+Suite *suite_rgrp(void)
 {
 
-	Suite *s = suite_create("libgfs2");
+	Suite *s = suite_create("rgrp.c");
 
-	TCase *tc_rgrp = tcase_create("rgrp");
-
-	tcase_add_test(tc_rgrp, test_mockup_rgrp);
-	tcase_add_test(tc_rgrp, test_rbm_find_good);
-	tcase_add_test(tc_rgrp, test_rbm_find_bad);
-	tcase_add_test(tc_rgrp, test_rbm_find_lastblock);
-	tcase_set_timeout(tc_rgrp, 0);
-	suite_add_tcase(s, tc_rgrp);
+	TCase *tc_rbm_find = tcase_create("rbm_find");
+	tcase_add_checked_fixture(tc_rbm_find, mockup_rgrps, teardown_rgrps);
+	tcase_add_test(tc_rbm_find, test_rbm_find_good);
+	tcase_add_test(tc_rbm_find, test_rbm_find_bad);
+	tcase_add_test(tc_rbm_find, test_rbm_find_lastblock);
+	tcase_set_timeout(tc_rbm_find, 0);
+	suite_add_tcase(s, tc_rbm_find);
 
 	return s;
-}
-
-int main(void)
-{
-	int failures;
-	Suite *s = libgfs2_suite();
-	SRunner *sr = srunner_create(s);
-	srunner_run_all(sr, CK_NORMAL);
-	failures = srunner_ntests_failed(sr);
-	srunner_free(sr);
-	return failures ? EXIT_FAILURE : EXIT_SUCCESS;
 }

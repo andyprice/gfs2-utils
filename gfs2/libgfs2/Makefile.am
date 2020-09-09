@@ -12,6 +12,12 @@ BUILT_SOURCES = \
 
 AM_LFLAGS = --header-file=lexer.h
 AM_YFLAGS = -d
+AM_CPPFLAGS = \
+	-D_FILE_OFFSET_BITS=64 \
+	-D_LARGEFILE64_SOURCE \
+	-D_GNU_SOURCE \
+	-I$(top_srcdir)/gfs2/include \
+	$(uuid_CFLAGS)
 
 noinst_HEADERS = \
 	libgfs2.h \
@@ -43,13 +49,6 @@ libgfs2_la_SOURCES = \
 	structures.c \
 	meta.c
 
-libgfs2_la_CPPFLAGS = \
-	-D_FILE_OFFSET_BITS=64 \
-	-D_LARGEFILE64_SOURCE \
-	-D_GNU_SOURCE \
-	-I$(top_srcdir)/gfs2/include \
-	$(uuid_CFLAGS)
-
 gfs2l_SOURCES = \
 	gfs2l.c \
 	lang.c \
@@ -58,11 +57,11 @@ gfs2l_SOURCES = \
 gfs2l_LDADD = \
 	libgfs2.la \
 	$(uuid_LIBS)
-gfs2l_CPPFLAGS = \
-	-I$(top_srcdir)/gfs2/include \
-	-D_FILE_OFFSET_BITS=64 \
-	$(uuid_CFLAGS)
 
 # Autotools can't handle header files output by flex so we have to generate it manually
 lexer.h: lexer.l
 	$(LEX) -o lexer.c $(AM_LFLAGS) $^
+
+if HAVE_CHECK
+include checks.am
+endif

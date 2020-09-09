@@ -1,0 +1,32 @@
+TESTS = check_libgfs2
+check_PROGRAMS = $(TESTS)
+
+check_libgfs2_SOURCES = \
+	check_libgfs2.c \
+	meta.c check_meta.c \
+	rgrp.c check_rgrp.c \
+	block_list.c \
+	crc32c.c \
+	fs_geometry.c \
+	gfs2_disk_hash.c \
+	ondisk.c \
+	buf.c \
+	device_geometry.c \
+	fs_ops.c \
+	structures.c \
+	config.c \
+	fs_bits.c \
+	gfs1.c \
+	misc.c \
+	recovery.c \
+	super.c
+
+check_libgfs2_CFLAGS = \
+	-I$(top_srcdir)/gfs2/libgfs2 \
+	-I$(top_srcdir)/gfs2/include \
+	$(check_CFLAGS) \
+	$(uuid_CFLAGS)
+
+check_libgfs2_LDADD = \
+	$(check_LIBS) \
+	$(uuid_LIBS)
