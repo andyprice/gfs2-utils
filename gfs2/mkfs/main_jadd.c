@@ -589,6 +589,7 @@ static int check_fit(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	return 0;
 }
 
+#ifndef UNITTESTS
 int main(int argc, char *argv[])
 {
 	struct jadd_opts opts = {0};
@@ -682,3 +683,4 @@ out:
 
 	return ret;
 }
+#endif /* UNITTESTS */

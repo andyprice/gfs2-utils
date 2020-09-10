@@ -62,6 +62,7 @@ static void version(void)
 	printf("tunegfs2 (%s %s)\n", __DATE__, __TIME__);
 }
 
+#ifndef UNITTESTS
 int main(int argc, char **argv)
 {
 	int c, status;
@@ -161,3 +162,4 @@ int main(int argc, char **argv)
 out:
 	return status;
 }
+#endif /* UNITTESTS */

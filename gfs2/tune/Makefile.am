@@ -15,3 +15,7 @@ tunegfs2_CFLAGS = \
 	$(uuid_CFLAGS)
 tunegfs2_LDADD = \
 	$(uuid_LIBS)
+
+if HAVE_CHECK
+include checks.am
+endif

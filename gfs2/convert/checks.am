@@ -1,0 +1,7 @@
+TESTS = check_convert
+check_PROGRAMS = $(TESTS)
+
+check_convert_SOURCES = $(gfs2_convert_SOURCES) check_convert.c
+check_convert_CPPFLAGS = $(gfs2_convert_CPPFLAGS) -DUNITTESTS
+check_convert_CFLAGS = $(gfs2_convert_CFLAGS) $(check_CFLAGS) -Wno-unused-function
+check_convert_LDADD = $(gfs2_convert_LDADD) $(check_LIBS)

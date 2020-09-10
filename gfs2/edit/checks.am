@@ -1,0 +1,7 @@
+TESTS = check_edit
+check_PROGRAMS = $(TESTS)
+
+check_edit_SOURCES = $(gfs2_edit_SOURCES) check_edit.c
+check_edit_CPPFLAGS = $(gfs2_edit_CPPFLAGS) -DUNITTESTS
+check_edit_CFLAGS = $(gfs2_edit_CFLAGS) $(check_CFLAGS) -Wno-unused-function
+check_edit_LDADD = $(gfs2_edit_LDADD) $(check_LIBS)

@@ -2570,6 +2570,7 @@ static void process_parameters(int argc, char *argv[], int pass)
 	} /* for */
 }/* process_parameters */
 
+#ifndef UNITTESTS
 int main(int argc, char *argv[])
 {
 	int i, j, fd;
@@ -2650,3 +2651,4 @@ int main(int argc, char *argv[])
 	gfs2_rgrp_free(&sbd, &sbd.rgtree);
  	exit(EXIT_SUCCESS);
 }
+#endif /* UNITTESTS */

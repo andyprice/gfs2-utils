@@ -33,3 +33,6 @@ gfs2_edit_LDADD = \
 	$(bzip2_LIBS) \
 	$(uuid_LIBS)
 
+if HAVE_CHECK
+include checks.am
+endif

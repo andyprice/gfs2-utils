@@ -50,3 +50,6 @@ gfs2_jadd_LDADD = \
 	$(top_builddir)/gfs2/libgfs2/libgfs2.la \
 	$(uuid_LIBS)
 
+if HAVE_CHECK
+include checks.am
+endif

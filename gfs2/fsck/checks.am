@@ -1,0 +1,7 @@
+TESTS = check_fsck
+check_PROGRAMS = $(TESTS)
+
+check_fsck_SOURCES = $(fsck_gfs2_SOURCES) check_fsck.c
+check_fsck_CPPFLAGS = $(fsck_gfs2_CPPFLAGS) -DUNITTESTS -Wno-unused-const-variable
+check_fsck_CFLAGS = $(fsck_gfs2_CFLAGS) $(check_CFLAGS) -Wno-unused-function
+check_fsck_LDADD = $(fsck_gfs2_LDADD) $(check_LIBS)

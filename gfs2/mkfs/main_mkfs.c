@@ -1038,6 +1038,7 @@ static void open_dev(struct mkfs_dev *dev, int withprobe)
 		exit(1);
 }
 
+#ifndef UNITTESTS
 int main(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd;
@@ -1201,3 +1202,4 @@ int main(int argc, char *argv[])
 	}
 	return 0;
 }
+#endif /* UNITTESTS */

@@ -306,6 +306,7 @@ static void startlog(int argc, char **argv)
 	free(cmd);
 }
 
+#ifndef UNITTESTS
 int main(int argc, char **argv)
 {
 	struct gfs2_sbd sb;
@@ -383,3 +384,4 @@ int main(int argc, char **argv)
 	}
 	exit(error);
 }
+#endif /* UNITTESTS */

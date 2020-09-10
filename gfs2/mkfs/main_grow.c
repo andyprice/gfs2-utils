@@ -349,6 +349,7 @@ static int open_rindex(char *metafs_path, int mode)
 	return fd;
 }
 
+#ifndef UNITTESTS
 int main(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd, *sdp = &sbd;
@@ -483,3 +484,4 @@ int main(int argc, char *argv[])
 	log_notice( _("gfs2_grow complete.\n"));
 	return error;
 }
+#endif /* UNITTESTS */

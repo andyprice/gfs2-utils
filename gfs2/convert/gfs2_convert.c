@@ -2160,6 +2160,7 @@ static int gfs2_query(struct gfs2_options *opts, const char *dev)
 	return res;
 }
 
+#ifndef UNITTESTS
 int main(int argc, char **argv)
 {
 	int error;
@@ -2370,3 +2371,4 @@ int main(int argc, char **argv)
 		free(sd_jindex);
 	exit(0);
 }
+#endif /* UNITTESTS */

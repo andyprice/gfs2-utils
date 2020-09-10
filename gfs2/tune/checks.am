@@ -1,0 +1,7 @@
+TESTS = check_tune
+check_PROGRAMS = $(TESTS)
+
+check_tune_SOURCES = $(tunegfs2_SOURCES) check_tune.c
+check_tune_CPPFLAGS = $(tunegfs2_CPPFLAGS) -DUNITTESTS
+check_tune_CFLAGS = $(tunegfs2_CFLAGS) $(check_CFLAGS) -Wno-unused-function
+check_tune_LDADD = $(tunegfs2_LDADD) $(check_LIBS)

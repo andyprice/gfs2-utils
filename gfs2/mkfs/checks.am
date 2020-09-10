@@ -1,0 +1,17 @@
+TESTS = check_grow check_jadd check_mkfs
+check_PROGRAMS = $(TESTS)
+
+check_grow_SOURCES = $(gfs2_grow_SOURCES) check_grow.c
+check_grow_CPPFLAGS = $(gfs2_grow_CPPFLAGS) -DUNITTESTS
+check_grow_CFLAGS = $(gfs2_grow_CFLAGS) $(check_CFLAGS) -Wno-unused-function
+check_grow_LDADD = $(gfs2_grow_LDADD) $(check_LIBS)
+
+check_jadd_SOURCES = $(gfs2_jadd_SOURCES) check_jadd.c
+check_jadd_CPPFLAGS = $(gfs2_jadd_CPPFLAGS) -DUNITTESTS
+check_jadd_CFLAGS = $(gfs2_jadd_CFLAGS) $(check_CFLAGS) -Wno-unused-function
+check_jadd_LDADD = $(gfs2_jadd_LDADD) $(check_LIBS)
+
+check_mkfs_SOURCES = $(mkfs_gfs2_SOURCES) check_mkfs.c
+check_mkfs_CPPFLAGS = $(mkfs_gfs2_CPPFLAGS) -DUNITTESTS
+check_mkfs_CFLAGS = $(mkfs_gfs2_CFLAGS) $(check_CFLAGS) -Wno-unused-function
+check_mkfs_LDADD = $(mkfs_gfs2_LDADD) $(check_LIBS)
