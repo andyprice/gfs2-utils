@@ -23,8 +23,8 @@ tests can be re-run using make check TOPTS='--recheck' although it's better to
 re-run the entire suite after fixing tests as a fix for one test could break
 another.
 
-Writing tests
--------------
+Smoke/regression tests
+----------------------
 A number of GFS2-specific convenience macros have been defined in testsuite.at
 to make defining new tests quick and easy. Also, some variables have been
 defined in atlocal.in so that full paths to programs do not have to be included
@@ -54,6 +54,33 @@ Documentation for Autotest, including the AT_* macros used to define tests, can
 be found in the autoconf manual at:
 
     http://www.gnu.org/software/autoconf/manual/index.html
+
+Unit tests
+----------
+A unit test framework for each of the main utils and libgfs2 is included in its
+source directory. These tests are based on the libcheck C unit test library and
+are built and run by 'make check'. Generally, there should be one check "Suite"
+defined for each source file of the util, named with a check_ prefix,
+containing one or more test cases defined for each externally-visible function.
+For example:
+
+  check_libgfs2 (main file: check_libgfs2.c)
+       |--------Suite: rgrp.c (in check_rgrp.c)
+       |              |---------- Test case: test_rbm_find_good
+       |              |-----------Test case: test_rbm_find_bad
+       |--------Suite: meta.c (in check_meta.c)
+       |              |-----------Test case: test_lgfs2_meta
+     etc.            etc.
+
+The build rules for the unit tests are separated into a checks.am file in each
+source directory. Documentation for writing libcheck unit tests can be found
+at:
+
+    https://libcheck.github.io/check/doc/check_html/index.html
+
+Autoconf's automatically generated test driver script only prints one line for
+each unit test executable run instead of one line per test case. To view
+details of unit test failures, see the generated .log and .trs files.
 
 Generating coverage reports
 ---------------------------
