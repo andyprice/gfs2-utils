@@ -234,6 +234,10 @@ static unsigned initialize_new_portion(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs)
 		}
 		rgcount++;
 	}
+	if (lgfs2_rgrps_write_final(sdp->device_fd, rgs) != 0) {
+		perror(_("Failed to write final resource group"));
+		return 0;
+	}
 	fsync(sdp->device_fd);
 	return rgcount;
 }

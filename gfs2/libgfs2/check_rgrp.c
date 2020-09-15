@@ -1,6 +1,13 @@
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
 #include <check.h>
 #include "libgfs2.h"
-#include "rgrp.h" /* Private header libgfs2/rgrp.h for convenience */
+#include "rgrp.h"
+
+/* Keep this size small enough to run on most build machines and large enough
+   that we can create several resource groups. */
+#define MOCK_DEV_SIZE (1 << 30)
 
 Suite *suite_rgrp(void);
 
@@ -13,14 +20,20 @@ static void mockup_rgrps(void)
 	uint64_t addr;
 	struct gfs2_rindex ri = {0};
 	lgfs2_rgrp_t rg;
-	uint32_t rgsize = (1024 << 20) / 4096;
+	uint32_t rgsize = (100 << 20) / 4096;
+	char tmpnam[] = "mockdev-XXXXXX";
 	int ret;
 
 	sdp = calloc(1, sizeof(*sdp));
 	ck_assert(sdp != NULL);
 
-	sdp->device.length = rgsize + 20;
-	sdp->device_fd = -1;
+	sdp->device.length = MOCK_DEV_SIZE / 4096;
+
+	sdp->device_fd = mkstemp(tmpnam);
+	ck_assert(sdp->device_fd >= 0);
+	ck_assert(unlink(tmpnam) == 0);
+	ck_assert(ftruncate(sdp->device_fd, MOCK_DEV_SIZE) == 0);
+
 	sdp->bsize = sdp->sd_sb.sb_bsize = 4096;
 	compute_constants(sdp);
 
@@ -44,6 +57,7 @@ static void mockup_rgrps(void)
 
 static void teardown_rgrps(void)
 {
+	close(tc_rgrps->sdp->device_fd);
 	free(tc_rgrps->sdp);
 	lgfs2_rgrp_bitbuf_free(lgfs2_rgrp_first(tc_rgrps));
 	lgfs2_rgrps_free(&tc_rgrps);
@@ -115,18 +129,50 @@ START_TEST(test_rbm_find_lastblock)
 }
 END_TEST
 
+START_TEST(test_rgrps_write_final)
+{
+	lgfs2_rgrp_t rg = lgfs2_rgrp_last(tc_rgrps);
+	uint64_t addr = lgfs2_rgrp_index(rg)->ri_addr;
+	struct gfs2_sbd *sdp = tc_rgrps->sdp;
+	struct gfs2_rgrp rgrp;
+	char *buf;
+
+	buf = malloc(4096);
+	ck_assert(buf != NULL);
+	memset(buf, 0xff, sizeof(rgrp));
+	ck_assert(pwrite(sdp->device_fd, buf, 4096, addr * 4096) == 4096);
+
+	ck_assert(lgfs2_rgrps_write_final(sdp->device_fd, tc_rgrps) == 0);
+	ck_assert(pread(sdp->device_fd, buf, 4096, addr * 4096) == 4096);
+	gfs2_rgrp_in(&rgrp, buf);
+	free(buf);
+
+	ck_assert(rgrp.rg_header.mh_magic == GFS2_MAGIC);
+	ck_assert(rgrp.rg_header.mh_type == GFS2_METATYPE_RG);
+	ck_assert(rgrp.rg_skip == 0);
+
+	ck_assert(lgfs2_rgrps_write_final(-1, tc_rgrps) == -1);
+}
+END_TEST
+
 Suite *suite_rgrp(void)
 {
 
 	Suite *s = suite_create("rgrp.c");
+	TCase *tc;
 
-	TCase *tc_rbm_find = tcase_create("rbm_find");
-	tcase_add_checked_fixture(tc_rbm_find, mockup_rgrps, teardown_rgrps);
-	tcase_add_test(tc_rbm_find, test_rbm_find_good);
-	tcase_add_test(tc_rbm_find, test_rbm_find_bad);
-	tcase_add_test(tc_rbm_find, test_rbm_find_lastblock);
-	tcase_set_timeout(tc_rbm_find, 0);
-	suite_add_tcase(s, tc_rbm_find);
+	tc = tcase_create("rbm_find");
+	tcase_add_checked_fixture(tc, mockup_rgrps, teardown_rgrps);
+	tcase_add_test(tc, test_rbm_find_good);
+	tcase_add_test(tc, test_rbm_find_bad);
+	tcase_add_test(tc, test_rbm_find_lastblock);
+	tcase_set_timeout(tc, 0);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("lgfs2_rgrps_write_final");
+	tcase_add_checked_fixture(tc, mockup_rgrps, teardown_rgrps);
+	tcase_add_test(tc, test_rgrps_write_final);
+	suite_add_tcase(s, tc);
 
 	return s;
 }

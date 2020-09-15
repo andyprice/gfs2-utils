@@ -859,8 +859,11 @@ static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, uint64_t *rgaddr
 			fprintf(stderr, _("Failed to build resource groups\n"));
 			return result;
 		}
-
 		gfs2_progress_update(&progress, (sdp->rgrps));
+	}
+	if (lgfs2_rgrps_write_final(sdp->device_fd, rgs) != 0) {
+		perror(_("Failed to write final resource group"));
+		return 0;
 	}
 	gfs2_progress_close(&progress, _("Done\n"));
 	posix_fadvise(sdp->device_fd, 0, sdp->fssize * sdp->bsize, POSIX_FADV_DONTNEED);

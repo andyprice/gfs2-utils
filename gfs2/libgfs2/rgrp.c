@@ -692,12 +692,29 @@ int lgfs2_rgrp_write(int fd, const lgfs2_rgrp_t rg)
 	if (rg->rgrps->align > 0)
 		len = ROUND_UP(len, rg->rgrps->align * sdp->bsize);
 
-	ret = pwrite(sdp->device_fd, rg->bits[0].bi_data, len, rg->ri.ri_addr * sdp->bsize);
+	ret = pwrite(fd, rg->bits[0].bi_data, len, rg->ri.ri_addr * sdp->bsize);
 
 	if (freebufs)
 		lgfs2_rgrp_bitbuf_free(rg);
 
 	return ret == len ? 0 : -1;
+}
+
+/**
+ * Write the final resource group with rg_skip == 0.
+ * If there is no bitmap data attached to the rg then the block after the
+ * header will be zeroed.
+ * fd: The file descriptor to write to
+ * rgs: The set of resource groups
+ */
+int lgfs2_rgrps_write_final(int fd, lgfs2_rgrps_t rgs)
+{
+	lgfs2_rgrp_t rg = lgfs2_rgrp_last(rgs);
+
+	rg->rg.rg_skip = 0;
+	if (lgfs2_rgrp_write(fd, rg) != 0)
+		return -1;
+	return 0;
 }
 
 lgfs2_rgrp_t lgfs2_rgrp_first(lgfs2_rgrps_t rgs)
