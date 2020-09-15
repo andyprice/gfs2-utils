@@ -399,13 +399,13 @@ static int get_gfs_struct_info(const char *buf, uint64_t owner, unsigned *block_
 	return 0;
 }
 
-/* Put out a warm, fuzzy message every second so the user     */
-/* doesn't think we hung.  (This may take a long time).       */
-/* We only check whether to report every one percent because  */
-/* checking every block kills performance.  We only report    */
-/* every second because we don't need 100 extra messages in   */
-/* logs made from verbose mode.                               */
-static void warm_fuzzy_stuff(uint64_t wfsblock, int force)
+/**
+ * Print a progress message if one second has elapsed since the last time.
+ * pblock: The latest block number processed
+ * force:  If this is non-zero, print immediately and add a newline after the
+ *         progress message.
+ */
+static void report_progress(uint64_t pblock, int force)
 {
         static struct timeval tv;
         static uint32_t seconds = 0;
@@ -419,11 +419,9 @@ static void warm_fuzzy_stuff(uint64_t wfsblock, int force)
 		seconds = tv.tv_sec;
 		if (sbd.fssize) {
 			printf("\r");
-			percent = (wfsblock * 100) / sbd.fssize;
-			printf("%llu blocks processed, %llu saved (%llu%%)",
-			       (unsigned long long)wfsblock,
-			       (unsigned long long)blks_saved,
-			       (unsigned long long)percent);
+			percent = (pblock * 100) / sbd.fssize;
+			printf("%"PRIu64" blocks saved (%"PRIu64"%% complete)",
+			       blks_saved, percent);
 			if (force)
 				printf("\n");
 			fflush(stdout);
@@ -810,7 +808,7 @@ static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, char *buf)
 			free(buf);
 			return 1;
 		}
-		warm_fuzzy_stuff(blk, FALSE);
+		report_progress(blk, 0);
 		if (gfs2_check_meta(buf, GFS2_METATYPE_LF) == 0) {
 			int ret = save_buf(mfd, buf, blk, sdp->bsize);
 			if (ret != 0) {
@@ -898,7 +896,7 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 
 				save_indirect_blocks(mfd, _buf, iblk, nextq, sizeof(_di.di_header));
 			}
-			warm_fuzzy_stuff(q->start + q->len, 0);
+			report_progress(q->start + q->len, 0);
 			block_range_free(&q);
 		}
 	}
@@ -1009,7 +1007,7 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 				br.start = blk;
 				br.len = 1;
 			}
-			warm_fuzzy_stuff(blk, FALSE);
+			report_progress(blk, 0);
 		}
 		if (br.start != 0)
 			save_allocated_range(mfd, &br);
@@ -1072,7 +1070,7 @@ static void save_rgrp(struct gfs2_sbd *sdp, struct metafd *mfd, struct rgrp_tree
 	log_debug("RG at %"PRIu64" is %"PRIu32" long\n", addr, (uint32_t)rgd->ri.ri_length);
 	/* Save the rg and bitmaps */
 	for (unsigned i = 0; i < rgd->ri.ri_length; i++) {
-		warm_fuzzy_stuff(rgd->ri.ri_addr + i, FALSE);
+		report_progress(rgd->ri.ri_addr + i, 0);
 		save_buf(mfd, buf + (i * sdp->bsize), rgd->ri.ri_addr + i, sdp->bsize);
 	}
 	/* Save the other metadata: inodes, etc. if mode is not 'savergs' */
@@ -1199,7 +1197,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	/* Clean up */
 	/* There may be a gap between end of file system and end of device */
 	/* so we tell the user that we've processed everything. */
-	warm_fuzzy_stuff(sbd.fssize, TRUE);
+	report_progress(sbd.fssize, 1);
 	printf("\nMetadata saved to file %s ", mfd.filename);
 	if (mfd.gziplevel) {
 		printf("(gzipped, level %d).\n", mfd.gziplevel);
@@ -1305,7 +1303,7 @@ static int restore_data(int fd, struct metafd *mfd, int printonly)
 				display_block_type(bp, savedata.blk, TRUE);
 			}
 		} else {
-			warm_fuzzy_stuff(savedata.blk, FALSE);
+			report_progress(savedata.blk, 0);
 			memcpy(buf, bp, savedata.siglen);
 			memset(buf + savedata.siglen, 0, sbd.bsize - savedata.siglen);
 			if (pwrite(fd, buf, sbd.bsize, savedata.blk * sbd.bsize) != sbd.bsize) {
@@ -1323,7 +1321,7 @@ static int restore_data(int fd, struct metafd *mfd, int printonly)
 		blks_saved++;
 	}
 	if (!printonly)
-		warm_fuzzy_stuff(sbd.fssize, 1);
+		report_progress(sbd.fssize, 1);
 	free(buf);
 	return 0;
 }
