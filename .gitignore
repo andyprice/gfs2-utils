@@ -33,6 +33,8 @@ cscope.out
 *.lo
 *.trs
 *.log
+*.gcno
+*.gcda
 gfs2/convert/gfs2_convert
 gfs2/convert/check_convert
 gfs2/edit/gfs2_edit
