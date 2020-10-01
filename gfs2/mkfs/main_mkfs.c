@@ -119,7 +119,7 @@ struct mkfs_opts {
 	unsigned long sunit;
 	unsigned long swidth;
 	uint64_t fssize;
-	uint32_t journals;
+	int journals;
 	const char *lockproto;
 	const char *locktable;
 	struct mkfs_dev dev;
@@ -582,22 +582,25 @@ static int opts_check(struct mkfs_opts *opts)
 	if (GFS2_MIN_RGSIZE > opts->rgsize || opts->rgsize > GFS2_MAX_RGSIZE) {
 		/* Translators: gfs2 file systems are split into equal sized chunks called
 		   resource groups. We're checking that the user gave a valid size for them. */
-		fprintf(stderr, _("bad resource group size\n"));
+		fprintf(stderr, _("Bad resource group size\n"));
 		return -1;
 	}
 
 	if (!opts->journals) {
-		fprintf(stderr, _("no journals specified\n"));
+		fprintf(stderr, _("No journals specified\n"));
 		return -1;
 	}
-
+	if (opts->journals < 0) {
+		fprintf(stderr, _("Number of journals cannot be negative: %d\n"), opts->journals);
+		return -1;
+	}
 	if (opts->jsize < GFS2_MIN_JSIZE || opts->jsize > GFS2_MAX_JSIZE) {
-		fprintf(stderr, _("bad journal size\n"));
+		fprintf(stderr, _("Bad journal size\n"));
 		return -1;
 	}
 
 	if (!opts->qcsize || opts->qcsize > 64) {
-		fprintf(stderr, _("bad quota change size\n"));
+		fprintf(stderr, _("Bad quota change size\n"));
 		return -1;
 	}
 
