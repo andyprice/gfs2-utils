@@ -6,17 +6,6 @@
 #include "osi_list.h"
 #include "copyright.cf"
 
-/* die() used to be in libgfs2.h */
-static __inline__ __attribute__((noreturn, format (printf, 1, 2)))
-void die(const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	exit(-1);
-}
-
 /* This function is for libgfs2's sake. */
 void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 {

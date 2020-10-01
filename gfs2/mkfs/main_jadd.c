@@ -141,14 +141,12 @@ static void print_usage(const char *prog_name)
 }
 
 /**
- * decode_arguments - decode command line arguments and fill in the struct gfs2_sbd
+ * Decode command line arguments and fill in the struct gfs2_sbd
  * @argc:
  * @argv:
  * @sdp: the decoded command line arguments
- *
  */
-
-static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp, struct jadd_opts *opts)
+static int decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	int cont = 1;
 	int optchar;
@@ -166,8 +164,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp, struc
 			break;
 		case 'h':
 			print_usage(argv[0]);
-			exit(0);
-			break;
+			return 1;
 		case 'J':
 			sdp->jsize = atoi(optarg);
 			break;
@@ -181,31 +178,31 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp, struc
 			printf("gfs2_jadd %s (built %s %s)\n", VERSION,
 			       __DATE__, __TIME__);
 			printf(REDHAT_COPYRIGHT "\n");
-			exit(0);
-			break;
+			return 1;
 		case ':':
 		case '?':
 			fprintf(stderr, _("Please use '-h' for help.\n"));
-			exit(EXIT_FAILURE);
-			break;
+			return -1;
 		case EOF:
 			cont = 0;
 			break;
 		default:
-			die( _("Invalid option: %c\n"), optchar);
-			break;
+			fprintf(stderr, _("Invalid option: %c\n"), optchar);
+			return -1;
 		};
 	}
 
 	if (optind < argc) {
 		opts->path = argv[optind];
 		optind++;
-	} else
-		die( _("no path specified (try -h for help)\n"));
-
-	if (optind < argc)
-		die( _("Unrecognized argument: %s\n"), argv[optind]);
-
+	} else {
+		fprintf(stderr, _("no path specified (try -h for help)\n"));
+		return -1;
+	}
+	if (optind < argc) {
+		fprintf(stderr, _("Unrecognized argument: %s\n"), argv[optind]);
+		return -1;
+	}
 	if (opts->debug) {
 		printf( _("Command line arguments:\n"));
 		printf("  qcsize = %u\n", sdp->qcsize);
@@ -214,16 +211,24 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp, struc
 		printf("  quiet = %u\n", opts->quiet);
 		printf("  path = %s\n", opts->path);
 	}
+	return 0;
 }
 
-static void verify_arguments(struct gfs2_sbd *sdp, struct jadd_opts *opts)
+static int verify_arguments(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 {
-	if (!opts->journals)
-		die( _("no journals specified\n"));
-	if (sdp->jsize < 32 || sdp->jsize > 1024)
-		die( _("bad journal size\n"));
-	if (!sdp->qcsize || sdp->qcsize > 64)
-		die( _("bad quota change size\n"));
+	if (!opts->journals) {
+		fprintf(stderr, _("no journals specified\n"));
+		return -1;
+	}
+	if (sdp->jsize < 32 || sdp->jsize > 1024) {
+		fprintf(stderr, _("bad journal size\n"));
+		return -1;
+	}
+	if (!sdp->qcsize || sdp->qcsize > 64) {
+		fprintf(stderr, _("bad quota change size\n"));
+		return -1;
+	}
+	return 0;
 }
 
 static void print_results(struct jadd_opts *opts)
@@ -607,8 +612,13 @@ int main(int argc, char *argv[])
 	sdp->qcsize = GFS2_DEFAULT_QCSIZE;
 	opts.journals = 1;
 
-	decode_arguments(argc, argv, sdp, &opts);
-	verify_arguments(sdp, &opts);
+	ret = decode_arguments(argc, argv, sdp, &opts);
+	if (ret == 1)
+		exit(0);
+	if (ret != 0)
+		exit(1);
+	if (verify_arguments(sdp, &opts) != 0)
+		exit(1);
 
 	sbd.path_fd = lgfs2_open_mnt_dir(opts.path, O_RDONLY|O_CLOEXEC, &mnt);
 	if (sbd.path_fd < 0) {
