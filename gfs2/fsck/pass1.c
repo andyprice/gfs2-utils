@@ -998,6 +998,14 @@ static int ask_remove_eattr_entry(struct gfs2_sbd *sdp,
 	return 1;
 }
 
+static int eatype_max(unsigned fs_format)
+{
+	int max = 4;
+	if (fs_format < 1802)
+		max = 3;
+	return max;
+}
+
 static int check_eattr_entries(struct gfs2_inode *ip,
 			       struct gfs2_buffer_head *leaf_bh,
 			       struct gfs2_ea_header *ea_hdr,
@@ -1038,11 +1046,11 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 	strncpy(ea_name, (char *)ea_hdr + sizeof(struct gfs2_ea_header),
 		ea_hdr->ea_name_len);
 
-	if (!GFS2_EATYPE_VALID(ea_hdr->ea_type) &&
+	if (ea_hdr->ea_type > eatype_max(sdp->sd_sb.sb_fs_format) &&
 	   ((ea_hdr_prev) || (!ea_hdr_prev && ea_hdr->ea_type))){
 		/* Skip invalid entry */
 		log_err(_("EA (%s) type is invalid (%d > %d).\n"),
-			ea_name, ea_hdr->ea_type, GFS2_EATYPE_LAST);
+			ea_name, ea_hdr->ea_type, eatype_max(sdp->sd_sb.sb_fs_format));
 		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 0, 0);
 	}

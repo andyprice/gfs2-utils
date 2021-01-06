@@ -4,7 +4,7 @@
 #include "libgfs2.h"
 #include "osi_tree.h"
 
-#define FSCK_MAX_FORMAT (1801)
+#define FSCK_MAX_FORMAT (1802)
 
 #define FSCK_HASH_SHIFT         (13)
 #define FSCK_HASH_SIZE          (1 << FSCK_HASH_SHIFT)
