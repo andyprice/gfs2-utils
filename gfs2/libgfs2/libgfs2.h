@@ -325,6 +325,9 @@ struct metapath {
 #define GFS2_MIN_RGSIZE             (32)
 #define GFS2_MAX_RGSIZE             (2048)
 
+#define LGFS2_FS_FORMAT_MIN (1801)
+#define LGFS2_FS_FORMAT_MAX (1802)
+
 /* meta.c */
 extern const struct lgfs2_metadata lgfs2_metadata[];
 extern const unsigned lgfs2_metadata_size;
@@ -676,7 +679,7 @@ static inline unsigned int rgrp_size(struct rgrp_tree *rgrp)
 
 /* structures.c */
 extern int build_master(struct gfs2_sbd *sdp);
-extern void lgfs2_sb_init(struct gfs2_sb *sb, unsigned bsize);
+extern void lgfs2_sb_init(struct gfs2_sb *sb, unsigned bsize, unsigned format);
 extern int lgfs2_sb_write(const struct gfs2_sb *sb, int fd, const unsigned bsize);
 extern int build_journal(struct gfs2_sbd *sdp, int j,
 			 struct gfs2_inode *jindex);

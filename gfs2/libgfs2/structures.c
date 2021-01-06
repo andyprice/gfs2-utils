@@ -53,13 +53,13 @@ int build_master(struct gfs2_sbd *sdp)
 /**
  * Initialise a gfs2_sb structure with sensible defaults.
  */
-void lgfs2_sb_init(struct gfs2_sb *sb, unsigned bsize)
+void lgfs2_sb_init(struct gfs2_sb *sb, unsigned bsize, unsigned format)
 {
 	memset(sb, 0, sizeof(struct gfs2_sb));
 	sb->sb_header.mh_magic = GFS2_MAGIC;
 	sb->sb_header.mh_type = GFS2_METATYPE_SB;
 	sb->sb_header.mh_format = GFS2_FORMAT_SB;
-	sb->sb_fs_format = GFS2_FORMAT_FS;
+	sb->sb_fs_format = format;
 	sb->sb_multihost_format = GFS2_FORMAT_MULTI;
 	sb->sb_bsize = bsize;
 	sb->sb_bsize_shift = ffs(bsize) - 1;

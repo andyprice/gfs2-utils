@@ -1291,7 +1291,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 			log_crit(_("Error reading root inode: %s\n"), strerror(errno));
 			return -1;
 		}
-		lgfs2_sb_init(&sb, sdp->bsize);
+		lgfs2_sb_init(&sb, sdp->bsize, GFS2_FORMAT_FS);
 		strcpy(sb.sb_lockproto, GFS2_DEFAULT_LOCKPROTO);
 		strcpy(sb.sb_locktable, "unknown");
 		sb.sb_master_dir = sdp->master_dir->i_di.di_num;

@@ -81,6 +81,7 @@ static void print_ext_opts(void)
 		"swidth=N",  _("Specify the stripe width of the device, overriding probed values"),
 		"sunit=N", _("Specify the stripe unit of the device, overriding probed values"),
 		"align=[0|1]", _("Disable or enable alignment of resource groups"),
+		"format=N", _("Specify the format version number"),
 		NULL, NULL
 	};
 	printf(_("Extended options:\n"));
@@ -118,6 +119,7 @@ struct mkfs_opts {
 	unsigned rgsize;
 	unsigned long sunit;
 	unsigned long swidth;
+	unsigned format;
 	uint64_t fssize;
 	int journals;
 	const char *lockproto;
@@ -137,6 +139,7 @@ struct mkfs_opts {
 	unsigned got_locktable:1;
 	unsigned got_device:1;
 	unsigned got_topol:1;
+	unsigned got_format:1;
 
 	unsigned override:1;
 	unsigned quiet:1;
@@ -158,6 +161,7 @@ static void opts_init(struct mkfs_opts *opts)
 	opts->locktable = "";
 	opts->confirm = 1;
 	opts->align = 1;
+	opts->format = GFS2_FORMAT_FS;
 }
 
 struct gfs2_inum *mkfs_journals = NULL;
@@ -290,6 +294,22 @@ static int parse_topology(struct mkfs_opts *opts, char *str)
 	return 0;
 }
 
+static int parse_format(struct mkfs_opts *opts, char *str)
+{
+	unsigned long ln;
+
+	if (parse_ulong(opts, "format", str, &ln) != 0)
+		return -1;
+
+	if (ln < LGFS2_FS_FORMAT_MIN || ln > LGFS2_FS_FORMAT_MAX) {
+		fprintf(stderr, _("Invalid filesystem format: %s\n"), str);
+		return -1;
+	}
+	opts->format = ln;
+	opts->got_format = 1;
+	return 0;
+}
+
 static int opt_parse_extended(char *str, struct mkfs_opts *opts)
 {
 	char *opt;
@@ -316,6 +336,9 @@ static int opt_parse_extended(char *str, struct mkfs_opts *opts)
 				return -1;
 			opts->got_topol = (opts->dev.logical_sector_size != 0 &&
 	                                   opts->dev.physical_sector_size != 0);
+		} else if (strcmp("format", key) == 0) {
+			if (parse_format(opts, val) != 0)
+				return -1;
 		} else if (strcmp("help", key) == 0) {
 			print_ext_opts();
 			return 1;
@@ -1129,7 +1152,7 @@ int main(int argc, char *argv[])
 
 	if (sbd_init(&sbd, &opts, bsize) != 0)
 		exit(-1);
-	lgfs2_sb_init(&sb, bsize);
+	lgfs2_sb_init(&sb, bsize, opts.format);
 	if (opts.debug) {
 		printf(_("File system options:\n"));
 		printf("  bsize = %u\n", sbd.bsize);
@@ -1142,6 +1165,7 @@ int main(int argc, char *argv[])
 		printf("  fssize = %"PRIu64"\n", opts.fssize);
 		printf("  sunit = %lu\n", opts.sunit);
 		printf("  swidth = %lu\n", opts.swidth);
+		printf("  format = %u\n", opts.format);
 	}
 	rgs = rgs_init(&opts, &sbd);
 	if (rgs == NULL)
