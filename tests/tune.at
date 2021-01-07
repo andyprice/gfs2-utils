@@ -1,0 +1,17 @@
+AT_TESTED([tunegfs2])
+AT_BANNER([tunegfs2 tests])
+
+AT_SETUP([Format version])
+AT_KEYWORDS(tunegfs2 tune)
+AT_CHECK([$GFS_MKFS -p lock_nolock -o format=1802 $GFS_TGT], 0, [ignore], [ignore])
+# Exit code 65 == EX_DATAERR (sysexits.h)
+AT_CHECK([tunegfs2 -r 0 $GFS_TGT], 65, [ignore], [ignore])
+# Regress not supported
+AT_CHECK([tunegfs2 -r 1801 $GFS_TGT], 65, [ignore], [ignore])
+# Format 1803 does not exist
+AT_CHECK([tunegfs2 -r 1803 $GFS_TGT], 65, [ignore], [ignore])
+# Normal version bump
+AT_CHECK([$GFS_MKFS -p lock_nolock -o format=1801 $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([tunegfs2 -r 1802 $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([fsck.gfs2 -n $GFS_TGT], 0, [ignore], [ignore])
+AT_CLEANUP

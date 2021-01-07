@@ -52,7 +52,8 @@ TESTSUITE_AT = \
 	testsuite.at \
 	mkfs.at \
 	fsck.at \
-	edit.at
+	edit.at \
+	tune.at
 
 TESTSUITE = testsuite
 

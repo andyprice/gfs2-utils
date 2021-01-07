@@ -327,6 +327,7 @@ struct metapath {
 
 #define LGFS2_FS_FORMAT_MIN (1801)
 #define LGFS2_FS_FORMAT_MAX (1802)
+#define LGFS2_FS_FORMAT_VALID(n) ((n) >= LGFS2_FS_FORMAT_MIN && (n) <= LGFS2_FS_FORMAT_MAX)
 
 /* meta.c */
 extern const struct lgfs2_metadata lgfs2_metadata[];

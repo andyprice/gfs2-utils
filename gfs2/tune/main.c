@@ -52,9 +52,9 @@ static void parse_mount_options(char *arg)
 
 static void usage(char *name)
 {
-	printf("%s %s [-hlV] [-L <%s>] [-U <%s>] [-o <%s>] <%s>\n",
+	printf("%s %s [-hlV] [-L <%s>] [-U <%s>] [-o <%s>] [-r <%s>] <%s>\n",
 	       _("Usage:"), basename(name), _("label"), _("UUID"),
-	       _("mount options"), _("device"));
+	       _("mount options"), _("version"), _("device"));
 }
 
 static void version(void)
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
 	int c, status;
 
 	memset(tfs, 0, sizeof(struct tunegfs2));
-	while((c = getopt(argc, argv, "hL:U:lo:V")) != -1) {
+	while((c = getopt(argc, argv, "hL:U:lo:Vr:")) != -1) {
 		switch(c) {
 		case 'h':
 			usage(argv[0]);
@@ -90,6 +90,10 @@ int main(int argc, char **argv)
 		case 'V':
 			version();
 			return 0;
+		case 'r':
+			tfs->opt_format = 1;
+			tfs->format = optarg;
+			break;
 		default:
 			fprintf(stderr, _("Invalid option: %c\n"), c);
 			usage(argv[0]);
@@ -145,9 +149,13 @@ int main(int argc, char **argv)
 		if (status)
 			goto out;
 	}
-
+	if (tfs->opt_format) {
+		status = change_format(tfs, tfs->format);
+		if (status)
+			goto out;
+	}
 	if (tfs->opt_label || tfs->opt_uuid || tfs->opt_table ||
-	    tfs->opt_proto) {
+	    tfs->opt_proto || tfs->opt_format) {
 		status = write_super(tfs);
 		if (status)
 			goto out;

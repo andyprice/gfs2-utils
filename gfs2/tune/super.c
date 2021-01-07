@@ -12,6 +12,7 @@
 #define _(String) gettext(String)
 #include <linux_endian.h>
 #include <linux/gfs2_ondisk.h>
+#include <libgfs2.h>
 #include "tunegfs2.h"
 
 #ifdef GFS2_HAS_UUID
@@ -64,6 +65,7 @@ int print_super(const struct tunegfs2 *tfs)
 	}
 #endif
 	printf( _("File system magic number: 0x%X\n"), be32_to_cpu(tfs->sb->sb_header.mh_magic));
+	printf(_("File system format version: %"PRIu32"\n"), be32_to_cpu(tfs->sb->sb_fs_format));
 	printf(_("Block size: %d\n"), be32_to_cpu(tfs->sb->sb_bsize));
 	printf(_("Block shift: %d\n"), be32_to_cpu(tfs->sb->sb_bsize_shift));
 	printf(_("Root inode: %llu\n"), (unsigned long long)be64_to_cpu(tfs->sb->sb_root_dir.no_addr));
@@ -150,3 +152,21 @@ int change_locktable(struct tunegfs2 *tfs, const char *locktable)
 	return 0;
 }
 
+int change_format(struct tunegfs2 *tfs, const char *format)
+{
+	char *end;
+	long ln;
+
+	errno = 0;
+	ln = strtol(format, &end, 10);
+	if (errno || end == format || !LGFS2_FS_FORMAT_VALID(ln)) {
+		fprintf(stderr, _("Invalid format option '%s'\n"), format);
+		return EX_DATAERR;
+	}
+	if (ln < be32_to_cpu(tfs->sb->sb_fs_format)) {
+		fprintf(stderr, _("Regressing the filesystem format is not supported\n"));
+		return EX_DATAERR;
+	}
+	tfs->sb->sb_fs_format = cpu_to_be32(ln);
+	return 0;
+}
