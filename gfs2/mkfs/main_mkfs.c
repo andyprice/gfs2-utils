@@ -528,9 +528,14 @@ static int are_you_sure(void)
 		   `locale -k noexpr` */
 		printf( _("Are you sure you want to proceed? [y/n] "));
 		ret = getline(&line, &len, stdin);
+		if (ret < 0) {
+			printf("\n");
+			free(line);
+			return 0;
+		}
 		res = rpmatch(line);
 		free(line);
-		if (ret <= 0)
+		if (ret == 0)
 			continue;
 		if (res == 1) /* Yes */
 			return 1;
