@@ -542,7 +542,7 @@ static int are_you_sure(void)
 		if (res == 0) /* No */
 			return 0;
 		/* Unrecognized input; go again. */
-	};
+	}
 }
 
 static int choose_blocksize(struct mkfs_opts *opts, unsigned *pbsize)
