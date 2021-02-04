@@ -941,7 +941,6 @@ static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, uint64_t *rgaddr
 		return 0;
 	}
 	gfs2_progress_close(&progress, _("Done\n"));
-	posix_fadvise(sdp->device_fd, 0, sdp->fssize * sdp->bsize, POSIX_FADV_DONTNEED);
 
 	return 0;
 }
@@ -1093,8 +1092,6 @@ static int open_dev(struct mkfs_dev *dev, int withprobe)
 
 	/* Freshen up the cache */
 	posix_fadvise(dev->fd, 0, 0, POSIX_FADV_DONTNEED);
-	/* Turn off readahead, we're just writing new blocks */
-	posix_fadvise(dev->fd, 0, 0, POSIX_FADV_RANDOM);
 
 	error = fstat(dev->fd, &dev->stat);
 	if (error < 0) {
@@ -1286,7 +1283,6 @@ int main(int argc, char *argv[])
 		perror(opts.dev.path);
 		exit(EXIT_FAILURE);
 	}
-	posix_fadvise(opts.dev.fd, 0, 0, POSIX_FADV_DONTNEED);
 	error = close(opts.dev.fd);
 	if (error){
 		perror(opts.dev.path);
