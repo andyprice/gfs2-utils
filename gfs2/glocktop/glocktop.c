@@ -1605,7 +1605,7 @@ static void parse_glocks_file(int fd, const char *fsname, int dlmwaiters,
 			      int dlmgrants, int trace_dir_path,
 			      int show_held, int help, int summary)
 {
-	char fstitle[96], fsdlm[105];
+	char fstitle[96], *fsdlm;
 	char ctimestr[64];
 	time_t t;
 	int i;
@@ -1615,7 +1615,12 @@ static void parse_glocks_file(int fd, const char *fsname, int dlmwaiters,
 	strftime(ctimestr, 64, "%a %b %d %T %Y", localtime(&t));
 	ctimestr[63] = '\0';
 	memset(fstitle, 0, sizeof(fstitle));
-	memset(fsdlm, 0, sizeof(fsdlm));
+	fsdlm = calloc(1, 105 + dlmwaiters);
+	if (!fsdlm) {
+		printf("Failed to allocate fsdlm\n");
+		exit(-1);
+	}
+
 	sprintf(fstitle, "@ %.22s       %s ", fsname, ctimestr);
 	if (dlmwaiters) {
 		sprintf(fsdlm, "dlm: %s/%s/%s [", dlm_dirtbl_size,
@@ -1628,6 +1633,7 @@ static void parse_glocks_file(int fd, const char *fsname, int dlmwaiters,
 	}
 	attron(A_BOLD);
 	print_it(NULL, "%s @%s %s", NULL, fstitle, hostname, fsdlm);
+	free(fsdlm);
 	eol(0);
 	attroff(A_BOLD);
 	glock_details(fd, fsname, dlmwaiters, dlmgrants, trace_dir_path,
