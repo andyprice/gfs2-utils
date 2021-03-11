@@ -159,7 +159,7 @@ struct mount_point {
 	struct gfs2_sb sb;
 };
 struct mount_point *mounts;
-char dlmwlines[100][96]; /* waiters lines */
+char dlmwlines[MAX_LINES][96]; /* waiters lines */
 char dlmglines[MAX_LINES][97]; /* granted lines */
 char contended_filenames[MAX_FILES][PATH_MAX];
 unsigned long long contended_blocks[MAX_FILES];
