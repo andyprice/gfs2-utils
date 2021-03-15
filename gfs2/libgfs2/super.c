@@ -36,7 +36,7 @@ int check_sb(struct gfs2_sb *sb)
 		return 1;
 	}
 	/* It's gfs2. Check format number is in a sensible range. */
-	if (sb->sb_fs_format < GFS2_FORMAT_FS ||
+	if (sb->sb_fs_format < LGFS2_FS_FORMAT_MIN ||
 	    sb->sb_fs_format > 1899) {
 		errno = EINVAL;
 		return -1;
