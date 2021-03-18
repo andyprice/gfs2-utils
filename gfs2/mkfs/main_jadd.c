@@ -474,6 +474,43 @@ static uint64_t find_block_address(int fd, off_t offset, unsigned bsize)
 }
 #endif
 
+static int alloc_new_journal(int fd, unsigned bytes)
+{
+#define ALLOC_BUF_SIZE (4 << 20)
+	unsigned left = bytes;
+	int error;
+	char *buf;
+
+	error = fallocate(fd, 0, 0, bytes);
+	if (error == 0)
+	       return 0;
+	if (errno != EOPNOTSUPP)
+		goto out_errno;
+
+	/* No fallocate support, fall back to writes */
+	buf = calloc(1, ALLOC_BUF_SIZE);
+	if (buf == NULL)
+		goto out_errno;
+
+	while (left > 0) {
+		unsigned sz = ALLOC_BUF_SIZE;
+
+		if (left < ALLOC_BUF_SIZE)
+			sz = left;
+
+		if (pwrite(fd, buf, sz, bytes - left) != sz) {
+			free(buf);
+			goto out_errno;
+		}
+		left -= sz;
+	}
+	free(buf);
+	return 0;
+out_errno:
+	perror("Failed to allocate space for new journal");
+	return -1;
+}
+
 static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	int fd, error = 0;
@@ -490,14 +527,9 @@ static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	if ((error = set_flags(fd, JA_FL_CLEAR, FS_JOURNAL_DATA_FL)))
 		goto close_fd;
 
-	memset(buf, 0, sdp->bsize);
-	for (x=0; x<blocks; x++) {
-		if (write(fd, buf, sdp->bsize) != sdp->bsize) {
-			perror("add_j write");
-			error = -1;
-			goto close_fd;
-		}
-	}
+	error = alloc_new_journal(fd, sdp->jsize << 20);
+	if (error != 0)
+		goto close_fd;
 
 	if ((error = lseek(fd, 0, SEEK_SET)) < 0) {
 		perror("add_j lseek");
