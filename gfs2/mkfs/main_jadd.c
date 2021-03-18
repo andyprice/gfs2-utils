@@ -531,6 +531,11 @@ static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	if (error != 0)
 		goto close_fd;
 
+	error = fsync(fd);
+	if (error != 0) {
+		perror("Failed to sync journal metadata");
+		goto close_fd;
+	}
 	if ((error = lseek(fd, 0, SEEK_SET)) < 0) {
 		perror("add_j lseek");
 		goto close_fd;
@@ -574,12 +579,12 @@ static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 			seq = 0;
 		off += sdp->bsize;
 
-		if ((error = fsync(fd))) {
-			perror("add_j fsync");
-			goto close_fd;
-		}
 	}
-
+	error = fsync(fd);
+	if (error != 0) {
+		perror("Failed to sync journal metadata");
+		goto close_fd;
+	}
 	sprintf(new_name, "journal%u", opts->journals);
 	error = rename2system(opts, opts->jindex, new_name);
 	if (error < 0 && errno != EEXIST){
