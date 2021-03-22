@@ -980,7 +980,7 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
  *             was converted from GFS via gfs2_convert, and its rgrps are
  *             not on nice boundaries thanks to previous gfs_grow ops. Lovely.
  */
-int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
+int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *ok)
 {
 	struct osi_node *n, *next = NULL, *e, *enext;
 	int error, discrepancies, percent;
@@ -993,7 +993,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 		/* Don't free previous incarnations in memory, if any.
 		 * We need them to copy in the next function:
 		 * gfs2_rgrp_free(&sdp->rglist); */
-		if (!(*sane)) {
+		if (!(*ok)) {
 			log_err(_("The rindex file does not meet our "
 				  "expectations.\n"));
 			return -1;
@@ -1036,7 +1036,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 	}
 	/* Read in the rindex */
 	sdp->rgtree.osi_node = NULL; /* Just to be safe */
-	rindex_read(sdp, &sdp->rgrps, sane);
+	rindex_read(sdp, &sdp->rgrps, ok);
 	if (sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex)) {
 		log_warn( _("WARNING: rindex file has an invalid size.\n"));
 		if (!query( _("Truncate the rindex size? (y/n)"))) {

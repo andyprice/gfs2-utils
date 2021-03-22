@@ -101,7 +101,7 @@ static int openfs(const char *path, struct gfs2_sbd *sdp)
 {
 	int fd;
 	int ret;
-	int sane;
+	int ok;
 	uint64_t count;
 
 	fd = open(path, O_RDWR);
@@ -135,7 +135,7 @@ static int openfs(const char *path, struct gfs2_sbd *sdp)
 	gfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
 	sdp->fssize = sdp->device.length;
 	if (sdp->md.riinode) {
-		rindex_read(sdp, &count, &sane);
+		rindex_read(sdp, &count, &ok);
 	} else {
 		perror("Failed to look up rindex");
 		return 1;
