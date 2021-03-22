@@ -822,6 +822,41 @@ static void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree, i
 	sdp->rgrps = nrgrp;
 }
 
+static int calc_rgrps(struct gfs2_sbd *sdp)
+{
+	struct osi_node *n, *next = NULL;
+	struct rgrp_tree *rl;
+	uint32_t rgblocks, bitblocks;
+	struct gfs2_rindex *ri;
+
+	for (n = osi_first(&sdp->rgcalc); n; n = next) {
+		next = osi_next(n);
+		rl = (struct rgrp_tree *)n;
+		ri = &rl->ri;
+
+		bitblocks = rgblocks2bitblocks(sdp->bsize, rl->length, &rgblocks);
+
+		ri->ri_addr = rl->start;
+		ri->ri_length = bitblocks;
+		ri->ri_data0 = rl->start + bitblocks;
+		ri->ri_data = rgblocks;
+		ri->ri_bitbytes = rgblocks / GFS2_NBBY;
+
+		memset(&rl->rg, 0, sizeof(rl->rg));
+		rl->rg.rg_header.mh_magic = GFS2_MAGIC;
+		rl->rg.rg_header.mh_type = GFS2_METATYPE_RG;
+		rl->rg.rg_header.mh_format = GFS2_FORMAT_RG;
+		rl->rg.rg_free = rgblocks;
+
+		if (gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, rl))
+			return -1;
+
+		sdp->blks_total += rgblocks;
+		sdp->fssize = ri->ri_data0 + ri->ri_data;
+	}
+	return 0;
+}
+
 /*
  * gfs2_rindex_calculate - calculate what the rindex should look like
  *                          in a perfect world (trust_lvl == open_minded)
@@ -864,7 +899,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 	}
 	/* Compute the default resource group layout as mkfs would have done */
 	compute_rgrp_layout(sdp, &sdp->rgcalc, 1);
-	if (build_rgrps(sdp)) { /* Calculate but don't write to disk. */
+	if (calc_rgrps(sdp)) { /* Calculate but don't write to disk. */
 		fprintf(stderr, _("Failed to build resource groups\n"));
 		exit(-1);
 	}
