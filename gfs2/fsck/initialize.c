@@ -651,13 +651,92 @@ static void lookup_per_node(struct gfs2_sbd *sdp, int allow_rebuild)
 	}
 }
 
+#define RA_WINDOW 32
+
+static unsigned gfs2_rgrp_reada(struct gfs2_sbd *sdp, unsigned cur_window,
+				struct osi_node *n)
+{
+	struct rgrp_tree *rgd;
+	unsigned i;
+	off_t start, len;
+
+	for (i = 0; i < RA_WINDOW; i++, n = osi_next(n)) {
+		if (n == NULL)
+			return i;
+		if (i < cur_window)
+			continue;
+		rgd = (struct rgrp_tree *)n;
+		start = rgd->ri.ri_addr * sdp->bsize;
+		len = rgd->ri.ri_length * sdp->bsize;
+		posix_fadvise(sdp->device_fd, start, len, POSIX_FADV_WILLNEED);
+	}
+
+	return i;
+}
+
+/**
+ * ri_update - attach rgrps to the super block
+ * @sdp: incore superblock data
+ * @rgcount: returned count of rgs
+ *
+ * Given the rgrp index inode, link in all rgrps into the super block
+ * and be sure that they can be read.
+ *
+ * Returns: 0 on success, -1 on failure.
+ */
+static int ri_update(struct gfs2_sbd *sdp, int *rgcount, int *ok)
+{
+	struct rgrp_tree *rgd;
+	struct gfs2_rindex *ri;
+	uint64_t count1 = 0, count2 = 0;
+	uint64_t errblock = 0;
+	uint64_t rmax = 0;
+	struct osi_node *n, *next = NULL;
+	unsigned ra_window = 0;
+
+	/* Turn off generic readhead */
+	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_RANDOM);
+
+	if (rindex_read(sdp, 0, &count1, ok))
+		goto fail;
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rgd = (struct rgrp_tree *)n;
+		/* Readahead resource group headers */
+		if (ra_window < RA_WINDOW/2)
+			ra_window = gfs2_rgrp_reada(sdp, ra_window, n);
+		/* Read resource group header */
+		errblock = gfs2_rgrp_read(sdp, rgd);
+		if (errblock)
+			return errblock;
+		ra_window--;
+		count2++;
+		ri = &rgd->ri;
+		if (ri->ri_data0 + ri->ri_data - 1 > rmax)
+			rmax = ri->ri_data0 + ri->ri_data - 1;
+	}
+
+	sdp->fssize = rmax;
+	*rgcount = count1;
+	if (count1 != count2)
+		goto fail;
+
+	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
+	return 0;
+
+ fail:
+	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
+	gfs2_rgrp_free(sdp, &sdp->rgtree);
+	return -1;
+}
+
 /**
  * fetch_rgrps - fetch the resource groups from disk, and check their integrity
  */
 static int fetch_rgrps(struct gfs2_sbd *sdp)
 {
 	enum rgindex_trust_level trust_lvl;
-	int rgcount, sane = 1;
+	int rgcount, ok = 1;
 
 	const char *level_desc[] = {
 		_("Checking if all rgrp and rindex values are good"),
@@ -682,8 +761,8 @@ static int fetch_rgrps(struct gfs2_sbd *sdp)
 
 		log_notice(_("Level %d resource group check: %s.\n"), trust_lvl + 1,
 			  level_desc[trust_lvl]);
-		if ((rg_repair(sdp, trust_lvl, &rgcount, &sane) == 0) &&
-		    ((ret = ri_update(sdp, 0, &rgcount, &sane)) == 0)) {
+		if ((rg_repair(sdp, trust_lvl, &rgcount, &ok) == 0) &&
+		    ((ret = ri_update(sdp, &rgcount, &ok)) == 0)) {
 			log_notice(_("(level %d passed)\n"), trust_lvl + 1);
 			break;
 		} else {
