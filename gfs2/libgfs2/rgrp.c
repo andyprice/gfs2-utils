@@ -630,9 +630,9 @@ unsigned lgfs2_rgsize_for_data(uint64_t blksreq, unsigned bsize)
 }
 
 // Temporary function to aid in API migration
-struct osi_node *lgfs2_rgrps_root(lgfs2_rgrps_t rgs)
+void lgfs2_attach_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs)
 {
-	return rgs->root.osi_node;
+	sdp->rgtree.osi_node = rgs->root.osi_node;
 }
 
 /**

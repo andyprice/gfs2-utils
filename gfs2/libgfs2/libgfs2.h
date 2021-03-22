@@ -209,7 +209,7 @@ extern lgfs2_rgrp_t lgfs2_rgrp_last(lgfs2_rgrps_t rgs);
 extern lgfs2_rgrp_t lgfs2_rgrp_next(lgfs2_rgrp_t rg);
 extern lgfs2_rgrp_t lgfs2_rgrp_prev(lgfs2_rgrp_t rg);
 // Temporary function to aid API migration
-extern struct osi_node *lgfs2_rgrps_root(lgfs2_rgrps_t rgs) __attribute__((deprecated));
+extern void lgfs2_attach_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs);
 
 struct gfs2_buffer_head {
 	osi_list_t b_altlist; /* alternate list */

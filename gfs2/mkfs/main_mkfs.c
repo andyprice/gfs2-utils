@@ -1200,7 +1200,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, _("Failed to build resource groups\n"));
 		exit(1);
 	}
-	sbd.rgtree.osi_node = lgfs2_rgrps_root(rgs); // Temporary
+	lgfs2_attach_rgrps(&sbd, rgs); // Temporary
 
 	error = build_master(&sbd);
 	if (error) {
