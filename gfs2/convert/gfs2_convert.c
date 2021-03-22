@@ -1550,7 +1550,7 @@ static int sanity_check(struct gfs2_sbd *sdp)
  *
  * Returns: 0 on success, -1 on failure.
  */
-static int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet)
+static int gfs1_ri_update(struct gfs2_sbd *sdp, int *rgcount, int quiet)
 {
 	struct rgrp_tree *rgd;
 	struct gfs2_rindex *ri;
@@ -1560,7 +1560,7 @@ static int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet)
 	struct osi_node *n, *next = NULL;
 	int ok;
 
-	if (rindex_read(sdp, fd, &count1, &ok))
+	if (rindex_read(sdp, 0, &count1, &ok))
 		goto fail;
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
@@ -1715,7 +1715,7 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 	sbp->md.riinode->i_di.di_mode &= ~S_IFMT;
 	sbp->md.riinode->i_di.di_mode |= S_IFDIR;
 	printf(_("Examining file system"));
-	if (gfs1_ri_update(sbp, 0, &rgcount, 0)){
+	if (gfs1_ri_update(sbp, &rgcount, 0)){
 		log_crit(_("Unable to fill in resource group information.\n"));
 		return -1;
 	}
