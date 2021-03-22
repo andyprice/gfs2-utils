@@ -299,8 +299,7 @@ static unsigned gfs2_rgrp_reada(struct gfs2_sbd *sdp, unsigned cur_window,
  *
  * Returns: 0 on success, -1 on failure.
  */
-static int __ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane,
-		       int quiet)
+int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *ok)
 {
 	struct rgrp_tree *rgd;
 	struct gfs2_rindex *ri;
@@ -313,7 +312,7 @@ static int __ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane,
 	/* Turn off generic readhead */
 	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_RANDOM);
 
-	if (rindex_read(sdp, fd, &count1, sane))
+	if (rindex_read(sdp, fd, &count1, ok))
 		goto fail;
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
@@ -327,10 +326,6 @@ static int __ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane,
 			return errblock;
 		ra_window--;
 		count2++;
-		if (!quiet && count2 % 100 == 0) {
-			printf(".");
-			fflush(stdout);
-		}
 		ri = &rgd->ri;
 		if (ri->ri_data0 + ri->ri_data - 1 > rmax)
 			rmax = ri->ri_data0 + ri->ri_data - 1;
@@ -348,9 +343,4 @@ static int __ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane,
 	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 	gfs2_rgrp_free(sdp, &sdp->rgtree);
 	return -1;
-}
-
-int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane)
-{
-	return __ri_update(sdp, fd, rgcount, sane, 1);
 }
