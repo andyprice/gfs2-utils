@@ -697,7 +697,7 @@ static int ri_update(struct gfs2_sbd *sdp, int *rgcount, int *ok)
 	/* Turn off generic readhead */
 	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_RANDOM);
 
-	if (rindex_read(sdp, 0, &count1, ok))
+	if (rindex_read(sdp, &count1, ok))
 		goto fail;
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);

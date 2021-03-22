@@ -1560,7 +1560,7 @@ static int gfs1_ri_update(struct gfs2_sbd *sdp, int *rgcount, int quiet)
 	struct osi_node *n, *next = NULL;
 	int ok;
 
-	if (rindex_read(sdp, 0, &count1, &ok))
+	if (rindex_read(sdp, &count1, &ok))
 		goto fail;
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);

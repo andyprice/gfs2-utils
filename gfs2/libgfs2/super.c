@@ -133,7 +133,7 @@ int read_sb(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-/* rgd_seems_sane - check some general things about the rindex entry
+/* rgd_seems_ok - check some general things about the rindex entry
  *
  * If rg lengths are not consistent, it's not sane (or it's converted from
  * gfs1). The first RG will be a different length due to space reserved for
@@ -142,7 +142,7 @@ int read_sb(struct gfs2_sbd *sdp)
  *
  * Returns: 1 if the rgd seems relatively sane
  */
-static int rgd_seems_sane(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
+static int rgd_seems_ok(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
 	uint32_t most_bitmaps_possible;
 
@@ -189,14 +189,12 @@ static int good_on_disk(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 /**
  * rindex_read - read in the rg index file
  * @sdp: the incore superblock pointer
- * fd: optional file handle for rindex file (if meta_fs file system is mounted)
- *     (if fd is <= zero, it will read from raw device)
- * @count1: return count of the rgs.
- * @sane: return whether rindex is consistent
+ * @rgcount: return count of the rgs.
+ * @ok: return whether rindex is consistent
  *
  * Returns: 0 on success, -1 on failure
  */
-int rindex_read(struct gfs2_sbd *sdp, int fd, uint64_t *count1, int *sane)
+int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 {
 	unsigned int rg;
 	int error;
@@ -207,18 +205,14 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, uint64_t *count1, int *sane)
 	struct rgrp_tree *rgd = NULL, *prev_rgd = NULL;
 	uint64_t prev_length = 0;
 
-	*sane = 1;
-	*count1 = 0;
-	if (!fd && sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex))
-		*sane = 0; /* rindex file size must be a multiple of 96 */
+	*ok = 1;
+	*rgcount = 0;
+	if (sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex))
+		*ok = 0; /* rindex file size must be a multiple of 96 */
 	for (rg = 0; ; rg++) {
-		if (fd > 0)
-			error = read(fd, &buf, sizeof(struct gfs2_rindex));
-		else
-			error = gfs2_readi(sdp->md.riinode,
-					   (char *)&buf.bufgfs2,
-					   rg * sizeof(struct gfs2_rindex),
-					   sizeof(struct gfs2_rindex));
+		error = gfs2_readi(sdp->md.riinode, (char *)&buf.bufgfs2,
+		                   rg * sizeof(struct gfs2_rindex),
+		                   sizeof(struct gfs2_rindex));
 		if (!error)
 			break;
 		if (error != sizeof(struct gfs2_rindex))
@@ -226,7 +220,7 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, uint64_t *count1, int *sane)
 
 		gfs2_rindex_in(&ri, (char *)&buf.bufgfs2);
 		if (gfs2_check_range(sdp, ri.ri_addr) != 0) {
-			*sane = 0;
+			*ok = 0;
 			if (prev_rgd == NULL)
 				continue;
 			ri.ri_addr = prev_rgd->ri.ri_addr + prev_rgd->length;
@@ -240,27 +234,27 @@ int rindex_read(struct gfs2_sbd *sdp, int fd, uint64_t *count1, int *sane)
 			   (or it's converted from gfs1). */
 			if (!sdp->gfs1) {
 				if (prev_rgd->start >= rgd->start)
-					*sane = 0;
-				else if (!rgd_seems_sane(sdp, rgd))
-					*sane = 0;
-				else if (*sane && rg > 2 && prev_length &&
+					*ok = 0;
+				else if (!rgd_seems_ok(sdp, rgd))
+					*ok = 0;
+				else if (*ok && rg > 2 && prev_length &&
 				    prev_length != rgd->start -
 				    prev_rgd->start)
-					*sane = good_on_disk(sdp, rgd);
+					*ok = good_on_disk(sdp, rgd);
 			}
 			prev_length = rgd->start - prev_rgd->start;
 			prev_rgd->length = rgrp_size(prev_rgd);
 		}
 
 		if(gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, rgd))
-			*sane = 0;
+			*ok = 0;
 
-		(*count1)++;
+		(*rgcount)++;
 		prev_rgd = rgd;
 	}
 	if (prev_rgd)
 		prev_rgd->length = rgrp_size(prev_rgd);
-	if (*count1 == 0)
+	if (*rgcount == 0)
 		return -1;
 	return 0;
 }

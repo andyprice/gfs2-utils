@@ -1036,7 +1036,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *sane)
 	}
 	/* Read in the rindex */
 	sdp->rgtree.osi_node = NULL; /* Just to be safe */
-	rindex_read(sdp, 0, &sdp->rgrps, sane);
+	rindex_read(sdp, &sdp->rgrps, sane);
 	if (sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex)) {
 		log_warn( _("WARNING: rindex file has an invalid size.\n"));
 		if (!query( _("Truncate the rindex size? (y/n)"))) {

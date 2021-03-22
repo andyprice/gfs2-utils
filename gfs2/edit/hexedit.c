@@ -976,7 +976,7 @@ static int read_rindex(void)
 
 	sbd.fssize = sbd.device.length;
 	if (sbd.md.riinode) /* If we found the rindex */
-		rindex_read(&sbd, 0, &count, &sane);
+		rindex_read(&sbd, &count, &sane);
 
 	if (!OSI_EMPTY_ROOT(&sbd.rgtree)) {
 		ri = &((struct rgrp_tree *)osi_last(&sbd.rgtree))->ri;
