@@ -399,10 +399,8 @@ extern int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno);
 extern int lgfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, struct rgrp_tree *rgd);
 extern int gfs2_set_bitmap(lgfs2_rgrp_t rg, uint64_t blkno, int state);
 
-/* fs_geometry.c */
 extern uint32_t rgblocks2bitblocks(const unsigned int bsize, const uint32_t rgblocks,
                                     uint32_t *ri_data) __attribute__((nonnull(3)));
-extern int build_rgrps(struct gfs2_sbd *sdp);
 
 /* fs_ops.c */
 #define IS_LEAF     (1)

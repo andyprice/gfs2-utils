@@ -39,7 +39,6 @@ libgfs2_la_SOURCES = \
 	rgrp.c \
 	super.c \
 	buf.c \
-	fs_geometry.c \
 	gfs2_disk_hash.c \
 	ondisk.c \
 	config.c \
