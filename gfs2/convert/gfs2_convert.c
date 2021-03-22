@@ -1542,6 +1542,55 @@ static int sanity_check(struct gfs2_sbd *sdp)
 	return error;
 }
 
+/**
+ * gfs1_ri_update - attach rgrps to the super block
+ *
+ * Given the rgrp index inode, link in all rgrps into the super block
+ * and be sure that they can be read.
+ *
+ * Returns: 0 on success, -1 on failure.
+ */
+static int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet)
+{
+	struct rgrp_tree *rgd;
+	struct gfs2_rindex *ri;
+	uint64_t count1 = 0, count2 = 0;
+	uint64_t errblock = 0;
+	uint64_t rmax = 0;
+	struct osi_node *n, *next = NULL;
+	int ok;
+
+	if (rindex_read(sdp, fd, &count1, &ok))
+		goto fail;
+	for (n = osi_first(&sdp->rgtree); n; n = next) {
+		next = osi_next(n);
+		rgd = (struct rgrp_tree *)n;
+		/* Read resource group header */
+		errblock = gfs2_rgrp_read(sdp, rgd);
+		if (errblock)
+			return errblock;
+		count2++;
+		if (!quiet && count2 % 100 == 0) {
+			printf(".");
+			fflush(stdout);
+		}
+		ri = &rgd->ri;
+		if (ri->ri_data0 + ri->ri_data - 1 > rmax)
+			rmax = ri->ri_data0 + ri->ri_data - 1;
+	}
+
+	sdp->fssize = rmax;
+	*rgcount = count1;
+	if (count1 != count2)
+		goto fail;
+
+	return 0;
+
+ fail:
+	gfs2_rgrp_free(sdp, &sdp->rgtree);
+	return -1;
+}
+
 /* ------------------------------------------------------------------------- */
 /* init - initialization code                                                */
 /* Returns: 0 on success, -1 on failure                                      */

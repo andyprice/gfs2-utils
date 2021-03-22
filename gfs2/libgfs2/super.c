@@ -354,20 +354,3 @@ int ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int *sane)
 {
 	return __ri_update(sdp, fd, rgcount, sane, 1);
 }
-
-/**
- * gfs1_ri_update - attach rgrps to the super block
- *                  Stolen from libgfs2/super.c, but modified to handle gfs1.
- * @sdp:
- *
- * Given the rgrp index inode, link in all rgrps into the super block
- * and be sure that they can be read.
- *
- * Returns: 0 on success, -1 on failure.
- */
-int gfs1_ri_update(struct gfs2_sbd *sdp, int fd, int *rgcount, int quiet)
-{
-	int sane;
-
-	return __ri_update(sdp, fd, rgcount, &sane, quiet);
-}
