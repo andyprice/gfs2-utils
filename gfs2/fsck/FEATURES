@@ -2,7 +2,7 @@ This is a completely rewritten filesystem checker for GFS.  Performance
 characteristics are significantly improved.  The design follows the 5-pass
 fsck design found in "Fsck - The UNIX File System Check Program"
 by McKusick & Kowalkski (1994)
-  - http://citeseer.ist.psu.edu/mckusick94fsck.html
+  - https://docs.freebsd.org/44doc/smm/03.fsck/paper.pdf
 
 
 Line item list of supported features:
