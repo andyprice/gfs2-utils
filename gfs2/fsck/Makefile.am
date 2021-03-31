@@ -13,6 +13,7 @@ noinst_HEADERS = \
 	util.h
 
 fsck_gfs2_SOURCES = \
+	block_list.c \
 	fs_recovery.c \
 	initialize.c \
 	inode_hash.c \

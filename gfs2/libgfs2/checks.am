@@ -5,7 +5,6 @@ check_libgfs2_SOURCES = \
 	check_libgfs2.c \
 	meta.c check_meta.c \
 	rgrp.c check_rgrp.c \
-	block_list.c \
 	crc32c.c \
 	gfs2_disk_hash.c \
 	ondisk.c \

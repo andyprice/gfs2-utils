@@ -222,11 +222,6 @@ struct gfs2_buffer_head {
 	int b_modified;
 };
 
-struct special_blocks {
-	osi_list_t list;
-	uint64_t block;
-};
-
 struct gfs2_inode {
 	struct gfs2_dinode i_di;
 	struct gfs2_buffer_head *i_bh;
@@ -350,15 +345,6 @@ extern const struct lgfs2_metadata *lgfs2_find_mtype_name(const char *name, cons
 extern const struct lgfs2_metafield *lgfs2_find_mfield_name(const char *name, const struct lgfs2_metadata *mtype);
 extern int lgfs2_field_str(char *str, const size_t size, const char *blk, const struct lgfs2_metafield *field, int hex);
 extern int lgfs2_field_assign(char *blk, const struct lgfs2_metafield *field, const void *val);
-
-/* block_list.c */
-
-extern struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num);
-extern void gfs2_special_add(struct special_blocks *blocklist, uint64_t block);
-extern void gfs2_special_set(struct special_blocks *blocklist, uint64_t block);
-extern void gfs2_special_free(struct special_blocks *blist);
-extern void gfs2_special_clear(struct special_blocks *blocklist,
-			       uint64_t block);
 
 /* buf.c */
 extern struct gfs2_buffer_head *bget(struct gfs2_sbd *sdp, uint64_t num);

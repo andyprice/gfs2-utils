@@ -8,7 +8,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include "libgfs2.h"
+#include "fsck.h"
 
 void gfs2_special_free(struct special_blocks *blist)
 {
@@ -36,7 +36,7 @@ struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num)
 	return NULL;
 }
 
-void gfs2_special_add(struct special_blocks *blocklist, uint64_t block)
+static void gfs2_special_add(struct special_blocks *blocklist, uint64_t block)
 {
 	struct special_blocks *b;
 
@@ -53,15 +53,4 @@ void gfs2_special_set(struct special_blocks *blocklist, uint64_t block)
 	if (blockfind(blocklist, block))
 		return;
 	gfs2_special_add(blocklist, block);
-}
-
-void gfs2_special_clear(struct special_blocks *blocklist, uint64_t block)
-{
-	struct special_blocks *b;
-
-	b = blockfind(blocklist, block);
-	if (b) {
-		osi_list_del(&b->list);
-		free(b);
-	}
 }

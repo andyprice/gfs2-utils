@@ -32,7 +32,6 @@ noinst_PROGRAMS = gfs2l
 
 libgfs2_la_SOURCES = \
 	crc32c.c \
-	block_list.c \
 	fs_bits.c \
 	gfs1.c \
 	misc.c \

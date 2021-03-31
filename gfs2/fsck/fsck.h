@@ -198,4 +198,13 @@ static inline int valid_block_ip(struct gfs2_inode *ip, uint64_t blk)
 	return rgrp_contains_block(rgd, blk);
 }
 
+struct special_blocks {
+	osi_list_t list;
+	uint64_t block;
+};
+
+extern struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num);
+extern void gfs2_special_set(struct special_blocks *blocklist, uint64_t block);
+extern void gfs2_special_free(struct special_blocks *blist);
+
 #endif /* _FSCK_H */
