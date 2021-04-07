@@ -675,7 +675,7 @@ static unsigned gfs2_rgrp_reada(struct gfs2_sbd *sdp, unsigned cur_window,
 }
 
 /**
- * ri_update - attach rgrps to the super block
+ * read_rgrps - attach rgrps to the super block
  * @sdp: incore superblock data
  * @expected: number of resource groups expected (rindex entries)
  *
@@ -684,7 +684,7 @@ static unsigned gfs2_rgrp_reada(struct gfs2_sbd *sdp, unsigned cur_window,
  *
  * Returns: 0 on success, -1 on failure.
  */
-static int ri_update(struct gfs2_sbd *sdp, uint64_t expected)
+static int read_rgrps(struct gfs2_sbd *sdp, uint64_t expected)
 {
 	struct rgrp_tree *rgd;
 	struct gfs2_rindex *ri;
@@ -754,7 +754,7 @@ static int fetch_rgrps_level(struct gfs2_sbd *sdp, enum rgindex_trust_level lvl,
 	if (rindex_read(sdp, count, ok) != 0)
 		goto fail;
 
-	ret = ri_update(sdp, *count);
+	ret = read_rgrps(sdp, *count);
 	if (ret != 0)
 		goto fail;
 
