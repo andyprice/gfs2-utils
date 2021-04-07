@@ -130,7 +130,7 @@ extern int pass2(struct gfs2_sbd *sdp);
 extern int pass3(struct gfs2_sbd *sdp);
 extern int pass4(struct gfs2_sbd *sdp);
 extern int pass5(struct gfs2_sbd *sdp, struct gfs2_bmap *bl);
-extern int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *ok);
+extern int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok);
 extern int fsck_query(const char *format, ...)
 	__attribute__((format(printf,1,2)));
 extern struct dir_info *dirtree_find(uint64_t block);

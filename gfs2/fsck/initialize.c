@@ -677,18 +677,18 @@ static unsigned gfs2_rgrp_reada(struct gfs2_sbd *sdp, unsigned cur_window,
 /**
  * ri_update - attach rgrps to the super block
  * @sdp: incore superblock data
- * @rgcount: returned count of rgs
+ * @expected: number of resource groups expected (rindex entries)
  *
  * Given the rgrp index inode, link in all rgrps into the super block
  * and be sure that they can be read.
  *
  * Returns: 0 on success, -1 on failure.
  */
-static int ri_update(struct gfs2_sbd *sdp, int *rgcount, int *ok)
+static int ri_update(struct gfs2_sbd *sdp, uint64_t expected)
 {
 	struct rgrp_tree *rgd;
 	struct gfs2_rindex *ri;
-	uint64_t count1 = 0, count2 = 0;
+	uint64_t count = 0;
 	uint64_t errblock = 0;
 	uint64_t rmax = 0;
 	struct osi_node *n, *next = NULL;
@@ -697,8 +697,6 @@ static int ri_update(struct gfs2_sbd *sdp, int *rgcount, int *ok)
 	/* Turn off generic readhead */
 	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_RANDOM);
 
-	if (rindex_read(sdp, &count1, ok))
-		goto fail;
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
 		rgd = (struct rgrp_tree *)n;
@@ -710,15 +708,14 @@ static int ri_update(struct gfs2_sbd *sdp, int *rgcount, int *ok)
 		if (errblock)
 			return errblock;
 		ra_window--;
-		count2++;
+		count++;
 		ri = &rgd->ri;
 		if (ri->ri_data0 + ri->ri_data - 1 > rmax)
 			rmax = ri->ri_data0 + ri->ri_data - 1;
 	}
 
 	sdp->fssize = rmax;
-	*rgcount = count1;
-	if (count1 != count2)
+	if (count != expected)
 		goto fail;
 
 	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
@@ -730,7 +727,7 @@ static int ri_update(struct gfs2_sbd *sdp, int *rgcount, int *ok)
 	return -1;
 }
 
-static int fetch_rgrps_level(struct gfs2_sbd *sdp, enum rgindex_trust_level lvl, int *count, int *ok)
+static int fetch_rgrps_level(struct gfs2_sbd *sdp, enum rgindex_trust_level lvl, uint64_t *count, int *ok)
 {
 	int ret = 1;
 
@@ -751,10 +748,13 @@ static int fetch_rgrps_level(struct gfs2_sbd *sdp, enum rgindex_trust_level lvl,
 
 	log_notice(_("Level %d resource group check: %s.\n"), lvl + 1, level_desc[lvl]);
 
-	if (rg_repair(sdp, lvl, count, ok) != 0)
+	if (rg_repair(sdp, lvl, ok) != 0)
 		goto fail;
 
-	ret = ri_update(sdp, count, ok);
+	if (rindex_read(sdp, count, ok) != 0)
+		goto fail;
+
+	ret = ri_update(sdp, *count);
 	if (ret != 0)
 		goto fail;
 
@@ -775,7 +775,7 @@ fail:
 static int fetch_rgrps(struct gfs2_sbd *sdp)
 {
 	enum rgindex_trust_level trust_lvl;
-	int rgcount;
+	uint64_t rgcount;
 	int ok = 1;
 
 	log_notice(_("Validating resource group index.\n"));
@@ -793,7 +793,7 @@ static int fetch_rgrps(struct gfs2_sbd *sdp)
 			   "this file system.\n"));
 		return -1;
 	}
-	log_info( _("%u resource groups found.\n"), rgcount);
+	log_info( _("%"PRIu64" resource groups found.\n"), rgcount);
 
 	check_rgrps_integrity(sdp);
 	return 0;

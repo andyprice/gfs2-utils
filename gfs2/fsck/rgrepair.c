@@ -1015,7 +1015,7 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
  *             was converted from GFS via gfs2_convert, and its rgrps are
  *             not on nice boundaries thanks to previous gfs_grow ops. Lovely.
  */
-int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *ok)
+int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 {
 	struct osi_node *n, *next = NULL, *e, *enext;
 	int error, discrepancies, percent;
@@ -1283,7 +1283,6 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *rg_count, int *ok)
 			i++;
 		} while (i < rgd->ri.ri_length);
 	}
-	*rg_count = rg;
 	gfs2_rgrp_free(sdp, &sdp->rgcalc);
 	gfs2_rgrp_free(sdp, &sdp->rgtree);
 	/* We shouldn't need to worry about getting the user's permission to
