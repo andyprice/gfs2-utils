@@ -730,13 +730,9 @@ static int ri_update(struct gfs2_sbd *sdp, int *rgcount, int *ok)
 	return -1;
 }
 
-/**
- * fetch_rgrps - fetch the resource groups from disk, and check their integrity
- */
-static int fetch_rgrps(struct gfs2_sbd *sdp)
+static int fetch_rgrps_level(struct gfs2_sbd *sdp, enum rgindex_trust_level lvl, int *count, int *ok)
 {
-	enum rgindex_trust_level trust_lvl;
-	int rgcount, ok = 1;
+	int ret = 1;
 
 	const char *level_desc[] = {
 		_("Checking if all rgrp and rindex values are good"),
@@ -752,30 +748,43 @@ static int fetch_rgrps(struct gfs2_sbd *sdp)
 		_("Too many rgrp misses: rgrps must be unevenly spaced"),
 		_("Too much damage found: we cannot rebuild this rindex"),
 	};
-	/*******************************************************************
-	 ********  Validate and read in resource group information  ********
-	 *******************************************************************/
+
+	log_notice(_("Level %d resource group check: %s.\n"), lvl + 1, level_desc[lvl]);
+
+	if (rg_repair(sdp, lvl, count, ok) != 0)
+		goto fail;
+
+	ret = ri_update(sdp, count, ok);
+	if (ret != 0)
+		goto fail;
+
+	log_notice(_("(level %d passed)\n"), lvl + 1);
+	return 0;
+fail:
+	if (ret == -1)
+		log_err(_("(level %d failed: %s)\n"), lvl + 1, fail_desc[lvl]);
+	else
+		log_err(_("(level %d failed at block %d (0x%x): %s)\n"), lvl + 1,
+		        ret, ret, fail_desc[lvl]);
+	return ret;
+}
+
+/**
+ * fetch_rgrps - fetch the resource groups from disk, and check their integrity
+ */
+static int fetch_rgrps(struct gfs2_sbd *sdp)
+{
+	enum rgindex_trust_level trust_lvl;
+	int rgcount;
+	int ok = 1;
+
 	log_notice(_("Validating resource group index.\n"));
 	for (trust_lvl = blind_faith; trust_lvl <= indignation; trust_lvl++) {
 		int ret = 0;
 
-		log_notice(_("Level %d resource group check: %s.\n"), trust_lvl + 1,
-			  level_desc[trust_lvl]);
-		if ((rg_repair(sdp, trust_lvl, &rgcount, &ok) == 0) &&
-		    ((ret = ri_update(sdp, &rgcount, &ok)) == 0)) {
-			log_notice(_("(level %d passed)\n"), trust_lvl + 1);
+		ret = fetch_rgrps_level(sdp, trust_lvl, &rgcount, &ok);
+		if (ret == 0)
 			break;
-		} else {
-			if (ret == -1)
-				log_err( _("(level %d failed: %s)\n"),
-					 trust_lvl + 1, fail_desc[trust_lvl]);
-			else
-				log_err( _("(level %d failed at block %lld "
-					   "(0x%llx): %s)\n"), trust_lvl + 1,
-					 (unsigned long long)ret,
-					 (unsigned long long)ret,
-					 fail_desc[trust_lvl]);
-		}
 		if (fsck_abort)
 			break;
 	}
