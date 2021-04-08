@@ -751,7 +751,7 @@ static int fetch_rgrps_level(struct gfs2_sbd *sdp, enum rgindex_trust_level lvl,
 	if (rg_repair(sdp, lvl, ok) != 0)
 		goto fail;
 
-	if (rindex_read(sdp, count, ok) != 0)
+	if (rindex_read(sdp, count, ok) != 0 || !*ok)
 		goto fail;
 
 	ret = read_rgrps(sdp, *count);
