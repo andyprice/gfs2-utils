@@ -392,7 +392,7 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 		next_block = prevrgd->ri.ri_addr + rgrp_dist;
 		/* Now we account for block rounding done by mkfs.gfs2 */
 		for (b = 0; b <= length + GFS2_NBBY; b++) {
-			if (next_block >= sdp->device.length)
+			if (next_block + b >= sdp->device.length)
 				break;
 			bh = bread(sdp, next_block + b);
 			gfs2_meta_header_in(&mh, bh->b_data);

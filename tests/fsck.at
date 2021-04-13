@@ -46,6 +46,26 @@ AT_KEYWORDS(fsck.gfs2 fsck)
 GFS_NUKERG_CHECK([mkfs.gfs2 -O -p lock_nolock $GFS_TGT], [-i 1])
 AT_CLEANUP
 
+AT_SETUP([2G RGs: Fix bad resource group #0])
+AT_KEYWORDS(fsck.gfs2 fsck)
+GFS_NUKERG_CHECK([mkfs.gfs2 -O -p lock_nolock -r 2048 $GFS_TGT], [-r 0])
+AT_CLEANUP
+
+AT_SETUP([2G RGs: Fix bad resource group #1])
+AT_KEYWORDS(fsck.gfs2 fsck)
+GFS_NUKERG_CHECK([mkfs.gfs2 -O -p lock_nolock -r 2048 $GFS_TGT], [-r 1])
+AT_CLEANUP
+
+#AT_SETUP([2G RGs: Fix bad rindex entry #0])
+#AT_KEYWORDS(fsck.gfs2 fsck)
+#GFS_NUKERG_CHECK([mkfs.gfs2 -O -p lock_nolock -r 2048 $GFS_TGT], [-i 0])
+#AT_CLEANUP
+
+#AT_SETUP([2G RGs: Fix bad rindex entry #1])
+#AT_KEYWORDS(fsck.gfs2 fsck)
+#GFS_NUKERG_CHECK([mkfs.gfs2 -O -p lock_nolock -r 2048 $GFS_TGT], [-i 1])
+#AT_CLEANUP
+
 AT_SETUP([Rebuild bad journal])
 AT_KEYWORDS(fsck.gfs2 fsck)
 GFS_TGT_REGEN
