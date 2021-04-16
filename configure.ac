@@ -182,6 +182,7 @@ if test "x${enable_gcov}" = xyes; then
 		enable_debug="no (gcov enabled)"
 	fi
 	OPT_CFLAGS="-O0 $GCOV_CFLAGS"
+	OPT_CPPFLAGS=""
 fi
 
 if test "x${enable_gprof}" = xyes; then
