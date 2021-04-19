@@ -481,17 +481,9 @@ F(de_hash, .flags = LGFS2_MFF_CHECK)
 F(de_rec_len, .flags = LGFS2_MFF_BYTES)
 F(de_name_len, .flags = LGFS2_MFF_BYTES)
 F(de_type)
-#ifdef GFS2_HAS_DE_RAHEAD
 F(de_rahead)
-#ifdef GFS2_HAS_DE_COOKIE
 F(de_cookie)
 RF(pad3)
-#else
-RF(pad2)
-#endif /* GFS2_HAS_DE_COOKIE */
-#else
-RF(__pad)
-#endif /* GFS2_HAS_DE_RAHEAD */
 };
 
 #undef STRUCT

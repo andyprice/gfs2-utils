@@ -404,17 +404,9 @@ void gfs2_dirent_in(struct gfs2_dirent *de, char *buf)
 	CPIN_16(de, str, de_rec_len);
 	CPIN_16(de, str, de_name_len);
 	CPIN_16(de, str, de_type);
-#ifdef GFS2_HAS_DE_RAHEAD
 	CPIN_16(de, str, de_rahead);
-#ifdef GFS2_HAS_DE_COOKIE
 	CPIN_32(de, str, de_cookie);
 	CPIN_08(de, str, pad3, 8);
-#else
-	CPIN_08(de, str, pad2, 12);
-#endif /* GFS2_HAS_DE_COOKIE */
-#else
-	CPIN_08(de, str, __pad, 14);
-#endif /* GFS2_HAS_DE_RAHEAD */
 }
 
 void gfs2_dirent_out(struct gfs2_dirent *de, char *buf)
@@ -426,17 +418,9 @@ void gfs2_dirent_out(struct gfs2_dirent *de, char *buf)
 	CPOUT_16(de, str, de_rec_len);
 	CPOUT_16(de, str, de_name_len);
 	CPOUT_16(de, str, de_type);
-#ifdef GFS2_HAS_DE_RAHEAD
 	CPOUT_16(de, str, de_rahead);
-#ifdef GFS2_HAS_DE_COOKIE
 	CPOUT_32(de, str, de_cookie);
 	CPOUT_08(de, str, pad3, 8);
-#else
-	CPOUT_08(de, str, pad2, 12);
-#endif /* GFS2_HAS_DE_COOKIE */
-#else
-	CPOUT_08(de, str, __pad, 14);
-#endif /* GFS2_HAS_DE_RAHEAD */
 }
 
 void gfs2_leaf_in(struct gfs2_leaf *lf, char *buf)

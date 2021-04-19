@@ -335,18 +335,14 @@ static int display_leaf(struct iinfo *ind)
 					strcpy(edit_fmt, "%llx");
 				}
 			}
-			print_gfs2("%d/%d [%08x] %lld/%"PRId64" (0x%llx/0x%"PRIx64") +%u: ",
+			print_gfs2("%d/%d [%08x] %lld/%"PRId64" (0x%llx/0x%"PRIx64") +%"PRIu16": ",
 				   total_dirents, d + 1,
 				   ind->ii[0].dirent[d].dirent.de_hash,
 				   ind->ii[0].dirent[d].dirent.de_inum.no_formal_ino,
 				   ind->ii[0].dirent[d].block,
 				   ind->ii[0].dirent[d].dirent.de_inum.no_formal_ino,
 				   ind->ii[0].dirent[d].block,
-#ifdef GFS2_HAS_DE_RAHEAD
-				   (unsigned int)ind->ii[0].dirent[d].dirent.de_rahead
-#else
-				   0
-#endif
+				   ind->ii[0].dirent[d].dirent.de_rahead
 			);
 		}
 		print_inode_type(ind->ii[0].dirent[d].dirent.de_type);
