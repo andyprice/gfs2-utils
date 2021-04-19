@@ -372,10 +372,10 @@ static void gfs2_inum_print2(const char *title,struct gfs2_inum *no)
 	}
 	else
 		printf("  %s:",title);
-	pv2(no, no_formal_ino, "%llu", "0x%llx");
+	pv2(no, no_formal_ino, "%"PRIu64, "0x%"PRIx64);
 	if (!termlines)
 		printf("        addr:");
-	pv2(no, no_addr, "%llu", "0x%llx");
+	pv2(no, no_addr, "%"PRIu64, "0x%"PRIx64);
 }
 
 /**
@@ -388,15 +388,15 @@ static void gfs2_sb_print2(struct gfs2_sb *sbp2)
 
 	gfs2_meta_header_print(&sbp2->sb_header);
 
-	pv(sbp2, sb_fs_format, "%u", "0x%x");
-	pv(sbp2, sb_multihost_format, "%u", "0x%x");
+	pv(sbp2, sb_fs_format, "%"PRIu32, "0x%"PRIx32);
+	pv(sbp2, sb_multihost_format, "%"PRIu32, "0x%"PRIx32);
 
 	if (sbd.gfs1)
-		pv(sbd1, sb_flags, "%u", "0x%x");
-	pv(sbp2, sb_bsize, "%u", "0x%x");
-	pv(sbp2, sb_bsize_shift, "%u", "0x%x");
+		pv(sbd1, sb_flags, "%"PRIu32, "0x%"PRIx32);
+	pv(sbp2, sb_bsize, "%"PRIu32, "0x%"PRIx32);
+	pv(sbp2, sb_bsize_shift, "%"PRIu32, "0x%"PRIx32);
 	if (sbd.gfs1) {
-		pv(sbd1, sb_seg_size, "%u", "0x%x");
+		pv(sbd1, sb_seg_size, "%"PRIu32, "0x%"PRIx32);
 		gfs2_inum_print2("jindex ino", &sbd1->sb_jindex_di);
 		gfs2_inum_print2("rindex ino", &sbd1->sb_rindex_di);
 	}
@@ -438,14 +438,14 @@ static void gfs1_rgrp_in(struct gfs_rgrp *rgrp, const char *buf)
 static void gfs1_rgrp_print(struct gfs_rgrp *rg)
 {
         gfs2_meta_header_print(&rg->rg_header);
-        pv(rg, rg_flags, "%u", "0x%x");
-        pv(rg, rg_free, "%u", "0x%x");
-        pv(rg, rg_useddi, "%u", "0x%x");
-        pv(rg, rg_freedi, "%u", "0x%x");
+        pv(rg, rg_flags, "%"PRIu32, "0x%"PRIx32);
+        pv(rg, rg_free, "%"PRIu32, "0x%"PRIx32);
+        pv(rg, rg_useddi, "%"PRIu32, "0x%"PRIx32);
+        pv(rg, rg_freedi, "%"PRIu32, "0x%"PRIx32);
         gfs2_inum_print(&rg->rg_freedi_list);
 
-        pv(rg, rg_usedmeta, "%u", "0x%x");
-        pv(rg, rg_freemeta, "%u", "0x%x");
+        pv(rg, rg_usedmeta, "%"PRIu32, "0x%"PRIx32);
+        pv(rg, rg_freemeta, "%"PRIu32, "0x%"PRIx32);
 }
 
 int display_gfs2(char *buf)

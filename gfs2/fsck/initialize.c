@@ -1014,7 +1014,7 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 	if (di->di_num.no_formal_ino == 2) {
 		if (sdp->sd_sb.sb_master_dir.no_addr)
 			return;
-		log_warn(_("Found system master directory at: 0x%llx.\n"),
+		log_warn(_("Found system master directory at: 0x%"PRIx64".\n"),
 			 di->di_num.no_addr);
 		sdp->sd_sb.sb_master_dir.no_addr = di->di_num.no_addr;
 		return;
@@ -1029,7 +1029,7 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 	     (di->di_size % sizeof(struct gfs_jindex) == 0))) {
 		if (fix_md.jiinode || is_journal_copy(ip, bh))
 			goto out_discard_ip;
-		log_warn(_("Found system jindex file at: 0x%llx\n"),
+		log_warn(_("Found system jindex file at: 0x%"PRIx64"\n"),
 			 di->di_num.no_addr);
 		fix_md.jiinode = ip;
 	} else if (!sdp->gfs1 && is_dir(di, sdp->gfs1)) {
@@ -1043,8 +1043,8 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 			}
 			fix_md.jiinode = child_ip;
 			sdp->sd_sb.sb_master_dir.no_addr = di->di_num.no_addr;
-			log_warn(_("Found system master directory at: "
-				   "0x%llx\n"), di->di_num.no_addr);
+			log_warn(_("Found system master directory at: 0x%"PRIx64"\n"),
+			         di->di_num.no_addr);
 			return;
 		}
 
@@ -1055,39 +1055,38 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 			inode_put(&child_ip);
 			if (fix_md.pinode || is_journal_copy(ip, bh))
 				goto out_discard_ip;
-			log_warn(_("Found system per_node directory at: "
-				   "0x%llx\n"), ip->i_di.di_num.no_addr);
+			log_warn(_("Found system per_node directory at: 0x%"PRIx64"\n"),
+			         ip->i_di.di_num.no_addr);
 			fix_md.pinode = ip;
 			error = dir_search(ip, "..", 2, NULL, &inum);
 			if (!error && inum.no_addr) {
 				sdp->sd_sb.sb_master_dir.no_addr =
 					inum.no_addr;
-				log_warn(_("From per_node\'s \'..\' I "
-					   "backtracked the master directory "
-					   "to: 0x%llx\n"), inum.no_addr);
+				log_warn(_("From per_node's '..' master directory backtracked to: "
+					   "0x%"PRIx64"\n"), inum.no_addr);
 			}
 			return;
 		}
-		log_debug(_("Unknown system directory at block 0x%llx\n"),
+		log_debug(_("Unknown system directory at block 0x%"PRIx64"\n"),
 			  di->di_num.no_addr);
 		goto out_discard_ip;
 	} else if (!sdp->gfs1 && di->di_size == 8) {
 		if (fix_md.inum || is_journal_copy(ip, bh))
 			goto out_discard_ip;
 		fix_md.inum = ip;
-		log_warn(_("Found system inum file at: 0x%llx\n"),
+		log_warn(_("Found system inum file at: 0x%"PRIx64"\n"),
 			 di->di_num.no_addr);
 	} else if (di->di_size == 24) {
 		if (fix_md.statfs || is_journal_copy(ip, bh))
 			goto out_discard_ip;
 		fix_md.statfs = ip;
-		log_warn(_("Found system statfs file at: 0x%llx\n"),
+		log_warn(_("Found system statfs file at: 0x%"PRIx64"\n"),
 			 di->di_num.no_addr);
 	} else if ((di->di_size % 96) == 0) {
 		if (fix_md.riinode || is_journal_copy(ip, bh))
 			goto out_discard_ip;
 		fix_md.riinode = ip;
-		log_warn(_("Found system rindex file at: 0x%llx\n"),
+		log_warn(_("Found system rindex file at: 0x%"PRIx64"\n"),
 			 di->di_num.no_addr);
 	} else if (!fix_md.qinode && di->di_size >= 176 &&
 		   di->di_num.no_formal_ino >= 12 &&
@@ -1095,7 +1094,7 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 		if (is_journal_copy(ip, bh))
 			goto out_discard_ip;
 		fix_md.qinode = ip;
-		log_warn(_("Found system quota file at: 0x%llx\n"),
+		log_warn(_("Found system quota file at: 0x%"PRIx64"\n"),
 			 di->di_num.no_addr);
 	} else {
 out_discard_ip:
@@ -1123,17 +1122,17 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 		struct gfs2_buffer_head *root_bh;
 
 		if (di->di_num.no_addr == bh->b_blocknr) {
-			log_warn(_("Found the root directory at: 0x%llx.\n"),
+			log_warn(_("Found the root directory at: 0x%"PRIx64".\n"),
 				 di->di_num.no_addr);
 			sdp->sd_sb.sb_root_dir.no_addr = di->di_num.no_addr;
 			return;
 		}
-		log_warn(_("The root dinode should be at block 0x%llx but it "
+		log_warn(_("The root dinode should be at block 0x%"PRIx64" but it "
 			   "seems to be destroyed.\n"),
-			 (unsigned long long)di->di_num.no_addr);
+			 di->di_num.no_addr);
 		log_warn(_("Found a copy of the root directory in a journal "
-			   "at block: 0x%llx.\n"),
-			 (unsigned long long)bh->b_blocknr);
+			   "at block: 0x%"PRIx64".\n"),
+			 bh->b_blocknr);
 		if (!query(_("Do you want to replace the root dinode from the "
 			     "copy? (y/n)"))) {
 			log_err(_("Damaged root dinode not fixed.\n"));
@@ -1155,7 +1154,7 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 		gfs2_lookupi(ip, "..", 2, &parent_ip);
 		if (parent_ip && parent_ip->i_di.di_num.no_addr ==
 		    ip->i_di.di_num.no_addr) {
-			log_warn(_("Found the root directory at: 0x%llx\n"),
+			log_warn(_("Found the root directory at: 0x%"PRIx64"\n"),
 				 ip->i_di.di_num.no_addr);
 			sdp->sd_sb.sb_root_dir.no_addr =
 				ip->i_di.di_num.no_addr;
@@ -1171,8 +1170,8 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 	error = dir_search(ip, "..", 2, NULL, &inum);
 	if (!error && inum.no_addr && inum.no_addr < possible_root) {
 			possible_root = inum.no_addr;
-			log_debug(_("Found a possible root at: 0x%llx\n"),
-				  (unsigned long long)possible_root);
+			log_debug(_("Found a possible root at: 0x%"PRIx64"\n"),
+				  possible_root);
 	}
 	inode_put(&ip);
 }
@@ -1361,7 +1360,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 	/* Step 3 - Rebuild the lock protocol and file system table name */
 	if (query(_("Okay to fix the GFS2 superblock? (y/n)"))) {
 		struct gfs2_sb sb;
-		log_info(_("Found system master directory at: 0x%llx\n"),
+		log_info(_("Found system master directory at: 0x%"PRIx64"\n"),
 			 sdp->sd_sb.sb_master_dir.no_addr);
 		sdp->master_dir = lgfs2_inode_read(sdp,
 					     sdp->sd_sb.sb_master_dir.no_addr);
@@ -1371,7 +1370,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 		}
 		sdp->master_dir->i_di.di_num.no_addr =
 			sdp->sd_sb.sb_master_dir.no_addr;
-		log_info(_("Found the root directory at: 0x%llx\n"),
+		log_info(_("Found the root directory at: 0x%"PRIx64"\n"),
 			 sdp->sd_sb.sb_root_dir.no_addr);
 		sdp->md.rooti = lgfs2_inode_read(sdp,
 					   sdp->sd_sb.sb_root_dir.no_addr);

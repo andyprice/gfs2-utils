@@ -2209,11 +2209,10 @@ int pass1(struct gfs2_sbd *sdp)
 			goto out;
 		}
 		next = osi_next(n);
-		log_debug("Checking metadata in resource group #%llu\n",
-				 (unsigned long long)rg_count);
+		log_debug("Checking metadata in resource group #%"PRIu64"\n", rg_count);
 		rgd = (struct rgrp_tree *)n;
 		for (i = 0; i < rgd->ri.ri_length; i++) {
-			log_debug("rgrp block %lld (0x%llx) is now marked as 'rgrp data'\n",
+			log_debug("rgrp block %"PRIu64" (0x%"PRIx64") is now marked as 'rgrp data'\n",
 				   rgd->ri.ri_addr + i, rgd->ri.ri_addr + i);
 			if (gfs2_blockmap_set(bl, rgd->ri.ri_addr + i,
 					      GFS2_BLKST_USED)) {

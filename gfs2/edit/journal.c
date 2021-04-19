@@ -534,7 +534,7 @@ void dump_journal(const char *journal, int tblk)
 			uint64_t o;
 			int bmap = 0;
 
-			print_gfs2("rgd: 0x%llx for 0x%x, ", rgd->ri.ri_addr,
+			print_gfs2("rgd: 0x%"PRIx64" for 0x%"PRIx32", ", rgd->ri.ri_addr,
 				   rgd->ri.ri_length);
 			o = tblk - rgd->ri.ri_data0;
 			if (o >= (rgd->bits->bi_start +
@@ -544,8 +544,7 @@ void dump_journal(const char *journal, int tblk)
 					* GFS2_NBBY;
 			bmap = o / sbd.sd_blocks_per_bitmap;
 			bitblk = rgd->ri.ri_addr + bmap;
-			print_gfs2("bitmap: %d, bitblk: 0x%llx", bmap,
-				   (unsigned long long)bitblk);
+			print_gfs2("bitmap: %d, bitblk: 0x%"PRIx64, bmap, bitblk);
 			eol(0);
 		}
 
@@ -597,8 +596,8 @@ void dump_journal(const char *journal, int tblk)
 				check_journal_wrap(lh1.lh_sequence,
 						   &highest_seq);
 				print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: "
-					   "Flags:%x, Seq: 0x%llx, 1st: 0x%llx, "
-					   "tail: 0x%llx, last: 0x%llx",
+					   "Flags:%"PRIx32", Seq: 0x%"PRIx64", 1st: 0x%"PRIx64", "
+					   "tail: 0x%"PRIx64", last: 0x%"PRIx64,
 					   abs_block, jb + wrappt,
 					   lh1.lh_flags, lh1.lh_sequence,
 					   lh1.lh_first, lh1.lh_tail,
@@ -612,8 +611,8 @@ void dump_journal(const char *journal, int tblk)
 				lgfs2_field_str(flags_str, sizeof(flags_str),
 						buf, lh_flags_field,
 						(dmode == HEX_MODE));
-				print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: Seq"
-					   ": 0x%llx, tail: 0x%x, blk: 0x%x [%s]",
+				print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: Seq: "
+					   "0x%"PRIx64", tail: 0x%"PRIx32", blk: 0x%"PRIx32" [%s]",
 					   abs_block, ((jb + wrappt) % j_size)
 					   / sbd.bsize, lh.lh_sequence,
 					   lh.lh_tail, lh.lh_blkno,

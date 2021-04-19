@@ -1947,7 +1947,7 @@ static int check_pernode_for(int x, struct gfs2_inode *pernode, const char *fn,
 	else if (multiple && (ip->i_di.di_size % filelen))
 		valid_size = 0;
 	if (!valid_size) {
-		log_err(_("System file %s has an invalid size. Is %llu, "
+		log_err(_("System file %s has an invalid size. Is %"PRIu64", "
 			  "should be %llu.\n"), fn, ip->i_di.di_size, filelen);
 		if (!query( _("Rebuild the system file? (y/n) ")))
 			goto out_good;

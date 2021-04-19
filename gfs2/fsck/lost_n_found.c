@@ -61,11 +61,11 @@ static void add_dotdot(struct gfs2_inode *ip)
 			  bmodified(dip->i_bh);
 			}
 		} else {
-			log_debug(_("Directory (0x%llx)'s link to parent "
-				    "(0x%llx) had a formal inode discrepancy: "
-				    "was 0x%llx, expected 0x%llx\n"),
-				  (unsigned long long)ip->i_di.di_num.no_addr,
-				  (unsigned long long)di->dotdot_parent.no_addr,
+			log_debug(_("Directory (0x%"PRIx64")'s link to parent "
+				    "(0x%"PRIx64") had a formal inode discrepancy: "
+				    "was 0x%"PRIx64", expected 0x%"PRIx64"\n"),
+				  ip->i_di.di_num.no_addr,
+				  di->dotdot_parent.no_addr,
 				  di->dotdot_parent.no_formal_ino,
 				  dip->i_di.di_num.no_formal_ino);
 			log_debug(_("The parent directory was not changed.\n"));

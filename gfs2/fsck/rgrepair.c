@@ -414,11 +414,8 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 			rgrp_dist++;
 		}
 		if (found) {
-			log_info( _("rgrp found at 0x%llx, length=%d, "
-				    "used=%llu, free=%d\n"),
-				  prevrgd->ri.ri_addr, length,
-				  (unsigned long long)used_blocks,
-				  free_blocks);
+			log_info(_("rgrp found at 0x%"PRIx64", length=%d, used=%"PRIu64", free=%d\n"),
+			         prevrgd->ri.ri_addr, length, used_blocks, free_blocks);
 			break;
 		}
 	}
@@ -686,11 +683,9 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 	for (n = osi_first(&sdp->rgcalc), rgi = 0; n; n = next, rgi++) {
 		next = osi_next(n);
 		calc_rgd = (struct rgrp_tree *)n;
-                log_debug("%d: 0x%llx / %x / 0x%llx"
-			  " / 0x%x / 0x%x\n", rgi + 1,
-			  (unsigned long long)calc_rgd->ri.ri_addr,
-			  calc_rgd->ri.ri_length,
-			  calc_rgd->ri.ri_data0, calc_rgd->ri.ri_data, 
+                log_debug("%d: 0x%"PRIx64"/%"PRIx32"/0x%"PRIx64"/0x%"PRIx32"/0x%"PRIx32"\n",
+		          rgi + 1, calc_rgd->ri.ri_addr, calc_rgd->ri.ri_length,
+			  calc_rgd->ri.ri_data0, calc_rgd->ri.ri_data,
 			  calc_rgd->ri.ri_bitbytes);
         }
 	*num_rgs = number_of_rgs;
@@ -1138,16 +1133,14 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		if (actual->ri.ri_addr < expected->ri.ri_addr) {
 			n = next;
 			discrepancies++;
-			log_info(_("%d addr: 0x%llx < 0x%llx * mismatch\n"),
-				 rg + 1, actual->ri.ri_addr,
-				 expected->ri.ri_addr);
+			log_info(_("%d addr: 0x%"PRIx64" < 0x%"PRIx64" * mismatch\n"),
+				 rg + 1, actual->ri.ri_addr, expected->ri.ri_addr);
 			continue;
 		} else if (expected->ri.ri_addr < actual->ri.ri_addr) {
 			e = enext;
 			discrepancies++;
-			log_info(_("%d addr: 0x%llx > 0x%llx * mismatch\n"),
-				 rg + 1, actual->ri.ri_addr,
-				 expected->ri.ri_addr);
+			log_info(_("%d addr: 0x%"PRIx64" > 0x%"PRIx64" * mismatch\n"),
+				 rg + 1, actual->ri.ri_addr, expected->ri.ri_addr);
 			continue;
 		}
 		if (!ri_equal(actual->ri, expected->ri, ri_length) ||
@@ -1155,9 +1148,8 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		    !ri_equal(actual->ri, expected->ri, ri_data) ||
 		    !ri_equal(actual->ri, expected->ri, ri_bitbytes)) {
 			discrepancies++;
-			log_info(_("%d addr: 0x%llx 0x%llx * has mismatch\n"),
-				 rg + 1, actual->ri.ri_addr,
-				 expected->ri.ri_addr);
+			log_info(_("%d addr: 0x%"PRIx64" 0x%"PRIx64" * has mismatch\n"),
+				 rg + 1, actual->ri.ri_addr, expected->ri.ri_addr);
 		}
 		n = next;
 		e = enext;
@@ -1199,10 +1191,9 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		   damage, fill in a new one with the expected values. */
 		if (!n || /* end of actual rindex */
 		    expected->ri.ri_addr < actual->ri.ri_addr) {
-			log_err( _("Entry missing from rindex: 0x%llx\n"),
-				 (unsigned long long)expected->ri.ri_addr);
-			actual = rgrp_insert(&sdp->rgtree,
-					     expected->ri.ri_addr);
+			log_err(_("Entry missing from rindex: 0x%"PRIx64"\n"),
+			        expected->ri.ri_addr);
+			actual = rgrp_insert(&sdp->rgtree, expected->ri.ri_addr);
 			if (!actual) {
 				log_err(_("Out of memory!\n"));
 				break;

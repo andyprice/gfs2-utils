@@ -308,9 +308,9 @@ static int display_leaf(struct iinfo *ind)
 	if (gfs2_struct_type == GFS2_METATYPE_SB)
 		print_gfs2("The superblock has 2 directories");
 	else
-		print_gfs2("Directory block: lf_depth:%d, lf_entries:%d, "
+		print_gfs2("Directory block: lf_depth:%"PRIu16", lf_entries:%"PRIu16", "
 		           LEAF_HINT_FMTS
-			   "fmt:%d next=0x%llx (%d dirents).",
+			   "fmt:%"PRIu32" next=0x%"PRIx64" (%d dirents).",
 			   leaf->lf_depth, leaf->lf_entries,
 		           LEAF_HINT_FIELDS(leaf)
 			   leaf->lf_dirent_format,
@@ -330,12 +330,11 @@ static int display_leaf(struct iinfo *ind)
 				    line - start_line - 1 ==
 				    edit_row[dmode] - start_row[dmode]) {
 					COLORS_HIGHLIGHT;
-					sprintf(estring, "%llx",
-						(unsigned long long)ind->ii[0].dirent[d].block);
+					sprintf(estring, "%"PRIx64, ind->ii[0].dirent[d].block);
 					strcpy(edit_fmt, "%llx");
 				}
 			}
-			print_gfs2("%d/%d [%08x] %lld/%"PRId64" (0x%llx/0x%"PRIx64") +%"PRIu16": ",
+			print_gfs2("%d/%d [%08"PRIX32"] %"PRIu64"/%"PRIu64" (0x%"PRIx64"/0x%"PRIx64") +%"PRIu16": ",
 				   total_dirents, d + 1,
 				   ind->ii[0].dirent[d].dirent.de_hash,
 				   ind->ii[0].dirent[d].dirent.de_inum.no_formal_ino,
@@ -388,11 +387,9 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 	while (thisblk) {
 		/* read in the desired block */
 		if (pread(sbd.device_fd, tmpbuf, sbd.bsize, thisblk * sbd.bsize) != sbd.bsize) {
-			fprintf(stderr, "bad read: %s from %s:%d: block %lld "
-				"(0x%llx)\n", strerror(errno), __FUNCTION__,
-				__LINE__,
-				(unsigned long long)ind->ii[pndx].block,
-				(unsigned long long)ind->ii[pndx].block);
+			fprintf(stderr, "bad read: %s from %s:%d: block %"PRIu64
+				" (0x%"PRIx64")\n", strerror(errno), __FUNCTION__,
+				__LINE__, ind->ii[pndx].block, ind->ii[pndx].block);
 			exit(-1);
 		}
 		thisblk = 0;
@@ -428,9 +425,9 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 
 static void gfs_jindex_print(struct gfs_jindex *ji)
 {
-        pv((unsigned long long)ji, ji_addr, "%llu", "0x%llx");
-        pv(ji, ji_nsegment, "%u", "0x%x");
-        pv(ji, ji_pad, "%u", "0x%x");
+        pv(ji, ji_addr, "%"PRIu64, "0x%"PRIx64);
+        pv(ji, ji_nsegment, "%"PRIu32, "0x%"PRIx32);
+        pv(ji, ji_pad, "%"PRIu32, "0x%"PRIx32);
 }
 
 static int print_gfs_jindex(struct gfs2_inode *dij)
@@ -440,7 +437,7 @@ static int print_gfs_jindex(struct gfs2_inode *dij)
 	char jbuf[sizeof(struct gfs_jindex)];
 
 	start_line = line;
-	print_gfs2("Journal index entries found: %lld.",
+	print_gfs2("Journal index entries found: %"PRIu64".",
 		   dij->i_di.di_size / sizeof(struct gfs_jindex));
 	eol(0);
 	lines_per_row[dmode] = 4;
@@ -458,7 +455,7 @@ static int print_gfs_jindex(struct gfs2_inode *dij)
 			if (edit_row[dmode] == print_entry_ndx) {
 				COLORS_HIGHLIGHT;
 				strcpy(efield, "ji_addr");
-				sprintf(estring, "%llx", (unsigned long long)ji.ji_addr);
+				sprintf(estring, "%"PRIx64, ji.ji_addr);
 			}
 			print_gfs2("Journal #%d", print_entry_ndx);
 			eol(0);
@@ -482,7 +479,7 @@ static int print_gfs2_jindex(void)
 		if (strncmp(indirect->ii[0].dirent[d].filename, "journal", 7))
 			continue;
 		ip = lgfs2_inode_read(&sbd, indirect->ii[0].dirent[d].block);
-		print_gfs2("%s: 0x%-5"PRIx64" %lldMB ",
+		print_gfs2("%s: 0x%-5"PRIx64" %"PRIu64"MB ",
 			   indirect->ii[0].dirent[d].filename,
 			   indirect->ii[0].dirent[d].block,
 			   ip->i_di.di_size / 1048576);
@@ -509,7 +506,7 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 	char highlighted_addr[32];
 
 	start_line = line;
-	print_gfs2("RG index entries found: %lld.", dip->i_di.di_size /
+	print_gfs2("RG index entries found: %"PRIu64".", dip->i_di.di_size /
 		   sizeof(struct gfs2_rindex));
 	eol(0);
 	lines_per_row[dmode] = 6;
@@ -531,11 +528,11 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 			 termlines - start_line - 2)) {
 			if (edit_row[dmode] == print_entry_ndx) {
 				COLORS_HIGHLIGHT;
-				sprintf(highlighted_addr, "%llx", (unsigned long long)ri.ri_addr);
+				sprintf(highlighted_addr, "%"PRIx64, ri.ri_addr);
 			}
 			print_gfs2("RG #%d", print_entry_ndx);
 			if (!print_rindex)
-				print_gfs2(" located at: %llu (0x%llx)",
+				print_gfs2(" located at: %"PRIu64" (0x%"PRIx64")",
 					   ri.ri_addr, ri.ri_addr);
 			eol(0);
 			if (edit_row[dmode] == print_entry_ndx)
@@ -619,7 +616,7 @@ static int print_quota(struct gfs2_inode *diq)
 	
 	print_gfs2("quota file contents:");
 	eol(0);
-	print_gfs2("quota entries found: %lld.", diq->i_di.di_size / sizeof(q));
+	print_gfs2("quota entries found: %"PRIu64".", diq->i_di.di_size / sizeof(q));
 	eol(0);
 	for (i=0; ; i++) {
 		error = gfs2_readi(diq, (void *)&qbuf, i * sizeof(q), sizeof(qbuf));

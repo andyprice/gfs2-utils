@@ -428,19 +428,17 @@ static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 			prev_seq = lh.lh_sequence;
 			continue;
 		}
-		log_err( _("Journal block %u (0x%x): sequence no. 0x%llx "
+		log_err(_("Journal block %"PRIu32" (0x%"PRIx32"): sequence no. 0x%"PRIx64" "
 			   "out of order.\n"), blk, blk, lh.lh_sequence);
-		log_info( _("Low: 0x%llx, High: 0x%llx, Prev: 0x%llx\n"),
-			  (unsigned long long)lowest_seq,
-			  (unsigned long long)highest_seq,
-			  (unsigned long long)prev_seq);
+		log_info(_("Low: 0x%"PRIx64", High: 0x%"PRIx64", Prev: 0x%"PRIx64"\n"),
+		         lowest_seq, highest_seq, prev_seq);
 		seq_errors++;
 		if (!fix)
 			continue;
 		highest_seq++;
 		lh.lh_sequence = highest_seq;
 		prev_seq = lh.lh_sequence;
-		log_warn( _("Renumbering it as 0x%llx\n"), lh.lh_sequence);
+		log_warn(_("Renumbering it as 0x%"PRIx64"\n"), lh.lh_sequence);
 		block_map(ip, blk, &new, &dblock, NULL, 0);
 		bh = bread(ip->i_sbd, dblock);
 		gfs2_log_header_out(&lh, bh->b_data);

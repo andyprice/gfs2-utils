@@ -57,8 +57,8 @@ void gfs2_inum_out(const struct gfs2_inum *no, char *buf)
 
 void gfs2_inum_print(const struct gfs2_inum *no)
 {
-	pv(no, no_formal_ino, "%llu", "0x%llx");
-	pv(no, no_addr, "%llu", "0x%llx");
+	pv(no, no_formal_ino, "%"PRIu64, "0x%"PRIx64);
+	pv(no, no_addr, "%"PRIu64, "0x%"PRIx64);
 }
 
 void gfs2_meta_header_in(struct gfs2_meta_header *mh, const char *buf)
@@ -83,9 +83,9 @@ void gfs2_meta_header_out(const struct gfs2_meta_header *mh, char *buf)
 
 void gfs2_meta_header_print(const struct gfs2_meta_header *mh)
 {
-	pv(mh, mh_magic, "0x%08X", NULL);
-	pv(mh, mh_type, "%u", "0x%x");
-	pv(mh, mh_format, "%u", "0x%x");
+	pv(mh, mh_magic, "0x%08"PRIX32, NULL);
+	pv(mh, mh_type, "%"PRIu32, "0x%"PRIx32);
+	pv(mh, mh_format, "%"PRIu32, "0x%"PRIx32);
 }
 
 void gfs2_sb_in(struct gfs2_sb *sb, char *buf)
@@ -144,11 +144,11 @@ void gfs2_sb_print(const struct gfs2_sb *sb)
 
 	gfs2_meta_header_print(&sb->sb_header);
 
-	pv(sb, sb_fs_format, "%u", "0x%x");
-	pv(sb, sb_multihost_format, "%u", "0x%x");
+	pv(sb, sb_fs_format, "%"PRIu32, "0x%"PRIx32);
+	pv(sb, sb_multihost_format, "%"PRIu32, "0x%"PRIx32);
 
-	pv(sb, sb_bsize, "%u", "0x%x");
-	pv(sb, sb_bsize_shift, "%u", "0x%x");
+	pv(sb, sb_bsize, "%"PRIu32, "0x%"PRIx32);
+	pv(sb, sb_bsize_shift, "%"PRIu32, "0x%"PRIx32);
 
 	gfs2_inum_print(&sb->sb_master_dir);
 	gfs2_inum_print(&sb->sb_root_dir);
@@ -191,13 +191,13 @@ void gfs2_rindex_out(const struct gfs2_rindex *ri, char *buf)
 
 void gfs2_rindex_print(const struct gfs2_rindex *ri)
 {
-	pv(ri, ri_addr, "%llu", "0x%llx");
-	pv(ri, ri_length, "%u", "0x%x");
+	pv(ri, ri_addr, "%"PRIu64, "0x%"PRIx64);
+	pv(ri, ri_length, "%"PRIu32, "0x%"PRIx32);
 
-	pv(ri, ri_data0, "%llu", "0x%llx");
-	pv(ri, ri_data, "%u", "0x%x");
+	pv(ri, ri_data0, "%"PRIu64, "0x%"PRIx64);
+	pv(ri, ri_data, "%"PRIu32, "0x%"PRIx32);
 
-	pv(ri, ri_bitbytes, "%u", "0x%x");
+	pv(ri, ri_bitbytes, "%"PRIu32, "0x%"PRIx32);
 }
 
 void gfs2_rgrp_in(struct gfs2_rgrp *rg, char *buf)
@@ -237,15 +237,15 @@ void gfs2_rgrp_out(const struct gfs2_rgrp *rg, char *buf)
 void gfs2_rgrp_print(const struct gfs2_rgrp *rg)
 {
 	gfs2_meta_header_print(&rg->rg_header);
-	pv(rg, rg_flags, "%u", "0x%x");
-	pv(rg, rg_free, "%u", "0x%x");
-	pv(rg, rg_dinodes, "%u", "0x%x");
-	pv(rg, rg_skip, "%u", "0x%x");
-	pv(rg, rg_igeneration, "%llu", "0x%llx");
-	pv(rg, rg_data0, "%llu", "0x%llx");
-	pv(rg, rg_data, "%u", "0x%x");
-	pv(rg, rg_bitbytes, "%u", "0x%x");
-	pv(rg, rg_crc, "%u", "0x%x");
+	pv(rg, rg_flags, "%"PRIu32, "0x%"PRIx32);
+	pv(rg, rg_free, "%"PRIu32, "0x%"PRIx32);
+	pv(rg, rg_dinodes, "%"PRIu32, "0x%"PRIx32);
+	pv(rg, rg_skip, "%"PRIu32, "0x%"PRIx32);
+	pv(rg, rg_igeneration, "%"PRIu64, "0x%"PRIx64);
+	pv(rg, rg_data0, "%"PRIu64, "0x%"PRIx64);
+	pv(rg, rg_data, "%"PRIu32, "0x%"PRIx32);
+	pv(rg, rg_bitbytes, "%"PRIu32, "0x%"PRIx32);
+	pv(rg, rg_crc, "%"PRIu32, "0x%"PRIx32);
 }
 
 void gfs2_quota_in(struct gfs2_quota *qu, char *buf)
@@ -270,9 +270,9 @@ void gfs2_quota_out(struct gfs2_quota *qu, char *buf)
 
 void gfs2_quota_print(const struct gfs2_quota *qu)
 {
-	pv(qu, qu_limit, "%llu", "0x%llx");
-	pv(qu, qu_warn, "%llu", "0x%llx");
-	pv(qu, qu_value, "%lld", "0x%llx");
+	pv(qu, qu_limit, "%"PRIu64, "0x%"PRIx64);
+	pv(qu, qu_warn, "%"PRIu64, "0x%"PRIx64);
+	pv(qu, qu_value, "%"PRIu64, "0x%"PRIx64);
 }
 
 void gfs2_dinode_in(struct gfs2_dinode *di, char *buf)
@@ -350,29 +350,29 @@ void gfs2_dinode_print(const struct gfs2_dinode *di)
 	gfs2_meta_header_print(&di->di_header);
 	gfs2_inum_print(&di->di_num);
 
-	pv(di, di_mode, "0%o", NULL);
-	pv(di, di_uid, "%u", "0x%x");
-	pv(di, di_gid, "%u", "0x%x");
-	pv(di, di_nlink, "%u", "0x%x");
-	pv(di, di_size, "%llu", "0x%llx");
-	pv(di, di_blocks, "%llu", "0x%llx");
-	pv(di, di_atime, "%lld", "0x%llx");
-	pv(di, di_mtime, "%lld", "0x%llx");
-	pv(di, di_ctime, "%lld", "0x%llx");
-	pv(di, di_major, "%u", "0x%llx");
-	pv(di, di_minor, "%u", "0x%llx");
+	pv(di, di_mode, "0%"PRIo32, NULL);
+	pv(di, di_uid, "%"PRIu32, "0x%"PRIx32);
+	pv(di, di_gid, "%"PRIu32, "0x%"PRIx32);
+	pv(di, di_nlink, "%"PRIu32, "0x%"PRIx32);
+	pv(di, di_size, "%"PRIu64, "0x%"PRIx64);
+	pv(di, di_blocks, "%"PRIu64, "0x%"PRIx64);
+	pv(di, di_atime, "%"PRIu64, "0x%"PRIx64);
+	pv(di, di_mtime, "%"PRIu64, "0x%"PRIx64);
+	pv(di, di_ctime, "%"PRIu64, "0x%"PRIx64);
+	pv(di, di_major, "%"PRIu32, "0x%"PRIx32);
+	pv(di, di_minor, "%"PRIu32, "0x%"PRIx32);
 
-	pv(di, di_goal_meta, "%llu", "0x%llx");
-	pv(di, di_goal_data, "%llu", "0x%llx");
+	pv(di, di_goal_meta, "%"PRIu64, "0x%"PRIx64);
+	pv(di, di_goal_data, "%"PRIu64, "0x%"PRIx64);
 
-	pv(di, di_flags, "0x%.8X", NULL);
-	pv(di, di_payload_format, "%u", "0x%x");
-	pv(di, di_height, "%u", "0x%x");
+	pv(di, di_flags, "0x%.8"PRIX32, NULL);
+	pv(di, di_payload_format, "%"PRIu32, "0x%"PRIx32);
+	pv(di, di_height, "%"PRIu16, "0x%"PRIx16);
 
-	pv(di, di_depth, "%u", "0x%x");
-	pv(di, di_entries, "%u", "0x%x");
+	pv(di, di_depth, "%"PRIu16, "0x%"PRIx16);
+	pv(di, di_entries, "%"PRIu32, "0x%"PRIx32);
 
-	pv(di, di_eattr, "%llu", "0x%llx");
+	pv(di, di_eattr, "%"PRIu64, "0x%"PRIx64);
 }
 
 void gfs2_dirent_in(struct gfs2_dirent *de, char *buf)
@@ -438,14 +438,14 @@ void gfs2_leaf_out(struct gfs2_leaf *lf, char *buf)
 void gfs2_leaf_print(const struct gfs2_leaf *lf)
 {
 	gfs2_meta_header_print(&lf->lf_header);
-	pv(lf, lf_depth, "%u", "0x%x");
-	pv(lf, lf_entries, "%u", "0x%x");
-	pv(lf, lf_dirent_format, "%u", "0x%x");
-	pv(lf, lf_next, "%llu", "0x%llx");
-	pv(lf, lf_inode, "%llu", "0x%llx");
-	pv(lf, lf_dist, "%u", "0x%x");
-	pv(lf, lf_nsec, "%u", "0x%x");
-	pv(lf, lf_sec, "%llu", "0x%llx");
+	pv(lf, lf_depth, "%"PRIu16, "0x%"PRIx16);
+	pv(lf, lf_entries, "%"PRIu16, "0x%"PRIx16);
+	pv(lf, lf_dirent_format, "%"PRIu32, "0x%"PRIx32);
+	pv(lf, lf_next, "%"PRIu64, "0x%"PRIx64);
+	pv(lf, lf_inode, "%"PRIu64, "0x%"PRIx64);
+	pv(lf, lf_dist, "%"PRIu32, "0x%"PRIx32);
+	pv(lf, lf_nsec, "%"PRIu32, "0x%"PRIx32);
+	pv(lf, lf_sec, "%"PRIu64, "0x%"PRIx64);
 }
 
 void gfs2_ea_header_in(struct gfs2_ea_header *ea, char *buf)
@@ -464,12 +464,12 @@ void gfs2_ea_header_print(const struct gfs2_ea_header *ea, char *name)
 {
 	char buf[GFS2_EA_MAX_NAME_LEN + 1];
 
-	pv(ea, ea_rec_len, "%u", "0x%x");
-	pv(ea, ea_data_len, "%u", "0x%x");
-	pv(ea, ea_name_len, "%u", "0x%x");
-	pv(ea, ea_type, "%u", "0x%x");
-	pv(ea, ea_flags, "%u", "0x%x");
-	pv(ea, ea_num_ptrs, "%u", "0x%x");
+	pv(ea, ea_rec_len, "%"PRIu32, "0x%"PRIx32);
+	pv(ea, ea_data_len, "%"PRIu32, "0x%"PRIx32);
+	pv(ea, ea_name_len, "%"PRIu8, "0x%"PRIx8);
+	pv(ea, ea_type, "%"PRIu8, "0x%"PRIx8);
+	pv(ea, ea_flags, "%"PRIu8, "0x%"PRIx8);
+	pv(ea, ea_num_ptrs, "%"PRIu8, "0x%"PRIx8);
 
 	memset(buf, 0, GFS2_EA_MAX_NAME_LEN + 1);
 	memcpy(buf, name, ea->ea_name_len);
@@ -523,21 +523,21 @@ void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf)
 void gfs2_log_header_print(const struct gfs2_log_header *lh)
 {
 	gfs2_meta_header_print(&lh->lh_header);
-	pv(lh, lh_sequence, "%llu", "0x%llx");
-	pv(lh, lh_flags, "0x%.8X", NULL);
-	pv(lh, lh_tail, "%u", "0x%x");
-	pv(lh, lh_blkno, "%u", "0x%x");
-	pv(lh, lh_hash, "0x%.8X", NULL);
-	pv(lh, lh_crc, "0x%.8X", NULL);
-	pv(lh, lh_nsec, "%u", "0x%x");
-	pv(lh, lh_sec, "%llu", "0x%llx");
-	pv(lh, lh_addr, "%llu", "0x%llx");
-	pv(lh, lh_jinode, "%llu", "0x%llx");
-	pv(lh, lh_statfs_addr, "%llu", "0x%llx");
-	pv(lh, lh_quota_addr, "%llu", "0x%llx");
-	pv(lh, lh_local_total, "%lld", "0x%llx");
-	pv(lh, lh_local_free, "%lld", "0x%llx");
-	pv(lh, lh_local_dinodes, "%lld", "0x%llx");
+	pv(lh, lh_sequence, "%"PRIu64, "0x%"PRIx64);
+	pv(lh, lh_flags, "0x%.8"PRIX32, NULL);
+	pv(lh, lh_tail, "%"PRIu32, "0x%"PRIx32);
+	pv(lh, lh_blkno, "%"PRIu32, "0x%"PRIx32);
+	pv(lh, lh_hash, "0x%.8"PRIX32, NULL);
+	pv(lh, lh_crc, "0x%.8"PRIX32, NULL);
+	pv(lh, lh_nsec, "%"PRIu32, "0x%"PRIx32);
+	pv(lh, lh_sec, "%"PRIu64, "0x%"PRIx64);
+	pv(lh, lh_addr, "%"PRIu64, "0x%"PRIx64);
+	pv(lh, lh_jinode, "%"PRIu64, "0x%"PRIx64);
+	pv(lh, lh_statfs_addr, "%"PRIu64, "0x%"PRIx64);
+	pv(lh, lh_quota_addr, "%"PRIu64, "0x%"PRIx64);
+	pv(lh, lh_local_total, "%"PRId64, "0x%"PRIx64);
+	pv(lh, lh_local_free, "%"PRId64, "0x%"PRIx64);
+	pv(lh, lh_local_dinodes, "%"PRId64, "0x%"PRIx64);
 }
 
 void gfs2_log_descriptor_in(struct gfs2_log_descriptor *ld, char *buf)
@@ -569,10 +569,10 @@ void gfs2_log_descriptor_out(struct gfs2_log_descriptor *ld, char *buf)
 void gfs2_log_descriptor_print(const struct gfs2_log_descriptor *ld)
 {
 	gfs2_meta_header_print(&ld->ld_header);
-	pv(ld, ld_type, "%u", "0x%x");
-	pv(ld, ld_length, "%u", "0x%x");
-	pv(ld, ld_data1, "%u", "0x%x");
-	pv(ld, ld_data2, "%u", "0x%x");
+	pv(ld, ld_type, "%"PRIu32, "0x%"PRIx32);
+	pv(ld, ld_length, "%"PRIu32, "0x%"PRIx32);
+	pv(ld, ld_data1, "%"PRIu32, "0x%"PRIx32);
+	pv(ld, ld_data2, "%"PRIu32, "0x%"PRIx32);
 }
 
 void gfs2_statfs_change_in(struct gfs2_statfs_change *sc, char *buf)
@@ -595,9 +595,9 @@ void gfs2_statfs_change_out(struct gfs2_statfs_change *sc, char *buf)
 
 void gfs2_statfs_change_print(const struct gfs2_statfs_change *sc)
 {
-	pv(sc, sc_total, "%lld", "0x%llx");
-	pv(sc, sc_free, "%lld", "0x%llx");
-	pv(sc, sc_dinodes, "%lld", "0x%llx");
+	pv(sc, sc_total, "%"PRId64, "0x%"PRIx64);
+	pv(sc, sc_free, "%"PRId64, "0x%"PRIx64);
+	pv(sc, sc_dinodes, "%"PRId64, "0x%"PRIx64);
 }
 
 void gfs2_quota_change_in(struct gfs2_quota_change *qc, char *buf)
@@ -622,8 +622,8 @@ void gfs2_quota_change_out(struct gfs2_quota_change *qc, char *buf)
 
 void gfs2_quota_change_print(const struct gfs2_quota_change *qc)
 {
-	pv(qc, qc_change, "%lld", "0x%llx");
-	pv(qc, qc_flags, "0x%.8X", NULL);
-	pv(qc, qc_id, "%u", "0x%x");
+	pv(qc, qc_change, "%"PRId64, "0x%"PRIx64);
+	pv(qc, qc_flags, "0x%.8"PRIX32, NULL);
+	pv(qc, qc_id, "%"PRIu32, "0x%"PRIx32);
 }
 
