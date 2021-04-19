@@ -7,12 +7,10 @@
 #include <errno.h>
 #include <limits.h>
 #include <ctype.h>
+#include <uuid.h>
 
 #include "lang.h"
 #include "parser.h"
-#ifdef GFS2_HAS_UUID
-#include <uuid.h>
-#endif
 
 const char* ast_type_string[] = {
 	[AST_NONE] = "NONE",
@@ -315,14 +313,12 @@ static int field_print(char *buf, uint64_t addr, const struct lgfs2_metadata *mt
 
 	printf("%s\t%"PRIu64"\t%u\t%u\t%s\t", mtype->name, addr, field->offset, field->length, field->name);
 	if (field->flags & LGFS2_MFF_UUID) {
-#ifdef GFS2_HAS_UUID
 		char readable_uuid[36+1];
 		uuid_t uuid;
 
 		memcpy(uuid, fieldp, sizeof(uuid_t));
 		uuid_unparse(uuid, readable_uuid);
 		printf("'%s'\n", readable_uuid);
-#endif
 	} else if (field->flags & LGFS2_MFF_STRING) {
 		printf("'%s'\n", fieldp);
 	} else {
@@ -471,7 +467,6 @@ static int ast_field_set(char *buf, const struct lgfs2_metafield *field,
 	int err = 0;
 
 	if (field->flags & LGFS2_MFF_UUID) {
-#ifdef GFS2_HAS_UUID
 		uuid_t uuid;
 
 		if (uuid_parse(val->ast_str, uuid) != 0) {
@@ -479,10 +474,6 @@ static int ast_field_set(char *buf, const struct lgfs2_metafield *field,
 			return AST_INTERP_INVAL;
 		}
 		err = lgfs2_field_assign(buf, field, uuid);
-#else
-		fprintf(stderr, "No UUID support\n");
-		err = 1;
-#endif
 	} else if (field->flags & LGFS2_MFF_STRING) {
 		err = lgfs2_field_assign(buf, field, val->ast_str);
 	} else {

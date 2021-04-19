@@ -22,16 +22,13 @@
 #include <limits.h>
 #include <blkid.h>
 #include <locale.h>
+#include <uuid.h>
 
 #define _(String) gettext(String)
 
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
 #include "progress.h"
-
-#ifdef GFS2_HAS_UUID
-#include <uuid.h>
-#endif
 
 static void print_usage(const char *prog_name)
 {
@@ -640,6 +637,10 @@ static int opts_check(struct mkfs_opts *opts)
 
 static void print_results(struct gfs2_sb *sb, struct mkfs_opts *opts, uint64_t rgrps, uint64_t fssize)
 {
+	char readable_uuid[36+1];
+
+	uuid_unparse(sb->sb_uuid, readable_uuid);
+
 	printf("%-27s%s\n", _("Device:"), opts->dev.path);
 	printf("%-27s%u\n", _("Block size:"), sb->sb_bsize);
 	printf("%-27s%.2f %s (%"PRIu64" %s)\n", _("Device size:"),
@@ -653,15 +654,8 @@ static void print_results(struct gfs2_sb *sb, struct mkfs_opts *opts, uint64_t r
 	printf("%-27s%"PRIu64"\n", _("Resource groups:"), rgrps);
 	printf("%-27s\"%s\"\n", _("Locking protocol:"), opts->lockproto);
 	printf("%-27s\"%s\"\n", _("Lock table:"), opts->locktable);
-#ifdef GFS2_HAS_UUID
-	{
-	char readable_uuid[36+1];
-
-	uuid_unparse(sb->sb_uuid, readable_uuid);
 	/* Translators: "UUID" = universally unique identifier. */
 	printf("%-27s%s\n", _("UUID:"), readable_uuid);
-	}
-#endif
 }
 
 static int warn_of_destruction(const char *path)

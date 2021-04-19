@@ -6,10 +6,8 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <ctype.h>
-#include "libgfs2.h"
-#ifdef GFS2_HAS_UUID
 #include <uuid.h>
-#endif
+#include "libgfs2.h"
 
 #define pv(struct, member, fmt, fmt2) do {				\
 		print_it("  "#member, fmt, fmt2, struct->member);	\
@@ -112,9 +110,7 @@ void gfs2_sb_in(struct gfs2_sb *sb, char *buf)
 	gfs2_inum_in(&sb->__pad2, (char *)&str->__pad2); /* gfs rindex */
 	gfs2_inum_in(&sb->__pad3, (char *)&str->__pad3); /* gfs quota */
 	gfs2_inum_in(&sb->__pad4, (char *)&str->__pad4); /* gfs license */
-#ifdef GFS2_HAS_UUID
 	CPIN_08(sb, str, sb_uuid, sizeof(sb->sb_uuid));
-#endif
 }
 
 void gfs2_sb_out(const struct gfs2_sb *sb, char *buf)
@@ -139,13 +135,13 @@ void gfs2_sb_out(const struct gfs2_sb *sb, char *buf)
 	gfs2_inum_out(&sb->__pad2, (char *)&str->__pad2); /* gfs rindex */
 	gfs2_inum_out(&sb->__pad3, (char *)&str->__pad3); /* gfs quota */
 	gfs2_inum_out(&sb->__pad4, (char *)&str->__pad4); /* gfs license */
-#ifdef GFS2_HAS_UUID
 	memcpy(str->sb_uuid, sb->sb_uuid, 16);
-#endif
 }
 
 void gfs2_sb_print(const struct gfs2_sb *sb)
 {
+	char readable_uuid[36+1];
+
 	gfs2_meta_header_print(&sb->sb_header);
 
 	pv(sb, sb_fs_format, "%u", "0x%x");
@@ -160,14 +156,8 @@ void gfs2_sb_print(const struct gfs2_sb *sb)
 	pv(sb, sb_lockproto, "%s", NULL);
 	pv(sb, sb_locktable, "%s", NULL);
 
-#ifdef GFS2_HAS_UUID
-	{
-	char readable_uuid[36+1];
-
 	uuid_unparse(sb->sb_uuid, readable_uuid);
 	print_it("  uuid", "%36s", NULL, readable_uuid);
-	}
-#endif
 }
 
 void gfs2_rindex_in(struct gfs2_rindex *ri, char *buf)

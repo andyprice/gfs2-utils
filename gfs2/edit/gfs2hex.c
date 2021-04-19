@@ -10,14 +10,12 @@
 #include <unistd.h>
 #include <errno.h>
 #include <curses.h>
+#include <uuid.h>
 
 #include "hexedit.h"
 #include "extended.h"
 #include "gfs2hex.h"
 #include "libgfs2.h"
-#ifdef GFS2_HAS_UUID
-#include <uuid.h>
-#endif
 
 #define pv(struct, member, fmt, fmt2) do {				\
 		print_it("  "#member, fmt, fmt2, struct->member);	\
@@ -386,6 +384,8 @@ static void gfs2_inum_print2(const char *title,struct gfs2_inum *no)
  */
 static void gfs2_sb_print2(struct gfs2_sb *sbp2)
 {
+	char readable_uuid[36+1];
+
 	gfs2_meta_header_print(&sbp2->sb_header);
 
 	pv(sbp2, sb_fs_format, "%u", "0x%x");
@@ -410,14 +410,8 @@ static void gfs2_sb_print2(struct gfs2_sb *sbp2)
 		gfs2_inum_print2("quota ino ", &gfs1_quota_di);
 		gfs2_inum_print2("license   ", &gfs1_license_di);
 	}
-#ifdef GFS2_HAS_UUID
-	{
-	char readable_uuid[36+1];
-
 	uuid_unparse(sbp2->sb_uuid, readable_uuid);
 	print_it("  sb_uuid", "%s", NULL, readable_uuid);
-	}
-#endif
 }
 
 /**

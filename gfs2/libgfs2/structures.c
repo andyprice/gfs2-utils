@@ -11,14 +11,11 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <uuid.h>
 
 #include "libgfs2.h"
 #include "config.h"
 #include "crc32c.h"
-
-#ifdef GFS2_HAS_UUID
-#include <uuid.h>
-#endif
 
 int build_master(struct gfs2_sbd *sdp)
 {
@@ -62,9 +59,7 @@ void lgfs2_sb_init(struct gfs2_sb *sb, unsigned bsize, unsigned format)
 	sb->sb_multihost_format = GFS2_FORMAT_MULTI;
 	sb->sb_bsize = bsize;
 	sb->sb_bsize_shift = ffs(bsize) - 1;
-#ifdef GFS2_HAS_UUID
 	uuid_generate(sb->sb_uuid);
-#endif
 }
 
 int lgfs2_sb_write(const struct gfs2_sb *sb, int fd, const unsigned bsize)

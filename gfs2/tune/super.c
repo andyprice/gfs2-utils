@@ -12,11 +12,8 @@
 #define _(String) gettext(String)
 #include <linux_endian.h>
 #include <libgfs2.h>
-#include "tunegfs2.h"
-
-#ifdef GFS2_HAS_UUID
 #include <uuid.h>
-#endif
+#include "tunegfs2.h"
 
 int read_super(struct tunegfs2 *tfs)
 {
@@ -54,15 +51,11 @@ static int is_gfs2(const struct tunegfs2 *tfs)
 
 int print_super(const struct tunegfs2 *tfs)
 {
-	printf(_("File system volume name: %s\n"), tfs->sb->sb_locktable);
-#ifdef GFS2_HAS_UUID
-	{
 	char readable_uuid[36+1];
 
 	uuid_unparse(tfs->sb->sb_uuid, readable_uuid);
+	printf(_("File system volume name: %s\n"), tfs->sb->sb_locktable);
 	printf(_("File system UUID: %s\n"), readable_uuid);
-	}
-#endif
 	printf( _("File system magic number: 0x%X\n"), be32_to_cpu(tfs->sb->sb_header.mh_magic));
 	printf(_("File system format version: %"PRIu32"\n"), be32_to_cpu(tfs->sb->sb_fs_format));
 	printf(_("Block size: %d\n"), be32_to_cpu(tfs->sb->sb_bsize));
@@ -89,7 +82,6 @@ int write_super(const struct tunegfs2 *tfs)
 
 int change_uuid(struct tunegfs2 *tfs, const char *str)
 {
-#ifdef GFS2_HAS_UUID
 	uuid_t uuid;
 	int status;
 
@@ -97,10 +89,6 @@ int change_uuid(struct tunegfs2 *tfs, const char *str)
 	if (status == 0)
 		uuid_copy(tfs->sb->sb_uuid, uuid);
 	return status;
-#else
-	fprintf(stderr, _("UUID support unavailable in this build\n"));
-	return 1;
-#endif
 }
 
 int change_lockproto(struct tunegfs2 *tfs, const char *lockproto)

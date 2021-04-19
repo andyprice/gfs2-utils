@@ -106,9 +106,7 @@ AM_CONDITIONAL([HAVE_CHECK], [test "x$have_check" = "xyes"])
 PKG_CHECK_MODULES([zlib],[zlib])
 PKG_CHECK_MODULES([bzip2],[bzip2])
 PKG_CHECK_MODULES([blkid],[blkid])
-PKG_CHECK_MODULES([uuid],[uuid],
-                  [have_uuid=yes],
-                  [have_uuid=no])
+PKG_CHECK_MODULES([uuid],[uuid])
 
 # old versions of ncurses don't ship pkg-config files
 PKG_CHECK_MODULES([ncurses],[ncurses],,
@@ -128,8 +126,6 @@ AC_SUBST([udevdir], [$with_udevdir])
 AC_CHECK_HEADERS([fcntl.h libintl.h limits.h locale.h mntent.h stddef.h sys/file.h sys/ioctl.h sys/mount.h sys/time.h sys/vfs.h syslog.h termios.h])
 AC_CHECK_HEADER([linux/fs.h], [], [AC_MSG_ERROR([Unable to find linux/fs.h])])
 AC_CHECK_HEADER([linux/limits.h], [], [AC_MSG_ERROR([Unable to find linux/limits.h])])
-AC_CHECK_MEMBER([struct gfs2_sb.sb_uuid], [sb_has_uuid=yes], [sb_has_uuid=no],
-                [[#include <linux/gfs2_ondisk.h>]])
 AC_CHECK_MEMBER([struct gfs2_leaf.lf_inode],[AC_DEFINE([GFS2_HAS_LEAF_HINTS],[],[Leaf block hints])],
                 [], [[#include <linux/gfs2_ondisk.h>]])
 AC_CHECK_MEMBER([struct gfs2_dirent.de_rahead],[AC_DEFINE([GFS2_HAS_DE_RAHEAD],[],[Dirent readahead field])],
@@ -142,11 +138,6 @@ AC_CHECK_MEMBER([struct gfs2_rgrp.rg_data0],[AC_DEFINE([GFS2_HAS_RG_RI_FIELDS],[
                 [], [[#include <linux/gfs2_ondisk.h>]])
 AC_CHECK_MEMBER([struct gfs2_log_header.lh_crc],[AC_DEFINE([GFS2_HAS_LH_V2],[],[v2 log header format])],
                 [], [[#include <linux/gfs2_ondisk.h>]])
-
-# libuuid is only required if struct gfs2_sb.sb_uuid exists
-if test "$sb_has_uuid" = "yes" -a "$have_uuid" = "no"; then
-	AC_MSG_ERROR([libuuid is required for this version of gfs2])
-fi
 
 # *FLAGS handling
 ENV_CFLAGS="$CFLAGS"
