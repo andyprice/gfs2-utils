@@ -208,11 +208,7 @@ void gfs2_rgrp_in(struct gfs2_rgrp *rg, char *buf)
 	CPIN_32(rg, str, rg_flags);
 	CPIN_32(rg, str, rg_free);
 	CPIN_32(rg, str, rg_dinodes);
-#ifdef GFS2_HAS_RG_SKIP
 	CPIN_32(rg, str, rg_skip);
-#else
-	CPIN_32(rg, str, __pad);
-#endif
 	CPIN_64(rg, str, rg_igeneration);
 #ifdef GFS2_HAS_RG_RI_FIELDS
 	CPIN_64(rg, str, rg_data0);
@@ -231,11 +227,7 @@ void gfs2_rgrp_out(const struct gfs2_rgrp *rg, char *buf)
 	CPOUT_32(rg, str, rg_flags);
 	CPOUT_32(rg, str, rg_free);
 	CPOUT_32(rg, str, rg_dinodes);
-#ifdef GFS2_HAS_RG_SKIP
 	CPOUT_32(rg, str, rg_skip);
-#else
-	CPOUT_32(rg, str, __pad);
-#endif
 	CPOUT_64(rg, str, rg_igeneration);
 #ifdef GFS2_HAS_RG_RI_FIELDS
 	CPOUT_64(rg, str, rg_data0);
@@ -254,11 +246,7 @@ void gfs2_rgrp_print(const struct gfs2_rgrp *rg)
 	pv(rg, rg_flags, "%u", "0x%x");
 	pv(rg, rg_free, "%u", "0x%x");
 	pv(rg, rg_dinodes, "%u", "0x%x");
-#ifdef GFS2_HAS_RG_SKIP
 	pv(rg, rg_skip, "%u", "0x%x");
-#else
-	pv(rg, __pad, "%u", "0x%x");
-#endif
 	pv(rg, rg_igeneration, "%llu", "0x%llx");
 #ifdef GFS2_HAS_RG_RI_FIELDS
 	pv(rg, rg_data0, "%llu", "0x%llx");

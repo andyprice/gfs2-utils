@@ -225,11 +225,7 @@ MH(rg_header)
 F(rg_flags)
 F(rg_free, .flags = LGFS2_MFF_FSBLOCKS)
 F(rg_dinodes, .flags = LGFS2_MFF_FSBLOCKS)
-#ifdef GFS2_HAS_RG_SKIP
 FP(rg_skip, .points_to = (1 << LGFS2_MT_GFS2_RGRP))
-#else
-RF(__pad)
-#endif
 F(rg_igeneration)
 #ifdef GFS2_HAS_RG_RI_FIELDS
 FP(rg_data0, .points_to = ANY_GFS2_BLOCK|(1 << LGFS2_MT_FREE))

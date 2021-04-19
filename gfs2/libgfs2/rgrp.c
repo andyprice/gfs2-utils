@@ -673,9 +673,7 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, ui
 	rg->rg.rg_header.mh_type = GFS2_METATYPE_RG;
 	rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
 	rg->rg.rg_free = rg->ri.ri_data;
-#ifdef GFS2_HAS_RG_SKIP
 	rg->rg.rg_skip = rg_skip;
-#endif
 #ifdef GFS2_HAS_RG_RI_FIELDS
 	rg->rg.rg_data0 = rg->ri.ri_data0;
 	rg->rg.rg_data = rg->ri.ri_data;
