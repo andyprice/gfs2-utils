@@ -72,9 +72,7 @@ int get_log_header(struct gfs2_inode *ip, unsigned int blk,
 	crc = lgfs2_log_header_crc(bh->b_data, ip->i_sbd->bsize);
 	gfs2_log_header_in(&lh, bh->b_data);
 	brelse(bh);
-#ifdef GFS2_HAS_LH_V2
 	lh_crc = lh.lh_crc;
-#endif
 	if (error || lh.lh_blkno != blk || lh.lh_hash != hash)
 		return 1;
 	/* Don't check the crc if it's zero, as it is in pre-v2 log headers */

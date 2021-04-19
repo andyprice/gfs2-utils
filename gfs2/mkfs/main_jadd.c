@@ -456,7 +456,6 @@ out:
 	return ret;
 }
 
-#ifdef GFS2_HAS_LH_V2
 static uint64_t find_block_address(int fd, off_t offset, unsigned bsize)
 {
 	struct {
@@ -477,7 +476,6 @@ static uint64_t find_block_address(int fd, off_t offset, unsigned bsize)
 	}
 	return fme.fe.fe_physical / bsize;
 }
-#endif
 
 static int alloc_new_journal(int fd, unsigned bytes)
 {
@@ -551,21 +549,17 @@ static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	lh.lh_header.mh_type = GFS2_METATYPE_LH;
 	lh.lh_header.mh_format = GFS2_FORMAT_LH;
 	lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
-#ifdef GFS2_HAS_LH_V2
 	lh.lh_flags |= GFS2_LOG_HEAD_USERSPACE;
 	lh.lh_jinode = addr;
-#endif
+
 	for (x=0; x<blocks; x++) {
 		uint32_t hash;
-#ifdef GFS2_HAS_LH_V2
 		uint64_t blk_addr = 0;
-#endif
 		lh.lh_sequence = seq;
 		lh.lh_blkno = x;
 		gfs2_log_header_out(&lh, buf);
 		hash = lgfs2_log_header_hash(buf);
 		((struct gfs2_log_header *)buf)->lh_hash = cpu_to_be32(hash);
-#ifdef GFS2_HAS_LH_V2
 		if (!(blk_addr = find_block_address(fd, off, sdp->bsize))) {
 			error = -1;
 			goto close_fd;
@@ -573,7 +567,6 @@ static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 		((struct gfs2_log_header *)buf)->lh_addr = cpu_to_be64(blk_addr);
 		hash = lgfs2_log_header_crc(buf, sdp->bsize);
 		((struct gfs2_log_header *)buf)->lh_crc = cpu_to_be32(hash);
-#endif
 		if (write(fd, buf, sdp->bsize) != sdp->bsize) {
 			perror("add_j write");
 			error = -1;

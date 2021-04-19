@@ -107,15 +107,11 @@ uint32_t lgfs2_log_header_hash(char *buf)
 
 uint32_t lgfs2_log_header_crc(char *buf, unsigned bsize)
 {
-#ifdef GFS2_HAS_LH_V2
 	/* lh_crc CRCs the rest of the block starting after lh_crc */
 	const off_t v1_end = offsetof(struct gfs2_log_header, lh_hash) + 4;
 	const unsigned char *lb = (const unsigned char *)buf;
 
 	return crc32c(~0, lb + v1_end + 4, bsize - v1_end - 4);
-#else
-	return 0;
-#endif
 }
 
 /**
@@ -135,7 +131,6 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 		.lh_tail = 0,
 		.lh_blkno = 0,
 		.lh_hash = 0,
-#ifdef GFS2_HAS_LH_V2
 		.lh_flags = GFS2_LOG_HEAD_UNMOUNT | GFS2_LOG_HEAD_USERSPACE,
 		.lh_crc = 0,
 		.lh_nsec = 0,
@@ -146,9 +141,6 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 		.lh_local_total = 0,
 		.lh_local_free = 0,
 		.lh_local_dinodes = 0,
-#else
-		.lh_flags = GFS2_LOG_HEAD_UNMOUNT,
-#endif
 	};
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	unsigned blocks = (ip->i_di.di_size + sdp->bsize - 1) / sdp->bsize;
@@ -170,10 +162,9 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 		gfs2_log_header_out(&lh, buf);
 
 		buflh->lh_hash = cpu_to_be32(lgfs2_log_header_hash(buf));
-#ifdef GFS2_HAS_LH_V2
 		buflh->lh_addr = cpu_to_be64(jblk);
 		buflh->lh_crc = cpu_to_be32(lgfs2_log_header_crc(buf, sdp->bsize));
-#endif
+
 		if (pwrite(sdp->device_fd, buf, sdp->bsize, jblk * sdp->bsize) != sdp->bsize) {
 			free(buf);
 			return -1;
@@ -230,10 +221,9 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 	lh.lh_header.mh_type = GFS2_METATYPE_LH;
 	lh.lh_header.mh_format = GFS2_FORMAT_LH;
 	lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
-#ifdef GFS2_HAS_LH_V2
 	lh.lh_flags |= GFS2_LOG_HEAD_USERSPACE;
 	lh.lh_jinode = jnl->i_di.di_num.no_addr;
-#endif
+
 	for (x = 0; x < blocks; x++) {
 		struct gfs2_buffer_head *bh = get_file_buf(jnl, x, 1);
 		if (!bh)
@@ -253,11 +243,9 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 		gfs2_log_header_out(&lh, bh->b_data);
 		hash = lgfs2_log_header_hash(bh->b_data);
 		((struct gfs2_log_header *)bh->b_data)->lh_hash = cpu_to_be32(hash);
-#ifdef GFS2_HAS_LH_V2
 		((struct gfs2_log_header *)bh->b_data)->lh_addr = cpu_to_be64(bh->b_blocknr);
 		hash = lgfs2_log_header_crc(bh->b_data, bsize);
 		((struct gfs2_log_header *)bh->b_data)->lh_crc = cpu_to_be32(hash);
-#endif
 		bmodified(bh);
 		brelse(bh);
 

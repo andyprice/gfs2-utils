@@ -69,7 +69,6 @@ const unsigned lgfs2_di_flag_size = ARRAY_SIZE(lgfs2_di_flags);
 
 const struct lgfs2_symbolic lgfs2_lh_flags[] = {
 PREFIX_SYM(GFS2_LOG_HEAD_, UNMOUNT)
-#ifdef GFS2_HAS_LH_V2
 PREFIX_SYM(GFS2_LOG_HEAD_FLUSH_, NORMAL)
 PREFIX_SYM(GFS2_LOG_HEAD_FLUSH_, SYNC)
 PREFIX_SYM(GFS2_LOG_HEAD_FLUSH_, SHUTDOWN)
@@ -97,7 +96,6 @@ PREFIX_SYM(GFS2_LFC_, EVICT_INODE)
 PREFIX_SYM(GFS2_LFC_, TRANS_END)
 PREFIX_SYM(GFS2_LFC_, LOGD_JFLUSH_REQD)
 PREFIX_SYM(GFS2_LFC_, LOGD_AIL_FLUSH_REQD)
-#endif
 };
 
 const unsigned int lgfs2_lh_flag_size = ARRAY_SIZE(lgfs2_lh_flags);
@@ -381,7 +379,6 @@ F(lh_flags, .flags = LGFS2_MFF_MASK, .symtab = lgfs2_lh_flags, .nsyms = ARRAY_SI
 F(lh_tail)
 F(lh_blkno)
 F(lh_hash, .flags = LGFS2_MFF_CHECK)
-#ifdef GFS2_HAS_LH_V2
 F(lh_crc, .flags = LGFS2_MFF_CHECK)
 F(lh_nsec, .flags = LGFS2_MFF_NSECS)
 F(lh_sec, .flags = LGFS2_MFF_SECS)
@@ -392,7 +389,6 @@ FP(lh_quota_addr, .points_to = (1 << LGFS2_MT_GFS2_DINODE))
 F(lh_local_total, .flags = LGFS2_MFF_FSBLOCKS)
 F(lh_local_free, .flags = LGFS2_MFF_FSBLOCKS)
 F(lh_local_dinodes, .flags = LGFS2_MFF_FSBLOCKS)
-#endif
 };
 
 #undef STRUCT
