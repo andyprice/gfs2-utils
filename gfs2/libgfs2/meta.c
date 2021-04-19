@@ -23,6 +23,8 @@ SYM(GFS2_METATYPE_LB)
 SYM(GFS2_METATYPE_EA)
 SYM(GFS2_METATYPE_ED)
 SYM(GFS2_METATYPE_QC)
+SYM(GFS2_METATYPE_XI)
+SYM(GFS2_METATYPE_XL)
 };
 
 const unsigned lgfs2_metatype_size = ARRAY_SIZE(lgfs2_metatypes);
@@ -42,6 +44,8 @@ SYM(GFS2_FORMAT_LB)
 SYM(GFS2_FORMAT_EA)
 SYM(GFS2_FORMAT_ED)
 SYM(GFS2_FORMAT_QC)
+SYM(GFS2_FORMAT_XI)
+SYM(GFS2_FORMAT_XL)
 SYM(GFS2_FORMAT_RI)
 SYM(GFS2_FORMAT_DE)
 SYM(GFS2_FORMAT_QU)
@@ -60,6 +64,7 @@ SYM(GFS2_DIF_APPENDONLY)
 SYM(GFS2_DIF_NOATIME)
 SYM(GFS2_DIF_SYNC)
 SYM(GFS2_DIF_SYSTEM)
+SYM(GFS2_DIF_EXTENTS)
 SYM(GFS2_DIF_TRUNC_IN_PROG)
 SYM(GFS2_DIF_INHERIT_DIRECTIO)
 SYM(GFS2_DIF_INHERIT_JDATA)
@@ -117,6 +122,10 @@ SYM(GFS_LOG_DESC_LAST)
 };
 
 const unsigned int lgfs2_ld1_type_size = ARRAY_SIZE(lgfs2_ld1_types);
+
+const struct lgfs2_symbolic lgfs2_ex_flags[] = {
+SYM(GFS2_EF_UNWRITTEN)
+};
 
 #undef SYM
 
@@ -323,6 +332,32 @@ F(di_entries)
 INR(di_next_unused, .points_to = (1 << LGFS2_MT_GFS_DINODE))
 FP(di_eattr, .points_to = (1 << LGFS2_MT_EA_ATTR)|(1 << LGFS2_MT_GFS_INDIRECT))
 F(di_reserved)
+};
+
+#undef STRUCT
+#define STRUCT gfs2_extent_header
+
+static const struct lgfs2_metafield gfs2_extent_header_fields[] = {
+F(eh_entries)
+F(eh_pad)
+};
+
+#undef STRUCT
+#define STRUCT gfs2_extent_idx
+
+static const struct lgfs2_metafield gfs2_extent_idx_fields[] = {
+F(ei_start)
+F(ei_leaf)
+};
+
+#undef STRUCT
+#define STRUCT gfs2_extent
+
+static const struct lgfs2_metafield gfs2_extent_fields[] = {
+F(ex_start)
+F(ex_addr)
+F(ex_len, .flags = LGFS2_MFF_FSBLOCKS)
+F(ex_flags, .flags = LGFS2_MFF_MASK, .symtab=lgfs2_ex_flags, .nsyms=ARRAY_SIZE(lgfs2_ex_flags))
 };
 
 #undef STRUCT
@@ -615,6 +650,30 @@ const struct lgfs2_metadata lgfs2_metadata[] = {
 		.fields = gfs_dinode_fields,
 		.nfields = ARRAY_SIZE(gfs_dinode_fields),
 		.size = sizeof(struct gfs_dinode),
+	},
+	[LGFS2_MT_GFS2_EXTENT_HEADER] = {
+		.versions = LGFS2_MD_GFS2,
+		.name = "gfs2_extent_header",
+		.display = "extent header",
+		.fields = gfs2_extent_header_fields,
+		.nfields = ARRAY_SIZE(gfs2_extent_header_fields),
+		.size = sizeof(struct gfs2_extent_header),
+	},
+	[LGFS2_MT_GFS2_EXTENT_IDX] = {
+		.versions = LGFS2_MD_GFS2,
+		.name = "gfs2_extent_idx",
+		.display = "extent index",
+		.fields = gfs2_extent_idx_fields,
+		.nfields = ARRAY_SIZE(gfs2_extent_idx_fields),
+		.size = sizeof(struct gfs2_extent_idx),
+	},
+	[LGFS2_MT_GFS2_EXTENT] = {
+		.versions = LGFS2_MD_GFS2,
+		.name = "gfs2_extent",
+		.display = "extent",
+		.fields = gfs2_extent_fields,
+		.nfields = ARRAY_SIZE(gfs2_extent_fields),
+		.size = sizeof(struct gfs2_extent),
 	},
 	[LGFS2_MT_GFS2_INDIRECT] = {
 		.versions = LGFS2_MD_GFS2,
