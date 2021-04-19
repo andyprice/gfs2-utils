@@ -1001,9 +1001,7 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
 	oleaf->lf_depth = cpu_to_be16(oleaf->lf_depth);
 	nleaf->lf_depth = oleaf->lf_depth;
 
-#ifdef GFS2_HAS_LEAF_HINTS
 	nleaf->lf_inode = cpu_to_be64(dip->i_di.di_num.no_addr);
-#endif
 	dip->i_di.di_blocks++;
 	bmodified(dip->i_bh);
 
@@ -1203,9 +1201,7 @@ restart:
 				nleaf = (struct gfs2_leaf *)nbh->b_data;
 				nleaf->lf_depth = leaf->lf_depth;
 				nleaf->lf_dirent_format = cpu_to_be32(GFS2_FORMAT_DE);
-#ifdef GFS2_HAS_LEAF_HINTS
 				nleaf->lf_inode = cpu_to_be64(dip->i_di.di_num.no_addr);
-#endif
 				err = dirent_alloc(dip, nbh, len, &dent);
 				if (err)
 					return err;
@@ -1257,9 +1253,7 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 	leaf = (struct gfs2_leaf *)bh->b_data;
 	leaf->lf_dirent_format = cpu_to_be32(GFS2_FORMAT_DE);
 	leaf->lf_entries = cpu_to_be16(dip->i_di.di_entries);
-#ifdef GFS2_HAS_LEAF_HINTS
 	leaf->lf_inode = cpu_to_be64(dip->i_di.di_num.no_addr);
-#endif
 	buffer_copy_tail(sdp, bh, sizeof(struct gfs2_leaf),
 			 dip->i_bh, sizeof(struct gfs2_dinode));
 

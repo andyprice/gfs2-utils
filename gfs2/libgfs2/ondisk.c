@@ -448,15 +448,11 @@ void gfs2_leaf_in(struct gfs2_leaf *lf, char *buf)
 	CPIN_16(lf, str, lf_entries);
 	CPIN_32(lf, str, lf_dirent_format);
 	CPIN_64(lf, str, lf_next);
-#ifdef GFS2_HAS_LEAF_HINTS
 	CPIN_64(lf, str, lf_inode);
 	CPIN_32(lf, str, lf_dist);
 	CPIN_32(lf, str, lf_nsec);
 	CPIN_64(lf, str, lf_sec);
 	CPIN_08(lf, str, lf_reserved2, 40);
-#else
-	CPIN_08(lf, str, lf_reserved, 32);
-#endif
 }
 
 void gfs2_leaf_out(struct gfs2_leaf *lf, char *buf)
@@ -468,15 +464,11 @@ void gfs2_leaf_out(struct gfs2_leaf *lf, char *buf)
 	CPOUT_16(lf, str, lf_entries);
 	CPOUT_32(lf, str, lf_dirent_format);
 	CPOUT_64(lf, str, lf_next);
-#ifdef GFS2_HAS_LEAF_HINTS
 	CPOUT_64(lf, str, lf_inode);
 	CPOUT_32(lf, str, lf_dist);
 	CPOUT_32(lf, str, lf_nsec);
 	CPOUT_64(lf, str, lf_sec);
 	CPOUT_08(lf, str, lf_reserved2, 40);
-#else
-	CPOUT_08(lf, str, lf_reserved, 64);
-#endif
 }
 
 void gfs2_leaf_print(const struct gfs2_leaf *lf)
@@ -486,12 +478,10 @@ void gfs2_leaf_print(const struct gfs2_leaf *lf)
 	pv(lf, lf_entries, "%u", "0x%x");
 	pv(lf, lf_dirent_format, "%u", "0x%x");
 	pv(lf, lf_next, "%llu", "0x%llx");
-#ifdef GFS2_HAS_LEAF_HINTS
 	pv(lf, lf_inode, "%llu", "0x%llx");
 	pv(lf, lf_dist, "%u", "0x%x");
 	pv(lf, lf_nsec, "%u", "0x%x");
 	pv(lf, lf_sec, "%llu", "0x%llx");
-#endif
 }
 
 void gfs2_ea_header_in(struct gfs2_ea_header *ea, char *buf)

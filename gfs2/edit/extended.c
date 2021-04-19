@@ -294,14 +294,9 @@ static void print_inode_type(__be16 de_type)
 	}
 }
 
-#ifdef GFS2_HAS_LEAF_HINTS
-#define LEAF_HINT_FMTS "lf_inode: 0x%llx, lf_dist: %u, " \
-                       "lf_nsec: %u, lf_sec: %llu, "
+#define LEAF_HINT_FMTS "lf_inode: 0x%"PRIx64", lf_dist: %"PRIu32", " \
+                       "lf_nsec: %"PRIu32", lf_sec: %"PRIu64", "
 #define LEAF_HINT_FIELDS(lp) lp->lf_inode, lp->lf_dist, lp->lf_nsec, lp->lf_sec,
-#else
-#define LEAF_HINT_FMTS
-#define LEAF_HINT_FIELDS(lp)
-#endif
 
 static int display_leaf(struct iinfo *ind)
 {
