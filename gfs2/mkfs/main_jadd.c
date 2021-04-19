@@ -20,7 +20,6 @@
 #include <locale.h>
 #define _(String) gettext(String)
 
-#include <linux/types.h>
 #include <linux/fiemap.h>
 #include <linux/fs.h>
 #include "libgfs2.h"

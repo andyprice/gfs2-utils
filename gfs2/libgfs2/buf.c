@@ -11,7 +11,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-#include <linux/types.h>
 
 #include "libgfs2.h"
 

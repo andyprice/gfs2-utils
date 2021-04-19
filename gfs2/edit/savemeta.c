@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <sys/types.h>
-#include <linux/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -17,7 +16,6 @@
 #include <sys/ioctl.h>
 #include <limits.h>
 #include <sys/time.h>
-#include <linux/gfs2_ondisk.h>
 #include <zlib.h>
 #include <bzlib.h>
 #include <time.h>

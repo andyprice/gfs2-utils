@@ -2,7 +2,6 @@
 #define __GFS2_MKFS_DOT_H__
 
 #include <stdarg.h>
-#include <linux/gfs2_ondisk.h>
 #include "osi_list.h"
 #include "copyright.cf"
 

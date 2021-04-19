@@ -4,7 +4,6 @@
 #include <sys/types.h>
 #include <inttypes.h>
 #include <limits.h>
-#include <linux/gfs2_ondisk.h>
 #include <string.h>
 
 #include "libgfs2.h"

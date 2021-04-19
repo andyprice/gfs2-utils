@@ -10,8 +10,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <linux/types.h>
-#include <linux/gfs2_ondisk.h>
 
 #include "osi_list.h"
 #include "libgfs2.h"

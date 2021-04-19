@@ -11,7 +11,6 @@
 #include <libintl.h>
 #define _(String) gettext(String)
 #include <linux_endian.h>
-#include <linux/gfs2_ondisk.h>
 #include <libgfs2.h>
 #include "tunegfs2.h"
 

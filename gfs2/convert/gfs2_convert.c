@@ -28,8 +28,6 @@
 #include <locale.h>
 #define _(String) gettext(String)
 
-#include <linux/types.h>
-#include <linux/gfs2_ondisk.h>
 #include <logging.h>
 #include "osi_list.h"
 #include "copyright.cf"

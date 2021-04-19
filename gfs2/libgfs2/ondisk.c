@@ -6,7 +6,6 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <ctype.h>
-#include <linux/types.h>
 #include "libgfs2.h"
 #ifdef GFS2_HAS_UUID
 #include <uuid.h>

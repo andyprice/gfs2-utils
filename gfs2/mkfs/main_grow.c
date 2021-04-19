@@ -15,7 +15,6 @@
 #include <time.h>
 #include <errno.h>
 #include <stdarg.h>
-#include <linux/types.h>
 #include <blkid.h>
 #include <libintl.h>
 #include <locale.h>

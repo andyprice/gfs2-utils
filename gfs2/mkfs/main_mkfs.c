@@ -25,7 +25,6 @@
 
 #define _(String) gettext(String)
 
-#include <linux/types.h>
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
 #include "progress.h"

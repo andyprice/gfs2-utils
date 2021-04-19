@@ -6,7 +6,6 @@
 #include <string.h>
 #include <inttypes.h>
 #include <sys/types.h>
-#include <linux/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -19,7 +18,6 @@
 #include <sys/mount.h>
 #include <dirent.h>
 
-#include <linux/gfs2_ondisk.h>
 #include "copyright.cf"
 
 #include "hexedit.h"
