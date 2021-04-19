@@ -210,12 +210,10 @@ void gfs2_rgrp_in(struct gfs2_rgrp *rg, char *buf)
 	CPIN_32(rg, str, rg_dinodes);
 	CPIN_32(rg, str, rg_skip);
 	CPIN_64(rg, str, rg_igeneration);
-#ifdef GFS2_HAS_RG_RI_FIELDS
 	CPIN_64(rg, str, rg_data0);
 	CPIN_32(rg, str, rg_data);
 	CPIN_32(rg, str, rg_bitbytes);
 	CPIN_32(rg, str, rg_crc);
-#endif
 	CPIN_08(rg, str, rg_reserved, sizeof(rg->rg_reserved));
 }
 
@@ -229,15 +227,11 @@ void gfs2_rgrp_out(const struct gfs2_rgrp *rg, char *buf)
 	CPOUT_32(rg, str, rg_dinodes);
 	CPOUT_32(rg, str, rg_skip);
 	CPOUT_64(rg, str, rg_igeneration);
-#ifdef GFS2_HAS_RG_RI_FIELDS
 	CPOUT_64(rg, str, rg_data0);
 	CPOUT_32(rg, str, rg_data);
 	CPOUT_32(rg, str, rg_bitbytes);
 	CPOUT_08(rg, str, rg_reserved, sizeof(rg->rg_reserved));
 	lgfs2_rgrp_crc_set(buf);
-#else
-	CPOUT_08(rg, str, rg_reserved, sizeof(rg->rg_reserved));
-#endif
 }
 
 void gfs2_rgrp_print(const struct gfs2_rgrp *rg)
@@ -248,12 +242,10 @@ void gfs2_rgrp_print(const struct gfs2_rgrp *rg)
 	pv(rg, rg_dinodes, "%u", "0x%x");
 	pv(rg, rg_skip, "%u", "0x%x");
 	pv(rg, rg_igeneration, "%llu", "0x%llx");
-#ifdef GFS2_HAS_RG_RI_FIELDS
 	pv(rg, rg_data0, "%llu", "0x%llx");
 	pv(rg, rg_data, "%u", "0x%x");
 	pv(rg, rg_bitbytes, "%u", "0x%x");
 	pv(rg, rg_crc, "%u", "0x%x");
-#endif
 }
 
 void gfs2_quota_in(struct gfs2_quota *qu, char *buf)

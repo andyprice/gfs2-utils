@@ -156,7 +156,6 @@ void lgfs2_rgrp_bitbuf_free(lgfs2_rgrp_t rg)
 int lgfs2_rgrp_crc_check(char *buf)
 {
 	int ret = 0;
-#ifdef GFS2_HAS_RG_RI_FIELDS
 	struct gfs2_rgrp *rg = (struct gfs2_rgrp *)buf;
 	uint32_t crc = rg->rg_crc;
 
@@ -167,7 +166,6 @@ int lgfs2_rgrp_crc_check(char *buf)
 	if (be32_to_cpu(crc) != gfs2_disk_hash(buf, sizeof(struct gfs2_rgrp)))
 		ret = 1;
 	rg->rg_crc = crc;
-#endif
 	return ret;
 }
 
@@ -176,14 +174,12 @@ int lgfs2_rgrp_crc_check(char *buf)
  */
 void lgfs2_rgrp_crc_set(char *buf)
 {
-#ifdef GFS2_HAS_RG_RI_FIELDS
 	struct gfs2_rgrp *rg = (struct gfs2_rgrp *)buf;
 	uint32_t crc;
 
 	rg->rg_crc = 0;
 	crc = gfs2_disk_hash(buf, sizeof(struct gfs2_rgrp));
 	rg->rg_crc = cpu_to_be32(crc);
-#endif
 }
 
 /**
@@ -674,12 +670,10 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, ui
 	rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
 	rg->rg.rg_free = rg->ri.ri_data;
 	rg->rg.rg_skip = rg_skip;
-#ifdef GFS2_HAS_RG_RI_FIELDS
 	rg->rg.rg_data0 = rg->ri.ri_data0;
 	rg->rg.rg_data = rg->ri.ri_data;
 	rg->rg.rg_bitbytes = rg->ri.ri_bitbytes;
 	rg->rg.rg_crc = 0;
-#endif
 	compute_bitmaps(rg, rgs->sdp->bsize);
 	rg->rgrps = rgs;
 	return rg;
