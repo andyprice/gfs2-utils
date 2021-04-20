@@ -21,42 +21,41 @@ __BEGIN_DECLS
 
 #if __BYTE_ORDER == __BIG_ENDIAN
 
-#define be16_to_cpu(x) (x)
-#define be32_to_cpu(x) (x)
-#define be64_to_cpu(x) (x)
+#define be16_to_cpu(x) ((__force uint16_t)(__be16)(x))
+#define be32_to_cpu(x) ((__force uint32_t)(__be32)(x))
+#define be64_to_cpu(x) ((__force uint64_t)(__be64)(x))
 
-#define cpu_to_be16(x) (x)
-#define cpu_to_be32(x) (x)
-#define cpu_to_be64(x) (x)
+#define cpu_to_be16(x) ((__force __be16)(uint16_t)(x))
+#define cpu_to_be32(x) ((__force __be32)(uint32_t)(x))
+#define cpu_to_be64(x) ((__force __be64)(uint64_t)(x))
 
-#define le16_to_cpu(x) (bswap_16((x)))
-#define le32_to_cpu(x) (bswap_32((x)))
-#define le64_to_cpu(x) (bswap_64((x)))
+#define le16_to_cpu(x) bswap_16((__force uint16_t)(__le16)(x))
+#define le32_to_cpu(x) bswap_32((__force uint32_t)(__le32)(x))
+#define le64_to_cpu(x) bswap_64((__force uint64_t)(__le64)(x))
 
-#define cpu_to_le16(x) (bswap_16((x)))
-#define cpu_to_le32(x) (bswap_32((x)))
-#define cpu_to_le64(x) (bswap_64((x)))
+#define cpu_to_le16(x) ((__force __le16)bswap_16((x)))
+#define cpu_to_le32(x) ((__force __le32)bswap_32((x)))
+#define cpu_to_le64(x) ((__force __le64)bswap_64((x)))
 
 #endif  /*  __BYTE_ORDER == __BIG_ENDIAN  */
 
-
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
-#define be16_to_cpu(x) (bswap_16((x)))
-#define be32_to_cpu(x) (bswap_32((x)))
-#define be64_to_cpu(x) (bswap_64((x)))
+#define be16_to_cpu(x) bswap_16((__force uint16_t)(__be16)(x))
+#define be32_to_cpu(x) bswap_32((__force uint32_t)(__be32)(x))
+#define be64_to_cpu(x) bswap_64((__force uint64_t)(__be64)(x))
 
-#define cpu_to_be16(x) (bswap_16((x)))
-#define cpu_to_be32(x) (bswap_32((x)))
-#define cpu_to_be64(x) (bswap_64((x))) 
+#define cpu_to_be16(x) ((__force __be16)bswap_16((x)))
+#define cpu_to_be32(x) ((__force __be32)bswap_32((x)))
+#define cpu_to_be64(x) ((__force __be64)bswap_64((x)))
 
-#define le16_to_cpu(x) (x)
-#define le32_to_cpu(x) (x)
-#define le64_to_cpu(x) (x)
+#define le16_to_cpu(x) ((__force uint16_t)(__le16)(x))
+#define le32_to_cpu(x) ((__force uint32_t)(__le32)(x))
+#define le64_to_cpu(x) ((__force uint64_t)(__le64)(x))
 
-#define cpu_to_le16(x) (x)
-#define cpu_to_le32(x) (x)
-#define cpu_to_le64(x) (x)
+#define cpu_to_le16(x) ((__force __le16)(uint16_t)(x))
+#define cpu_to_le32(x) ((__force __le32)(uint32_t)(x))
+#define cpu_to_le64(x) ((__force __le64)(uint64_t)(x))
 
 #endif  /*  __BYTE_ORDER == __LITTLE_ENDIAN  */
 

@@ -7,10 +7,13 @@
 
 #ifdef __CHECKER__
 #define __bitwise__ __attribute__((bitwise))
+#define __force__ __attribute__((force))
 #else
 #define __bitwise__
+#define __force__
 #endif
 #define __bitwise __bitwise__
+#define __force __force__
 
 typedef uint8_t __u8;
 typedef uint16_t __u16;

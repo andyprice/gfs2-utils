@@ -1201,7 +1201,7 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 		/* Only do this if the dent was a true gfs1 dent, and not a   */
 		/* gfs2 dent converted from a previously aborted run.         */
 		if (dent_was_gfs1) {
-			switch be16_to_cpu(dent->de_type) {
+			switch (be16_to_cpu(dent->de_type)) {
 			case GFS_FILE_NON:
 				dent->de_type = cpu_to_be16(DT_UNKNOWN);
 				break;
