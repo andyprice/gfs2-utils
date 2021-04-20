@@ -10,7 +10,6 @@
 #include <string.h>
 #include <libintl.h>
 #define _(String) gettext(String)
-#include <linux_endian.h>
 #include <libgfs2.h>
 #include <uuid.h>
 #include "tunegfs2.h"
