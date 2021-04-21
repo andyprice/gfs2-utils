@@ -455,7 +455,6 @@ int display_gfs2(char *buf)
 	struct gfs2_leaf lf;
 	struct gfs_log_header lh1;
 	struct gfs2_log_header lh;
-	struct gfs2_quota_change qc;
 
 	uint32_t magic;
 
@@ -538,8 +537,7 @@ int display_gfs2(char *buf)
 			break;
 
 		case GFS2_METATYPE_QC:
-			gfs2_quota_change_in(&qc, buf);
-			gfs2_quota_change_print(&qc);
+			lgfs2_quota_change_print(buf);
 			break;
 
 		default:

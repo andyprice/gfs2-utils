@@ -594,30 +594,12 @@ void gfs2_statfs_change_print(const struct gfs2_statfs_change *sc)
 	pv(sc, sc_dinodes, "%"PRId64, "0x%"PRIx64);
 }
 
-void gfs2_quota_change_in(struct gfs2_quota_change *qc, char *buf)
+void lgfs2_quota_change_print(void *qcp)
 {
-	struct gfs2_quota_change *str = (struct gfs2_quota_change *)(buf +
-	                                 sizeof(struct gfs2_meta_header));
+	struct gfs2_quota_change *qc = qcp;
 
-	CPIN_64(qc, str, qc_change);
-	CPIN_32(qc, str, qc_flags);
-	CPIN_32(qc, str, qc_id);
-}
-
-void gfs2_quota_change_out(struct gfs2_quota_change *qc, char *buf)
-{
-	struct gfs2_quota_change *str = (struct gfs2_quota_change *)(buf +
-	                                 sizeof(struct gfs2_meta_header));
-
-	CPOUT_64(qc, str, qc_change);
-	CPOUT_32(qc, str, qc_flags);
-	CPOUT_32(qc, str, qc_id);
-}
-
-void gfs2_quota_change_print(const struct gfs2_quota_change *qc)
-{
-	pv(qc, qc_change, "%"PRId64, "0x%"PRIx64);
-	pv(qc, qc_flags, "0x%.8"PRIX32, NULL);
-	pv(qc, qc_id, "%"PRIu32, "0x%"PRIx32);
+	print_it("  qc_change", "%"PRId64, "0x%"PRIx64, be64_to_cpu(qc->qc_change));
+	print_it("  qc_flags", "0x%.8"PRIX32, NULL, be32_to_cpu(qc->qc_flags));
+	printbe32(qc, qc_id);
 }
 
