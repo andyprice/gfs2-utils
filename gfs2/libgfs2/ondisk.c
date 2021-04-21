@@ -584,13 +584,15 @@ void gfs2_log_descriptor_out(struct gfs2_log_descriptor *ld, char *buf)
 	CPOUT_08(ld, str, ld_reserved, 32);
 }
 
-void gfs2_log_descriptor_print(const struct gfs2_log_descriptor *ld)
+void lgfs2_log_descriptor_print(void *ldp)
 {
-	gfs2_meta_header_print(&ld->ld_header);
-	pv(ld, ld_type, "%"PRIu32, "0x%"PRIx32);
-	pv(ld, ld_length, "%"PRIu32, "0x%"PRIx32);
-	pv(ld, ld_data1, "%"PRIu32, "0x%"PRIx32);
-	pv(ld, ld_data2, "%"PRIu32, "0x%"PRIx32);
+	struct gfs2_log_descriptor *ld = ldp;
+
+	lgfs2_meta_header_print(&ld->ld_header);
+	printbe32(ld, ld_type);
+	printbe32(ld, ld_length);
+	printbe32(ld, ld_data1);
+	printbe32(ld, ld_data2);
 }
 
 void gfs2_statfs_change_in(struct gfs2_statfs_change *sc, char *buf)

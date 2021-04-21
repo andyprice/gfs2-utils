@@ -735,11 +735,11 @@ extern void gfs2_dinode_print(const struct gfs2_dinode *di);
 extern void gfs2_leaf_print(const struct gfs2_leaf *lf);
 extern void gfs2_ea_header_print(const struct gfs2_ea_header *ea, char *name);
 extern void gfs2_log_header_print(const struct gfs2_log_header *lh);
-extern void gfs2_log_descriptor_print(const struct gfs2_log_descriptor *ld);
 extern void gfs2_statfs_change_print(const struct gfs2_statfs_change *sc);
 extern void gfs2_quota_change_print(const struct gfs2_quota_change *qc);
 /* These expect on-disk data instead of native-endian structs */
 extern void lgfs2_meta_header_print(void *mhp);
+extern void lgfs2_log_descriptor_print(void *ldp);
 
 __END_DECLS
 
