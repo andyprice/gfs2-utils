@@ -742,6 +742,9 @@ extern void gfs2_log_header_print(const struct gfs2_log_header *lh);
 extern void gfs2_log_descriptor_print(const struct gfs2_log_descriptor *ld);
 extern void gfs2_statfs_change_print(const struct gfs2_statfs_change *sc);
 extern void gfs2_quota_change_print(const struct gfs2_quota_change *qc);
+/* These expect on-disk data instead of native-endian structs */
+extern void lgfs2_extent_header_print(void *ehp);
+extern void lgfs2_extent_print(void *exp);
 
 __END_DECLS
 

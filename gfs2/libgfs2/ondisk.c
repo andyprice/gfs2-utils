@@ -16,6 +16,15 @@
 		print_it("  ", fmt, fmt2, struct->member);		\
 	} while (0);
 
+#define printbe16(struct, member) do { \
+		print_it("  "#member, "%"PRIu16, "0x%"PRIx16, be16_to_cpu(struct->member)); \
+	} while(0)
+#define printbe32(struct, member) do { \
+		print_it("  "#member, "%"PRIu32, "0x%"PRIx32, be32_to_cpu(struct->member)); \
+	} while(0)
+#define printbe64(struct, member) do { \
+		print_it("  "#member, "%"PRIu64, "0x%"PRIx64, be64_to_cpu(struct->member)); \
+	} while(0)
 
 #define CPIN_08(s1, s2, member, count) {memcpy((s1->member), (s2->member), (count));}
 #define CPOUT_08(s1, s2, member, count) {memcpy((s2->member), (s1->member), (count));}
@@ -373,6 +382,23 @@ void gfs2_dinode_print(const struct gfs2_dinode *di)
 	pv(di, di_entries, "%"PRIu32, "0x%"PRIx32);
 
 	pv(di, di_eattr, "%"PRIu64, "0x%"PRIx64);
+}
+
+void lgfs2_extent_header_print(void *ehp)
+{
+	struct gfs2_extent_header *eh = ehp;
+
+	printbe16(eh, eh_entries);
+}
+
+void lgfs2_extent_print(void *exp)
+{
+	struct gfs2_extent *ex = exp;
+
+	printbe64(ex, ex_start);
+	printbe64(ex, ex_addr);
+	printbe16(ex, ex_len);
+	printbe16(ex, ex_flags);
 }
 
 void gfs2_dirent_in(struct gfs2_dirent *de, char *buf)
