@@ -238,7 +238,7 @@ void do_dinode_extended(struct gfs2_dinode *dine, char *buf)
 
 	indirect_blocks = 0;
 	memset(indirect, 0, sizeof(struct iinfo));
-	if (dine->di_height > 0) {
+	if (dine->di_height > 0 && !(dine->di_flags & GFS2_DIF_EXTENTS)) {
 		/* Indirect pointers */
 		for (x = sizeof(struct gfs2_dinode); x < sbd.bsize;
 			 x += sizeof(uint64_t)) {
@@ -448,6 +448,22 @@ static void gfs1_rgrp_print(struct gfs_rgrp *rg)
         pv(rg, rg_freemeta, "%"PRIu32, "0x%"PRIx32);
 }
 
+static void display_extents(void *buf)
+{
+	struct gfs2_extent_header *eh = buf;
+	struct gfs2_extent *ex = (void *)(eh + 1);
+	uint16_t entries = be16_to_cpu(eh->eh_entries);
+
+	print_gfs2("Extent header:");
+	eol(0);
+	lgfs2_extent_header_print(eh);
+	for (int i = 0; i < entries; i++) {
+		print_gfs2("Extent %d:", i);
+		eol(0);
+		lgfs2_extent_print(&ex[i]);
+	}
+}
+
 int display_gfs2(char *buf)
 {
 	struct gfs2_meta_header mh;
@@ -497,6 +513,8 @@ int display_gfs2(char *buf)
 
 		case GFS2_METATYPE_DI:
 			gfs2_dinode_print(&di);
+			if (di.di_flags & GFS2_DIF_EXTENTS)
+				display_extents(buf + sizeof(di));
 			break;
 
 		case GFS2_METATYPE_IN:
