@@ -1388,6 +1388,47 @@ struct error_block {
 	uint64_t errblk; /* error block */
 };
 
+static void report_data_error(uint64_t metablock, int offset, uint64_t block,
+			      struct error_block *error_blk,
+			      int rc, int error)
+{
+	log_info("\n");
+	if (rc < 0) {
+		/* A fatal error trumps a non-fatal one. */
+		if ((error_blk->errblk == 0) ||
+		    (rc < error)) {
+			log_debug(_("Fatal error on metadata "
+				    "block 0x%"PRIx64", "
+				    "offset 0x%x, referencing data "
+				    "block 0x%"PRIx64" "
+				    "preempts non-fatal error on "
+				    "block 0x%"PRIx64"\n"),
+				  metablock,
+				  offset,
+				  block,
+				  error_blk->errblk);
+			error_blk->metablk = metablock;
+			error_blk->metaoff = offset;
+			error_blk->errblk = block;
+		}
+		log_info(_("Unrecoverable "));
+	} else { /* nonfatal error */
+		if (error_blk->errblk == 0) {
+			error_blk->metablk = metablock;
+			error_blk->metaoff = offset;
+			error_blk->errblk = block;
+		}
+	}
+	log_info(_("data block error %d on metadata "
+		   "block %"PRId64" (0x%"PRIx64"), "
+		   "offset %d (0x%x), referencing "
+		   "data block %"PRId64" (0x%"PRIx64").\n"),
+		 rc,
+		 metablock, metablock,
+		 offset, offset,
+		 block, block);
+}
+
 /**
  * check_data - check all data pointers for a given buffer
  *              This does not include "data" blocks that are really
@@ -1415,7 +1456,7 @@ static int metawalk_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass
 	/* If there isn't much pointer corruption check the pointers */
 	log_debug("Processing data blocks for inode 0x%llx, metadata block 0x%llx.\n",
 		  (unsigned long long)ip->i_di.di_num.no_addr,
-		  (unsigned long long)bh->b_blocknr);
+		  (unsigned long long)metablock);
 	for (ptr = ptr_start ; ptr < ptr_end && !fsck_abort; ptr++) {
 		if (!*ptr)
 			continue;
@@ -1431,41 +1472,7 @@ static int metawalk_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass
 		rc = pass->check_data(ip, metablock, block, pass->private,
 				      bh, ptr);
 		if (rc && (!error || (rc < error))) {
-			log_info("\n");
-			if (rc < 0) {
-				/* A fatal error trumps a non-fatal one. */
-				if ((error_blk->errblk == 0) ||
-				    (rc < error)) {
-					log_debug(_("Fatal error on metadata "
-						    "block 0x%llx, offset "
-						    "0x%x, referencing block "
-						    "0x%llx preempts non-fatal"
-						    " error on block 0x%llx\n"),
-						  (unsigned long long)metablock,
-						  (int)(ptr - ptr_start),
-						  (unsigned long long)block,
-						  (unsigned long long)error_blk->errblk);
-					error_blk->metablk = metablock;
-					error_blk->metaoff = ptr - ptr_start;
-					error_blk->errblk = block;
-				}
-				log_info(_("Unrecoverable "));
-			} else { /* nonfatal error */
-				if (error_blk->errblk == 0) {
-					error_blk->metablk = metablock;
-					error_blk->metaoff = ptr - ptr_start;
-					error_blk->errblk = block;
-				}
-			}
-			log_info(_("data block error %d on metadata block "
-				   "%lld (0x%llx), offset %d (0x%x), "
-				   "referencing data block %lld (0x%llx).\n"),
-				 rc, (unsigned long long)metablock,
-				 (unsigned long long)metablock,
-				 (int)(ptr - ptr_start),
-				 (int)(ptr - ptr_start),
-				 (unsigned long long)block,
-				 (unsigned long long)block);
+			report_data_error(metablock, (char *)ptr - bh->b_data, block, error_blk, rc, error);
 			error = rc;
 		}
 		if (rc < 0)
@@ -1473,6 +1480,35 @@ static int metawalk_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass
 		(*blks_checked)++;
 	}
 	return error;
+}
+
+static int report_undo_data_error(uint64_t metablock, int offset, uint64_t block,
+				  struct error_block *error_blk,
+				  int *found_error_blk, int error)
+{
+	if (metablock == error_blk->metablk &&
+	    offset == error_blk->metaoff &&
+	    block == error_blk->errblk) {
+		if (error < 0) { /* A fatal error that stopped it? */
+			log_debug(_("Stopping the undo process: "
+				    "fatal error block 0x%"PRIx64" was "
+				    "found at metadata block 0x%"PRIx64","
+				    "offset 0x%x.\n"),
+				  error_blk->errblk,
+				  error_blk->metablk,
+				  error_blk->metaoff);
+			return 1;
+		}
+		*found_error_blk = 1;
+		log_debug(_("The non-fatal error block 0x%"PRIx64" was "
+			    "found at metadata block 0x%"PRIx64", offset "
+			    "0x%d, but undo processing will continue "
+			    "until the end of this metadata block.\n"),
+			  error_blk->errblk,
+			  error_blk->metablk,
+			  error_blk->metaoff);
+	}
+	return 0;
 }
 
 static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
@@ -1495,28 +1531,9 @@ static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 		if (skip_this_pass || fsck_abort)
 			return 1;
 		block =  be64_to_cpu(*ptr);
-		if (metablock == error_blk->metablk &&
-		    (ptr - ptr_start == error_blk->metaoff) &&
-		    block == error_blk->errblk) {
-			if (error < 0) { /* A fatal error that stopped it? */
-				log_debug(_("Stopping the undo process: "
-					    "fatal error block 0x%llx was "
-					    "found at metadata block 0x%llx,"
-					    "offset 0x%x.\n"),
-					  (unsigned long long)error_blk->errblk,
-					  (unsigned long long)error_blk->metablk,
-					  error_blk->metaoff);
-				return 1;
-			}
-			found_error_blk = 1;
-			log_debug(_("The non-fatal error block 0x%llx was "
-				    "found at metadata block 0x%llx, offset "
-				    "0x%d, but undo processing will continue "
-				    "until the end of this metadata block.\n"),
-				  (unsigned long long)error_blk->errblk,
-				  (unsigned long long)error_blk->metablk,
-				  error_blk->metaoff);
-		}
+		if (report_undo_data_error(metablock, (char *)ptr - bh->b_data,
+					   block, error_blk, &found_error_blk, error))
+			return 1;
 		rc = pass->undo_check_data(ip, block, pass->private);
 		if (rc < 0)
 			return rc;
