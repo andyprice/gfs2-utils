@@ -1382,6 +1382,12 @@ static unsigned int hdr_size(struct gfs2_buffer_head *bh, unsigned int height)
 	return sizeof(struct gfs2_dinode);
 }
 
+struct error_block {
+	uint64_t metablk; /* metadata block where error was found */
+	int metaoff; /* offset in that metadata block where error found */
+	uint64_t errblk; /* error block */
+};
+
 /**
  * check_data - check all data pointers for a given buffer
  *              This does not include "data" blocks that are really

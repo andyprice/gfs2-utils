@@ -108,12 +108,6 @@ enum rgindex_trust_level { /* how far can we trust our RG index? */
 			   must have been converted from gfs2_convert. */
 };
 
-struct error_block {
-	uint64_t metablk; /* metadata block where error was found */
-	int metaoff; /* offset in that metadata block where error found */
-	uint64_t errblk; /* error block */
-};
-
 extern struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sdp, uint64_t block);
 extern struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp,
 					 struct rgrp_tree *rgd,
