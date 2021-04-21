@@ -97,6 +97,15 @@ void gfs2_meta_header_print(const struct gfs2_meta_header *mh)
 	pv(mh, mh_format, "%"PRIu32, "0x%"PRIx32);
 }
 
+void lgfs2_meta_header_print(void *mhp)
+{
+	struct gfs2_meta_header *mh = mhp;
+
+	print_it("  mh_magic", "0x%08"PRIX32, NULL, be32_to_cpu(mh->mh_magic));
+	printbe32(mh, mh_type);
+	printbe32(mh, mh_format);
+}
+
 void gfs2_sb_in(struct gfs2_sb *sb, char *buf)
 {
 	struct gfs2_sb *str = (struct gfs2_sb *)buf;
