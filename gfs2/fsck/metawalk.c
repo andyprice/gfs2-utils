@@ -1139,10 +1139,11 @@ int check_inode_eattr(struct gfs2_inode *ip, struct metawalk_fxns *pass)
  */
 static void free_metalist(struct gfs2_inode *ip, osi_list_t *mlp)
 {
+	unsigned int height = ip->i_di.di_height;
 	unsigned int i;
 	struct gfs2_buffer_head *nbh;
 
-	for (i = 0; i < GFS2_MAX_META_HEIGHT; i++) {
+	for (i = 0; i <= height; i++) {
 		osi_list_t *list;
 
 		list = &mlp[i];
@@ -1333,10 +1334,8 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 			for (; iptr.ipt_off < ip->i_sbd->bsize; iptr.ipt_off += sizeof(uint64_t)) {
 				struct gfs2_buffer_head *nbh = NULL;
 
-				if (skip_this_pass || fsck_abort) {
-					free_metalist(ip, mlp);
+				if (skip_this_pass || fsck_abort)
 					return meta_is_good;
-				}
 				if (!iptr_block(iptr))
 					continue;
 
@@ -1533,7 +1532,7 @@ static unsigned int should_check(struct gfs2_buffer_head *bh, unsigned int heigh
 int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	unsigned int height = ip->i_di.di_height;
-	osi_list_t metalist[GFS2_MAX_META_HEIGHT];
+	osi_list_t *metalist = alloca((height + 1) * sizeof(*metalist));
 	osi_list_t *list, *tmp;
 	struct gfs2_buffer_head *bh;
 	unsigned int i;
@@ -1546,11 +1545,12 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	if (!height && !is_dir(&ip->i_di, ip->i_sbd->gfs1))
 		return 0;
 
-	for (i = 0; i < GFS2_MAX_META_HEIGHT; i++)
+	/* metalist has one extra element for directories (see build_and_check_metalist). */
+	for (i = 0; i <= height; i++)
 		osi_list_init(&metalist[i]);
 
 	/* create and check the metadata list for each height */
-	error = build_and_check_metalist(ip, &metalist[0], pass);
+	error = build_and_check_metalist(ip, metalist, pass);
 	if (error) {
 		stack;
 		goto undo_metalist;
@@ -1577,7 +1577,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 
 	for (tmp = list->next; !error && tmp != list; tmp = tmp->next) {
 		if (fsck_abort) {
-			free_metalist(ip, &metalist[0]);
+			free_metalist(ip, metalist);
 			return 0;
 		}
 		bh = osi_list_entry(tmp, struct gfs2_buffer_head, b_altlist);
@@ -1612,7 +1612,7 @@ undo_metalist:
 		 (unsigned long long)error_blk.errblk,
 		 (unsigned long long)error_blk.errblk);
 	if (!query( _("Remove the invalid inode? (y/n) "))) {
-		free_metalist(ip, &metalist[0]);
+		free_metalist(ip, metalist);
 		log_err(_("Invalid inode not deleted.\n"));
 		return error;
 	}
@@ -1667,7 +1667,7 @@ undo_metalist:
 			GFS2_BLKST_FREE);
 	log_err(_("The corrupt inode was invalidated.\n"));
 out:
-	free_metalist(ip, &metalist[0]);
+	free_metalist(ip, metalist);
 	return error;
 }
 
