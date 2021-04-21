@@ -558,32 +558,6 @@ void gfs2_log_header_print(const struct gfs2_log_header *lh)
 	pv(lh, lh_local_dinodes, "%"PRId64, "0x%"PRIx64);
 }
 
-void gfs2_log_descriptor_in(struct gfs2_log_descriptor *ld, char *buf)
-{
-	struct gfs2_log_descriptor *str = (struct gfs2_log_descriptor *)buf;
-
-	gfs2_meta_header_in(&ld->ld_header, buf);
-	CPIN_32(ld, str, ld_type);
-	CPIN_32(ld, str, ld_length);
-	CPIN_32(ld, str, ld_data1);
-	CPIN_32(ld, str, ld_data2);
-
-	CPIN_08(ld, str, ld_reserved, 32);
-}
-
-void gfs2_log_descriptor_out(struct gfs2_log_descriptor *ld, char *buf)
-{
-	struct gfs2_log_descriptor *str = (struct gfs2_log_descriptor *)buf;
-
-	gfs2_meta_header_out(&ld->ld_header, buf);
-	CPOUT_32(ld, str, ld_type);
-	CPOUT_32(ld, str, ld_length);
-	CPOUT_32(ld, str, ld_data1);
-	CPOUT_32(ld, str, ld_data2);
-
-	CPOUT_08(ld, str, ld_reserved, 32);
-}
-
 void lgfs2_log_descriptor_print(void *ldp)
 {
 	struct gfs2_log_descriptor *ld = ldp;

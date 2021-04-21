@@ -367,9 +367,12 @@ static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 		      struct rgrp_tree *rgd, int *prnt, uint64_t *bblk_off)
 {
 	uint64_t *b;
-	struct gfs2_log_descriptor ld;
+	struct gfs2_log_descriptor *ld = (void *)buf;
 	int ltndx, is_meta_ld = 0;
 	int ld_blocks = 0;
+	uint32_t ld_type = be32_to_cpu(ld->ld_type);
+	uint32_t ld_length = be32_to_cpu(ld->ld_length);
+	uint32_t ld_data1 = be32_to_cpu(ld->ld_data1);
 	uint32_t logtypes[2][6] = {
 		{GFS2_LOG_DESC_METADATA, GFS2_LOG_DESC_REVOKE,
 		 GFS2_LOG_DESC_JDATA, 0, 0, 0},
@@ -381,7 +384,6 @@ static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 		{"Metadata", "Unlinked inode", "Dealloc inode",
 		 "Quota", "Final Entry", "Unknown"}};
 
-	gfs2_log_descriptor_in(&ld, buf);
 	if (sbd.gfs1)
 		b = (uint64_t *)(buf + sizeof(struct gfs_log_descriptor));
 	else
@@ -391,21 +393,21 @@ static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 	if (*prnt) {
 		print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log descriptor, ",
 			   abs_block, ((jb + wrappt) % j_size) / sbd.bsize);
-		print_gfs2("type %d ", ld.ld_type);
+		print_gfs2("type %"PRIu32" ", ld_type);
 
 		for (ltndx = 0;; ltndx++) {
-			if (ld.ld_type == logtypes[sbd.gfs1][ltndx] ||
+			if (ld_type == logtypes[sbd.gfs1][ltndx] ||
 			    logtypes[sbd.gfs1][ltndx] == 0)
 				break;
 		}
 		print_gfs2("(%s) ", logtypestr[sbd.gfs1][ltndx]);
-		print_gfs2("len:%u, data1: %u", ld.ld_length, ld.ld_data1);
+		print_gfs2("len:%"PRIu32", data1: %"PRIu32, ld_length, ld_data1);
 		eol(0);
 		print_gfs2("                    ");
 	}
-	ld_blocks = ld.ld_data1;
-	if (ld.ld_type == GFS2_LOG_DESC_METADATA ||
-	    ld.ld_type == GFS_LOG_DESC_METADATA)
+	ld_blocks = ld_data1;
+	if (ld_type == GFS2_LOG_DESC_METADATA ||
+	    ld_type == GFS_LOG_DESC_METADATA)
 		is_meta_ld = 1;
 	ld_blocks -= print_ld_blks(b, (buf + sbd.bsize), line, tblk, tblk_off,
 	                           bitblk, rgd, abs_block, *prnt, bblk_off,
