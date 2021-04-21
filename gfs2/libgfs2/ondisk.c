@@ -16,6 +16,15 @@
 		print_it("  ", fmt, fmt2, struct->member);		\
 	} while (0);
 
+#define printbe16(struct, member) do { \
+		print_it("  "#member, "%"PRIu16, "0x%"PRIx16, be16_to_cpu(struct->member)); \
+	} while(0)
+#define printbe32(struct, member) do { \
+		print_it("  "#member, "%"PRIu32, "0x%"PRIx32, be32_to_cpu(struct->member)); \
+	} while(0)
+#define printbe64(struct, member) do { \
+		print_it("  "#member, "%"PRIu64, "0x%"PRIx64, be64_to_cpu(struct->member)); \
+	} while(0)
 
 #define CPIN_08(s1, s2, member, count) {memcpy((s1->member), (s2->member), (count));}
 #define CPOUT_08(s1, s2, member, count) {memcpy((s2->member), (s1->member), (count));}
