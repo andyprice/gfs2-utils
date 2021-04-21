@@ -1372,6 +1372,17 @@ error_undo: /* undo what we've done so far for this block */
 	return error;
 }
 
+static unsigned int hdr_size(struct gfs2_buffer_head *bh, unsigned int height)
+{
+	if (height > 1) {
+		if (bh->sdp->gfs1)
+			return sizeof(struct gfs_indirect);
+		else
+			return sizeof(struct gfs2_meta_header);
+	}
+	return sizeof(struct gfs2_dinode);
+}
+
 /**
  * check_data - check all data pointers for a given buffer
  *              This does not include "data" blocks that are really
@@ -1386,12 +1397,12 @@ error_undo: /* undo what we've done so far for this block */
  *          2 (ENOENT) is there were too many bad pointers
  */
 static int metawalk_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
-		      struct gfs2_buffer_head *bh, int head_size,
+		      struct gfs2_buffer_head *bh, unsigned int height,
 		      uint64_t *blks_checked, struct error_block *error_blk)
 {
 	int error = 0, rc = 0;
 	uint64_t block, *ptr;
-	uint64_t *ptr_start = (uint64_t *)(bh->b_data + head_size);
+	uint64_t *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
 	char *ptr_end = (bh->b_data + ip->i_sbd->bsize);
 	uint64_t metablock = bh->b_blocknr;
 
@@ -1459,10 +1470,12 @@ static int metawalk_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass
 }
 
 static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
-			   uint64_t metablock,
-			   uint64_t *ptr_start, char *ptr_end,
+			   struct gfs2_buffer_head *bh, unsigned int height,
 			   struct error_block *error_blk, int error)
 {
+	uint64_t *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
+	char *ptr_end = bh->b_data + ip->i_sbd->bsize;
+	uint64_t metablock = bh->b_blocknr;
 	int rc = 0;
 	uint64_t block, *ptr;
 	int found_error_blk = 0;
@@ -1504,21 +1517,11 @@ static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 	return found_error_blk;
 }
 
-static int hdr_size(struct gfs2_buffer_head *bh, int height)
+static unsigned int should_check(struct gfs2_buffer_head *bh, unsigned int height)
 {
-	if (height > 1) {
-		if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_IN))
-			return 0;
-		if (bh->sdp->gfs1)
-			return sizeof(struct gfs_indirect);
-		else
-			return sizeof(struct gfs2_meta_header);
-	}
-	/* if this isn't really a dinode, skip it */
-	if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_DI))
-		return 0;
+	int iblk_type = height > 1 ? GFS2_METATYPE_IN : GFS2_METATYPE_DI;
 
-	return sizeof(struct gfs2_dinode);
+	return gfs2_check_meta(bh->b_data, iblk_type) == 0;
 }
 
 /**
@@ -1529,11 +1532,12 @@ static int hdr_size(struct gfs2_buffer_head *bh, int height)
  */
 int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 {
+
 	osi_list_t metalist[GFS2_MAX_META_HEIGHT];
 	osi_list_t *list, *tmp;
 	struct gfs2_buffer_head *bh;
 	uint32_t height = ip->i_di.di_height;
-	int  i, head_size;
+	int  i;
 	uint64_t blks_checked = 0;
 	int error, rc;
 	int metadata_clean = 0;
@@ -1578,12 +1582,11 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			return 0;
 		}
 		bh = osi_list_entry(tmp, struct gfs2_buffer_head, b_altlist);
-		head_size = hdr_size(bh, height);
-		if (!head_size)
+		if (!should_check(bh, height))
 			continue;
 
 		if (pass->check_data)
-			error = metawalk_check_data(ip, pass, bh, head_size,
+			error = metawalk_check_data(ip, pass, bh, height,
 					   &blks_checked, &error_blk);
 		if (pass->big_file_msg && ip->i_di.di_blocks > COMFORTABLE_BLKS)
 			pass->big_file_msg(ip, blks_checked);
@@ -1631,13 +1634,10 @@ undo_metalist:
 				rc = 0;
 			if (metadata_clean && rc == 0 && i == height - 1 &&
 			    !hit_error_blk) {
-				head_size = hdr_size(bh, height);
-				if (head_size) {
+				if (should_check(bh, height)) {
 					rc = undo_check_data(ip, pass,
-							     bh->b_blocknr,
-							     (uint64_t *)
-					      (bh->b_data + head_size),
-					      (bh->b_data + ip->i_sbd->bsize),
+							     bh,
+							     height,
 							     &error_blk,
 							     error);
 					if (rc > 0) {
