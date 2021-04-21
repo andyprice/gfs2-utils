@@ -1446,38 +1446,93 @@ static int metawalk_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass
 		      struct gfs2_buffer_head *bh, unsigned int height,
 		      uint64_t *blks_checked, struct error_block *error_blk)
 {
-	int error = 0, rc = 0;
+	int error = 0, rc;
 	uint64_t block;
-	__be64 *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
-	__be64 *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->bsize);
-	__be64 *ptr;
 	uint64_t metablock = bh->b_blocknr;
 
 	/* If there isn't much pointer corruption check the pointers */
 	log_debug("Processing data blocks for inode 0x%llx, metadata block 0x%llx.\n",
 		  (unsigned long long)ip->i_di.di_num.no_addr,
 		  (unsigned long long)metablock);
-	for (ptr = ptr_start ; ptr < ptr_end && !fsck_abort; ptr++) {
-		if (!*ptr)
-			continue;
 
-		if (skip_this_pass || fsck_abort)
-			return error;
-		block =  be64_to_cpu(*ptr);
-		/* It's important that we don't call valid_block() and
-		   bypass calling check_data on invalid blocks because that
-		   would defeat the rangecheck_block related functions in
-		   pass1. Therefore the individual check_data functions
-		   should do a range check. */
-		rc = pass->check_data(ip, metablock, block, pass->private,
-				      bh, ptr);
-		if (rc && (!error || (rc < error))) {
-			report_data_error(metablock, (char *)ptr - bh->b_data, block, error_blk, rc, error);
-			error = rc;
+	/* It's important that we don't call valid_block() and
+	   bypass calling check_data on invalid blocks because that
+	   would defeat the rangecheck_block related functions in
+	   pass1. Therefore the individual check_data functions
+	   should do a range check. */
+
+	if (ip->i_di.di_flags & GFS2_DIF_EXTENTS) {
+		unsigned int max_extents = (ip->i_sbd->bsize - hdr_size(bh, height)) /
+					   sizeof(struct gfs2_extent);
+		struct gfs2_extent_header *eh = (struct gfs2_extent_header *)
+						(bh->b_data + hdr_size(bh, height));
+		struct gfs2_extent *first_ex = (struct gfs2_extent *)(eh + 1);
+		unsigned int extents = be16_to_cpu(eh->eh_entries);
+		struct gfs2_extent *ex;
+
+		if (extents > max_extents) {
+			log_err(_("Inode %"PRId64" (0x%"PRIx64") has a "
+				  "number of extents greater than %u.\n"),
+				ip->i_di.di_num.no_addr,
+				ip->i_di.di_num.no_addr,
+				max_extents);
+			return META_ERROR;
 		}
-		if (rc < 0)
-			return rc;
-		(*blks_checked)++;
+
+		for (ex = first_ex; ex != first_ex + extents && !fsck_abort; ex++) {
+			uint64_t first_block = be64_to_cpu(ex->ex_addr);
+			unsigned int len = be16_to_cpu(ex->ex_len);
+
+			/* if (!ex->ex_addr || !ex->ex_len || too_big(ex->ex_len)) */
+
+			for (block = first_block; block < first_block + len; block++) {
+				__be64 dummy = cpu_to_be64(-1);
+
+				/*
+				 * FIXME: We cannot relocate or free blocks in
+				 * the middle of an extent without rewriting
+				 * the extent tree, which may require an
+				 * allocation; handling this in clone_data()
+				 * won't work.
+				 */
+
+				if (skip_this_pass || fsck_abort)
+					return error;
+				rc = pass->check_data(ip, metablock, block, pass->private,
+						      bh, &dummy);
+				if (rc && (!error || (rc < error))) {
+					report_data_error(metablock, (char *)ex - bh->b_data,
+							  block, error_blk, rc, error);
+					error = rc;
+				}
+				if (rc < 0)
+					return rc;
+				(*blks_checked)++;
+			}
+		}
+	} else {
+		__be64 *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
+		__be64 *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->bsize);
+		__be64 *ptr;
+
+		for (ptr = ptr_start ; ptr < ptr_end && !fsck_abort; ptr++) {
+			if (!*ptr)
+				continue;
+
+			if (skip_this_pass || fsck_abort)
+				return error;
+			block =  be64_to_cpu(*ptr);
+			rc = pass->check_data(ip, metablock, block, pass->private,
+					      bh, ptr);
+			if (rc && (!error || (rc < error))) {
+				report_data_error(metablock, (char *)ptr - bh->b_data,
+						  block, error_blk, rc, error);
+				error = rc;
+			}
+			if (rc < 0)
+				return rc;
+			(*blks_checked)++;
+		}
 	}
 	return error;
 }
@@ -1515,28 +1570,54 @@ static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 			   struct gfs2_buffer_head *bh, unsigned int height,
 			   struct error_block *error_blk, int error)
 {
-	__be64 *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
-	__be64 *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->bsize);
-	__be64 *ptr;
 	uint64_t metablock = bh->b_blocknr;
-	int rc = 0;
+	int rc;
 	uint64_t block;
 	int found_error_blk = 0;
 
 	/* If there isn't much pointer corruption check the pointers */
-	for (ptr = ptr_start ; ptr < ptr_end && !fsck_abort; ptr++) {
-		if (!*ptr)
-			continue;
 
-		if (skip_this_pass || fsck_abort)
-			return 1;
-		block =  be64_to_cpu(*ptr);
-		if (report_undo_data_error(metablock, (char *)ptr - bh->b_data,
-					   block, error_blk, &found_error_blk, error))
-			return 1;
-		rc = pass->undo_check_data(ip, block, pass->private);
-		if (rc < 0)
-			return rc;
+	if (ip->i_di.di_flags & GFS2_DIF_EXTENTS) {
+		struct gfs2_extent_header *eh = (struct gfs2_extent_header *)
+						(bh->b_data + hdr_size(bh, height));
+		struct gfs2_extent *first_ex = (struct gfs2_extent *)(eh + 1);
+		unsigned int extents = be16_to_cpu(eh->eh_entries);
+		struct gfs2_extent *ex;
+
+		for (ex = first_ex; ex != first_ex + extents && !fsck_abort; ex++) {
+			uint64_t first_block = be64_to_cpu(ex->ex_addr);
+			unsigned int len = be16_to_cpu(ex->ex_len);
+
+			for (block = first_block; block < first_block + len; block++) {
+				if (skip_this_pass || fsck_abort)
+					return 1;
+				if (report_undo_data_error(metablock, (char *)ex - bh->b_data,
+							   block, error_blk, &found_error_blk, error))
+					return 1;
+				rc = pass->undo_check_data(ip, block, pass->private);
+				if (rc < 0)
+					return rc;
+			}
+		}
+	} else {
+		__be64 *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
+		__be64 *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->bsize);
+		__be64 *ptr;
+
+		for (ptr = ptr_start ; ptr < ptr_end && !fsck_abort; ptr++) {
+			if (!*ptr)
+				continue;
+
+			if (skip_this_pass || fsck_abort)
+				return 1;
+			block =  be64_to_cpu(*ptr);
+			if (report_undo_data_error(metablock, (char *)ptr - bh->b_data,
+						   block, error_blk, &found_error_blk, error))
+				return 1;
+			rc = pass->undo_check_data(ip, block, pass->private);
+			if (rc < 0)
+				return rc;
+		}
 	}
 	return found_error_blk;
 }
@@ -1562,7 +1643,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	struct gfs2_buffer_head *bh;
 	unsigned int i;
 	uint64_t blks_checked = 0;
-	int error, rc;
+	int error = 0, rc;
 	int metadata_clean = 0;
 	struct error_block error_blk = {0, 0, 0};
 	int hit_error_blk = 0;
@@ -1574,11 +1655,25 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	for (i = 0; i <= height; i++)
 		osi_list_init(&metalist[i]);
 
-	/* create and check the metadata list for each height */
-	error = build_and_check_metalist(ip, metalist, pass);
-	if (error) {
-		stack;
-		goto undo_metalist;
+	if (ip->i_di.di_flags & GFS2_DIF_EXTENTS) {
+		if (height > 1) {
+			log_err(_("Inode %"PRId64" (0x%"PRIx64") has an "
+				  "extent tree height greater than %u.\n"),
+				ip->i_di.di_num.no_addr,
+				ip->i_di.di_num.no_addr,
+				1);
+			error = META_ERROR;
+			goto undo_metalist;
+		}
+		/* make sure we check the inode below */
+		osi_list_add(&ip->i_bh->b_altlist, metalist);
+	} else {
+		/* create and check the metadata list for each height */
+		error = build_and_check_metalist(ip, metalist, pass);
+		if (error) {
+			stack;
+			goto undo_metalist;
+		}
 	}
 
 	metadata_clean = 1;
