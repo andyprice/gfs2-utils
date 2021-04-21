@@ -25,6 +25,9 @@
 #define printbe64(struct, member) do { \
 		print_it("  "#member, "%"PRIu64, "0x%"PRIx64, be64_to_cpu(struct->member)); \
 	} while(0)
+#define print8(struct, member) do { \
+		print_it("  "#member, "%"PRIu8, "0x%"PRIx8, struct->member); \
+	} while(0)
 
 #define CPIN_08(s1, s2, member, count) {memcpy((s1->member), (s2->member), (count));}
 #define CPOUT_08(s1, s2, member, count) {memcpy((s2->member), (s1->member), (count));}
@@ -466,31 +469,23 @@ void gfs2_leaf_print(const struct gfs2_leaf *lf)
 	pv(lf, lf_sec, "%"PRIu64, "0x%"PRIx64);
 }
 
-void gfs2_ea_header_in(struct gfs2_ea_header *ea, char *buf)
-{
-	struct gfs2_ea_header *str = (struct gfs2_ea_header *)buf;
-
-	CPIN_32(ea, str, ea_rec_len);
-	CPIN_32(ea, str, ea_data_len);
-	ea->ea_name_len = str->ea_name_len;
-	ea->ea_type = str->ea_type;
-	ea->ea_flags = str->ea_flags;
-	ea->ea_num_ptrs = str->ea_num_ptrs;
-}
-
-void gfs2_ea_header_print(const struct gfs2_ea_header *ea, char *name)
+void lgfs2_ea_header_print(void *eap)
 {
 	char buf[GFS2_EA_MAX_NAME_LEN + 1];
+	struct gfs2_ea_header *ea = eap;
+	unsigned len = ea->ea_name_len;
 
-	pv(ea, ea_rec_len, "%"PRIu32, "0x%"PRIx32);
-	pv(ea, ea_data_len, "%"PRIu32, "0x%"PRIx32);
-	pv(ea, ea_name_len, "%"PRIu8, "0x%"PRIx8);
-	pv(ea, ea_type, "%"PRIu8, "0x%"PRIx8);
-	pv(ea, ea_flags, "%"PRIu8, "0x%"PRIx8);
-	pv(ea, ea_num_ptrs, "%"PRIu8, "0x%"PRIx8);
+	printbe32(ea, ea_rec_len);
+	printbe32(ea, ea_data_len);
+	print8(ea, ea_name_len);
+	print8(ea, ea_type);
+	print8(ea, ea_flags);
+	print8(ea, ea_num_ptrs);
 
-	memset(buf, 0, GFS2_EA_MAX_NAME_LEN + 1);
-	memcpy(buf, name, ea->ea_name_len);
+	if (len > GFS2_EA_MAX_NAME_LEN)
+		len = GFS2_EA_MAX_NAME_LEN;
+	memcpy(buf, ea + 1, len);
+	buf[len] = '\0';
 	print_it("  name", "%s", NULL, buf);
 }
 

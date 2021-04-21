@@ -694,18 +694,20 @@ static char *check_read_block(int fd, uint64_t blk, uint64_t owner, int *blktype
  */
 static void save_ea_block(struct metafd *mfd, char *buf, uint64_t owner)
 {
+	struct gfs2_ea_header *ea;
+	uint32_t rec_len = 0;
 	int e;
-	struct gfs2_ea_header ea;
 
-	for (e = sizeof(struct gfs2_meta_header); e < sbd.bsize; e += ea.ea_rec_len) {
+	for (e = sizeof(struct gfs2_meta_header); e < sbd.bsize; e += rec_len) {
 		uint64_t blk, *b;
 		int charoff, i;
 
-		gfs2_ea_header_in(&ea, buf + e);
-		for (i = 0; i < ea.ea_num_ptrs; i++) {
+		ea = (void *)(buf + e);
+		/* ea_num_ptrs and ea_name_len are u8 so no endianness worries */
+		for (i = 0; i < ea->ea_num_ptrs; i++) {
 			char *_buf;
 
-			charoff = e + ea.ea_name_len +
+			charoff = e + ea->ea_name_len +
 				sizeof(struct gfs2_ea_header) +
 				sizeof(uint64_t) - 1;
 			charoff /= sizeof(uint64_t);
@@ -718,7 +720,8 @@ static void save_ea_block(struct metafd *mfd, char *buf, uint64_t owner)
 				free(_buf);
 			}
 		}
-		if (!ea.ea_rec_len)
+		rec_len = be32_to_cpu(ea->ea_rec_len);
+		if (rec_len == 0)
 			break;
 	}
 }

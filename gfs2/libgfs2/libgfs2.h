@@ -713,7 +713,6 @@ extern void gfs2_dirent_in(struct gfs2_dirent *de, char *buf);
 extern void gfs2_dirent_out(struct gfs2_dirent *de, char *buf);
 extern void gfs2_leaf_in(struct gfs2_leaf *lf, char *buf);
 extern void gfs2_leaf_out(struct gfs2_leaf *lf, char *buf);
-extern void gfs2_ea_header_in(struct gfs2_ea_header *ea, char *buf);
 extern void gfs2_log_header_in(struct gfs2_log_header *lh, char *buf);
 extern void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf);
 
@@ -727,13 +726,13 @@ extern void gfs2_rgrp_print(const struct gfs2_rgrp *rg);
 extern void gfs2_quota_print(const struct gfs2_quota *qu);
 extern void gfs2_dinode_print(const struct gfs2_dinode *di);
 extern void gfs2_leaf_print(const struct gfs2_leaf *lf);
-extern void gfs2_ea_header_print(const struct gfs2_ea_header *ea, char *name);
 extern void gfs2_log_header_print(const struct gfs2_log_header *lh);
 /* These expect on-disk data instead of native-endian structs */
 extern void lgfs2_meta_header_print(void *mhp);
 extern void lgfs2_log_descriptor_print(void *ldp);
 extern void lgfs2_quota_change_print(void *qcp);
 extern void lgfs2_statfs_change_print(void *scp);
+extern void lgfs2_ea_header_print(void *eap);
 
 __END_DECLS
 

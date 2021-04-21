@@ -346,19 +346,21 @@ uint64_t do_leaf_extended(char *dlebuf, struct iinfo *indir)
 
 static void do_eattr_extended(char *buf)
 {
-	struct gfs2_ea_header ea;
+	struct gfs2_ea_header *ea;
+	uint32_t rec_len = 0;
 	unsigned int x;
 
 	eol(0);
 	print_gfs2("Eattr Entries:");
 	eol(0);
 
-	for (x = sizeof(struct gfs2_meta_header); x < sbd.bsize;
-	     x += ea.ea_rec_len)
+	for (x = sizeof(struct gfs2_meta_header); x < sbd.bsize; x += rec_len)
 	{
 		eol(0);
-		gfs2_ea_header_in(&ea, buf + x);
-		gfs2_ea_header_print(&ea, buf + x + sizeof(struct gfs2_ea_header));
+		buf += x;
+		ea = (struct gfs2_ea_header *)buf;
+		lgfs2_ea_header_print(ea);
+		rec_len = be32_to_cpu(ea->ea_rec_len);
 	}
 }
 
