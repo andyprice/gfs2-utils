@@ -1139,7 +1139,7 @@ int check_inode_eattr(struct gfs2_inode *ip, struct metawalk_fxns *pass)
  */
 static void free_metalist(struct gfs2_inode *ip, osi_list_t *mlp)
 {
-	int i;
+	unsigned int i;
 	struct gfs2_buffer_head *nbh;
 
 	for (i = 0; i < GFS2_MAX_META_HEIGHT; i++) {
@@ -1403,14 +1403,14 @@ static int metawalk_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass
 	int error = 0, rc = 0;
 	uint64_t block, *ptr;
 	uint64_t *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
-	char *ptr_end = (bh->b_data + ip->i_sbd->bsize);
+	uint64_t *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->bsize);
 	uint64_t metablock = bh->b_blocknr;
 
 	/* If there isn't much pointer corruption check the pointers */
 	log_debug("Processing data blocks for inode 0x%llx, metadata block 0x%llx.\n",
 		  (unsigned long long)ip->i_di.di_num.no_addr,
 		  (unsigned long long)bh->b_blocknr);
-	for (ptr = ptr_start ; (char *)ptr < ptr_end && !fsck_abort; ptr++) {
+	for (ptr = ptr_start ; ptr < ptr_end && !fsck_abort; ptr++) {
 		if (!*ptr)
 			continue;
 
@@ -1474,14 +1474,14 @@ static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 			   struct error_block *error_blk, int error)
 {
 	uint64_t *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
-	char *ptr_end = bh->b_data + ip->i_sbd->bsize;
+	uint64_t *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->bsize);
 	uint64_t metablock = bh->b_blocknr;
 	int rc = 0;
 	uint64_t block, *ptr;
 	int found_error_blk = 0;
 
 	/* If there isn't much pointer corruption check the pointers */
-	for (ptr = ptr_start ; (char *)ptr < ptr_end && !fsck_abort; ptr++) {
+	for (ptr = ptr_start ; ptr < ptr_end && !fsck_abort; ptr++) {
 		if (!*ptr)
 			continue;
 
@@ -1532,12 +1532,11 @@ static unsigned int should_check(struct gfs2_buffer_head *bh, unsigned int heigh
  */
 int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 {
-
+	unsigned int height = ip->i_di.di_height;
 	osi_list_t metalist[GFS2_MAX_META_HEIGHT];
 	osi_list_t *list, *tmp;
 	struct gfs2_buffer_head *bh;
-	uint32_t height = ip->i_di.di_height;
-	int  i;
+	unsigned int i;
 	uint64_t blks_checked = 0;
 	int error, rc;
 	int metadata_clean = 0;
