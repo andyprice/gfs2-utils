@@ -808,7 +808,6 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 {
 	uint64_t inumbuf = 0;
 	char *buf;
-	struct gfs2_statfs_change sc;
 	int err;
 
 	/*******************************************************************
@@ -914,8 +913,6 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 				free(buf);
 				goto fail;
 			}
-			/* call gfs2_inum_range_in() to retrieve range */
-			gfs2_statfs_change_in(&sc, buf);
 			free(buf);
 		}
 	}

@@ -569,29 +569,13 @@ void lgfs2_log_descriptor_print(void *ldp)
 	printbe32(ld, ld_data2);
 }
 
-void gfs2_statfs_change_in(struct gfs2_statfs_change *sc, char *buf)
+void lgfs2_statfs_change_print(void *scp)
 {
-	struct gfs2_statfs_change *str = (struct gfs2_statfs_change *)buf;
+	struct gfs2_statfs_change *sc = scp;
 
-	CPIN_64(sc, str, sc_total);
-	CPIN_64(sc, str, sc_free);
-	CPIN_64(sc, str, sc_dinodes);
-}
-
-void gfs2_statfs_change_out(struct gfs2_statfs_change *sc, char *buf)
-{
-	struct gfs2_statfs_change *str = (struct gfs2_statfs_change *)buf;
-
-	CPOUT_64(sc, str, sc_total);
-	CPOUT_64(sc, str, sc_free);
-	CPOUT_64(sc, str, sc_dinodes);
-}
-
-void gfs2_statfs_change_print(const struct gfs2_statfs_change *sc)
-{
-	pv(sc, sc_total, "%"PRId64, "0x%"PRIx64);
-	pv(sc, sc_free, "%"PRId64, "0x%"PRIx64);
-	pv(sc, sc_dinodes, "%"PRId64, "0x%"PRIx64);
+	print_it("  sc_total", "%"PRId64, "0x%"PRIx64, be64_to_cpu(sc->sc_total));
+	print_it("  sc_free", "%"PRId64, "0x%"PRIx64, be64_to_cpu(sc->sc_free));
+	print_it("  sc_dinodes", "%"PRId64, "0x%"PRIx64, be64_to_cpu(sc->sc_dinodes));
 }
 
 void lgfs2_quota_change_print(void *qcp)

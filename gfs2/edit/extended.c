@@ -588,24 +588,23 @@ static int print_inum(struct gfs2_inode *dii)
 
 static int print_statfs(struct gfs2_inode *dis)
 {
-	struct gfs2_statfs_change sfb, sfc;
+	struct gfs2_statfs_change sc;
 	int rc;
-	
-	rc = gfs2_readi(dis, (void *)&sfb, 0, sizeof(sfb));
+
+	rc = gfs2_readi(dis, (void *)&sc, 0, sizeof(sc));
 	if (!rc) {
 		print_gfs2("The statfs file is empty.");
 		eol(0);
 		return 0;
 	}
-	if (rc != sizeof(sfb)) {
+	if (rc != sizeof(sc)) {
 		print_gfs2("Error reading statfs file.");
 		eol(0);
 		return -1;
 	}
-	gfs2_statfs_change_in(&sfc, (char *)&sfb);
 	print_gfs2("statfs file contents:");
 	eol(0);
-	gfs2_statfs_change_print(&sfc);
+	lgfs2_statfs_change_print(&sc);
 	return 0;
 }
 

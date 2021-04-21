@@ -635,21 +635,19 @@ int do_init_statfs(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip = sdp->md.statfs;
 	struct gfs2_statfs_change sc;
-	char buf[sizeof(struct gfs2_statfs_change)];
 	int count;
 
-	sc.sc_total = sdp->blks_total;
-	sc.sc_free = sdp->blks_total - sdp->blks_alloced;
-	sc.sc_dinodes = sdp->dinodes_alloced;
+	sc.sc_total = cpu_to_be64(sdp->blks_total);
+	sc.sc_free = cpu_to_be64(sdp->blks_total - sdp->blks_alloced);
+	sc.sc_dinodes = cpu_to_be64(sdp->dinodes_alloced);
 
-	gfs2_statfs_change_out(&sc, buf);
-	count = gfs2_writei(ip, buf, 0, sizeof(struct gfs2_statfs_change));
-	if (count != sizeof(struct gfs2_statfs_change))
+	count = gfs2_writei(ip, &sc, 0, sizeof(sc));
+	if (count != sizeof(sc))
 		return -1;
 
 	if (cfg_debug) {
 		printf("\nStatfs:\n");
-		gfs2_statfs_change_print(&sc);
+		lgfs2_statfs_change_print(&sc);
 	}
 	return 0;
 }

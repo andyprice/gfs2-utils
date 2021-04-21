@@ -1958,27 +1958,25 @@ static void update_inode_file(struct gfs2_sbd *sdp)
 	log_debug(_("\nNext Inum: %llu\n"), (unsigned long long)sdp->md.next_inum);
 }/* update_inode_file */
 
-/* ------------------------------------------------------------------------- */
-/* write_statfs_file - write the statfs file                                 */
-/* ------------------------------------------------------------------------- */
+/**
+ * write_statfs_file - write the statfs file
+ */
 static void write_statfs_file(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip = sdp->md.statfs;
 	struct gfs2_statfs_change sc;
-	char buf[sizeof(struct gfs2_statfs_change)];
 	int count;
 
-	sc.sc_total = sdp->blks_total;
-	sc.sc_free = sdp->blks_total - sdp->blks_alloced;
-	sc.sc_dinodes = sdp->dinodes_alloced;
+	sc.sc_total = cpu_to_be64(sdp->blks_total);
+	sc.sc_free = cpu_to_be64(sdp->blks_total - sdp->blks_alloced);
+	sc.sc_dinodes = cpu_to_be64(sdp->dinodes_alloced);
 
-	gfs2_statfs_change_out(&sc, buf);
-	count = gfs2_writei(ip, buf, 0, sizeof(struct gfs2_statfs_change));
-	if (count != sizeof(struct gfs2_statfs_change)) {
-		fprintf(stderr, "do_init (2)\n");
+	count = gfs2_writei(ip, &sc, 0, sizeof(sc));
+	if (count != sizeof(sc)) {
+		fprintf(stderr, "Failed to write statfs file\n");
 		exit(1);
 	}
-}/* write_statfs_file */
+}
 
 /* ------------------------------------------------------------------------- */
 /* remove_obsolete_gfs1 - remove obsolete gfs1 inodes.                       */

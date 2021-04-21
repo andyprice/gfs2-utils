@@ -168,8 +168,10 @@ static int check_statfs(struct gfs2_sbd *sdp)
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgd;
 	struct gfs2_rindex *ri;
-	struct gfs2_statfs_change sc = {0,};
-	char buf[sizeof(struct gfs2_statfs_change)];
+	struct gfs2_statfs_change sc;
+	uint64_t sc_total;
+	uint64_t sc_free;
+	uint64_t sc_dinodes;
 	int count;
 
 	if (sdp->gfs1 && !sdp->md.statfs->i_di.di_size) {
@@ -177,14 +179,17 @@ static int check_statfs(struct gfs2_sbd *sdp)
 		return 0;
 	}
 	/* Read the current statfs values */
-	count = gfs2_readi(sdp->md.statfs, buf, 0,
+	count = gfs2_readi(sdp->md.statfs, &sc, 0,
 			   sdp->md.statfs->i_di.di_size);
 	if (count != sizeof(struct gfs2_statfs_change)) {
 		log_err(_("Failed to read statfs values (%d of %"PRIu64" read)\n"),
 		        count, (uint64_t)sdp->md.statfs->i_di.di_size);
 		return FSCK_ERROR;
 	}
-	gfs2_statfs_change_in(&sc, buf);
+	sc_total = be64_to_cpu(sc.sc_total);
+	sc_free = be64_to_cpu(sc.sc_free);
+	sc_dinodes = be64_to_cpu(sc.sc_dinodes);
+
 	/* Calculate the real values from the rgrp information */
 	sdp->blks_total = 0;
 	sdp->blks_alloced = 0;
@@ -200,24 +205,17 @@ static int check_statfs(struct gfs2_sbd *sdp)
 	}
 
 	/* See if they match */
-	if (sc.sc_total == sdp->blks_total &&
-	    sc.sc_free == (sdp->blks_total - sdp->blks_alloced) &&
-	    sc.sc_dinodes == sdp->dinodes_alloced) {
+	if (sc_total == sdp->blks_total &&
+	    sc_free == (sdp->blks_total - sdp->blks_alloced) &&
+	    sc_dinodes == sdp->dinodes_alloced) {
 		log_info( _("The statfs file is accurate.\n"));
 		return 0;
 	}
 	log_err( _("The statfs file is wrong:\n\n"));
 	log_err( _("Current statfs values:\n"));
-	log_err( _("blocks:  %lld (0x%llx)\n"),
-		 (unsigned long long)sc.sc_total,
-		 (unsigned long long)sc.sc_total);
-	log_err( _("free:    %lld (0x%llx)\n"),
-		 (unsigned long long)sc.sc_free,
-		 (unsigned long long)sc.sc_free);
-	log_err( _("dinodes: %lld (0x%llx)\n\n"),
-		 (unsigned long long)sc.sc_dinodes,
-		 (unsigned long long)sc.sc_dinodes);
-
+	log_err( _("blocks:  %"PRId64" (0x%"PRIx64")\n"), sc_total, sc_total);
+	log_err( _("free:    %"PRId64" (0x%"PRIx64")\n"), sc_free, sc_free);
+	log_err( _("dinodes: %"PRId64" (0x%"PRIx64")\n\n"), sc_dinodes, sc_dinodes);
 	log_err( _("Calculated statfs values:\n"));
 	log_err( _("blocks:  %lld (0x%llx)\n"),
 		 (unsigned long long)sdp->blks_total,
