@@ -42,6 +42,8 @@
 #define GFS2_FORMAT_EA		1600
 #define GFS2_FORMAT_ED		1700
 #define GFS2_FORMAT_QC		1400
+#define GFS2_FORMAT_XI		1500
+#define GFS2_FORMAT_XL		1600
 /* These are format numbers for entities contained in files */
 #define GFS2_FORMAT_RI		1100
 #define GFS2_FORMAT_DE		1200
@@ -78,6 +80,8 @@ struct gfs2_inum {
 #define GFS2_METATYPE_EA	10
 #define GFS2_METATYPE_ED	11
 #define GFS2_METATYPE_QC	14
+#define GFS2_METATYPE_XI	15
+#define GFS2_METATYPE_XL	16
 
 struct gfs2_meta_header {
 	__be32 mh_magic;
@@ -258,6 +262,7 @@ enum {
 #define GFS2_DIF_SYNC			0x00000100
 #define GFS2_DIF_SYSTEM			0x00000200 /* New in gfs2 */
 #define GFS2_DIF_TOPDIR			0x00000400 /* New in gfs2 */
+#define GFS2_DIF_EXTENTS		0x00000800 /* New in gfs2 */
 #define GFS2_DIF_TRUNC_IN_PROG		0x20000000 /* New in gfs2 */
 #define GFS2_DIF_INHERIT_DIRECTIO	0x40000000 /* only in gfs1 */
 #define GFS2_DIF_INHERIT_JDATA		0x80000000
@@ -306,6 +311,25 @@ struct gfs2_dinode {
 
 	__u8 di_reserved[44];
 };
+
+struct gfs2_extent_header {
+	__be16 eh_entries;
+	__be16 eh_pad;
+};
+
+struct gfs2_extent_idx {
+	__be64 ei_start;
+	__be64 ei_leaf;
+} __attribute__((packed, aligned(4)));
+
+#define GFS2_EF_UNWRITTEN	1
+
+struct gfs2_extent {
+	__be64 ex_start;
+	__be64 ex_addr;
+	__be16 ex_len;
+	__be16 ex_flags;  /* GFS2_EF_... */
+} __attribute__((packed, aligned(4)));
 
 /*
  * directory structure - many of these per directory file
