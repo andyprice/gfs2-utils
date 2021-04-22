@@ -779,7 +779,7 @@ static int fetch_rgrps(struct gfs2_sbd *sdp)
 	int ok = 1;
 
 	log_notice(_("Validating resource group index.\n"));
-	for (trust_lvl = blind_faith; trust_lvl <= indignation; trust_lvl++) {
+	for (trust_lvl = BLIND_FAITH; trust_lvl <= INDIGNATION; trust_lvl++) {
 		int ret = 0;
 
 		ret = fetch_rgrps_level(sdp, trust_lvl, &rgcount, &ok);
@@ -788,7 +788,7 @@ static int fetch_rgrps(struct gfs2_sbd *sdp)
 		if (fsck_abort)
 			break;
 	}
-	if (trust_lvl > indignation) {
+	if (trust_lvl > INDIGNATION) {
 		log_err( _("Resource group recovery impossible; I can't fix "
 			   "this file system.\n"));
 		return -1;

@@ -17,7 +17,7 @@
 #include "metawalk.h"
 #include "util.h"
 
-const char *reftypes[ref_types + 1] = {"data", "metadata",
+const char *reftypes[REF_TYPES + 1] = {"data", "metadata",
 				       "an extended attribute", "an inode",
 				       "unimportant"};
 
@@ -304,12 +304,12 @@ int count_dup_meta_refs(struct duptree *dt)
 
 	osi_list_foreach(ref, &dt->ref_invinode_list) {
 		id = osi_list_entry(ref, struct inode_with_dups, list);
-		if (id->reftypecount[ref_as_meta])
+		if (id->reftypecount[REF_AS_META])
 			metarefs++;
 	}
 	osi_list_foreach(ref, &dt->ref_inode_list) {
 		id = osi_list_entry(ref, struct inode_with_dups, list);
-		if (id->reftypecount[ref_as_meta])
+		if (id->reftypecount[REF_AS_META])
 			metarefs++;
 	}
 	return metarefs;
@@ -336,19 +336,19 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	struct duptree *dt;
 
 	if (!valid_block_ip(ip, block))
-		return meta_is_good;
+		return META_IS_GOOD;
 	/* If this is not the first reference (i.e. all calls from pass1) we
 	   need to create the duplicate reference. If this is pass1b, we want
 	   to ignore references that aren't found. */
 	dt = gfs2_dup_set(block, !first);
 	if (!dt)        /* If this isn't a duplicate */
-		return meta_is_good;
+		return META_IS_GOOD;
 
 	/* If we found the duplicate reference but we've already discovered
 	   the first reference (in pass1b) and the other references in pass1,
 	   we don't need to count it, so just return. */
 	if (dt->dup_flags & DUPFLAG_REF1_FOUND)
-		return meta_is_good;
+		return META_IS_GOOD;
 
 	/* Check for a previous reference to this duplicate */
 	id = find_dup_ref_inode(dt, ip);
@@ -391,7 +391,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 		id = calloc(1, sizeof(*id));
 		if (!id) {
 			log_crit( _("Unable to allocate inode_with_dups structure\n"));
-			return meta_error;
+			return META_ERROR;
 		}
 		id->block_no = ip->i_di.di_num.no_addr;
 		q = bitmap_type(ip->i_sbd, ip->i_di.di_num.no_addr);
@@ -431,7 +431,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 			    "%d from this inode.\n"),
 			  dt->refs, id->dup_count);
 	}
-	return meta_is_good;
+	return META_IS_GOOD;
 }
 
 struct dir_info *dirtree_insert(struct gfs2_inum inum)
@@ -491,10 +491,10 @@ enum dup_ref_type get_ref_type(struct inode_with_dups *id)
 	int found_type_with_ref;
 	int found_other_types;
 
-	for (t = ref_as_data; t < ref_types; t++) {
+	for (t = REF_AS_DATA; t < REF_TYPES; t++) {
 		found_type_with_ref = 0;
 		found_other_types = 0;
-		for (i = ref_as_data; i < ref_types; i++) {
+		for (i = REF_AS_DATA; i < REF_TYPES; i++) {
 			if (id->reftypecount[i]) {
 				if (t == i)
 					found_type_with_ref = 1;
@@ -503,9 +503,9 @@ enum dup_ref_type get_ref_type(struct inode_with_dups *id)
 			}
 		}
 		if (found_type_with_ref)
-			return found_other_types ? ref_types : t;
+			return found_other_types ? REF_TYPES : t;
 	}
-	return ref_types;
+	return REF_TYPES;
 }
 
 void dup_listent_delete(struct duptree *dt, struct inode_with_dups *id)

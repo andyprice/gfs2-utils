@@ -628,9 +628,9 @@ static int rangecheck_jblock(struct gfs2_inode *ip, uint64_t block)
 			    "journal inode %lld (0x%llx).\n"),
 			  (unsigned long long)ip->i_di.di_num.no_addr,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
-		return meta_error; /* Exits check_metatree quicker */
+		return META_ERROR; /* Exits check_metatree quicker */
 	}
-	return meta_is_good;
+	return META_IS_GOOD;
 }
 
 static int rangecheck_jmeta(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
@@ -644,7 +644,7 @@ static int rangecheck_jmeta(struct iptr iptr, struct gfs2_buffer_head **bh, int 
 	*was_duplicate = 0;
 	*is_valid = 0;
 	rc = rangecheck_jblock(ip, block);
-	if (rc == meta_is_good) {
+	if (rc == META_IS_GOOD) {
 		*bh = bread(ip->i_sbd, block);
 		*is_valid = (gfs2_check_meta((*bh)->b_data, GFS2_METATYPE_IN) == 0);
 		if (!(*is_valid)) {
@@ -658,7 +658,7 @@ static int rangecheck_jmeta(struct iptr iptr, struct gfs2_buffer_head **bh, int 
 				 (unsigned long long)block);
 			brelse(*bh);
 			*bh = NULL;
-			return meta_skip_further;
+			return META_SKIP_FURTHER;
 		}
 	}
 	return rc;

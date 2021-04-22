@@ -74,36 +74,36 @@ struct duptree {
 };
 
 enum dup_ref_type {
-	ref_as_data = 0, /* dinode references this block as a data block */
-	ref_as_meta = 1, /* dinode references this block as a metadata block */
-	ref_as_ea   = 2, /* dinode references this block as an extended attr */
-	ref_is_inode= 3, /* The reference is itself a dinode.  In other words,
+	REF_AS_DATA = 0, /* dinode references this block as a data block */
+	REF_AS_META = 1, /* dinode references this block as a metadata block */
+	REF_AS_EA   = 2, /* dinode references this block as an extended attr */
+	REF_IS_INODE= 3, /* The reference is itself a dinode.  In other words,
 			    it's a dinode, not pointed to as data or
 			    metadata */
-	ref_types   = 4,
+	REF_TYPES   = 4,
 };
 
 struct inode_with_dups {
 	osi_list_t list;
 	uint64_t block_no;
 	int dup_count;
-	int reftypecount[ref_types];
+	int reftypecount[REF_TYPES];
 	uint64_t parent;
 	char *name;
 };
 
 enum rgindex_trust_level { /* how far can we trust our RG index? */
-	blind_faith = 0, /* We'd like to trust the rgindex. We always used to
+	BLIND_FAITH = 0, /* We'd like to trust the rgindex. We always used to
 			    before bz 179069. This should cover most cases. */
-	ye_of_little_faith = 1, /* The rindex seems trustworthy but there's
+	YE_OF_LITTLE_FAITH = 1, /* The rindex seems trustworthy but there's
 				   rg damage that need to be fixed. */
-	open_minded = 2, /* At least 1 RG is corrupt. Try to calculate what it
+	OPEN_MINDED = 2, /* At least 1 RG is corrupt. Try to calculate what it
 			    should be, in a perfect world where our RGs are all
 			    on even boundaries. Blue sky. Chirping birds. */
-	distrust = 3,  /* The world isn't perfect, our RGs are not on nice neat
+	DISTRUST = 3,  /* The world isn't perfect, our RGs are not on nice neat
 			  boundaries.  The fs must have been messed with by
 			  gfs2_grow or something.  Count the RGs by hand. */
-	indignation = 4 /* Not only do we have corruption, but the rgrps
+	INDIGNATION = 4 /* Not only do we have corruption, but the rgrps
 			   aren't on even boundaries, so this file system
 			   must have been converted from gfs2_convert. */
 };

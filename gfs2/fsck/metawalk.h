@@ -36,10 +36,10 @@ extern struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
 #define fsck_bitmap_set_noino(ip, b, bt, m) \
 	_fsck_bitmap_set(ip, b, bt, m, 1, __FUNCTION__, __LINE__)
 enum meta_check_rc {
-	meta_error = -1,
-	meta_is_good = 0,
-	meta_skip_further = 1,
-	meta_skip_one = 2,
+	META_ERROR = -1,
+	META_IS_GOOD = 0,
+	META_SKIP_FURTHER = 1,
+	META_SKIP_ONE = 2,
 };
 
 struct iptr {
