@@ -9,7 +9,7 @@ extern int delete_metadata(struct iptr iptr, struct gfs2_buffer_head **bh, int h
 extern int delete_leaf(struct gfs2_inode *ip, uint64_t block, void *private);
 extern int delete_data(struct gfs2_inode *ip, uint64_t metablock,
 		       uint64_t block, void *private,
-		       struct gfs2_buffer_head *bh, uint64_t *ptr);
+		       struct gfs2_buffer_head *bh, __be64 *ptr);
 extern int delete_eattr_indir(struct gfs2_inode *ip, uint64_t block, uint64_t parent,
 		       struct gfs2_buffer_head **bh, void *private);
 extern int delete_eattr_leaf(struct gfs2_inode *ip, uint64_t block, uint64_t parent,

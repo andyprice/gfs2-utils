@@ -195,7 +195,7 @@ int delete_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 
 int delete_data(struct gfs2_inode *ip, uint64_t metablock,
 		uint64_t block, void *private, struct gfs2_buffer_head *bh,
-		uint64_t *ptr)
+		__be64 *ptr)
 {
 	return delete_block_if_notdup(ip, block, NULL, _("data"), NULL,
 				      private);

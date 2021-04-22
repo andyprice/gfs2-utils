@@ -79,7 +79,7 @@ static int findref_meta(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
 
 static int findref_data(struct gfs2_inode *ip, uint64_t metablock,
 			uint64_t block, void *private,
-			struct gfs2_buffer_head *bh, uint64_t *ptr)
+			struct gfs2_buffer_head *bh, __be64 *ptr)
 {
 	struct meta_blk_ref *mbr = (struct meta_blk_ref *)private;
 
@@ -411,7 +411,7 @@ static int clone_check_meta(struct iptr iptr, struct gfs2_buffer_head **bh, int 
  */
 static int clone_data(struct gfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
-		      struct gfs2_buffer_head *bh, uint64_t *ptr)
+		      struct gfs2_buffer_head *bh, __be64 *ptr)
 {
 	struct clone_target *clonet = (struct clone_target *)private;
 	struct gfs2_buffer_head *clone_bh;
@@ -802,7 +802,7 @@ static int check_metalist_refs(struct iptr iptr, struct gfs2_buffer_head **bh, i
 
 static int check_data_refs(struct gfs2_inode *ip, uint64_t metablock,
 			   uint64_t block, void *private,
-			   struct gfs2_buffer_head *bh, uint64_t *ptr)
+			   struct gfs2_buffer_head *bh, __be64 *ptr)
 {
 	return add_duplicate_ref(ip, block, ref_as_data, 1, INODE_VALID);
 }

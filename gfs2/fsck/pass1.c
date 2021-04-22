@@ -45,7 +45,7 @@ static int undo_check_metalist(struct gfs2_inode *ip, uint64_t block,
 			       int h, void *private);
 static int pass1_check_data(struct gfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
-		      struct gfs2_buffer_head *bh, uint64_t *ptr);
+		      struct gfs2_buffer_head *bh, __be64 *ptr);
 static int undo_check_data(struct gfs2_inode *ip, uint64_t block,
 			   void *private);
 static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
@@ -549,7 +549,7 @@ out:
 
 static int pass1_check_data(struct gfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
-		      struct gfs2_buffer_head *bbh, uint64_t *ptr)
+		      struct gfs2_buffer_head *bbh, __be64 *ptr)
 {
 	int q;
 	struct block_count *bc = (struct block_count *) private;
@@ -1145,7 +1145,7 @@ static int invalidate_leaf(struct gfs2_inode *ip, uint64_t block,
 
 static int invalidate_data(struct gfs2_inode *ip, uint64_t metablock,
 			   uint64_t block, void *private,
-			   struct gfs2_buffer_head *bh, uint64_t *ptr)
+			   struct gfs2_buffer_head *bh, __be64 *ptr)
 {
 	return mark_block_invalid(ip, block, ref_as_data, _("data"),
 				  NULL, NULL);
@@ -1247,7 +1247,7 @@ static int rangecheck_leaf(struct gfs2_inode *ip, uint64_t block,
 
 static int rangecheck_data(struct gfs2_inode *ip, uint64_t metablock,
 			   uint64_t block, void *private,
-			   struct gfs2_buffer_head *bh, uint64_t *ptr)
+			   struct gfs2_buffer_head *bh, __be64 *ptr)
 {
 	return rangecheck_block(ip, block, NULL, btype_data, private);
 }
@@ -1360,7 +1360,7 @@ static int alloc_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
 
 static int alloc_data(struct gfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
-		      struct gfs2_buffer_head *bh, uint64_t *ptr)
+		      struct gfs2_buffer_head *bh, __be64 *ptr)
 {
 	int q;
 	const char *desc = (const char *)private;
