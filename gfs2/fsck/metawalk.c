@@ -1225,14 +1225,14 @@ static int do_check_metalist(struct iptr iptr, int height, struct gfs2_buffer_he
 
 	error = pass->check_metalist(iptr, bhp, height, &is_valid,
 				     &was_duplicate, pass->private);
-	if (error == meta_error) {
+	if (error == META_ERROR) {
 		stack;
 		log_info("\n");
 		log_info(_("Serious metadata error on block %"PRIu64" (0x%"PRIx64").\n"),
 		         block, block);
 		return error;
 	}
-	if (error == meta_skip_further) {
+	if (error == META_SKIP_FURTHER) {
 		log_info("\n");
 		log_info(_("Unrecoverable metadata error on block %"PRIu64" (0x%"PRIx64")\n"),
 		         block, block);
@@ -1242,18 +1242,18 @@ static int do_check_metalist(struct iptr iptr, int height, struct gfs2_buffer_he
 	if (!is_valid) {
 		log_debug("Skipping rejected block %"PRIu64" (0x%"PRIx64")\n", block, block);
 		if (pass->invalid_meta_is_fatal)
-			return meta_error;
-		return meta_skip_one;
+			return META_ERROR;
+		return META_SKIP_ONE;
 	}
 	if (was_duplicate) {
 		log_debug("Skipping duplicate %"PRIu64" (0x%"PRIx64")\n", block, block);
-		return meta_skip_one;
+		return META_SKIP_ONE;
 	}
 	if (!valid_block_ip(ip, block)) {
 		log_debug("Skipping invalid block %"PRIu64" (0x%"PRIx64")\n", block, block);
 		if (pass->invalid_meta_is_fatal)
-			return meta_error;
-		return meta_skip_one;
+			return META_ERROR;
+		return META_SKIP_ONE;
 	}
 	return error;
 }
@@ -1293,7 +1293,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 
 	/* if (<there are no indirect blocks to check>) */
 	if (height < 2)
-		return meta_is_good;
+		return META_IS_GOOD;
 	for (h = 1; h < height; h++) {
 		if (h > 1) {
 			if (is_dir(&ip->i_di, ip->i_sbd->gfs1) &&
@@ -1323,7 +1323,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 
 			if (gfs2_check_meta(iptr_buf(iptr), iblk_type)) {
 				if (pass->invalid_meta_is_fatal)
-					return meta_error;
+					return META_ERROR;
 
 				continue;
 			}
@@ -1335,14 +1335,14 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 				struct gfs2_buffer_head *nbh = NULL;
 
 				if (skip_this_pass || fsck_abort)
-					return meta_is_good;
+					return META_IS_GOOD;
 				if (!iptr_block(iptr))
 					continue;
 
 				error = do_check_metalist(iptr, h, &nbh, pass);
-				if (error == meta_error || error == meta_skip_further)
+				if (error == META_ERROR || error == META_SKIP_FURTHER)
 					goto error_undo;
-				if (error == meta_skip_one)
+				if (error == META_SKIP_ONE)
 					continue;
 				if (!nbh)
 					nbh = bread(ip->i_sbd, iptr_block(iptr));

@@ -39,7 +39,7 @@ static int find_remove_dup(struct gfs2_inode *ip, uint64_t block,
 	if (!id)
 		goto more_refs;
 
-	if (id->reftypecount[ref_as_meta])
+	if (id->reftypecount[REF_AS_META])
 		deleted_a_meta_ref = 1;
 	dup_listent_delete(dt, id);
 	if (dt->refs == 0) {
@@ -82,7 +82,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 	int removed_lastmeta = 0;
 
 	if (!valid_block_ip(ip, block))
-		return meta_error;
+		return META_ERROR;
 
 	q = bitmap_type(ip->i_sbd, block);
 	if (q == GFS2_BLKST_FREE) {
@@ -92,7 +92,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 			  (unsigned long long)block,
 			  (unsigned long long)ip->i_di.di_num.no_addr,
 			  (unsigned long long)ip->i_di.di_num.no_addr);
-		return meta_is_good;
+		return META_IS_GOOD;
 	}
 	if (find_remove_dup(ip, block, btype, &removed_lastmeta)) { /* a dup */
 		if (was_duplicate) {
@@ -111,7 +111,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 		check_n_fix_bitmap(ip->i_sbd, ip->i_rgd, block, 0,
 				   GFS2_BLKST_FREE);
 	}
-	return meta_is_good;
+	return META_IS_GOOD;
 }
 
 static int remove_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,

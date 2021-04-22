@@ -977,9 +977,9 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 dentry_is_valid:
 	/* This directory inode links to this inode via this dentry */
 	error = incr_link_count(entry, ip, _("valid reference"));
-	if (error == incr_link_check_orig) {
+	if (error == INCR_LINK_CHECK_ORIG) {
 		error = check_suspicious_dirref(sdp, &entry);
-	} else if (error == incr_link_ino_mismatch) {
+	} else if (error == INCR_LINK_INO_MISMATCH) {
 		log_err("incr_link_count err=%d.\n", error);
 		if (bad_formal_ino(ip, dent, entry, tmp_name, q, de, bh) == 1)
 			goto nuke_dentry;
@@ -1882,7 +1882,7 @@ static int check_metalist_qc(struct iptr iptr, struct gfs2_buffer_head **bh, int
 	*was_duplicate = 0;
 	*is_valid = 1;
 	*bh = bread(ip->i_sbd, block);
-	return meta_is_good;
+	return META_IS_GOOD;
 }
 
 static int check_data_qc(struct gfs2_inode *ip, uint64_t metablock,

@@ -488,7 +488,7 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 
 /*
  * rindex_rebuild - rebuild a corrupt Resource Group (RG) index manually
- *                  where trust_lvl == distrust
+ *                  where trust_lvl == DISTRUST
  *
  * If this routine is called, it means we have RGs in odd/unexpected places,
  * and there is a corrupt RG or RG index entry.  It also means we can't trust
@@ -854,7 +854,7 @@ static int calc_rgrps(struct gfs2_sbd *sdp)
 
 /*
  * gfs2_rindex_calculate - calculate what the rindex should look like
- *                          in a perfect world (trust_lvl == open_minded)
+ *                          in a perfect world (trust_lvl == OPEN_MINDED)
  *
  * Calculate what the rindex should look like, 
  * so we can later check if all RG index entries are sane.
@@ -1002,11 +1002,11 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
 /*
  * rg_repair - try to repair a damaged rg index (rindex)
  * trust_lvl - This is how much we trust the rindex file.
- *             blind_faith means we take the rindex at face value.
- *             open_minded means it might be okay, but we should verify it.
- *             distrust means it's not to be trusted, so we should go to
+ *             BLIND_FAITH means we take the rindex at face value.
+ *             OPEN_MINDED means it might be okay, but we should verify it.
+ *             DISTRUST means it's not to be trusted, so we should go to
  *             greater lengths to build it from scratch.
- *             indignation means we have corruption, but the file system
+ *             INDIGNATION means we have corruption, but the file system
  *             was converted from GFS via gfs2_convert, and its rgrps are
  *             not on nice boundaries thanks to previous gfs_grow ops. Lovely.
  */
@@ -1017,9 +1017,9 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 	int calc_rg_count = 0, rg;
 	struct gfs2_rindex buf;
 
-	if (trust_lvl == blind_faith)
+	if (trust_lvl == BLIND_FAITH)
 		return 0;
-	if (trust_lvl == ye_of_little_faith) { /* if rindex seems sane */
+	if (trust_lvl == YE_OF_LITTLE_FAITH) { /* if rindex seems sane */
 		/* Don't free previous incarnations in memory, if any.
 		 * We need them to copy in the next function:
 		 * gfs2_rgrp_free(&sdp->rglist); */
@@ -1033,7 +1033,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 			gfs2_rgrp_free(sdp, &sdp->rgcalc);
 			return error;
 		}
-	} else if (trust_lvl == open_minded) { /* If we can't trust RG index */
+	} else if (trust_lvl == OPEN_MINDED) { /* If we can't trust RG index */
 		/* Free previous incarnations in memory, if any. */
 		gfs2_rgrp_free(sdp, &sdp->rgtree);
 
@@ -1043,7 +1043,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 			gfs2_rgrp_free(sdp, &sdp->rgcalc);
 			return -1;
 		}
-	} else if (trust_lvl == distrust) { /* If we can't trust RG index */
+	} else if (trust_lvl == DISTRUST) { /* If we can't trust RG index */
 		/* Free previous incarnations in memory, if any. */
 		gfs2_rgrp_free(sdp, &sdp->rgtree);
 
@@ -1053,7 +1053,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 			gfs2_rgrp_free(sdp, &sdp->rgcalc);
 			return -1;
 		}
-	} else if (trust_lvl == indignation) { /* If we can't trust anything */
+	} else if (trust_lvl == INDIGNATION) { /* If we can't trust anything */
 		/* Free previous incarnations in memory, if any. */
 		gfs2_rgrp_free(sdp, &sdp->rgtree);
 
@@ -1090,11 +1090,11 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 			    "extended, (2) an odd\n"), trust_lvl + 1);
 		log_warn( _("L%d: rgrp size was used, or (3) we have a corrupt "
 			    "rg index.\n"), trust_lvl + 1);
-		/* If the trust level is open_minded, we would have calculated
+		/* If the trust level is OPEN_MINDED, we would have calculated
 		   the rindex based on the device size. If it's not the same
 		   number, don't trust it. Complain about the discrepancy,
-		   then try again with a little more distrust. */
-		if ((trust_lvl < distrust) ||
+		   then try again with a little more DISTRUST. */
+		if ((trust_lvl < DISTRUST) ||
 		    !query( _("Attempt to use what rgrps we can? (y/n)"))) {
 			gfs2_rgrp_free(sdp, &sdp->rgcalc);
 			gfs2_rgrp_free(sdp, &sdp->rgtree);

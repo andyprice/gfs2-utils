@@ -55,10 +55,10 @@ static void log_inode_reference(struct duptree *dt, osi_list_t *tmp, int inval)
 		sprintf(reftypestring, "as %s", reftypes[get_ref_type(id)]);
 	else
 		sprintf(reftypestring, "%d/%d/%d/%d",
-			id->reftypecount[ref_is_inode],
-			id->reftypecount[ref_as_data],
-			id->reftypecount[ref_as_meta],
-			id->reftypecount[ref_as_ea]);
+			id->reftypecount[REF_IS_INODE],
+			id->reftypecount[REF_AS_DATA],
+			id->reftypecount[REF_AS_META],
+			id->reftypecount[REF_AS_EA]);
 	if (inval)
 		log_warn( _("Invalid "));
 	log_warn( _("Inode %s (%lld/0x%llx) has %d reference(s) to "
@@ -74,7 +74,7 @@ static int findref_meta(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
 {
 	*is_valid = 1;
 	*was_duplicate = 0;
-	return meta_is_good;
+	return META_IS_GOOD;
 }
 
 static int findref_data(struct gfs2_inode *ip, uint64_t metablock,
@@ -90,7 +90,7 @@ static int findref_data(struct gfs2_inode *ip, uint64_t metablock,
 			  "block 0x%llx, offset 0x%x\n",
 			  (unsigned long long)mbr->metablock, mbr->off);
 	}
-	return meta_is_good;
+	return META_IS_GOOD;
 }
 
 static void clone_data_block(struct gfs2_sbd *sdp, struct duptree *dt,
@@ -225,7 +225,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 		 * block, we should really duplicate the block and fix all
 		 * references to it in this inode.  Unfortunately, we would
 		 * have to traverse the entire metadata tree to do that. */
-		if (acceptable_ref != ref_types && /* If we're nuking all but
+		if (acceptable_ref != REF_TYPES && /* If we're nuking all but
 						      an acceptable reference
 						      type and */
 		    this_ref == acceptable_ref) { /* this ref is acceptable */
@@ -261,7 +261,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 			  (unsigned long long)dt->block,
 			  (unsigned long long)dt->block,
 			  reftypes[this_ref], reftypes[acceptable_ref]);
-		if (this_ref == ref_as_ea) {
+		if (this_ref == REF_AS_EA) {
 			if (!(query( _("Okay to remove extended attributes "
 				       "from %s inode %lld (0x%llx)? (y/n) "),
 				     (inval ? _("invalidated") : ""),
@@ -278,8 +278,8 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 				dup_listent_delete(dt, id);
 				continue;
 			}
-		} else if (acceptable_ref == ref_types &&
-			   this_ref == ref_as_data) {
+		} else if (acceptable_ref == REF_TYPES &&
+			   this_ref == REF_AS_DATA) {
 			clone_data_block(sdp, dt, id);
 			dup_listent_delete(dt, id);
 			revise_dup_handler(dt->block, dh);
@@ -303,7 +303,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 				    "deleted.\n"),
 				  (unsigned long long)id->block_no,
 				  (unsigned long long)id->block_no);
-		else if (this_ref == ref_as_ea)
+		else if (this_ref == REF_AS_EA)
 			log_warn(_("Pass1b is removing extended attributes "
 				   "from inode %lld (0x%llx).\n"),
 				 (unsigned long long)id->block_no,
@@ -343,9 +343,9 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 			}
 			/* If the reference was as metadata or data, we've got
 			   a corrupt dinode that will be deleted. */
-			if ((this_ref != ref_as_ea) &&
-			    (inval || id->reftypecount[ref_as_data] ||
-			     id->reftypecount[ref_as_meta])) {
+			if ((this_ref != REF_AS_EA) &&
+			    (inval || id->reftypecount[REF_AS_DATA] ||
+			     id->reftypecount[REF_AS_META])) {
 				/* Fix the bitmap first, while the inodetree
 				   and dirtree entries exist. That way, the
 				   bitmap_set will do proper accounting for
@@ -385,7 +385,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 		   (because they were eliminated earlier in pass1b). And so
 		   the blocks will be mistakenly freed, when, in fact, they're
 		   still being referenced by a valid dinode. */
-		if (this_ref != ref_as_ea)
+		if (this_ref != REF_AS_EA)
 			delete_all_dups(ip);
 		fsck_inode_put(&ip); /* out, brelse, free */
 	}
@@ -584,12 +584,12 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 			     "already marked free.\n"),
 			   (unsigned long long)id->block_no,
 			   (unsigned long long)id->block_no);
-	} else if (id->reftypecount[ref_is_inode]) {
+	} else if (id->reftypecount[REF_IS_INODE]) {
 		set_ip_bitmap(ip);
-	} else if (id->reftypecount[ref_as_data]) {
+	} else if (id->reftypecount[REF_AS_DATA]) {
 		fsck_bitmap_set(ip, dt->block,  _("reference-repaired data"),
 				GFS2_BLKST_USED);
-	} else if (id->reftypecount[ref_as_meta]) {
+	} else if (id->reftypecount[REF_AS_META]) {
 		if (is_dir(&ip->i_di, sdp->gfs1))
 			fsck_bitmap_set(ip, dt->block,
 					_("reference-repaired leaf"),
@@ -601,7 +601,7 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 					sdp->gfs1 ? GFS2_BLKST_DINODE :
 					GFS2_BLKST_USED);
 	} else {
-		if (acceptable_ref == ref_as_ea)
+		if (acceptable_ref == REF_AS_EA)
 			fsck_bitmap_set(ip, dt->block,
 					_("reference-repaired extended "
 					  "attribute"),
@@ -687,16 +687,16 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 	   entries) are invalid and should be deleted. */
 	if (be32_to_cpu(cmagic) == GFS2_MAGIC &&
 	    be32_to_cpu(ctype) == GFS2_METATYPE_DI)
-		acceptable_ref = ref_is_inode;
+		acceptable_ref = REF_IS_INODE;
 	else if (be32_to_cpu(cmagic) == GFS2_MAGIC &&
 	    (be32_to_cpu(ctype) == GFS2_METATYPE_EA ||
 	     be32_to_cpu(ctype) == GFS2_METATYPE_ED))
-		acceptable_ref = ref_as_ea;
+		acceptable_ref = REF_AS_EA;
 	else if (be32_to_cpu(cmagic) == GFS2_MAGIC &&
 		 be32_to_cpu(ctype) <= GFS2_METATYPE_QC)
-		acceptable_ref = ref_as_meta;
+		acceptable_ref = REF_AS_META;
 	else
-		acceptable_ref = ref_as_data;
+		acceptable_ref = REF_AS_DATA;
 
 	/* A single reference to the block implies a possible situation where
 	   a data pointer points to a metadata block.  In other words, the
@@ -714,7 +714,7 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 
 	/* Step 1 - eliminate references from inodes that are not valid.
 	 *          This may be because they were deleted due to corruption.
-	 *          All block types are unacceptable, so we use ref_types.
+	 *          All block types are unacceptable, so we use REF_TYPES.
 	 */
 	if (dh.ref_count > 1) {
 		log_debug( _("----------------------------------------------\n"
@@ -724,7 +724,7 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 			   (unsigned long long)dt->block,
 			   (unsigned long long)dt->block);
 		resolve_dup_references(sdp, dt, &dt->ref_invinode_list,
-				       &dh, 1, ref_types);
+				       &dh, 1, REF_TYPES);
 		revise_dup_handler(dup_blk, &dh);
 	}
 	/* Step 2 - eliminate reference from inodes that reference it as the
@@ -744,7 +744,7 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 	}
 	/* Step 3 - We have multiple dinodes referencing it as the correct
 	 *          type.  Just blast one of them.
-	 *          All block types are fair game, so we use ref_types.
+	 *          All block types are fair game, so we use REF_TYPES.
 	 */
 	if (dh.ref_count > 1) {
 		log_debug( _("----------------------------------------------\n"
@@ -753,7 +753,7 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 			   (unsigned long long)dt->block,
 			   (unsigned long long)dt->block);
 		resolve_dup_references(sdp, dt, &dt->ref_inode_list, &dh, 0,
-				       ref_types);
+				       REF_TYPES);
 		revise_dup_handler(dup_blk, &dh);
 	}
 	/* If there's still a last remaining reference, and it's a valid
@@ -786,7 +786,7 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 static int check_leaf_refs(struct gfs2_inode *ip, uint64_t block,
 			   void *private)
 {
-	return add_duplicate_ref(ip, block, ref_as_meta, 1, INODE_VALID);
+	return add_duplicate_ref(ip, block, REF_AS_META, 1, INODE_VALID);
 }
 
 static int check_metalist_refs(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
@@ -797,14 +797,14 @@ static int check_metalist_refs(struct iptr iptr, struct gfs2_buffer_head **bh, i
 
 	*was_duplicate = 0;
 	*is_valid = 1;
-	return add_duplicate_ref(ip, block, ref_as_meta, 1, INODE_VALID);
+	return add_duplicate_ref(ip, block, REF_AS_META, 1, INODE_VALID);
 }
 
 static int check_data_refs(struct gfs2_inode *ip, uint64_t metablock,
 			   uint64_t block, void *private,
 			   struct gfs2_buffer_head *bh, __be64 *ptr)
 {
-	return add_duplicate_ref(ip, block, ref_as_data, 1, INODE_VALID);
+	return add_duplicate_ref(ip, block, REF_AS_DATA, 1, INODE_VALID);
 }
 
 static int check_eattr_indir_refs(struct gfs2_inode *ip, uint64_t block,
@@ -814,7 +814,7 @@ static int check_eattr_indir_refs(struct gfs2_inode *ip, uint64_t block,
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	int error;
 
-	error = add_duplicate_ref(ip, block, ref_as_ea, 1, INODE_VALID);
+	error = add_duplicate_ref(ip, block, REF_AS_EA, 1, INODE_VALID);
 	if (!error)
 		*bh = bread(sdp, block);
 
@@ -828,7 +828,7 @@ static int check_eattr_leaf_refs(struct gfs2_inode *ip, uint64_t block,
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	int error;
 
-	error = add_duplicate_ref(ip, block, ref_as_ea, 1, INODE_VALID);
+	error = add_duplicate_ref(ip, block, REF_AS_EA, 1, INODE_VALID);
 	if (!error)
 		*bh = bread(sdp, block);
 	return error;
@@ -859,7 +859,7 @@ static int check_eattr_extentry_refs(struct gfs2_inode *ip, int i,
 	   the blockmap. In this case, we should be okay because the only
 	   error possible is a malloc that fails, in which case we don't
 	   want to delete the eattr anyway. */
-	return add_duplicate_ref(ip, block, ref_as_ea, 1, INODE_VALID);
+	return add_duplicate_ref(ip, block, REF_AS_EA, 1, INODE_VALID);
 }
 
 /* Finds all references to duplicate blocks in the metadata */
@@ -892,7 +892,7 @@ static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
 		goto out;
 	}
 	/* Check to see if this inode was referenced by another by mistake */
-	add_duplicate_ref(ip, inode, ref_is_inode, 1, INODE_VALID);
+	add_duplicate_ref(ip, inode, REF_IS_INODE, 1, INODE_VALID);
 
 	/* Check this dinode's metadata for references to known duplicates */
 	error = check_metatree(ip, &find_refs);
