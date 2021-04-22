@@ -1406,9 +1406,10 @@ static int metawalk_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass
 		      uint64_t *blks_checked, struct error_block *error_blk)
 {
 	int error = 0, rc = 0;
-	uint64_t block, *ptr;
-	uint64_t *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
-	uint64_t *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->bsize);
+	uint64_t block;
+	__be64 *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
+	__be64 *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->bsize);
+	__be64 *ptr;
 	uint64_t metablock = bh->b_blocknr;
 
 	/* If there isn't much pointer corruption check the pointers */
@@ -1478,11 +1479,12 @@ static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 			   struct gfs2_buffer_head *bh, unsigned int height,
 			   struct error_block *error_blk, int error)
 {
-	uint64_t *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
-	uint64_t *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->bsize);
+	__be64 *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
+	__be64 *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->bsize);
+	__be64 *ptr;
 	uint64_t metablock = bh->b_blocknr;
 	int rc = 0;
-	uint64_t block, *ptr;
+	uint64_t block;
 	int found_error_blk = 0;
 
 	/* If there isn't much pointer corruption check the pointers */
