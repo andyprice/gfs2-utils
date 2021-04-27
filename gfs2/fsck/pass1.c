@@ -68,20 +68,6 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, int i,
 				     void *private);
 static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 			      int leaf_pointer_errors, void *private);
-static int invalidate_metadata(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
-                               int *is_valid, int *was_duplicate, void *private);
-static int invalidate_leaf(struct gfs2_inode *ip, uint64_t block,
-			   void *private);
-static int invalidate_data(struct gfs2_inode *ip, uint64_t metablock,
-			   uint64_t block, void *private,
-			   struct gfs2_buffer_head *bh, uint64_t *ptr);
-static int invalidate_eattr_indir(struct gfs2_inode *ip, uint64_t block,
-				  uint64_t parent,
-				  struct gfs2_buffer_head **bh,
-				  void *private);
-static int invalidate_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
-				 uint64_t parent, struct gfs2_buffer_head **bh,
-				 void *private);
 static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip);
 static int delete_block(struct gfs2_inode *ip, uint64_t block,
 			struct gfs2_buffer_head **bh, const char *btype,
@@ -199,16 +185,6 @@ struct metawalk_fxns pass1_fxns = {
 	.repair_leaf = pass1_repair_leaf,
 	.undo_check_meta = undo_check_metalist,
 	.undo_check_data = undo_check_data,
-	.delete_block = delete_block,
-};
-
-struct metawalk_fxns invalidate_fxns = {
-	.private = NULL,
-	.check_metalist = invalidate_metadata,
-	.check_data = invalidate_data,
-	.check_leaf = invalidate_leaf,
-	.check_eattr_indir = invalidate_eattr_indir,
-	.check_eattr_leaf = invalidate_eattr_leaf,
 	.delete_block = delete_block,
 };
 
@@ -1168,6 +1144,16 @@ static int invalidate_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 				  _("extended attribute"),
 				  NULL, NULL);
 }
+
+struct metawalk_fxns invalidate_fxns = {
+	.private = NULL,
+	.check_metalist = invalidate_metadata,
+	.check_data = invalidate_data,
+	.check_leaf = invalidate_leaf,
+	.check_eattr_indir = invalidate_eattr_indir,
+	.check_eattr_leaf = invalidate_eattr_leaf,
+	.delete_block = delete_block,
+};
 
 /**
  * Check for massive amounts of pointer corruption.  If the block has
