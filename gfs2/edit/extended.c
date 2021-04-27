@@ -547,13 +547,9 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 				if (ret != sizeof(buf)) {
 					perror("Failed to read resource group");
 				} else if (sbd.gfs1) {
-					struct gfs_rgrp rg1;
-					gfs_rgrp_in(&rg1, buf);
-					gfs_rgrp_print(&rg1);
+					gfs_rgrp_print(buf);
 				} else {
-					struct gfs2_rgrp rg;
-					gfs2_rgrp_in(&rg, buf);
-					gfs2_rgrp_print(&rg);
+					lgfs2_rgrp_print(buf);
 				}
 			}
 			last_entry_onscreen[dmode] = print_entry_ndx;

@@ -232,7 +232,7 @@ extern int display(int identify_only, int trunc_zeros, uint64_t flagref,
 		   uint64_t ref_blk);
 extern uint64_t check_keywords(const char *kword);
 extern uint64_t masterblock(const char *fn);
-extern void gfs_rgrp_print(struct gfs_rgrp *rg);
+extern void gfs_rgrp_print(void *rgp);
 extern int has_indirect_blocks(void);
 extern const struct lgfs2_metadata *get_block_type(char *buf);
 

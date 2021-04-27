@@ -73,6 +73,14 @@ void gfs2_inum_print(const struct gfs2_inum *no)
 	pv(no, no_addr, "%"PRIu64, "0x%"PRIx64);
 }
 
+void lgfs2_inum_print(void *nop)
+{
+	struct gfs2_inum *no = nop;
+
+	printbe64(no, no_formal_ino);
+	printbe64(no, no_addr);
+}
+
 void gfs2_meta_header_in(struct gfs2_meta_header *mh, const char *buf)
 {
 	const struct gfs2_meta_header *str = (struct gfs2_meta_header *)buf;
@@ -255,18 +263,20 @@ void gfs2_rgrp_out(const struct gfs2_rgrp *rg, char *buf)
 	lgfs2_rgrp_crc_set(buf);
 }
 
-void gfs2_rgrp_print(const struct gfs2_rgrp *rg)
+void lgfs2_rgrp_print(void *rgp)
 {
-	gfs2_meta_header_print(&rg->rg_header);
-	pv(rg, rg_flags, "%"PRIu32, "0x%"PRIx32);
-	pv(rg, rg_free, "%"PRIu32, "0x%"PRIx32);
-	pv(rg, rg_dinodes, "%"PRIu32, "0x%"PRIx32);
-	pv(rg, rg_skip, "%"PRIu32, "0x%"PRIx32);
-	pv(rg, rg_igeneration, "%"PRIu64, "0x%"PRIx64);
-	pv(rg, rg_data0, "%"PRIu64, "0x%"PRIx64);
-	pv(rg, rg_data, "%"PRIu32, "0x%"PRIx32);
-	pv(rg, rg_bitbytes, "%"PRIu32, "0x%"PRIx32);
-	pv(rg, rg_crc, "%"PRIu32, "0x%"PRIx32);
+	struct gfs2_rgrp *rg = rgp;
+
+	lgfs2_meta_header_print(&rg->rg_header);
+	printbe32(rg, rg_flags);
+	printbe32(rg, rg_free);
+	printbe32(rg, rg_dinodes);
+	printbe32(rg, rg_skip);
+	printbe64(rg, rg_igeneration);
+	printbe64(rg, rg_data0);
+	printbe32(rg, rg_data);
+	printbe32(rg, rg_bitbytes);
+	printbe32(rg, rg_crc);
 }
 
 void lgfs2_quota_print(void *qp)

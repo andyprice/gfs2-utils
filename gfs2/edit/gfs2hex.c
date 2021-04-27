@@ -416,44 +416,9 @@ static void gfs2_sb_print2(struct gfs2_sb *sbp2)
 	print_it("  sb_uuid", "%s", NULL, readable_uuid);
 }
 
-/**
- * gfs1_rgrp_in - read in a gfs1 rgrp
- */
-static void gfs1_rgrp_in(struct gfs_rgrp *rgrp, const char *buf)
-{
-        struct gfs_rgrp *str = (struct gfs_rgrp *)buf;
-
-        gfs2_meta_header_in(&rgrp->rg_header, buf);
-        rgrp->rg_flags = be32_to_cpu(str->rg_flags);
-        rgrp->rg_free = be32_to_cpu(str->rg_free);
-        rgrp->rg_useddi = be32_to_cpu(str->rg_useddi);
-        rgrp->rg_freedi = be32_to_cpu(str->rg_freedi);
-        gfs2_inum_in(&rgrp->rg_freedi_list, (char *)&str->rg_freedi_list);
-        rgrp->rg_usedmeta = be32_to_cpu(str->rg_usedmeta);
-        rgrp->rg_freemeta = be32_to_cpu(str->rg_freemeta);
-        memcpy(rgrp->rg_reserved, str->rg_reserved, 64);
-}
-
-/**
- * gfs_rgrp_print - Print out a resource group header
- */
-static void gfs1_rgrp_print(struct gfs_rgrp *rg)
-{
-        gfs2_meta_header_print(&rg->rg_header);
-        pv(rg, rg_flags, "%"PRIu32, "0x%"PRIx32);
-        pv(rg, rg_free, "%"PRIu32, "0x%"PRIx32);
-        pv(rg, rg_useddi, "%"PRIu32, "0x%"PRIx32);
-        pv(rg, rg_freedi, "%"PRIu32, "0x%"PRIx32);
-        gfs2_inum_print(&rg->rg_freedi_list);
-
-        pv(rg, rg_usedmeta, "%"PRIu32, "0x%"PRIx32);
-        pv(rg, rg_freemeta, "%"PRIu32, "0x%"PRIx32);
-}
-
 int display_gfs2(char *buf)
 {
 	struct gfs2_meta_header mh;
-	struct gfs2_rgrp rg;
 	struct gfs_log_header lh1;
 	struct gfs2_log_header lh;
 
@@ -479,15 +444,10 @@ int display_gfs2(char *buf)
 			break;
 
 		case GFS2_METATYPE_RG:
-			if (sbd.gfs1) {
-				struct gfs_rgrp rg1;
-
-				gfs1_rgrp_in(&rg1, buf);
-				gfs1_rgrp_print(&rg1);
-			} else {
-				gfs2_rgrp_in(&rg, buf);
-				gfs2_rgrp_print(&rg);
-			}
+			if (sbd.gfs1)
+				gfs_rgrp_print(buf);
+			else
+				lgfs2_rgrp_print(buf);
 			break;
 
 		case GFS2_METATYPE_RB:

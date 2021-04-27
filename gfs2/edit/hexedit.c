@@ -26,6 +26,10 @@
 #include "extended.h"
 #include "journal.h"
 
+#define printbe32(struct, member) do { \
+		print_it("  "#member, "%"PRIu32, "0x%"PRIx32, be32_to_cpu(struct->member)); \
+	} while(0)
+
 const char *mtypes[] = {"none", "sb", "rg", "rb", "di", "in", "lf", "jd",
 			"lh", "ld", "ea", "ed", "lb", "13", "qc"};
 const char *allocdesc[2][5] = {
@@ -728,16 +732,18 @@ static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
 /* ------------------------------------------------------------------------ */
 /* gfs_rgrp_print - print a gfs1 resource group                             */
 /* ------------------------------------------------------------------------ */
-void gfs_rgrp_print(struct gfs_rgrp *rg)
+void gfs_rgrp_print(void *rgp)
 {
-	gfs2_meta_header_print(&rg->rg_header);
-	pv(rg, rg_flags, "%u", "0x%x");
-	pv(rg, rg_free, "%u", "0x%x");
-	pv(rg, rg_useddi, "%u", "0x%x");
-	pv(rg, rg_freedi, "%u", "0x%x");
-	gfs2_inum_print(&rg->rg_freedi_list);
-	pv(rg, rg_usedmeta, "%u", "0x%x");
-	pv(rg, rg_freemeta, "%u", "0x%x");
+	struct gfs_rgrp *rg = rgp;
+
+	lgfs2_meta_header_print(&rg->rg_header);
+	printbe32(rg, rg_flags);
+	printbe32(rg, rg_free);
+	printbe32(rg, rg_useddi);
+	printbe32(rg, rg_freedi);
+	lgfs2_inum_print(&rg->rg_freedi_list);
+	printbe32(rg, rg_usedmeta);
+	printbe32(rg, rg_freemeta);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -774,46 +780,36 @@ static uint64_t get_rg_addr(int rgnum)
 /* ------------------------------------------------------------------------ */
 static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 {
-	union {
-		struct gfs2_rgrp rg2;
-		struct gfs_rgrp rg1;
-	} rg;
 	struct gfs2_buffer_head *rbh;
+	struct gfs2_rgrp *rg;
 	uint64_t rgblk;
 
 	rgblk = get_rg_addr(rgnum);
 	rbh = bread(&sbd, rgblk);
-	if (sbd.gfs1)
-		gfs_rgrp_in(&rg.rg1, rbh->b_data);
-	else
-		gfs2_rgrp_in(&rg.rg2, rbh->b_data);
+	rg = (void *)rbh->b_data;
+
 	if (modify) {
-		printf("RG #%d (block %llu / 0x%llx) rg_flags changed from 0x%08x to 0x%08x\n",
-		       rgnum, (unsigned long long)rgblk,
-		       (unsigned long long)rgblk, rg.rg2.rg_flags, new_flags);
-		rg.rg2.rg_flags = new_flags;
-		if (sbd.gfs1)
-			gfs_rgrp_out(&rg.rg1, rbh->b_data);
-		else
-			gfs2_rgrp_out(&rg.rg2, rbh->b_data);
+		uint32_t flags = be32_to_cpu(rg->rg_flags);
+
+		printf("RG #%d (block %"PRIu64" / 0x%"PRIx64") rg_flags changed from 0x%08x to 0x%08x\n",
+		       rgnum, rgblk, rgblk, flags, new_flags);
+		rg->rg_flags = cpu_to_be32(new_flags);
 		bmodified(rbh);
-		brelse(rbh);
 	} else {
 		if (full) {
 			print_gfs2("RG #%d", rgnum);
 			print_gfs2(" located at: %"PRIu64" (0x%"PRIx64")", rgblk, rgblk);
                         eol(0);
 			if (sbd.gfs1)
-				gfs_rgrp_print(&rg.rg1);
+				gfs_rgrp_print(rg);
 			else
-				gfs2_rgrp_print(&rg.rg2);
+				lgfs2_rgrp_print(rg);
 		}
 		else
-			printf("RG #%d (block %llu / 0x%llx) rg_flags = 0x%08x\n",
-			       rgnum, (unsigned long long)rgblk,
-			       (unsigned long long)rgblk, rg.rg2.rg_flags);
-		brelse(rbh);
+			printf("RG #%d (block %"PRIu64" / 0x%"PRIx64") rg_flags = 0x%08x\n",
+			       rgnum, rgblk, rgblk, be32_to_cpu(rg->rg_flags));
 	}
+	brelse(rbh);
 	if (modify)
 		fsync(sbd.device_fd);
 }
