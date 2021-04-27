@@ -610,26 +610,25 @@ static int print_statfs(struct gfs2_inode *dis)
 
 static int print_quota(struct gfs2_inode *diq)
 {
-	struct gfs2_quota qbuf, q;
+	struct gfs2_quota q;
 	int i, error;
-	
+
 	print_gfs2("quota file contents:");
 	eol(0);
 	print_gfs2("quota entries found: %"PRIu64".", diq->i_di.di_size / sizeof(q));
 	eol(0);
 	for (i=0; ; i++) {
-		error = gfs2_readi(diq, (void *)&qbuf, i * sizeof(q), sizeof(qbuf));
+		error = gfs2_readi(diq, &q, i * sizeof(q), sizeof(q));
 		if (!error)
 			break;
-		if (error != sizeof(qbuf)) {
+		if (error != sizeof(q)) {
 			print_gfs2("Error reading quota file.");
 			eol(0);
 			return -1;
 		}
-		gfs2_quota_in(&q, (char *)&qbuf);
 		print_gfs2("Entry #%d", i + 1);
 		eol(0);
-		gfs2_quota_print(&q);
+		lgfs2_quota_print(&q);
 	}
 	return 0;
 }

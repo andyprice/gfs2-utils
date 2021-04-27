@@ -554,7 +554,6 @@ int build_quota(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 	struct gfs2_quota qu;
-	char buf[sizeof(struct gfs2_quota)];
 	int count;
 
 	ip = createi(sdp->master_dir, "quota", S_IFREG | 0600,
@@ -566,19 +565,18 @@ int build_quota(struct gfs2_sbd *sdp)
 	bmodified(ip->i_bh);
 
 	memset(&qu, 0, sizeof(struct gfs2_quota));
-	qu.qu_value = 1;
-	gfs2_quota_out(&qu, buf);
+	qu.qu_value = cpu_to_be64(1);
 
-	count = gfs2_writei(ip, buf, ip->i_di.di_size, sizeof(struct gfs2_quota));
+	count = gfs2_writei(ip, &qu, ip->i_di.di_size, sizeof(struct gfs2_quota));
 	if (count != sizeof(struct gfs2_quota))
 		return -1;
-	count = gfs2_writei(ip, buf, ip->i_di.di_size, sizeof(struct gfs2_quota));
+	count = gfs2_writei(ip, &qu, ip->i_di.di_size, sizeof(struct gfs2_quota));
 	if (count != sizeof(struct gfs2_quota))
 		return -1;
 
 	if (cfg_debug) {
 		printf("\nRoot quota:\n");
-		gfs2_quota_print(&qu);
+		lgfs2_quota_print(&qu);
 	}
 
 	inode_put(&ip);

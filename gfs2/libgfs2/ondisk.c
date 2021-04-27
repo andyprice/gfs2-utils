@@ -269,31 +269,13 @@ void gfs2_rgrp_print(const struct gfs2_rgrp *rg)
 	pv(rg, rg_crc, "%"PRIu32, "0x%"PRIx32);
 }
 
-void gfs2_quota_in(struct gfs2_quota *qu, char *buf)
+void lgfs2_quota_print(void *qp)
 {
-	struct gfs2_quota *str = (struct gfs2_quota *)buf;
+	struct gfs2_quota *q = qp;
 
-	CPIN_64(qu, str, qu_limit);
-	CPIN_64(qu, str, qu_warn);
-	CPIN_64(qu, str, qu_value);
-	CPIN_08(qu, str, qu_reserved, sizeof(qu->qu_reserved));
-}
-
-void gfs2_quota_out(struct gfs2_quota *qu, char *buf)
-{
-	struct gfs2_quota *str = (struct gfs2_quota *)buf;
-
-	CPOUT_64(qu, str, qu_limit);
-	CPOUT_64(qu, str, qu_warn);
-	CPOUT_64(qu, str, qu_value);
-	memset(qu->qu_reserved, 0, sizeof(qu->qu_reserved));
-}
-
-void gfs2_quota_print(const struct gfs2_quota *qu)
-{
-	pv(qu, qu_limit, "%"PRIu64, "0x%"PRIx64);
-	pv(qu, qu_warn, "%"PRIu64, "0x%"PRIx64);
-	pv(qu, qu_value, "%"PRIu64, "0x%"PRIx64);
+	printbe64(q, qu_limit);
+	printbe64(q, qu_warn);
+	printbe64(q, qu_value);
 }
 
 void gfs2_dinode_in(struct gfs2_dinode *di, char *buf)
