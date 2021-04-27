@@ -454,7 +454,6 @@ int display_gfs2(char *buf)
 {
 	struct gfs2_meta_header mh;
 	struct gfs2_rgrp rg;
-	struct gfs2_leaf lf;
 	struct gfs_log_header lh1;
 	struct gfs2_log_header lh;
 
@@ -504,8 +503,7 @@ int display_gfs2(char *buf)
 			break;
 
 		case GFS2_METATYPE_LF:
-			gfs2_leaf_in(&lf, buf);
-			gfs2_leaf_print(&lf);
+			lgfs2_leaf_print(buf);
 			break;
 
 		case GFS2_METATYPE_JD:

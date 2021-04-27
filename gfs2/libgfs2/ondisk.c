@@ -456,17 +456,19 @@ void gfs2_leaf_out(struct gfs2_leaf *lf, char *buf)
 	CPOUT_08(lf, str, lf_reserved2, 40);
 }
 
-void gfs2_leaf_print(const struct gfs2_leaf *lf)
+void lgfs2_leaf_print(void *lfp)
 {
-	gfs2_meta_header_print(&lf->lf_header);
-	pv(lf, lf_depth, "%"PRIu16, "0x%"PRIx16);
-	pv(lf, lf_entries, "%"PRIu16, "0x%"PRIx16);
-	pv(lf, lf_dirent_format, "%"PRIu32, "0x%"PRIx32);
-	pv(lf, lf_next, "%"PRIu64, "0x%"PRIx64);
-	pv(lf, lf_inode, "%"PRIu64, "0x%"PRIx64);
-	pv(lf, lf_dist, "%"PRIu32, "0x%"PRIx32);
-	pv(lf, lf_nsec, "%"PRIu32, "0x%"PRIx32);
-	pv(lf, lf_sec, "%"PRIu64, "0x%"PRIx64);
+	struct gfs2_leaf *lf = lfp;
+
+	lgfs2_meta_header_print(&lf->lf_header);
+	printbe16(lf, lf_depth);
+	printbe16(lf, lf_entries);
+	printbe32(lf, lf_dirent_format);
+	printbe64(lf, lf_next);
+	printbe64(lf, lf_inode);
+	printbe32(lf, lf_dist);
+	printbe32(lf, lf_nsec);
+	printbe64(lf, lf_sec);
 }
 
 void lgfs2_ea_header_print(void *eap)
