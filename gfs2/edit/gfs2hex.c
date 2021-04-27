@@ -23,8 +23,10 @@
 #define pv2(struct, member, fmt, fmt2) do {				\
 		print_it("  ", fmt, fmt2, struct->member);		\
 	} while (FALSE);
+#define printbe32(struct, member) do { \
+		print_it("  "#member, "%"PRIu32, "0x%"PRIx32, be32_to_cpu(struct->member)); \
+	} while(0)
 
-struct gfs2_sb sb;
 struct gfs2_dinode di;
 int line, termlines, modelines[DMODES];
 char edit_fmt[80];
@@ -364,56 +366,28 @@ static void do_eattr_extended(char *buf)
 	}
 }
 
-static void gfs2_inum_print2(const char *title,struct gfs2_inum *no)
-{
-	if (termlines) {
-		check_highlight(TRUE);
-		move(line,2);
-		printw(title);
-		check_highlight(FALSE);
-	}
-	else
-		printf("  %s:",title);
-	pv2(no, no_formal_ino, "%"PRIu64, "0x%"PRIx64);
-	if (!termlines)
-		printf("        addr:");
-	pv2(no, no_addr, "%"PRIu64, "0x%"PRIx64);
-}
-
 /**
- * gfs2_sb_print2 - Print out a superblock
- * @sb: the cpu-order buffer
+ * gfs_sb_print - Print out a gfs1 superblock
+ * @sbp: the big-endian buffer
  */
-static void gfs2_sb_print2(struct gfs2_sb *sbp2)
+static void gfs_sb_print(void *sbp)
 {
-	char readable_uuid[36+1];
+	struct gfs_sb *sb = sbp;
 
-	gfs2_meta_header_print(&sbp2->sb_header);
-
-	pv(sbp2, sb_fs_format, "%"PRIu32, "0x%"PRIx32);
-	pv(sbp2, sb_multihost_format, "%"PRIu32, "0x%"PRIx32);
-
-	if (sbd.gfs1)
-		pv(sbd1, sb_flags, "%"PRIu32, "0x%"PRIx32);
-	pv(sbp2, sb_bsize, "%"PRIu32, "0x%"PRIx32);
-	pv(sbp2, sb_bsize_shift, "%"PRIu32, "0x%"PRIx32);
-	if (sbd.gfs1) {
-		pv(sbd1, sb_seg_size, "%"PRIu32, "0x%"PRIx32);
-		gfs2_inum_print2("jindex ino", &sbd1->sb_jindex_di);
-		gfs2_inum_print2("rindex ino", &sbd1->sb_rindex_di);
-	}
-	else
-		gfs2_inum_print2("master dir", &sbp2->sb_master_dir);
-	gfs2_inum_print2("root dir  ", &sbp2->sb_root_dir);
-
-	pv(sbp2, sb_lockproto, "%s", NULL);
-	pv(sbp2, sb_locktable, "%s", NULL);
-	if (sbd.gfs1) {
-		gfs2_inum_print2("quota ino ", &gfs1_quota_di);
-		gfs2_inum_print2("license   ", &gfs1_license_di);
-	}
-	uuid_unparse(sbp2->sb_uuid, readable_uuid);
-	print_it("  sb_uuid", "%s", NULL, readable_uuid);
+	lgfs2_meta_header_print(&sb->sb_header);
+	printbe32(sb, sb_fs_format);
+	printbe32(sb, sb_multihost_format);
+	printbe32(sb, sb_flags);
+	printbe32(sb, sb_bsize);
+	printbe32(sb, sb_bsize_shift);
+	printbe32(sb, sb_seg_size);
+	lgfs2_inum_print(&sb->sb_jindex_di);
+	lgfs2_inum_print(&sb->sb_rindex_di);
+	lgfs2_inum_print(&sb->sb_root_di);
+	pv(sb, sb_lockproto, "%.64s", NULL);
+	pv(sb, sb_locktable, "%.64s", NULL);
+	lgfs2_inum_print(&sb->sb_quota_di);
+	lgfs2_inum_print(&sb->sb_license_di);
 }
 
 int display_gfs2(char *buf)
@@ -439,10 +413,11 @@ int display_gfs2(char *buf)
 		switch (mh.mh_type)
 		{
 		case GFS2_METATYPE_SB:
-			gfs2_sb_in(&sbd.sd_sb, buf);
-			gfs2_sb_print2(&sbd.sd_sb);
+			if (sbd.gfs1)
+				gfs_sb_print(buf);
+			else
+				lgfs2_sb_print(buf);
 			break;
-
 		case GFS2_METATYPE_RG:
 			if (sbd.gfs1)
 				gfs_rgrp_print(buf);

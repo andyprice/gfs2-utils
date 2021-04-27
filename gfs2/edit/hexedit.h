@@ -27,7 +27,6 @@ enum dsp_mode { HEX_MODE = 0, GFS2_MODE = 1, EXTENDED_MODE = 2, INIT_MODE = 3 };
 #define JOURNALS_DUMMY_BLOCK -3
 
 extern const char *mtypes[];
-extern struct gfs2_sb sb;
 extern int blockhist;
 extern int edit_mode;
 extern int line;
