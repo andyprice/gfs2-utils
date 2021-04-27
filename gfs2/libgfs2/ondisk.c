@@ -167,24 +167,20 @@ void gfs2_sb_out(const struct gfs2_sb *sb, char *buf)
 	memcpy(str->sb_uuid, sb->sb_uuid, 16);
 }
 
-void gfs2_sb_print(const struct gfs2_sb *sb)
+void lgfs2_sb_print(void *sbp)
 {
+	struct gfs2_sb *sb = sbp;
 	char readable_uuid[36+1];
 
-	gfs2_meta_header_print(&sb->sb_header);
-
-	pv(sb, sb_fs_format, "%"PRIu32, "0x%"PRIx32);
-	pv(sb, sb_multihost_format, "%"PRIu32, "0x%"PRIx32);
-
-	pv(sb, sb_bsize, "%"PRIu32, "0x%"PRIx32);
-	pv(sb, sb_bsize_shift, "%"PRIu32, "0x%"PRIx32);
-
-	gfs2_inum_print(&sb->sb_master_dir);
-	gfs2_inum_print(&sb->sb_root_dir);
-
-	pv(sb, sb_lockproto, "%s", NULL);
-	pv(sb, sb_locktable, "%s", NULL);
-
+	lgfs2_meta_header_print(&sb->sb_header);
+	printbe32(sb, sb_fs_format);
+	printbe32(sb, sb_multihost_format);
+	printbe32(sb, sb_bsize);
+	printbe32(sb, sb_bsize_shift);
+	lgfs2_inum_print(&sb->sb_master_dir);
+	lgfs2_inum_print(&sb->sb_root_dir);
+	print_it("  sb_lockproto", "%.64s", NULL, sb->sb_lockproto);
+	print_it("  sb_locktable", "%.64s", NULL, sb->sb_locktable);
 	uuid_unparse(sb->sb_uuid, readable_uuid);
 	print_it("  uuid", "%36s", NULL, readable_uuid);
 }
