@@ -51,11 +51,10 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 		jindex_block = masterblock("jindex");
 	/* read in the block */
 	jindex_bh = bread(&sbd, jindex_block);
-	/* get the dinode data from it. */
-	gfs2_dinode_in(&di, jindex_bh->b_data);
+	di = (struct gfs2_dinode *)jindex_bh->b_data;
 
 	if (!sbd.gfs1)
-		do_dinode_extended(&di, jindex_bh->b_data); /* parse dir. */
+		do_dinode_extended(jindex_bh->b_data); /* parse dir. */
 
 	if (sbd.gfs1) {
 		struct gfs2_inode *jiinode;

@@ -725,6 +725,7 @@ extern void gfs2_log_header_print(const struct gfs2_log_header *lh);
 extern void lgfs2_inum_print(void *nop);
 extern void lgfs2_meta_header_print(void *mhp);
 extern void lgfs2_sb_print(void *sbp);
+extern void lgfs2_dinode_print(void *dip);
 extern void lgfs2_log_descriptor_print(void *ldp);
 extern void lgfs2_quota_print(void *qp);
 extern void lgfs2_quota_change_print(void *qcp);

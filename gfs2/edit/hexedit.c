@@ -497,7 +497,7 @@ static int get_pnum(int ptroffset)
 /* ------------------------------------------------------------------------ */
 /* hexdump - hex dump the filesystem block to the screen                    */
 /* ------------------------------------------------------------------------ */
-static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
+static int hexdump(uint64_t startaddr, uint64_t len, int trunc_zeros,
 		   uint64_t flagref, uint64_t ref_blk)
 {
 	const unsigned char *pointer, *ptr2;
@@ -537,7 +537,7 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 			if (l < struct_len)
 				COLORS_NORMAL; /* normal part of structure */
 			else if (gfs2_struct_type == GFS2_METATYPE_DI &&
-					 l < struct_len + di.di_size)
+					 l < struct_len + be64_to_cpu(di->di_size))
 				COLORS_CONTENTS; /* after struct but not eof */
 			else
 				COLORS_SPECIAL; /* beyond end of the struct */
@@ -548,8 +548,9 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 			/* Figure out if we have a null pointer--for colors */
 			if (((gfs2_struct_type == GFS2_METATYPE_IN) ||
 			     (gfs2_struct_type == GFS2_METATYPE_DI &&
-			      l < struct_len + di.di_size &&
-			      (di.di_height > 0 || !S_ISREG(di.di_mode)))) &&
+			      l < struct_len + be64_to_cpu(di->di_size) &&
+			      (be16_to_cpu(di->di_height) > 0 ||
+			      !S_ISREG(be32_to_cpu(di->di_mode))))) &&
 			    (i==0 || i==8)) {
 				int j;
 
@@ -565,9 +566,9 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 				if (l + i < struct_len)
 					COLORS_NORMAL; /* in the structure */
 				else if (gfs2_struct_type == GFS2_METATYPE_DI
-					 && l + i < struct_len + di.di_size) {
-					if ((!di.di_height &&
-					     S_ISREG(di.di_mode)) ||
+					 && l + i < struct_len + be64_to_cpu(di->di_size)) {
+					if ((!di->di_height &&
+					     S_ISREG(be32_to_cpu(di->di_mode))) ||
 					    !ptr_not_null)
 						COLORS_CONTENTS;/*stuff data */
 					else
@@ -632,7 +633,7 @@ static int hexdump(uint64_t startaddr, int len, int trunc_zeros,
 			    block_type == GFS2_METATYPE_LD ||
 			    ((block_type == GFS2_METATYPE_DI) &&
 			     ((struct gfs2_dinode*)bh->b_data)->di_height) ||
-			     S_ISDIR(di.di_mode)) {
+			     S_ISDIR(be32_to_cpu(di->di_mode))) {
 				ptroffset = edit_row[dmode] * 16 +
 					edit_col[dmode];
 
@@ -822,7 +823,8 @@ int has_indirect_blocks(void)
 	if (indirect_blocks || gfs2_struct_type == GFS2_METATYPE_SB ||
 	    gfs2_struct_type == GFS2_METATYPE_LF ||
 	    (gfs2_struct_type == GFS2_METATYPE_DI &&
-	     (S_ISDIR(di.di_mode) || (sbd.gfs1 && di.__pad1 == GFS_FILE_DIR))))
+	     (S_ISDIR(be32_to_cpu(di->di_mode)) ||
+	      (sbd.gfs1 && be16_to_cpu(di->__pad1) == GFS_FILE_DIR))))
 		return TRUE;
 	return FALSE;
 }
@@ -986,8 +988,8 @@ static int read_master_dir(void)
 	bh = bread(&sbd, sbd.sd_sb.sb_master_dir.no_addr);
 	if (bh == NULL)
 		return 1;
-	gfs2_dinode_in(&di, bh->b_data);
-	do_dinode_extended(&di, bh->b_data); /* get extended data, if any */
+	di = (struct gfs2_dinode *)bh->b_data;
+	do_dinode_extended(bh->b_data); /* get extended data, if any */
 	memcpy(&masterdir, &indirect[0], sizeof(struct indirect_info));
 	return 0;
 }
@@ -1057,8 +1059,8 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 		indirect->ii[0].dirent[1].dirent.de_type = DT_DIR;
 	}
 	else if (gfs2_struct_type == GFS2_METATYPE_DI) {
-		gfs2_dinode_in(&di, bh->b_data);
-		do_dinode_extended(&di, bh->b_data); /* get extended data, if any */
+		di = (struct gfs2_dinode *)bh->b_data;
+		do_dinode_extended(bh->b_data); /* get extended data, if any */
 	}
 	else if (gfs2_struct_type == GFS2_METATYPE_IN) { /* indirect block list */
 		if (blockhist) {
@@ -1087,11 +1089,14 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 					    "Pointers "));
 		move(line, 0);
 	}
-	if (dmode == HEX_MODE)          /* if hex display mode           */
-		hexdump(dev_offset, (gfs2_struct_type == GFS2_METATYPE_DI)?
-		        struct_len + di.di_size:sbd.bsize, trunc_zeros,
-		        flagref, ref_blk);
-	else if (dmode == GFS2_MODE) { /* if structure display */
+	if (dmode == HEX_MODE) {         /* if hex display mode           */
+		uint64_t len = sbd.bsize;
+
+		if (gfs2_struct_type == GFS2_METATYPE_DI)
+			len = struct_len + be64_to_cpu(di->di_size);
+
+		hexdump(dev_offset, len, trunc_zeros, flagref, ref_blk);
+	} else if (dmode == GFS2_MODE) { /* if structure display */
 		if (block != JOURNALS_DUMMY_BLOCK)
 			display_gfs2(bh->b_data);
 	} else

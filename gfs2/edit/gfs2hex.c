@@ -27,7 +27,7 @@
 		print_it("  "#member, "%"PRIu32, "0x%"PRIx32, be32_to_cpu(struct->member)); \
 	} while(0)
 
-struct gfs2_dinode di;
+struct gfs2_dinode *di;
 int line, termlines, modelines[DMODES];
 char edit_fmt[80];
 char estring[1024];
@@ -231,16 +231,20 @@ static int indirect_dirent(struct indirect_info *indir, char *ptr, int d)
 	return de.de_rec_len;
 }
 
-void do_dinode_extended(struct gfs2_dinode *dine, char *buf)
+void do_dinode_extended(char *buf)
 {
+	struct gfs2_dinode *dip = (void *)buf;
 	unsigned int x, y, ptroff = 0;
 	uint64_t p, last;
-	int isdir = !!(S_ISDIR(dine->di_mode)) || 
-		(sbd.gfs1 && dine->__pad1 == GFS_FILE_DIR);
+	int isdir = 0;
+
+	if (S_ISDIR(be32_to_cpu(dip->di_mode)) ||
+	    (sbd.gfs1 && be16_to_cpu(dip->__pad1) == GFS_FILE_DIR))
+		isdir = 1;
 
 	indirect_blocks = 0;
 	memset(indirect, 0, sizeof(struct iinfo));
-	if (dine->di_height > 0) {
+	if (be16_to_cpu(dip->di_height) > 0) {
 		/* Indirect pointers */
 		for (x = sizeof(struct gfs2_dinode); x < sbd.bsize;
 			 x += sizeof(uint64_t)) {
@@ -251,13 +255,13 @@ void do_dinode_extended(struct gfs2_dinode *dine, char *buf)
 					ptroff;
 				indirect->ii[indirect_blocks].is_dir = FALSE;
 				indirect->ii[indirect_blocks].ptroff =
-				              (x - sizeof(*dine)) / sizeof(uint64_t);
+				              (x - sizeof(*dip)) / sizeof(uint64_t);
 				indirect_blocks++;
 			}
 			ptroff++;
 		}
 	}
-	else if (isdir && !(dine->di_flags & GFS2_DIF_EXHASH)) {
+	else if (isdir && !(be32_to_cpu(dip->di_flags) & GFS2_DIF_EXHASH)) {
 		int skip = 0;
 
 		/* Directory Entries: */
@@ -271,19 +275,18 @@ void do_dinode_extended(struct gfs2_dinode *dine, char *buf)
 				break;
 		}
 	}
-	else if (isdir &&
-			 (dine->di_flags & GFS2_DIF_EXHASH) &&
-			 dine->di_height == 0) {
+	else if (isdir && (be32_to_cpu(dip->di_flags) & GFS2_DIF_EXHASH) &&
+	         dip->di_height == 0) {
 		/* Leaf Pointers: */
 
 		last = be64_to_cpu(*(uint64_t *)(buf + sizeof(struct gfs2_dinode)));
 
 		for (x = sizeof(struct gfs2_dinode), y = 0;
-			 y < (1 << dine->di_depth);
+			 y < (1 << be16_to_cpu(dip->di_depth));
 			 x += sizeof(uint64_t), y++) {
 			p = be64_to_cpu(*(uint64_t *)(buf + x));
 
-			if (p != last || ((y + 1) * sizeof(uint64_t) == dine->di_size)) {
+			if (p != last || ((y + 1) * sizeof(uint64_t) == be64_to_cpu(dip->di_size))) {
 				struct gfs2_buffer_head *tmp_bh;
 				int skip = 0, direntcount = 0;
 				struct gfs2_leaf leaf;
@@ -430,9 +433,8 @@ int display_gfs2(char *buf)
 			break;
 
 		case GFS2_METATYPE_DI:
-			gfs2_dinode_print(&di);
+			lgfs2_dinode_print(di);
 			break;
-
 		case GFS2_METATYPE_IN:
 			gfs2_meta_header_print(&mh);
 			break;

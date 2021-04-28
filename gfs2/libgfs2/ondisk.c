@@ -384,6 +384,34 @@ void gfs2_dinode_print(const struct gfs2_dinode *di)
 	pv(di, di_eattr, "%"PRIu64, "0x%"PRIx64);
 }
 
+void lgfs2_dinode_print(void *dip)
+{
+	struct gfs2_dinode *di = dip;
+
+	lgfs2_meta_header_print(&di->di_header);
+	lgfs2_inum_print(&di->di_num);
+
+	print_it("  di_mode", "0%"PRIo32, NULL, be32_to_cpu(di->di_mode));
+	printbe32(di, di_uid);
+	printbe32(di, di_gid);
+	printbe32(di, di_nlink);
+	printbe64(di, di_size);
+	printbe64(di, di_blocks);
+	printbe64(di, di_atime);
+	printbe64(di, di_mtime);
+	printbe64(di, di_ctime);
+	printbe32(di, di_major);
+	printbe32(di, di_minor);
+	printbe64(di, di_goal_meta);
+	printbe64(di, di_goal_data);
+	print_it("  di_flags", "0x%.8"PRIX32, NULL, be32_to_cpu(di->di_flags));
+	printbe32(di, di_payload_format);
+	printbe16(di, di_height);
+	printbe16(di, di_depth);
+	printbe32(di, di_entries);
+	printbe64(di, di_eattr);
+}
+
 void gfs2_dirent_in(struct gfs2_dirent *de, char *buf)
 {
 	struct gfs2_dirent *str = (struct gfs2_dirent *)buf;

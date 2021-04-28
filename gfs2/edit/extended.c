@@ -103,13 +103,14 @@ static uint64_t metapath_to_lblock(struct metapath *mp, int hgt)
 	int h;
 	uint64_t lblock = 0;
 	uint64_t factor[GFS2_MAX_META_HEIGHT];
+	uint16_t height = be16_to_cpu(di->di_height);
 
-	if (di.di_height < 2)
+	if (height < 2)
 		return mp->mp_list[0];
 	/* figure out multiplication factors for each height */
 	memset(&factor, 0, sizeof(factor));
-	factor[di.di_height - 1] = 1ull;
-	for (h = di.di_height - 2; h >= 0; h--)
+	factor[height - 1] = 1ull;
+	for (h = height - 2; h >= 0; h--)
 		factor[h] = factor[h + 1] * sbd.sd_inptrs;
 	for (h = 0; h <= hgt; h++)
 		lblock += (mp->mp_list[h] * factor[h]);
@@ -127,7 +128,7 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 		return -1;
 	if (!level) {
 		if (gfs2_struct_type == GFS2_METATYPE_DI) {
-			if (S_ISDIR(di.di_mode))
+			if (S_ISDIR(be32_to_cpu(di->di_mode)))
 				print_gfs2("This directory contains %d indirect blocks",
 					   indblocks);
 			else
@@ -137,14 +138,14 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 			print_gfs2("This indirect block contains %d indirect blocks",
 				   indblocks);
 	}
-	if (dinode_valid() && !S_ISDIR(di.di_mode)) {
+	if (dinode_valid() && !S_ISDIR(be32_to_cpu(di->di_mode))) {
 		/* See if we are on an inode or have one in history. */
 		if (level)
 			cur_height = level;
 		else {
 			cur_height = get_height();
 			print_gfs2("  (at height %d of %d)",
-				   cur_height, di.di_height);
+			           cur_height, be16_to_cpu(di->di_height));
 		}
 	}
 	eol(0);
@@ -189,7 +190,7 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 				COLORS_NORMAL;
 			}
 		}
-		if (dinode_valid() && !S_ISDIR(di.di_mode)) {
+		if (dinode_valid() && !S_ISDIR(be32_to_cpu(di->di_mode))) {
 			float human_off;
 			char h;
 
@@ -211,8 +212,8 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 		else
 			file_offset = 0;
 		if (dinode_valid() && !termlines &&
-		    ((level + 1 < di.di_height) ||
-		     (S_ISDIR(di.di_mode) && level <= di.di_height))) {
+		    ((level + 1 < be16_to_cpu(di->di_height)) ||
+		     (S_ISDIR(be32_to_cpu(di->di_mode)) && level <= be16_to_cpu(di->di_height)))) {
 			print_block_details(ind, level, cur_height, pndx,
 					    file_offset);
 		}
@@ -394,7 +395,7 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 		}
 		thisblk = 0;
 		memset(more_indir, 0, sizeof(struct iinfo));
-		if (S_ISDIR(di.di_mode) && level == di.di_height) {
+		if (S_ISDIR(be32_to_cpu(di->di_mode)) && level == be16_to_cpu(di->di_height)) {
 			thisblk = do_leaf_extended(tmpbuf, more_indir);
 			display_leaf(more_indir);
 		} else {

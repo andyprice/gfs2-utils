@@ -272,7 +272,7 @@ static int init_per_node_lookup(void)
 		return 1;
 	}
 
-	do_dinode_extended(&per_node_di->i_di, per_node_di->i_bh->b_data);
+	do_dinode_extended(per_node_di->i_bh->b_data);
 	inode_put(&per_node_di);
 
 	for (i = 0; i < indirect_blocks; i++) {
