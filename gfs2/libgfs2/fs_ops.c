@@ -1330,7 +1330,7 @@ static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, st
                          unsigned int mode, uint32_t flags, struct gfs2_inum *parent, int gfs1)
 {
 	struct gfs2_buffer_head *bh;
-	struct gfs2_dinode di = {{0}};
+	struct gfs2_dinode *di;
 	int is_dir;
 
 	if (gfs1)
@@ -1350,53 +1350,56 @@ static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, st
 
 	bh = *bhp;
 
-	di.di_header.mh_magic = GFS2_MAGIC;
-	di.di_header.mh_type = GFS2_METATYPE_DI;
-	di.di_header.mh_format = GFS2_FORMAT_DI;
-	di.di_num = *inum;
-	di.di_mode = mode;
-	di.di_nlink = 1;
-	di.di_blocks = 1;
-	di.di_atime = di.di_mtime = di.di_ctime = sdp->time;
-	di.di_goal_meta = di.di_goal_data = bh->b_blocknr;
-	di.di_flags = flags;
+	di = (struct gfs2_dinode *)bh->b_data;
+
+	di->di_header.mh_magic = cpu_to_be32(GFS2_MAGIC);
+	di->di_header.mh_type = cpu_to_be32(GFS2_METATYPE_DI);
+	di->di_header.mh_format = cpu_to_be32(GFS2_FORMAT_DI);
+	di->di_num.no_formal_ino = cpu_to_be64(inum->no_formal_ino);
+	di->di_num.no_addr = cpu_to_be64(inum->no_addr);
+	di->di_mode = cpu_to_be32(mode);
+	di->di_nlink = cpu_to_be32(1);
+	di->di_blocks = cpu_to_be64(1);
+	di->di_atime = di->di_mtime = di->di_ctime = cpu_to_be64(sdp->time);
+	di->di_goal_meta = di->di_goal_data = cpu_to_be64(bh->b_blocknr);
+	di->di_flags = cpu_to_be32(flags);
 
 	if (is_dir) {
-		struct gfs2_dirent de1, de2;
+		char *p = bh->b_data + sizeof(*di);
+		struct gfs2_dirent de = {0};
+		uint32_t hash;
+		uint16_t len;
 
-		memset(&de1, 0, sizeof(struct gfs2_dirent));
-		de1.de_inum = di.di_num;
-		de1.de_hash = gfs2_disk_hash(".", 1);
-		de1.de_rec_len = GFS2_DIRENT_SIZE(1);
-		de1.de_name_len = 1;
-		de1.de_type = (gfs1 ? GFS_FILE_DIR : IF2DT(S_IFDIR));
+		hash = gfs2_disk_hash(".", 1);
+		len = GFS2_DIRENT_SIZE(1);
+		de.de_inum = di->di_num;
+		de.de_hash = cpu_to_be32(hash);
+		de.de_rec_len = cpu_to_be16(len);
+		de.de_name_len = cpu_to_be16(1);
+		de.de_type = cpu_to_be16(gfs1 ? GFS_FILE_DIR : IF2DT(S_IFDIR));
+		memcpy(p, &de, sizeof(de));
+		p[sizeof(de)] = '.';
+		p += len;
 
-		memset(&de2, 0, sizeof(struct gfs2_dirent));
-		de2.de_inum = *parent;
-		de2.de_hash = gfs2_disk_hash("..", 2);
-		de2.de_rec_len = sdp->bsize - sizeof(struct gfs2_dinode) - de1.de_rec_len;
-		de2.de_name_len = 2;
-		de2.de_type = (gfs1 ? GFS_FILE_DIR : IF2DT(S_IFDIR));
+		hash = gfs2_disk_hash("..", 2);
+		len = sdp->bsize - (p - bh->b_data);
+		de.de_inum.no_formal_ino = cpu_to_be64(parent->no_formal_ino);
+		de.de_inum.no_addr = cpu_to_be64(parent->no_addr);
+		de.de_hash = cpu_to_be32(hash);
+		de.de_rec_len = cpu_to_be16(len);
+		de.de_name_len = cpu_to_be16(2);
+		de.de_type = cpu_to_be16(gfs1 ? GFS_FILE_DIR : IF2DT(S_IFDIR));
+		memcpy(p, &de, sizeof(de));
+		p += sizeof(de);
+		*p++ = '.';
+		*p = '.';
 
-		gfs2_dirent_out(&de1, bh->b_data + sizeof(struct gfs2_dinode));
-		memcpy(bh->b_data +
-		       sizeof(struct gfs2_dinode) +
-		       sizeof(struct gfs2_dirent),
-		       ".", 1);
-		gfs2_dirent_out(&de2, bh->b_data + sizeof(struct gfs2_dinode) + de1.de_rec_len);
-		memcpy(bh->b_data +
-		       sizeof(struct gfs2_dinode) +
-		       de1.de_rec_len +
-		       sizeof(struct gfs2_dirent),
-		       "..", 2);
-
-		di.di_nlink = 2;
-		di.di_size = sdp->bsize - sizeof(struct gfs2_dinode);
-		di.di_flags |= GFS2_DIF_JDATA;
-		di.di_payload_format = GFS2_FORMAT_DE;
-		di.di_entries = 2;
+		di->di_nlink = cpu_to_be32(2);
+		di->di_size = cpu_to_be64(sdp->bsize - sizeof(struct gfs2_dinode));
+		di->di_flags = cpu_to_be32(flags | GFS2_DIF_JDATA);
+		di->di_payload_format = cpu_to_be32(GFS2_FORMAT_DE);
+		di->di_entries = cpu_to_be32(2);
 	}
-	gfs2_dinode_out(&di, bh->b_data);
 	bmodified(bh);
 	return 0;
 }
