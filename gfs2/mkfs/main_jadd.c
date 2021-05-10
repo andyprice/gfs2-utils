@@ -517,16 +517,20 @@ out_errno:
 static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	int fd, error = 0;
-	char new_name[256], buf[sdp->bsize];
-	unsigned int x, blocks =
-		sdp->jsize << (20 - sdp->sd_sb.sb_bsize_shift);
-	struct gfs2_log_header lh;
+	char new_name[256], *buf;
+	uint32_t x, blocks = sdp->jsize << (20 - sdp->sd_sb.sb_bsize_shift);
+	struct gfs2_log_header *lh;
 	uint64_t seq = RANDOM(blocks), addr = 0;
 	off_t off = 0;
 
-	if ((fd = create_new_inode(opts, &addr)) < 0)
-		return fd;
+	buf = calloc(1, sdp->bsize);
+	if (buf == NULL)
+		return -1;
 
+	if ((fd = create_new_inode(opts, &addr)) < 0) {
+		free(buf);
+		return fd;
+	}
 	if ((error = set_flags(fd, JA_FL_CLEAR, FS_JOURNAL_DATA_FL)))
 		goto close_fd;
 
@@ -544,34 +548,34 @@ static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 		goto close_fd;
 	}
 
-	memset(&lh, 0, sizeof(struct gfs2_log_header));
-	lh.lh_header.mh_magic = GFS2_MAGIC;
-	lh.lh_header.mh_type = GFS2_METATYPE_LH;
-	lh.lh_header.mh_format = GFS2_FORMAT_LH;
-	lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
-	lh.lh_flags |= GFS2_LOG_HEAD_USERSPACE;
-	lh.lh_jinode = addr;
+	lh = (void *)buf;
+	lh->lh_header.mh_magic = cpu_to_be32(GFS2_MAGIC);
+	lh->lh_header.mh_type = cpu_to_be32(GFS2_METATYPE_LH);
+	lh->lh_header.mh_format = cpu_to_be32(GFS2_FORMAT_LH);
+	lh->lh_flags = cpu_to_be32(GFS2_LOG_HEAD_UNMOUNT | GFS2_LOG_HEAD_USERSPACE);
+	lh->lh_jinode = cpu_to_be64(addr);
 
 	for (x=0; x<blocks; x++) {
 		uint32_t hash;
 		uint64_t blk_addr = 0;
-		lh.lh_sequence = seq;
-		lh.lh_blkno = x;
-		gfs2_log_header_out(&lh, buf);
+		lh->lh_sequence = cpu_to_be64(seq);
+		lh->lh_blkno = cpu_to_be32(x);
 		hash = lgfs2_log_header_hash(buf);
-		((struct gfs2_log_header *)buf)->lh_hash = cpu_to_be32(hash);
+		lh->lh_hash = cpu_to_be32(hash);
 		if (!(blk_addr = find_block_address(fd, off, sdp->bsize))) {
 			error = -1;
 			goto close_fd;
 		}
-		((struct gfs2_log_header *)buf)->lh_addr = cpu_to_be64(blk_addr);
+		lh->lh_addr = cpu_to_be64(blk_addr);
 		hash = lgfs2_log_header_crc(buf, sdp->bsize);
-		((struct gfs2_log_header *)buf)->lh_crc = cpu_to_be32(hash);
+		lh->lh_crc = cpu_to_be32(hash);
 		if (write(fd, buf, sdp->bsize) != sdp->bsize) {
 			perror("add_j write");
 			error = -1;
 			goto close_fd;
 		}
+		lh->lh_crc = 0;
+		lh->lh_hash = 0;
 
 		if (++seq == blocks)
 			seq = 0;
@@ -590,6 +594,7 @@ static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 		goto close_fd;
 	}
 close_fd:
+	free(buf);
 	return close(fd) || error;
 }
 

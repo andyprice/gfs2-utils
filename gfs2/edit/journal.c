@@ -301,7 +301,7 @@ static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 	return bcount;
 }
 
-static int is_wrap_pt(char *buf, uint64_t *highest_seq)
+static int is_wrap_pt(void *buf, uint64_t *highest_seq)
 {
 	const struct lgfs2_metadata *mtype = get_block_type(buf);
 
@@ -309,13 +309,11 @@ static int is_wrap_pt(char *buf, uint64_t *highest_seq)
 		uint64_t seq;
 
 		if (sbd.gfs1) {
-			struct gfs_log_header lh;
-			gfs_log_header_in(&lh, buf);
-			seq = lh.lh_sequence;
+			struct gfs_log_header *lh = buf;
+			seq = be64_to_cpu(lh->lh_sequence);
 		} else {
-			struct gfs2_log_header lh;
-			gfs2_log_header_in(&lh, buf);
-			seq = lh.lh_sequence;
+			struct gfs2_log_header *lh = buf;
+			seq = be64_to_cpu(lh->lh_sequence);
 		}
 		if (seq < *highest_seq)
 			return 1;
@@ -467,6 +465,38 @@ static uint64_t get_ldref(uint64_t abs_ld, int offset_from_ld)
 	return refblk;
 }
 
+static void display_log_header(void *buf, uint64_t *highest_seq, uint64_t abs_block, uint64_t jb, uint64_t j_size)
+{
+	const struct lgfs2_metafield *lh_flags_field;
+	const struct lgfs2_metadata *mtype;
+	struct gfs2_log_header *lh = buf;
+	struct gfs_log_header *lh1 = buf;
+	char flags_str[256];
+
+	if (sbd.gfs1) {
+		mtype = &lgfs2_metadata[LGFS2_MT_GFS_LOG_HEADER];
+		lh_flags_field = &mtype->fields[7]; /* lh_flags is the 8th field in the struct */
+		check_journal_wrap(be64_to_cpu(lh1->lh_sequence), highest_seq);
+	} else {
+		mtype = &lgfs2_metadata[LGFS2_MT_GFS2_LOG_HEADER];
+		lh_flags_field = &mtype->fields[6]; /* lh_flags is the 7th field in the struct */
+		check_journal_wrap(be64_to_cpu(lh->lh_sequence), highest_seq);
+	}
+	lgfs2_field_str(flags_str, sizeof(flags_str), buf, lh_flags_field, (dmode == HEX_MODE));
+	if (sbd.gfs1) {
+		print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: Seq: 0x%"PRIx64", "
+		           "1st: 0x%"PRIx64", tail: 0x%"PRIx64", last: 0x%"PRIx64" [%s]",
+		           abs_block, jb, be64_to_cpu(lh1->lh_sequence),
+			   be64_to_cpu(lh1->lh_first), be64_to_cpu(lh1->lh_tail),
+			   be64_to_cpu(lh1->lh_last_dump), flags_str);
+	} else {
+		print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: Seq: 0x%"PRIx64", "
+		           "tail: 0x%"PRIx32", blk: 0x%"PRIx32" [%s]",
+		            abs_block, (jb % j_size) / sbd.bsize, be64_to_cpu(lh->lh_sequence),
+		            be32_to_cpu(lh->lh_tail), be32_to_cpu(lh->lh_blkno), flags_str);
+	}
+}
+
 /**
  * dump_journal - dump a journal file's contents.
  * @journal: name of the journal to dump
@@ -480,7 +510,6 @@ static uint64_t get_ldref(uint64_t abs_ld, int offset_from_ld)
 void dump_journal(const char *journal, int tblk)
 {
 	const struct lgfs2_metadata *mtype;
-	const struct lgfs2_metafield *lh_flags_field;
 	struct gfs2_buffer_head *j_bh = NULL;
 	uint64_t jblock, j_size, jb, abs_block, saveblk, wrappt = 0;
 	int start_line, journal_num;
@@ -494,7 +523,6 @@ void dump_journal(const char *journal, int tblk)
 	uint64_t abs_ld = 0;
 
 	mtype = lgfs2_find_mtype(GFS2_METATYPE_LH, sbd.gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2);
-	lh_flags_field = lgfs2_find_mfield_name("lh_flags", mtype);
 
 	start_line = line;
 	lines_per_row[dmode] = 1;
@@ -589,36 +617,7 @@ void dump_journal(const char *journal, int tblk)
 			offset_from_ld = 0;
 			abs_ld = abs_block;
 		} else if (!tblk && block_type == GFS2_METATYPE_LH) {
-			struct gfs2_log_header lh;
-			struct gfs_log_header lh1;
-
-			if (sbd.gfs1) {
-				gfs_log_header_in(&lh1, buf);
-				check_journal_wrap(lh1.lh_sequence,
-						   &highest_seq);
-				print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: "
-					   "Flags:%"PRIx32", Seq: 0x%"PRIx64", 1st: 0x%"PRIx64", "
-					   "tail: 0x%"PRIx64", last: 0x%"PRIx64,
-					   abs_block, jb + wrappt,
-					   lh1.lh_flags, lh1.lh_sequence,
-					   lh1.lh_first, lh1.lh_tail,
-					   lh1.lh_last_dump);
-			} else {
-				char flags_str[256];
-
-				gfs2_log_header_in(&lh, buf);
-				check_journal_wrap(lh.lh_sequence,
-						   &highest_seq);
-				lgfs2_field_str(flags_str, sizeof(flags_str),
-						buf, lh_flags_field,
-						(dmode == HEX_MODE));
-				print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: Seq: "
-					   "0x%"PRIx64", tail: 0x%"PRIx32", blk: 0x%"PRIx32" [%s]",
-					   abs_block, ((jb + wrappt) % j_size)
-					   / sbd.bsize, lh.lh_sequence,
-					   lh.lh_tail, lh.lh_blkno,
-					   flags_str);
-			}
+			display_log_header(buf, &highest_seq, abs_block, jb + wrappt, j_size);
 			eol(0);
 		} else if ((ld_blocks > 0) &&
 			   (sbd.gfs1 || block_type == GFS2_METATYPE_LB)) {

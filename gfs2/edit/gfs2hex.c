@@ -396,8 +396,6 @@ static void gfs_sb_print(void *sbp)
 int display_gfs2(char *buf)
 {
 	struct gfs2_meta_header mh;
-	struct gfs_log_header lh1;
-	struct gfs2_log_header lh;
 
 	uint32_t magic;
 
@@ -448,13 +446,10 @@ int display_gfs2(char *buf)
 			break;
 
 		case GFS2_METATYPE_LH:
-			if (sbd.gfs1) {
-				gfs_log_header_in(&lh1, buf);
-				gfs_log_header_print(&lh1);
-			} else {
-				gfs2_log_header_in(&lh, buf);
-				gfs2_log_header_print(&lh);
-			}
+			if (sbd.gfs1)
+				gfs_log_header_print(buf);
+			else
+				lgfs2_log_header_print(buf);
 			break;
 
 		case GFS2_METATYPE_LD:

@@ -857,15 +857,14 @@ static void save_leaf_blocks(struct metafd *mfd, struct block_range_queue *q)
 static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 {
 	struct block_range_queue indq[GFS2_MAX_META_HEIGHT] = {{NULL}};
-	uint32_t height;
-	struct gfs2_dinode _di = {0};
+	struct gfs2_dinode *dip = (struct gfs2_dinode *)ibuf;
+	uint16_t height;
 	int is_exhash;
 
 	for (unsigned i = 0; i < GFS2_MAX_META_HEIGHT; i++)
 		block_range_queue_init(&indq[i]);
 
-	gfs2_dinode_in(&_di, ibuf);
-	height = _di.di_height;
+	height = be16_to_cpu(dip->di_height);
 
 	/* If this is a user inode, we don't follow to the file height.
 	   We stop one level less.  That way we save off the indirect
@@ -873,16 +872,20 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 	   is directories, where the height represents the level at which
 	   the hash table exists, and we have to save the directory data. */
 
-	is_exhash = (S_ISDIR(_di.di_mode) || (sbd.gfs1 && _di.__pad1 == GFS_FILE_DIR)) &&
-	             _di.di_flags & GFS2_DIF_EXHASH;
+	is_exhash = (S_ISDIR(be32_to_cpu(dip->di_mode)) ||
+	             (sbd.gfs1 && be16_to_cpu(dip->__pad1) == GFS_FILE_DIR)) &&
+	             be32_to_cpu(dip->di_flags) & GFS2_DIF_EXHASH;
 	if (is_exhash)
 		height++;
-	else if (height > 0 && !(_di.di_flags & GFS2_DIF_SYSTEM) &&
-		 !block_is_systemfile(iblk) && !S_ISDIR(_di.di_mode))
+	else if (height > 0 && !(be32_to_cpu(dip->di_flags) & GFS2_DIF_SYSTEM) &&
+		 !block_is_systemfile(iblk) && !S_ISDIR(be32_to_cpu(dip->di_mode)))
 		height--;
 
-	if (height > 0)
-		save_indirect_blocks(mfd, ibuf, iblk, height == 1 ? NULL : &indq[0], sizeof(_di));
+	if (height == 1)
+		save_indirect_blocks(mfd, ibuf, iblk, NULL, sizeof(*dip));
+	else if (height > 1)
+		save_indirect_blocks(mfd, ibuf, iblk, &indq[0], sizeof(*dip));
+
 	for (unsigned i = 1; i < height; i++) {
 		struct block_range_queue *nextq = &indq[i];
 
@@ -895,7 +898,7 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 			for (unsigned j = 0; j < q->len; j++) {
 				char *_buf = q->buf + (j * sbd.bsize);
 
-				save_indirect_blocks(mfd, _buf, iblk, nextq, sizeof(_di.di_header));
+				save_indirect_blocks(mfd, _buf, iblk, nextq, sizeof(dip->di_header));
 			}
 			report_progress(q->start + q->len, 0);
 			block_range_free(&q);
@@ -903,20 +906,20 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 	}
 	if (is_exhash)
 		save_leaf_blocks(mfd, &indq[height - 1]);
-	if (_di.di_eattr) { /* if this inode has extended attributes */
+	if (dip->di_eattr) { /* if this inode has extended attributes */
 		size_t blklen;
 		uint64_t blk;
 		int mhtype;
 		char *buf;
 
-		blk = _di.di_eattr;
+		blk = be64_to_cpu(dip->di_eattr);
 		buf = check_read_block(sbd.device_fd, blk, iblk, &mhtype, &blklen);
 		if (buf != NULL) {
 			save_buf(mfd, buf, blk, blklen);
 			if (mhtype == GFS2_METATYPE_EA)
 				save_ea_block(mfd, buf, iblk);
 			else if (mhtype == GFS2_METATYPE_IN)
-				save_indirect_blocks(mfd, buf, iblk, NULL, sizeof(_di.di_header));
+				save_indirect_blocks(mfd, buf, iblk, NULL, sizeof(dip->di_header));
 			free(buf);
 		}
 	}

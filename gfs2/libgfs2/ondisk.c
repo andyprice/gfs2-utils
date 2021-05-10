@@ -551,24 +551,26 @@ void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf)
 	CPOUT_64(lh, str, lh_local_dinodes);
 }
 
-void gfs2_log_header_print(const struct gfs2_log_header *lh)
+void lgfs2_log_header_print(void *lhp)
 {
-	gfs2_meta_header_print(&lh->lh_header);
-	pv(lh, lh_sequence, "%"PRIu64, "0x%"PRIx64);
-	pv(lh, lh_flags, "0x%.8"PRIX32, NULL);
-	pv(lh, lh_tail, "%"PRIu32, "0x%"PRIx32);
-	pv(lh, lh_blkno, "%"PRIu32, "0x%"PRIx32);
-	pv(lh, lh_hash, "0x%.8"PRIX32, NULL);
-	pv(lh, lh_crc, "0x%.8"PRIX32, NULL);
-	pv(lh, lh_nsec, "%"PRIu32, "0x%"PRIx32);
-	pv(lh, lh_sec, "%"PRIu64, "0x%"PRIx64);
-	pv(lh, lh_addr, "%"PRIu64, "0x%"PRIx64);
-	pv(lh, lh_jinode, "%"PRIu64, "0x%"PRIx64);
-	pv(lh, lh_statfs_addr, "%"PRIu64, "0x%"PRIx64);
-	pv(lh, lh_quota_addr, "%"PRIu64, "0x%"PRIx64);
-	pv(lh, lh_local_total, "%"PRId64, "0x%"PRIx64);
-	pv(lh, lh_local_free, "%"PRId64, "0x%"PRIx64);
-	pv(lh, lh_local_dinodes, "%"PRId64, "0x%"PRIx64);
+	struct gfs2_log_header *lh = lhp;
+
+	lgfs2_meta_header_print(&lh->lh_header);
+	printbe64(lh, lh_sequence);
+	print_it("  lh_flags", "0x%.8"PRIX32, NULL, be32_to_cpu(lh->lh_flags));
+	printbe32(lh, lh_tail);
+	printbe32(lh, lh_blkno);
+	print_it("  lh_hash", "0x%.8"PRIX32, NULL, be32_to_cpu(lh->lh_hash));
+	print_it("  lh_crc", "0x%.8"PRIX32, NULL, be32_to_cpu(lh->lh_crc));
+	printbe32(lh, lh_nsec);
+	printbe64(lh, lh_sec);
+	printbe64(lh, lh_addr);
+	printbe64(lh, lh_jinode);
+	printbe64(lh, lh_statfs_addr);
+	printbe64(lh, lh_quota_addr);
+	print_it("  lh_local_total", "%"PRId64, "0x%"PRIx64, be64_to_cpu(lh->lh_local_total));
+	print_it("  lh_local_free", "%"PRId64, "0x%"PRIx64, be64_to_cpu(lh->lh_local_free));
+	print_it("  lh_local_dinodes", "%"PRId64, "0x%"PRIx64, be64_to_cpu(lh->lh_local_dinodes));
 }
 
 void lgfs2_log_descriptor_print(void *ldp)

@@ -2044,39 +2044,19 @@ static void interactive_mode(void)
 }/* interactive_mode */
 
 /* ------------------------------------------------------------------------ */
-/* gfs_log_header_in - read in a gfs1-style log header                      */
-/* ------------------------------------------------------------------------ */
-void gfs_log_header_in(struct gfs_log_header *head, const char *buf)
-{
-	const struct gfs_log_header *str = (void *)buf;
-
-	gfs2_meta_header_in(&head->lh_header, buf);
-
-	head->lh_flags = be32_to_cpu(str->lh_flags);
-	head->lh_pad = be32_to_cpu(str->lh_pad);
-
-	head->lh_first = be64_to_cpu(str->lh_first);
-	head->lh_sequence = be64_to_cpu(str->lh_sequence);
-
-	head->lh_tail = be64_to_cpu(str->lh_tail);
-	head->lh_last_dump = be64_to_cpu(str->lh_last_dump);
-
-	memcpy(head->lh_reserved, str->lh_reserved, 64);
-}
-
-
-/* ------------------------------------------------------------------------ */
 /* gfs_log_header_print - print a gfs1-style log header                     */
 /* ------------------------------------------------------------------------ */
-void gfs_log_header_print(struct gfs_log_header *lh)
+void gfs_log_header_print(void *lhp)
 {
-	gfs2_meta_header_print(&lh->lh_header);
-	pv(lh, lh_flags, "%u", "0x%.8x");
-	pv(lh, lh_pad, "%u", "%x");
-	pv((unsigned long long)lh, lh_first, "%llu", "%llx");
-	pv((unsigned long long)lh, lh_sequence, "%llu", "%llx");
-	pv((unsigned long long)lh, lh_tail, "%llu", "%llx");
-	pv((unsigned long long)lh, lh_last_dump, "%llu", "%llx");
+	struct gfs_log_header *lh = lhp;
+
+	lgfs2_meta_header_print(&lh->lh_header);
+	print_it("  lh_flags", "%"PRIu32, "0x%.8"PRIx32, be32_to_cpu(lh->lh_flags));
+	print_it("  lh_pad", "%"PRIu32, "0x%"PRIx32, be32_to_cpu(lh->lh_pad));
+	print_it("  lh_first", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(lh->lh_first));
+	print_it("  lh_sequence", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(lh->lh_sequence));
+	print_it("  lh_tail", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(lh->lh_tail));
+	print_it("  lh_last_dump", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(lh->lh_last_dump));
 }
 
 /* ------------------------------------------------------------------------ */
