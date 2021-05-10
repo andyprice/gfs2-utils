@@ -354,36 +354,6 @@ void gfs2_dinode_out(struct gfs2_dinode *di, char *buf)
 	CPOUT_08(di, str, di_reserved, 32);
 }
 
-void gfs2_dinode_print(const struct gfs2_dinode *di)
-{
-	gfs2_meta_header_print(&di->di_header);
-	gfs2_inum_print(&di->di_num);
-
-	pv(di, di_mode, "0%"PRIo32, NULL);
-	pv(di, di_uid, "%"PRIu32, "0x%"PRIx32);
-	pv(di, di_gid, "%"PRIu32, "0x%"PRIx32);
-	pv(di, di_nlink, "%"PRIu32, "0x%"PRIx32);
-	pv(di, di_size, "%"PRIu64, "0x%"PRIx64);
-	pv(di, di_blocks, "%"PRIu64, "0x%"PRIx64);
-	pv(di, di_atime, "%"PRIu64, "0x%"PRIx64);
-	pv(di, di_mtime, "%"PRIu64, "0x%"PRIx64);
-	pv(di, di_ctime, "%"PRIu64, "0x%"PRIx64);
-	pv(di, di_major, "%"PRIu32, "0x%"PRIx32);
-	pv(di, di_minor, "%"PRIu32, "0x%"PRIx32);
-
-	pv(di, di_goal_meta, "%"PRIu64, "0x%"PRIx64);
-	pv(di, di_goal_data, "%"PRIu64, "0x%"PRIx64);
-
-	pv(di, di_flags, "0x%.8"PRIX32, NULL);
-	pv(di, di_payload_format, "%"PRIu32, "0x%"PRIx32);
-	pv(di, di_height, "%"PRIu16, "0x%"PRIx16);
-
-	pv(di, di_depth, "%"PRIu16, "0x%"PRIx16);
-	pv(di, di_entries, "%"PRIu32, "0x%"PRIx32);
-
-	pv(di, di_eattr, "%"PRIu64, "0x%"PRIx64);
-}
-
 void lgfs2_dinode_print(void *dip)
 {
 	struct gfs2_dinode *di = dip;

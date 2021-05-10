@@ -729,7 +729,6 @@ extern void gfs2_leaf_out(struct gfs2_leaf *lf, char *buf);
 extern void gfs2_inum_print(const struct gfs2_inum *no);
 extern void gfs2_meta_header_print(const struct gfs2_meta_header *mh);
 extern void gfs2_rindex_print(const struct gfs2_rindex *ri);
-extern void gfs2_dinode_print(const struct gfs2_dinode *di);
 /* These expect on-disk data instead of native-endian structs */
 extern void lgfs2_inum_print(void *nop);
 extern void lgfs2_meta_header_print(void *mhp);

@@ -877,9 +877,6 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 			return result;
 		}
 
-		if (opts->debug)
-			gfs2_dinode_print(&in.i_di);
-
 		result = place_rgrp(sdp, rg, opts->debug);
 		if (result != 0)
 			return result;

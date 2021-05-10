@@ -40,7 +40,7 @@ int build_master(struct gfs2_sbd *sdp)
 
 	if (cfg_debug) {
 		printf("\nMaster dir:\n");
-		gfs2_dinode_print(&sdp->master_dir->i_di);
+		lgfs2_dinode_print(bh->b_data);
 	}
 	sdp->master_dir->bh_owned = 1;
 	return 0;
@@ -299,7 +299,7 @@ int lgfs2_build_jindex(struct gfs2_inode *master, struct gfs2_inum *jnls, size_t
 
 	if (cfg_debug) {
 		printf("\nJindex:\n");
-		gfs2_dinode_print(&jindex->i_di);
+		lgfs2_dinode_print(jindex->i_bh->b_data);
 	}
 
 	inode_put(&jindex);
@@ -327,7 +327,7 @@ int build_jindex(struct gfs2_sbd *sdp)
 	}
 	if (cfg_debug) {
 		printf("\nJindex:\n");
-		gfs2_dinode_print(&jindex->i_di);
+		lgfs2_dinode_print(jindex->i_bh->b_data);
 	}
 
 	free(sdp->md.journal);
@@ -351,7 +351,7 @@ int build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 	bmodified(ip->i_bh);
 	if (cfg_debug) {
 		printf("\nInum Range %u:\n", j);
-		gfs2_dinode_print(&ip->i_di);
+		lgfs2_dinode_print(ip->i_bh->b_data);
 	}
 
 	inode_put(&ip);
@@ -374,7 +374,7 @@ int build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 	bmodified(ip->i_bh);
 	if (cfg_debug) {
 		printf("\nStatFS Change %u:\n", j);
-		gfs2_dinode_print(&ip->i_di);
+		lgfs2_dinode_print(ip->i_bh->b_data);
 	}
 
 	inode_put(&ip);
@@ -419,7 +419,7 @@ int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 
 	if (cfg_debug) {
 		printf("\nQuota Change %u:\n", j);
-		gfs2_dinode_print(&ip->i_di);
+		lgfs2_dinode_print(ip->i_bh->b_data);
 	}
 
 	inode_put(&ip);
@@ -455,7 +455,7 @@ int build_per_node(struct gfs2_sbd *sdp)
 
 	if (cfg_debug) {
 		printf("\nper_node:\n");
-		gfs2_dinode_print(&per_node->i_di);
+		lgfs2_dinode_print(per_node->i_bh->b_data);
 	}
 
 	inode_put(&per_node);
@@ -474,7 +474,7 @@ int build_inum(struct gfs2_sbd *sdp)
 
 	if (cfg_debug) {
 		printf("\nInum Inode:\n");
-		gfs2_dinode_print(&ip->i_di);
+		lgfs2_dinode_print(ip->i_bh->b_data);
 	}
 
 	inode_put(&ip);
@@ -493,7 +493,7 @@ int build_statfs(struct gfs2_sbd *sdp)
 
 	if (cfg_debug) {
 		printf("\nStatFS Inode:\n");
-		gfs2_dinode_print(&ip->i_di);
+		lgfs2_dinode_print(ip->i_bh->b_data);
 	}
 
 	inode_put(&ip);
@@ -535,7 +535,7 @@ int build_rindex(struct gfs2_sbd *sdp)
 
 	if (cfg_debug) {
 		printf("\nResource Index:\n");
-		gfs2_dinode_print(&ip->i_di);
+		lgfs2_dinode_print(ip->i_bh->b_data);
 	}
 
 	inode_put(&ip);
@@ -598,7 +598,7 @@ int build_root(struct gfs2_sbd *sdp)
 
 	if (cfg_debug) {
 		printf("\nRoot directory:\n");
-		gfs2_dinode_print(&sdp->md.rooti->i_di);
+		lgfs2_dinode_print(bh->b_data);
 	}
 	sdp->md.rooti->bh_owned = 1;
 	return 0;
