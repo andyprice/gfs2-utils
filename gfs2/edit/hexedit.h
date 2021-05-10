@@ -58,7 +58,6 @@ extern WINDOW *wind;
 extern int editing;
 extern uint64_t temp_blk;
 extern uint64_t starting_blk;
-extern const char *block_type_str[15];
 extern int dsplines;
 extern int dsp_lines[DMODES];
 extern int combined_display;

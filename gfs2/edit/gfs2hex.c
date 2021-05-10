@@ -393,94 +393,70 @@ static void gfs_sb_print(void *sbp)
 	lgfs2_inum_print(&sb->sb_license_di);
 }
 
-int display_gfs2(char *buf)
+void display_gfs2(void *buf)
 {
-	struct gfs2_meta_header mh;
-
+	struct gfs2_meta_header *mh = buf;
 	uint32_t magic;
+	uint32_t type;
 
-	magic = be32_to_cpu(*(uint32_t *)buf);
+	magic = be32_to_cpu(mh->mh_magic);
+	type = be32_to_cpu(mh->mh_type);
 
-	switch (magic)
-	{
-	case GFS2_MAGIC:
-		gfs2_meta_header_in(&mh, buf);
-		if (mh.mh_type > GFS2_METATYPE_QC)
-			print_gfs2("Unknown metadata type");
-		else
-			print_gfs2("%s:", block_type_str[mh.mh_type]);
+	if (magic != GFS2_MAGIC) {
+		print_gfs2("Unknown block type");
 		eol(0);
+		return;
+	}
 
-		switch (mh.mh_type)
-		{
-		case GFS2_METATYPE_SB:
-			if (sbd.gfs1)
-				gfs_sb_print(buf);
-			else
-				lgfs2_sb_print(buf);
-			break;
-		case GFS2_METATYPE_RG:
-			if (sbd.gfs1)
-				gfs_rgrp_print(buf);
-			else
-				lgfs2_rgrp_print(buf);
-			break;
+	if (type <= GFS2_METATYPE_QC)
+		print_gfs2("%s:", block_type_str[type]);
+	eol(0);
 
-		case GFS2_METATYPE_RB:
-			gfs2_meta_header_print(&mh);
-			break;
-
-		case GFS2_METATYPE_DI:
-			lgfs2_dinode_print(di);
-			break;
-		case GFS2_METATYPE_IN:
-			gfs2_meta_header_print(&mh);
-			break;
-
-		case GFS2_METATYPE_LF:
-			lgfs2_leaf_print(buf);
-			break;
-
-		case GFS2_METATYPE_JD:
-			gfs2_meta_header_print(&mh);
-			break;
-
-		case GFS2_METATYPE_LH:
-			if (sbd.gfs1)
-				gfs_log_header_print(buf);
-			else
-				lgfs2_log_header_print(buf);
-			break;
-
-		case GFS2_METATYPE_LD:
-			lgfs2_log_descriptor_print(buf);
-			break;
-
-		case GFS2_METATYPE_EA:
-			do_eattr_extended(buf);
-			break;
-
-		case GFS2_METATYPE_ED:
-			gfs2_meta_header_print(&mh);
-			break;
-
-		case GFS2_METATYPE_LB:
-			gfs2_meta_header_print(&mh);
-			break;
-
-		case GFS2_METATYPE_QC:
-			lgfs2_quota_change_print(buf);
-			break;
-
-		default:
-			break;
-		}
+	switch (type)
+	{
+	case GFS2_METATYPE_SB:
+		if (sbd.gfs1)
+			gfs_sb_print(buf);
+		else
+			lgfs2_sb_print(buf);
 		break;
-
+	case GFS2_METATYPE_RG:
+		if (sbd.gfs1)
+			gfs_rgrp_print(buf);
+		else
+			lgfs2_rgrp_print(buf);
+		break;
+	case GFS2_METATYPE_DI:
+		lgfs2_dinode_print(di);
+		break;
+	case GFS2_METATYPE_LF:
+		lgfs2_leaf_print(buf);
+		break;
+	case GFS2_METATYPE_LH:
+		if (sbd.gfs1)
+			gfs_log_header_print(buf);
+		else
+			lgfs2_log_header_print(buf);
+		break;
+	case GFS2_METATYPE_LD:
+		lgfs2_log_descriptor_print(buf);
+		break;
+	case GFS2_METATYPE_EA:
+		do_eattr_extended(buf);
+		break;
+	case GFS2_METATYPE_QC:
+		lgfs2_quota_change_print(buf);
+		break;
+	case GFS2_METATYPE_RB:
+	case GFS2_METATYPE_IN:
+	case GFS2_METATYPE_JD:
+	case GFS2_METATYPE_ED:
+	case GFS2_METATYPE_LB:
+		lgfs2_meta_header_print(mh);
+		break;
 	default:
 		print_gfs2("Unknown block type");
 		eol(0);
 		break;
-	};
-	return(0);
+	}
 }
