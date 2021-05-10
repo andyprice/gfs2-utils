@@ -36,6 +36,21 @@ int gfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
 	return 0;
 }
 
+static void log_header_in(struct lgfs2_log_header *lh, char *buf)
+{
+	struct gfs2_log_header *lhd = (struct gfs2_log_header *)buf;
+
+	lh->lh_sequence = be64_to_cpu(lhd->lh_sequence);
+	lh->lh_flags = be32_to_cpu(lhd->lh_flags);
+	lh->lh_tail = be32_to_cpu(lhd->lh_tail);
+	lh->lh_blkno = be32_to_cpu(lhd->lh_blkno);
+	lh->lh_hash = be32_to_cpu(lhd->lh_hash);
+	lh->lh_crc = be32_to_cpu(lhd->lh_crc);
+	lh->lh_local_total = be64_to_cpu(lhd->lh_local_total);
+	lh->lh_local_free = be64_to_cpu(lhd->lh_local_free);
+	lh->lh_local_dinodes = be64_to_cpu(lhd->lh_local_dinodes);
+}
+
 /**
  * get_log_header - read the log header for a given segment
  * @ip: the journal incore inode
@@ -50,11 +65,12 @@ int gfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
  *          errno on error
  */
 
-int get_log_header(struct gfs2_inode *ip, unsigned int blk,
-		   struct gfs2_log_header *head)
+int lgfs2_get_log_header(struct gfs2_inode *ip, unsigned int blk,
+                         struct lgfs2_log_header *head)
 {
 	struct gfs2_buffer_head *bh;
-	struct gfs2_log_header lh, *tmp;
+	struct lgfs2_log_header lh;
+	struct gfs2_log_header *tmp;
 	uint32_t hash, saved_hash;
 	uint32_t lh_crc = 0;
 	uint32_t crc;
@@ -70,7 +86,7 @@ int get_log_header(struct gfs2_inode *ip, unsigned int blk,
 	hash = lgfs2_log_header_hash(bh->b_data);
 	tmp->lh_hash = saved_hash;
 	crc = lgfs2_log_header_crc(bh->b_data, ip->i_sbd->bsize);
-	gfs2_log_header_in(&lh, bh->b_data);
+	log_header_in(&lh, bh->b_data);
 	brelse(bh);
 	lh_crc = lh.lh_crc;
 	if (error || lh.lh_blkno != blk || lh.lh_hash != hash)
@@ -96,14 +112,14 @@ int get_log_header(struct gfs2_inode *ip, unsigned int blk,
  *
  * Returns: errno
  */
-static int find_good_lh(struct gfs2_inode *ip, unsigned int *blk, struct gfs2_log_header *head)
+static int find_good_lh(struct gfs2_inode *ip, unsigned int *blk, struct lgfs2_log_header *head)
 {
 	unsigned int orig_blk = *blk;
 	int error;
 	uint32_t jd_blocks = ip->i_di.di_size / ip->i_sbd->sd_sb.sb_bsize;
 
 	for (;;) {
-		error = get_log_header(ip, *blk, head);
+		error = lgfs2_get_log_header(ip, *blk, head);
 		if (error <= 0)
 			return error;
 
@@ -126,18 +142,18 @@ static int find_good_lh(struct gfs2_inode *ip, unsigned int *blk, struct gfs2_lo
  * Returns: errno
  */
 
-static int jhead_scan(struct gfs2_inode *ip, struct gfs2_log_header *head)
+static int jhead_scan(struct gfs2_inode *ip, struct lgfs2_log_header *head)
 {
 	unsigned int blk = head->lh_blkno;
 	uint32_t jd_blocks = ip->i_di.di_size / ip->i_sbd->sd_sb.sb_bsize;
-	struct gfs2_log_header lh;
+	struct lgfs2_log_header lh;
 	int error;
 
 	for (;;) {
 		if (++blk == jd_blocks)
 			blk = 0;
 
-		error = get_log_header(ip, blk, &lh);
+		error = lgfs2_get_log_header(ip, blk, &lh);
 		if (error < 0)
 			return error;
 		if (error == 1)
@@ -165,9 +181,9 @@ static int jhead_scan(struct gfs2_inode *ip, struct gfs2_log_header *head)
  * Returns: errno
  */
 
-int gfs2_find_jhead(struct gfs2_inode *ip, struct gfs2_log_header *head)
+int lgfs2_find_jhead(struct gfs2_inode *ip, struct lgfs2_log_header *head)
 {
-	struct gfs2_log_header lh_1, lh_m;
+	struct lgfs2_log_header lh_1, lh_m;
 	uint32_t blk_1, blk_2, blk_m;
 	uint32_t jd_blocks = ip->i_di.di_size / ip->i_sbd->sd_sb.sb_bsize;
 	int error;
@@ -213,7 +229,7 @@ int gfs2_find_jhead(struct gfs2_inode *ip, struct gfs2_log_header *head)
  * Returns: errno
  */
 
-int clean_journal(struct gfs2_inode *ip, struct gfs2_log_header *head)
+int lgfs2_clean_journal(struct gfs2_inode *ip, struct lgfs2_log_header *head)
 {
 	unsigned int lblock;
 	struct gfs2_log_header *lh;

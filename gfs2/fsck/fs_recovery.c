@@ -337,9 +337,9 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 		length = be32_to_cpu(ld->ld_length);
 
 		if (be32_to_cpu(ld->ld_header.mh_type) == GFS2_METATYPE_LH) {
-			struct gfs2_log_header lh;
+			struct lgfs2_log_header lh;
 
-			error = get_log_header(ip, start, &lh);
+			error = lgfs2_get_log_header(ip, start, &lh);
 			if (!error) {
 				gfs2_replay_incr_blk(ip, &start);
 				bmodified(bh);
@@ -401,7 +401,7 @@ static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 	int error = 0, wrapped = 0;
 	uint32_t jd_blocks = ip->i_di.di_size / ip->i_sbd->sd_sb.sb_bsize;
 	uint32_t blk;
-	struct gfs2_log_header lh;
+	struct lgfs2_log_header lh;
 	uint64_t highest_seq = 0, lowest_seq = 0, prev_seq = 0;
 	int new = 0;
 	uint64_t dblock;
@@ -410,7 +410,7 @@ static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 
 	memset(&lh, 0, sizeof(lh));
 	for (blk = 0; blk < jd_blocks; blk++) {
-		error = get_log_header(ip, blk, &lh);
+		error = lgfs2_get_log_header(ip, blk, &lh);
 		if (error == 1) /* if not a log header */
 			continue; /* just journal data--ignore it */
 		if (!lowest_seq || lh.lh_sequence < lowest_seq)
@@ -436,12 +436,11 @@ static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 		if (!fix)
 			continue;
 		highest_seq++;
-		lh.lh_sequence = highest_seq;
-		prev_seq = lh.lh_sequence;
-		log_warn(_("Renumbering it as 0x%"PRIx64"\n"), lh.lh_sequence);
+		prev_seq = highest_seq;
+		log_warn(_("Renumbering it as 0x%"PRIx64"\n"), highest_seq);
 		block_map(ip, blk, &new, &dblock, NULL, 0);
 		bh = bread(ip->i_sbd, dblock);
-		gfs2_log_header_out(&lh, bh->b_data);
+		((struct gfs2_log_header *)bh->b_data)->lh_sequence = cpu_to_be64(highest_seq);
 		bmodified(bh);
 		brelse(bh);
 	}
@@ -492,7 +491,7 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 				int force_check, int *was_clean)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_log_header head;
+	struct lgfs2_log_header head;
 	unsigned int pass;
 	int error;
 
@@ -500,7 +499,7 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 	log_info( _("jid=%u: Looking at journal...\n"), j);
 
 	osi_list_init(&sd_revoke_list);
-	error = gfs2_find_jhead(ip, &head);
+	error = lgfs2_find_jhead(ip, &head);
 	if (!error) {
 		error = check_journal_seq_no(ip, 0);
 		if (error > JOURNAL_SEQ_TOLERANCE) {
@@ -541,7 +540,7 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 				 j);
 			goto out;
 		}
-		error = gfs2_find_jhead(ip, &head);
+		error = lgfs2_find_jhead(ip, &head);
 		if (error) {
 			log_err( _("jid=%u: Unable to fix the bad journal.\n"),
 				 j);
@@ -591,7 +590,7 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 	}
 	log_info( _("jid=%u: Found %u revoke tags\n"), j, sd_found_revokes);
 	gfs2_revoke_clean(sdp);
-	error = clean_journal(ip, &head);
+	error = lgfs2_clean_journal(ip, &head);
 	if (error)
 		goto out;
 	log_err( _("jid=%u: Replayed %u of %u journaled data blocks\n"),

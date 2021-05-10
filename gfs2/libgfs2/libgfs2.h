@@ -299,6 +299,18 @@ struct gfs2_sbd {
 	int gfs1;
 };
 
+struct lgfs2_log_header {
+	uint64_t lh_sequence;
+	uint32_t lh_flags;
+	uint32_t lh_tail;
+	uint32_t lh_blkno;
+	uint32_t lh_hash;
+	uint32_t lh_crc;
+	int64_t lh_local_total;
+	int64_t lh_local_free;
+	int64_t lh_local_dinodes;
+};
+
 struct metapath {
 	unsigned int mp_list[GFS2_MAX_META_HEIGHT];
 };
@@ -638,10 +650,10 @@ extern int gfs2_revoke_add(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int wh
 extern int gfs2_revoke_check(struct gfs2_sbd *sdp, uint64_t blkno,
 			     unsigned int where);
 extern void gfs2_revoke_clean(struct gfs2_sbd *sdp);
-extern int get_log_header(struct gfs2_inode *ip, unsigned int blk,
-			  struct gfs2_log_header *head);
-extern int gfs2_find_jhead(struct gfs2_inode *ip, struct gfs2_log_header *head);
-extern int clean_journal(struct gfs2_inode *ip, struct gfs2_log_header *head);
+extern int lgfs2_get_log_header(struct gfs2_inode *ip, unsigned int blk,
+                                struct lgfs2_log_header *head);
+extern int lgfs2_find_jhead(struct gfs2_inode *ip, struct lgfs2_log_header *head);
+extern int lgfs2_clean_journal(struct gfs2_inode *ip, struct lgfs2_log_header *head);
 
 /* rgrp.c */
 extern int gfs2_compute_bitstructs(const uint32_t bsize, struct rgrp_tree *rgd);
@@ -711,8 +723,6 @@ extern void gfs2_dirent_in(struct gfs2_dirent *de, char *buf);
 extern void gfs2_dirent_out(struct gfs2_dirent *de, char *buf);
 extern void gfs2_leaf_in(struct gfs2_leaf *lf, char *buf);
 extern void gfs2_leaf_out(struct gfs2_leaf *lf, char *buf);
-extern void gfs2_log_header_in(struct gfs2_log_header *lh, char *buf);
-extern void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf);
 
 /* Printing functions */
 

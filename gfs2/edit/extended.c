@@ -473,7 +473,7 @@ static int print_gfs_jindex(struct gfs2_inode *dij)
 static int print_gfs2_jindex(void)
 {
 	int d, error;
-	struct gfs2_log_header head;
+	struct lgfs2_log_header head;
 	struct gfs2_inode *ip;
 
 	for (d = 0; d < indirect->ii[0].dirents; d++) {
@@ -484,7 +484,7 @@ static int print_gfs2_jindex(void)
 			   indirect->ii[0].dirent[d].filename,
 			   indirect->ii[0].dirent[d].block,
 			   ip->i_di.di_size / 1048576);
-		error = gfs2_find_jhead(ip, &head);
+		error = lgfs2_find_jhead(ip, &head);
 		if (error) {
 			print_gfs2("corrupt.");
 		} else {

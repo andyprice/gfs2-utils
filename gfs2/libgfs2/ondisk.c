@@ -507,50 +507,6 @@ void lgfs2_ea_header_print(void *eap)
 	print_it("  name", "%s", NULL, buf);
 }
 
-void gfs2_log_header_in(struct gfs2_log_header *lh, char *buf)
-{
-	struct gfs2_log_header *str = (struct gfs2_log_header *)buf;
-
-	gfs2_meta_header_in(&lh->lh_header, buf);
-	CPIN_64(lh, str, lh_sequence);
-	CPIN_32(lh, str, lh_flags);
-	CPIN_32(lh, str, lh_tail);
-	CPIN_32(lh, str, lh_blkno);
-	CPIN_32(lh, str, lh_hash);
-	CPIN_32(lh, str, lh_crc);
-	CPIN_32(lh, str, lh_nsec);
-	CPIN_64(lh, str, lh_sec);
-	CPIN_64(lh, str, lh_addr);
-	CPIN_64(lh, str, lh_jinode);
-	CPIN_64(lh, str, lh_statfs_addr);
-	CPIN_64(lh, str, lh_quota_addr);
-	CPIN_64(lh, str, lh_local_total);
-	CPIN_64(lh, str, lh_local_free);
-	CPIN_64(lh, str, lh_local_dinodes);
-}
-
-void gfs2_log_header_out(struct gfs2_log_header *lh, char *buf)
-{
-	struct gfs2_log_header *str = (struct gfs2_log_header *)buf;
-
-	gfs2_meta_header_out(&lh->lh_header, buf);
-	CPOUT_64(lh, str, lh_sequence);
-	CPOUT_32(lh, str, lh_flags);
-	CPOUT_32(lh, str, lh_tail);
-	CPOUT_32(lh, str, lh_blkno);
-	CPOUT_32(lh, str, lh_hash);
-	CPOUT_32(lh, str, lh_crc);
-	CPOUT_32(lh, str, lh_nsec);
-	CPOUT_64(lh, str, lh_sec);
-	CPOUT_64(lh, str, lh_addr);
-	CPOUT_64(lh, str, lh_jinode);
-	CPOUT_64(lh, str, lh_statfs_addr);
-	CPOUT_64(lh, str, lh_quota_addr);
-	CPOUT_64(lh, str, lh_local_total);
-	CPOUT_64(lh, str, lh_local_free);
-	CPOUT_64(lh, str, lh_local_dinodes);
-}
-
 void lgfs2_log_header_print(void *lhp)
 {
 	struct gfs2_log_header *lh = lhp;
