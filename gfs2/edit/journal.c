@@ -73,14 +73,14 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 		}
 		inode_put(&jiinode);
 	} else {
-		struct gfs2_dinode jdi;
+		struct gfs2_dinode *jdi;
 
 		if (journal_num > indirect->ii[0].dirents - 2)
 			return 0;
 		jblock = indirect->ii[0].dirent[journal_num + 2].block;
 		j_bh = bread(&sbd, jblock);
-		gfs2_dinode_in(&jdi, j_bh->b_data);
-		*j_size = jdi.di_size;
+		jdi = (struct gfs2_dinode *)j_bh->b_data;
+		*j_size = be64_to_cpu(jdi->di_size);
 		brelse(j_bh);
 	}
 	brelse(jindex_bh);
@@ -122,12 +122,12 @@ static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
 	if (ip == NULL)
 		return 0;
 	sdp = ip->i_sbd;
-	isdir = !!(S_ISDIR(ip->i_di.di_mode));
+	isdir = !!(S_ISDIR(ip->i_mode));
 	*abs_block = 0;
-	if (roffset >= ip->i_di.di_size)
+	if (roffset >= ip->i_size)
 		return 0;
-	if ((roffset + size) > ip->i_di.di_size)
-		size = ip->i_di.di_size - roffset;
+	if ((roffset + size) > ip->i_size)
+		size = ip->i_size - roffset;
 	if (!size)
 		return 0;
 	if (isdir) {
@@ -138,7 +138,7 @@ static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
 		o = roffset & (sdp->bsize - 1);
 	}
 
-	if (!ip->i_di.di_height) /* inode_is_stuffed */
+	if (!ip->i_height) /* inode_is_stuffed */
 		o += sizeof(struct gfs2_dinode);
 	else if (isdir)
 		o += sizeof(struct gfs2_meta_header);

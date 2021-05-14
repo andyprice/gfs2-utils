@@ -19,7 +19,7 @@
 
 static __inline__ int fs_is_jdata(struct gfs2_inode *ip)
 {
-        return ip->i_di.di_flags & GFS2_DIF_JDATA;
+        return ip->i_flags & GFS2_DIF_JDATA;
 }
 
 static __inline__ uint64_t *
@@ -31,9 +31,9 @@ gfs1_metapointer(char *buf, unsigned int height, struct metapath *mp)
 	return ((uint64_t *)(buf + head_size)) + mp->mp_list[height];
 }
 
-int is_gfs_dir(struct gfs2_dinode *dinode)
+int is_gfs_dir(struct gfs2_inode *ip)
 {
-	if (dinode->__pad1 == GFS_FILE_DIR)
+	if (ip->i_pad1 == GFS_FILE_DIR)
 		return 1;
 	return 0;
 }
@@ -61,7 +61,7 @@ void gfs1_lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 
 	*ptr = cpu_to_be64(*block);
 	bmodified(bh);
-	ip->i_di.di_blocks++;
+	ip->i_blocks++;
 	bmodified(ip->i_bh);
 
 	*new = 1;
@@ -84,9 +84,9 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 	if (extlen)
 		*extlen = 0;
 
-	if (!ip->i_di.di_height) { /* stuffed */
+	if (!ip->i_height) { /* stuffed */
 		if (!lblock) {
-			*dblock = ip->i_di.di_num.no_addr;
+			*dblock = ip->i_addr;
 			if (extlen)
 				*extlen = 1;
 		}
@@ -96,7 +96,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 	bsize = (fs_is_jdata(ip)) ? sdp->sd_jbsize : sdp->bsize;
 
 	height = calc_tree_height(ip, (lblock + 1) * bsize);
-	if (ip->i_di.di_height < height) {
+	if (ip->i_height < height) {
 		if (!create)
 			return;
 
@@ -104,7 +104,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 	}
 
 	find_metapath(ip, lblock, &mp);
-	end_of_metadata = ip->i_di.di_height - 1;
+	end_of_metadata = ip->i_height - 1;
 
 	bh = ip->i_bh;
 
@@ -125,7 +125,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			gfs2_meta_header_out(&mh, bh->b_data);
 			bmodified(bh);
 		} else {
-			if (*dblock == ip->i_di.di_num.no_addr)
+			if (*dblock == ip->i_addr)
 				bh = ip->i_bh;
 			else
 				bh = bread(sdp, *dblock);
@@ -179,7 +179,7 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 	if (!size)
 		return 0;
 
-	if (!ip->i_di.di_height && /* stuffed */
+	if (!ip->i_height && /* stuffed */
 	    ((start + size) > (sdp->bsize - sizeof(struct gfs_dinode))))
 		unstuff_dinode(ip);
 
@@ -191,7 +191,7 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 		offset &= sdp->bsize - 1;
 	}
 
-	if (!ip->i_di.di_height) /* stuffed */
+	if (!ip->i_height) /* stuffed */
 		offset += sizeof(struct gfs_dinode);
 	else if (journaled)
 		offset += sizeof(struct gfs2_meta_header);
@@ -208,12 +208,12 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 				return -1;
 		}
 
-		if (dblock == ip->i_di.di_num.no_addr)
+		if (dblock == ip->i_addr)
 			bh = ip->i_bh;
 		else
 			bh = bread(sdp, dblock);
 
-		if (journaled && dblock != ip->i_di.di_num.no_addr ) {
+		if (journaled && dblock != ip->i_addr ) {
 			struct gfs2_meta_header mh;
 
 			mh.mh_magic = GFS2_MAGIC;
@@ -235,86 +235,58 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 		offset = (journaled) ? sizeof(struct gfs2_meta_header) : 0;
 	}
 
-	if (ip->i_di.di_size < start + copied) {
+	if (ip->i_size < start + copied) {
 		bmodified(ip->i_bh);
-		ip->i_di.di_size = start + copied;
+		ip->i_size = start + copied;
 	}
-	ip->i_di.di_mtime = ip->i_di.di_ctime = time(NULL);
-	gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
+	ip->i_mtime = ip->i_ctime = time(NULL);
+	lgfs2_dinode_out(ip, ip->i_bh->b_data);
 	bmodified(ip->i_bh);
 	return copied;
 }
 
-static void gfs_dinode_in(struct gfs_dinode *di, char *buf)
+static struct gfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp, char *buf)
 {
-	struct gfs_dinode *str = (struct gfs_dinode *)buf;
-
-	gfs2_meta_header_in(&di->di_header, buf);
-	gfs2_inum_in(&di->di_num, (char *)&str->di_num);
-
-	di->di_mode = be32_to_cpu(str->di_mode);
-	di->di_uid = be32_to_cpu(str->di_uid);
-	di->di_gid = be32_to_cpu(str->di_gid);
-	di->di_nlink = be32_to_cpu(str->di_nlink);
-	di->di_size = be64_to_cpu(str->di_size);
-	di->di_blocks = be64_to_cpu(str->di_blocks);
-	di->di_atime = be64_to_cpu(str->di_atime);
-	di->di_mtime = be64_to_cpu(str->di_mtime);
-	di->di_ctime = be64_to_cpu(str->di_ctime);
-	di->di_major = be32_to_cpu(str->di_major);
-	di->di_minor = be32_to_cpu(str->di_minor);
-	di->di_goal_dblk = be64_to_cpu(str->di_goal_dblk);
-	di->di_goal_mblk = be64_to_cpu(str->di_goal_mblk);
-	di->di_flags = be32_to_cpu(str->di_flags);
-	di->di_payload_format = be32_to_cpu(str->di_payload_format);
-	di->di_type = be16_to_cpu(str->di_type);
-	di->di_height = be16_to_cpu(str->di_height);
-	di->di_depth = be16_to_cpu(str->di_depth);
-	di->di_entries = be32_to_cpu(str->di_entries);
-	di->di_eattr = be64_to_cpu(str->di_eattr);
-}
-
-static struct gfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp, char *buf, uint64_t di_addr)
-{
-	struct gfs_dinode gfs1_dinode;
+	struct gfs_dinode *di;
 	struct gfs2_inode *ip;
 
 	ip = calloc(1, sizeof(struct gfs2_inode));
 	if (ip == NULL) {
 		return NULL;
 	}
-	gfs_dinode_in(&gfs1_dinode, buf);
-	memcpy(&ip->i_di.di_header, &gfs1_dinode.di_header,
-	       sizeof(struct gfs2_meta_header));
-	memcpy(&ip->i_di.di_num, &gfs1_dinode.di_num,
-	       sizeof(struct gfs2_inum));
-	ip->i_di.di_mode = gfs1_dinode.di_mode;
-	ip->i_di.di_uid = gfs1_dinode.di_uid;
-	ip->i_di.di_gid = gfs1_dinode.di_gid;
-	ip->i_di.di_nlink = gfs1_dinode.di_nlink;
-	ip->i_di.di_size = gfs1_dinode.di_size;
-	ip->i_di.di_blocks = gfs1_dinode.di_blocks;
-	ip->i_di.di_atime = gfs1_dinode.di_atime;
-	ip->i_di.di_mtime = gfs1_dinode.di_mtime;
-	ip->i_di.di_ctime = gfs1_dinode.di_ctime;
-	ip->i_di.di_major = gfs1_dinode.di_major;
-	ip->i_di.di_minor = gfs1_dinode.di_minor;
-	ip->i_di.di_goal_data = gfs1_dinode.di_goal_dblk;
-	ip->i_di.di_goal_meta = gfs1_dinode.di_goal_mblk;
-	ip->i_di.di_flags = gfs1_dinode.di_flags;
-	ip->i_di.di_payload_format = gfs1_dinode.di_payload_format;
-	ip->i_di.__pad1 = gfs1_dinode.di_type;
-	ip->i_di.di_height = gfs1_dinode.di_height;
-	ip->i_di.di_depth = gfs1_dinode.di_depth;
-	ip->i_di.di_entries = gfs1_dinode.di_entries;
-	ip->i_di.di_eattr = gfs1_dinode.di_eattr;
+	di = (struct gfs_dinode *)buf;
+	ip->i_magic = be32_to_cpu(di->di_header.mh_magic);
+	ip->i_type = be32_to_cpu(di->di_header.mh_type);
+	ip->i_format = be32_to_cpu(di->di_header.mh_format);
+	ip->i_formal_ino = be64_to_cpu(di->di_num.no_formal_ino);
+	ip->i_addr = be64_to_cpu(di->di_num.no_addr);
+	ip->i_mode = be32_to_cpu(di->di_mode);
+	ip->i_uid = be32_to_cpu(di->di_uid);
+	ip->i_gid = be32_to_cpu(di->di_gid);
+	ip->i_nlink = be32_to_cpu(di->di_nlink);
+	ip->i_size = be64_to_cpu(di->di_size);
+	ip->i_blocks = be64_to_cpu(di->di_blocks);
+	ip->i_atime = be64_to_cpu(di->di_atime);
+	ip->i_mtime = be64_to_cpu(di->di_mtime);
+	ip->i_ctime = be64_to_cpu(di->di_ctime);
+	ip->i_major = be32_to_cpu(di->di_major);
+	ip->i_minor = be32_to_cpu(di->di_minor);
+	ip->i_goal_data = (uint64_t)be32_to_cpu(di->di_goal_dblk);
+	ip->i_goal_meta = (uint64_t)be32_to_cpu(di->di_goal_mblk);
+	ip->i_flags = be32_to_cpu(di->di_flags);
+	ip->i_payload_format = be32_to_cpu(di->di_payload_format);
+	ip->i_pad1 = be16_to_cpu(di->di_type);
+	ip->i_height = be16_to_cpu(di->di_height);
+	ip->i_depth = be16_to_cpu(di->di_depth);
+	ip->i_entries = be32_to_cpu(di->di_entries);
+	ip->i_eattr = be64_to_cpu(di->di_eattr);
 	ip->i_sbd = sdp;
 	return ip;
 }
 
 struct gfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp, char *buf)
 {
-	return __gfs_inode_get(sdp, buf, 0);
+	return __gfs_inode_get(sdp, buf);
 }
 
 struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
@@ -329,7 +301,7 @@ struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 		brelse(bh);
 		return NULL;
 	}
-	ip = __gfs_inode_get(sdp, bh->b_data, di_addr);
+	ip = __gfs_inode_get(sdp, bh->b_data);
 	ip->i_bh = bh;
 	ip->bh_owned = 1;
 	return ip;

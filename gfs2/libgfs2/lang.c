@@ -162,7 +162,7 @@ static uint64_t ast_lookup_path(char *path, struct gfs2_sbd *sbd)
 
 	while (ip != NULL) {
 		if (segment == NULL) { // No more segments
-			bn = ip->i_di.di_num.no_addr;
+			bn = ip->i_addr;
 			inode_put(&ip);
 			return bn;
 		}
@@ -221,7 +221,7 @@ static uint64_t ast_lookup_id(const char *id, struct gfs2_sbd *sbd)
 		bn = sbd->sd_sb.sb_root_dir.no_addr;
 		break;
 	case ID_RINDEX:
-		bn = sbd->md.riinode->i_di.di_num.no_addr;
+		bn = sbd->md.riinode->i_addr;
 		break;
 	default:
 		return 0;

@@ -30,7 +30,7 @@ void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked)
 	int i, cs;
 	const char *human_abbrev = " KMGTPE";
 
-	one_percent = ip->i_di.di_blocks / 100;
+	one_percent = ip->i_blocks / 100;
 	if (blks_checked - last_reported_fblock < one_percent)
 		return;
 
@@ -41,21 +41,17 @@ void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked)
 	if (tv.tv_sec == seconds)
 		return;
 
-	fsize = ip->i_di.di_size;
+	fsize = ip->i_size;
 	for (i = 0; i < 6 && fsize > 1024; i++)
 		fsize /= 1024;
 	chksize = blks_checked * ip->i_sbd->bsize;
 	for (cs = 0; cs < 6 && chksize > 1024; cs++)
 		chksize /= 1024;
 	seconds = tv.tv_sec;
-	percent = (blks_checked * 100) / ip->i_di.di_blocks;
-	log_notice( _("\rChecking %lld%c of %lld%c of file at %lld (0x%llx)"
-		      "- %llu percent complete.                   \r"),
-		    (long long)chksize, human_abbrev[cs],
-		    (unsigned long long)fsize, human_abbrev[i],
-		    (unsigned long long)ip->i_di.di_num.no_addr,
-		    (unsigned long long)ip->i_di.di_num.no_addr,
-		    (unsigned long long)percent);
+	percent = (blks_checked * 100) / ip->i_blocks;
+	log_notice(_("\rChecking %"PRIu64"%c of %"PRIu64"%c of file at %"PRIu64" (0x%"PRIx64")"
+		      "- %"PRIu64" percent complete.                   \r"),
+	           chksize, human_abbrev[cs], fsize, human_abbrev[i], ip->i_addr, ip->i_addr, percent);
 	fflush(stdout);
 }
 
@@ -281,13 +277,13 @@ struct inode_with_dups *find_dup_ref_inode(struct duptree *dt,
 	osi_list_foreach(ref, &dt->ref_invinode_list) {
 		id = osi_list_entry(ref, struct inode_with_dups, list);
 
-		if (id->block_no == ip->i_di.di_num.no_addr)
+		if (id->block_no == ip->i_addr)
 			return id;
 	}
 	osi_list_foreach(ref, &dt->ref_inode_list) {
 		id = osi_list_entry(ref, struct inode_with_dups, list);
 
-		if (id->block_no == ip->i_di.di_num.no_addr)
+		if (id->block_no == ip->i_addr)
 			return id;
 	}
 	return NULL;
@@ -365,10 +361,9 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 			   "a duplicate within the same inode.\n"),
 			 (unsigned long long)block,
 			 (unsigned long long)block);
-		log_info(_("I'll consider the reference from inode %llu "
-			   "(0x%llx) the first reference.\n"),
-			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)ip->i_di.di_num.no_addr);
+		log_info(_("I'll consider the reference from inode %"PRIu64
+			   " (0x%"PRIx64") the first reference.\n"),
+		         ip->i_addr, ip->i_addr);
 		dt->dup_flags |= DUPFLAG_REF1_IS_DUPL;
 		dt->refs++;
 	}
@@ -393,8 +388,8 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 			log_crit( _("Unable to allocate inode_with_dups structure\n"));
 			return META_ERROR;
 		}
-		id->block_no = ip->i_di.di_num.no_addr;
-		q = bitmap_type(ip->i_sbd, ip->i_di.di_num.no_addr);
+		id->block_no = ip->i_addr;
+		q = bitmap_type(ip->i_sbd, ip->i_addr);
 		/* If it's an invalid dinode, put it first on the invalid
 		   inode reference list otherwise put it on the normal list. */
 		if (!inode_valid || q == GFS2_BLKST_UNLINKED)
@@ -414,13 +409,11 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	}
 	id->reftypecount[reftype]++;
 	id->dup_count++;
-	log_info( _("Found %d reference(s) to block %llu"
-		    " (0x%llx) as %s in %s inode #%llu (0x%llx)\n"),
-		  id->dup_count, (unsigned long long)block,
-		  (unsigned long long)block, reftypes[reftype],
+	log_info(_("Found %d reference(s) to block %"PRIu64" (0x%"PRIx64") "
+	           "as %s in %s inode #%"PRIu64" (0x%"PRIx64")\n"),
+		  id->dup_count, block, block, reftypes[reftype],
 		  inode_valid ? _("valid") : _("invalid"),
-		  (unsigned long long)ip->i_di.di_num.no_addr,
-		  (unsigned long long)ip->i_di.di_num.no_addr);
+		  ip->i_addr, ip->i_addr);
 	if (first)
 		log_info( _("This is the original reference.\n"));
 	else {
@@ -587,7 +580,7 @@ uint64_t find_free_blk(struct gfs2_sbd *sdp)
 
 uint64_t *get_dir_hash(struct gfs2_inode *ip)
 {
-	unsigned hsize = (1 << ip->i_di.di_depth) * sizeof(uint64_t);
+	unsigned hsize = (1 << ip->i_depth) * sizeof(uint64_t);
 	int ret;
 	uint64_t *tbl = malloc(hsize);
 
@@ -620,14 +613,14 @@ void delete_all_dups(struct gfs2_inode *ip)
 
 		osi_list_foreach_safe(tmp, &dt->ref_invinode_list, x) {
 			id = osi_list_entry(tmp, struct inode_with_dups, list);
-			if (id->block_no == ip->i_di.di_num.no_addr) {
+			if (id->block_no == ip->i_addr) {
 				dup_listent_delete(dt, id);
 				found = 1;
 			}
 		}
 		osi_list_foreach_safe(tmp, &dt->ref_inode_list, x) {
 			id = osi_list_entry(tmp, struct inode_with_dups, list);
-			if (id->block_no == ip->i_di.di_num.no_addr) {
+			if (id->block_no == ip->i_addr) {
 				dup_listent_delete(dt, id);
 				found = 1;
 			}

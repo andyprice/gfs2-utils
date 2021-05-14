@@ -86,12 +86,9 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 
 	q = bitmap_type(ip->i_sbd, block);
 	if (q == GFS2_BLKST_FREE) {
-		log_info( _("%s block %lld (0x%llx), part of inode "
-			    "%lld (0x%llx), was already free.\n"),
-			  btype, (unsigned long long)block,
-			  (unsigned long long)block,
-			  (unsigned long long)ip->i_di.di_num.no_addr,
-			  (unsigned long long)ip->i_di.di_num.no_addr);
+		log_info(_("%s block %"PRIu64" (0x%"PRIx64"), part of inode "
+		           "%"PRIu64" (0x%"PRIx64"), was already free.\n"),
+		        btype, block, block, ip->i_addr, ip->i_addr);
 		return META_IS_GOOD;
 	}
 	if (find_remove_dup(ip, block, btype, &removed_lastmeta)) { /* a dup */
@@ -101,12 +98,10 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 			else
 				*was_duplicate = 1;
 		}
-		log_err( _("Not clearing duplicate reference in inode "
-			   "at block #%llu (0x%llx) to block #%llu (0x%llx) "
-			   "because it's referenced by another inode.\n"),
-			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)ip->i_di.di_num.no_addr,
-			 (unsigned long long)block, (unsigned long long)block);
+		log_err(_("Not clearing duplicate reference in inode at block #%"PRIu64
+		          " (0x%"PRIx64") to block #%"PRIu64" (0x%"PRIx64") "
+		          "because it's referenced by another inode.\n"),
+		        ip->i_addr, ip->i_addr, block, block);
 	} else {
 		check_n_fix_bitmap(ip->i_sbd, ip->i_rgd, block, 0,
 				   GFS2_BLKST_FREE);
@@ -218,15 +213,15 @@ static int del_eattr_generic(struct gfs2_inode *ip, uint64_t block,
 		if (!ret) {
 			*bh = bread(ip->i_sbd, block);
 			if (!was_free)
-				ip->i_di.di_blocks--;
+				ip->i_blocks--;
 			bmodified(ip->i_bh);
 		}
 	}
 	/* Even if it's a duplicate reference, we want to eliminate the
 	   reference itself, and adjust di_blocks accordingly. */
-	if (ip->i_di.di_eattr) {
-		if (block == ip->i_di.di_eattr)
-			ip->i_di.di_eattr = 0;
+	if (ip->i_eattr) {
+		if (block == ip->i_eattr)
+			ip->i_eattr = 0;
 		bmodified(ip->i_bh);
 	}
 	return ret;
@@ -308,7 +303,7 @@ int delete_eattr_extentry(struct gfs2_inode *ip, int i, uint64_t *ea_data_ptr,
 			bmodified(leaf_bh);
 			/* Endianness doesn't matter in this case because it's
 			   a single byte. */
-			fsck_bitmap_set(ip, ip->i_di.di_eattr,
+			fsck_bitmap_set(ip, ip->i_eattr,
 					_("extended attribute"),
 					ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
 					GFS2_BLKST_USED);

@@ -399,7 +399,7 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 {
 	int error = 0, wrapped = 0;
-	uint32_t jd_blocks = ip->i_di.di_size / ip->i_sbd->sd_sb.sb_bsize;
+	uint32_t jd_blocks = ip->i_size / ip->i_sbd->sd_sb.sb_bsize;
 	uint32_t blk;
 	struct lgfs2_log_header lh;
 	uint64_t highest_seq = 0, lowest_seq = 0, prev_seq = 0;
@@ -609,7 +609,7 @@ out:
 reinit:
 	if (query( _("Do you want to clear the journal instead? (y/n)"))) {
 		error = write_journal(sdp->md.journal[j], sdp->bsize,
-				      sdp->md.journal[j]->i_di.di_size /
+				      sdp->md.journal[j]->i_size /
 				      sdp->sd_sb.sb_bsize);
 		log_err(_("jid=%u: journal was cleared.\n"), j);
 	} else {
@@ -624,9 +624,8 @@ static int rangecheck_jblock(struct gfs2_inode *ip, uint64_t block)
 {
 	if((block > ip->i_sbd->fssize) || (block <= LGFS2_SB_ADDR(ip->i_sbd))) {
 		log_info( _("Bad block pointer (out of range) found in "
-			    "journal inode %lld (0x%llx).\n"),
-			  (unsigned long long)ip->i_di.di_num.no_addr,
-			  (unsigned long long)ip->i_di.di_num.no_addr);
+			    "journal inode %"PRIu64" (0x%"PRIx64").\n"),
+			  ip->i_addr, ip->i_addr);
 		return META_ERROR; /* Exits check_metatree quicker */
 	}
 	return META_IS_GOOD;
@@ -647,14 +646,11 @@ static int rangecheck_jmeta(struct iptr iptr, struct gfs2_buffer_head **bh, int 
 		*bh = bread(ip->i_sbd, block);
 		*is_valid = (gfs2_check_meta((*bh)->b_data, GFS2_METATYPE_IN) == 0);
 		if (!(*is_valid)) {
-			log_err( _("Journal at block %lld (0x%llx) has a bad "
-				   "indirect block pointer %lld (0x%llx) "
+			log_err( _("Journal at block %"PRIu64" (0x%"PRIx64") has a bad "
+				   "indirect block pointer %"PRIu64" (0x%"PRIx64") "
 				   "(points to something that is not an "
 				   "indirect block).\n"),
-				 (unsigned long long)ip->i_di.di_num.no_addr,
-				 (unsigned long long)ip->i_di.di_num.no_addr,
-				 (unsigned long long)block,
-				 (unsigned long long)block);
+			        ip->i_addr, ip->i_addr, block, block);
 			brelse(*bh);
 			*bh = NULL;
 			return META_SKIP_FURTHER;
@@ -717,8 +713,7 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 			continue;
 		}
 		if (!error) {
-			uint64_t jsize = sdp->md.journal[i]->i_di.di_size /
-				(1024 * 1024);
+			uint64_t jsize = sdp->md.journal[i]->i_size / (1024 * 1024);
 
 			if (sdp->jsize == GFS2_DEFAULT_JSIZE && jsize &&
 			    jsize != sdp->jsize)
@@ -769,11 +764,11 @@ int ji_update(struct gfs2_sbd *sdp)
 	   If per_node is missing or damaged, we have to trust jindex has
 	   the correct number of entries. */
 	if (sdp->gfs1)
-		sdp->md.journals = ip->i_di.di_size / sizeof(struct gfs_jindex);
+		sdp->md.journals = ip->i_size / sizeof(struct gfs_jindex);
 	else if (sdp->md.pinode) /* if per_node was read in properly */
-		sdp->md.journals = (sdp->md.pinode->i_di.di_entries - 2) / 3;
+		sdp->md.journals = (sdp->md.pinode->i_entries - 2) / 3;
 	else
-		sdp->md.journals = ip->i_di.di_entries - 2;
+		sdp->md.journals = ip->i_entries - 2;
 
 	if (!(sdp->md.journal = calloc(sdp->md.journals,
 				       sizeof(struct gfs2_inode *)))) {
@@ -911,7 +906,7 @@ int init_jindex(struct gfs2_sbd *sdp, int allow_ji_rebuild)
 		int error;
 
 		log_debug(_("Checking the integrity of the journal index.\n"));
-		if (sdp->md.jiinode->i_di.di_flags & GFS2_DIF_EXHASH)
+		if (sdp->md.jiinode->i_flags & GFS2_DIF_EXHASH)
 			error = check_leaf_blks(sdp->md.jiinode,
 						&jindex_check_fxns);
 		else

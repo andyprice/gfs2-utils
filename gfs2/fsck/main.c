@@ -174,16 +174,15 @@ static int check_statfs(struct gfs2_sbd *sdp)
 	uint64_t sc_dinodes;
 	int count;
 
-	if (sdp->gfs1 && !sdp->md.statfs->i_di.di_size) {
+	if (sdp->gfs1 && !sdp->md.statfs->i_size) {
 		log_info("This GFS1 file system is not using fast_statfs.\n");
 		return 0;
 	}
 	/* Read the current statfs values */
-	count = gfs2_readi(sdp->md.statfs, &sc, 0,
-			   sdp->md.statfs->i_di.di_size);
+	count = gfs2_readi(sdp->md.statfs, &sc, 0, sdp->md.statfs->i_size);
 	if (count != sizeof(struct gfs2_statfs_change)) {
 		log_err(_("Failed to read statfs values (%d of %"PRIu64" read)\n"),
-		        count, (uint64_t)sdp->md.statfs->i_di.di_size);
+		        count, sdp->md.statfs->i_size);
 		return FSCK_ERROR;
 	}
 	sc_total = be64_to_cpu(sc.sc_total);

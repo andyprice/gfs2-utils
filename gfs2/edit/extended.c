@@ -439,7 +439,7 @@ static int print_gfs_jindex(struct gfs2_inode *dij)
 
 	start_line = line;
 	print_gfs2("Journal index entries found: %"PRIu64".",
-		   dij->i_di.di_size / sizeof(struct gfs_jindex));
+		   dij->i_size / sizeof(struct gfs_jindex));
 	eol(0);
 	lines_per_row[dmode] = 4;
 	for (print_entry_ndx=0; ; print_entry_ndx++) {
@@ -483,7 +483,7 @@ static int print_gfs2_jindex(void)
 		print_gfs2("%s: 0x%-5"PRIx64" %"PRIu64"MB ",
 			   indirect->ii[0].dirent[d].filename,
 			   indirect->ii[0].dirent[d].block,
-			   ip->i_di.di_size / 1048576);
+			   ip->i_size / 1048576);
 		error = lgfs2_find_jhead(ip, &head);
 		if (error) {
 			print_gfs2("corrupt.");
@@ -507,8 +507,8 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 	char highlighted_addr[32];
 
 	start_line = line;
-	print_gfs2("RG index entries found: %"PRIu64".", dip->i_di.di_size /
-		   sizeof(struct gfs2_rindex));
+	print_gfs2("RG index entries found: %"PRIu64".",
+	           dip->i_size / sizeof(struct gfs2_rindex));
 	eol(0);
 	lines_per_row[dmode] = 6;
 	memset(highlighted_addr, 0, sizeof(highlighted_addr));
@@ -612,7 +612,7 @@ static int print_quota(struct gfs2_inode *diq)
 
 	print_gfs2("quota file contents:");
 	eol(0);
-	print_gfs2("quota entries found: %"PRIu64".", diq->i_di.di_size / sizeof(q));
+	print_gfs2("quota entries found: %"PRIu64".", diq->i_size / sizeof(q));
 	eol(0);
 	for (i=0; ; i++) {
 		error = gfs2_readi(diq, &q, i * sizeof(q), sizeof(q));

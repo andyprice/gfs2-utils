@@ -284,74 +284,86 @@ void lgfs2_quota_print(void *qp)
 	printbe64(q, qu_value);
 }
 
-void gfs2_dinode_in(struct gfs2_dinode *di, char *buf)
+void lgfs2_dinode_in(struct gfs2_inode *ip, char *buf)
 {
-	struct gfs2_dinode *str = (struct gfs2_dinode *)buf;
+	struct gfs2_dinode *di = (struct gfs2_dinode *)buf;
 
-	gfs2_meta_header_in(&di->di_header, buf);
-	gfs2_inum_in(&di->di_num, (char *)&str->di_num);
-
-	CPIN_32(di, str, di_mode);
-	CPIN_32(di, str, di_uid);
-	CPIN_32(di, str, di_gid);
-	CPIN_32(di, str, di_nlink);
-	CPIN_64(di, str, di_size);
-	CPIN_64(di, str, di_blocks);
-	CPIN_64(di, str, di_atime);
-	CPIN_64(di, str, di_mtime);
-	CPIN_64(di, str, di_ctime);
-	CPIN_32(di, str, di_major);
-	CPIN_32(di, str, di_minor);
-
-	CPIN_64(di, str, di_goal_meta);
-	CPIN_64(di, str, di_goal_data);
-
-	CPIN_32(di, str, di_flags);
-	CPIN_32(di, str, di_payload_format);
-	CPIN_16(di, str, __pad1);
-	CPIN_16(di, str, di_height);
-
-	CPIN_16(di, str, di_depth);
-	CPIN_32(di, str, di_entries);
-
-	CPIN_64(di, str, di_eattr);
-
-	CPIN_08(di, str, di_reserved, 32);
+	ip->i_magic = be32_to_cpu(di->di_header.mh_magic);
+	ip->i_type = be32_to_cpu(di->di_header.mh_type);
+	ip->i_format = be32_to_cpu(di->di_header.mh_format);
+	ip->i_formal_ino = be64_to_cpu(di->di_num.no_formal_ino);
+	ip->i_addr = be64_to_cpu(di->di_num.no_addr);
+	ip->i_mode = be32_to_cpu(di->di_mode);
+	ip->i_uid = be32_to_cpu(di->di_uid);
+	ip->i_gid = be32_to_cpu(di->di_gid);
+	ip->i_nlink = be32_to_cpu(di->di_nlink);
+	ip->i_size = be64_to_cpu(di->di_size);
+	ip->i_blocks = be64_to_cpu(di->di_blocks);
+	ip->i_atime = be64_to_cpu(di->di_atime);
+	ip->i_mtime = be64_to_cpu(di->di_mtime);
+	ip->i_ctime = be64_to_cpu(di->di_ctime);
+	ip->i_major = be32_to_cpu(di->di_major);
+	ip->i_minor = be32_to_cpu(di->di_minor);
+	ip->i_goal_meta = be64_to_cpu(di->di_goal_meta);
+	ip->i_goal_data = be64_to_cpu(di->di_goal_data);
+	ip->i_generation = be64_to_cpu(di->di_generation);
+	ip->i_flags = be32_to_cpu(di->di_flags);
+	ip->i_payload_format = be32_to_cpu(di->di_payload_format);
+	ip->i_pad1 = be16_to_cpu(di->__pad1);
+	ip->i_height = be16_to_cpu(di->di_height);
+	ip->i_pad2 = be32_to_cpu(di->__pad2);
+	ip->i_pad3 = be16_to_cpu(di->__pad3);
+	ip->i_depth = be16_to_cpu(di->di_depth);
+	ip->i_entries = be32_to_cpu(di->di_entries);
+	ip->i_pad4_addr = be64_to_cpu(di->__pad4.no_addr);
+	ip->i_pad4_formal_ino = be64_to_cpu(di->__pad4.no_formal_ino);
+	ip->i_eattr = be64_to_cpu(di->di_eattr);
+	ip->i_atime_nsec = be32_to_cpu(di->di_atime_nsec);
+	ip->i_mtime_nsec = be32_to_cpu(di->di_mtime_nsec);
+	ip->i_ctime_nsec = be32_to_cpu(di->di_ctime_nsec);
 }
 
-void gfs2_dinode_out(struct gfs2_dinode *di, char *buf)
+void lgfs2_dinode_out(struct gfs2_inode *ip, char *buf)
 {
-	struct gfs2_dinode *str = (struct gfs2_dinode *)buf;
+	struct gfs2_dinode *di = (struct gfs2_dinode *)buf;
 
-	gfs2_meta_header_out(&di->di_header, buf);
-	gfs2_inum_out(&di->di_num, (char *)&str->di_num);
+	di->di_header.mh_magic = cpu_to_be32(ip->i_magic);
+	di->di_header.mh_type = cpu_to_be32(ip->i_type);
+	di->di_header.mh_format = cpu_to_be32(ip->i_format);
+	di->di_num.no_formal_ino = cpu_to_be64(ip->i_formal_ino);
+	di->di_num.no_addr = cpu_to_be64(ip->i_addr);
+	di->di_mode = cpu_to_be32(ip->i_mode);
+	di->di_uid = cpu_to_be32(ip->i_uid);
+	di->di_gid = cpu_to_be32(ip->i_gid);
+	di->di_nlink = cpu_to_be32(ip->i_nlink);
+	di->di_size = cpu_to_be64(ip->i_size);
+	di->di_blocks = cpu_to_be64(ip->i_blocks);
+	di->di_atime = cpu_to_be64(ip->i_atime);
+	di->di_mtime = cpu_to_be64(ip->i_mtime);
+	di->di_ctime = cpu_to_be64(ip->i_ctime);
+	di->di_major = cpu_to_be32(ip->i_major);
+	di->di_minor = cpu_to_be32(ip->i_minor);
 
-	CPOUT_32(di, str, di_mode);
-	CPOUT_32(di, str, di_uid);
-	CPOUT_32(di, str, di_gid);
-	CPOUT_32(di, str, di_nlink);
-	CPOUT_64(di, str, di_size);
-	CPOUT_64(di, str, di_blocks);
-	CPOUT_64(di, str, di_atime);
-	CPOUT_64(di, str, di_mtime);
-	CPOUT_64(di, str, di_ctime);
-	CPOUT_32(di, str, di_major);
-	CPOUT_32(di, str, di_minor);
+	di->di_goal_meta = cpu_to_be64(ip->i_goal_meta);
+	di->di_goal_data = cpu_to_be64(ip->i_goal_data);
+	di->di_generation = cpu_to_be64(ip->i_generation);
 
-	CPOUT_64(di, str, di_goal_meta);
-	CPOUT_64(di, str, di_goal_data);
+	di->di_flags = cpu_to_be32(ip->i_flags);
+	di->di_payload_format = cpu_to_be32(ip->i_payload_format);
+	di->__pad1 = cpu_to_be16(ip->i_pad1);
+	di->di_height = cpu_to_be16(ip->i_height);
+	di->__pad2 = cpu_to_be32(ip->i_pad2);
+	di->__pad3 = cpu_to_be16(ip->i_pad3);
+	di->di_depth = cpu_to_be16(ip->i_depth);
+	di->di_entries = cpu_to_be32(ip->i_entries);
 
-	CPOUT_32(di, str, di_flags);
-	CPOUT_32(di, str, di_payload_format);
-	CPOUT_16(di, str, __pad1);
-	CPOUT_16(di, str, di_height);
+	di->__pad4.no_addr = cpu_to_be64(ip->i_pad4_addr);
+	di->__pad4.no_formal_ino = cpu_to_be64(ip->i_pad4_formal_ino);
 
-	CPOUT_16(di, str, di_depth);
-	CPOUT_32(di, str, di_entries);
-
-	CPOUT_64(di, str, di_eattr);
-
-	CPOUT_08(di, str, di_reserved, 32);
+	di->di_eattr = cpu_to_be64(ip->i_eattr);
+	di->di_atime_nsec = cpu_to_be32(ip->i_atime_nsec);
+	di->di_mtime_nsec = cpu_to_be32(ip->i_mtime_nsec);
+	di->di_ctime_nsec = cpu_to_be32(ip->i_ctime_nsec);
 }
 
 void lgfs2_dinode_print(void *dip)

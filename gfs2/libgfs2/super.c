@@ -207,7 +207,7 @@ int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 
 	*ok = 1;
 	*rgcount = 0;
-	if (sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex))
+	if (sdp->md.riinode->i_size % sizeof(struct gfs2_rindex))
 		*ok = 0; /* rindex file size must be a multiple of 96 */
 	for (rg = 0; ; rg++) {
 		error = gfs2_readi(sdp->md.riinode, (char *)&buf.bufgfs2,

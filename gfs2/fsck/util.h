@@ -83,11 +83,11 @@ static const inline char *block_type_string(int q)
 	return blktyp[4];
 }
 
-static inline int is_dir(struct gfs2_dinode *dinode, int gfs1)
+static inline int is_dir(struct gfs2_inode *ip, int gfs1)
 {
-	if (gfs1 && is_gfs_dir(dinode))
+	if (gfs1 && is_gfs_dir(ip))
 		return 1;
-	if (S_ISDIR(dinode->di_mode))
+	if (S_ISDIR(ip->i_mode))
 		return 1;
 
 	return 0;
@@ -95,7 +95,7 @@ static inline int is_dir(struct gfs2_dinode *dinode, int gfs1)
 
 static inline uint32_t gfs_to_gfs2_mode(struct gfs2_inode *ip)
 {
-	uint16_t gfs1mode = ip->i_di.__pad1;
+	uint16_t gfs1mode = ip->i_pad1;
 
 	switch (gfs1mode) {
 	case GFS_FILE_DIR:
@@ -114,8 +114,8 @@ static inline uint32_t gfs_to_gfs2_mode(struct gfs2_inode *ip)
 		return S_IFSOCK;
 	default:
 		/* This could be an aborted gfs2_convert so look for both. */
-		if (ip->i_di.di_entries ||
-		    (ip->i_di.di_mode & S_IFMT) == S_IFDIR)
+		if (ip->i_entries ||
+		    (ip->i_mode & S_IFMT) == S_IFDIR)
 			return S_IFDIR;
 		else
 			return S_IFREG;

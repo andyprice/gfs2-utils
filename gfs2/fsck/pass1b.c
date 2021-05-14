@@ -328,11 +328,11 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 			   because it IS ours, and we need to remove all the
 			   eattr leaf blocks: they do belong to us (except for
 			   the duplicate referenced one, which is handled). */
-			if (ip->i_di.di_eattr == dt->block) {
-				ip->i_di.di_eattr = 0;
-				if (ip->i_di.di_blocks > 0)
-					ip->i_di.di_blocks--;
-				ip->i_di.di_flags &= ~GFS2_DIF_EA_INDIRECT;
+			if (ip->i_eattr == dt->block) {
+				ip->i_eattr = 0;
+				if (ip->i_blocks > 0)
+					ip->i_blocks--;
+				ip->i_flags &= ~GFS2_DIF_EA_INDIRECT;
 				bmodified(ip->i_bh);
 				dup_listent_delete(dt, id);
 				(dh->ref_inode_count)--;
@@ -350,17 +350,17 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 				   and dirtree entries exist. That way, the
 				   bitmap_set will do proper accounting for
 				   the rgrp dinode count. */
-				fsck_bitmap_set(ip, ip->i_di.di_num.no_addr,
+				fsck_bitmap_set(ip, ip->i_addr,
 						_("duplicate referencing bad"),
 						GFS2_BLKST_FREE);
 				/* Remove the inode from the inode tree */
-				ii = inodetree_find(ip->i_di.di_num.no_addr);
+				ii = inodetree_find(ip->i_addr);
 				if (ii)
 					inodetree_delete(ii);
-				di = dirtree_find(ip->i_di.di_num.no_addr);
+				di = dirtree_find(ip->i_addr);
 				if (di)
 					dirtree_delete(di);
-				link1_set(&nlink1map, ip->i_di.di_num.no_addr,
+				link1_set(&nlink1map, ip->i_addr,
 					  0);
 				/* We delete the dup_handler inode count and
 				   duplicate id BEFORE clearing the metadata,
@@ -422,20 +422,15 @@ static int clone_data(struct gfs2_inode *ip, uint64_t metablock,
 		return 0;
 
 	if (clonet->first) {
-		log_debug(_("Inode %lld (0x%llx)'s first reference to "
-			    "block %lld (0x%llx) is targeted for cloning.\n"),
-			  (unsigned long long)ip->i_di.di_num.no_addr,
-			  (unsigned long long)ip->i_di.di_num.no_addr,
-			  (unsigned long long)block,
-			  (unsigned long long)block);
+		log_debug(_("Inode %"PRIu64" (0x%"PRIx64")'s first reference to "
+		            "block %"PRIu64" (0x%"PRIx64") is targeted for cloning.\n"),
+		          ip->i_addr, ip->i_addr, block, block);
 		clonet->first = 0;
 		return 0;
 	}
-	log_err(_("Error: Inode %lld (0x%llx)'s reference to block %lld "
-		  "(0x%llx) should be replaced with a clone.\n"),
-		(unsigned long long)ip->i_di.di_num.no_addr,
-		(unsigned long long)ip->i_di.di_num.no_addr,
-		(unsigned long long)block, (unsigned long long)block);
+	log_err(_("Error: Inode %"PRIu64" (0x%"PRIx64")'s reference to block %"PRIu64
+	          " (0x%"PRIx64") should be replaced with a clone.\n"),
+	        ip->i_addr, ip->i_addr, block, block);
 	if (query( _("Okay to clone the duplicated reference? (y/n) "))) {
 		error = lgfs2_meta_alloc(ip, &cloneblock);
 		if (!error) {
@@ -496,16 +491,13 @@ static void clone_dup_ref_in_inode(struct gfs2_inode *ip, struct duptree *dt)
 		.check_data = clone_data,
 	};
 
-	log_err(_("There are multiple references to block %lld (0x%llx) in "
-		  "inode %lld (0x%llx)\n"),
-		(unsigned long long)ip->i_di.di_num.no_addr,
-		(unsigned long long)ip->i_di.di_num.no_addr,
-		(unsigned long long)dt->block, (unsigned long long)dt->block);
+	log_err(_("There are multiple references to block %"PRIu64" (0x%"PRIx64") in "
+	          "inode %"PRIu64" (0x%"PRIx64")\n"),
+	        ip->i_addr, ip->i_addr, dt->block, dt->block);
 	error = check_metatree(ip, &pass1b_fxns_clone);
 	if (error) {
-		log_err(_("Error cloning duplicate reference(s) to block %lld "
-			  "(0x%llx).\n"), (unsigned long long)dt->block,
-			(unsigned long long)dt->block);
+		log_err(_("Error cloning duplicate reference(s) to block %"PRIu64
+		          " (0x%"PRIx64").\n"), dt->block, dt->block);
 	}
 }
 
@@ -518,7 +510,7 @@ static int set_ip_bitmap(struct gfs2_inode *ip)
 	if (ip->i_sbd->gfs1)
 		mode = gfs_to_gfs2_mode(ip);
 	else
-		mode = ip->i_di.di_mode & S_IFMT;
+		mode = ip->i_mode & S_IFMT;
 
 	switch (mode) {
 	case S_IFDIR:
@@ -590,7 +582,7 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 		fsck_bitmap_set(ip, dt->block,  _("reference-repaired data"),
 				GFS2_BLKST_USED);
 	} else if (id->reftypecount[REF_AS_META]) {
-		if (is_dir(&ip->i_di, sdp->gfs1))
+		if (is_dir(ip, sdp->gfs1))
 			fsck_bitmap_set(ip, dt->block,
 					_("reference-repaired leaf"),
 					sdp->gfs1 ? GFS2_BLKST_DINODE :
@@ -621,9 +613,9 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 				    "(y/n) "),
 				  (unsigned long long)id->block_no,
 				  (unsigned long long)id->block_no)) {
-				ip->i_di.di_eattr = 0;
-				ip->i_di.di_flags &= ~GFS2_DIF_EA_INDIRECT;
-				ip->i_di.di_blocks--;
+				ip->i_eattr = 0;
+				ip->i_flags &= ~GFS2_DIF_EA_INDIRECT;
+				ip->i_blocks--;
 				bmodified(ip->i_bh);
 				fsck_bitmap_set(ip, dt->block,
 						_("reference-repaired EA"),
@@ -882,8 +874,8 @@ static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
 	ip = fsck_load_inode(sdp, inode); /* bread, inode_get */
 
 	/* double-check the meta header just to be sure it's metadata */
-	if (ip->i_di.di_header.mh_magic != GFS2_MAGIC ||
-	    ip->i_di.di_header.mh_type != GFS2_METATYPE_DI) {
+	if (ip->i_magic != GFS2_MAGIC ||
+	    ip->i_type != GFS2_METATYPE_DI) {
 		if (!sdp->gfs1)
 			log_debug( _("Block %lld (0x%llx) is not a dinode.\n"),
 				   (unsigned long long)inode,

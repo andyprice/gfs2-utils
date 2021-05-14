@@ -221,11 +221,45 @@ struct gfs2_buffer_head {
 };
 
 struct gfs2_inode {
-	struct gfs2_dinode i_di;
 	struct gfs2_buffer_head *i_bh;
 	struct gfs2_sbd *i_sbd;
 	struct rgrp_tree *i_rgd; /* performance hint */
 	int bh_owned; /* Is this bh owned, iow, should we release it later? */
+
+	/* Native-endian versions of the dinode fields */
+	uint32_t i_magic;
+	uint32_t i_type;
+	uint32_t i_format;
+	uint64_t i_formal_ino;
+	uint64_t i_addr;
+	uint32_t i_mode;
+	uint32_t i_uid;
+	uint32_t i_gid;
+	uint32_t i_nlink;
+	uint64_t i_size;
+	uint64_t i_blocks;
+	uint64_t i_atime;
+	uint64_t i_mtime;
+	uint64_t i_ctime;
+	uint32_t i_major;
+	uint32_t i_minor;
+	uint64_t i_goal_meta;
+	uint64_t i_goal_data;
+	uint64_t i_generation;
+	uint32_t i_flags;
+	uint32_t i_payload_format;
+	uint16_t i_pad1;
+	uint16_t i_height;
+	uint32_t i_pad2;
+	uint16_t i_pad3;
+	uint16_t i_depth;
+	uint32_t i_entries;
+	uint64_t i_pad4_addr;
+	uint64_t i_pad4_formal_ino;
+	uint64_t i_eattr;
+	uint32_t i_atime_nsec;
+	uint32_t i_mtime_nsec;
+	uint32_t i_ctime_nsec;
 };
 
 struct master_dir
@@ -619,7 +653,7 @@ struct gfs_log_descriptor {
 	uint8_t ld_reserved[64];
 };
 
-extern int is_gfs_dir(struct gfs2_dinode *dinode);
+extern int is_gfs_dir(struct gfs2_inode *ip);
 extern void gfs1_lookup_block(struct gfs2_inode *ip,
 			      struct gfs2_buffer_head *bh,
 			      unsigned int height, struct metapath *mp,
@@ -717,8 +751,8 @@ extern void gfs2_rindex_in(struct gfs2_rindex *ri, char *buf);
 extern void gfs2_rindex_out(const struct gfs2_rindex *ri, char *buf);
 extern void gfs2_rgrp_in(struct gfs2_rgrp *rg, char *buf);
 extern void gfs2_rgrp_out(const struct gfs2_rgrp *rg, char *buf);
-extern void gfs2_dinode_in(struct gfs2_dinode *di, char *buf);
-extern void gfs2_dinode_out(struct gfs2_dinode *di, char *buf);
+extern void lgfs2_dinode_in(struct gfs2_inode *ip, char *buf);
+extern void lgfs2_dinode_out(struct gfs2_inode *ip, char *buf);
 extern void gfs2_dirent_in(struct gfs2_dirent *de, char *buf);
 extern void gfs2_dirent_out(struct gfs2_dirent *de, char *buf);
 extern void gfs2_leaf_in(struct gfs2_leaf *lf, char *buf);

@@ -209,10 +209,10 @@ static unsigned int calc_gfs2_tree_height(struct gfs2_inode *ip, uint64_t size)
 	uint64_t *arr;
 	unsigned int max, height;
 
-	if (ip->i_di.di_size > size)
-		size = ip->i_di.di_size;
+	if (ip->i_size > size)
+		size = ip->i_size;
 
-	if (S_ISDIR(ip->i_di.di_mode)) {
+	if (S_ISDIR(ip->i_mode)) {
 		arr = gfs2_jheightsize;
 		max = gfs2_max_jheight;
 	} else {
@@ -290,7 +290,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 	mh.mh_magic = GFS2_MAGIC;
 	mh.mh_type = GFS2_METATYPE_IN;
 	mh.mh_format = GFS2_FORMAT_IN;
-	if (!ip->i_di.di_height)
+	if (!ip->i_height)
 		unstuff_dinode(ip);
 
 	ptramt = blk->mp.mp_list[blk->height] * sizeof(uint64_t);
@@ -448,7 +448,7 @@ static uint64_t fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 	mh.mh_type = GFS2_METATYPE_IN;
 	mh.mh_format = GFS2_FORMAT_IN;
 
-	if (!ip->i_di.di_height)
+	if (!ip->i_height)
 		unstuff_dinode(ip);
 
 	ptramt = blk->mp.mp_list[blk->height];
@@ -540,7 +540,7 @@ static int get_inode_metablocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip, str
 	osi_list_foreach(tmp, &blocks->list) {
 		blk = osi_list_entry(tmp, struct blocklist, list);
 
-		if (blk->height >= ip->i_di.di_height - 1)
+		if (blk->height >= ip->i_height - 1)
 			continue;
 		for (ptr1 = (uint64_t *)blk->ptrbuf, ptrnum = 0;
 		     ptrnum < sbp->sd_inptrs; ptr1++, ptrnum++) {
@@ -579,7 +579,7 @@ static int get_inode_metablocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip, str
 			brelse(bh);
 			/* Free the block so we can reuse it. This allows us to
 			   convert a "full" file system. */
-			ip->i_di.di_blocks--;
+			ip->i_blocks--;
 			gfs2_free_block(sbp, block);
 		}
 	}
@@ -622,7 +622,7 @@ static int fix_ind_reg_or_dir(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint3
 	blk->height -= di_height - gfs2_hgt;
 	if (len) {
 		fix_metatree(sbp, ip, blk, ptr1, len);
-		ip->i_di.di_goal_meta = be64_to_cpu(*ptr2);
+		ip->i_goal_meta = be64_to_cpu(*ptr2);
 	}
 
 	return 0;
@@ -671,7 +671,7 @@ static int fix_ind_jdata(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint32_t d
 			newblk->mp.mp_list[h] = blk->mp.mp_list[h];
 		newblk->mp.mp_list[h] = ptrnum;
 		bh = bread(sbp, block);
-		/* This is a data block. i.e newblk->height == ip->i_di.di_height */
+		/* This is a data block. i.e newblk->height == ip->i_height */
 		/* read in the jdata block */
 		memcpy(newblk->ptrbuf, bh->b_data +
 		       sizeof(struct gfs2_meta_header), bufsize);
@@ -680,7 +680,7 @@ static int fix_ind_jdata(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint32_t d
 		brelse(bh);
 		/* Free the block so we can reuse it. This allows us to
 		   convert a "full" file system */
-		ip->i_di.di_blocks--;
+		ip->i_blocks--;
 		gfs2_free_block(sbp, block);
 
 		len = bufsize;
@@ -689,7 +689,7 @@ static int fix_ind_jdata(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint32_t d
 		memcpy(&newblk->mp, &gfs2mp, sizeof(struct metapath));
 		newblk->height -= di_height - gfs2_hgt;
 		if (len)
-			ip->i_di.di_goal_meta = fix_jdatatree(sbp, ip, newblk,
+			ip->i_goal_meta = fix_jdatatree(sbp, ip, newblk,
 							      newblk->ptrbuf, len);
 		free(newblk->ptrbuf);
 		free(newblk);
@@ -705,17 +705,17 @@ static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
 	struct blocklist blocks, *blk;
 	int error = 0;
 
-	int isdir = S_ISDIR(ip->i_di.di_mode); /* is always jdata */
-	int isjdata = ((GFS2_DIF_JDATA & ip->i_di.di_flags) && !isdir);
+	int isdir = S_ISDIR(ip->i_mode); /* is always jdata */
+	int isjdata = ((GFS2_DIF_JDATA & ip->i_flags) && !isdir);
 	int isreg = (!isjdata && !isdir);
-	int issys = (GFS2_DIF_SYSTEM & ip->i_di.di_flags);
+	int issys = (GFS2_DIF_SYSTEM & ip->i_flags);
 
 	/* regular files and dirs are same upto height=2
 	   jdata files (not dirs) are same only when height=0 */
-	if (((isreg||isdir) && ip->i_di.di_height <= 1) ||
-	    (isjdata && ip->i_di.di_height == 0)) {
+	if (((isreg||isdir) && ip->i_height <= 1) ||
+	    (isjdata && ip->i_height == 0)) {
 		if (!issys)
-			ip->i_di.di_goal_meta = ip->i_di.di_num.no_addr;
+			ip->i_goal_meta = ip->i_addr;
 		return 0; /* nothing to do */
 	}
 
@@ -727,13 +727,13 @@ static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
 
 	/* The gfs2 height may be different.  We need to rebuild the
 	   metadata tree to the gfs2 height. */
-	gfs2_hgt = calc_gfs2_tree_height(ip, ip->i_di.di_size);
+	gfs2_hgt = calc_gfs2_tree_height(ip, ip->i_size);
 	/* Save off the size because we're going to empty the contents
 	   and add the data blocks back in later. */
-	dinode_size = ip->i_di.di_size;
-	ip->i_di.di_size = 0ULL;
-	di_height = ip->i_di.di_height;
-	ip->i_di.di_height = 0;
+	dinode_size = ip->i_size;
+	ip->i_size = 0ULL;
+	di_height = ip->i_height;
+	ip->i_height = 0;
 
 	/* Now run through the block list a second time.  If the block
 	   is a data block, rewrite the data to the gfs2 offset. */
@@ -762,11 +762,11 @@ static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
 		free(blk);
 	}
 
-	ip->i_di.di_size = dinode_size;
+	ip->i_size = dinode_size;
 
 	/* Set the new dinode height, which may or may not have changed.  */
 	/* The caller will take it from the ip and write it to the buffer */
-	ip->i_di.di_height = gfs2_hgt;
+	ip->i_height = gfs2_hgt;
 	return error;
 
 out:
@@ -794,7 +794,7 @@ static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, s
 {
 	char *linkptr = NULL;
 
-	if (ip->i_di.di_height != 0)
+	if (ip->i_height != 0)
 		return 0;
 
 	linkptr = bh->b_data + sizeof(struct gfs_dinode);
@@ -807,7 +807,7 @@ static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, s
 			return -1;
 		}
 		memset(fix, 0, sizeof(struct inode_dir_block));
-		fix->di_addr = ip->i_di.di_num.no_addr;
+		fix->di_addr = ip->i_addr;
 		osi_list_add_prev((osi_list_t *)&fix->list,
 				  (osi_list_t *)&cdpns_to_fix);
 	}
@@ -817,7 +817,7 @@ static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, s
 
 /*
  * fix_xattr -
- * Extended attributes can be either direct (in the ip->i_di.di_eattr block) or
+ * Extended attributes can be either direct (in the ip->i_eattr block) or
  * then can be at a maximum of 1 indirect level. Multiple levels of indirection
  * are not supported. If the di_eattr block contains extended attribute data,
  * i.e block type = GFS_METATYPE_EA, we ignore it.
@@ -831,8 +831,8 @@ static int fix_xattr(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, struct g
 	struct gfs2_buffer_head *eabh;
 	char *buf;
 
-	/* Read in the i_di.di_eattr block */
-	eabh = bread(sbp, ip->i_di.di_eattr);
+	/* Read in the i_eattr block */
+	eabh = bread(sbp, ip->i_eattr);
         if (!gfs2_check_meta(eabh->b_data, GFS_METATYPE_IN)) {/* if it is an indirect block */
 		len = sbp->bsize - sizeof(struct gfs_indirect);
 		buf = malloc(len);
@@ -871,16 +871,15 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 		return -1;
 	}
 
-	inode_was_gfs1 = (inode->i_di.di_num.no_formal_ino ==
-					  inode->i_di.di_num.no_addr);
+	inode_was_gfs1 = (inode->i_formal_ino == inode->i_addr);
 	/* Fix the inode number: */
-	inode->i_di.di_num.no_formal_ino = sbp->md.next_inum;
+	inode->i_formal_ino = sbp->md.next_inum;
 
 	/* Fix the inode type: gfs1 uses di_type, gfs2 uses di_mode. */
-	inode->i_di.di_mode &= ~S_IFMT;
-	switch (inode->i_di.__pad1) { /* formerly di_type */
+	inode->i_mode &= ~S_IFMT;
+	switch (inode->i_pad1) { /* formerly di_type */
 	case GFS_FILE_DIR:           /* directory        */
-		inode->i_di.di_mode |= S_IFDIR;
+		inode->i_mode |= S_IFDIR;
 		/* Add this directory to the list of dirs to fix later. */
 		fixdir = malloc(sizeof(struct inode_block));
 		if (!fixdir) {
@@ -889,27 +888,27 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 			goto err_freei;
 		}
 		memset(fixdir, 0, sizeof(struct inode_block));
-		fixdir->di_addr = inode->i_di.di_num.no_addr;
+		fixdir->di_addr = inode->i_addr;
 		osi_list_add_prev((osi_list_t *)&fixdir->list,
 						  (osi_list_t *)&dirs_to_fix);
 		break;
 	case GFS_FILE_REG:           /* regular file     */
-		inode->i_di.di_mode |= S_IFREG;
+		inode->i_mode |= S_IFREG;
 		break;
 	case GFS_FILE_LNK:           /* symlink          */
-		inode->i_di.di_mode |= S_IFLNK;
+		inode->i_mode |= S_IFLNK;
 		break;
 	case GFS_FILE_BLK:           /* block device     */
-		inode->i_di.di_mode |= S_IFBLK;
+		inode->i_mode |= S_IFBLK;
 		break;
 	case GFS_FILE_CHR:           /* character device */
-		inode->i_di.di_mode |= S_IFCHR;
+		inode->i_mode |= S_IFCHR;
 		break;
 	case GFS_FILE_FIFO:          /* fifo / pipe      */
-		inode->i_di.di_mode |= S_IFIFO;
+		inode->i_mode |= S_IFIFO;
 		break;
 	case GFS_FILE_SOCK:          /* socket           */
-		inode->i_di.di_mode |= S_IFSOCK;
+		inode->i_mode |= S_IFSOCK;
 		break;
 	}
 
@@ -930,25 +929,26 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 	/*       don't want to shift the data around.                  */
 	/* ----------------------------------------------------------- */
 	if (inode_was_gfs1) {
-		struct gfs_dinode *gfs1_dinode_struct;
+		struct {
+			uint32_t dblk;
+			uint32_t mblk;
+		} *gfs1_goals = (void *)&inode->i_generation;
 		int ret = 0;
 
-		gfs1_dinode_struct = (struct gfs_dinode *)&inode->i_di;
-		inode->i_di.di_goal_meta = inode->i_di.di_goal_data;
-		inode->i_di.di_goal_data = 0; /* make sure the upper 32b are 0 */
-		inode->i_di.di_goal_data = gfs1_dinode_struct->di_goal_dblk;
-		inode->i_di.di_generation = 0;
+		inode->i_goal_meta = inode->i_goal_data;
+		inode->i_goal_data = (uint64_t)gfs1_goals->dblk;
+		inode->i_generation = 0;
 
 		if (adjust_indirect_blocks(sbp, inode))
 			goto err_freei;
 		/* Check for cdpns */
-		if (S_ISLNK(inode->i_di.di_mode)) {
+		if (S_ISLNK(inode->i_mode)) {
 			ret = fix_cdpn_symlink(sbp, bh, inode);
 			if (ret)
 				goto err_freei;
 		}
 		/* Check for extended attributes */
-		if (inode->i_di.di_eattr) {
+		if (inode->i_eattr) {
 			ret = fix_xattr(sbp, bh, inode);
 			if (ret)
 				goto err_freei;
@@ -1124,10 +1124,10 @@ static int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
 	fix_inode = lgfs2_inode_read(sbp, iblock);
 	if (fix_inode == NULL)
 		return 1;
-	inum->no_formal_ino = fix_inode->i_di.di_num.no_formal_ino;
-	inum->no_addr = fix_inode->i_di.di_num.no_addr;
+	inum->no_formal_ino = fix_inode->i_formal_ino;
+	inum->no_addr = fix_inode->i_addr;
 	if (eablk)
-		*eablk = fix_inode->i_di.di_eattr;
+		*eablk = fix_inode->i_eattr;
 
 	inode_put(&fix_inode);
 	return 0;
@@ -1239,7 +1239,7 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 			osi_list_foreach(tmp, &cdpns_to_fix.list) {
 				fix = osi_list_entry(tmp, struct inode_dir_block, list);
 				if (fix->di_addr == inum.no_addr)
-					fix->di_paddr = dip->i_di.di_num.no_addr;
+					fix->di_paddr = dip->i_addr;
 			}
 		}
 
@@ -1324,14 +1324,14 @@ static int process_directory(struct gfs2_sbd *sbp, uint64_t dirblock, uint64_t d
 	if (dip == NULL)
 		return -1;
 	/* fix the directory: either exhash (leaves) or linear (stuffed) */
-	if (dip->i_di.di_flags & GFS2_DIF_EXHASH) {
+	if (dip->i_flags & GFS2_DIF_EXHASH) {
 		if (fix_one_directory_exhash(sbp, dip, dentmod)) {
 			log_crit(_("Error fixing exhash directory.\n"));
 			inode_put(&dip);
 			return -1;
 		}
 	} else {
-		error = process_dirent_info(dip, sbp, dip->i_bh, dip->i_di.di_entries, dentmod);
+		error = process_dirent_info(dip, sbp, dip->i_bh, dip->i_entries, dentmod);
 		if (error && error != -EISDIR) {
 			log_crit(_("Error fixing linear directory.\n"));
 			inode_put(&dip);
@@ -1430,7 +1430,7 @@ static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 		fix_inode = lgfs2_inode_get(sbp, bh);
 		if (fix_inode == NULL)
 			return -1;
-		fix_inode->i_di.di_eattr = eablk; /*fix extended attribute */
+		fix_inode->i_eattr = eablk; /*fix extended attribute */
 		inode_put(&fix_inode);
 		bmodified(bh);
 		brelse(bh);
@@ -1471,17 +1471,17 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 	int error=0;
 	unsigned int tmp_mode = 0;
 
-	if(ip->i_di.di_size % sizeof(struct gfs_jindex) != 0){
+	if(ip->i_size % sizeof(struct gfs_jindex) != 0){
 		log_crit(_("The size reported in the journal index"
 				" inode is not a\n"
 				"\tmultiple of the size of a journal index.\n"));
 		return -1;
 	}
-	if(!(sd_jindex = (struct gfs_jindex *)malloc(ip->i_di.di_size))) {
+	if(!(sd_jindex = (struct gfs_jindex *)malloc(ip->i_size))) {
 		log_crit(_("Unable to allocate journal index\n"));
 		return -1;
 	}
-	if(!memset(sd_jindex, 0, ip->i_di.di_size)) {
+	if(!memset(sd_jindex, 0, ip->i_size)) {
 		log_crit(_("Unable to zero journal index\n"));
 		return -1;
 	}
@@ -1490,9 +1490,9 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 	 * so it skips the metaheader struct in the data blocks
 	 * in the inode. gfs2_jindex inode doesn't have metaheaders
 	 * in the data blocks */
-	tmp_mode = ip->i_di.di_mode;
-	ip->i_di.di_mode &= ~S_IFMT;
-	ip->i_di.di_mode |= S_IFDIR;
+	tmp_mode = ip->i_mode;
+	ip->i_mode &= ~S_IFMT;
+	ip->i_mode |= S_IFDIR;
 	for (j = 0; ; j++) {
 		struct gfs_jindex *journ;
 
@@ -1509,8 +1509,8 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 		gfs1_jindex_in(journ, buf);
 		sdp->jsize = (journ->ji_nsegment * 16 * sdp->bsize) >> 20;
 	}
-	ip->i_di.di_mode = tmp_mode;
-	if(j * sizeof(struct gfs_jindex) != ip->i_di.di_size){
+	ip->i_mode = tmp_mode;
+	if(j * sizeof(struct gfs_jindex) != ip->i_size){
 		log_crit(_("journal inode size invalid\n"));
 		goto fail;
 	}
@@ -1710,8 +1710,8 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 	/* apparently only for directories.  So we need to fake out libgfs2  */
 	/* so that it adjusts for the metaheader by faking out the inode to  */
 	/* look like a directory, temporarily.                               */
-	sbp->md.riinode->i_di.di_mode &= ~S_IFMT;
-	sbp->md.riinode->i_di.di_mode |= S_IFDIR;
+	sbp->md.riinode->i_mode &= ~S_IFMT;
+	sbp->md.riinode->i_mode |= S_IFDIR;
 	printf(_("Examining file system"));
 	if (gfs1_ri_update(sbp, &rgcount, 0)){
 		log_crit(_("Unable to fill in resource group information.\n"));
@@ -2158,15 +2158,15 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 		exit(1);
 	}
 
-	nq_ip->i_di.di_height = oq_ip->i_di.di_height;
-	nq_ip->i_di.di_size = oq_ip->i_di.di_size;
-	nq_ip->i_di.di_blocks = oq_ip->i_di.di_blocks;
+	nq_ip->i_height = oq_ip->i_height;
+	nq_ip->i_size = oq_ip->i_size;
+	nq_ip->i_blocks = oq_ip->i_blocks;
 	memcpy(nq_ip->i_bh->b_data + sizeof(struct gfs2_dinode), 
 	       oq_ip->i_bh->b_data + sizeof(struct gfs2_dinode),
 	       sdp->bsize - sizeof(struct gfs2_dinode));
 
-	oq_ip->i_di.di_height = 0;
-	oq_ip->i_di.di_size = 0;
+	oq_ip->i_height = 0;
+	oq_ip->i_size = 0;
 
 	bmodified(nq_ip->i_bh);
 	inode_put(&nq_ip);
@@ -2321,7 +2321,8 @@ int main(int argc, char **argv)
 				   "GFS2 file system structures.\n"), sb2.jsize);
 		/* Build the master subdirectory. */
 		build_master(&sb2); /* Does not do inode_put */
-		sb2.sd_sb.sb_master_dir = sb2.master_dir->i_di.di_num;
+		sb2.sd_sb.sb_master_dir.no_addr = sb2.master_dir->i_addr;
+		sb2.sd_sb.sb_master_dir.no_formal_ino = sb2.master_dir->i_formal_ino;
 		/* Build empty journal index file. */
 		error = conv_build_jindex(&sb2);
 		if (error) {
@@ -2370,11 +2371,8 @@ int main(int argc, char **argv)
 		}
 
 		/* Copy out the master dinode */
-		{
-			struct gfs2_inode *ip = sb2.master_dir;
-			if (ip->i_bh->b_modified)
-				gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
-		}
+		if (sb2.master_dir->i_bh->b_modified)
+			lgfs2_dinode_out(sb2.master_dir, sb2.master_dir->i_bh->b_data);
 		/* Copy old quotas */
 		copy_quotas(&sb2);
 

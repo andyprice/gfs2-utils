@@ -28,18 +28,15 @@ struct metawalk_fxns pass4_fxns_delete = {
  * link count */
 static int fix_link_count(uint32_t counted_links, struct gfs2_inode *ip)
 {
-	log_info( _("Fixing inode link count (%d->%d) for %llu (0x%llx) \n"),
-		  ip->i_di.di_nlink, counted_links,
-		 (unsigned long long)ip->i_di.di_num.no_addr,
-		 (unsigned long long)ip->i_di.di_num.no_addr);
-	if (ip->i_di.di_nlink == counted_links)
+	log_info(_("Fixing inode link count (%d->%d) for %"PRIu64" (0x%"PRIx64") \n"),
+	         ip->i_nlink, counted_links, ip->i_addr, ip->i_addr);
+	if (ip->i_nlink == counted_links)
 		return 0;
-	ip->i_di.di_nlink = counted_links;
+	ip->i_nlink = counted_links;
 	bmodified(ip->i_bh);
 
-	log_debug( _("Changing inode %llu (0x%llx) to have %u links\n"),
-		  (unsigned long long)ip->i_di.di_num.no_addr,
-		  (unsigned long long)ip->i_di.di_num.no_addr, counted_links);
+	log_debug(_("Changing inode %"PRIu64" (0x%"PRIx64") to have %u links\n"),
+	          ip->i_addr, ip->i_addr, counted_links);
 	return 0;
 }
 
@@ -102,7 +99,7 @@ static int handle_unlinked(struct gfs2_sbd *sdp, uint64_t no_addr,
 
 	/* We don't want to clear zero-size files with eattrs - there might be
 	   relevent info in them. */
-	if (!ip->i_di.di_size && !ip->i_di.di_eattr){
+	if (!ip->i_size && !ip->i_eattr){
 		log_err( _("Unlinked inode has zero size\n"));
 		if (query(_("Clear zero-size unlinked inode? (y/n) "))) {
 			fsck_bitmap_set(ip, no_addr, _("unlinked zero-length"),
@@ -164,7 +161,7 @@ static int adjust_lf_links(int lf_addition)
 	if (!lf_addition)
 		return 0;
 
-	if (!(lf_di = dirtree_find(lf_dip->i_di.di_num.no_addr))) {
+	if (!(lf_di = dirtree_find(lf_dip->i_addr))) {
 		log_crit(_("Unable to find lost+found inode in "
 			   "inode_hash!!\n"));
 		return -1;
@@ -189,9 +186,9 @@ static int scan_inode_list(struct gfs2_sbd *sdp)
 		ii = (struct inode_info *)tmp;
 		/* Don't check reference counts on the special gfs files */
 		if (sdp->gfs1 &&
-		    ((ii->di_num.no_addr == sdp->md.riinode->i_di.di_num.no_addr) ||
-		     (ii->di_num.no_addr == sdp->md.qinode->i_di.di_num.no_addr) ||
-		     (ii->di_num.no_addr == sdp->md.statfs->i_di.di_num.no_addr)))
+		    ((ii->di_num.no_addr == sdp->md.riinode->i_addr) ||
+		     (ii->di_num.no_addr == sdp->md.qinode->i_addr) ||
+		     (ii->di_num.no_addr == sdp->md.statfs->i_addr)))
 			continue;
 		if (ii->counted_links == 0) {
 			if (handle_unlinked(sdp, ii->di_num.no_addr,
@@ -225,7 +222,7 @@ static int scan_dir_list(struct gfs2_sbd *sdp)
 		di = (struct dir_info *)tmp;
 		/* Don't check reference counts on the special gfs files */
 		if (sdp->gfs1 &&
-		    di->dinode.no_addr == sdp->md.jiinode->i_di.di_num.no_addr)
+		    di->dinode.no_addr == sdp->md.jiinode->i_addr)
 			continue;
 		if (di->counted_links == 0) {
 			if (handle_unlinked(sdp, di->dinode.no_addr,
@@ -282,7 +279,7 @@ int pass4(struct gfs2_sbd *sdp)
 {
 	if (lf_dip)
 		log_debug( _("At beginning of pass4, lost+found entries is %u\n"),
-				  lf_dip->i_di.di_entries);
+				  lf_dip->i_entries);
 	log_info( _("Checking inode reference counts: multi-links.\n"));
 	if (scan_inode_list(sdp)) {
 		stack;
@@ -301,6 +298,6 @@ int pass4(struct gfs2_sbd *sdp)
 
 	if (lf_dip)
 		log_debug( _("At end of pass4, lost+found entries is %u\n"),
-				  lf_dip->i_di.di_entries);
+				  lf_dip->i_entries);
 	return FSCK_OK;
 }

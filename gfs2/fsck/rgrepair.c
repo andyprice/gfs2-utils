@@ -60,10 +60,9 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 	osi_list_init(&false_rgrps.list);
 	for (j = 0; j < sdp->md.journals; j++) {
 		ip = sdp->md.journal[j];
-		log_debug(_("Checking for rgrps in journal%d which starts "
-			    "at block 0x%llx.\n"), j,
-			  (unsigned long long)ip->i_di.di_num.no_addr);
-		jblocks = ip->i_di.di_size / sdp->sd_sb.sb_bsize;
+		log_debug(_("Checking for rgrps in journal%d which starts at block 0x%"PRIx64".\n"),
+		          j, ip->i_addr);
+		jblocks = ip->i_size / sdp->sd_sb.sb_bsize;
 		false_count = 0;
 		for (b = 0; b < jblocks; b++) {
 			block_map(ip, b, &new, &dblock, NULL, 0);
@@ -876,7 +875,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 	/* our rindex structures, then something's wrong and we can't trust  */
 	/* the index.                                                        */
 	/* ----------------------------------------------------------------- */
-	*num_rgs = sdp->md.riinode->i_di.di_size / sizeof(struct gfs2_rindex);
+	*num_rgs = sdp->md.riinode->i_size / sizeof(struct gfs2_rindex);
 
 	sdp->rgcalc.osi_node = NULL;
 	fix_device_geometry(sdp);
@@ -979,7 +978,7 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgd, *exp;
 
-	*num_rgs = sdp->md.riinode->i_di.di_size / sizeof(struct gfs2_rindex) ;
+	*num_rgs = sdp->md.riinode->i_size / sizeof(struct gfs2_rindex) ;
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
 		rgd = (struct rgrp_tree *)n;
@@ -1067,7 +1066,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 	/* Read in the rindex */
 	sdp->rgtree.osi_node = NULL; /* Just to be safe */
 	rindex_read(sdp, &sdp->rgrps, ok);
-	if (sdp->md.riinode->i_di.di_size % sizeof(struct gfs2_rindex)) {
+	if (sdp->md.riinode->i_size % sizeof(struct gfs2_rindex)) {
 		log_warn( _("WARNING: rindex file has an invalid size.\n"));
 		if (!query( _("Truncate the rindex size? (y/n)"))) {
 			log_err(_("The rindex was not repaired.\n"));
@@ -1075,11 +1074,10 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 			gfs2_rgrp_free(sdp, &sdp->rgtree);
 			return -1;
 		}
-		sdp->md.riinode->i_di.di_size /= sizeof(struct gfs2_rindex);
-		sdp->md.riinode->i_di.di_size *= sizeof(struct gfs2_rindex);
+		sdp->md.riinode->i_size /= sizeof(struct gfs2_rindex);
+		sdp->md.riinode->i_size *= sizeof(struct gfs2_rindex);
 		bmodified(sdp->md.riinode->i_bh);
-		log_err(_("Changing rindex size to %lld.\n"),
-			(unsigned long long)sdp->md.riinode->i_di.di_size);
+		log_err(_("Changing rindex size to %"PRIu64".\n"), sdp->md.riinode->i_size);
 	}
 	log_warn( _("L%d: number of rgs expected     = %lld.\n"), trust_lvl + 1,
 		 (unsigned long long)sdp->rgrps);
@@ -1104,8 +1102,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		/* We cannot grow rindex at this point. Since pass1 has not
 		   yet run, we can't allocate blocks. Therefore we must use
 		   whatever will fix in the space given. */
-		most_that_fit = sdp->md.riinode->i_di.di_size /
-			sizeof(struct gfs2_rindex);
+		most_that_fit = sdp->md.riinode->i_size / sizeof(struct gfs2_rindex);
 		log_debug(_("The most we can fit is %d rgrps\n"),
 			  most_that_fit);
 		if (most_that_fit < calc_rg_count)
@@ -1281,7 +1278,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 	   permission. */
 	if (sdp->md.riinode->i_bh->b_modified) {
 		log_debug("Syncing rindex inode changes to disk.\n");
-		gfs2_dinode_out(&sdp->md.riinode->i_di, sdp->md.riinode->i_bh->b_data);
+		lgfs2_dinode_out(sdp->md.riinode, sdp->md.riinode->i_bh->b_data);
 		bwrite(sdp->md.riinode->i_bh);
 	}
 	return 0;

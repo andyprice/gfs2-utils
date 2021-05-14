@@ -301,10 +301,9 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				if (!gfs2_check_meta(bh->b_data, GFS2_METATYPE_DI)) {
 					struct gfs2_inode *ip =
 						fsck_inode_get(sdp, rgd, bh);
-					if (ip->i_di.di_blocks > 1) {
-						blks_2free +=
-							ip->i_di.di_blocks - 1;
-						log_info(_("%lld blocks "
+					if (ip->i_blocks > 1) {
+						blks_2free += ip->i_blocks - 1;
+						log_info(_("%llu blocks "
 							   "(total) may need "
 							   "to be freed in "
 							   "pass 5.\n"),
@@ -492,14 +491,14 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 
 	if (fix_md.jiinode) {
 		inum.no_formal_ino = sdp->md.next_inum++;
-		inum.no_addr = fix_md.jiinode->i_di.di_num.no_addr;
+		inum.no_addr = fix_md.jiinode->i_addr;
 		err = dir_add(sdp->master_dir, "jindex", 6, &inum,
 		              IF2DT(S_IFDIR | 0700));
 		if (err) {
 			log_crit(_("Error %d adding jindex directory\n"), errno);
 			exit(FSCK_ERROR);
 		}
-		sdp->master_dir->i_di.di_nlink++;
+		sdp->master_dir->i_nlink++;
 	} else {
 		err = build_jindex(sdp);
 		if (err) {
@@ -510,7 +509,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 
 	if (fix_md.pinode) {
 		inum.no_formal_ino = sdp->md.next_inum++;
-		inum.no_addr = fix_md.pinode->i_di.di_num.no_addr;
+		inum.no_addr = fix_md.pinode->i_addr;
 		err = dir_add(sdp->master_dir, "per_node", 8, &inum,
 			IF2DT(S_IFDIR | 0700));
 		if (err) {
@@ -518,7 +517,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 				 errno);
 			exit(FSCK_ERROR);
 		}
-		sdp->master_dir->i_di.di_nlink++;
+		sdp->master_dir->i_nlink++;
 	} else {
 		err = build_per_node(sdp);
 		if (err) {
@@ -530,7 +529,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 
 	if (fix_md.inum) {
 		inum.no_formal_ino = sdp->md.next_inum++;
-		inum.no_addr = fix_md.inum->i_di.di_num.no_addr;
+		inum.no_addr = fix_md.inum->i_addr;
 		err = dir_add(sdp->master_dir, "inum", 4, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
@@ -548,7 +547,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 
 	if (fix_md.statfs) {
 		inum.no_formal_ino = sdp->md.next_inum++;
-		inum.no_addr = fix_md.statfs->i_di.di_num.no_addr;
+		inum.no_addr = fix_md.statfs->i_addr;
 		err = dir_add(sdp->master_dir, "statfs", 6, &inum,
 			      IF2DT(S_IFREG | 0600));
 		if (err) {
@@ -566,7 +565,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 
 	if (fix_md.riinode) {
 		inum.no_formal_ino = sdp->md.next_inum++;
-		inum.no_addr = fix_md.riinode->i_di.di_num.no_addr;
+		inum.no_addr = fix_md.riinode->i_addr;
 		err = dir_add(sdp->master_dir, "rindex", 6, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
@@ -583,7 +582,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 
 	if (fix_md.qinode) {
 		inum.no_formal_ino = sdp->md.next_inum++;
-		inum.no_addr = fix_md.qinode->i_di.di_num.no_addr;
+		inum.no_addr = fix_md.qinode->i_addr;
 		err = dir_add(sdp->master_dir, "quota", 5, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
@@ -850,8 +849,8 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 		}
 		/* Read inum entry into buffer */
 		err = gfs2_readi(sdp->md.inum, &inumbuf, 0,
-				 sdp->md.inum->i_di.di_size);
-		if (err != sdp->md.inum->i_di.di_size) {
+				 sdp->md.inum->i_size);
+		if (err != sdp->md.inum->i_size) {
 			log_crit(_("Error %d reading system inum inode. "
 				   "Aborting.\n"), err);
 			goto fail;
@@ -902,12 +901,12 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 		}
 		do_init_statfs(sdp);
 	}
-	if (sdp->md.statfs->i_di.di_size) {
-		buf = malloc(sdp->md.statfs->i_di.di_size);
+	if (sdp->md.statfs->i_size) {
+		buf = malloc(sdp->md.statfs->i_size);
 		if (buf) {
 			err = gfs2_readi(sdp->md.statfs, buf, 0,
-					 sdp->md.statfs->i_di.di_size);
-			if (err != sdp->md.statfs->i_di.di_size) {
+					 sdp->md.statfs->i_size);
+			if (err != sdp->md.statfs->i_size) {
 				log_crit(_("Error %d reading statfs file. "
 					   "Aborting.\n"), err);
 				free(buf);
@@ -984,9 +983,9 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
  * A real dinode will be located at the block number in its no_addr.
  * A journal-copy will be at a different block (inside the journal).
  */
-static int is_journal_copy(struct gfs2_inode *ip, struct gfs2_buffer_head *bh)
+static int is_journal_copy(struct gfs2_inode *ip)
 {
-	if (ip->i_di.di_num.no_addr == bh->b_blocknr)
+	if (ip->i_addr == ip->i_bh->b_blocknr)
 		return 0;
 	return 1; /* journal copy */
 }
@@ -1001,47 +1000,40 @@ static int is_journal_copy(struct gfs2_inode *ip, struct gfs2_buffer_head *bh)
  * the per_node directory will have a ".." entry that will lead us to
  * the master dinode if it's been destroyed.
  */
-static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
-				 struct gfs2_buffer_head *bh)
+static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 {
-	struct gfs2_inode *ip, *child_ip;
+	struct gfs2_inode *child_ip;
 	struct gfs2_inum inum;
 	int error;
 
-	if (di->di_num.no_formal_ino == 2) {
+	if (ip->i_formal_ino == 2) {
 		if (sdp->sd_sb.sb_master_dir.no_addr)
 			return;
 		log_warn(_("Found system master directory at: 0x%"PRIx64".\n"),
-			 di->di_num.no_addr);
-		sdp->sd_sb.sb_master_dir.no_addr = di->di_num.no_addr;
+			 ip->i_addr);
+		sdp->sd_sb.sb_master_dir.no_addr = ip->i_addr;
 		return;
 	}
-	ip = lgfs2_inode_read(sdp, di->di_num.no_addr);
-	if (ip == NULL) {
-		log_crit(_("Error reading inode: %s\n"), strerror(errno));
-		return;
-	}
-	if ((!sdp->gfs1 && di->di_num.no_formal_ino == 3) ||
-	    (sdp->gfs1 && (di->di_flags & GFS2_DIF_JDATA) &&
-	     (di->di_size % sizeof(struct gfs_jindex) == 0))) {
-		if (fix_md.jiinode || is_journal_copy(ip, bh))
+	if ((!sdp->gfs1 && ip->i_formal_ino == 3) ||
+	    (sdp->gfs1 && (ip->i_flags & GFS2_DIF_JDATA) &&
+	     (ip->i_size % sizeof(struct gfs_jindex) == 0))) {
+		if (fix_md.jiinode || is_journal_copy(ip))
 			goto out_discard_ip;
-		log_warn(_("Found system jindex file at: 0x%"PRIx64"\n"),
-			 di->di_num.no_addr);
+		log_warn(_("Found system jindex file at: 0x%"PRIx64"\n"), ip->i_addr);
 		fix_md.jiinode = ip;
-	} else if (!sdp->gfs1 && is_dir(di, sdp->gfs1)) {
+	} else if (!sdp->gfs1 && is_dir(ip, sdp->gfs1)) {
 		/* Check for a jindex dir entry. Only one system dir has a
 		   jindex: master */
 		gfs2_lookupi(ip, "jindex", 6, &child_ip);
 		if (child_ip) {
-			if (fix_md.jiinode || is_journal_copy(ip, bh)) {
+			if (fix_md.jiinode || is_journal_copy(ip)) {
 				inode_put(&child_ip);
 				goto out_discard_ip;
 			}
 			fix_md.jiinode = child_ip;
-			sdp->sd_sb.sb_master_dir.no_addr = di->di_num.no_addr;
+			sdp->sd_sb.sb_master_dir.no_addr = ip->i_addr;
 			log_warn(_("Found system master directory at: 0x%"PRIx64"\n"),
-			         di->di_num.no_addr);
+			         ip->i_addr);
 			return;
 		}
 
@@ -1050,10 +1042,10 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 		gfs2_lookupi(ip, "statfs_change0", 14, &child_ip);
 		if (child_ip) {
 			inode_put(&child_ip);
-			if (fix_md.pinode || is_journal_copy(ip, bh))
+			if (fix_md.pinode || is_journal_copy(ip))
 				goto out_discard_ip;
 			log_warn(_("Found system per_node directory at: 0x%"PRIx64"\n"),
-			         ip->i_di.di_num.no_addr);
+			         ip->i_addr);
 			fix_md.pinode = ip;
 			error = dir_search(ip, "..", 2, NULL, &inum);
 			if (!error && inum.no_addr) {
@@ -1064,35 +1056,30 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
 			}
 			return;
 		}
-		log_debug(_("Unknown system directory at block 0x%"PRIx64"\n"),
-			  di->di_num.no_addr);
+		log_debug(_("Unknown system directory at block 0x%"PRIx64"\n"), ip->i_addr);
 		goto out_discard_ip;
-	} else if (!sdp->gfs1 && di->di_size == 8) {
-		if (fix_md.inum || is_journal_copy(ip, bh))
+	} else if (!sdp->gfs1 && ip->i_size == 8) {
+		if (fix_md.inum || is_journal_copy(ip))
 			goto out_discard_ip;
 		fix_md.inum = ip;
-		log_warn(_("Found system inum file at: 0x%"PRIx64"\n"),
-			 di->di_num.no_addr);
-	} else if (di->di_size == 24) {
-		if (fix_md.statfs || is_journal_copy(ip, bh))
+		log_warn(_("Found system inum file at: 0x%"PRIx64"\n"), ip->i_addr);
+	} else if (ip->i_size == 24) {
+		if (fix_md.statfs || is_journal_copy(ip))
 			goto out_discard_ip;
 		fix_md.statfs = ip;
-		log_warn(_("Found system statfs file at: 0x%"PRIx64"\n"),
-			 di->di_num.no_addr);
-	} else if ((di->di_size % 96) == 0) {
-		if (fix_md.riinode || is_journal_copy(ip, bh))
+		log_warn(_("Found system statfs file at: 0x%"PRIx64"\n"), ip->i_addr);
+	} else if ((ip->i_size % 96) == 0) {
+		if (fix_md.riinode || is_journal_copy(ip))
 			goto out_discard_ip;
 		fix_md.riinode = ip;
-		log_warn(_("Found system rindex file at: 0x%"PRIx64"\n"),
-			 di->di_num.no_addr);
-	} else if (!fix_md.qinode && di->di_size >= 176 &&
-		   di->di_num.no_formal_ino >= 12 &&
-		   di->di_num.no_formal_ino <= 100) {
-		if (is_journal_copy(ip, bh))
+		log_warn(_("Found system rindex file at: 0x%"PRIx64"\n"), ip->i_addr);
+	} else if (!fix_md.qinode && ip->i_size >= 176 &&
+	           ip->i_formal_ino >= 12 &&
+	           ip->i_formal_ino <= 100) {
+		if (is_journal_copy(ip))
 			goto out_discard_ip;
 		fix_md.qinode = ip;
-		log_warn(_("Found system quota file at: 0x%"PRIx64"\n"),
-			 di->di_num.no_addr);
+		log_warn(_("Found system quota file at: 0x%"PRIx64"\n"), ip->i_addr);
 	} else {
 out_discard_ip:
 		inode_put(&ip);
@@ -1103,58 +1090,49 @@ out_discard_ip:
  * peruse_user_dinode - process a user dinode trying to find the root directory
  *
  */
-static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_dinode *di,
-			       struct gfs2_buffer_head *bh)
+static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 {
-	struct gfs2_inode *ip, *parent_ip;
+	struct gfs2_inode *parent_ip;
 	struct gfs2_inum inum;
 	int error;
 
 	if (sdp->sd_sb.sb_root_dir.no_addr) /* if we know the root dinode */
 		return;             /* we don't need to find the root */
-	if (!is_dir(di, sdp->gfs1))  /* if this isn't a directory */
+	if (!is_dir(ip, sdp->gfs1))  /* if this isn't a directory */
 		return;             /* it can't lead us to the root anyway */
 
-	if (di->di_num.no_formal_ino == 1) {
+	if (ip->i_formal_ino == 1) {
 		struct gfs2_buffer_head *root_bh;
 
-		if (di->di_num.no_addr == bh->b_blocknr) {
+		if (ip->i_addr == ip->i_bh->b_blocknr) {
 			log_warn(_("Found the root directory at: 0x%"PRIx64".\n"),
-				 di->di_num.no_addr);
-			sdp->sd_sb.sb_root_dir.no_addr = di->di_num.no_addr;
+			         ip->i_addr);
+			sdp->sd_sb.sb_root_dir.no_addr = ip->i_addr;
 			return;
 		}
 		log_warn(_("The root dinode should be at block 0x%"PRIx64" but it "
 			   "seems to be destroyed.\n"),
-			 di->di_num.no_addr);
+		         ip->i_addr);
 		log_warn(_("Found a copy of the root directory in a journal "
 			   "at block: 0x%"PRIx64".\n"),
-			 bh->b_blocknr);
-		if (!query(_("Do you want to replace the root dinode from the "
-			     "copy? (y/n)"))) {
+			 ip->i_bh->b_blocknr);
+		if (!query(_("Do you want to replace the root dinode from the copy? (y/n)"))) {
 			log_err(_("Damaged root dinode not fixed.\n"));
 			return;
 		}
-		root_bh = bread(sdp, di->di_num.no_addr);
-		memcpy(root_bh->b_data, bh->b_data, sdp->bsize);
+		root_bh = bread(sdp, ip->i_addr);
+		memcpy(root_bh->b_data, ip->i_bh->b_data, sdp->bsize);
 		bmodified(root_bh);
 		brelse(root_bh);
 		log_warn(_("Root directory copied from the journal.\n"));
 		return;
 	}
-	ip = lgfs2_inode_read(sdp, di->di_num.no_addr);
-	if (ip == NULL) {
-		log_crit(_("Error reading inode: %s\n"), strerror(errno));
-		return;
-	}
 	while (ip) {
 		gfs2_lookupi(ip, "..", 2, &parent_ip);
-		if (parent_ip && parent_ip->i_di.di_num.no_addr ==
-		    ip->i_di.di_num.no_addr) {
+		if (parent_ip && parent_ip->i_addr == ip->i_addr) {
 			log_warn(_("Found the root directory at: 0x%"PRIx64"\n"),
-				 ip->i_di.di_num.no_addr);
-			sdp->sd_sb.sb_root_dir.no_addr =
-				ip->i_di.di_num.no_addr;
+				 ip->i_addr);
+			sdp->sd_sb.sb_root_dir.no_addr = ip->i_addr;
 			inode_put(&parent_ip);
 			inode_put(&ip);
 			return;
@@ -1250,7 +1228,7 @@ static int peruse_metadata(struct gfs2_sbd *sdp, uint64_t startblock)
 {
 	uint64_t blk, max_rg_size;
 	struct gfs2_buffer_head *bh;
-	struct gfs2_dinode di;
+	struct gfs2_inode *ip;
 
 	max_rg_size = 2147483648ull / sdp->bsize;
 	/* Max RG size is 2GB. 2G / bsize. */
@@ -1260,12 +1238,12 @@ static int peruse_metadata(struct gfs2_sbd *sdp, uint64_t startblock)
 			brelse(bh);
 			continue;
 		}
-		gfs2_dinode_in(&di, bh->b_data);
-		if (di.di_flags & GFS2_DIF_SYSTEM)
-			peruse_system_dinode(sdp, &di, bh);
+		ip = lgfs2_inode_get(sdp, bh);
+		ip->bh_owned = 1; /* inode_put() will free the bh */
+		if (ip->i_flags & GFS2_DIF_SYSTEM)
+			peruse_system_dinode(sdp, ip);
 		else
-			peruse_user_dinode(sdp, &di, bh);
-		brelse(bh);
+			peruse_user_dinode(sdp, ip);
 	}
 	return 0;
 }
@@ -1331,8 +1309,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 			(unsigned long long)possible_root);
 		sdp->sd_sb.sb_root_dir.no_addr = possible_root;
 		sdp->md.rooti = lgfs2_inode_read(sdp, possible_root);
-		if (!sdp->md.rooti ||
-		    sdp->md.rooti->i_di.di_header.mh_magic != GFS2_MAGIC) {
+		if (!sdp->md.rooti || sdp->md.rooti->i_magic != GFS2_MAGIC) {
 			struct gfs2_buffer_head *bh = NULL;
 
 			log_err(_("The root dinode block is destroyed.\n"));
@@ -1365,8 +1342,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 			log_crit(_("Error reading master inode: %s\n"), strerror(errno));
 			return -1;
 		}
-		sdp->master_dir->i_di.di_num.no_addr =
-			sdp->sd_sb.sb_master_dir.no_addr;
+		sdp->master_dir->i_addr = sdp->sd_sb.sb_master_dir.no_addr;
 		log_info(_("Found the root directory at: 0x%"PRIx64"\n"),
 			 sdp->sd_sb.sb_root_dir.no_addr);
 		sdp->md.rooti = lgfs2_inode_read(sdp,
@@ -1378,8 +1354,10 @@ static int sb_repair(struct gfs2_sbd *sdp)
 		lgfs2_sb_init(&sb, sdp->bsize, GFS2_FORMAT_FS);
 		strcpy(sb.sb_lockproto, GFS2_DEFAULT_LOCKPROTO);
 		strcpy(sb.sb_locktable, "unknown");
-		sb.sb_master_dir = sdp->master_dir->i_di.di_num;
-		sb.sb_root_dir = sdp->md.rooti->i_di.di_num;
+		sb.sb_master_dir.no_addr = sdp->master_dir->i_addr;
+		sb.sb_master_dir.no_formal_ino = sdp->master_dir->i_formal_ino;
+		sb.sb_root_dir.no_addr = sdp->md.rooti->i_addr;
+		sb.sb_root_dir.no_formal_ino = sdp->md.rooti->i_formal_ino;
 		lgfs2_sb_write(&sb, sdp->device_fd, sdp->bsize);
 		inode_put(&sdp->md.rooti);
 		inode_put(&sdp->master_dir);
@@ -1493,8 +1471,7 @@ static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
 		lh.lh_header.mh_format = GFS2_FORMAT_LH;
 		lh.lh_header.__pad0 = 0x101674; /* mh_generation */
 		lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
-		lh.lh_first = sdp->md.journal[jnum]->i_di.di_num.no_addr +
-			(seg * sbd1->sb_seg_size);
+		lh.lh_first = sdp->md.journal[jnum]->i_addr + (seg * sbd1->sb_seg_size);
 		lh.lh_sequence = sequence;
 
 		bh = bget(sdp, lh.lh_first * sdp->bsize);
@@ -1711,9 +1688,9 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 		sdp->master_dir = lgfs2_inode_read(sdp,
 					     sdp->sd_sb.sb_master_dir.no_addr);
 	if (!sdp->gfs1 &&
-	    (sdp->master_dir->i_di.di_header.mh_magic != GFS2_MAGIC ||
-	     sdp->master_dir->i_di.di_header.mh_type != GFS2_METATYPE_DI ||
-	     !sdp->master_dir->i_di.di_size)) {
+	    (sdp->master_dir->i_magic != GFS2_MAGIC ||
+	     sdp->master_dir->i_type != GFS2_METATYPE_DI ||
+	     !sdp->master_dir->i_size)) {
 		inode_put(&sdp->master_dir);
 		rebuild_master(sdp);
 		sdp->master_dir = lgfs2_inode_read(sdp,

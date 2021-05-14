@@ -16,7 +16,7 @@
 
 void gfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk)
 {
-	uint32_t jd_blocks = ip->i_di.di_size / ip->i_sbd->sd_sb.sb_bsize;
+	uint32_t jd_blocks = ip->i_size / ip->i_sbd->sd_sb.sb_bsize;
 
         if (++*blk == jd_blocks)
                 *blk = 0;
@@ -116,7 +116,7 @@ static int find_good_lh(struct gfs2_inode *ip, unsigned int *blk, struct lgfs2_l
 {
 	unsigned int orig_blk = *blk;
 	int error;
-	uint32_t jd_blocks = ip->i_di.di_size / ip->i_sbd->sd_sb.sb_bsize;
+	uint32_t jd_blocks = ip->i_size / ip->i_sbd->sd_sb.sb_bsize;
 
 	for (;;) {
 		error = lgfs2_get_log_header(ip, *blk, head);
@@ -145,7 +145,7 @@ static int find_good_lh(struct gfs2_inode *ip, unsigned int *blk, struct lgfs2_l
 static int jhead_scan(struct gfs2_inode *ip, struct lgfs2_log_header *head)
 {
 	unsigned int blk = head->lh_blkno;
-	uint32_t jd_blocks = ip->i_di.di_size / ip->i_sbd->sd_sb.sb_bsize;
+	uint32_t jd_blocks = ip->i_size / ip->i_sbd->sd_sb.sb_bsize;
 	struct lgfs2_log_header lh;
 	int error;
 
@@ -185,7 +185,7 @@ int lgfs2_find_jhead(struct gfs2_inode *ip, struct lgfs2_log_header *head)
 {
 	struct lgfs2_log_header lh_1, lh_m;
 	uint32_t blk_1, blk_2, blk_m;
-	uint32_t jd_blocks = ip->i_di.di_size / ip->i_sbd->sd_sb.sb_bsize;
+	uint32_t jd_blocks = ip->i_size / ip->i_sbd->sd_sb.sb_bsize;
 	int error;
 
 	blk_1 = 0;

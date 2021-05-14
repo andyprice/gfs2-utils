@@ -125,8 +125,8 @@ uint32_t lgfs2_log_header_crc(char *buf, unsigned bsize)
 int lgfs2_write_journal_data(struct gfs2_inode *ip)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	unsigned blocks = (ip->i_di.di_size + sdp->bsize - 1) / sdp->bsize;
-	uint64_t jext0 = ip->i_di.di_num.no_addr + ip->i_di.di_blocks - blocks;
+	unsigned blocks = (ip->i_size + sdp->bsize - 1) / sdp->bsize;
+	uint64_t jext0 = ip->i_addr + ip->i_blocks - blocks;
 	uint64_t seq = ((blocks) * (random() / (RAND_MAX + 1.0)));
 	struct gfs2_log_header *lh;
 	uint64_t jblk = jext0;
@@ -141,7 +141,7 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 	lh->lh_header.mh_type = cpu_to_be32(GFS2_METATYPE_LH);
 	lh->lh_header.mh_format = cpu_to_be32(GFS2_FORMAT_LH);
 	lh->lh_flags = cpu_to_be32(GFS2_LOG_HEAD_UNMOUNT | GFS2_LOG_HEAD_USERSPACE);
-	lh->lh_jinode = cpu_to_be64(ip->i_di.di_num.no_addr);
+	lh->lh_jinode = cpu_to_be64(ip->i_addr);
 
 	crc32c_optimization_init();
 	do {
@@ -178,7 +178,7 @@ static struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip, uint64_t lbn
 	uint64_t dbn;
 	int new = 1;
 
-	if (ip->i_di.di_height == 0)
+	if (ip->i_height == 0)
 		unstuff_dinode(ip);
 
 	block_map(ip, lbn, &new, &dbn, NULL, prealloc);
@@ -186,11 +186,11 @@ static struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip, uint64_t lbn
 		return NULL;
 
 	if (!prealloc && new &&
-	    ip->i_di.di_size < (lbn + 1) << sdp->sd_sb.sb_bsize_shift) {
+	    ip->i_size < (lbn + 1) << sdp->sd_sb.sb_bsize_shift) {
 		bmodified(ip->i_bh);
-		ip->i_di.di_size = (lbn + 1) << sdp->sd_sb.sb_bsize_shift;
+		ip->i_size = (lbn + 1) << sdp->sd_sb.sb_bsize_shift;
 	}
-	if (dbn == ip->i_di.di_num.no_addr)
+	if (dbn == ip->i_addr)
 		return ip->i_bh;
 	else
 		return bread(sdp, dbn);
@@ -228,7 +228,7 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 		lh->lh_header.mh_type = cpu_to_be32(GFS2_METATYPE_LH);
 		lh->lh_header.mh_format = cpu_to_be32(GFS2_FORMAT_LH);
 		lh->lh_flags = cpu_to_be32(GFS2_LOG_HEAD_UNMOUNT | GFS2_LOG_HEAD_USERSPACE);
-		lh->lh_jinode = cpu_to_be64(jnl->i_di.di_num.no_addr);
+		lh->lh_jinode = cpu_to_be64(jnl->i_addr);
 		lh->lh_sequence = cpu_to_be64(seq);
 		lh->lh_blkno = cpu_to_be32(x);
 
@@ -346,8 +346,8 @@ int build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 	if (ip == NULL) {
 		return errno;
 	}
-	ip->i_di.di_size = sizeof(struct gfs2_inum_range);
-	gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
+	ip->i_size = sizeof(struct gfs2_inum_range);
+	lgfs2_dinode_out(ip, ip->i_bh->b_data);
 	bmodified(ip->i_bh);
 	if (cfg_debug) {
 		printf("\nInum Range %u:\n", j);
@@ -369,8 +369,8 @@ int build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 	if (ip == NULL) {
 		return errno;
 	}
-	ip->i_di.di_size = sizeof(struct gfs2_statfs_change);
-	gfs2_dinode_out(&ip->i_di, ip->i_bh->b_data);
+	ip->i_size = sizeof(struct gfs2_statfs_change);
+	lgfs2_dinode_out(ip, ip->i_bh->b_data);
 	bmodified(ip->i_bh);
 	if (cfg_debug) {
 		printf("\nStatFS Change %u:\n", j);
@@ -513,7 +513,7 @@ int build_rindex(struct gfs2_sbd *sdp)
 	if (ip == NULL) {
 		return errno;
 	}
-	ip->i_di.di_payload_format = GFS2_FORMAT_RI;
+	ip->i_payload_format = GFS2_FORMAT_RI;
 	bmodified(ip->i_bh);
 
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
@@ -522,14 +522,12 @@ int build_rindex(struct gfs2_sbd *sdp)
 
 		gfs2_rindex_out(&rl->ri, buf);
 
-		count = gfs2_writei(ip, buf, ip->i_di.di_size,
-				    sizeof(struct gfs2_rindex));
+		count = gfs2_writei(ip, buf, ip->i_size, sizeof(struct gfs2_rindex));
 		if (count != sizeof(struct gfs2_rindex))
 			return -1;
 	}
 	memset(buf, 0, sizeof(struct gfs2_rindex));
-	count = __gfs2_writei(ip, buf, ip->i_di.di_size,
-			      sizeof(struct gfs2_rindex), 0);
+	count = __gfs2_writei(ip, buf, ip->i_size, sizeof(struct gfs2_rindex), 0);
 	if (count != sizeof(struct gfs2_rindex))
 		return -1;
 
@@ -553,16 +551,16 @@ int build_quota(struct gfs2_sbd *sdp)
 	if (ip == NULL) {
 		return errno;
 	}
-	ip->i_di.di_payload_format = GFS2_FORMAT_QU;
+	ip->i_payload_format = GFS2_FORMAT_QU;
 	bmodified(ip->i_bh);
 
 	memset(&qu, 0, sizeof(struct gfs2_quota));
 	qu.qu_value = cpu_to_be64(1);
 
-	count = gfs2_writei(ip, &qu, ip->i_di.di_size, sizeof(struct gfs2_quota));
+	count = gfs2_writei(ip, &qu, ip->i_size, sizeof(struct gfs2_quota));
 	if (count != sizeof(struct gfs2_quota))
 		return -1;
-	count = gfs2_writei(ip, &qu, ip->i_di.di_size, sizeof(struct gfs2_quota));
+	count = gfs2_writei(ip, &qu, ip->i_size, sizeof(struct gfs2_quota));
 	if (count != sizeof(struct gfs2_quota))
 		return -1;
 

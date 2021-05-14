@@ -696,9 +696,8 @@ uint64_t masterblock(const char *fn)
 /* ------------------------------------------------------------------------ */
 static void rgcount(void)
 {
-	printf("%lld RGs in this file system.\n",
-	       (unsigned long long)sbd.md.riinode->i_di.di_size /
-	       sizeof(struct gfs2_rindex));
+	printf("%"PRId64" RGs in this file system.\n",
+	       sbd.md.riinode->i_size / sizeof(struct gfs2_rindex));
 	inode_put(&sbd.md.riinode);
 	gfs2_rgrp_free(&sbd, &sbd.rgtree);
 	exit(EXIT_SUCCESS);
@@ -762,12 +761,11 @@ static uint64_t get_rg_addr(int rgnum)
 	riinode = lgfs2_inode_read(&sbd, gblock);
 	if (riinode == NULL)
 		return 0;
-	if (rgnum < riinode->i_di.di_size / sizeof(struct gfs2_rindex))
+	if (rgnum < riinode->i_size / sizeof(struct gfs2_rindex))
 		rgblk = find_rgrp_block(riinode, rgnum);
 	else
-		fprintf(stderr, "Error: File system only has %lld RGs.\n",
-			(unsigned long long)riinode->i_di.di_size /
-			sizeof(struct gfs2_rindex));
+		fprintf(stderr, "Error: File system only has %"PRId64" RGs.\n",
+			riinode->i_size / sizeof(struct gfs2_rindex));
 	inode_put(&riinode);
 	return rgblk;
 }

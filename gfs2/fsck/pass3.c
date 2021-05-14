@@ -25,6 +25,7 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 	int filename_len = 2;
 	int err;
 	struct gfs2_inode *ip, *pip;
+	struct gfs2_inum no;
 
 	ip = fsck_load_inode(sdp, block);
 	pip = fsck_load_inode(sdp, newdotdot);
@@ -39,14 +40,16 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 		log_warn( _("Unable to remove \"..\" directory entry.\n"));
 	else
 		decr_link_count(olddotdot, block, sdp->gfs1, _("old \"..\""));
-	err = dir_add(ip, filename, filename_len, &pip->i_di.di_num,
+	no.no_addr = pip->i_addr;
+	no.no_formal_ino = pip->i_formal_ino;
+	err = dir_add(ip, filename, filename_len, &no,
 		      (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 	if (err) {
 		log_err(_("Error adding directory %s: %s\n"),
 		        filename, strerror(errno));
 		exit(FSCK_ERROR);
 	}
-	incr_link_count(pip->i_di.di_num, ip, _("new \"..\""));
+	incr_link_count(no, ip, _("new \"..\""));
 	fsck_inode_put(&ip);
 	fsck_inode_put(&pip);
 	return 0;
@@ -174,38 +177,38 @@ int pass3(struct gfs2_sbd *sdp)
 	struct gfs2_inode *ip;
 	int q;
 
-	di = dirtree_find(sdp->md.rooti->i_di.di_num.no_addr);
+	di = dirtree_find(sdp->md.rooti->i_addr);
 	if (di) {
 		log_info( _("Marking root inode connected\n"));
 		di->checked = 1;
 	}
 	if (sdp->gfs1) {
-		di = dirtree_find(sdp->md.statfs->i_di.di_num.no_addr);
+		di = dirtree_find(sdp->md.statfs->i_addr);
 		if (di) {
 			log_info( _("Marking GFS1 statfs file inode "
 				    "connected\n"));
 			di->checked = 1;
 		}
-		di = dirtree_find(sdp->md.jiinode->i_di.di_num.no_addr);
+		di = dirtree_find(sdp->md.jiinode->i_addr);
 		if (di) {
 			log_info( _("Marking GFS1 jindex file inode "
 				    "connected\n"));
 			di->checked = 1;
 		}
-		di = dirtree_find(sdp->md.riinode->i_di.di_num.no_addr);
+		di = dirtree_find(sdp->md.riinode->i_addr);
 		if (di) {
 			log_info( _("Marking GFS1 rindex file inode "
 				    "connected\n"));
 			di->checked = 1;
 		}
-		di = dirtree_find(sdp->md.qinode->i_di.di_num.no_addr);
+		di = dirtree_find(sdp->md.qinode->i_addr);
 		if (di) {
 			log_info( _("Marking GFS1 quota file inode "
 				    "connected\n"));
 			di->checked = 1;
 		}
 	} else {
-		di = dirtree_find(sdp->master_dir->i_di.di_num.no_addr);
+		di = dirtree_find(sdp->master_dir->i_addr);
 		if (di) {
 			log_info( _("Marking master directory inode "
 				    "connected\n"));
@@ -288,7 +291,7 @@ int pass3(struct gfs2_sbd *sdp)
 				 (unsigned long long)di->dinode.no_addr,
 				 (unsigned long long)di->dinode.no_addr);
 			/* Don't skip zero size directories with eattrs */
-			if (!ip->i_di.di_size && !ip->i_di.di_eattr){
+			if (!ip->i_size && !ip->i_eattr){
 				log_err( _("Unlinked directory has zero "
 					   "size.\n"));
 				if (query( _("Remove zero-size unlinked "
@@ -320,7 +323,7 @@ int pass3(struct gfs2_sbd *sdp)
 	}
 	if (lf_dip) {
 		log_debug( _("At end of pass3, lost+found entries is %u\n"),
-				  lf_dip->i_di.di_entries);
+				  lf_dip->i_entries);
 	}
 	return FSCK_OK;
 }

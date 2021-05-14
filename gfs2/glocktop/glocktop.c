@@ -621,7 +621,7 @@ static const char *show_inode(const char *id, int fd, unsigned long long block)
 	struct gfs2_sbd sbd = { .device_fd = fd, .bsize = bsize };
 
 	ip = lgfs2_inode_read(&sbd, block);
-	if (S_ISDIR(ip->i_di.di_mode)) {
+	if (S_ISDIR(ip->i_mode)) {
 		struct gfs2_inode *parent;
 		unsigned long long dirarray[256];
 		int subdepth = 0, error;
@@ -635,27 +635,26 @@ static const char *show_inode(const char *id, int fd, unsigned long long block)
 			if (error)
 				break;
 			/* Stop at the root inode */
-			if (ip->i_di.di_num.no_addr ==
-			    parent->i_di.di_num.no_addr) {
+			if (ip->i_addr == parent->i_addr) {
 				inode_put(&parent);
 				break;
 			}
 			inode_put(&ip);
 			ip = parent;
-			dirarray[subdepth++] = parent->i_di.di_num.no_addr;
+			dirarray[subdepth++] = parent->i_addr;
 		}
 		display_filename(fd, block, dirarray, subdepth);
-	} else if (S_ISREG(ip->i_di.di_mode)) {
+	} else if (S_ISREG(ip->i_mode)) {
 		inode_type = "file ";
-	} else if (S_ISLNK(ip->i_di.di_mode)) {
+	} else if (S_ISLNK(ip->i_mode)) {
 		inode_type = "link ";
-	} else if (S_ISCHR(ip->i_di.di_mode)) {
+	} else if (S_ISCHR(ip->i_mode)) {
 		inode_type = "char device ";
-	} else if (S_ISBLK(ip->i_di.di_mode)) {
+	} else if (S_ISBLK(ip->i_mode)) {
 		inode_type = "block device ";
-	} else if (S_ISFIFO(ip->i_di.di_mode)) {
+	} else if (S_ISFIFO(ip->i_mode)) {
 		inode_type = "fifo ";
-	} else if (S_ISSOCK(ip->i_di.di_mode)) {
+	} else if (S_ISSOCK(ip->i_mode)) {
 		inode_type = "socket ";
 	} else
 		inode_type = "file? ";

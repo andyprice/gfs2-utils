@@ -260,7 +260,7 @@ static lgfs2_rgrps_t read_rindex(struct gfs2_sbd *sdp)
 		                                                strerror(errno));
 		return NULL;
 	}
-	rgcount = sdp->md.riinode->i_di.di_size / sizeof(struct gfs2_rindex);
+	rgcount = sdp->md.riinode->i_size / sizeof(struct gfs2_rindex);
 	for (i = 0; i < rgcount; i++) {
 		const struct gfs2_rindex *ri;
 
