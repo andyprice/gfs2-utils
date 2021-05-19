@@ -147,20 +147,20 @@ static int rgd_seems_ok(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 	uint32_t most_bitmaps_possible;
 
 	/* rg length must be at least 1 */
-	if (rgd->ri.ri_length == 0)
+	if (rgd->rt_length == 0)
 		return 0;
 
 	/* A max rgrp, 2GB, divided into blocksize, divided by blocks/byte
 	   represented in the bitmap, NBBY. Rough approximation only, due to
 	   metadata headers. I'm doing the math this way to avoid overflow. */
 	most_bitmaps_possible = (GFS2_MAX_RGSIZE * 1024 * 256) / sdp->bsize;
-	if (rgd->ri.ri_length > most_bitmaps_possible)
+	if (rgd->rt_length > most_bitmaps_possible)
 		return 0;
 
-	if (rgd->ri.ri_data0 != rgd->ri.ri_addr + rgd->ri.ri_length)
+	if (rgd->rt_data0 != rgd->rt_addr + rgd->rt_length)
 		return 0;
 
-	if (rgd->ri.ri_bitbytes != rgd->ri.ri_data / GFS2_NBBY)
+	if (rgd->rt_bitbytes != rgd->rt_data / GFS2_NBBY)
 		return 0;
 
 	return 1;
@@ -180,7 +180,7 @@ static int good_on_disk(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 	struct gfs2_buffer_head *bh;
 	int is_rgrp;
 
-	bh = bread(sdp, rgd->ri.ri_addr);
+	bh = bread(sdp, rgd->rt_addr);
 	is_rgrp = (gfs2_check_meta(bh->b_data, GFS2_METATYPE_RG) == 0);
 	brelse(bh);
 	return is_rgrp;
@@ -198,10 +198,6 @@ int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 {
 	unsigned int rg;
 	int error;
-	union {
-		struct gfs2_rindex bufgfs2;
-	} buf;
-	struct gfs2_rindex ri;
 	struct rgrp_tree *rgd = NULL, *prev_rgd = NULL;
 	uint64_t prev_length = 0;
 
@@ -210,7 +206,10 @@ int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 	if (sdp->md.riinode->i_size % sizeof(struct gfs2_rindex))
 		*ok = 0; /* rindex file size must be a multiple of 96 */
 	for (rg = 0; ; rg++) {
-		error = gfs2_readi(sdp->md.riinode, (char *)&buf.bufgfs2,
+		struct gfs2_rindex ri;
+		uint64_t addr;
+
+		error = gfs2_readi(sdp->md.riinode, &ri,
 		                   rg * sizeof(struct gfs2_rindex),
 		                   sizeof(struct gfs2_rindex));
 		if (!error)
@@ -218,17 +217,19 @@ int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 		if (error != sizeof(struct gfs2_rindex))
 			return -1;
 
-		gfs2_rindex_in(&ri, (char *)&buf.bufgfs2);
-		if (gfs2_check_range(sdp, ri.ri_addr) != 0) {
+		addr = be64_to_cpu(ri.ri_addr);
+		if (gfs2_check_range(sdp, addr) != 0) {
 			*ok = 0;
 			if (prev_rgd == NULL)
 				continue;
-			ri.ri_addr = prev_rgd->ri.ri_addr + prev_rgd->length;
+			addr = prev_rgd->rt_addr + prev_rgd->length;
 		}
-		rgd = rgrp_insert(&sdp->rgtree, ri.ri_addr);
-		memcpy(&rgd->ri, &ri, sizeof(struct gfs2_rindex));
-
-		rgd->start = rgd->ri.ri_addr;
+		rgd = rgrp_insert(&sdp->rgtree, addr);
+		rgd->rt_length = be32_to_cpu(ri.ri_length);
+		rgd->rt_data0 = be64_to_cpu(ri.ri_data0);
+		rgd->rt_data = be32_to_cpu(ri.ri_data);
+		rgd->rt_bitbytes = be32_to_cpu(ri.ri_bitbytes);
+		rgd->start = addr;
 		if (prev_rgd) {
 			/* If rg addresses go backwards, it's not sane
 			   (or it's converted from gfs1). */

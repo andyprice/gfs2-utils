@@ -35,7 +35,6 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 	int old_state;
 	int treat_as_inode = 0;
 	int rewrite_rgrp = 0;
-	struct gfs_rgrp *gfs1rg;
 	const char *allocdesc[2][5] = { /* gfs2 descriptions */
 		{"free", "data", "unlinked", "inode", "reserved"},
 		/* gfs1 descriptions: */
@@ -48,9 +47,6 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 		rgd = gfs2_blk2rgrpd(sdp, blk);
 		prevrgd = rgd;
 	}
-
-	gfs1rg = (struct gfs_rgrp *)&rgd->rg;
-
 	old_state = lgfs2_get_bitmap(sdp, blk, rgd);
 	if (old_state < 0) {
 		log_err( _("Block %llu (0x%llx) is not represented in the "
@@ -87,10 +83,10 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 	   data or data to dinode, no change in free space. */
 	gfs2_set_bitmap(rgd, blk, new_state);
 	if (new_state == GFS2_BLKST_FREE) {
-		rgd->rg.rg_free++;
+		rgd->rt_free++;
 		rewrite_rgrp = 1;
 	} else if (old_state == GFS2_BLKST_FREE) {
-		rgd->rg.rg_free--;
+		rgd->rt_free--;
 		rewrite_rgrp = 1;
 	}
 	/* If we're freeing a dinode, get rid of the data structs for it. */
@@ -117,10 +113,10 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 			treat_as_inode = 1;
 		}
 		if (old_state == GFS2_BLKST_DINODE) {
-			if (treat_as_inode && rgd->rg.rg_dinodes > 0)
-				rgd->rg.rg_dinodes--;
-			else if (sdp->gfs1 && gfs1rg->rg_usedmeta > 0)
-				gfs1rg->rg_usedmeta--;
+			if (treat_as_inode && rgd->rt_dinodes > 0)
+				rgd->rt_dinodes--;
+			else if (sdp->gfs1 && rgd->rt_usedmeta > 0)
+				rgd->rt_usedmeta--;
 			rewrite_rgrp = 1;
 		}
 		link1_set(&nlink1map, blk, 0);
@@ -148,16 +144,16 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 			}
 		}
 		if (treat_as_inode)
-			rgd->rg.rg_dinodes++;
+			rgd->rt_dinodes++;
 		else if (sdp->gfs1)
-			gfs1rg->rg_usedmeta++;
+			rgd->rt_usedmeta++;
 		rewrite_rgrp = 1;
 	}
 	if (rewrite_rgrp) {
 		if (sdp->gfs1)
-			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_data);
+			lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
 		else
-			gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_data);
+			lgfs2_rgrp_out(rgd, rgd->bits[0].bi_data);
 		rgd->bits[0].bi_modified = 1;
 	}
 	log_err( _("The bitmap was fixed.\n"));

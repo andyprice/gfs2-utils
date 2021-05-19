@@ -71,7 +71,7 @@ START_TEST(test_rbm_find_good)
 	rbm.rgd = lgfs2_rgrp_first(rgs);
 
 	/* Check that extent sizes up to the whole rg can be found */
-	for (minext = 1; minext <= rbm.rgd->ri.ri_data; minext++) {
+	for (minext = 1; minext <= rbm.rgd->rt_data; minext++) {
 		int err;
 		uint64_t addr;
 
@@ -81,7 +81,7 @@ START_TEST(test_rbm_find_good)
 		ck_assert_int_eq(err, 0);
 
 		addr = lgfs2_rbm_to_block(&rbm);
-		ck_assert(addr == rbm.rgd->ri.ri_data0);
+		ck_assert(addr == rbm.rgd->rt_data0);
 	}
 }
 END_TEST
@@ -94,7 +94,7 @@ START_TEST(test_rbm_find_bad)
 	lgfs2_rgrps_t rgs = tc_rgrps;
 
 	rbm.rgd = lgfs2_rgrp_first(rgs);
-	minext = rbm.rgd->ri.ri_data + 1;
+	minext = rbm.rgd->rt_data + 1;
 
 	err = lgfs2_rbm_find(&rbm, GFS2_BLKST_FREE, &minext);
 	ck_assert_int_eq(err, 1);
@@ -114,28 +114,32 @@ START_TEST(test_rbm_find_lastblock)
 	rbm.rgd = rg = lgfs2_rgrp_first(rgs);
 
 	/* Flag all blocks as allocated... */
-	for (i = 0; i < rg->ri.ri_length; i++)
+	for (i = 0; i < rg->rt_length; i++)
 		memset(rg->bits[i].bi_data, 0xff, rgs->sdp->bsize);
 
 	/* ...except the final one */
-	err = gfs2_set_bitmap(rg, rg->ri.ri_data0 + rg->ri.ri_data - 1, GFS2_BLKST_FREE);
+	err = gfs2_set_bitmap(rg, rg->rt_data0 + rg->rt_data - 1, GFS2_BLKST_FREE);
 	ck_assert_int_eq(err, 0);
 
 	err = lgfs2_rbm_find(&rbm, GFS2_BLKST_FREE, &minext);
 	ck_assert_int_eq(err, 0);
 
 	addr = lgfs2_rbm_to_block(&rbm);
-	ck_assert(addr == (rg->ri.ri_data0 + rg->ri.ri_data - 1));
+	ck_assert(addr == (rg->rt_data0 + rg->rt_data - 1));
 }
 END_TEST
 
 START_TEST(test_rgrps_write_final)
 {
 	lgfs2_rgrp_t rg = lgfs2_rgrp_last(tc_rgrps);
-	uint64_t addr = lgfs2_rgrp_index(rg)->ri_addr;
 	struct gfs2_sbd *sdp = tc_rgrps->sdp;
+	struct gfs2_rindex ri;
 	struct gfs2_rgrp rgrp;
+	uint64_t addr;
 	char *buf;
+
+	lgfs2_rindex_out(rg, &ri);
+	addr = be64_to_cpu(ri.ri_addr);
 
 	buf = malloc(4096);
 	ck_assert(buf != NULL);
@@ -143,13 +147,12 @@ START_TEST(test_rgrps_write_final)
 	ck_assert(pwrite(sdp->device_fd, buf, 4096, addr * 4096) == 4096);
 
 	ck_assert(lgfs2_rgrps_write_final(sdp->device_fd, tc_rgrps) == 0);
-	ck_assert(pread(sdp->device_fd, buf, 4096, addr * 4096) == 4096);
-	gfs2_rgrp_in(&rgrp, buf);
-	free(buf);
+	ck_assert(pread(sdp->device_fd, &rgrp, sizeof(rgrp), addr * 4096) == sizeof(rgrp));
 
-	ck_assert(rgrp.rg_header.mh_magic == GFS2_MAGIC);
-	ck_assert(rgrp.rg_header.mh_type == GFS2_METATYPE_RG);
+	ck_assert(be32_to_cpu(rgrp.rg_header.mh_magic) == GFS2_MAGIC);
+	ck_assert(be32_to_cpu(rgrp.rg_header.mh_type) == GFS2_METATYPE_RG);
 	ck_assert(rgrp.rg_skip == 0);
+	free(buf);
 
 	ck_assert(lgfs2_rgrps_write_final(-1, tc_rgrps) == -1);
 }

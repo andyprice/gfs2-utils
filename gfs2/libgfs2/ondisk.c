@@ -185,77 +185,68 @@ void lgfs2_sb_print(void *sbp)
 	print_it("  uuid", "%36s", NULL, readable_uuid);
 }
 
-void gfs2_rindex_in(struct gfs2_rindex *ri, char *buf)
+void lgfs2_rindex_in(lgfs2_rgrp_t rg, void *buf)
 {
-	struct gfs2_rindex *str = (struct gfs2_rindex *)buf;
+	struct gfs2_rindex *ri = buf;
 
-	CPIN_64(ri, str, ri_addr);
-	CPIN_32(ri, str, ri_length);
-	CPIN_32(ri, str, __pad);
-	CPIN_64(ri, str, ri_data0);
-	CPIN_32(ri, str, ri_data);
-	CPIN_32(ri, str, ri_bitbytes);
-	CPIN_08(ri, str, ri_reserved, sizeof(ri->ri_reserved));
+	rg->rt_addr = be64_to_cpu(ri->ri_addr);
+	rg->rt_length = be32_to_cpu(ri->ri_length);
+	rg->rt_data0 = be64_to_cpu(ri->ri_data0);
+	rg->rt_data = be32_to_cpu(ri->ri_data);
+	rg->rt_bitbytes = be32_to_cpu(ri->ri_bitbytes);
 }
 
-void gfs2_rindex_out(const struct gfs2_rindex *ri, char *buf)
+void lgfs2_rindex_out(const lgfs2_rgrp_t rg, void *buf)
 {
-	struct gfs2_rindex *str = (struct gfs2_rindex *)buf;
+	struct gfs2_rindex *ri = buf;
 
-	CPOUT_64(ri, str, ri_addr);
-	CPOUT_32(ri, str, ri_length);
-	str->__pad = 0;
-
-	CPOUT_64(ri, str, ri_data0);
-	CPOUT_32(ri, str, ri_data);
-
-	CPOUT_32(ri, str, ri_bitbytes);
-
-	CPOUT_08(ri, str, ri_reserved, sizeof(ri->ri_reserved));
+	ri->ri_addr = cpu_to_be64(rg->rt_addr);
+	ri->ri_length = cpu_to_be32(rg->rt_length);
+	ri->ri_data0 = cpu_to_be64(rg->rt_data0);
+	ri->ri_data = cpu_to_be32(rg->rt_data);
+	ri->ri_bitbytes = cpu_to_be32(rg->rt_bitbytes);
 }
 
-void gfs2_rindex_print(const struct gfs2_rindex *ri)
+void lgfs2_rindex_print(void *rip)
 {
-	pv(ri, ri_addr, "%"PRIu64, "0x%"PRIx64);
-	pv(ri, ri_length, "%"PRIu32, "0x%"PRIx32);
+	struct gfs2_rindex *ri = rip;
 
-	pv(ri, ri_data0, "%"PRIu64, "0x%"PRIx64);
-	pv(ri, ri_data, "%"PRIu32, "0x%"PRIx32);
-
-	pv(ri, ri_bitbytes, "%"PRIu32, "0x%"PRIx32);
+	printbe64(ri, ri_addr);
+	printbe32(ri, ri_length);
+	printbe64(ri, ri_data0);
+	printbe32(ri, ri_data);
+	printbe32(ri, ri_bitbytes);
 }
 
-void gfs2_rgrp_in(struct gfs2_rgrp *rg, char *buf)
+void lgfs2_rgrp_in(lgfs2_rgrp_t rg, void *buf)
 {
-	struct gfs2_rgrp *str = (struct gfs2_rgrp *)buf;
+	struct gfs2_rgrp *r = buf;
 
-	gfs2_meta_header_in(&rg->rg_header, buf);
-	CPIN_32(rg, str, rg_flags);
-	CPIN_32(rg, str, rg_free);
-	CPIN_32(rg, str, rg_dinodes);
-	CPIN_32(rg, str, rg_skip);
-	CPIN_64(rg, str, rg_igeneration);
-	CPIN_64(rg, str, rg_data0);
-	CPIN_32(rg, str, rg_data);
-	CPIN_32(rg, str, rg_bitbytes);
-	CPIN_32(rg, str, rg_crc);
-	CPIN_08(rg, str, rg_reserved, sizeof(rg->rg_reserved));
+	rg->rt_flags = be32_to_cpu(r->rg_flags);
+	rg->rt_free = be32_to_cpu(r->rg_free);
+	rg->rt_dinodes = be32_to_cpu(r->rg_dinodes);
+	rg->rt_skip = be32_to_cpu(r->rg_skip);
+	rg->rt_igeneration = be64_to_cpu(r->rg_igeneration);
+	rg->rt_rg_data0 = be64_to_cpu(r->rg_data0);
+	rg->rt_rg_data = be32_to_cpu(r->rg_data);
+	rg->rt_rg_bitbytes = be32_to_cpu(r->rg_bitbytes);
 }
 
-void gfs2_rgrp_out(const struct gfs2_rgrp *rg, char *buf)
+void lgfs2_rgrp_out(const lgfs2_rgrp_t rg, void *buf)
 {
-	struct gfs2_rgrp *str = (struct gfs2_rgrp *)buf;
+	struct gfs2_rgrp *r = buf;
 
-	gfs2_meta_header_out(&rg->rg_header, buf);
-	CPOUT_32(rg, str, rg_flags);
-	CPOUT_32(rg, str, rg_free);
-	CPOUT_32(rg, str, rg_dinodes);
-	CPOUT_32(rg, str, rg_skip);
-	CPOUT_64(rg, str, rg_igeneration);
-	CPOUT_64(rg, str, rg_data0);
-	CPOUT_32(rg, str, rg_data);
-	CPOUT_32(rg, str, rg_bitbytes);
-	CPOUT_08(rg, str, rg_reserved, sizeof(rg->rg_reserved));
+	r->rg_header.mh_magic = cpu_to_be32(GFS2_MAGIC);
+	r->rg_header.mh_type = cpu_to_be32(GFS2_METATYPE_RG);
+	r->rg_header.mh_format = cpu_to_be32(GFS2_FORMAT_RG);
+	r->rg_flags = cpu_to_be32(rg->rt_flags);
+	r->rg_free = cpu_to_be32(rg->rt_free);
+	r->rg_dinodes = cpu_to_be32(rg->rt_dinodes);
+	r->rg_skip = cpu_to_be32(rg->rt_skip);
+	r->rg_igeneration = cpu_to_be64(rg->rt_igeneration);
+	r->rg_data0 = cpu_to_be64(rg->rt_rg_data0);
+	r->rg_data = cpu_to_be32(rg->rt_rg_data);
+	r->rg_bitbytes = cpu_to_be32(rg->rt_rg_bitbytes);
 	lgfs2_rgrp_crc_set(buf);
 }
 

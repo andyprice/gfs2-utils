@@ -23,14 +23,12 @@ struct special_blocks false_rgrps;
 #define AWAY_FROM_BITMAPS 0x1000
 #define MAX_RGSEGMENTS 20
 
-#define ri_equal(ondisk, expected, field) (ondisk.field == expected.field)
-
-#define ri_compare(rg, ondisk, expected, field, fmt, type)	\
-	if (ondisk.field != expected.field) { \
+#define ri_compare(rg, ondisk, expected, field, fmt)	\
+	if (ondisk->field != expected->field) { \
 		log_warn( _("rindex #%d " #field " discrepancy: index 0x%" \
 			    fmt	" != expected: 0x%" fmt "\n"),		\
-			  rg + 1, (type)ondisk.field, (type)expected.field);	\
-		ondisk.field = expected.field;				\
+			  rg + 1, ondisk->field, expected->field);	\
+		ondisk->field = expected->field;				\
 		rindex_modified = 1;					\
 	}
 
@@ -104,7 +102,6 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 	uint64_t blk, block_last_rg, shortest_dist_btwn_rgs;
 	struct gfs2_buffer_head *bh;
 	int rgs_sampled = 0;
-	struct gfs2_rindex buf, tmpndx;
 	uint64_t initial_first_rg_dist;
 	int gsegment = 0;
 	int is_rgrp;
@@ -238,14 +235,14 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 	/* -------------------------------------------------------------- */
 	if (*dist_array >= shortest_dist_btwn_rgs +
 	    (shortest_dist_btwn_rgs / 4)) {
+		struct gfs2_rindex ri;
+
 		/* read in the second RG index entry for this subd. */
-		gfs2_readi(sdp->md.riinode, (char *)&buf,
-			   sizeof(struct gfs2_rindex),
-			   sizeof(struct gfs2_rindex));
-		gfs2_rindex_in(&tmpndx, (char *)&buf);
-		if (tmpndx.ri_addr > LGFS2_SB_ADDR(sdp) + 1) { /* sanity check */
+		gfs2_readi(sdp->md.riinode, &ri, sizeof(ri), sizeof(ri));
+
+		if (be64_to_cpu(ri.ri_addr) > LGFS2_SB_ADDR(sdp) + 1) { /* sanity check */
 			log_warn( _("rgrp 2 is damaged: getting dist from index: "));
-			*dist_array = tmpndx.ri_addr - (LGFS2_SB_ADDR(sdp) + 1);
+			*dist_array = be64_to_cpu(ri.ri_addr) - (LGFS2_SB_ADDR(sdp) + 1);
 			log_warn("0x%llx\n", (unsigned long long)*dist_array);
 		} else {
 			log_warn( _("rgrp index 2 is damaged: extrapolating dist: "));
@@ -330,13 +327,13 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
 		rgd = (struct rgrp_tree *)n;
-		if (rgd->ri.ri_addr == blk)
+		if (rgd->rt_addr == blk)
 			break;
 	}
-	if (rgd && n && osi_next(n) && rgd->ri.ri_addr == blk) {
+	if (rgd && n && osi_next(n) && rgd->rt_addr == blk) {
 		n = osi_next(n);
 		next_rgd = (struct rgrp_tree *)n;
-		rgrp_dist = next_rgd->ri.ri_addr - rgd->ri.ri_addr;
+		rgrp_dist = next_rgd->rt_addr - rgd->rt_addr;
 		return rgrp_dist;
 	}
 	mega_in_blocks = (1024 * 1024)  / sdp->bsize;
@@ -352,13 +349,13 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 	   skip a few blocks (hopefully no more than 4).  */
 	used_blocks = 0;
 	length = 0;
-	block = prevrgd->ri.ri_addr;
+	block = prevrgd->rt_addr;
 	first = 1;
 	found = 0;
 	while (1) {
 		if (block >= sdp->device.length)
 			break;
-		if (block >= prevrgd->ri.ri_addr + twogigs)
+		if (block >= prevrgd->rt_addr + twogigs)
 			break;
 		bh = bread(sdp, block);
 		gfs2_meta_header_in(&mh, bh->b_data);
@@ -388,7 +385,7 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 		   bitmap blocks.  Count them all as bitmaps and you'll be
 		   hopelessly lost. */
 		rgrp_dist = used_blocks + free_blocks + length;
-		next_block = prevrgd->ri.ri_addr + rgrp_dist;
+		next_block = prevrgd->rt_addr + rgrp_dist;
 		/* Now we account for block rounding done by mkfs.gfs2 */
 		for (b = 0; b <= length + GFS2_NBBY; b++) {
 			if (next_block + b >= sdp->device.length)
@@ -414,7 +411,7 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 		}
 		if (found) {
 			log_info(_("rgrp found at 0x%"PRIx64", length=%d, used=%"PRIu64", free=%d\n"),
-			         prevrgd->ri.ri_addr, length, used_blocks, free_blocks);
+			         prevrgd->rt_addr, length, used_blocks, free_blocks);
 			break;
 		}
 	}
@@ -452,7 +449,7 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 
 	rgrp_dist = AWAY_FROM_BITMAPS; /* Get away from any bitmaps
 					  associated with the previous rgrp */
-	block = prevrgd->ri.ri_addr + rgrp_dist;
+	block = prevrgd->rt_addr + rgrp_dist;
 	/* Now we account for block rounding done by mkfs.gfs2.  A rgrp can
 	   be at most 2GB in size, so that's where we call it. We do somewhat
 	   obscure math here to avoid integer overflows. */
@@ -565,7 +562,7 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 			log_crit( _("Can't allocate memory for rgrp repair.\n"));
 			goto out;
 		}
-		calc_rgd->ri.ri_length = 1;
+		calc_rgd->rt_length = 1;
 		if (!rg_was_fnd) { /* if not an RG */
 			/* ------------------------------------------------- */
 			/* This SHOULD be an RG but isn't.                   */
@@ -592,26 +589,25 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 			bitmap_was_fnd = !gfs2_check_meta(bh->b_data, GFS2_METATYPE_RB);
 			brelse(bh);
 			if (bitmap_was_fnd) /* if a bitmap */
-				calc_rgd->ri.ri_length++;
+				calc_rgd->rt_length++;
 			else
 				break; /* end of bitmap, so call it quits. */
 		} /* for subsequent bitmaps */
 
-		calc_rgd->ri.ri_data0 = calc_rgd->ri.ri_addr +
-			calc_rgd->ri.ri_length;
+		calc_rgd->rt_data0 = calc_rgd->rt_addr +
+			calc_rgd->rt_length;
 		if (prev_rgd) {
 			uint32_t rgblocks;
 
-			prev_rgd->ri.ri_length = rgblocks2bitblocks(sdp->bsize, block_bump, &rgblocks);
-			prev_rgd->ri.ri_data = rgblocks;
-			prev_rgd->ri.ri_data0 = prev_rgd->ri.ri_addr +
-				prev_rgd->ri.ri_length;
-			prev_rgd->ri.ri_data -= prev_rgd->ri.ri_data %
+			prev_rgd->rt_length = rgblocks2bitblocks(sdp->bsize, block_bump, &rgblocks);
+			prev_rgd->rt_data = rgblocks;
+			prev_rgd->rt_data0 = prev_rgd->rt_addr +
+				prev_rgd->rt_length;
+			prev_rgd->rt_data -= prev_rgd->rt_data %
 				GFS2_NBBY;
-			prev_rgd->ri.ri_bitbytes = prev_rgd->ri.ri_data /
+			prev_rgd->rt_bitbytes = prev_rgd->rt_data /
 				GFS2_NBBY;
-			log_debug( _("Prev ri_data set to: %lx.\n"),
-				  (unsigned long)prev_rgd->ri.ri_data);
+			log_debug(_("Prev ri_data set to: 0x%"PRIx32"\n"), prev_rgd->rt_data);
 		}
 		number_of_rgs++;
 		segment_rgs++;
@@ -662,17 +658,15 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 	/* If we got to the end of the fs, we still need to fix the          */
 	/* allocation information for the very last RG.                      */
 	/* ----------------------------------------------------------------- */
-	if (prev_rgd && !prev_rgd->ri.ri_data) {
+	if (prev_rgd && !prev_rgd->rt_data) {
 		uint32_t rgblocks;
 
-		prev_rgd->ri.ri_length = rgblocks2bitblocks(sdp->bsize, block_bump, &rgblocks);
-		prev_rgd->ri.ri_data0 = prev_rgd->ri.ri_addr +
-			prev_rgd->ri.ri_length;
-		prev_rgd->ri.ri_data = rgblocks;
-		prev_rgd->ri.ri_data -= prev_rgd->ri.ri_data % GFS2_NBBY;
-		prev_rgd->ri.ri_bitbytes = prev_rgd->ri.ri_data / GFS2_NBBY;
-		log_debug( _("Prev ri_data set to: %lx.\n"),
-			  (unsigned long)prev_rgd->ri.ri_data);
+		prev_rgd->rt_length = rgblocks2bitblocks(sdp->bsize, block_bump, &rgblocks);
+		prev_rgd->rt_data0 = prev_rgd->rt_addr + prev_rgd->rt_length;
+		prev_rgd->rt_data = rgblocks;
+		prev_rgd->rt_data -= prev_rgd->rt_data % GFS2_NBBY;
+		prev_rgd->rt_bitbytes = prev_rgd->rt_data / GFS2_NBBY;
+		log_debug(_("Prev ri_data set to: 0x%"PRIx32"\n"), prev_rgd->rt_data);
 		prev_rgd = NULL; /* make sure we don't use it later */
 	}
         /* ---------------------------------------------- */
@@ -683,9 +677,9 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 		next = osi_next(n);
 		calc_rgd = (struct rgrp_tree *)n;
                 log_debug("%d: 0x%"PRIx64"/%"PRIx32"/0x%"PRIx64"/0x%"PRIx32"/0x%"PRIx32"\n",
-		          rgi + 1, calc_rgd->ri.ri_addr, calc_rgd->ri.ri_length,
-			  calc_rgd->ri.ri_data0, calc_rgd->ri.ri_data,
-			  calc_rgd->ri.ri_bitbytes);
+		          rgi + 1, calc_rgd->rt_addr, calc_rgd->rt_length,
+			  calc_rgd->rt_data0, calc_rgd->rt_data,
+			  calc_rgd->rt_bitbytes);
         }
 	*num_rgs = number_of_rgs;
 	error = 0;
@@ -783,10 +777,10 @@ static void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree, i
 				 rl->length, rl->length);
 			rlast = rl;
 		}
-		rlast->start = rlast->ri.ri_addr;
+		rlast->start = rlast->rt_addr;
 		rglength = rgrp_size(rlast);
 		rlast->length = rglength;
-		old_length = rlast->ri.ri_addr + rglength;
+		old_length = rlast->rt_addr + rglength;
 		new_chunk = dev->length - old_length;
 		sdp->new_rgrps = new_chunk / rglength;
 		nrgrp = rgrp + sdp->new_rgrps;
@@ -821,32 +815,25 @@ static int calc_rgrps(struct gfs2_sbd *sdp)
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rl;
 	uint32_t rgblocks, bitblocks;
-	struct gfs2_rindex *ri;
 
 	for (n = osi_first(&sdp->rgcalc); n; n = next) {
 		next = osi_next(n);
 		rl = (struct rgrp_tree *)n;
-		ri = &rl->ri;
 
 		bitblocks = rgblocks2bitblocks(sdp->bsize, rl->length, &rgblocks);
 
-		ri->ri_addr = rl->start;
-		ri->ri_length = bitblocks;
-		ri->ri_data0 = rl->start + bitblocks;
-		ri->ri_data = rgblocks;
-		ri->ri_bitbytes = rgblocks / GFS2_NBBY;
-
-		memset(&rl->rg, 0, sizeof(rl->rg));
-		rl->rg.rg_header.mh_magic = GFS2_MAGIC;
-		rl->rg.rg_header.mh_type = GFS2_METATYPE_RG;
-		rl->rg.rg_header.mh_format = GFS2_FORMAT_RG;
-		rl->rg.rg_free = rgblocks;
+		rl->rt_addr = rl->start;
+		rl->rt_length = bitblocks;
+		rl->rt_data0 = rl->start + bitblocks;
+		rl->rt_data = rgblocks;
+		rl->rt_bitbytes = rgblocks / GFS2_NBBY;
+		rl->rt_free = rgblocks;
 
 		if (gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, rl))
 			return -1;
 
 		sdp->blks_total += rgblocks;
-		sdp->fssize = ri->ri_data0 + ri->ri_data;
+		sdp->fssize = rl->rt_data0 + rl->rt_data;
 	}
 	return 0;
 }
@@ -910,15 +897,13 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
 			    uint64_t errblock)
 {
-	int x = errblock - rg->ri.ri_addr;
+	int x = errblock - rg->rt_addr;
 	const char *typedesc = x ? "GFS2_METATYPE_RB" : "GFS2_METATYPE_RG";
 	ssize_t ret;
 	char *buf;
 
-	log_err( _("Block #%lld (0x%llx) (%d of %d) is not %s.\n"),
-		 (unsigned long long)rg->ri.ri_addr + x,
-		 (unsigned long long)rg->ri.ri_addr + x,
-		 (int)x+1, (int)rg->ri.ri_length, typedesc);
+	log_err(_("Block #%"PRIu64" (0x%"PRIx64") (%d of %"PRIu32") is not %s.\n"),
+	        rg->rt_addr + x, rg->rt_addr + x, x+1, rg->rt_length, typedesc);
 	if (!query( _("Fix the resource group? (y/n)")))
 		return 1;
 
@@ -944,18 +929,11 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
 		};
 		gfs2_meta_header_out(&mh, buf);
 	} else {
+		rg->rt_free = rg->rt_data;
 		if (sdp->gfs1)
-			memset(&rg->rg, 0, sizeof(struct gfs_rgrp));
+			lgfs2_gfs_rgrp_out(rg, buf);
 		else
-			memset(&rg->rg, 0, sizeof(struct gfs2_rgrp));
-		rg->rg.rg_header.mh_magic = GFS2_MAGIC;
-		rg->rg.rg_header.mh_type = GFS2_METATYPE_RG;
-		rg->rg.rg_header.mh_format = GFS2_FORMAT_RG;
-		rg->rg.rg_free = rg->ri.ri_data;
-		if (sdp->gfs1)
-			gfs_rgrp_out((struct gfs_rgrp *)&rg->rg, buf);
-		else
-			gfs2_rgrp_out(&rg->rg, buf);
+			lgfs2_rgrp_out(rg, buf);
 	}
 	ret = pwrite(sdp->device_fd, buf, sdp->bsize, errblock * sdp->bsize);
 	if (ret != sdp->bsize) {
@@ -982,15 +960,22 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
 		rgd = (struct rgrp_tree *)n;
-		exp = rgrp_insert(&sdp->rgcalc, rgd->ri.ri_addr);
+		exp = rgrp_insert(&sdp->rgcalc, rgd->rt_addr);
 		if (exp == NULL) {
 			fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
 			exit(-1);
 		}
 		exp->start = rgd->start;
 		exp->length = rgd->length;
-		memcpy(&exp->ri, &rgd->ri, sizeof(exp->ri));
-		memcpy(&exp->rg, &rgd->rg, sizeof(exp->rg));
+		exp->rt_data0 = rgd->rt_data0;
+		exp->rt_data = rgd->rt_data;
+		exp->rt_length = rgd->rt_length;
+		exp->rt_bitbytes = rgd->rt_bitbytes;
+		exp->rt_flags = rgd->rt_flags;
+		exp->rt_free = rgd->rt_free;
+		exp->rt_igeneration = rgd->rt_igeneration;
+		exp->rt_dinodes = rgd->rt_dinodes;
+		exp->rt_skip = rgd->rt_skip;
 		exp->bits = NULL;
 		gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, exp);
 	}
@@ -1127,26 +1112,26 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 
 		expected = (struct rgrp_tree *)e;
 		actual = (struct rgrp_tree *)n;
-		if (actual->ri.ri_addr < expected->ri.ri_addr) {
+		if (actual->rt_addr < expected->rt_addr) {
 			n = next;
 			discrepancies++;
 			log_info(_("%d addr: 0x%"PRIx64" < 0x%"PRIx64" * mismatch\n"),
-				 rg + 1, actual->ri.ri_addr, expected->ri.ri_addr);
+				 rg + 1, actual->rt_addr, expected->rt_addr);
 			continue;
-		} else if (expected->ri.ri_addr < actual->ri.ri_addr) {
+		} else if (expected->rt_addr < actual->rt_addr) {
 			e = enext;
 			discrepancies++;
 			log_info(_("%d addr: 0x%"PRIx64" > 0x%"PRIx64" * mismatch\n"),
-				 rg + 1, actual->ri.ri_addr, expected->ri.ri_addr);
+				 rg + 1, actual->rt_addr, expected->rt_addr);
 			continue;
 		}
-		if (!ri_equal(actual->ri, expected->ri, ri_length) ||
-		    !ri_equal(actual->ri, expected->ri, ri_data0) ||
-		    !ri_equal(actual->ri, expected->ri, ri_data) ||
-		    !ri_equal(actual->ri, expected->ri, ri_bitbytes)) {
+		if (actual->rt_length != expected->rt_length ||
+		    actual->rt_data0 != expected->rt_data0 ||
+		    actual->rt_data != expected->rt_data ||
+		    actual->rt_bitbytes != expected->rt_bitbytes) {
 			discrepancies++;
 			log_info(_("%d addr: 0x%"PRIx64" 0x%"PRIx64" * has mismatch\n"),
-				 rg + 1, actual->ri.ri_addr, expected->ri.ri_addr);
+				 rg + 1, actual->rt_addr, expected->rt_addr);
 		}
 		n = next;
 		e = enext;
@@ -1187,10 +1172,10 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		   If we ran out of actual rindex entries due to rindex
 		   damage, fill in a new one with the expected values. */
 		if (!n || /* end of actual rindex */
-		    expected->ri.ri_addr < actual->ri.ri_addr) {
+		    expected->rt_addr < actual->rt_addr) {
 			log_err(_("Entry missing from rindex: 0x%"PRIx64"\n"),
-			        expected->ri.ri_addr);
-			actual = rgrp_insert(&sdp->rgtree, expected->ri.ri_addr);
+			        expected->rt_addr);
+			actual = rgrp_insert(&sdp->rgtree, expected->rt_addr);
 			if (!actual) {
 				log_err(_("Out of memory!\n"));
 				break;
@@ -1199,30 +1184,24 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 			next = n; /* Ensure that the old actual gets checked
 				     against a new expected, since we added */
 		} else {
-			ri_compare(rg, actual->ri, expected->ri, ri_addr,
-				   "llx", unsigned long long);
-			ri_compare(rg, actual->ri, expected->ri, ri_length,
-				   "lx", unsigned long);
-			ri_compare(rg, actual->ri, expected->ri, ri_data0,
-				   "llx", unsigned long long);
-			ri_compare(rg, actual->ri, expected->ri, ri_data,
-				   "lx", unsigned long);
-			ri_compare(rg, actual->ri, expected->ri, ri_bitbytes,
-				   "lx", unsigned long);
+			ri_compare(rg, actual, expected, rt_addr, PRIx64);
+			ri_compare(rg, actual, expected, rt_length, PRIx32);
+			ri_compare(rg, actual, expected, rt_data0, PRIx64);
+			ri_compare(rg, actual, expected, rt_data, PRIx32);
+			ri_compare(rg, actual, expected, rt_bitbytes, PRIx32);
 		}
 		/* If we modified the index, write it back to disk. */
 		if (rindex_modified) {
 			if (query( _("Fix the index? (y/n)"))) {
-				gfs2_rindex_out(&expected->ri, (char *)&buf);
+				lgfs2_rindex_out(expected, (char *)&buf);
 				gfs2_writei(sdp->md.riinode, (char *)&buf,
 					    rg * sizeof(struct gfs2_rindex),
 					    sizeof(struct gfs2_rindex));
-				actual->ri.ri_addr = expected->ri.ri_addr;
-				actual->ri.ri_length = expected->ri.ri_length;
-				actual->ri.ri_data0 = expected->ri.ri_data0;
-				actual->ri.ri_data = expected->ri.ri_data;
-				actual->ri.ri_bitbytes =
-					expected->ri.ri_bitbytes;
+				actual->rt_addr = expected->rt_addr;
+				actual->rt_length = expected->rt_length;
+				actual->rt_data0 = expected->rt_data0;
+				actual->rt_data = expected->rt_data;
+				actual->rt_bitbytes = expected->rt_bitbytes;
 				/* If our rindex was hosed, ri_length is bad */
 				/* Therefore, gfs2_compute_bitstructs might  */
 				/* have malloced the wrong length for bitmap */
@@ -1269,7 +1248,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 				break;
 			}
 			i++;
-		} while (i < rgd->ri.ri_length);
+		} while (i < rgd->rt_length);
 	}
 	gfs2_rgrp_free(sdp, &sdp->rgcalc);
 	gfs2_rgrp_free(sdp, &sdp->rgtree);

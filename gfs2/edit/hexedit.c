@@ -390,7 +390,7 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 				blknum = pgnum * screen_chunk_size;
 				blknum += (ptroffset - struct_len);
 				blknum *= 4;
-				blknum += rgd->ri.ri_data0;
+				blknum += rgd->rt_data0;
 
 				print_gfs2(" blk ");
 				for (b = blknum; b < blknum + 4; b++) {
@@ -407,7 +407,7 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 			if (rgd && (ptroffset >= struct_len || pgnum)) {
 				int blknum, b, btype, rb_number;
 
-				rb_number = block - rgd->ri.ri_addr;
+				rb_number = block - rgd->rt_addr;
 				blknum = 0;
 				/* count the number of bytes representing
 				   blocks prior to the displayed screen. */
@@ -425,7 +425,7 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 				/* convert bytes to blocks */
 				blknum *= GFS2_NBBY;
 				/* add the starting offset for this rgrp */
-				blknum += rgd->ri.ri_data0;
+				blknum += rgd->rt_data0;
 				print_gfs2(" blk ");
 				for (b = blknum; b < blknum + 4; b++) {
 					btype = lgfs2_get_bitmap(&sbd, b, rgd);
@@ -709,7 +709,7 @@ static void rgcount(void)
 static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
 {
 	int amt;
-	struct gfs2_rindex fbuf, ri;
+	struct gfs2_rindex ri;
 	uint64_t foffset, gfs1_adj = 0;
 
 	foffset = rg * sizeof(struct gfs2_rindex);
@@ -721,12 +721,10 @@ static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
 			sizeof(struct gfs2_meta_header);
 		gfs1_adj += sizeof(struct gfs2_meta_header);
 	}
-	amt = gfs2_readi(dif, (void *)&fbuf, foffset + gfs1_adj,
-			 sizeof(struct gfs2_rindex));
+	amt = gfs2_readi(dif, &ri, foffset + gfs1_adj, sizeof(ri));
 	if (!amt) /* end of file */
 		return 0;
-	gfs2_rindex_in(&ri, (void *)&fbuf);
-	return ri.ri_addr;
+	return be64_to_cpu(ri.ri_addr);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -964,7 +962,6 @@ static void read_superblock(int fd)
 
 static int read_rindex(void)
 {
-	struct gfs2_rindex *ri;
 	uint64_t count;
 	int ok;
 
@@ -973,8 +970,8 @@ static int read_rindex(void)
 		rindex_read(&sbd, &count, &ok);
 
 	if (!OSI_EMPTY_ROOT(&sbd.rgtree)) {
-		ri = &((struct rgrp_tree *)osi_last(&sbd.rgtree))->ri;
-		sbd.fssize = ri->ri_data0 + ri->ri_data;
+		struct rgrp_tree *rg = (struct rgrp_tree *)osi_last(&sbd.rgtree);
+		sbd.fssize = rg->rt_data0 + rg->rt_data;
 	}
 	return 0;
 }
@@ -1202,7 +1199,7 @@ static int find_rg_metatype(struct rgrp_tree *rgd, uint64_t *blk, uint64_t start
 	struct gfs2_buffer_head *bhp = NULL;
 	uint64_t *ibuf = malloc(sbd.bsize * GFS2_NBBY * sizeof(uint64_t));
 
-	for (i = 0; i < rgd->ri.ri_length; i++) {
+	for (i = 0; i < rgd->rt_length; i++) {
 		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_DINODE);
 
 		for (j = 0; j < m; j++) {
@@ -1233,18 +1230,16 @@ static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int pri
 	uint64_t blk, errblk;
 	int first = 1, found = 0;
 	struct rgrp_tree *rgd = NULL;
-	struct gfs2_rindex *ri;
 
 	blk = 0;
 	/* Skip the rgs prior to the block we've been given */
 	for (next = osi_first(&sbd.rgtree); next; next = osi_next(next)) {
 		rgd = (struct rgrp_tree *)next;
-		ri = &rgd->ri;
-		if (first && startblk <= ri->ri_data0) {
-			startblk = ri->ri_data0;
+		if (first && startblk <= rgd->rt_data0) {
+			startblk = rgd->rt_data0;
 			break;
-		} else if (ri->ri_addr <= startblk &&
-			 startblk < ri->ri_data0 + ri->ri_data)
+		} else if (rgd->rt_addr <= startblk &&
+			 startblk < rgd->rt_data0 + rgd->rt_data)
 			break;
 		else
 			rgd = NULL;
@@ -1644,19 +1639,19 @@ static void find_print_block_rg(int bitmap)
 	else {
 		rgd = gfs2_blk2rgrpd(&sbd, rblock);
 		if (rgd) {
-			rgblock = rgd->ri.ri_addr;
+			rgblock = rgd->rt_addr;
 			if (bitmap) {
 				struct gfs2_bitmap *bits = NULL;
 
-				for (i = 0; i < rgd->ri.ri_length; i++) {
+				for (i = 0; i < rgd->rt_length; i++) {
 					bits = &(rgd->bits[i]);
-					if (rblock - rgd->ri.ri_data0 <
+					if (rblock - rgd->rt_data0 <
 					    ((bits->bi_start + bits->bi_len) *
 					     GFS2_NBBY)) {
 						break;
 					}
 				}
-				if (i < rgd->ri.ri_length)
+				if (i < rgd->rt_length)
 					rgblock += i;
 
 			}
@@ -2183,7 +2178,7 @@ static int count_dinode_blks(struct rgrp_tree *rgd, int bitmap,
 		off = sizeof(struct gfs2_rgrp);
 
 	for (b = 0; b < rgd->bits[bitmap].bi_len << GFS2_BIT_SIZE; b++) {
-		tbh = bread(&sbd, rgd->ri.ri_data0 +
+		tbh = bread(&sbd, rgd->rt_data0 +
 			    rgd->bits[bitmap].bi_start + b);
 		byte = rbh->b_data + off + (b / GFS2_NBBY);
 		bit = (b % GFS2_NBBY) * GFS2_BIT_SIZE;
@@ -2247,17 +2242,16 @@ static void rg_repair(void)
 		   repaired bitmap to GFS2_BLKST_DINODE. Set all others to
 		   GFS2_BLKST_USED so fsck can sort it out. If we set them
 		   to FREE, fsck would just nuke it all. */
-		printf("Resource group at block %llu (0x%llx) appears to be "
+		printf("Resource group at block %"PRIu64" (0x%"PRIx64") appears to be "
 		       "damaged. Attempting to fix it (in reverse order).\n",
-		       (unsigned long long)rgd->ri.ri_addr,
-		       (unsigned long long)rgd->ri.ri_addr);
+		       rgd->rt_addr, rgd->rt_addr);
 
-		for (b = rgd->ri.ri_length - 1; b >= 0; b--) {
+		for (b = rgd->rt_length - 1; b >= 0; b--) {
 			int mtype = (b ? GFS2_METATYPE_RB : GFS2_METATYPE_RG);
 			struct gfs2_meta_header *mh;
 
 			printf("Bitmap #%d:", b);
-			rbh = bread(&sbd, rgd->ri.ri_addr + b);
+			rbh = bread(&sbd, rgd->rt_addr + b);
 			if (gfs2_check_meta(rbh->b_data, mtype)) { /* wrong type */
 				printf("Damaged. Repairing...");
 				/* Fix the meta header */
@@ -2281,8 +2275,8 @@ static void rg_repair(void)
 			printf("Dinodes found: %d\n", dinodes_found);
 			dinodes_total += dinodes_found;
 			if (b == 0) { /* rgrp itself was damaged */
-				rgd->rg.rg_dinodes = dinodes_total;
-				rgd->rg.rg_free = 0;
+				rgd->rt_dinodes = dinodes_total;
+				rgd->rt_free = 0;
 			}
 			brelse(rbh);
 		}
@@ -2521,7 +2515,7 @@ static void process_parameters(int argc, char *argv[], int pass)
 				gfs2_rgrp_free(&sbd, &sbd.rgtree);
 				exit(EXIT_FAILURE);
 			}
-			for (bmap = 0; bmap < rgd->ri.ri_length; bmap++)
+			for (bmap = 0; bmap < rgd->rt_length; bmap++)
 				push_block(rgblk + bmap);
 		}
 		else if (!strcmp(argv[i], "rgrepair"))

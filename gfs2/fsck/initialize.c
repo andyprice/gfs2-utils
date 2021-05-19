@@ -134,7 +134,6 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgd;
-	struct gfs2_rindex *ri;
 	char buf[sdp->sd_sb.sb_bsize];
 	uint64_t rmax = 0;
 	uint64_t rmin = 0;
@@ -145,12 +144,11 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
 		rgd = (struct rgrp_tree *)n;
-		ri = &rgd->ri;
-		if (ri->ri_data0 + ri->ri_data &&
-		    ri->ri_data0 + ri->ri_data - 1 > rmax)
-			rmax = ri->ri_data0 + ri->ri_data - 1;
-		if (!rmin || ri->ri_data0 < rmin)
-			rmin = ri->ri_data0;
+		if (rgd->rt_data0 + rgd->rt_data &&
+		    rgd->rt_data0 + rgd->rt_data - 1 > rmax)
+			rmax = rgd->rt_data0 + rgd->rt_data - 1;
+		if (!rmin || rgd->rt_data0 < rmin)
+			rmin = rgd->rt_data0;
 	}
 
 	last_fs_block = rmax;
@@ -201,17 +199,16 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 	uint32_t rg_free, rg_reclaimed, rg_unlinked, rg_usedmeta, rg_useddi;
 	int rgb, x, y, off, bytes_to_check, total_bytes_to_check, asked = 0;
 	unsigned int state;
-	struct gfs_rgrp *gfs1rg = (struct gfs_rgrp *)&rgd->rg;
 	uint64_t diblock;
 	struct gfs2_buffer_head *bh;
 
 	rg_free = rg_reclaimed = rg_unlinked = rg_usedmeta = rg_useddi = 0;
-	total_bytes_to_check = rgd->ri.ri_bitbytes;
+	total_bytes_to_check = rgd->rt_bitbytes;
 
 	*this_rg_fixed = *this_rg_bad = *this_rg_cleaned = 0;
 
-	diblock = rgd->ri.ri_data0;
-	for (rgb = 0; rgb < rgd->ri.ri_length; rgb++){
+	diblock = rgd->rt_data0;
+	for (rgb = 0; rgb < rgd->rt_length; rgb++){
 		/* Count up the free blocks in the bitmap */
 		off = (rgb) ? sizeof(struct gfs2_meta_header) :
 			sizeof(struct gfs2_rgrp);
@@ -274,9 +271,8 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 					sprintf(msg,
 						_("Okay to reclaim free "
 						  "metadata in resource group "
-						  "%lld (0x%llx)? (y/n)"),
-						(unsigned long long)rgd->ri.ri_addr,
-						(unsigned long long)rgd->ri.ri_addr);
+						  "%"PRIu64" (0x%"PRIx64")? (y/n)"),
+					        rgd->rt_addr, rgd->rt_addr);
 					if (query("%s", msg))
 						*fixit = 1;
 				}
@@ -290,9 +286,9 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				rgd->bits[rgb].bi_modified = 1;
 				rg_reclaimed++;
 				rg_free++;
-				rgd->rg.rg_free++;
-				if (sdp->gfs1 && gfs1rg->rg_freemeta)
-					gfs1rg->rg_freemeta--;
+				rgd->rt_free++;
+				if (sdp->gfs1 && rgd->rt_freemeta)
+					rgd->rt_freemeta--;
 				log_info(_("Free metadata block %lld (0x%llx) "
 					   "reclaimed.\n"),
 					 (unsigned long long)diblock,
@@ -323,31 +319,27 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 	   will be reported. */
 	if (rg_reclaimed && *fixit) {
 		if (sdp->gfs1)
-			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_data);
+			lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
 		else
-			gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_data);
+			lgfs2_rgrp_out(rgd, rgd->bits[0].bi_data);
 		rgd->bits[0].bi_modified = 1;
 		*this_rg_cleaned = 1;
-		log_info( _("The rgrp at %lld (0x%llx) was cleaned of %d "
+		log_info(_("The rgrp at %"PRIu64" (0x%"PRIx64") was cleaned of %d "
 			    "free metadata blocks.\n"),
-			  (unsigned long long)rgd->ri.ri_addr,
-			  (unsigned long long)rgd->ri.ri_addr,
-			  rg_reclaimed);
+		         rgd->rt_addr, rgd->rt_addr, rg_reclaimed);
 	}
-	if (rgd->rg.rg_free != rg_free) {
+	if (rgd->rt_free != rg_free) {
 		*this_rg_bad = 1;
 		*this_rg_cleaned = 0;
-		log_err( _("Error: resource group %lld (0x%llx): "
+		log_err( _("Error: resource group %"PRIu64" (0x%"PRIx64"): "
 			   "free space (%d) does not match bitmap (%d)\n"),
-			 (unsigned long long)rgd->ri.ri_addr,
-			 (unsigned long long)rgd->ri.ri_addr,
-			 rgd->rg.rg_free, rg_free);
+		        rgd->rt_addr, rgd->rt_addr, rgd->rt_free, rg_free);
 		if (query( _("Fix the rgrp free blocks count? (y/n)"))) {
-			rgd->rg.rg_free = rg_free;
+			rgd->rt_free = rg_free;
 			if (sdp->gfs1)
-				gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_data);
+				lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
 			else
-				gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_data);
+				lgfs2_rgrp_out(rgd, rgd->bits[0].bi_data);
 			rgd->bits[0].bi_modified = 1;
 			*this_rg_fixed = 1;
 			log_err( _("The rgrp was fixed.\n"));
@@ -357,51 +349,45 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 	if (!sdp->gfs1)
 		return;
 
-	if (gfs1rg->rg_freemeta != rg_unlinked) {
+	if (rgd->rt_freemeta != rg_unlinked) {
 		*this_rg_bad = 1;
 		*this_rg_cleaned = 0;
-		log_err( _("Error: resource group %lld (0x%llx): "
-			   "free meta  (%d) does not match bitmap (%d)\n"),
-			 (unsigned long long)rgd->ri.ri_addr,
-			 (unsigned long long)rgd->ri.ri_addr,
-			 gfs1rg->rg_freemeta, rg_unlinked);
+		log_err(_("Error: resource group %"PRIu64" (0x%"PRIx64"): "
+			   "free meta (%d) does not match bitmap (%d)\n"),
+		        rgd->rt_addr, rgd->rt_addr, rgd->rt_freemeta, rg_unlinked);
 		if (query( _("Fix the rgrp free meta blocks count? (y/n)"))) {
-			gfs1rg->rg_freemeta = rg_unlinked;
-			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_data);
+			rgd->rt_freemeta = rg_unlinked;
+			lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
 			rgd->bits[0].bi_modified = 1;
 			*this_rg_fixed = 1;
 			log_err( _("The rgrp was fixed.\n"));
 		} else
 			log_err( _("The rgrp was not fixed.\n"));
 	}
-	if (gfs1rg->rg_useddi != rg_useddi) {
+	if (rgd->rt_useddi != rg_useddi) {
 		*this_rg_bad = 1;
 		*this_rg_cleaned = 0;
-		log_err( _("Error: resource group %lld (0x%llx): used dinode "
+		log_err(_("Error: resource group %"PRIu64" (0x%"PRIx64"): used dinode "
 			   "count (%d) does not match bitmap (%d)\n"),
-			 (unsigned long long)rgd->ri.ri_addr,
-			 (unsigned long long)rgd->ri.ri_addr,
-			 gfs1rg->rg_useddi, rg_useddi);
+		        rgd->rt_addr, rgd->rt_addr, rgd->rt_useddi, rg_useddi);
 		if (query( _("Fix the rgrp used dinode block count? (y/n)"))) {
-			gfs1rg->rg_useddi = rg_useddi;
-			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_data);
+			rgd->rt_useddi = rg_useddi;
+			lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
 			rgd->bits[0].bi_modified = 1;
 			*this_rg_fixed = 1;
 			log_err( _("The rgrp was fixed.\n"));
 		} else
 			log_err( _("The rgrp was not fixed.\n"));
 	}
-	if (gfs1rg->rg_usedmeta != rg_usedmeta) {
+	if (rgd->rt_usedmeta != rg_usedmeta) {
 		*this_rg_bad = 1;
 		*this_rg_cleaned = 0;
-		log_err( _("Error: resource group %lld (0x%llx): used "
+		log_err(_("Error: resource group %"PRIu64" (0x%"PRIx64"): used "
 			   "metadata (%d) does not match bitmap (%d)\n"),
-			 (unsigned long long)rgd->ri.ri_addr,
-			 (unsigned long long)rgd->ri.ri_addr,
-			 gfs1rg->rg_usedmeta, rg_usedmeta);
+		        rgd->rt_addr, rgd->rt_addr, rgd->rt_usedmeta, rg_usedmeta);
 		if (query( _("Fix the rgrp used meta blocks count? (y/n)"))) {
-			gfs1rg->rg_usedmeta = rg_usedmeta;
-			gfs_rgrp_out((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_data);
+			rgd->rt_usedmeta = rg_usedmeta;
+			lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
 			rgd->bits[0].bi_modified = 1;
 			*this_rg_fixed = 1;
 			log_err( _("The rgrp was fixed.\n"));
@@ -665,8 +651,8 @@ static unsigned gfs2_rgrp_reada(struct gfs2_sbd *sdp, unsigned cur_window,
 		if (i < cur_window)
 			continue;
 		rgd = (struct rgrp_tree *)n;
-		start = rgd->ri.ri_addr * sdp->bsize;
-		len = rgd->ri.ri_length * sdp->bsize;
+		start = rgd->rt_addr * sdp->bsize;
+		len = rgd->rt_length * sdp->bsize;
 		posix_fadvise(sdp->device_fd, start, len, POSIX_FADV_WILLNEED);
 	}
 
@@ -686,7 +672,6 @@ static unsigned gfs2_rgrp_reada(struct gfs2_sbd *sdp, unsigned cur_window,
 static int read_rgrps(struct gfs2_sbd *sdp, uint64_t expected)
 {
 	struct rgrp_tree *rgd;
-	struct gfs2_rindex *ri;
 	uint64_t count = 0;
 	uint64_t errblock = 0;
 	uint64_t rmax = 0;
@@ -708,9 +693,8 @@ static int read_rgrps(struct gfs2_sbd *sdp, uint64_t expected)
 			return errblock;
 		ra_window--;
 		count++;
-		ri = &rgd->ri;
-		if (ri->ri_data0 + ri->ri_data - 1 > rmax)
-			rmax = ri->ri_data0 + ri->ri_data - 1;
+		if (rgd->rt_data0 + rgd->rt_data - 1 > rmax)
+			rmax = rgd->rt_data0 + rgd->rt_data - 1;
 	}
 
 	sdp->fssize = rmax;

@@ -503,8 +503,8 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 {
 	int error, start_line;
 	struct gfs2_rindex ri;
-	char rbuf[sizeof(struct gfs2_rindex)];
 	char highlighted_addr[32];
+	struct rgrp_tree rg = {0};
 
 	start_line = line;
 	print_gfs2("RG index entries found: %"PRIu64".",
@@ -518,39 +518,38 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 
 		roff = print_entry_ndx * sizeof(struct gfs2_rindex);
 
-		error = gfs2_readi(dip, (void *)&rbuf, roff,
-				   sizeof(struct gfs2_rindex));
+		error = gfs2_readi(dip, &ri, roff, sizeof(struct gfs2_rindex));
 		if (!error) /* end of file */
 			break;
-		gfs2_rindex_in(&ri, rbuf);
+		lgfs2_rindex_in(&rg, &ri);
 		if (!termlines ||
 			(print_entry_ndx >= start_row[dmode] &&
 			 ((print_entry_ndx - start_row[dmode])+1) * lines_per_row[dmode] <=
 			 termlines - start_line - 2)) {
 			if (edit_row[dmode] == print_entry_ndx) {
 				COLORS_HIGHLIGHT;
-				sprintf(highlighted_addr, "%"PRIx64, ri.ri_addr);
+				sprintf(highlighted_addr, "%"PRIx64, rg.rt_addr);
 			}
 			print_gfs2("RG #%d", print_entry_ndx);
 			if (!print_rindex)
 				print_gfs2(" located at: %"PRIu64" (0x%"PRIx64")",
-					   ri.ri_addr, ri.ri_addr);
+					   rg.rt_addr, rg.rt_addr);
 			eol(0);
 			if (edit_row[dmode] == print_entry_ndx)
 				COLORS_NORMAL;
-			if(print_rindex)
-				gfs2_rindex_print(&ri);
+			if (print_rindex)
+				lgfs2_rindex_print(&ri);
 			else {
-				char buf[sizeof(struct gfs2_rgrp)] = {0};
+				struct gfs2_rgrp r = {0};
 				ssize_t ret;
 
-				ret = pread(sbd.device_fd, buf, sizeof(buf), ri.ri_addr * sbd.bsize);
-				if (ret != sizeof(buf)) {
+				ret = pread(sbd.device_fd, &r, sizeof(r), rg.rt_addr * sbd.bsize);
+				if (ret != sizeof(r)) {
 					perror("Failed to read resource group");
 				} else if (sbd.gfs1) {
-					gfs_rgrp_print(buf);
+					gfs_rgrp_print(&r);
 				} else {
-					lgfs2_rgrp_print(buf);
+					lgfs2_rgrp_print(&r);
 				}
 			}
 			last_entry_onscreen[dmode] = print_entry_ndx;

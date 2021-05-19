@@ -771,16 +771,21 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrp_t rg, int debug)
 {
 	uint64_t prev_end = (GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sdp->bsize) + 1;
-	const struct gfs2_rindex *ri = lgfs2_rgrp_index(rg);
 	lgfs2_rgrp_t prev = lgfs2_rgrp_prev(rg);
+	struct gfs2_rindex ri;
+	uint64_t addr;
 	int err = 0;
 
 	if (prev != NULL) {
-		prev_end = lgfs2_rgrp_index(prev)->ri_data0 +
-		           lgfs2_rgrp_index(prev)->ri_data;
+		lgfs2_rindex_out(prev, &ri);
+		prev_end = be64_to_cpu(ri.ri_data0) + be32_to_cpu(ri.ri_data);
 	}
-	while (prev_end < ri->ri_addr) {
-		size_t gap_len = ri->ri_addr - prev_end;
+
+	lgfs2_rindex_out(rg, &ri);
+	addr = be64_to_cpu(ri.ri_addr);
+
+	while (prev_end < addr) {
+		size_t gap_len = addr - prev_end;
 
 		if (gap_len > IOV_MAX)
 			gap_len = IOV_MAX;
@@ -795,11 +800,11 @@ static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrp_t rg, int debug)
 		return -1;
 	}
 	if (debug) {
-		gfs2_rindex_print(ri);
+		lgfs2_rindex_print(&ri);
 		printf("\n");
 	}
-	sdp->blks_total += ri->ri_data;
-	sdp->fssize = ri->ri_data0 + ri->ri_data;
+	sdp->blks_total += be32_to_cpu(ri.ri_data);
+	sdp->fssize = be64_to_cpu(ri.ri_data0) + be32_to_cpu(ri.ri_data);
 	sdp->rgrps++;
 	return 0;
 }
@@ -849,6 +854,7 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 		int result;
 		lgfs2_rgrp_t rg;
 		struct gfs2_inode in = {0};
+		struct gfs2_rindex ri;
 
 		gfs2_progress_update(&progress, (j + 1));
 
@@ -867,7 +873,8 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 			return result;
 		}
 		/* Allocate at the beginning of the rgrp, bypassing extent search */
-		in.i_addr = lgfs2_rgrp_index(rg)->ri_data0;
+		lgfs2_rindex_out(rg, &ri);
+		in.i_addr = be64_to_cpu(ri.ri_data0);
 		/* In order to keep writes sequential here, we have to allocate
 		   the journal, then write the rgrp header (which is now in its
 		   final form) and then write the journal out */

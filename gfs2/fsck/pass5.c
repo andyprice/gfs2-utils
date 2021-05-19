@@ -133,57 +133,48 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgp,
 	struct gfs2_bitmap *bits;
 	uint64_t rg_block = 0;
 	int update = 0;
-	struct gfs_rgrp *gfs1rg = (struct gfs_rgrp *)&rgp->rg;
 
-	for(i = 0; i < rgp->ri.ri_length; i++) {
+	for(i = 0; i < rgp->rt_length; i++) {
 		bits = &rgp->bits[i];
 
 		/* update the bitmaps */
 		if (check_block_status(sdp, bl, bits->bi_data + bits->bi_offset,
-		                       bits->bi_len, &rg_block, rgp->ri.ri_data0, count))
+		                       bits->bi_len, &rg_block, rgp->rt_data0, count))
 			return;
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return;
 	}
 
 	/* actually adjust counters and write out to disk */
-	if (rgp->rg.rg_free != count[GFS2_BLKST_FREE]) {
-		log_err( _("RG #%llu (0x%llx) free count inconsistent: "
+	if (rgp->rt_free != count[GFS2_BLKST_FREE]) {
+		log_err(_("RG #%"PRIu64" (0x%"PRIx64") free count inconsistent: "
 			"is %u should be %u\n"),
-			(unsigned long long)rgp->ri.ri_addr,
-			(unsigned long long)rgp->ri.ri_addr,
-			rgp->rg.rg_free, count[GFS2_BLKST_FREE]);
-		rgp->rg.rg_free = count[GFS2_BLKST_FREE];
+		        rgp->rt_addr, rgp->rt_addr, rgp->rt_free, count[GFS2_BLKST_FREE]);
+		rgp->rt_free = count[GFS2_BLKST_FREE];
 		update = 1;
 	}
-	if (rgp->rg.rg_dinodes != count[GFS2_BLKST_DINODE]) {
-		log_err( _("RG #%llu (0x%llx) Inode count inconsistent: is "
-			   "%u should be %u\n"),
-			 (unsigned long long)rgp->ri.ri_addr,
-			 (unsigned long long)rgp->ri.ri_addr,
-			 rgp->rg.rg_dinodes, count[GFS2_BLKST_DINODE]);
-		rgp->rg.rg_dinodes = count[GFS2_BLKST_DINODE];
+	if (rgp->rt_dinodes != count[GFS2_BLKST_DINODE]) {
+		log_err(_("RG #%"PRIu64" (0x%"PRIx64") Inode count inconsistent: is "
+		          "%u should be %u\n"),
+		        rgp->rt_addr, rgp->rt_addr, rgp->rt_dinodes, count[GFS2_BLKST_DINODE]);
+		rgp->rt_dinodes = count[GFS2_BLKST_DINODE];
 		update = 1;
 	}
-	if (sdp->gfs1 && gfs1rg->rg_usedmeta != count[GFS1_BLKST_USEDMETA]) {
-		log_err( _("RG #%llu (0x%llx) Used metadata count "
-			   "inconsistent: is %u should be %u\n"),
-			 (unsigned long long)rgp->ri.ri_addr,
-			 (unsigned long long)rgp->ri.ri_addr,
-			 gfs1rg->rg_usedmeta, count[GFS1_BLKST_USEDMETA]);
-		gfs1rg->rg_usedmeta = count[GFS1_BLKST_USEDMETA];
+	if (sdp->gfs1 && rgp->rt_usedmeta != count[GFS1_BLKST_USEDMETA]) {
+		log_err(_("RG #%"PRIu64" (0x%"PRIx64") Used metadata count "
+		          "inconsistent: is %u should be %u\n"),
+		        rgp->rt_addr, rgp->rt_addr, rgp->rt_usedmeta, count[GFS1_BLKST_USEDMETA]);
+		rgp->rt_usedmeta = count[GFS1_BLKST_USEDMETA];
 		update = 1;
 	}
-	if (sdp->gfs1 && gfs1rg->rg_freemeta != count[GFS2_BLKST_UNLINKED]) {
-		log_err( _("RG #%llu (0x%llx) Free metadata count "
-			   "inconsistent: is %u should be %u\n"),
-			 (unsigned long long)rgp->ri.ri_addr,
-			 (unsigned long long)rgp->ri.ri_addr,
-			 gfs1rg->rg_freemeta, count[GFS2_BLKST_UNLINKED]);
-		gfs1rg->rg_freemeta = count[GFS2_BLKST_UNLINKED];
+	if (sdp->gfs1 && rgp->rt_freemeta != count[GFS2_BLKST_UNLINKED]) {
+		log_err(_("RG #%"PRIu64" (0x%"PRIx64") Free metadata count "
+		          "inconsistent: is %u should be %u\n"),
+		        rgp->rt_addr, rgp->rt_addr, rgp->rt_freemeta, count[GFS2_BLKST_UNLINKED]);
+		rgp->rt_freemeta = count[GFS2_BLKST_UNLINKED];
 		update = 1;
 	}
-	if (!sdp->gfs1 && (rgp->ri.ri_data != count[GFS2_BLKST_FREE] +
+	if (!sdp->gfs1 && (rgp->rt_data != count[GFS2_BLKST_FREE] +
 			   count[GFS2_BLKST_USED] +
 			   count[GFS2_BLKST_UNLINKED] +
 			   count[GFS2_BLKST_DINODE])) {
@@ -191,7 +182,7 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgp,
 		 * means that the total number of blocks we've counted
 		 * exceeds the blocks in the rg */
 		log_err( _("Internal fsck error: %u != %u + %u + %u + %u\n"),
-			 rgp->ri.ri_data, count[GFS2_BLKST_FREE],
+			 rgp->rt_data, count[GFS2_BLKST_FREE],
 			 count[GFS2_BLKST_USED], count[GFS2_BLKST_UNLINKED],
 			 count[GFS2_BLKST_DINODE]);
 		exit(FSCK_ERROR);
@@ -201,9 +192,9 @@ static void update_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgp,
 			log_warn( _("Resource group counts updated\n"));
 			/* write out the rgrp */
 			if (sdp->gfs1)
-				gfs_rgrp_out(gfs1rg, rgp->bits[0].bi_data);
+				lgfs2_gfs_rgrp_out(rgp, rgp->bits[0].bi_data);
 			else
-				gfs2_rgrp_out(&rgp->rg, rgp->bits[0].bi_data);
+				lgfs2_rgrp_out(rgp, rgp->bits[0].bi_data);
 			rgp->bits[0].bi_modified = 1;
 		} else
 			log_err( _("Resource group counts left inconsistent\n"));

@@ -136,11 +136,11 @@ int gfs2_set_bitmap(lgfs2_rgrp_t rgd, uint64_t blkno, int state)
 	if ((state < GFS2_BLKST_FREE) || (state > GFS2_BLKST_DINODE))
 		return -1;
 
-	if(!rgd || blkno < rgd->ri.ri_data0)
+	if(!rgd || blkno < rgd->rt_data0)
 		return -1;
 
-	rgrp_block = (uint32_t)(blkno - rgd->ri.ri_data0);
-	for(buf= 0; buf < rgd->ri.ri_length; buf++){
+	rgrp_block = (uint32_t)(blkno - rgd->rt_data0);
+	for(buf= 0; buf < rgd->rt_length; buf++){
 		bits = &(rgd->bits[buf]);
 		if(rgrp_block < ((bits->bi_start + bits->bi_len)*GFS2_NBBY))
 			break;
@@ -189,12 +189,12 @@ int lgfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, struct rgrp_tree *rgd
 			return -1;
 	}
 
-	offset = blkno - rgd->ri.ri_data0;
+	offset = blkno - rgd->rt_data0;
 	if (offset > UINT_MAX) {
 		errno = EINVAL;
 		return -1;
 	}
-	if (offset >= rgd->ri.ri_data0 + rgd->ri.ri_data) {
+	if (offset >= rgd->rt_data0 + rgd->rt_data) {
 		errno = E2BIG;
 		return -1;
 	}

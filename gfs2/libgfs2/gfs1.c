@@ -336,6 +336,20 @@ void gfs_rgrp_in(struct gfs_rgrp *rgrp, const char *buf)
 	memcpy(rgrp->rg_reserved, str->rg_reserved, 64);
 }
 
+void lgfs2_gfs_rgrp_in(const lgfs2_rgrp_t rg, void *buf)
+{
+	struct gfs_rgrp *r = buf;
+
+	rg->rt_flags = be32_to_cpu(r->rg_flags);
+	rg->rt_free = be32_to_cpu(r->rg_free);
+	rg->rt_useddi = be32_to_cpu(r->rg_useddi);
+	rg->rt_freedi = be32_to_cpu(r->rg_freedi);
+	rg->rt_freedi_list.no_formal_ino = be64_to_cpu(r->rg_freedi_list.no_formal_ino);
+	rg->rt_freedi_list.no_addr = be64_to_cpu(r->rg_freedi_list.no_addr);
+	rg->rt_usedmeta = be32_to_cpu(r->rg_usedmeta);
+	rg->rt_freemeta = be32_to_cpu(r->rg_freemeta);
+}
+
 void gfs_rgrp_out(const struct gfs_rgrp *rgrp, char *buf)
 {
 	struct gfs_rgrp *str = (struct gfs_rgrp *)buf;
@@ -350,4 +364,22 @@ void gfs_rgrp_out(const struct gfs_rgrp *rgrp, char *buf)
 	str->rg_freemeta = cpu_to_be32(rgrp->rg_freemeta);
 
 	memcpy(str->rg_reserved, rgrp->rg_reserved, 64);
+}
+
+void lgfs2_gfs_rgrp_out(const lgfs2_rgrp_t rg, void *buf)
+{
+	struct gfs_rgrp *r = buf;
+
+	r->rg_header.mh_magic = cpu_to_be32(GFS2_MAGIC);
+	r->rg_header.mh_type = cpu_to_be32(GFS2_METATYPE_RG);
+	r->rg_header.mh_format = cpu_to_be32(GFS2_FORMAT_RG);
+	r->rg_flags = cpu_to_be32(rg->rt_flags);
+	r->rg_free = cpu_to_be32(rg->rt_free);
+	r->rg_useddi = cpu_to_be32(rg->rt_useddi);
+	r->rg_freedi = cpu_to_be32(rg->rt_freedi);
+	r->rg_freedi_list.no_formal_ino = cpu_to_be64(rg->rt_freedi_list.no_formal_ino);
+	r->rg_freedi_list.no_addr = cpu_to_be64(rg->rt_freedi_list.no_addr);
+	r->rg_usedmeta = cpu_to_be32(rg->rt_usedmeta);
+	r->rg_freemeta = cpu_to_be32(rg->rt_freemeta);
+
 }

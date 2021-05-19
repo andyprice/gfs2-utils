@@ -167,7 +167,6 @@ static int check_statfs(struct gfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgd;
-	struct gfs2_rindex *ri;
 	struct gfs2_statfs_change sc;
 	uint64_t sc_total;
 	uint64_t sc_free;
@@ -197,10 +196,9 @@ static int check_statfs(struct gfs2_sbd *sdp)
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
 		rgd = (struct rgrp_tree *)n;
-		ri = &rgd->ri;
-		sdp->blks_total += ri->ri_data;
-		sdp->blks_alloced += (ri->ri_data - rgd->rg.rg_free);
-		sdp->dinodes_alloced += rgd->rg.rg_dinodes;
+		sdp->blks_total += rgd->rt_data;
+		sdp->blks_alloced += (rgd->rt_data - rgd->rt_free);
+		sdp->dinodes_alloced += rgd->rt_dinodes;
 	}
 
 	/* See if they match */

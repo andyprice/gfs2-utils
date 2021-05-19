@@ -135,11 +135,9 @@ static void convert_bitmaps(struct gfs2_sbd *sdp, struct rgrp_tree *rg)
 {
 	uint32_t blk;
 	int x, y;
-	struct gfs2_rindex *ri;
 	unsigned char state;
 
-	ri = &rg->ri;
-	for (blk = 0; blk < ri->ri_length; blk++) {
+	for (blk = 0; blk < rg->rt_length; blk++) {
 		struct gfs2_bitmap *bi;
 		x = (blk) ? sizeof(struct gfs2_meta_header) :
 			sizeof(struct gfs2_rgrp);
@@ -164,7 +162,6 @@ static int convert_rgs(struct gfs2_sbd *sbp)
 {
 	struct rgrp_tree *rgd;
 	struct osi_node *n, *next = NULL;
-	struct gfs_rgrp *rgd1;
 	int rgs = 0;
 
 	/* --------------------------------- */
@@ -174,20 +171,17 @@ static int convert_rgs(struct gfs2_sbd *sbp)
 		next = osi_next(n);
 		rgd = (struct rgrp_tree *)n;
 
-		rgd1 = (struct gfs_rgrp *)&rgd->rg; /* recast as gfs1 structure */
-		/* rg_freemeta is a gfs1 structure, so libgfs2 doesn't know to */
-		/* convert from be to cpu. We must do it now. */
-		rgd->rg.rg_free = rgd1->rg_free + be32_to_cpu(rgd1->rg_freemeta);
+		rgd->rt_free = rgd->rt_free + rgd->rt_freemeta;
 		/* Zero it out so we don't add it again in case something breaks */
 		/* later on in the process and we have to re-run convert */
-		rgd1->rg_freemeta = 0;
+		rgd->rt_freemeta = 0;
 
-		sbp->blks_total += rgd->ri.ri_data;
-		sbp->blks_alloced += (rgd->ri.ri_data - rgd->rg.rg_free);
-		sbp->dinodes_alloced += rgd1->rg_useddi;
+		sbp->blks_total += rgd->rt_data;
+		sbp->blks_alloced += (rgd->rt_data - rgd->rt_free);
+		sbp->dinodes_alloced += rgd->rt_useddi;
 		convert_bitmaps(sbp, rgd);
 		/* Write the updated rgrp to the gfs2 buffer */
-		gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_data);
+		lgfs2_rgrp_out(rgd, rgd->bits[0].bi_data);
 		rgd->bits[0].bi_modified = 1;
 		rgs++;
 		if (rgs % 100 == 0) {
@@ -967,11 +961,11 @@ err_freei:
 static int next_rg_meta(struct rgrp_tree *rgd, uint64_t *block, int first)
 {
 	struct gfs2_bitmap *bits = NULL;
-	uint32_t length = rgd->ri.ri_length;
-	uint32_t blk = (first)? 0: (uint32_t)((*block + 1) - rgd->ri.ri_data0);
+	uint32_t length = rgd->rt_length;
+	uint32_t blk = (first)? 0: (uint32_t)((*block + 1) - rgd->rt_data0);
 	int i;
 
-	if (!first && (*block < rgd->ri.ri_data0)) {
+	if (!first && (*block < rgd->rt_data0)) {
 		fprintf(stderr, "next_rg_meta:  Start block is outside rgrp bounds.\n");
 		exit(1);
 	}
@@ -986,8 +980,7 @@ static int next_rg_meta(struct rgrp_tree *rgd, uint64_t *block, int first)
 		blk = gfs2_bitfit((uint8_t *)bits->bi_data + bits->bi_offset,
 		                   bits->bi_len, blk, GFS2_BLKST_DINODE);
 		if(blk != BFITNOENT){
-			*block = blk + (bits->bi_start * GFS2_NBBY) +
-				rgd->ri.ri_data0;
+			*block = blk + (bits->bi_start * GFS2_NBBY) + rgd->rt_data0;
 			break;
 		}
 		blk = 0;
@@ -1083,10 +1076,10 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 
 				/* Figure out the absolute bitmap byte we need to fix.   */
 				/* ignoring structure offsets and bitmap blocks for now. */
-				bitmap_byte = (block - rgd->ri.ri_data0) / GFS2_NBBY;
-				byte_bit = (block - rgd->ri.ri_data0) % GFS2_NBBY;
+				bitmap_byte = (block - rgd->rt_data0) / GFS2_NBBY;
+				byte_bit = (block - rgd->rt_data0) % GFS2_NBBY;
 				/* Now figure out which bitmap block the byte is on */
-				for (blk = 0; blk < rgd->ri.ri_length; blk++) {
+				for (blk = 0; blk < rgd->rt_length; blk++) {
 					struct gfs2_bitmap *bi = &rgd->bits[blk];
 					/* figure out offset of first bitmap byte for this map: */
 					buf_offset = (blk) ? sizeof(struct gfs2_meta_header) :
@@ -1551,7 +1544,6 @@ static int sanity_check(struct gfs2_sbd *sdp)
 static int gfs1_ri_update(struct gfs2_sbd *sdp, int *rgcount, int quiet)
 {
 	struct rgrp_tree *rgd;
-	struct gfs2_rindex *ri;
 	uint64_t count1 = 0, count2 = 0;
 	uint64_t errblock = 0;
 	uint64_t rmax = 0;
@@ -1572,9 +1564,8 @@ static int gfs1_ri_update(struct gfs2_sbd *sdp, int *rgcount, int quiet)
 			printf(".");
 			fflush(stdout);
 		}
-		ri = &rgd->ri;
-		if (ri->ri_data0 + ri->ri_data - 1 > rmax)
-			rmax = ri->ri_data0 + ri->ri_data - 1;
+		if (rgd->rt_data0 + rgd->rt_data - 1 > rmax)
+			rmax = rgd->rt_data0 + rgd->rt_data - 1;
 	}
 
 	sdp->fssize = rmax;
@@ -1878,60 +1869,56 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 		for (n = osi_first(&sdp->rgtree); n; n = next) {
 			next = osi_next(n);
 			rgd = (struct rgrp_tree *)n;
-			if (rgd->ri.ri_addr < jndx->ji_addr &&
+			if (rgd->rt_addr < jndx->ji_addr &&
 				((rgdhigh == NULL) ||
-				 (rgd->ri.ri_addr > rgdhigh->ri.ri_addr)))
+				 (rgd->rt_addr > rgdhigh->rt_addr)))
 				rgdhigh = rgd;
 		} /* for each rg */
 		if (!rgdhigh) { /* if we somehow didn't find one. */
 			log_crit(_("Error: No suitable rg found for journal.\n"));
 			return -1;
 		}
-		log_info(_("Addr 0x%llx comes after rg at addr 0x%llx\n"),
-			 (unsigned long long)jndx->ji_addr,
-			 (unsigned long long)rgdhigh->ri.ri_addr);
+		log_info(_("Addr 0x%"PRIx64" comes after rg at addr 0x%"PRIx64"\n"),
+		         jndx->ji_addr, rgdhigh->rt_addr);
 		ri_addr = jndx->ji_addr;
 		/* Allocate a new rgd entry which includes rg and ri. */
 		rgd = rgrp_insert(&sdp->rgtree, ri_addr);
 		/* convert the gfs1 rgrp into a new gfs2 rgrp */
 		size = jndx->ji_nsegment *
 			be32_to_cpu(raw_gfs1_ondisk_sb.sb_seg_size);
-		rgd->rg.rg_header.mh_magic = GFS2_MAGIC;
-		rgd->rg.rg_header.mh_type = GFS2_METATYPE_RG;
-		rgd->rg.rg_header.mh_format = GFS2_FORMAT_RG;
-		rgd->rg.rg_flags = 0;
-		rgd->rg.rg_dinodes = 0;
+		rgd->rt_flags = 0;
+		rgd->rt_dinodes = 0;
 
-		rgd->ri.ri_addr = jndx->ji_addr; /* new rg addr becomes ji addr */
-		rgd->ri.ri_length = rgrp_length(size, sdp); /* aka bitblocks */
+		rgd->rt_addr = jndx->ji_addr; /* new rg addr becomes ji addr */
+		rgd->rt_length = rgrp_length(size, sdp); /* aka bitblocks */
 
-		rgd->ri.ri_data0 = jndx->ji_addr + rgd->ri.ri_length;
-		rgd->ri.ri_data = size - rgd->ri.ri_length;
+		rgd->rt_data0 = jndx->ji_addr + rgd->rt_length;
+		rgd->rt_data = size - rgd->rt_length;
 		/* Round down to nearest multiple of GFS2_NBBY */
-		while (rgd->ri.ri_data & 0x03)
-			rgd->ri.ri_data--;
-		sdp->blks_total += rgd->ri.ri_data; /* For statfs file update */
-		rgd->rg.rg_free = rgd->ri.ri_data;
-		rgd->ri.ri_bitbytes = rgd->ri.ri_data / GFS2_NBBY;
+		while (rgd->rt_data & 0x03)
+			rgd->rt_data--;
+		sdp->blks_total += rgd->rt_data; /* For statfs file update */
+		rgd->rt_free = rgd->rt_data;
+		rgd->rt_bitbytes = rgd->rt_data / GFS2_NBBY;
 
 		if (gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, rgd)) {
 			log_crit(_("gfs2_convert: Error converting bitmaps.\n"));
 			exit(-1);
 		}
 
-		rgd->bits[0].bi_data = calloc(rgd->ri.ri_length, sdp->bsize);
+		rgd->bits[0].bi_data = calloc(rgd->rt_length, sdp->bsize);
 		if (rgd->bits[0].bi_data == NULL) {
 			perror("");
 			exit(-1);
 		}
-		for (unsigned i = 1; i < rgd->ri.ri_length; i++)
+		for (unsigned i = 1; i < rgd->rt_length; i++)
 			rgd->bits[i].bi_data = rgd->bits[0].bi_data + (i * sdp->bsize);
 
 		convert_bitmaps(sdp, rgd);
-		gfs2_rgrp_out(&rgd->rg, rgd->bits[0].bi_data);
+		lgfs2_rgrp_out(rgd, rgd->bits[0].bi_data);
 		rgd->bits[0].bi_modified = 1;
 
-		for (unsigned i = 1; i < rgd->ri.ri_length; i++) {
+		for (unsigned i = 1; i < rgd->rt_length; i++) {
 			gfs2_meta_header_out(&mh, rgd->bits[i].bi_data);
 			rgd->bits[i].bi_modified = 1;
 		}

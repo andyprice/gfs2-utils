@@ -41,7 +41,7 @@ static inline struct gfs2_bitmap *rbm_bi(const struct lgfs2_rbm *rbm)
 
 static inline uint64_t lgfs2_rbm_to_block(const struct lgfs2_rbm *rbm)
 {
-	return rbm->rgd->ri.ri_data0 + (rbm_bi(rbm)->bi_start * GFS2_NBBY) +
+	return rbm->rgd->rt_data0 + (rbm_bi(rbm)->bi_start * GFS2_NBBY) +
 	        rbm->offset;
 }
 

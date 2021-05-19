@@ -255,7 +255,7 @@ static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 				found_bblk = 1;
 				print_gfs2("<-------------------------");
 				if (is_meta_ld) {
-					o = tblk - rgd->ri.ri_data0;
+					o = tblk - rgd->rt_data0;
 					if (o >= (rgd->bits->bi_start +
 						  rgd->bits->bi_len) *
 					    GFS2_NBBY)
@@ -563,16 +563,16 @@ void dump_journal(const char *journal, int tblk)
 			uint64_t o;
 			int bmap = 0;
 
-			print_gfs2("rgd: 0x%"PRIx64" for 0x%"PRIx32", ", rgd->ri.ri_addr,
-				   rgd->ri.ri_length);
-			o = tblk - rgd->ri.ri_data0;
+			print_gfs2("rgd: 0x%"PRIx64" for 0x%"PRIx32", ", rgd->rt_addr,
+				   rgd->rt_length);
+			o = tblk - rgd->rt_data0;
 			if (o >= (rgd->bits->bi_start +
 				  rgd->bits->bi_len) * (uint64_t)GFS2_NBBY)
 				o += (sizeof(struct gfs2_rgrp) -
 				      sizeof(struct gfs2_meta_header))
 					* GFS2_NBBY;
 			bmap = o / sbd.sd_blocks_per_bitmap;
-			bitblk = rgd->ri.ri_addr + bmap;
+			bitblk = rgd->rt_addr + bmap;
 			print_gfs2("bitmap: %d, bitblk: 0x%"PRIx64, bmap, bitblk);
 			eol(0);
 		}

@@ -520,7 +520,7 @@ int build_rindex(struct gfs2_sbd *sdp)
 		next = osi_next(n);
 		rl = (struct rgrp_tree *)n;
 
-		gfs2_rindex_out(&rl->ri, buf);
+		lgfs2_rindex_out(rl, buf);
 
 		count = gfs2_writei(ip, buf, ip->i_size, sizeof(struct gfs2_rindex));
 		if (count != sizeof(struct gfs2_rindex))
@@ -663,7 +663,7 @@ unsigned lgfs2_bm_scan(struct rgrp_tree *rgd, unsigned idx, uint64_t *buf, uint8
 				  bi->bi_len, blk, state);
 		if (blk == BFITNOENT)
 			break;
-		buf[n++] = blk + (bi->bi_start * GFS2_NBBY) + rgd->ri.ri_data0;
+		buf[n++] = blk + (bi->bi_start * GFS2_NBBY) + rgd->rt_data0;
 		blk++;
 	}
 	return n;

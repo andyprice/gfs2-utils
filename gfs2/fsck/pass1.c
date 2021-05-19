@@ -1944,7 +1944,7 @@ static int pass1_process_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 	if (ibuf == NULL)
 		return FSCK_ERROR;
 
-	for (k = 0; k < rgd->ri.ri_length; k++) {
+	for (k = 0; k < rgd->rt_length; k++) {
 		n = lgfs2_bm_scan(rgd, k, ibuf, GFS2_BLKST_DINODE);
 
 		if (n) {
@@ -2116,11 +2116,10 @@ int pass1(struct gfs2_sbd *sdp)
 		next = osi_next(n);
 		log_debug("Checking metadata in resource group #%"PRIu64"\n", rg_count);
 		rgd = (struct rgrp_tree *)n;
-		for (i = 0; i < rgd->ri.ri_length; i++) {
+		for (i = 0; i < rgd->rt_length; i++) {
 			log_debug("rgrp block %"PRIu64" (0x%"PRIx64") is now marked as 'rgrp data'\n",
-				   rgd->ri.ri_addr + i, rgd->ri.ri_addr + i);
-			if (gfs2_blockmap_set(bl, rgd->ri.ri_addr + i,
-					      GFS2_BLKST_USED)) {
+				   rgd->rt_addr + i, rgd->rt_addr + i);
+			if (gfs2_blockmap_set(bl, rgd->rt_addr + i, GFS2_BLKST_USED)) {
 				stack;
 				gfs2_special_free(&gfs1_rindex_blks);
 				ret = FSCK_ERROR;

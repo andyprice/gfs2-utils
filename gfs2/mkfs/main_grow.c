@@ -194,8 +194,10 @@ static lgfs2_rgrps_t rgrps_init(struct gfs2_sbd *sdp)
 static uint64_t filesystem_size(lgfs2_rgrps_t rgs)
 {
 	lgfs2_rgrp_t rg = lgfs2_rgrp_last(rgs);
-	const struct gfs2_rindex *ri = lgfs2_rgrp_index(rg);
-	return ri->ri_data0 + ri->ri_data;
+	struct gfs2_rindex ri;
+
+	lgfs2_rindex_out(rg, &ri);
+	return be64_to_cpu(ri.ri_data0) + be32_to_cpu(ri.ri_data);
 }
 
 /**
@@ -253,8 +255,7 @@ static char *rindex_buffer(lgfs2_rgrps_t rgs, unsigned count)
 		exit(EXIT_FAILURE);
 	}
 	for (rg = lgfs2_rgrp_first(rgs); rg; rg = lgfs2_rgrp_next(rg)) {
-		const struct gfs2_rindex *ri = lgfs2_rgrp_index(rg);
-		gfs2_rindex_out(ri, buf + (sizeof(*ri) * i));
+		lgfs2_rindex_out(rg, buf + (sizeof(struct gfs2_rindex) * i));
 		i++;
 	}
 	return buf;

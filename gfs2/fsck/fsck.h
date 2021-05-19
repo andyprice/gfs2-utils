@@ -167,9 +167,9 @@ static inline int valid_block(struct gfs2_sbd *sdp, uint64_t blkno)
 
 static inline int rgrp_contains_block(struct rgrp_tree *rgd, uint64_t blk)
 {
-	if (blk < rgd->ri.ri_addr)
+	if (blk < rgd->rt_addr)
 		return 0;
-	if (blk >= rgd->ri.ri_data0 + rgd->ri.ri_data)
+	if (blk >= rgd->rt_data0 + rgd->rt_data)
 		return 0;
 	return 1;
 }

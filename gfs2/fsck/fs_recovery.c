@@ -101,19 +101,19 @@ static void refresh_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 {
 	int i;
 
-	log_debug(_("Block is part of rgrp 0x%llx; refreshing the rgrp.\n"),
-		  (unsigned long long)rgd->ri.ri_addr);
-	for (i = 0; i < rgd->ri.ri_length; i++) {
-		if (rgd->ri.ri_addr + i != blkno)
+	log_debug(_("Block is part of rgrp 0x%"PRIx64"; refreshing the rgrp.\n"),
+	          rgd->rt_addr);
+	for (i = 0; i < rgd->rt_length; i++) {
+		if (rgd->rt_addr + i != blkno)
 			continue;
 
 		memcpy(rgd->bits[i].bi_data, bh->b_data, sdp->bsize);
 		rgd->bits[i].bi_modified = 1;
 		if (i == 0) { /* this is the rgrp itself */
 			if (sdp->gfs1)
-				gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, rgd->bits[0].bi_data);
+				lgfs2_gfs_rgrp_in(rgd, rgd->bits[0].bi_data);
 			else
-				gfs2_rgrp_in(&rgd->rg, rgd->bits[0].bi_data);
+				lgfs2_rgrp_in(rgd, rgd->bits[0].bi_data);
 		}
 		break;
 	}
@@ -172,7 +172,7 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 		} else {
 			bmodified(bh_ip);
 			rgd = gfs2_blk2rgrpd(sdp, blkno);
-			if (rgd && blkno < rgd->ri.ri_data0)
+			if (rgd && blkno < rgd->rt_data0)
 				refresh_rgrp(sdp, rgd, bh_ip, blkno);
 		}
 

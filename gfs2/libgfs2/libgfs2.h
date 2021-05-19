@@ -177,11 +177,40 @@ struct rgrp_tree {
 	struct osi_node node;
 	uint64_t start;	   /* The offset of the beginning of this resource group */
 	uint64_t length;	/* The length of this resource group */
-
-	struct gfs2_rindex ri;
-	struct gfs2_rgrp rg;
 	struct gfs2_bitmap *bits;
 	lgfs2_rgrps_t rgrps;
+
+	/* Native-endian counterparts of the on-disk rindex struct */
+	uint64_t rt_addr;
+	uint64_t rt_data0;
+	uint32_t rt_data;
+	uint32_t rt_length;
+	uint32_t rt_bitbytes;
+	/* These 3 fields are duplicated between the rindex and the rgrp */
+	/* For now, duplicate them here too, until users can be reworked */
+	uint64_t rt_rg_data0;
+	uint32_t rt_rg_data;
+	uint32_t rt_rg_bitbytes;
+	/* Native-endian counterparts of the on-disk rgrp structs */
+	uint32_t rt_flags;
+	uint32_t rt_free;
+	union {
+		struct { /* gfs2 */
+			uint64_t rt_igeneration;
+			uint32_t rt_dinodes;
+			uint32_t rt_skip;
+		};
+		struct { /* gfs1 */
+			uint32_t rt_useddi;
+			uint32_t rt_freedi;
+			struct {
+				uint64_t no_formal_ino;
+				uint64_t no_addr;
+			} rt_freedi_list;
+			uint32_t rt_usedmeta;
+			uint32_t rt_freemeta;
+		};
+	};
 };
 
 typedef struct rgrp_tree *lgfs2_rgrp_t;
@@ -190,7 +219,7 @@ extern lgfs2_rgrps_t lgfs2_rgrps_init(struct gfs2_sbd *sdp, uint64_t align, uint
 extern void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs);
 extern uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, uint64_t addr, uint32_t len);
 extern unsigned lgfs2_rindex_read_fd(int fd, lgfs2_rgrps_t rgs);
-extern const struct gfs2_rindex *lgfs2_rindex_read_one(struct gfs2_inode *rip, lgfs2_rgrps_t rgs, unsigned i);
+extern lgfs2_rgrp_t lgfs2_rindex_read_one(struct gfs2_inode *rip, lgfs2_rgrps_t rgs, unsigned i);
 extern uint64_t lgfs2_rgrp_align_addr(const lgfs2_rgrps_t rgs, uint64_t addr);
 extern uint32_t lgfs2_rgrp_align_len(const lgfs2_rgrps_t rgs, uint32_t len);
 extern unsigned lgfs2_rgsize_for_data(uint64_t blksreq, unsigned bsize);
@@ -200,8 +229,6 @@ extern int lgfs2_rgrp_bitbuf_alloc(lgfs2_rgrp_t rg);
 extern void lgfs2_rgrp_bitbuf_free(lgfs2_rgrp_t rg);
 extern int lgfs2_rgrp_write(int fd, lgfs2_rgrp_t rg);
 extern int lgfs2_rgrps_write_final(int fd, lgfs2_rgrps_t rgs);
-extern const struct gfs2_rindex *lgfs2_rgrp_index(lgfs2_rgrp_t rg);
-extern const struct gfs2_rgrp *lgfs2_rgrp_rgrp(lgfs2_rgrp_t rg);
 extern lgfs2_rgrp_t lgfs2_rgrp_first(lgfs2_rgrps_t rgs);
 extern lgfs2_rgrp_t lgfs2_rgrp_last(lgfs2_rgrps_t rgs);
 extern lgfs2_rgrp_t lgfs2_rgrp_next(lgfs2_rgrp_t rg);
@@ -666,7 +693,9 @@ extern struct gfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp, char *buf);
 extern struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr);
 extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
 extern void gfs_rgrp_in(struct gfs_rgrp *rg, const char *buf);
+extern void lgfs2_gfs_rgrp_in(const lgfs2_rgrp_t rg, void *buf);
 extern void gfs_rgrp_out(const struct gfs_rgrp *rg, char *buf);
+extern void lgfs2_gfs_rgrp_out(const lgfs2_rgrp_t rg, void *buf);
 
 /* misc.c */
 extern int compute_heightsize(unsigned bsize, uint64_t *heightsize,
@@ -702,7 +731,7 @@ extern void gfs2_rgrp_free(struct gfs2_sbd *sdp, struct osi_root *rgrp_tree);
 /* figure out the size of the given resource group, in blocks */
 static inline unsigned int rgrp_size(struct rgrp_tree *rgrp)
 {
-	return rgrp->ri.ri_data + rgrp->ri.ri_length;
+	return rgrp->rt_data + rgrp->rt_length;
 }
 
 /* structures.c */
@@ -747,10 +776,10 @@ extern void gfs2_meta_header_in(struct gfs2_meta_header *mh, const char *buf);
 extern void gfs2_meta_header_out(const struct gfs2_meta_header *mh, char *buf);
 extern void gfs2_sb_in(struct gfs2_sb *sb, char *buf);
 extern void gfs2_sb_out(const struct gfs2_sb *sb, char *buf);
-extern void gfs2_rindex_in(struct gfs2_rindex *ri, char *buf);
-extern void gfs2_rindex_out(const struct gfs2_rindex *ri, char *buf);
-extern void gfs2_rgrp_in(struct gfs2_rgrp *rg, char *buf);
-extern void gfs2_rgrp_out(const struct gfs2_rgrp *rg, char *buf);
+extern void lgfs2_rindex_in(lgfs2_rgrp_t rg, void *buf);
+extern void lgfs2_rindex_out(const lgfs2_rgrp_t rg, void *buf);
+extern void lgfs2_rgrp_in(lgfs2_rgrp_t rg, void *buf);
+extern void lgfs2_rgrp_out(const lgfs2_rgrp_t rg, void *buf);
 extern void lgfs2_dinode_in(struct gfs2_inode *ip, char *buf);
 extern void lgfs2_dinode_out(struct gfs2_inode *ip, char *buf);
 extern void gfs2_dirent_in(struct gfs2_dirent *de, char *buf);
@@ -762,7 +791,6 @@ extern void gfs2_leaf_out(struct gfs2_leaf *lf, char *buf);
 
 extern void gfs2_inum_print(const struct gfs2_inum *no);
 extern void gfs2_meta_header_print(const struct gfs2_meta_header *mh);
-extern void gfs2_rindex_print(const struct gfs2_rindex *ri);
 /* These expect on-disk data instead of native-endian structs */
 extern void lgfs2_inum_print(void *nop);
 extern void lgfs2_meta_header_print(void *mhp);
@@ -775,6 +803,7 @@ extern void lgfs2_quota_change_print(void *qcp);
 extern void lgfs2_statfs_change_print(void *scp);
 extern void lgfs2_ea_header_print(void *eap);
 extern void lgfs2_leaf_print(void *lfp);
+extern void lgfs2_rindex_print(void *rip);
 extern void lgfs2_rgrp_print(void *rgp);
 
 __END_DECLS

@@ -236,7 +236,7 @@ static uint64_t ast_lookup_rgrp(uint64_t rgnum, struct gfs2_sbd *sbd)
 
 	for (n = osi_first(&sbd->rgtree); n != NULL && i > 0; n = osi_next(n), i--);
 	if (n != NULL && i == 0)
-		return ((struct rgrp_tree *)n)->ri.ri_addr;
+		return ((struct rgrp_tree *)n)->rt_addr;
 	fprintf(stderr, "Resource group number out of range: %"PRIu64"\n", rgnum);
 	return 0;
 }

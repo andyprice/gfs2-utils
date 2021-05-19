@@ -544,7 +544,6 @@ uint64_t find_free_blk(struct gfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rl = NULL;
-	struct gfs2_rindex *ri;
 	struct gfs2_rgrp *rg;
 	unsigned int block, bn = 0, x = 0, y = 0;
 	unsigned int state;
@@ -553,17 +552,14 @@ uint64_t find_free_blk(struct gfs2_sbd *sdp)
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
 		rl = (struct rgrp_tree *)n;
-		if (rl->rg.rg_free)
+		if (rl->rt_free)
 			break;
 	}
 
 	if (n == NULL)
 		return 0;
 
-	ri = &rl->ri;
-	rg = &rl->rg;
-
-	for (block = 0; block < ri->ri_length; block++) {
+	for (block = 0; block < rl->rt_length; block++) {
 		char *buf = rl->bits[block].bi_data;
 		x = (block) ? sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_rgrp);
 
@@ -571,7 +567,7 @@ uint64_t find_free_blk(struct gfs2_sbd *sdp)
 			for (y = 0; y < GFS2_NBBY; y++) {
 				state = (buf[x] >> (GFS2_BIT_SIZE * y)) & 0x03;
 				if (state == GFS2_BLKST_FREE)
-					return ri->ri_data0 + bn;
+					return rl->rt_data0 + bn;
 				bn++;
 			}
 	}

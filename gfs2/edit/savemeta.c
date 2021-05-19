@@ -994,7 +994,7 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 	unsigned i, j, m;
 	uint64_t *ibuf = malloc(sbd.bsize * GFS2_NBBY * sizeof(uint64_t));
 
-	for (i = 0; i < rgd->ri.ri_length; i++) {
+	for (i = 0; i < rgd->rt_length; i++) {
 		struct block_range br = {0};
 
 		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_DINODE);
@@ -1056,33 +1056,28 @@ static char *rgrp_read(struct gfs2_sbd *sdp, uint64_t addr, unsigned blocks)
 
 static void save_rgrp(struct gfs2_sbd *sdp, struct metafd *mfd, struct rgrp_tree *rgd, int withcontents)
 {
-	uint64_t addr = rgd->ri.ri_addr;
+	uint64_t addr = rgd->rt_addr;
 	char *buf;
 
-	buf = rgrp_read(sdp, rgd->ri.ri_addr, rgd->ri.ri_length);
+	buf = rgrp_read(sdp, rgd->rt_addr, rgd->rt_length);
 	if (buf == NULL)
 		return;
 
-	if (sdp->gfs1)
-		gfs_rgrp_in((struct gfs_rgrp *)&rgd->rg, buf);
-	else
-		gfs2_rgrp_in(&rgd->rg, buf);
-
-	for (unsigned i = 0; i < rgd->ri.ri_length; i++)
+	for (unsigned i = 0; i < rgd->rt_length; i++)
 		rgd->bits[i].bi_data = buf + (i * sdp->bsize);
 
-	log_debug("RG at %"PRIu64" is %"PRIu32" long\n", addr, (uint32_t)rgd->ri.ri_length);
+	log_debug("RG at %"PRIu64" is %"PRIu32" long\n", addr, rgd->rt_length);
 	/* Save the rg and bitmaps */
-	for (unsigned i = 0; i < rgd->ri.ri_length; i++) {
-		report_progress(rgd->ri.ri_addr + i, 0);
-		save_buf(mfd, buf + (i * sdp->bsize), rgd->ri.ri_addr + i, sdp->bsize);
+	for (unsigned i = 0; i < rgd->rt_length; i++) {
+		report_progress(rgd->rt_addr + i, 0);
+		save_buf(mfd, buf + (i * sdp->bsize), rgd->rt_addr + i, sdp->bsize);
 	}
 	/* Save the other metadata: inodes, etc. if mode is not 'savergs' */
 	if (withcontents)
 		save_allocated(rgd, mfd);
 
 	free(buf);
-	for (unsigned i = 0; i < rgd->ri.ri_length; i++)
+	for (unsigned i = 0; i < rgd->rt_length; i++)
 		rgd->bits[i].bi_data = NULL;
 }
 

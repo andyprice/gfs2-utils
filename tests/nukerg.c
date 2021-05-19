@@ -186,11 +186,12 @@ static int nuke_rgs(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, unsigned *rgnums, s
 	memset(&blankrg, 0, sizeof(blankrg));
 
 	for (rg = lgfs2_rgrp_first(rgs), i = 0; rg; rg = lgfs2_rgrp_next(rg), i++) {
-		const struct gfs2_rindex *ri = lgfs2_rgrp_index(rg);
+		struct gfs2_rindex ri;
 		unsigned j;
 
+		lgfs2_rindex_out(rg, &ri);
 		for (j = 0; j < count; j++) {
-			uint64_t addr = ri->ri_addr;
+			uint64_t addr = be64_to_cpu(ri.ri_addr);
 			off_t off = addr * sdp->bsize;
 			ssize_t bytes;
 
@@ -262,10 +263,10 @@ static lgfs2_rgrps_t read_rindex(struct gfs2_sbd *sdp)
 	}
 	rgcount = sdp->md.riinode->i_size / sizeof(struct gfs2_rindex);
 	for (i = 0; i < rgcount; i++) {
-		const struct gfs2_rindex *ri;
+		lgfs2_rgrp_t rg;
 
-		ri = lgfs2_rindex_read_one(sdp->md.riinode, rgs, i);
-		if (ri == NULL) {
+		rg = lgfs2_rindex_read_one(sdp->md.riinode, rgs, i);
+		if (rg == NULL) {
 			fprintf(stderr, "Failed to read rindex entry %u: %s\n",
 			                                    i, strerror(errno));
 			return NULL;
