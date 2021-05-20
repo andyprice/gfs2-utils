@@ -43,19 +43,19 @@ int compute_constants(struct gfs2_sbd *sdp)
 
 	sdp->md.next_inum = 1;
 
-	sdp->sd_sb.sb_bsize_shift = ffs(sdp->bsize) - 1;
-	sdp->sd_fsb2bb_shift = sdp->sd_sb.sb_bsize_shift -
+	sdp->sd_bsize_shift = ffs(sdp->sd_bsize) - 1;
+	sdp->sd_fsb2bb_shift = sdp->sd_bsize_shift -
 		GFS2_BASIC_BLOCK_SHIFT;
 	sdp->sd_fsb2bb = 1 << sdp->sd_fsb2bb_shift;
-	sdp->sd_diptrs = (sdp->bsize - sizeof(struct gfs2_dinode)) /
+	sdp->sd_diptrs = (sdp->sd_bsize - sizeof(struct gfs2_dinode)) /
 		sizeof(uint64_t);
-	sdp->sd_inptrs = (sdp->bsize - sizeof(struct gfs2_meta_header)) /
+	sdp->sd_inptrs = (sdp->sd_bsize - sizeof(struct gfs2_meta_header)) /
 		sizeof(uint64_t);
-	sdp->sd_jbsize = sdp->bsize - sizeof(struct gfs2_meta_header);
-	sdp->sd_hash_bsize = sdp->bsize / 2;
-	sdp->sd_hash_bsize_shift = sdp->sd_sb.sb_bsize_shift - 1;
+	sdp->sd_jbsize = sdp->sd_bsize - sizeof(struct gfs2_meta_header);
+	sdp->sd_hash_bsize = sdp->sd_bsize / 2;
+	sdp->sd_hash_bsize_shift = sdp->sd_bsize_shift - 1;
 	sdp->sd_hash_ptrs = sdp->sd_hash_bsize / sizeof(uint64_t);
-	sdp->sd_blocks_per_bitmap = (sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header))
+	sdp->sd_blocks_per_bitmap = (sdp->sd_bsize - sizeof(struct gfs2_meta_header))
 	                             * GFS2_NBBY;
 
 	/*  Compute maximum reservation required to add a entry to a directory  */
@@ -73,11 +73,11 @@ int compute_constants(struct gfs2_sbd *sdp)
 
 	sdp->sd_max_dirres = hash_blocks + ind_blocks + leaf_blocks;
 
-	if (compute_heightsize(sdp->bsize, sdp->sd_heightsize, &sdp->sd_max_height,
-				sdp->bsize, sdp->sd_diptrs, sdp->sd_inptrs)) {
+	if (compute_heightsize(sdp->sd_bsize, sdp->sd_heightsize, &sdp->sd_max_height,
+				sdp->sd_bsize, sdp->sd_diptrs, sdp->sd_inptrs)) {
 		return -1;
 	}
-	if (compute_heightsize(sdp->bsize, sdp->sd_jheightsize, &sdp->sd_max_jheight,
+	if (compute_heightsize(sdp->sd_bsize, sdp->sd_jheightsize, &sdp->sd_max_jheight,
 				sdp->sd_jbsize, sdp->sd_diptrs, sdp->sd_inptrs)) {
 		return -1;
 	}

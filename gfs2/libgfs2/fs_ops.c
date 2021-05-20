@@ -219,7 +219,7 @@ int lgfs2_meta_alloc(struct gfs2_inode *ip, uint64_t *blkno)
 static __inline__ void buffer_clear_tail(struct gfs2_sbd *sdp,
 					 struct gfs2_buffer_head *bh, int head)
 {
-	memset(bh->b_data + head, 0, sdp->bsize - head);
+	memset(bh->b_data + head, 0, sdp->sd_bsize - head);
 	bmodified(bh);
 }
 
@@ -229,8 +229,8 @@ buffer_copy_tail(struct gfs2_sbd *sdp,
 		 struct gfs2_buffer_head *from_bh, int from_head)
 {
 	memcpy(to_bh->b_data + to_head, from_bh->b_data + from_head,
-	       sdp->bsize - from_head);
-	memset(to_bh->b_data + sdp->bsize + to_head - from_head, 0,
+	       sdp->sd_bsize - from_head);
+	memset(to_bh->b_data + sdp->sd_bsize + to_head - from_head, 0,
 	       from_head - to_head);
 	bmodified(to_bh);
 }
@@ -316,7 +316,7 @@ int lgfs2_file_alloc(lgfs2_rgrp_t rg, uint64_t di_size, struct gfs2_inode *ip, u
 	unsigned extlen;
 	struct gfs2_sbd *sdp = rg->rgrps->sdp;
 	struct lgfs2_rbm rbm = { .rgd = rg, .offset = 0, .bii = 0 };
-	uint32_t blocks = lgfs2_space_for_data(sdp, sdp->bsize, di_size);
+	uint32_t blocks = lgfs2_space_for_data(sdp, sdp->sd_bsize, di_size);
 
 	if (ip->i_addr != 0) {
 		if (lgfs2_rbm_from_block(&rbm, ip->i_addr) != 0)
@@ -344,7 +344,7 @@ int lgfs2_file_alloc(lgfs2_rgrp_t rg, uint64_t di_size, struct gfs2_inode *ip, u
 	ip->i_blocks = blocks;
 	ip->i_atime = ip->i_mtime = ip->i_ctime = sdp->time;
 	ip->i_goal_data = ip->i_addr + ip->i_blocks - 1;
-	ip->i_goal_meta = ip->i_goal_data - ((di_size + sdp->bsize - 1) / sdp->bsize);
+	ip->i_goal_meta = ip->i_goal_data - ((di_size + sdp->sd_bsize - 1) / sdp->sd_bsize);
 	ip->i_height = calc_tree_height(ip, di_size);
 	ip->i_flags = flags;
 
@@ -491,7 +491,7 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 		return;
 	}
 
-	bsize = (S_ISDIR(ip->i_mode)) ? sdp->sd_jbsize : sdp->bsize;
+	bsize = (S_ISDIR(ip->i_mode)) ? sdp->sd_jbsize : sdp->sd_bsize;
 
 	height = calc_tree_height(ip, (lblock + 1) * bsize);
 	if (ip->i_height < height) {
@@ -600,8 +600,8 @@ int gfs2_readi(struct gfs2_inode *ip, void *buf,
 		o = lblock % sdp->sd_jbsize;
 		lblock /= sdp->sd_jbsize;
 	} else {
-		lblock = offset >> sdp->sd_sb.sb_bsize_shift;
-		o = offset & (sdp->bsize - 1);
+		lblock = offset >> sdp->sd_bsize_shift;
+		o = offset & (sdp->sd_bsize - 1);
 	}
 
 	if (inode_is_stuffed(ip))
@@ -611,8 +611,8 @@ int gfs2_readi(struct gfs2_inode *ip, void *buf,
 
 	while (copied < size) {
 		amount = size - copied;
-		if (amount > sdp->bsize - o)
-			amount = sdp->bsize - o;
+		if (amount > sdp->sd_bsize - o)
+			amount = sdp->sd_bsize - o;
 
 		if (!extlen) {
 			if (sdp->gfs1)
@@ -677,7 +677,7 @@ int __gfs2_writei(struct gfs2_inode *ip, void *buf,
 		return 0;
 
 	if (inode_is_stuffed(ip) &&
-	    ((start + size) > (sdp->bsize - sizeof(struct gfs2_dinode))))
+	    ((start + size) > (sdp->sd_bsize - sizeof(struct gfs2_dinode))))
 		unstuff_dinode(ip);
 
 	if (isdir) {
@@ -685,8 +685,8 @@ int __gfs2_writei(struct gfs2_inode *ip, void *buf,
 		o = lblock % sdp->sd_jbsize;
 		lblock /= sdp->sd_jbsize;
 	} else {
-		lblock = offset >> sdp->sd_sb.sb_bsize_shift;
-		o = offset & (sdp->bsize - 1);
+		lblock = offset >> sdp->sd_bsize_shift;
+		o = offset & (sdp->sd_bsize - 1);
 	}
 
 	if (inode_is_stuffed(ip))
@@ -696,8 +696,8 @@ int __gfs2_writei(struct gfs2_inode *ip, void *buf,
 
 	while (copied < size) {
 		amount = size - copied;
-		if (amount > sdp->bsize - o)
-			amount = sdp->bsize - o;
+		if (amount > sdp->sd_bsize - o)
+			amount = sdp->sd_bsize - o;
 
 		if (!extlen) {
 			new = 1;
@@ -760,7 +760,7 @@ int gfs2_dirent_next(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 	char *bh_end;
 	uint16_t cur_rec_len;
 
-	bh_end = bh->b_data + dip->i_sbd->bsize;
+	bh_end = bh->b_data + dip->i_sbd->sd_bsize;
 	cur_rec_len = be16_to_cpu((*dent)->de_rec_len);
 
 	if (cur_rec_len == 0 || (char *)(*dent) + cur_rec_len >= bh_end)
@@ -797,7 +797,7 @@ static int dirent_alloc(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 	}
 
 	if (!entries) {
-		dent->de_rec_len = cpu_to_be16(dip->i_sbd->bsize - offset);
+		dent->de_rec_len = cpu_to_be16(dip->i_sbd->sd_bsize - offset);
 		dent->de_name_len = cpu_to_be16(name_len);
 		bmodified(bh);
 		*dent_out = dent;
@@ -1042,12 +1042,12 @@ static void dir_double_exhash(struct gfs2_inode *dip)
 		if (sdp->gfs1)
 			count = gfs1_writei(dip, (char *)buf +
 					    sdp->sd_hash_bsize,
-					    block * sdp->bsize, sdp->bsize);
+					    block * sdp->sd_bsize, sdp->sd_bsize);
 		else
 			count = gfs2_writei(dip, (char *)buf +
 					    sdp->sd_hash_bsize,
-					    block * sdp->bsize, sdp->bsize);
-		if (count != sdp->bsize) {
+					    block * sdp->sd_bsize, sdp->sd_bsize);
+		if (count != sdp->sd_bsize) {
 			fprintf(stderr, "dir_double_exhash (2)\n");
 			exit(1);
 		}
@@ -1278,7 +1278,7 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 	for (x = sdp->sd_hash_ptrs; x--; lp++)
 		*lp = cpu_to_be64(bn);
 
-	dip->i_size = sdp->bsize / 2;
+	dip->i_size = sdp->sd_bsize / 2;
 	dip->i_blocks++;
 	dip->i_flags |= GFS2_DIF_EXHASH;
 	dip->i_payload_format = 0;
@@ -1379,7 +1379,7 @@ static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, st
 		p += len;
 
 		hash = gfs2_disk_hash("..", 2);
-		len = sdp->bsize - (p - bh->b_data);
+		len = sdp->sd_bsize - (p - bh->b_data);
 		de.de_inum.no_formal_ino = cpu_to_be64(parent->no_formal_ino);
 		de.de_inum.no_addr = cpu_to_be64(parent->no_addr);
 		de.de_hash = cpu_to_be32(hash);
@@ -1392,7 +1392,7 @@ static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, st
 		*p = '.';
 
 		di->di_nlink = cpu_to_be32(2);
-		di->di_size = cpu_to_be64(sdp->bsize - sizeof(struct gfs2_dinode));
+		di->di_size = cpu_to_be64(sdp->sd_bsize - sizeof(struct gfs2_dinode));
 		di->di_flags = cpu_to_be32(flags | GFS2_DIF_JDATA);
 		di->di_payload_format = cpu_to_be32(GFS2_FORMAT_DE);
 		di->di_entries = cpu_to_be32(2);
@@ -1430,7 +1430,7 @@ int lgfs2_write_filemeta(struct gfs2_inode *ip)
 	unsigned height = 0;
 	struct metapath mp;
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	uint64_t dblocks = (ip->i_size + sdp->bsize - 1) / sdp->bsize;
+	uint64_t dblocks = (ip->i_size + sdp->sd_bsize - 1) / sdp->sd_bsize;
 	uint64_t ptr0 = ip->i_addr + 1;
 	unsigned ptrs = 1;
 	struct gfs2_meta_header mh = {
@@ -1464,7 +1464,7 @@ int lgfs2_write_filemeta(struct gfs2_inode *ip)
 				start += sizeof(struct gfs2_meta_header);
 				gfs2_meta_header_out(&mh, bh->b_data);
 			}
-			lgfs2_fill_indir(start, bh->b_data + sdp->bsize, ptr0, ptrs, &p);
+			lgfs2_fill_indir(start, bh->b_data + sdp->sd_bsize, ptr0, ptrs, &p);
 			if (bwrite(bh)) {
 				free(bh);
 				return 1;
@@ -1944,7 +1944,7 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 					    b_altlist);
 
 			for (ptr = (uint64_t *)(bh->b_data + head_size);
-			     (char *)ptr < (bh->b_data + sdp->bsize); ptr++) {
+			     (char *)ptr < (bh->b_data + sdp->sd_bsize); ptr++) {
 				if (!*ptr)
 					continue;
 

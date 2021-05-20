@@ -60,7 +60,7 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 		ip = sdp->md.journal[j];
 		log_debug(_("Checking for rgrps in journal%d which starts at block 0x%"PRIx64".\n"),
 		          j, ip->i_addr);
-		jblocks = ip->i_size / sdp->sd_sb.sb_bsize;
+		jblocks = ip->i_size / sdp->sd_bsize;
 		false_count = 0;
 		for (b = 0; b < jblocks; b++) {
 			block_map(ip, b, &new, &dblock, NULL, 0);
@@ -276,7 +276,7 @@ static uint64_t count_usedspace(struct gfs2_sbd *sdp, int first,
 			off = sizeof(struct gfs2_rgrp);
 	} else
 		off = sizeof(struct gfs2_meta_header);
-	bytes_to_check = sdp->bsize - off;
+	bytes_to_check = sdp->sd_bsize - off;
 	for (x = 0; x < bytes_to_check; x++) {
 		unsigned char *byte;
 
@@ -336,7 +336,7 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 		rgrp_dist = next_rgd->rt_addr - rgd->rt_addr;
 		return rgrp_dist;
 	}
-	mega_in_blocks = (1024 * 1024)  / sdp->bsize;
+	mega_in_blocks = (1024 * 1024)  / sdp->sd_bsize;
 	twogigs = (uint64_t)mega_in_blocks * 2048;
 	/* Unfortunately, if we fall through to here we can't trust the
 	   rindex.  So we have to analyze the current rgrp to figure out
@@ -453,7 +453,7 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 	/* Now we account for block rounding done by mkfs.gfs2.  A rgrp can
 	   be at most 2GB in size, so that's where we call it. We do somewhat
 	   obscure math here to avoid integer overflows. */
-	mega_in_blocks = (1024 * 1024)  / sdp->bsize;
+	mega_in_blocks = (1024 * 1024)  / sdp->sd_bsize;
 	twogigs = 2048 * mega_in_blocks;
 	if (block + twogigs <= sdp->fssize) {
 		last_block = twogigs;
@@ -599,7 +599,7 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 		if (prev_rgd) {
 			uint32_t rgblocks;
 
-			prev_rgd->rt_length = rgblocks2bitblocks(sdp->bsize, block_bump, &rgblocks);
+			prev_rgd->rt_length = rgblocks2bitblocks(sdp->sd_bsize, block_bump, &rgblocks);
 			prev_rgd->rt_data = rgblocks;
 			prev_rgd->rt_data0 = prev_rgd->rt_addr +
 				prev_rgd->rt_length;
@@ -661,7 +661,7 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 	if (prev_rgd && !prev_rgd->rt_data) {
 		uint32_t rgblocks;
 
-		prev_rgd->rt_length = rgblocks2bitblocks(sdp->bsize, block_bump, &rgblocks);
+		prev_rgd->rt_length = rgblocks2bitblocks(sdp->sd_bsize, block_bump, &rgblocks);
 		prev_rgd->rt_data0 = prev_rgd->rt_addr + prev_rgd->rt_length;
 		prev_rgd->rt_data = rgblocks;
 		prev_rgd->rt_data -= prev_rgd->rt_data % GFS2_NBBY;
@@ -707,12 +707,12 @@ static uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgs
 	int bitmap_overflow = 0;
 
 	while (1) {
-		nrgrp = DIV_RU(dev->length, (sdp->rgsize << 20) / sdp->bsize);
+		nrgrp = DIV_RU(dev->length, (sdp->rgsize << 20) / sdp->sd_bsize);
 
 		/* check to see if the rg length overflows max # bitblks */
-		bitblocksn = rgblocks2bitblocks(sdp->bsize, dev->length / nrgrp, &rgblocksn);
+		bitblocksn = rgblocks2bitblocks(sdp->sd_bsize, dev->length / nrgrp, &rgblocksn);
 		/* calculate size of the first rgrp */
-		bitblocks1 = rgblocks2bitblocks(sdp->bsize, dev->length - (nrgrp - 1) * (dev->length / nrgrp),
+		bitblocks1 = rgblocks2bitblocks(sdp->sd_bsize, dev->length - (nrgrp - 1) * (dev->length / nrgrp),
 		                                &rgblocks1);
 		if (bitblocks1 > 2149 || bitblocksn > 2149) {
 			bitmap_overflow = 1;
@@ -720,7 +720,7 @@ static uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgs
 				fprintf(stderr, "error: It is not possible "
 					"to use the entire device with "
 					"block size %u bytes.\n",
-					sdp->bsize);
+					sdp->sd_bsize);
 				exit(-1);
 			}
 			sdp->rgsize -= GFS2_DEFAULT_RGSIZE; /* smaller rgs */
@@ -820,7 +820,7 @@ static int calc_rgrps(struct gfs2_sbd *sdp)
 		next = osi_next(n);
 		rl = (struct rgrp_tree *)n;
 
-		bitblocks = rgblocks2bitblocks(sdp->bsize, rl->length, &rgblocks);
+		bitblocks = rgblocks2bitblocks(sdp->sd_bsize, rl->length, &rgblocks);
 
 		rl->rt_addr = rl->start;
 		rl->rt_length = bitblocks;
@@ -829,7 +829,7 @@ static int calc_rgrps(struct gfs2_sbd *sdp)
 		rl->rt_bitbytes = rgblocks / GFS2_NBBY;
 		rl->rt_free = rgblocks;
 
-		if (gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, rl))
+		if (gfs2_compute_bitstructs(sdp->sd_bsize, rl))
 			return -1;
 
 		sdp->blks_total += rgblocks;
@@ -909,13 +909,13 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
 
 	log_err(_("Attempting to repair the resource group.\n"));
 
-	buf = calloc(1, sdp->bsize);
+	buf = calloc(1, sdp->sd_bsize);
 	if (buf == NULL) {
 		log_err(_("Failed to allocate resource group block: %s"), strerror(errno));
 		return 1;
 	}
-	ret = pread(sdp->device_fd, buf, sdp->bsize, errblock * sdp->bsize);
-	if (ret != sdp->bsize) {
+	ret = pread(sdp->device_fd, buf, sdp->sd_bsize, errblock * sdp->sd_bsize);
+	if (ret != sdp->sd_bsize) {
 		log_err(_("Failed to read resource group block %"PRIu64": %s\n"),
 		        errblock, strerror(errno));
 		free(buf);
@@ -935,8 +935,8 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
 		else
 			lgfs2_rgrp_out(rg, buf);
 	}
-	ret = pwrite(sdp->device_fd, buf, sdp->bsize, errblock * sdp->bsize);
-	if (ret != sdp->bsize) {
+	ret = pwrite(sdp->device_fd, buf, sdp->sd_bsize, errblock * sdp->sd_bsize);
+	if (ret != sdp->sd_bsize) {
 		log_err(_("Failed to write resource group block %"PRIu64": %s\n"),
 		        errblock, strerror(errno));
 		free(buf);
@@ -977,7 +977,7 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
 		exp->rt_dinodes = rgd->rt_dinodes;
 		exp->rt_skip = rgd->rt_skip;
 		exp->bits = NULL;
-		gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, exp);
+		gfs2_compute_bitstructs(sdp->sd_bsize, exp);
 	}
 	sdp->rgrps = *num_rgs;
 	return 0;
@@ -1213,7 +1213,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 			}
 			else
 				log_err( _("rindex not fixed.\n"));
-			gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, actual);
+			gfs2_compute_bitstructs(sdp->sd_bsize, actual);
 			rindex_modified = 0;
 		}
 		e = enext;

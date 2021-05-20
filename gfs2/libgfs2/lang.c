@@ -158,7 +158,7 @@ static uint64_t ast_lookup_path(char *path, struct gfs2_sbd *sbd)
 	uint64_t bn = 0;
 
 	segment = strtok_r(path, "/", &c);
-	ip = lgfs2_inode_read(sbd, sbd->sd_sb.sb_root_dir.no_addr);
+	ip = lgfs2_inode_read(sbd, sbd->sd_root_dir.no_addr);
 
 	while (ip != NULL) {
 		if (segment == NULL) { // No more segments
@@ -215,10 +215,10 @@ static uint64_t ast_lookup_id(const char *id, struct gfs2_sbd *sbd)
 		bn = LGFS2_SB_ADDR(sbd);
 		break;
 	case ID_MASTER:
-		bn = sbd->sd_sb.sb_master_dir.no_addr;
+		bn = sbd->sd_meta_dir.no_addr;
 		break;
 	case ID_ROOT:
-		bn = sbd->sd_sb.sb_root_dir.no_addr;
+		bn = sbd->sd_root_dir.no_addr;
 		break;
 	case ID_RINDEX:
 		bn = sbd->md.riinode->i_addr;
@@ -438,7 +438,7 @@ static struct lgfs2_lang_result *ast_interp_get(struct lgfs2_lang_state *state,
 			free(result);
 			return NULL;
 		}
-		result->lr_buf = lang_read_block(sbd->device_fd, sbd->bsize, result->lr_blocknr);
+		result->lr_buf = lang_read_block(sbd->device_fd, sbd->sd_bsize, result->lr_blocknr);
 		if (result->lr_buf == NULL) {
 			free(result);
 			return NULL;
@@ -539,7 +539,7 @@ static struct lgfs2_lang_result *ast_interp_set(struct lgfs2_lang_state *state,
 	result->lr_blocknr = ast_lookup_block(lookup, sbd);
 	if (result->lr_blocknr == 0)
 		goto out_err;
-	result->lr_buf = lang_read_block(sbd->device_fd, sbd->bsize, result->lr_blocknr);
+	result->lr_buf = lang_read_block(sbd->device_fd, sbd->sd_bsize, result->lr_blocknr);
 	if (result->lr_buf == NULL)
 		goto out_err;
 
@@ -580,7 +580,7 @@ static struct lgfs2_lang_result *ast_interp_set(struct lgfs2_lang_state *state,
 		}
 	}
 
-	ret = lang_write_result(sbd->device_fd, sbd->bsize, result);
+	ret = lang_write_result(sbd->device_fd, sbd->sd_bsize, result);
 	if (ret != 0)
 		goto out_err;
 

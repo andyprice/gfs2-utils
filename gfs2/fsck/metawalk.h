@@ -50,7 +50,7 @@ struct iptr {
 
 #define iptr_ptr(i) ((uint64_t *)(i.ipt_bh->b_data + i.ipt_off))
 #define iptr_block(i) be64_to_cpu(*iptr_ptr(i))
-#define iptr_endptr(i) ((uint64_t *)(iptr.ipt_bh->b_data + i.ipt_ip->i_sbd->bsize))
+#define iptr_endptr(i) ((uint64_t *)(iptr.ipt_bh->b_data + i.ipt_ip->i_sbd->sd_bsize))
 #define iptr_buf(i) (i.ipt_bh->b_data)
 
 /* metawalk_fxns: function pointers to check various parts of the fs

@@ -311,7 +311,7 @@ static size_t di_save_len(const char *buf, uint64_t owner)
 	   indirect pointers, dirents, symlinks or fs internal data */
 	if (di_height > 0 || S_ISDIR(di_mode) || S_ISLNK(di_mode) || gfs1dir
 	    || block_is_systemfile(owner))
-		return sbd.bsize;
+		return sbd.sd_bsize;
 	return sizeof(struct gfs2_dinode);
 }
 
@@ -335,7 +335,7 @@ static int get_gfs_struct_info(const char *buf, uint64_t owner, unsigned *block_
 		*block_type = 0;
 
 	if (gstruct_len != NULL)
-		*gstruct_len = sbd.bsize;
+		*gstruct_len = sbd.sd_bsize;
 
 	gfs2_meta_header_in(&mh, buf);
 	if (mh.mh_magic != GFS2_MAGIC)
@@ -355,22 +355,22 @@ static int get_gfs_struct_info(const char *buf, uint64_t owner, unsigned *block_
 			*gstruct_len = sizeof(struct gfs2_sb);
 		break;
 	case GFS2_METATYPE_RG:   /* 2 (rsrc grp hdr) */
-		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_rgrp);*/
+		*gstruct_len = sbd.sd_bsize; /*sizeof(struct gfs_rgrp);*/
 		break;
 	case GFS2_METATYPE_RB:   /* 3 (rsrc grp bitblk) */
-		*gstruct_len = sbd.bsize;
+		*gstruct_len = sbd.sd_bsize;
 		break;
 	case GFS2_METATYPE_DI:   /* 4 (disk inode) */
 		*gstruct_len = di_save_len(buf, owner);
 		break;
 	case GFS2_METATYPE_IN:   /* 5 (indir inode blklst) */
-		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_indirect);*/
+		*gstruct_len = sbd.sd_bsize; /*sizeof(struct gfs_indirect);*/
 		break;
 	case GFS2_METATYPE_LF:   /* 6 (leaf dinode blklst) */
-		*gstruct_len = sbd.bsize; /*sizeof(struct gfs_leaf);*/
+		*gstruct_len = sbd.sd_bsize; /*sizeof(struct gfs_leaf);*/
 		break;
 	case GFS2_METATYPE_JD:   /* 7 (journal data) */
-		*gstruct_len = sbd.bsize;
+		*gstruct_len = sbd.sd_bsize;
 		break;
 	case GFS2_METATYPE_LH:   /* 8 (log header) */
 		if (sbd.gfs1)
@@ -382,16 +382,16 @@ static int get_gfs_struct_info(const char *buf, uint64_t owner, unsigned *block_
 			*gstruct_len = sizeof(struct gfs2_log_header);
 		break;
 	case GFS2_METATYPE_LD:   /* 9 (log descriptor) */
-		*gstruct_len = sbd.bsize;
+		*gstruct_len = sbd.sd_bsize;
 		break;
 	case GFS2_METATYPE_EA:   /* 10 (extended attr hdr) */
-		*gstruct_len = sbd.bsize;
+		*gstruct_len = sbd.sd_bsize;
 		break;
 	case GFS2_METATYPE_ED:   /* 11 (extended attr data) */
-		*gstruct_len = sbd.bsize;
+		*gstruct_len = sbd.sd_bsize;
 		break;
 	default:
-		*gstruct_len = sbd.bsize;
+		*gstruct_len = sbd.sd_bsize;
 		break;
 	}
 	return 0;
@@ -571,12 +571,12 @@ struct block_range {
 
 static int block_range_prepare(struct block_range *br)
 {
-	br->buf = calloc(br->len, sbd.bsize + sizeof(*br->blktype) + sizeof(*br->blklen));
+	br->buf = calloc(br->len, sbd.sd_bsize + sizeof(*br->blktype) + sizeof(*br->blklen));
 	if (br->buf == NULL) {
 		perror("Failed to allocate block range buffer");
 		return 1;
 	}
-	br->blktype = (unsigned *)(br->buf + (br->len * sbd.bsize));
+	br->blktype = (unsigned *)(br->buf + (br->len * sbd.sd_bsize));
 	br->blklen = br->blktype + br->len;
 	return 0;
 }
@@ -596,7 +596,7 @@ static int block_range_check(struct block_range *br)
 static void block_range_setinfo(struct block_range *br, uint64_t owner)
 {
 	for (unsigned i = 0; i < br->len; i++) {
-		char *buf = br->buf + (i * sbd.bsize);
+		char *buf = br->buf + (i * sbd.sd_bsize);
 		uint64_t addr = br->start + i;
 		uint64_t _owner = (owner == 0) ? addr : owner;
 
@@ -644,7 +644,7 @@ static int save_range(struct metafd *mfd, struct block_range *br)
 	for (unsigned i = 0; i < br->len; i++) {
 		int err;
 
-		err = save_buf(mfd, br->buf + (i * sbd.bsize), br->start + i, br->blklen[i]);
+		err = save_buf(mfd, br->buf + (i * sbd.sd_bsize), br->start + i, br->blklen[i]);
 		if (err != 0)
 			return err;
 	}
@@ -661,8 +661,8 @@ static int check_read_range(int fd, struct block_range *br, uint64_t owner)
 	if (block_range_check(br) != 0)
 		return 1;
 
-	size = br->len * sbd.bsize;
-	if (pread(sbd.device_fd, br->buf, size, sbd.bsize * br->start) != size) {
+	size = br->len * sbd.sd_bsize;
+	if (pread(sbd.device_fd, br->buf, size, sbd.sd_bsize * br->start) != size) {
 		fprintf(stderr, "Failed to read block range 0x%"PRIx64" (%u blocks): %s\n",
 		        br->start, br->len, strerror(errno));
 		free(br->buf);
@@ -698,7 +698,7 @@ static void save_ea_block(struct metafd *mfd, char *buf, uint64_t owner)
 	uint32_t rec_len = 0;
 	int e;
 
-	for (e = sizeof(struct gfs2_meta_header); e < sbd.bsize; e += rec_len) {
+	for (e = sizeof(struct gfs2_meta_header); e < sbd.sd_bsize; e += rec_len) {
 		uint64_t blk, *b;
 		int charoff, i;
 
@@ -716,7 +716,7 @@ static void save_ea_block(struct metafd *mfd, char *buf, uint64_t owner)
 			blk = be64_to_cpu(*b);
 			_buf = check_read_block(sbd.device_fd, blk, owner, NULL, NULL);
 			if (_buf != NULL) {
-				save_buf(mfd, _buf, blk, sbd.bsize);
+				save_buf(mfd, _buf, blk, sbd.sd_bsize);
 				free(_buf);
 			}
 		}
@@ -737,7 +737,7 @@ static void save_indirect_range(struct metafd *mfd, struct block_range **brp, ui
 	save_range(mfd, br);
 	for (unsigned i = 0; i < br->len; i++) {
 		if (br->blktype[i] == GFS2_METATYPE_EA)
-			save_ea_block(mfd, br->buf + (i * sbd.bsize), owner);
+			save_ea_block(mfd, br->buf + (i * sbd.sd_bsize), owner);
 	}
 	if (q) {
 		block_range_queue_insert(q, br);
@@ -756,7 +756,7 @@ static void save_indirect_blocks(struct metafd *mfd, char *buf, uint64_t owner,
 	uint64_t *ptr;
 
 	for (ptr = (uint64_t *)(buf + headsize);
-	     (char *)ptr < (buf + sbd.bsize); ptr++) {
+	     (char *)ptr < (buf + sbd.sd_bsize); ptr++) {
 		if (!*ptr)
 			continue;
 
@@ -802,8 +802,8 @@ static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, char *buf)
 		if (gfs2_check_range(sdp, blk) != 0)
 			return 0;
 
-		r = pread(sdp->device_fd, buf, sdp->bsize, sdp->bsize * blk);
-		if (r != sdp->bsize) {
+		r = pread(sdp->device_fd, buf, sdp->sd_bsize, sdp->sd_bsize * blk);
+		if (r != sdp->sd_bsize) {
 			fprintf(stderr, "Failed to read leaf block %"PRIx64": %s\n",
 			        blk, strerror(errno));
 			free(buf);
@@ -811,7 +811,7 @@ static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, char *buf)
 		}
 		report_progress(blk, 0);
 		if (gfs2_check_meta(buf, GFS2_METATYPE_LF) == 0) {
-			int ret = save_buf(mfd, buf, blk, sdp->bsize);
+			int ret = save_buf(mfd, buf, blk, sdp->sd_bsize);
 			if (ret != 0) {
 				free(buf);
 				return ret;
@@ -828,7 +828,7 @@ static void save_leaf_blocks(struct metafd *mfd, struct block_range_queue *q)
 		struct block_range *br = q->tail;
 
 		for (unsigned i = 0; i < br->len; i++) {
-			char *buf = br->buf + (i * sbd.bsize);
+			char *buf = br->buf + (i * sbd.sd_bsize);
 
 			save_leaf_chain(mfd, &sbd, buf);
 		}
@@ -896,7 +896,7 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 			struct block_range *q = block_range_queue_pop(&indq[i - 1]);
 
 			for (unsigned j = 0; j < q->len; j++) {
-				char *_buf = q->buf + (j * sbd.bsize);
+				char *_buf = q->buf + (j * sbd.sd_bsize);
 
 				save_indirect_blocks(mfd, _buf, iblk, nextq, sizeof(dip->di_header));
 			}
@@ -949,8 +949,7 @@ static void get_journal_inode_blocks(void)
 			struct gfs_jindex ji;
 			char jbuf[sizeof(struct gfs_jindex)];
 
-			j_inode = lgfs2_gfs_inode_read(&sbd,
-						 sbd1->sb_jindex_di.no_addr);
+			j_inode = lgfs2_gfs_inode_read(&sbd, sbd.sd_jindex_di.no_addr);
 			if (j_inode == NULL) {
 				fprintf(stderr, "Error reading journal inode: %s\n", strerror(errno));
 				return;
@@ -980,7 +979,7 @@ static void save_allocated_range(struct metafd *mfd, struct block_range *br)
 
 	save_range(mfd, br);
 	for (unsigned i = 0; i < br->len; i++) {
-		char *buf = br->buf + (i * sbd.bsize);
+		char *buf = br->buf + (i * sbd.sd_bsize);
 
 		if (br->blktype[i] == GFS2_METATYPE_DI)
 			save_inode_data(mfd, buf, br->start + i);
@@ -992,7 +991,7 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 {
 	uint64_t blk = 0;
 	unsigned i, j, m;
-	uint64_t *ibuf = malloc(sbd.bsize * GFS2_NBBY * sizeof(uint64_t));
+	uint64_t *ibuf = malloc(sbd.sd_bsize * GFS2_NBBY * sizeof(uint64_t));
 
 	for (i = 0; i < rgd->rt_length; i++) {
 		struct block_range br = {0};
@@ -1036,8 +1035,8 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 
 static char *rgrp_read(struct gfs2_sbd *sdp, uint64_t addr, unsigned blocks)
 {
-	size_t len = blocks * sdp->bsize;
-	off_t off = addr * sdp->bsize;
+	size_t len = blocks * sdp->sd_bsize;
+	off_t off = addr * sdp->sd_bsize;
 	char *buf;
 
 	if (blocks == 0 || gfs2_check_range(sdp, addr))
@@ -1064,13 +1063,13 @@ static void save_rgrp(struct gfs2_sbd *sdp, struct metafd *mfd, struct rgrp_tree
 		return;
 
 	for (unsigned i = 0; i < rgd->rt_length; i++)
-		rgd->bits[i].bi_data = buf + (i * sdp->bsize);
+		rgd->bits[i].bi_data = buf + (i * sdp->sd_bsize);
 
 	log_debug("RG at %"PRIu64" is %"PRIu32" long\n", addr, rgd->rt_length);
 	/* Save the rg and bitmaps */
 	for (unsigned i = 0; i < rgd->rt_length; i++) {
 		report_progress(rgd->rt_addr + i, 0);
-		save_buf(mfd, buf + (i * sdp->bsize), rgd->rt_addr + i, sdp->bsize);
+		save_buf(mfd, buf + (i * sdp->sd_bsize), rgd->rt_addr + i, sdp->sd_bsize);
 	}
 	/* Save the other metadata: inodes, etc. if mode is not 'savergs' */
 	if (withcontents)
@@ -1130,11 +1129,11 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 
 	blks_saved = 0;
 	if (sbd.gfs1)
-		sbd.bsize = sbd.sd_sb.sb_bsize;
+		sbd.sd_bsize = sbd.sd_bsize;
 	printf("There are %llu blocks of %u bytes in the filesystem.\n",
-	                     (unsigned long long)sbd.fssize, sbd.bsize);
+	                     (unsigned long long)sbd.fssize, sbd.sd_bsize);
 
-	printf("Filesystem size: %.2fGB\n", (sbd.fssize * sbd.bsize) / ((float)(1 << 30)));
+	printf("Filesystem size: %.2fGB\n", (sbd.fssize * sbd.sd_bsize) / ((float)(1 << 30)));
 	get_journal_inode_blocks();
 
 	err = init_per_node_lookup();
@@ -1142,13 +1141,13 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		exit(1);
 
 	/* Write the savemeta file header */
-	err = save_header(&mfd, sbd.fssize * sbd.bsize);
+	err = save_header(&mfd, sbd.fssize * sbd.sd_bsize);
 	if (err) {
 		perror("Failed to write metadata file header");
 		exit(1);
 	}
 	/* Save off the superblock */
-	sb_addr = GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sbd.bsize;
+	sb_addr = GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sbd.sd_bsize;
 	buf = check_read_block(sbd.device_fd, sb_addr, 0, NULL, NULL);
 	if (buf != NULL) {
 		if (sbd.gfs1)
@@ -1163,10 +1162,10 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		uint64_t blk;
 		int j;
 
-		blk = sbd1->sb_rindex_di.no_addr;
+		blk = sbd.sd_rindex_di.no_addr;
 		buf = check_read_block(sbd.device_fd, blk, blk, NULL, NULL);
 		if (buf != NULL) {
-			save_buf(&mfd, buf, blk, sbd.bsize);
+			save_buf(&mfd, buf, blk, sbd.sd_bsize);
 			save_inode_data(&mfd, buf, blk);
 			free(buf);
 		}
@@ -1230,7 +1229,7 @@ static char *restore_block(struct metafd *mfd, struct saved_metablock *svb)
 		return NULL;
 	}
 
-	if (svb->siglen > sbd.bsize) {
+	if (svb->siglen > sbd.sd_bsize) {
 		fprintf(stderr, "Bad record length: %u for block %"PRIu64" (0x%"PRIx64").\n",
 			svb->siglen, svb->blk, svb->blk);
 		return NULL;
@@ -1252,17 +1251,16 @@ static int restore_super(struct metafd *mfd, void *buf, int printonly)
 {
 	int ret;
 
-	gfs2_sb_in(&sbd.sd_sb, buf);
-	sbd1 = (struct gfs_sb *)&sbd.sd_sb;
-	ret = check_sb(&sbd.sd_sb);
+	lgfs2_sb_in(&sbd, buf);
+	ret = check_sb(buf);
 	if (ret < 0) {
 		fprintf(stderr, "Error: Invalid superblock in metadata file.\n");
 		return -1;
 	}
 	if (ret == 1)
 		sbd.gfs1 = 1;
-	sbd.bsize = sbd.sd_sb.sb_bsize;
-	if ((!printonly) && lgfs2_sb_write(&sbd.sd_sb, sbd.device_fd, sbd.bsize)) {
+	sbd.sd_bsize = sbd.sd_bsize;
+	if ((!printonly) && lgfs2_sb_write(&sbd, sbd.device_fd)) {
 		fprintf(stderr, "Failed to write superblock\n");
 		return -1;
 	}
@@ -1276,7 +1274,7 @@ static int restore_data(int fd, struct metafd *mfd, int printonly)
 	uint64_t writes = 0;
 	char *buf;
 
-	buf = calloc(1, sbd.bsize);
+	buf = calloc(1, sbd.sd_bsize);
 	if (buf == NULL) {
 		perror("Failed to restore data");
 		exit(1);
@@ -1304,8 +1302,8 @@ static int restore_data(int fd, struct metafd *mfd, int printonly)
 		} else {
 			report_progress(savedata.blk, 0);
 			memcpy(buf, bp, savedata.siglen);
-			memset(buf + savedata.siglen, 0, sbd.bsize - savedata.siglen);
-			if (pwrite(fd, buf, sbd.bsize, savedata.blk * sbd.bsize) != sbd.bsize) {
+			memset(buf + savedata.siglen, 0, sbd.sd_bsize - savedata.siglen);
+			if (pwrite(fd, buf, sbd.sd_bsize, savedata.blk * sbd.sd_bsize) != sbd.sd_bsize) {
 				fprintf(stderr, "write error: %s from %s:%d: block %lld (0x%llx)\n",
 					strerror(errno), __FUNCTION__, __LINE__,
 					(unsigned long long)savedata.blk,
@@ -1388,11 +1386,11 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 		return ret;
 
 	if (smh->sh_fs_bytes > 0) {
-		sbd.fssize = smh->sh_fs_bytes / sbd.bsize;
+		sbd.fssize = smh->sh_fs_bytes / sbd.sd_bsize;
 		printf("Saved file system size is %"PRIu64" blocks, %.2fGB\n",
 		       sbd.fssize, smh->sh_fs_bytes / ((float)(1 << 30)));
 	}
-	printf("Block size is %uB\n", sbd.bsize);
+	printf("Block size is %uB\n", sbd.sd_bsize);
 	printf("This is gfs%c metadata.\n", sbd.gfs1 ? '1': '2');
 	if (printonly > 1 && printonly == LGFS2_SB_ADDR(&sbd)) {
 		display_block_type(bp, LGFS2_SB_ADDR(&sbd), TRUE);
@@ -1433,7 +1431,7 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 		exit(error);
 
 	if (!printonly) {
-		uint64_t space = lseek(sbd.device_fd, 0, SEEK_END) / sbd.bsize;
+		uint64_t space = lseek(sbd.device_fd, 0, SEEK_END) / sbd.sd_bsize;
 		printf("There are %"PRIu64" free blocks on the destination device.\n", space);
 	}
 

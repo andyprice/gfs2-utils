@@ -35,8 +35,8 @@
 
 /* The following declares are needed because gfs2 can't have  */
 /* dependencies on gfs1:                                      */
-#define RGRP_STUFFED_BLKS(sb) (((sb)->sb_bsize - sizeof(struct gfs2_rgrp)) * GFS2_NBBY)
-#define RGRP_BITMAP_BLKS(sb) (((sb)->sb_bsize - sizeof(struct gfs2_meta_header)) * GFS2_NBBY)
+#define RGRP_STUFFED_BLKS(bsize) (((bsize) - sizeof(struct gfs2_rgrp)) * GFS2_NBBY)
+#define RGRP_BITMAP_BLKS(bsize) (((bsize) - sizeof(struct gfs2_meta_header)) * GFS2_NBBY)
 
 /* Define some gfs1 constants from gfs1's gfs_ondisk.h */
 #define GFS_METATYPE_NONE       (0)
@@ -94,7 +94,7 @@ struct gfs2_options {
 	unsigned int query:1;
 };
 
-struct gfs_sb  raw_gfs1_ondisk_sb;
+struct gfs_sb gfs1_sb;
 struct gfs2_sbd sb2;
 struct inode_block dirs_to_fix;  /* linked list of directories to fix */
 struct inode_dir_block cdpns_to_fix; /* linked list of cdpn symlinks */
@@ -143,7 +143,7 @@ static void convert_bitmaps(struct gfs2_sbd *sdp, struct rgrp_tree *rg)
 			sizeof(struct gfs2_rgrp);
 
 		bi = &rg->bits[blk];
-		for (; x < sdp->bsize; x++)
+		for (; x < sdp->sd_bsize; x++)
 			for (y = 0; y < GFS2_NBBY; y++) {
 				state = (bi->bi_data[x] >> (GFS2_BIT_SIZE * y)) & 0x03;
 				if (state == 0x02) {/* unallocated metadata state invalid */
@@ -303,7 +303,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 
 			bh = bread(sbp, block);
 			if (new)
-				memset(bh->b_data, 0, sbp->bsize);
+				memset(bh->b_data, 0, sbp->sd_bsize);
 			gfs2_meta_header_out(&mh, bh->b_data);
 			bmodified(bh);
 		}
@@ -311,8 +311,8 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 		hdrsize = blk->height ? sizeof(struct gfs2_meta_header) :
 			sizeof(struct gfs2_dinode);
 
-		if (amount > sbp->bsize - hdrsize - ptramt)
-			amount = sbp->bsize - hdrsize - ptramt;
+		if (amount > sbp->sd_bsize - hdrsize - ptramt)
+			amount = sbp->sd_bsize - hdrsize - ptramt;
 
 		memcpy(bh->b_data + hdrsize + ptramt, (char *)srcptr, amount);
 		srcptr += amount;
@@ -322,7 +322,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 
 		copied += amount;
 
-		if (hdrsize + ptramt + amount >= sbp->bsize) {
+		if (hdrsize + ptramt + amount >= sbp->sd_bsize) {
 			/* advance to the next metablock */
 			blk->mp.mp_list[blk->height] +=
 				(amount / sizeof(uint64_t));
@@ -400,14 +400,14 @@ static void jdata_mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,
 
 	/* figure out multiplication factors for each height - gfs1 */
 	memset(&gfs1factor, 0, sizeof(gfs1factor));
-	gfs1factor[gfs1_h - 1] = sbp->bsize - sizeof(struct gfs2_meta_header);
+	gfs1factor[gfs1_h - 1] = sbp->sd_bsize - sizeof(struct gfs2_meta_header);
 	for (h = gfs1_h - 1; h > 0; h--)
 		gfs1factor[h - 1] = gfs1factor[h] * sbp->sd_inptrs;
 
 	/* figure out multiplication factors for each height - gfs2 */
 	memset(&gfs2factor, 0, sizeof(gfs2factor));
 	gfs2factor[gfs2_h] = 1ull;
-	gfs2factor[gfs2_h - 1] = sbp->bsize;
+	gfs2factor[gfs2_h - 1] = sbp->sd_bsize;
 	for (h = gfs2_h - 1; h > 0; h--)
 		gfs2factor[h - 1] = gfs2factor[h] * gfs2_inptrs;
 
@@ -461,15 +461,15 @@ static uint64_t fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 
 			bh = bread(sbp, block);
 			if (new)
-				memset(bh->b_data, 0, sbp->bsize);
+				memset(bh->b_data, 0, sbp->sd_bsize);
 			if (h < (blk->height - 1)) {
 				gfs2_meta_header_out(&mh, bh->b_data);
 				bmodified(bh);
 			}
 		}
 
-		if (amount > sbp->bsize - ptramt)
-			amount = sbp->bsize - ptramt;
+		if (amount > sbp->sd_bsize - ptramt)
+			amount = sbp->sd_bsize - ptramt;
 
 		memcpy(bh->b_data + ptramt, (char *)srcptr, amount);
 		srcptr += amount;
@@ -479,7 +479,7 @@ static uint64_t fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 
 		copied += amount;
 
-		if (ptramt + amount >= sbp->bsize) {
+		if (ptramt + amount >= sbp->sd_bsize) {
 			/* advance to the next metablock */
 			blk->mp.mp_list[blk->height] += amount;
 			for (h = blk->height; h > 0; h--) {
@@ -504,7 +504,7 @@ static int get_inode_metablocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip, str
 	osi_list_t *tmp;
 	uint64_t *ptr1, block;
 	int h, ptrnum;
-	int bufsize = sbp->bsize - sizeof(struct gfs_indirect);
+	int bufsize = sbp->sd_bsize - sizeof(struct gfs_indirect);
 
 	/* Add dinode block to the list */
 	blk = malloc(sizeof(struct blocklist));
@@ -524,10 +524,10 @@ static int get_inode_metablocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip, str
 	memset(blk->ptrbuf, 0, bufsize);
 	/* Fill in the pointers from the dinode buffer */
 	memcpy(blk->ptrbuf, dibh->b_data + sizeof(struct gfs_dinode),
-	       sbp->bsize - sizeof(struct gfs_dinode));
+	       sbp->sd_bsize - sizeof(struct gfs_dinode));
 	/* Zero out the pointers so we can fill them in later. */
 	memset(dibh->b_data + sizeof(struct gfs_dinode), 0,
-	       sbp->bsize - sizeof(struct gfs_dinode));
+	       sbp->sd_bsize - sizeof(struct gfs_dinode));
 	osi_list_add_prev(&blk->list, &blocks->list);
 
 	/* Now run the metadata chain and build lists of all metadata blocks */
@@ -588,7 +588,7 @@ static int fix_ind_reg_or_dir(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint3
 	int ptrnum;
 	struct metapath gfs2mp;
 
-	bufsize = sbp->bsize - sizeof(struct gfs_indirect);
+	bufsize = sbp->sd_bsize - sizeof(struct gfs_indirect);
 	len = bufsize;
 
 	/* Skip zero pointers at the start of the buffer.  This may 
@@ -634,7 +634,7 @@ static int fix_ind_jdata(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint32_t d
 	struct metapath gfs2mp;
 	struct gfs2_buffer_head *bh;
 
-	bufsize = sbp->bsize - sizeof(struct gfs2_meta_header);
+	bufsize = sbp->sd_bsize - sizeof(struct gfs2_meta_header);
 	/*
 	 * For each metadata block that holds jdata block pointers,
 	 * get the blk pointers and copy them block by block
@@ -828,7 +828,7 @@ static int fix_xattr(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, struct g
 	/* Read in the i_eattr block */
 	eabh = bread(sbp, ip->i_eattr);
         if (!gfs2_check_meta(eabh->b_data, GFS_METATYPE_IN)) {/* if it is an indirect block */
-		len = sbp->bsize - sizeof(struct gfs_indirect);
+		len = sbp->sd_bsize - sizeof(struct gfs_indirect);
 		buf = malloc(len);
 		if (!buf) {
 			/*FIXME: Same message as fix_cdpn_symlink */
@@ -837,8 +837,8 @@ static int fix_xattr(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, struct g
 		}
 		old_hdr_sz = sizeof(struct gfs_indirect);
 		new_hdr_sz = sizeof(struct gfs2_meta_header);
-		memcpy(buf, eabh->b_data + old_hdr_sz, sbp->bsize - old_hdr_sz);
-		memset(eabh->b_data + new_hdr_sz, 0, sbp->bsize - new_hdr_sz);
+		memcpy(buf, eabh->b_data + old_hdr_sz, sbp->sd_bsize - old_hdr_sz);
+		memset(eabh->b_data + new_hdr_sz, 0, sbp->sd_bsize - new_hdr_sz);
 		memcpy(eabh->b_data + new_hdr_sz, buf, len);
 		free(buf);
 		bmodified(eabh);
@@ -1058,8 +1058,8 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 				break;
 			/* If this is the root inode block, remember it for later: */
 			if (block == root_inode_addr) {
-				sbp->sd_sb.sb_root_dir.no_addr = block;
-				sbp->sd_sb.sb_root_dir.no_formal_ino = sbp->md.next_inum;
+				sbp->sd_root_dir.no_addr = block;
+				sbp->sd_root_dir.no_formal_ino = sbp->md.next_inum;
 			}
 			bh = bread(sbp, block);
 			if (!gfs2_check_meta(bh->b_data, GFS_METATYPE_DI)) {/* if it is an dinode */
@@ -1085,7 +1085,7 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 					buf_offset = (blk) ? sizeof(struct gfs2_meta_header) :
 						sizeof(struct gfs2_rgrp);
 					/* if it's on this page */
-					if (buf_offset + bitmap_byte < sbp->bsize) {
+					if (buf_offset + bitmap_byte < sbp->sd_bsize) {
 						bi->bi_data[buf_offset + bitmap_byte] &=
 						           ~(0x03 << (GFS2_BIT_SIZE * byte_bit));
 						bi->bi_data[buf_offset + bitmap_byte] |=
@@ -1093,7 +1093,7 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 						bi->bi_modified = 1;
 						break;
 					}
-					bitmap_byte -= (sbp->bsize - buf_offset);
+					bitmap_byte -= (sbp->sd_bsize - buf_offset);
 				}
 			}
 			brelse(bh);
@@ -1346,7 +1346,7 @@ static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 	uint64_t dirblock;
 	uint32_t gfs1_inptrs = sbp->sd_inptrs;
 	/* Directory inodes have been converted to gfs2, use gfs2 inptrs */
-	sbp->sd_inptrs = (sbp->bsize - sizeof(struct gfs2_meta_header))
+	sbp->sd_inptrs = (sbp->sd_bsize - sizeof(struct gfs2_meta_header))
 		/ sizeof(uint64_t);
 
 	dirs_fixed = 0;
@@ -1500,7 +1500,7 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 		}
 		journ = sd_jindex + j;
 		gfs1_jindex_in(journ, buf);
-		sdp->jsize = (journ->ji_nsegment * 16 * sdp->bsize) >> 20;
+		sdp->jsize = (journ->ji_nsegment * 16 * sdp->sd_bsize) >> 20;
 	}
 	ip->i_mode = tmp_mode;
 	if(j * sizeof(struct gfs_jindex) != ip->i_size){
@@ -1518,15 +1518,15 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 static int sanity_check(struct gfs2_sbd *sdp)
 {
 	int error = 0;
-	if (!raw_gfs1_ondisk_sb.sb_quota_di.no_addr) {
+	if (!gfs1_sb.sb_quota_di.no_addr) {
 		log_crit(_("Error: Superblock Quota inode address is NULL\n"));
 		error = 1;
 	}
-	if (!raw_gfs1_ondisk_sb.sb_license_di.no_addr) {
+	if (!gfs1_sb.sb_license_di.no_addr) {
 		log_crit(_("Error: Superblock Statfs inode address is NULL\n"));
 		error = 1;
 	}
-	if (!raw_gfs1_ondisk_sb.sb_seg_size) {
+	if (!gfs1_sb.sb_seg_size) {
 		log_crit(_("Error: Superblock segment size is zero\n"));
 		error = 1;
 	}
@@ -1595,13 +1595,6 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 		perror(opts->device);
 		exit(-1);
 	}
-	/* --------------------------------- */
-	/* initialize the incore superblock  */
-	/* --------------------------------- */
-	sbp->sd_sb.sb_header.mh_magic = GFS2_MAGIC;
-	sbp->sd_sb.sb_header.mh_type = GFS2_METATYPE_SB;
-	sbp->sd_sb.sb_header.mh_format = GFS2_FORMAT_SB;
-
 	osi_list_init((osi_list_t *)&dirs_to_fix);
 	osi_list_init((osi_list_t *)&cdpns_to_fix);
 	/* ---------------------------------------------- */
@@ -1614,8 +1607,7 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 	sbp->blks_total = 0;   /* total blocks         - total them up later */
 	sbp->blks_alloced = 0; /* blocks allocated     - total them up later */
 	sbp->dinodes_alloced = 0; /* dinodes allocated - total them up later */
-	sbp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
-	sbp->bsize = sbp->sd_sb.sb_bsize;
+	sbp->sd_bsize = GFS2_DEFAULT_BSIZE;
 	sbp->rgtree.osi_node = NULL;
 	if (compute_constants(sbp)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));
@@ -1623,28 +1615,27 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 	}
 
 	bh = bread(sbp, GFS2_SB_ADDR >> sbp->sd_fsb2bb_shift);
-	memcpy(&raw_gfs1_ondisk_sb, (struct gfs_sb *)bh->b_data,
-		   sizeof(struct gfs_sb));
-	gfs2_sb_in(&sbp->sd_sb, bh->b_data);
+	memcpy(&gfs1_sb, bh->b_data, sizeof(struct gfs_sb));
+	lgfs2_sb_in(sbp, bh->b_data);
 
-	jindex_addr = be64_to_cpu(raw_gfs1_ondisk_sb.sb_jindex_di.no_addr);
-	rindex_addr = be64_to_cpu(raw_gfs1_ondisk_sb.sb_rindex_di.no_addr);
+	jindex_addr = be64_to_cpu(gfs1_sb.sb_jindex_di.no_addr);
+	rindex_addr = be64_to_cpu(gfs1_sb.sb_rindex_di.no_addr);
 
-	sbp->bsize = sbp->sd_sb.sb_bsize;
-	sbp->fssize = lseek(sbp->device_fd, 0, SEEK_END) / sbp->sd_sb.sb_bsize;
-	sbp->sd_inptrs = (sbp->bsize - sizeof(struct gfs_indirect)) /
+	sbp->sd_bsize = sbp->sd_bsize;
+	sbp->fssize = lseek(sbp->device_fd, 0, SEEK_END) / sbp->sd_bsize;
+	sbp->sd_inptrs = (sbp->sd_bsize - sizeof(struct gfs_indirect)) /
 		sizeof(uint64_t);
-	sbp->sd_diptrs = (sbp->bsize - sizeof(struct gfs_dinode)) /
+	sbp->sd_diptrs = (sbp->sd_bsize - sizeof(struct gfs_dinode)) /
 		sizeof(uint64_t);
-	sbp->sd_jbsize = sbp->bsize - sizeof(struct gfs2_meta_header);
+	sbp->sd_jbsize = sbp->sd_bsize - sizeof(struct gfs2_meta_header);
 	brelse(bh);
-	if (compute_heightsize(sbp->bsize, sbp->sd_heightsize, &sbp->sd_max_height,
-				sbp->bsize, sbp->sd_diptrs, sbp->sd_inptrs)) {
+	if (compute_heightsize(sbp->sd_bsize, sbp->sd_heightsize, &sbp->sd_max_height,
+				sbp->sd_bsize, sbp->sd_diptrs, sbp->sd_inptrs)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(-1);
 	}
 
-	if (compute_heightsize(sbp->bsize, sbp->sd_jheightsize, &sbp->sd_max_jheight,
+	if (compute_heightsize(sbp->sd_bsize, sbp->sd_jheightsize, &sbp->sd_max_jheight,
 				sbp->sd_jbsize, sbp->sd_diptrs, sbp->sd_inptrs)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(-1);
@@ -1652,41 +1643,38 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 	/* -------------------------------------------------------- */
 	/* Our constants are for gfs1.  Need some for gfs2 as well. */
 	/* -------------------------------------------------------- */
-	gfs2_inptrs = (sbp->bsize - sizeof(struct gfs2_meta_header)) /
+	gfs2_inptrs = (sbp->sd_bsize - sizeof(struct gfs2_meta_header)) /
                 sizeof(uint64_t); /* How many ptrs can we fit on a block? */
 	memset(gfs2_heightsize, 0, sizeof(gfs2_heightsize));
-	if (compute_heightsize(sbp->bsize, gfs2_heightsize, &gfs2_max_height,
-				sbp->bsize, sbp->sd_diptrs, gfs2_inptrs)) {
+	if (compute_heightsize(sbp->sd_bsize, gfs2_heightsize, &gfs2_max_height,
+				sbp->sd_bsize, sbp->sd_diptrs, gfs2_inptrs)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(-1);
 	}
 	memset(gfs2_jheightsize, 0, sizeof(gfs2_jheightsize));
-	if (compute_heightsize(sbp->bsize, gfs2_jheightsize, &gfs2_max_jheight,
+	if (compute_heightsize(sbp->sd_bsize, gfs2_jheightsize, &gfs2_max_jheight,
 				sbp->sd_jbsize, sbp->sd_diptrs, gfs2_inptrs)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(-1);
 	}
-
-	/* ---------------------------------------------- */
-	/* Make sure we're really gfs1                    */
-	/* ---------------------------------------------- */
-	if (sbp->sd_sb.sb_fs_format != GFS_FORMAT_FS ||
-		sbp->sd_sb.sb_header.mh_type != GFS_METATYPE_SB ||
-		sbp->sd_sb.sb_header.mh_format != GFS_FORMAT_SB ||
-		sbp->sd_sb.sb_multihost_format != GFS_FORMAT_MULTI) {
+	/* Make sure we're really gfs1 */
+	if (be32_to_cpu(gfs1_sb.sb_fs_format) != GFS_FORMAT_FS ||
+	    be32_to_cpu(gfs1_sb.sb_header.mh_type) != GFS_METATYPE_SB ||
+	    be32_to_cpu(gfs1_sb.sb_header.mh_format) != GFS_FORMAT_SB ||
+	    be32_to_cpu(gfs1_sb.sb_multihost_format) != GFS_FORMAT_MULTI) {
 		log_crit(_("Error: %s does not look like a gfs1 filesystem.\n"), opts->device);
 		close(sbp->device_fd);
 		exit(-1);
 	}
 	/* get gfs1 rindex inode - gfs1's rindex inode ptr became __pad2 */
-	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_rindex_di);
+	gfs2_inum_in(&inum, (char *)&gfs1_sb.sb_rindex_di);
 	sbp->md.riinode = lgfs2_gfs_inode_read(sbp, inum.no_addr);
 	if (sbp->md.riinode == NULL) {
 		log_crit(_("Could not read resource group index: %s\n"), strerror(errno));
 		exit(-1);
 	}
 	/* get gfs1 jindex inode - gfs1's journal index inode ptr became master */
-	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_jindex_di);
+	gfs2_inum_in(&inum, (char *)&gfs1_sb.sb_jindex_di);
 	sbp->md.jiinode = lgfs2_inode_read(sbp, inum.no_addr);
 	if (sbp->md.jiinode == NULL) {
 		log_crit(_("Could not read journal index: %s\n"), strerror(errno));
@@ -1813,8 +1801,8 @@ static void process_parameters(int argc, char **argv, struct gfs2_options *opts)
 /* ------------------------------------------------------------------------- */
 static uint64_t rgrp_length(uint64_t size, struct gfs2_sbd *sdp)
 {
-	uint64_t bitbytes = RGRP_BITMAP_BLKS(&sdp->sd_sb) + 1;
-	uint64_t stuff = RGRP_STUFFED_BLKS(&sdp->sd_sb) + 1;
+	uint64_t bitbytes = RGRP_BITMAP_BLKS(sdp->sd_bsize) + 1;
+	uint64_t stuff = RGRP_STUFFED_BLKS(sdp->sd_bsize) + 1;
 	uint64_t blocks = 1;
 
 	if (size >= stuff) {
@@ -1885,7 +1873,7 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 		rgd = rgrp_insert(&sdp->rgtree, ri_addr);
 		/* convert the gfs1 rgrp into a new gfs2 rgrp */
 		size = jndx->ji_nsegment *
-			be32_to_cpu(raw_gfs1_ondisk_sb.sb_seg_size);
+			be32_to_cpu(gfs1_sb.sb_seg_size);
 		rgd->rt_flags = 0;
 		rgd->rt_dinodes = 0;
 
@@ -1901,18 +1889,18 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 		rgd->rt_free = rgd->rt_data;
 		rgd->rt_bitbytes = rgd->rt_data / GFS2_NBBY;
 
-		if (gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, rgd)) {
+		if (gfs2_compute_bitstructs(sdp->sd_bsize, rgd)) {
 			log_crit(_("gfs2_convert: Error converting bitmaps.\n"));
 			exit(-1);
 		}
 
-		rgd->bits[0].bi_data = calloc(rgd->rt_length, sdp->bsize);
+		rgd->bits[0].bi_data = calloc(rgd->rt_length, sdp->sd_bsize);
 		if (rgd->bits[0].bi_data == NULL) {
 			perror("");
 			exit(-1);
 		}
 		for (unsigned i = 1; i < rgd->rt_length; i++)
-			rgd->bits[i].bi_data = rgd->bits[0].bi_data + (i * sdp->bsize);
+			rgd->bits[i].bi_data = rgd->bits[0].bi_data + (i * sdp->sd_bsize);
 
 		convert_bitmaps(sdp, rgd);
 		lgfs2_rgrp_out(rgd, rgd->bits[0].bi_data);
@@ -1975,19 +1963,19 @@ static void remove_obsolete_gfs1(struct gfs2_sbd *sbp)
 	log_notice(_("Removing obsolete GFS1 file system structures.\n"));
 	fflush(stdout);
 	/* Delete the old gfs1 Journal index: */
-	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_jindex_di);
+	gfs2_inum_in(&inum, (char *)&gfs1_sb.sb_jindex_di);
 	gfs2_freedi(sbp, inum.no_addr);
 
 	/* Delete the old gfs1 rgindex: */
-	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_rindex_di);
+	gfs2_inum_in(&inum, (char *)&gfs1_sb.sb_rindex_di);
 	gfs2_freedi(sbp, inum.no_addr);
 
 	/* Delete the old gfs1 Quota file: */
-	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_quota_di);
+	gfs2_inum_in(&inum, (char *)&gfs1_sb.sb_quota_di);
 	gfs2_freedi(sbp, inum.no_addr);
 
 	/* Delete the old gfs1 License file: */
-	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_license_di);
+	gfs2_inum_in(&inum, (char *)&gfs1_sb.sb_license_di);
 	gfs2_freedi(sbp, inum.no_addr);
 }
 
@@ -2017,8 +2005,8 @@ static int conv_build_jindex(struct gfs2_sbd *sdp)
 		sprintf(name, "journal%u", j);
 		sdp->md.journal[j] = createi(sdp->md.jiinode, name, S_IFREG |
 					     0600, GFS2_DIF_SYSTEM);
-		write_journal(sdp->md.journal[j], sdp->bsize,
-			      sdp->jsize << 20 >> sdp->sd_sb.sb_bsize_shift);
+		write_journal(sdp->md.journal[j], sdp->sd_bsize,
+			      sdp->jsize << 20 >> sdp->sd_bsize_shift);
 		inode_put(&sdp->md.journal[j]);
 		printf(_("done.\n"));
 		fflush(stdout);
@@ -2037,7 +2025,7 @@ static unsigned int total_file_blocks(struct gfs2_sbd *sdp,
 	uint64_t *arr;
 
 	/* Now find the total meta blocks required for data_blks */
-	if (filesize <= sdp->bsize - sizeof(struct gfs2_dinode)) {
+	if (filesize <= sdp->sd_bsize - sizeof(struct gfs2_dinode)) {
 		goto out;
 	}
 
@@ -2048,7 +2036,7 @@ static unsigned int total_file_blocks(struct gfs2_sbd *sdp,
 	} else {
 		arr = sdp->sd_heightsize;
 		max = sdp->sd_max_height;
-		bsize = sdp->bsize;
+		bsize = sdp->sd_bsize;
 	}
 	data_blks = DIV_RU(filesize, bsize); /* total data blocks reqd */
 
@@ -2138,7 +2126,7 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 		exit(1);
 	}
 
-	gfs2_inum_in(&inum, (char *)&raw_gfs1_ondisk_sb.sb_quota_di);
+	gfs2_inum_in(&inum, (char *)&gfs1_sb.sb_quota_di);
 	oq_ip = lgfs2_inode_read(sdp, inum.no_addr);
 	if (oq_ip == NULL) {
 		fprintf(stderr, _("Couldn't lookup old quota file: %s\n"), strerror(errno));
@@ -2150,7 +2138,7 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 	nq_ip->i_blocks = oq_ip->i_blocks;
 	memcpy(nq_ip->i_bh->b_data + sizeof(struct gfs2_dinode), 
 	       oq_ip->i_bh->b_data + sizeof(struct gfs2_dinode),
-	       sdp->bsize - sizeof(struct gfs2_dinode));
+	       sdp->sd_bsize - sizeof(struct gfs2_dinode));
 
 	oq_ip->i_height = 0;
 	oq_ip->i_size = 0;
@@ -2246,7 +2234,7 @@ int main(int argc, char **argv)
 	/* ---------------------------------------------- */
 	if (!error) {
 		/* Add a string notifying inode converstion start? */
-		error = inode_renumber(&sb2, sb2.sd_sb.sb_root_dir.no_addr,
+		error = inode_renumber(&sb2, sb2.sd_root_dir.no_addr,
 				       (osi_list_t *)&cdpns_to_fix);
 		if (error)
 			log_crit(_("\n%s: Error renumbering inodes.\n"), opts.device);
@@ -2308,8 +2296,8 @@ int main(int argc, char **argv)
 				   "GFS2 file system structures.\n"), sb2.jsize);
 		/* Build the master subdirectory. */
 		build_master(&sb2); /* Does not do inode_put */
-		sb2.sd_sb.sb_master_dir.no_addr = sb2.master_dir->i_addr;
-		sb2.sd_sb.sb_master_dir.no_formal_ino = sb2.master_dir->i_formal_ino;
+		sb2.sd_meta_dir.no_addr = sb2.master_dir->i_addr;
+		sb2.sd_meta_dir.no_formal_ino = sb2.master_dir->i_formal_ino;
 		/* Build empty journal index file. */
 		error = conv_build_jindex(&sb2);
 		if (error) {
@@ -2384,9 +2372,9 @@ int main(int argc, char **argv)
 		/* it to not reject the partially converted fs as already done   */
 		/* when it's run a second time.                                  */
 		bh = bread(&sb2, LGFS2_SB_ADDR(&sb2));
-		sb2.sd_sb.sb_fs_format = GFS2_FORMAT_FS;
-		sb2.sd_sb.sb_multihost_format = GFS2_FORMAT_MULTI;
-		gfs2_sb_out(&sb2.sd_sb, bh->b_data);
+		sb2.sd_fs_format = GFS2_FORMAT_FS;
+		sb2.sd_multihost_format = GFS2_FORMAT_MULTI;
+		lgfs2_sb_out(&sb2, bh->b_data);
 		bmodified(bh);
 		brelse(bh);
 

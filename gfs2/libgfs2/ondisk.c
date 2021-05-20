@@ -117,54 +117,57 @@ void lgfs2_meta_header_print(void *mhp)
 	printbe32(mh, mh_format);
 }
 
-void gfs2_sb_in(struct gfs2_sb *sb, char *buf)
+void lgfs2_sb_in(struct gfs2_sbd *sdp, void *buf)
 {
-	struct gfs2_sb *str = (struct gfs2_sb *)buf;
+	struct gfs2_sb *sb = buf;
 
-	gfs2_meta_header_in(&sb->sb_header, buf);
-
-	CPIN_32(sb, str, sb_fs_format);
-	CPIN_32(sb, str, sb_multihost_format);
-	CPIN_32(sb, str, __pad0);                        /* gfs sb_flags */
-
-	CPIN_32(sb, str, sb_bsize);
-	CPIN_32(sb, str, sb_bsize_shift);
-	CPIN_32(sb, str, __pad1);                        /* gfs sb_seg_size */
-
-	gfs2_inum_in(&sb->sb_master_dir, (char *)&str->sb_master_dir);
-	gfs2_inum_in(&sb->sb_root_dir, (char *)&str->sb_root_dir);
-
-	CPIN_08(sb, str, sb_lockproto, GFS2_LOCKNAME_LEN);
-	CPIN_08(sb, str, sb_locktable, GFS2_LOCKNAME_LEN);
-	gfs2_inum_in(&sb->__pad2, (char *)&str->__pad2); /* gfs rindex */
-	gfs2_inum_in(&sb->__pad3, (char *)&str->__pad3); /* gfs quota */
-	gfs2_inum_in(&sb->__pad4, (char *)&str->__pad4); /* gfs license */
-	CPIN_08(sb, str, sb_uuid, sizeof(sb->sb_uuid));
+	sdp->sd_fs_format = be32_to_cpu(sb->sb_fs_format);
+	sdp->sd_multihost_format = be32_to_cpu(sb->sb_multihost_format);
+	sdp->sd_flags = be32_to_cpu(sb->__pad0);
+	sdp->sd_bsize = be32_to_cpu(sb->sb_bsize);
+	sdp->sd_bsize_shift = be32_to_cpu(sb->sb_bsize_shift);
+	sdp->sd_seg_size = be32_to_cpu(sb->__pad1);
+	sdp->sd_meta_dir.no_formal_ino = be64_to_cpu(sb->sb_master_dir.no_formal_ino);
+	sdp->sd_meta_dir.no_addr = be64_to_cpu(sb->sb_master_dir.no_addr);
+	sdp->sd_root_dir.no_formal_ino = be64_to_cpu(sb->sb_root_dir.no_formal_ino);
+	sdp->sd_root_dir.no_addr = be64_to_cpu(sb->sb_root_dir.no_addr);
+	memcpy(sdp->sd_lockproto, sb->sb_lockproto, GFS2_LOCKNAME_LEN);
+	memcpy(sdp->sd_locktable, sb->sb_locktable, GFS2_LOCKNAME_LEN);
+	sdp->sd_rindex_di.no_formal_ino = be64_to_cpu(sb->__pad2.no_formal_ino);
+	sdp->sd_rindex_di.no_addr = be64_to_cpu(sb->__pad2.no_addr);
+	sdp->sd_quota_di.no_formal_ino = be64_to_cpu(sb->__pad3.no_formal_ino);
+	sdp->sd_quota_di.no_addr = be64_to_cpu(sb->__pad3.no_addr);
+	sdp->sd_license_di.no_formal_ino = be64_to_cpu(sb->__pad4.no_formal_ino);
+	sdp->sd_license_di.no_addr = be64_to_cpu(sb->__pad4.no_addr);
+	memcpy(sdp->sd_uuid, sb->sb_uuid, sizeof(sdp->sd_uuid));
 }
 
-void gfs2_sb_out(const struct gfs2_sb *sb, char *buf)
+void lgfs2_sb_out(const struct gfs2_sbd *sdp, void *buf)
 {
-	struct gfs2_sb *str = (struct gfs2_sb *)buf;
+	struct gfs2_sb *sb = buf;
 
-	gfs2_meta_header_out(&sb->sb_header, buf);
-
-	CPOUT_32(sb, str, sb_fs_format);
-	CPOUT_32(sb, str, sb_multihost_format);
-	CPOUT_32(sb, str, __pad0);                        /* gfs sb_flags */
-
-	CPOUT_32(sb, str, sb_bsize);
-	CPOUT_32(sb, str, sb_bsize_shift);
-	CPOUT_32(sb, str, __pad1);                        /* gfs sb_seg_size */
-
-	gfs2_inum_out(&sb->sb_master_dir, (char *)&str->sb_master_dir);
-	gfs2_inum_out(&sb->sb_root_dir, (char *)&str->sb_root_dir);
-
-	CPOUT_08(sb, str, sb_lockproto, GFS2_LOCKNAME_LEN);
-	CPOUT_08(sb, str, sb_locktable, GFS2_LOCKNAME_LEN);
-	gfs2_inum_out(&sb->__pad2, (char *)&str->__pad2); /* gfs rindex */
-	gfs2_inum_out(&sb->__pad3, (char *)&str->__pad3); /* gfs quota */
-	gfs2_inum_out(&sb->__pad4, (char *)&str->__pad4); /* gfs license */
-	memcpy(str->sb_uuid, sb->sb_uuid, 16);
+	sb->sb_header.mh_magic = cpu_to_be32(GFS2_MAGIC);
+	sb->sb_header.mh_type = cpu_to_be32(GFS2_METATYPE_SB);
+	sb->sb_header.mh_format = cpu_to_be32(GFS2_FORMAT_SB);
+	sb->sb_fs_format = cpu_to_be32(sdp->sd_fs_format);
+	sb->sb_multihost_format = cpu_to_be32(sdp->sd_multihost_format);
+	sb->__pad0 = cpu_to_be32(sdp->sd_flags);
+	sb->sb_bsize = cpu_to_be32(sdp->sd_bsize);
+	sb->sb_bsize_shift = cpu_to_be32(sdp->sd_bsize_shift);
+	sb->__pad1 = cpu_to_be32(sdp->sd_seg_size);
+	sb->sb_master_dir.no_formal_ino = cpu_to_be64(sdp->sd_meta_dir.no_formal_ino);
+	sb->sb_master_dir.no_addr = cpu_to_be64(sdp->sd_meta_dir.no_addr);
+	sb->sb_root_dir.no_formal_ino = cpu_to_be64(sdp->sd_root_dir.no_formal_ino);
+	sb->sb_root_dir.no_addr = cpu_to_be64(sdp->sd_root_dir.no_addr);
+	memcpy(sb->sb_lockproto, sdp->sd_lockproto, GFS2_LOCKNAME_LEN);
+	memcpy(sb->sb_locktable, sdp->sd_locktable, GFS2_LOCKNAME_LEN);
+	sb->__pad2.no_formal_ino = cpu_to_be64(sdp->sd_rindex_di.no_formal_ino);
+	sb->__pad2.no_addr = cpu_to_be64(sdp->sd_rindex_di.no_addr);
+	sb->__pad3.no_formal_ino = cpu_to_be64(sdp->sd_quota_di.no_formal_ino);
+	sb->__pad3.no_addr = cpu_to_be64(sdp->sd_quota_di.no_addr);
+	sb->__pad4.no_formal_ino = cpu_to_be64(sdp->sd_license_di.no_formal_ino);
+	sb->__pad4.no_addr = cpu_to_be64(sdp->sd_license_di.no_addr);
+	memcpy(sb->sb_uuid, sdp->sd_uuid, 16);
 }
 
 void lgfs2_sb_print(void *sbp)

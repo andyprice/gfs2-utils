@@ -635,23 +635,23 @@ static int opts_check(struct mkfs_opts *opts)
 	return 0;
 }
 
-static void print_results(struct gfs2_sb *sb, struct mkfs_opts *opts, uint64_t rgrps, uint64_t fssize)
+static void print_results(struct gfs2_sbd *sb, struct mkfs_opts *opts)
 {
 	char readable_uuid[36+1];
 
-	uuid_unparse(sb->sb_uuid, readable_uuid);
+	uuid_unparse(sb->sd_uuid, readable_uuid);
 
 	printf("%-27s%s\n", _("Device:"), opts->dev.path);
-	printf("%-27s%u\n", _("Block size:"), sb->sb_bsize);
+	printf("%-27s%u\n", _("Block size:"), sb->sd_bsize);
 	printf("%-27s%.2f %s (%"PRIu64" %s)\n", _("Device size:"),
 	       /* Translators: "GB" here means "gigabytes" */
 	       (opts->dev.size / ((float)(1 << 30))), _("GB"),
-	       (opts->dev.size / sb->sb_bsize), _("blocks"));
+	       (opts->dev.size / sb->sd_bsize), _("blocks"));
 	printf("%-27s%.2f %s (%"PRIu64" %s)\n", _("Filesystem size:"),
-	       (fssize / ((float)(1 << 30)) * sb->sb_bsize), _("GB"), fssize, _("blocks"));
+	       (sb->fssize / ((float)(1 << 30)) * sb->sd_bsize), _("GB"), sb->fssize, _("blocks"));
 	printf("%-27s%u\n", _("Journals:"), opts->journals);
 	printf("%-27s%uMB\n", _("Journal size:"), opts->jsize);
-	printf("%-27s%"PRIu64"\n", _("Resource groups:"), rgrps);
+	printf("%-27s%"PRIu64"\n", _("Resource groups:"), sb->rgrps);
 	printf("%-27s\"%s\"\n", _("Locking protocol:"), opts->lockproto);
 	printf("%-27s\"%s\"\n", _("Lock table:"), opts->locktable);
 	/* Translators: "UUID" = universally unique identifier. */
@@ -696,7 +696,7 @@ static int zero_gap(struct gfs2_sbd *sdp, uint64_t addr, size_t blocks)
 		perror(_("Failed to zero blocks\n"));
 		return 1;
 	}
-	zerobuf = calloc(1, sdp->bsize);
+	zerobuf = calloc(1, sdp->sd_bsize);
 	if (zerobuf == NULL) {
 		perror(_("Failed to zero blocks\n"));
 		free(iov);
@@ -704,10 +704,10 @@ static int zero_gap(struct gfs2_sbd *sdp, uint64_t addr, size_t blocks)
 	}
 	for (i = 0; i < blocks; i++) {
 		iov[i].iov_base = zerobuf;
-		iov[i].iov_len = sdp->bsize;
+		iov[i].iov_len = sdp->sd_bsize;
 	}
-	wrote = pwritev(sdp->device_fd, iov, blocks, addr * sdp->bsize);
-	if (wrote != blocks * sdp->bsize) {
+	wrote = pwritev(sdp->device_fd, iov, blocks, addr * sdp->sd_bsize);
+	if (wrote != blocks * sdp->sd_bsize) {
 		fprintf(stderr, _("Zeroing write failed at block %"PRIu64"\n"), addr);
 		free(zerobuf);
 		free(iov);
@@ -725,17 +725,17 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 	uint64_t al_off = 0;
 
 	if (opts->align && opts->got_sunit) {
-		if ((opts->sunit % sdp->bsize) != 0) {
+		if ((opts->sunit % sdp->sd_bsize) != 0) {
 			fprintf(stderr, _("Stripe unit (%lu) must be a multiple of block size (%u)\n"),
-			        opts->sunit, sdp->bsize);
+			        opts->sunit, sdp->sd_bsize);
 			return NULL;
 		} else if ((opts->swidth % opts->sunit) != 0) {
 			fprintf(stderr, _("Stripe width (%lu) must be a multiple of stripe unit (%lu)\n"),
 			        opts->swidth, opts->sunit);
 			return NULL;
 		} else {
-			al_base = opts->swidth / sdp->bsize;
-			al_off = opts->sunit / sdp->bsize;
+			al_base = opts->swidth / sdp->sd_bsize;
+			al_off = opts->sunit / sdp->sd_bsize;
 		}
 	} else if (opts->align) {
 		if (opts->dev.optimal_io_size <= opts->dev.physical_sector_size ||
@@ -746,8 +746,8 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 			   rgrp alignment */
 			opts->align = 0;
 		} else {
-			al_base = opts->dev.optimal_io_size / sdp->bsize;
-			al_off = opts->dev.minimum_io_size / sdp->bsize;
+			al_base = opts->dev.optimal_io_size / sdp->sd_bsize;
+			al_off = opts->dev.minimum_io_size / sdp->sd_bsize;
 		}
 	}
 
@@ -770,7 +770,7 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 
 static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrp_t rg, int debug)
 {
-	uint64_t prev_end = (GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sdp->bsize) + 1;
+	uint64_t prev_end = (GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sdp->sd_bsize) + 1;
 	lgfs2_rgrp_t prev = lgfs2_rgrp_prev(rg);
 	struct gfs2_rindex ri;
 	uint64_t addr;
@@ -837,8 +837,8 @@ static int add_rgrp(lgfs2_rgrps_t rgs, uint64_t *addr, uint32_t len, lgfs2_rgrp_
 static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts, uint64_t *rgaddr)
 {
 	struct gfs2_progress_bar progress;
-	uint64_t jfsize = lgfs2_space_for_data(sdp, sdp->bsize, opts->jsize << 20);
-	uint32_t rgsize = lgfs2_rgsize_for_data(jfsize, sdp->bsize);
+	uint64_t jfsize = lgfs2_space_for_data(sdp, sdp->sd_bsize, opts->jsize << 20);
+	uint32_t rgsize = lgfs2_rgsize_for_data(jfsize, sdp->sd_bsize);
 	unsigned j;
 
 	gfs2_progress_init(&progress, opts->journals, _("Adding journals: "), opts->quiet);
@@ -912,7 +912,7 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, uint64_t *rgaddr, struct mkfs_opts *opts)
 {
 	struct gfs2_progress_bar progress;
-	uint32_t rgblks = ((opts->rgsize << 20) / sdp->bsize);
+	uint32_t rgblks = ((opts->rgsize << 20) / sdp->sd_bsize);
 	uint32_t rgnum;
 	int result;
 
@@ -983,19 +983,24 @@ static int sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsize
 	sdp->jsize = opts->jsize;
 	sdp->md.journals = opts->journals;
 	sdp->device_fd = opts->dev.fd;
-	sdp->bsize = sdp->sd_sb.sb_bsize = bsize;
+	sdp->sd_bsize = bsize;
+	sdp->sd_fs_format = opts->format;
+	sdp->sd_multihost_format = GFS2_FORMAT_MULTI;
+	sdp->sd_bsize = bsize;
+	sdp->sd_bsize_shift = ffs(bsize) - 1;
+	uuid_generate(sdp->sd_uuid);
 
 	if (compute_constants(sdp)) {
 		perror(_("Failed to compute file system constants"));
 		return -1;
 	}
-	sdp->device.length = opts->dev.size / sdp->bsize;
+	sdp->device.length = opts->dev.size / sdp->sd_bsize;
 	if (opts->got_fssize) {
 		if (opts->fssize > sdp->device.length) {
 			fprintf(stderr, _("Specified size is bigger than the device."));
 			fprintf(stderr, "%s %.2f %s (%"PRIu64" %s)\n", _("Device size:"),
 			       opts->dev.size / ((float)(1 << 30)), _("GB"),
-			       opts->dev.size / sdp->bsize, _("blocks"));
+			       opts->dev.size / sdp->sd_bsize, _("blocks"));
 			return -1;
 		}
 		sdp->device.length = opts->fssize;
@@ -1004,20 +1009,20 @@ static int sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsize
 	   makes sense for the device size, or set a sensible default, if one
 	   will fit. For user-provided journal sizes, limit it to half of the fs. */
 	if (!opts->got_jsize) {
-		int default_jsize = default_journal_size(sdp->bsize, sdp->device.length / opts->journals);
+		int default_jsize = default_journal_size(sdp->sd_bsize, sdp->device.length / opts->journals);
 		unsigned jsize_mb;
 
 		if (default_jsize < 0) {
 			fprintf(stderr, _("gfs2 will not fit on this device.\n"));
 			return -1;
 		}
-		jsize_mb = (default_jsize * sdp->bsize) >> 20;
+		jsize_mb = (default_jsize * sdp->sd_bsize) >> 20;
 		if (jsize_mb < GFS2_MIN_JSIZE)
 			opts->jsize = GFS2_MIN_JSIZE;
 		else
 			opts->jsize = jsize_mb;
-	} else if ((((opts->jsize * opts->journals) << 20) / sdp->bsize) > (sdp->device.length / 2)) {
-		unsigned max_jsize = (sdp->device.length / 2 * sdp->bsize / opts->journals) >> 20;
+	} else if ((((opts->jsize * opts->journals) << 20) / sdp->sd_bsize) > (sdp->device.length / 2)) {
+		unsigned max_jsize = (sdp->device.length / 2 * sdp->sd_bsize / opts->journals) >> 20;
 
 		fprintf(stderr, _("gfs2 will not fit on this device.\n"));
 		if (max_jsize >= GFS2_MIN_JSIZE)
@@ -1118,7 +1123,6 @@ static int open_dev(struct mkfs_dev *dev, int withprobe)
 int main(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd;
-	struct gfs2_sb sb;
 	struct mkfs_opts opts;
 	lgfs2_rgrps_t rgs;
 	uint64_t rgaddr;
@@ -1149,13 +1153,11 @@ int main(int argc, char *argv[])
 	if (S_ISREG(opts.dev.stat.st_mode)) {
 		opts.got_bsize = 1; /* Use default block size for regular files */
 	}
-
 	if (sbd_init(&sbd, &opts, bsize) != 0)
 		exit(-1);
-	lgfs2_sb_init(&sb, bsize, opts.format);
 	if (opts.debug) {
 		printf(_("File system options:\n"));
-		printf("  bsize = %u\n", sbd.bsize);
+		printf("  bsize = %u\n", sbd.sd_bsize);
 		printf("  qcsize = %u\n", sbd.qcsize);
 		printf("  jsize = %u\n", sbd.jsize);
 		printf("  journals = %u\n", sbd.md.journals);
@@ -1205,8 +1207,8 @@ int main(int argc, char *argv[])
 		fprintf(stderr, _("Error building '%s': %s\n"), "master", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	sb.sb_master_dir.no_addr = sbd.master_dir->i_addr;
-	sb.sb_master_dir.no_formal_ino = sbd.master_dir->i_formal_ino;
+	sbd.sd_meta_dir.no_addr = sbd.master_dir->i_addr;
+	sbd.sd_meta_dir.no_formal_ino = sbd.master_dir->i_formal_ino;
 
 	error = lgfs2_build_jindex(sbd.master_dir, mkfs_journals, opts.journals);
 	if (error) {
@@ -1249,13 +1251,13 @@ int main(int argc, char *argv[])
 		printf("%s", _("Done\n"));
 
 	build_root(&sbd);
-	sb.sb_root_dir.no_addr = sbd.md.rooti->i_addr;
-	sb.sb_root_dir.no_formal_ino = sbd.md.rooti->i_formal_ino;
+	sbd.sd_root_dir.no_addr = sbd.md.rooti->i_addr;
+	sbd.sd_root_dir.no_formal_ino = sbd.md.rooti->i_formal_ino;
 
-	strncpy(sb.sb_lockproto, opts.lockproto, GFS2_LOCKNAME_LEN - 1);
-	strncpy(sb.sb_locktable, opts.locktable, GFS2_LOCKNAME_LEN - 1);
-	sb.sb_lockproto[GFS2_LOCKNAME_LEN - 1] = '\0';
-	sb.sb_locktable[GFS2_LOCKNAME_LEN - 1] = '\0';
+	strncpy(sbd.sd_lockproto, opts.lockproto, GFS2_LOCKNAME_LEN - 1);
+	strncpy(sbd.sd_locktable, opts.locktable, GFS2_LOCKNAME_LEN - 1);
+	sbd.sd_lockproto[GFS2_LOCKNAME_LEN - 1] = '\0';
+	sbd.sd_locktable[GFS2_LOCKNAME_LEN - 1] = '\0';
 
 	do_init_inum(&sbd);
 	do_init_statfs(&sbd);
@@ -1272,7 +1274,7 @@ int main(int argc, char *argv[])
 		fflush(stdout);
 	}
 
-	error = lgfs2_sb_write(&sb, opts.dev.fd, sbd.bsize);
+	error = lgfs2_sb_write(&sbd, opts.dev.fd);
 	if (error) {
 		perror(_("Failed to write superblock\n"));
 		exit(EXIT_FAILURE);
@@ -1291,7 +1293,7 @@ int main(int argc, char *argv[])
 
 	if (!opts.quiet) {
 		printf("%s", _("Done\n"));
-		print_results(&sb, &opts, sbd.rgrps, sbd.fssize);
+		print_results(&sbd, &opts);
 	}
 	return 0;
 }

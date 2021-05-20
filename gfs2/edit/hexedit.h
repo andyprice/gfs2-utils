@@ -46,7 +46,6 @@ extern int start_row[DMODES], end_row[DMODES], lines_per_row[DMODES];
 extern int edit_size[DMODES], last_entry_onscreen[DMODES];
 extern char edit_fmt[80];
 extern struct gfs2_sbd sbd;
-extern struct gfs_sb *sbd1;
 extern struct gfs2_inum gfs1_quota_di;   /* kludge because gfs2 sb too small */
 extern struct gfs2_inum gfs1_license_di; /* kludge because gfs2 sb too small */
 extern struct gfs2_dinode *di;

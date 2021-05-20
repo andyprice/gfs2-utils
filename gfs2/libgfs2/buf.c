@@ -26,14 +26,14 @@ struct gfs2_buffer_head *bget(struct gfs2_sbd *sdp, uint64_t num)
 {
 	struct gfs2_buffer_head *bh;
 
-	bh = calloc(1, sizeof(struct gfs2_buffer_head) + sdp->bsize);
+	bh = calloc(1, sizeof(struct gfs2_buffer_head) + sdp->sd_bsize);
 	if (bh == NULL)
 		return NULL;
 
 	bh->b_blocknr = num;
 	bh->sdp = sdp;
 	bh->iov.iov_base = (char *)bh + sizeof(struct gfs2_buffer_head);
-	bh->iov.iov_len = sdp->bsize;
+	bh->iov.iov_len = sdp->sd_bsize;
 
 	return bh;
 }
@@ -59,7 +59,7 @@ int __breadm(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhs, size_t n,
 			size += bhs[i + j]->iov.iov_len;
 		}
 
-		ret = preadv(sdp->device_fd, iovbase, j, (block + i) * sdp->bsize);
+		ret = preadv(sdp->device_fd, iovbase, j, (block + i) * sdp->sd_bsize);
 		if (ret != size) {
 			fprintf(stderr, "bad read: %s from %s:%d: block %llu (0x%llx) "
 					"count: %d size: %zd ret: %zd\n", strerror(errno),
@@ -82,8 +82,8 @@ struct gfs2_buffer_head *__bread(struct gfs2_sbd *sdp, uint64_t num, int line,
 	if (bh == NULL)
 		return NULL;
 
-	ret = pread(sdp->device_fd, bh->b_data, sdp->bsize, num * sdp->bsize);
-	if (ret != sdp->bsize) {
+	ret = pread(sdp->device_fd, bh->b_data, sdp->sd_bsize, num * sdp->sd_bsize);
+	if (ret != sdp->sd_bsize) {
 		fprintf(stderr, "%s:%d: Error reading block %"PRIu64": %s\n",
 		                caller, line, num, strerror(errno));
 		free(bh);
@@ -96,7 +96,7 @@ int bwrite(struct gfs2_buffer_head *bh)
 {
 	struct gfs2_sbd *sdp = bh->sdp;
 
-	if (pwritev(sdp->device_fd, &bh->iov, 1, bh->b_blocknr * sdp->bsize) != bh->iov.iov_len)
+	if (pwritev(sdp->device_fd, &bh->iov, 1, bh->b_blocknr * sdp->sd_bsize) != bh->iov.iov_len)
 		return -1;
 	bh->b_modified = 0;
 	return 0;

@@ -156,7 +156,7 @@ struct mount_point {
 	char *device;
 	char *dir;
 	int fd;
-	struct gfs2_sb sb;
+	struct gfs2_sbd sb;
 };
 struct mount_point *mounts;
 char dlmwlines[MAX_LINES][96]; /* waiters lines */
@@ -223,7 +223,7 @@ static void UpdateSize(int sig)
 	signal(SIGWINCH, UpdateSize);
 }
 
-static int read_superblock(int fd, struct gfs2_sb *sb)
+static int read_superblock(int fd, struct gfs2_sbd *sdp)
 {
 	ssize_t r;
 	char *buf;
@@ -240,10 +240,10 @@ static int read_superblock(int fd, struct gfs2_sb *sb)
 		free(buf);
 		return -1;
 	}
-	gfs2_sb_in(sb, buf);
+	lgfs2_sb_in(sdp, buf);
 	free(buf);
 
-	bsize = sb->sb_bsize;
+	bsize = sdp->sd_bsize;
 	if (!bsize)
 		bsize = 4096;
 	return 0;
@@ -618,7 +618,7 @@ static const char *show_inode(const char *id, int fd, unsigned long long block)
 {
 	struct gfs2_inode *ip;
 	const char *inode_type = NULL;
-	struct gfs2_sbd sbd = { .device_fd = fd, .bsize = bsize };
+	struct gfs2_sbd sbd = { .device_fd = fd, .sd_bsize = bsize };
 
 	ip = lgfs2_inode_read(&sbd, block);
 	if (S_ISDIR(ip->i_mode)) {
@@ -674,7 +674,7 @@ static const char *show_details(const char *id, const char *fsname, int btype,
 	for (mp = mounts; mp != NULL; mp = mp->next) {
 		char *p;
 
-		p = strchr(mp->sb.sb_locktable, ':');
+		p = strchr(mp->sb.sd_locktable, ':');
 		if (!p)
 			continue;
 		p++;
@@ -686,7 +686,7 @@ static const char *show_details(const char *id, const char *fsname, int btype,
 	memset(dlm_dirtbl_size, 0, sizeof(dlm_dirtbl_size));
 	memset(dlm_rsbtbl_size, 0, sizeof(dlm_rsbtbl_size));
 	memset(dlm_lkbtbl_size, 0, sizeof(dlm_lkbtbl_size));
-	if (!strcmp(mp->sb.sb_lockproto, "lock_dlm")) {
+	if (!strcmp(mp->sb.sd_lockproto, "lock_dlm")) {
 		char *sp;
 		char *p;
 

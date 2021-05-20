@@ -192,7 +192,7 @@ static int nuke_rgs(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, unsigned *rgnums, s
 		lgfs2_rindex_out(rg, &ri);
 		for (j = 0; j < count; j++) {
 			uint64_t addr = be64_to_cpu(ri.ri_addr);
-			off_t off = addr * sdp->bsize;
+			off_t off = addr * sdp->sd_bsize;
 			ssize_t bytes;
 
 			if (i != rgnums[j] && rgnums[j] != ALL_RGS)
@@ -278,8 +278,7 @@ static lgfs2_rgrps_t read_rindex(struct gfs2_sbd *sdp)
 
 static int fill_super_block(struct gfs2_sbd *sdp)
 {
-	sdp->sd_sb.sb_bsize = GFS2_BASIC_BLOCK;
-	sdp->bsize = sdp->sd_sb.sb_bsize;
+	sdp->sd_bsize = GFS2_BASIC_BLOCK;
 
 	if (compute_constants(sdp) != 0) {
 		fprintf(stderr, "Failed to compute file system constants.\n");
@@ -289,7 +288,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 		perror("Failed to read superblock\n");
 		return 1;
 	}
-	sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_sb.sb_master_dir.no_addr);
+	sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.no_addr);
 	if (sdp->master_dir == NULL) {
 		fprintf(stderr, "Failed to read master directory inode.\n");
 		return 1;

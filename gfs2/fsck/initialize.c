@@ -46,22 +46,22 @@ static int block_mounters(struct gfs2_sbd *sdp, int block_em)
 {
 	if (block_em) {
 		/* verify it starts with lock_ */
-		if (!strncmp(sdp->sd_sb.sb_lockproto, "lock_", 5)) {
+		if (!strncmp(sdp->sd_lockproto, "lock_", 5)) {
 			/* Change lock_ to fsck_ */
-			memcpy(sdp->sd_sb.sb_lockproto, "fsck_", 5);
+			memcpy(sdp->sd_lockproto, "fsck_", 5);
 		}
 		/* FIXME: Need to do other verification in the else
 		 * case */
 	} else {
 		/* verify it starts with fsck_ */
 		/* verify it starts with lock_ */
-		if (!strncmp(sdp->sd_sb.sb_lockproto, "fsck_", 5)) {
+		if (!strncmp(sdp->sd_lockproto, "fsck_", 5)) {
 			/* Change fsck_ to lock_ */
-			memcpy(sdp->sd_sb.sb_lockproto, "lock_", 5);
+			memcpy(sdp->sd_lockproto, "lock_", 5);
 		}
 	}
 
-	if (lgfs2_sb_write(&sdp->sd_sb, sdp->device_fd, sdp->bsize)) {
+	if (lgfs2_sb_write(sdp, sdp->device_fd)) {
 		stack;
 		return -1;
 	}
@@ -134,7 +134,7 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgd;
-	char buf[sdp->sd_sb.sb_bsize];
+	char buf[sdp->sd_bsize];
 	uint64_t rmax = 0;
 	uint64_t rmin = 0;
 	int error;
@@ -163,16 +163,16 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	last_data_block = rmax;
 	first_data_block = rmin;
 
-	if (fsck_lseek(sdp->device_fd, (last_fs_block * sdp->sd_sb.sb_bsize))){
+	if (fsck_lseek(sdp->device_fd, (last_fs_block * sdp->sd_bsize))){
 		log_crit( _("Can't seek to last block in file system: %llu"
 			 " (0x%llx)\n"), (unsigned long long)last_fs_block,
 			 (unsigned long long)last_fs_block);
 		goto fail;
 	}
 
-	memset(buf, 0, sdp->sd_sb.sb_bsize);
-	error = read(sdp->device_fd, buf, sdp->sd_sb.sb_bsize);
-	if (error != sdp->sd_sb.sb_bsize){
+	memset(buf, 0, sdp->sd_bsize);
+	error = read(sdp->device_fd, buf, sdp->sd_bsize);
+	if (error != sdp->sd_bsize){
 		log_crit( _("Can't read last block in file system (error %u), "
 			 "last_fs_block: %llu (0x%llx)\n"), error,
 			 (unsigned long long)last_fs_block,
@@ -212,10 +212,10 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 		/* Count up the free blocks in the bitmap */
 		off = (rgb) ? sizeof(struct gfs2_meta_header) :
 			sizeof(struct gfs2_rgrp);
-		if (total_bytes_to_check <= sdp->bsize - off)
+		if (total_bytes_to_check <= sdp->sd_bsize - off)
 			bytes_to_check = total_bytes_to_check;
 		else
-			bytes_to_check = sdp->bsize - off;
+			bytes_to_check = sdp->sd_bsize - off;
 		total_bytes_to_check -= bytes_to_check;
 		for (x = 0; x < bytes_to_check; x++) {
 			unsigned char *byte;
@@ -464,7 +464,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 	}
 	log_err(_("Trying to rebuild the master directory.\n"));
 	inum.no_formal_ino = sdp->md.next_inum++;
-	inum.no_addr = sdp->sd_sb.sb_master_dir.no_addr;
+	inum.no_addr = sdp->sd_meta_dir.no_addr;
 	err = init_dinode(sdp, &bh, &inum, S_IFDIR | 0755, GFS2_DIF_SYSTEM, &inum);
 	if (err != 0)
 		return -1;
@@ -651,8 +651,8 @@ static unsigned gfs2_rgrp_reada(struct gfs2_sbd *sdp, unsigned cur_window,
 		if (i < cur_window)
 			continue;
 		rgd = (struct rgrp_tree *)n;
-		start = rgd->rt_addr * sdp->bsize;
-		len = rgd->rt_length * sdp->bsize;
+		start = rgd->rt_addr * sdp->sd_bsize;
+		len = rgd->rt_length * sdp->sd_bsize;
 		posix_fadvise(sdp->device_fd, start, len, POSIX_FADV_WILLNEED);
 	}
 
@@ -800,7 +800,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	log_info( _("Initializing special inodes...\n"));
 
 	/* Get root dinode */
-	sdp->md.rooti = lgfs2_inode_read(sdp, sdp->sd_sb.sb_root_dir.no_addr);
+	sdp->md.rooti = lgfs2_inode_read(sdp, sdp->sd_root_dir.no_addr);
 	if (sdp->md.rooti == NULL)
 		return -1;
 
@@ -845,19 +845,19 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 
 	if (sdp->gfs1) {
 		/* In gfs1, the license_di is always 3 blocks after the jindex_di */
-		if ((sbd1->sb_license_di.no_addr != sbd1->sb_jindex_di.no_addr + 3) ||
-		    (sbd1->sb_license_di.no_formal_ino != sbd1->sb_jindex_di.no_addr + 3)) {
+		if ((sdp->sd_license_di.no_addr != sdp->sd_jindex_di.no_addr + 3) ||
+		    (sdp->sd_license_di.no_formal_ino != sdp->sd_jindex_di.no_addr + 3)) {
 			if (!query( _("The gfs system statfs inode pointer is incorrect. "
 				      "Okay to correct? (y/n) "))) {
 				log_err( _("fsck.gfs2 cannot continue without a valid "
 					   "statfs file; aborting.\n"));
 				goto fail;
 			}
-			sbd1->sb_license_di.no_addr = sbd1->sb_license_di.no_formal_ino
-				= sbd1->sb_jindex_di.no_addr + 3;
+			sdp->sd_license_di.no_addr = sdp->sd_license_di.no_formal_ino
+				= sdp->sd_jindex_di.no_addr + 3;
 		}
 
-		sdp->md.statfs = lgfs2_inode_read(sdp, sbd1->sb_license_di.no_addr);
+		sdp->md.statfs = lgfs2_inode_read(sdp, sdp->sd_license_di.no_addr);
 		if (sdp->md.statfs == NULL) {
 			log_crit(_("Error reading statfs inode: %s\n"), strerror(errno));
 			goto fail;
@@ -902,19 +902,19 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 
 	if (sdp->gfs1) {
 		/* In gfs1, the quota_di is always 2 blocks after the jindex_di */
-		if ((sbd1->sb_quota_di.no_addr != sbd1->sb_jindex_di.no_addr + 2) ||
-		    (sbd1->sb_quota_di.no_formal_ino != sbd1->sb_jindex_di.no_addr + 2)) {
+		if ((sdp->sd_quota_di.no_addr != sdp->sd_jindex_di.no_addr + 2) ||
+		    (sdp->sd_quota_di.no_formal_ino != sdp->sd_jindex_di.no_addr + 2)) {
 			if (!query( _("The gfs system quota inode pointer is incorrect. "
 				      " Okay to correct? (y/n) "))) {
 				log_err( _("fsck.gfs2 cannot continue without a valid "
 					   "quota file; aborting.\n"));
 				goto fail;
 			}
-			sbd1->sb_quota_di.no_addr = sbd1->sb_quota_di.no_formal_ino
-				= sbd1->sb_jindex_di.no_addr + 2;
+			sdp->sd_quota_di.no_addr = sdp->sd_quota_di.no_formal_ino
+				= sdp->sd_jindex_di.no_addr + 2;
 		}
 
-		sdp->md.qinode = lgfs2_inode_read(sdp, sbd1->sb_quota_di.no_addr);
+		sdp->md.qinode = lgfs2_inode_read(sdp, sdp->sd_quota_di.no_addr);
 		if (sdp->md.qinode == NULL) {
 			log_crit(_("Error reading quota inode: %s\n"), strerror(errno));
 			goto fail;
@@ -991,11 +991,11 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	int error;
 
 	if (ip->i_formal_ino == 2) {
-		if (sdp->sd_sb.sb_master_dir.no_addr)
+		if (sdp->sd_meta_dir.no_addr)
 			return;
 		log_warn(_("Found system master directory at: 0x%"PRIx64".\n"),
 			 ip->i_addr);
-		sdp->sd_sb.sb_master_dir.no_addr = ip->i_addr;
+		sdp->sd_meta_dir.no_addr = ip->i_addr;
 		return;
 	}
 	if ((!sdp->gfs1 && ip->i_formal_ino == 3) ||
@@ -1015,7 +1015,7 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 				goto out_discard_ip;
 			}
 			fix_md.jiinode = child_ip;
-			sdp->sd_sb.sb_master_dir.no_addr = ip->i_addr;
+			sdp->sd_meta_dir.no_addr = ip->i_addr;
 			log_warn(_("Found system master directory at: 0x%"PRIx64"\n"),
 			         ip->i_addr);
 			return;
@@ -1033,8 +1033,7 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 			fix_md.pinode = ip;
 			error = dir_search(ip, "..", 2, NULL, &inum);
 			if (!error && inum.no_addr) {
-				sdp->sd_sb.sb_master_dir.no_addr =
-					inum.no_addr;
+				sdp->sd_meta_dir.no_addr = inum.no_addr;
 				log_warn(_("From per_node's '..' master directory backtracked to: "
 					   "0x%"PRIx64"\n"), inum.no_addr);
 			}
@@ -1080,7 +1079,7 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	struct gfs2_inum inum;
 	int error;
 
-	if (sdp->sd_sb.sb_root_dir.no_addr) /* if we know the root dinode */
+	if (sdp->sd_root_dir.no_addr) /* if we know the root dinode */
 		return;             /* we don't need to find the root */
 	if (!is_dir(ip, sdp->gfs1))  /* if this isn't a directory */
 		return;             /* it can't lead us to the root anyway */
@@ -1091,7 +1090,7 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		if (ip->i_addr == ip->i_bh->b_blocknr) {
 			log_warn(_("Found the root directory at: 0x%"PRIx64".\n"),
 			         ip->i_addr);
-			sdp->sd_sb.sb_root_dir.no_addr = ip->i_addr;
+			sdp->sd_root_dir.no_addr = ip->i_addr;
 			return;
 		}
 		log_warn(_("The root dinode should be at block 0x%"PRIx64" but it "
@@ -1105,7 +1104,7 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 			return;
 		}
 		root_bh = bread(sdp, ip->i_addr);
-		memcpy(root_bh->b_data, ip->i_bh->b_data, sdp->bsize);
+		memcpy(root_bh->b_data, ip->i_bh->b_data, sdp->sd_bsize);
 		bmodified(root_bh);
 		brelse(root_bh);
 		log_warn(_("Root directory copied from the journal.\n"));
@@ -1116,7 +1115,7 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		if (parent_ip && parent_ip->i_addr == ip->i_addr) {
 			log_warn(_("Found the root directory at: 0x%"PRIx64"\n"),
 				 ip->i_addr);
-			sdp->sd_sb.sb_root_dir.no_addr = ip->i_addr;
+			sdp->sd_root_dir.no_addr = ip->i_addr;
 			inode_put(&parent_ip);
 			inode_put(&ip);
 			return;
@@ -1150,7 +1149,7 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
 	int found_rg;
 	struct gfs2_meta_header mh;
 
-	sdp->bsize = GFS2_DEFAULT_BSIZE;
+	sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
 	max_rg_size = 524288;
 	/* Max RG size is 2GB. Max block size is 4K. 2G / 4K blks = 524288,
 	   So this is traversing 2GB in 4K block increments. */
@@ -1177,7 +1176,7 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
 			rb_addr = (bh->b_blocknr *
 				   (GFS2_DEFAULT_BSIZE / bsize2)) +
 				(bsize / bsize2) + 1;
-			sdp->bsize = bsize2; /* temporarily */
+			sdp->sd_bsize = bsize2; /* temporarily */
 			rb_bh = bread(sdp, rb_addr);
 			gfs2_meta_header_in(&mh, rb_bh->b_data);
 			brelse(rb_bh);
@@ -1193,11 +1192,11 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
 		}
 		brelse(bh);
 		if (!(*known_bsize)) {
-			sdp->bsize = GFS2_DEFAULT_BSIZE;
+			sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
 			continue;
 		}
 
-		sdp->bsize = *known_bsize;
+		sdp->sd_bsize = *known_bsize;
 		log_warn(_("Block size determined to be: %d\n"), *known_bsize);
 		return 0;
 	}
@@ -1214,7 +1213,7 @@ static int peruse_metadata(struct gfs2_sbd *sdp, uint64_t startblock)
 	struct gfs2_buffer_head *bh;
 	struct gfs2_inode *ip;
 
-	max_rg_size = 2147483648ull / sdp->bsize;
+	max_rg_size = 2147483648ull / sdp->sd_bsize;
 	/* Max RG size is 2GB. 2G / bsize. */
 	for (blk = startblock; blk < startblock + max_rg_size; blk++) {
 		bh = bread(sdp, blk);
@@ -1245,7 +1244,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 
 	memset(&fix_md, 0, sizeof(fix_md));
 	/* Step 1 - First we need to determine the correct block size. */
-	sdp->bsize = GFS2_DEFAULT_BSIZE;
+	sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
 	log_warn(_("Gathering information to repair the gfs2 superblock.  "
 		   "This may take some time.\n"));
 	error = find_rgs_for_bsize(sdp, (GFS2_SB_ADDR * GFS2_BASIC_BLOCK) /
@@ -1257,7 +1256,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 		/* First, figure out the device size.  We need that so we can
 		   find a suitable start point to determine what's what. */
 		half = sdp->dinfo.size / 2; /* in bytes */
-		half /= sdp->bsize;
+		half /= sdp->sd_bsize;
 		/* Start looking halfway through the device for gfs2
 		   structures.  If there aren't any at all, forget it. */
 		error = find_rgs_for_bsize(sdp, half, &known_bsize);
@@ -1274,11 +1273,11 @@ static int sb_repair(struct gfs2_sbd *sdp)
 				GFS2_DEFAULT_BSIZE);
 	if (error)
 		return error;
-	if (!sdp->sd_sb.sb_master_dir.no_addr) {
+	if (!sdp->sd_meta_dir.no_addr) {
 		log_err(_("Unable to locate the system master  directory.\n"));
 		return -1;
 	}
-	if (!sdp->sd_sb.sb_root_dir.no_addr) {
+	if (!sdp->sd_root_dir.no_addr) {
 		struct gfs2_inum inum;
 
 		log_err(_("Unable to locate the root directory.\n"));
@@ -1287,11 +1286,11 @@ static int sb_repair(struct gfs2_sbd *sdp)
 			   creates master immediately after root. */
 			log_err(_("Can't find any dinodes that might "
 				  "be the root; using master - 1.\n"));
-			possible_root = sdp->sd_sb.sb_master_dir.no_addr - 1;
+			possible_root = sdp->sd_meta_dir.no_addr - 1;
 		}
 		log_err(_("Found a possible root at: 0x%llx\n"),
 			(unsigned long long)possible_root);
-		sdp->sd_sb.sb_root_dir.no_addr = possible_root;
+		sdp->sd_root_dir.no_addr = possible_root;
 		sdp->md.rooti = lgfs2_inode_read(sdp, possible_root);
 		if (!sdp->md.rooti || sdp->md.rooti->i_magic != GFS2_MAGIC) {
 			struct gfs2_buffer_head *bh = NULL;
@@ -1317,32 +1316,23 @@ static int sb_repair(struct gfs2_sbd *sdp)
 	}
 	/* Step 3 - Rebuild the lock protocol and file system table name */
 	if (query(_("Okay to fix the GFS2 superblock? (y/n)"))) {
-		struct gfs2_sb sb;
 		log_info(_("Found system master directory at: 0x%"PRIx64"\n"),
-			 sdp->sd_sb.sb_master_dir.no_addr);
-		sdp->master_dir = lgfs2_inode_read(sdp,
-					     sdp->sd_sb.sb_master_dir.no_addr);
+			 sdp->sd_meta_dir.no_addr);
+		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.no_addr);
 		if (sdp->master_dir == NULL) {
 			log_crit(_("Error reading master inode: %s\n"), strerror(errno));
 			return -1;
 		}
-		sdp->master_dir->i_addr = sdp->sd_sb.sb_master_dir.no_addr;
+		sdp->master_dir->i_addr = sdp->sd_meta_dir.no_addr;
 		log_info(_("Found the root directory at: 0x%"PRIx64"\n"),
-			 sdp->sd_sb.sb_root_dir.no_addr);
-		sdp->md.rooti = lgfs2_inode_read(sdp,
-					   sdp->sd_sb.sb_root_dir.no_addr);
+			 sdp->sd_root_dir.no_addr);
+		sdp->md.rooti = lgfs2_inode_read(sdp, sdp->sd_root_dir.no_addr);
 		if (sdp->md.rooti == NULL) {
 			log_crit(_("Error reading root inode: %s\n"), strerror(errno));
 			return -1;
 		}
-		lgfs2_sb_init(&sb, sdp->bsize, GFS2_FORMAT_FS);
-		strcpy(sb.sb_lockproto, GFS2_DEFAULT_LOCKPROTO);
-		strcpy(sb.sb_locktable, "unknown");
-		sb.sb_master_dir.no_addr = sdp->master_dir->i_addr;
-		sb.sb_master_dir.no_formal_ino = sdp->master_dir->i_formal_ino;
-		sb.sb_root_dir.no_addr = sdp->md.rooti->i_addr;
-		sb.sb_root_dir.no_formal_ino = sdp->md.rooti->i_formal_ino;
-		lgfs2_sb_write(&sb, sdp->device_fd, sdp->bsize);
+		sdp->sd_fs_format = GFS2_FORMAT_FS;
+		lgfs2_sb_write(sdp, sdp->device_fd);
 		inode_put(&sdp->md.rooti);
 		inode_put(&sdp->master_dir);
 		sb_fixed = 1;
@@ -1366,24 +1356,10 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 
 	sync();
 
-	/********************************************************************
-	 ***************** First, initialize all lists **********************
-	 ********************************************************************/
 	log_info( _("Initializing lists...\n"));
 	sdp->rgtree.osi_node = NULL;
 
-	/********************************************************************
-	 ************  next, read in on-disk SB and set constants  **********
-	 ********************************************************************/
-	sdp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
-	sdp->bsize = sdp->sd_sb.sb_bsize;
-
-	if (sizeof(struct gfs2_sb) > sdp->sd_sb.sb_bsize){
-		log_crit( _("GFS superblock is larger than the blocksize!\n"));
-		log_debug("sizeof(struct gfs2_sb) > sdp->sd_sb.sb_bsize\n");
-		return FSCK_ERROR;
-	}
-
+	sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
 	if (compute_constants(sdp)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));
 		return FSCK_ERROR;
@@ -1397,10 +1373,8 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 		if (ret < 0)
 			return FSCK_ERROR;
 	}
-	if (sdp->gfs1)
-		sbd1 = (struct gfs_sb *)&sdp->sd_sb;
-	else if (sdp->sd_sb.sb_fs_format > FSCK_MAX_FORMAT) {
-		log_crit(_("Unsupported gfs2 format found: %"PRIu32"\n"), sdp->sd_sb.sb_fs_format);
+	if (!sdp->gfs1 && sdp->sd_fs_format > FSCK_MAX_FORMAT) {
+		log_crit(_("Unsupported gfs2 format found: %"PRIu32"\n"), sdp->sd_fs_format);
 		log_crit(_("A newer fsck.gfs2 is required to check this file system.\n"));
 		return FSCK_USAGE;
 	}
@@ -1455,11 +1429,11 @@ static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
 		lh.lh_header.mh_format = GFS2_FORMAT_LH;
 		lh.lh_header.__pad0 = 0x101674; /* mh_generation */
 		lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
-		lh.lh_first = sdp->md.journal[jnum]->i_addr + (seg * sbd1->sb_seg_size);
+		lh.lh_first = sdp->md.journal[jnum]->i_addr + (seg * sdp->sd_seg_size);
 		lh.lh_sequence = sequence;
 
-		bh = bget(sdp, lh.lh_first * sdp->bsize);
-		memset(bh->b_data, 0, sdp->bsize);
+		bh = bget(sdp, lh.lh_first * sdp->sd_bsize);
+		memset(bh->b_data, 0, sdp->sd_bsize);
 		gfs_log_header_out(&lh, bh->b_data);
 		gfs_log_header_out(&lh, bh->b_data + GFS2_BASIC_BLOCK -
 				   sizeof(struct gfs_log_header));
@@ -1471,21 +1445,20 @@ static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
 	return 0;
 }
 
-static int reset_journal_seg_size(unsigned int jsize, unsigned int nsegs,
-					     unsigned int bsize)
+static int reset_journal_seg_size(struct gfs2_sbd *sdp, unsigned int jsize, unsigned int nsegs)
 {
-	unsigned int seg_size = jsize / (nsegs * bsize);
+	unsigned int seg_size = jsize / (nsegs * sdp->sd_bsize);
 	if (!seg_size)
 		seg_size = 16; /* The default with 128MB journal and 4K bsize */
-	if (seg_size != sbd1->sb_seg_size) {
-		sbd1->sb_seg_size = seg_size;
+	if (seg_size != sdp->sd_seg_size) {
+		sdp->sd_seg_size = seg_size;
 		if (!query(_("Computed correct journal segment size to %u."
 			     " Reset it? (y/n) "), seg_size)) {
 			log_crit(_("Error: Cannot proceed without a valid journal"
 				   " segment size value.\n"));
 			return -1;
 		}
-		log_err(_("Resetting journal segment size to %u\n"), sbd1->sb_seg_size);
+		log_err(_("Resetting journal segment size to %u\n"), sdp->sd_seg_size);
 	}
 	return 0;
 }
@@ -1506,7 +1479,7 @@ static int correct_journal_seg_size(struct gfs2_sbd *sdp)
 	gfs_jindex_in(&ji_0, buf);
 
 	if (sdp->md.journals == 1) {
-		if (sbd1->sb_seg_size == 0) {
+		if (sdp->sd_seg_size == 0) {
 			if (!query(_("The gfs2 journal segment size is 0 and a"
 				     " correct value cannot be determined in a"
 				     " single-journal filesystem.\n"
@@ -1532,9 +1505,9 @@ static int correct_journal_seg_size(struct gfs2_sbd *sdp)
 	}
 	gfs_jindex_in(&ji_1, buf);
 
-	jsize = (ji_1.ji_addr - ji_0.ji_addr) * sbd1->sb_bsize;
+	jsize = (ji_1.ji_addr - ji_0.ji_addr) * sdp->sd_bsize;
 out:
-	return reset_journal_seg_size(jsize, ji_0.ji_nsegment, sbd1->sb_bsize);
+	return reset_journal_seg_size(sdp, jsize, ji_0.ji_nsegment);
 }
 
 /*
@@ -1580,7 +1553,7 @@ static int init_rindex(struct gfs2_sbd *sdp)
 	int err;
 
 	if (sdp->gfs1)
-		sdp->md.riinode = lgfs2_inode_read(sdp, sbd1->sb_rindex_di.no_addr);
+		sdp->md.riinode = lgfs2_inode_read(sdp, sdp->sd_rindex_di.no_addr);
 	else
 		gfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
 
@@ -1669,16 +1642,14 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 	if (sdp->gfs1)
 		sdp->master_dir = NULL;
 	else
-		sdp->master_dir = lgfs2_inode_read(sdp,
-					     sdp->sd_sb.sb_master_dir.no_addr);
+		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.no_addr);
 	if (!sdp->gfs1 &&
 	    (sdp->master_dir->i_magic != GFS2_MAGIC ||
 	     sdp->master_dir->i_type != GFS2_METATYPE_DI ||
 	     !sdp->master_dir->i_size)) {
 		inode_put(&sdp->master_dir);
 		rebuild_master(sdp);
-		sdp->master_dir = lgfs2_inode_read(sdp,
-					     sdp->sd_sb.sb_master_dir.no_addr);
+		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.no_addr);
 		if (sdp->master_dir == NULL) {
 			log_crit(_("Error reading master directory: %s\n"), strerror(errno));
 			return FSCK_ERROR;

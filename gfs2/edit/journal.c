@@ -38,7 +38,7 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 	uint64_t jindex_block, jblock = 0;
 	int amtread;
 	struct gfs2_buffer_head *jindex_bh, *j_bh;
-	char jbuf[sbd.bsize];
+	char jbuf[sbd.sd_bsize];
 
 	journal_num = atoi(journal + 7);
 	if (journal_num < 0)
@@ -46,7 +46,7 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 
 	/* Figure out the block of the jindex file */
 	if (sbd.gfs1)
-		jindex_block = sbd1->sb_jindex_di.no_addr;
+		jindex_block = sbd.sd_jindex_di.no_addr;
 	else
 		jindex_block = masterblock("jindex");
 	/* read in the block */
@@ -134,8 +134,8 @@ static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
 		o = roffset % sdp->sd_jbsize;
 		lblock = roffset / sdp->sd_jbsize;
 	} else {
-		lblock = roffset >> sdp->sd_sb.sb_bsize_shift;
-		o = roffset & (sdp->bsize - 1);
+		lblock = roffset >> sdp->sd_bsize_shift;
+		o = roffset & (sdp->sd_bsize - 1);
 	}
 
 	if (!ip->i_height) /* inode_is_stuffed */
@@ -145,8 +145,8 @@ static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
 
 	while (copied < size) {
 		amount = size - copied;
-		if (amount > sdp->bsize - o)
-			amount = sdp->bsize - o;
+		if (amount > sdp->sd_bsize - o)
+			amount = sdp->sd_bsize - o;
 		if (!extlen)
 			block_map(ip, lblock, &not_new, &dblock, &extlen,
 				  FALSE);
@@ -331,7 +331,7 @@ static uint64_t find_wrap_pt(struct gfs2_inode *ji, char *jbuf, uint64_t jblock,
 	uint64_t jb = 0;
 	uint64_t highest_seq = 0;
 
-	for (jb = 0; jb < j_size; jb += (sbd.gfs1 ? 1 : sbd.bsize)) {
+	for (jb = 0; jb < j_size; jb += (sbd.gfs1 ? 1 : sbd.sd_bsize)) {
 		int found = 0;
 
 		if (sbd.gfs1) {
@@ -344,7 +344,7 @@ static uint64_t find_wrap_pt(struct gfs2_inode *ji, char *jbuf, uint64_t jblock,
 			int copied;
 			uint64_t abs_block;
 
-			copied = fsck_readi(ji, jbuf, jb, sbd.bsize, &abs_block);
+			copied = fsck_readi(ji, jbuf, jb, sbd.sd_bsize, &abs_block);
 			if (!copied) /* end of file */
 				break;
 			found = is_wrap_pt(jbuf, &highest_seq);
@@ -385,11 +385,11 @@ static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 		b = (uint64_t *)(buf + sizeof(struct gfs_log_descriptor));
 	else
 		b = (uint64_t *)(buf + sizeof(struct gfs2_log_descriptor));
-	*prnt = ld_is_pertinent(b, (buf + sbd.bsize), tblk, rgd, bitblk);
+	*prnt = ld_is_pertinent(b, (buf + sbd.sd_bsize), tblk, rgd, bitblk);
 
 	if (*prnt) {
 		print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log descriptor, ",
-			   abs_block, ((jb + wrappt) % j_size) / sbd.bsize);
+			   abs_block, ((jb + wrappt) % j_size) / sbd.sd_bsize);
 		print_gfs2("type %"PRIu32" ", ld_type);
 
 		for (ltndx = 0;; ltndx++) {
@@ -406,7 +406,7 @@ static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 	if (ld_type == GFS2_LOG_DESC_METADATA ||
 	    ld_type == GFS_LOG_DESC_METADATA)
 		is_meta_ld = 1;
-	ld_blocks -= print_ld_blks(b, (buf + sbd.bsize), line, tblk, tblk_off,
+	ld_blocks -= print_ld_blks(b, (buf + sbd.sd_bsize), line, tblk, tblk_off,
 	                           bitblk, rgd, abs_block, *prnt, bblk_off,
 	                           is_meta_ld);
 
@@ -435,7 +435,7 @@ static int meta_has_ref(uint64_t abs_block, int tblk)
 		}
 	}
 	b = (uint64_t *)(mbh->b_data + structlen);
-	while (!has_ref && mtype && (char *)b < mbh->b_data + sbd.bsize) {
+	while (!has_ref && mtype && (char *)b < mbh->b_data + sbd.sd_bsize) {
 		if (be64_to_cpu(*b) == tblk)
 			has_ref = 1;
 		b++;
@@ -492,7 +492,7 @@ static void display_log_header(void *buf, uint64_t *highest_seq, uint64_t abs_bl
 	} else {
 		print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: Seq: 0x%"PRIx64", "
 		           "tail: 0x%"PRIx32", blk: 0x%"PRIx32" [%s]",
-		            abs_block, (jb % j_size) / sbd.bsize, be64_to_cpu(lh->lh_sequence),
+		            abs_block, (jb % j_size) / sbd.sd_bsize, be64_to_cpu(lh->lh_sequence),
 		            be32_to_cpu(lh->lh_tail), be32_to_cpu(lh->lh_blkno), flags_str);
 	}
 }
@@ -544,7 +544,7 @@ void dump_journal(const char *journal, int tblk)
 			fprintf(stderr, "Out of memory\n");
 			exit(-1);
 		}
-		jbuf = malloc(sbd.bsize);
+		jbuf = malloc(sbd.sd_bsize);
 		if (jbuf == NULL) {
 			fprintf(stderr, "Out of memory\n");
 			exit(-1);
@@ -578,7 +578,7 @@ void dump_journal(const char *journal, int tblk)
 		}
 
 		wrappt = find_wrap_pt(j_inode, jbuf, jblock, j_size);
-		wp = wrappt / (sbd.gfs1 ? 1 : sbd.bsize);
+		wp = wrappt / (sbd.gfs1 ? 1 : sbd.sd_bsize);
 		print_gfs2("Starting at journal wrap block: 0x%llx "
 			   "(j + 0x%llx)",
 			   (unsigned long long)jblock + wp,
@@ -586,7 +586,7 @@ void dump_journal(const char *journal, int tblk)
 		eol(0);
 	}
 
-	for (jb = 0; jb < j_size; jb += (sbd.gfs1 ? 1 : sbd.bsize)) {
+	for (jb = 0; jb < j_size; jb += (sbd.gfs1 ? 1 : sbd.sd_bsize)) {
 		int is_pertinent = 1;
 		uint32_t block_type = 0;
 
@@ -599,7 +599,7 @@ void dump_journal(const char *journal, int tblk)
 		} else {
 			int error = fsck_readi(j_inode, (void *)jbuf,
 					   ((jb + wrappt) % j_size),
-					   sbd.bsize, &abs_block);
+					   sbd.sd_bsize, &abs_block);
 			if (!error) /* end of file */
 				break;
 			buf = jbuf;
@@ -625,10 +625,10 @@ void dump_journal(const char *journal, int tblk)
 
 			print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log descriptor"
 				   " continuation block", abs_block,
-				   ((jb + wrappt) % j_size) / sbd.bsize);
+				   ((jb + wrappt) % j_size) / sbd.sd_bsize);
 			eol(0);
 			print_gfs2("                    ");
-			ld_blocks -= print_ld_blks(b, (buf + sbd.bsize), start_line,
+			ld_blocks -= print_ld_blks(b, (buf + sbd.sd_bsize), start_line,
 			                     tblk, &tblk_off, 0, rgd, 0, 1, NULL, 0);
 		} else if (block_type == 0) {
 			continue;

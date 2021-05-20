@@ -22,22 +22,24 @@
  *
  * Returns: -1 on failure, 1 if this is gfs (gfs1), 2 if this is gfs2
  */
-int check_sb(struct gfs2_sb *sb)
+int check_sb(void *sbp)
 {
-	if (sb->sb_header.mh_magic != GFS2_MAGIC ||
-	    sb->sb_header.mh_type != GFS2_METATYPE_SB) {
+	struct gfs2_sb *sb = sbp;
+
+	if (be32_to_cpu(sb->sb_header.mh_magic) != GFS2_MAGIC ||
+	    be32_to_cpu(sb->sb_header.mh_type) != GFS2_METATYPE_SB) {
 		errno = EIO;
 		return -1;
 	}
 	/* Check for gfs1 */
-	if (sb->sb_fs_format == GFS_FORMAT_FS &&
-	    sb->sb_header.mh_format == GFS_FORMAT_SB &&
-	    sb->sb_multihost_format == GFS_FORMAT_MULTI) {
+	if (be32_to_cpu(sb->sb_fs_format) == GFS_FORMAT_FS &&
+	    be32_to_cpu(sb->sb_header.mh_format) == GFS_FORMAT_SB &&
+	    be32_to_cpu(sb->sb_multihost_format) == GFS_FORMAT_MULTI) {
 		return 1;
 	}
 	/* It's gfs2. Check format number is in a sensible range. */
-	if (sb->sb_fs_format < LGFS2_FS_FORMAT_MIN ||
-	    sb->sb_fs_format > 1899) {
+	if (be32_to_cpu(sb->sb_fs_format) < LGFS2_FS_FORMAT_MIN ||
+	    be32_to_cpu(sb->sb_fs_format) > 1899) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -64,40 +66,40 @@ int read_sb(struct gfs2_sbd *sdp)
 	int ret;
 
 	bh = bread(sdp, GFS2_SB_ADDR >> sdp->sd_fsb2bb_shift);
-	gfs2_sb_in(&sdp->sd_sb, bh->b_data);
-	brelse(bh);
 
-	ret = check_sb(&sdp->sd_sb);
+	ret = check_sb(bh->b_data);
 	if (ret < 0)
 		return ret;
 	if (ret == 1)
 		sdp->gfs1 = 1;
-	sdp->sd_fsb2bb_shift = sdp->sd_sb.sb_bsize_shift - GFS2_BASIC_BLOCK_SHIFT;
-	sdp->bsize = sdp->sd_sb.sb_bsize;
-	if (sdp->bsize < 512 || sdp->bsize != (sdp->bsize & -sdp->bsize)) {
+
+	lgfs2_sb_in(sdp, bh->b_data);
+	brelse(bh);
+	sdp->sd_fsb2bb_shift = sdp->sd_bsize_shift - GFS2_BASIC_BLOCK_SHIFT;
+	if (sdp->sd_bsize < 512 || sdp->sd_bsize != (sdp->sd_bsize & -sdp->sd_bsize)) {
 		return -1;
 	}
 	if (sdp->gfs1) {
-		sdp->sd_diptrs = (sdp->sd_sb.sb_bsize -
+		sdp->sd_diptrs = (sdp->sd_bsize -
 				  sizeof(struct gfs_dinode)) /
 			sizeof(uint64_t);
-		sdp->sd_inptrs = (sdp->sd_sb.sb_bsize -
+		sdp->sd_inptrs = (sdp->sd_bsize -
 				  sizeof(struct gfs_indirect)) /
 			sizeof(uint64_t);
 	} else {
-		sdp->sd_diptrs = (sdp->sd_sb.sb_bsize -
+		sdp->sd_diptrs = (sdp->sd_bsize -
 				  sizeof(struct gfs2_dinode)) /
 			sizeof(uint64_t);
-		sdp->sd_inptrs = (sdp->sd_sb.sb_bsize -
+		sdp->sd_inptrs = (sdp->sd_bsize -
 				  sizeof(struct gfs2_meta_header)) /
 			sizeof(uint64_t);
 	}
-	sdp->sd_jbsize = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header);
-	sdp->sd_hash_bsize = sdp->bsize / 2;
-	sdp->sd_hash_bsize_shift = sdp->sd_sb.sb_bsize_shift - 1;
+	sdp->sd_jbsize = sdp->sd_bsize - sizeof(struct gfs2_meta_header);
+	sdp->sd_hash_bsize = sdp->sd_bsize / 2;
+	sdp->sd_hash_bsize_shift = sdp->sd_bsize_shift - 1;
 	sdp->sd_hash_ptrs = sdp->sd_hash_bsize / sizeof(uint64_t);
-	sdp->sd_heightsize[0] = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_dinode);
-	sdp->sd_heightsize[1] = sdp->sd_sb.sb_bsize * sdp->sd_diptrs;
+	sdp->sd_heightsize[0] = sdp->sd_bsize - sizeof(struct gfs2_dinode);
+	sdp->sd_heightsize[1] = sdp->sd_bsize * sdp->sd_diptrs;
 	for (x = 2; x < GFS2_MAX_META_HEIGHT; x++){
 		space = sdp->sd_heightsize[x - 1] * sdp->sd_inptrs;
 		/* FIXME: Do we really need this first check?? */
@@ -111,7 +113,7 @@ int read_sb(struct gfs2_sbd *sdp)
 		return -1;
 	}
 
-	sdp->sd_jheightsize[0] = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_dinode);
+	sdp->sd_jheightsize[0] = sdp->sd_bsize - sizeof(struct gfs2_dinode);
 	sdp->sd_jheightsize[1] = sdp->sd_jbsize * sdp->sd_diptrs;
 	for (x = 2; ; x++){
 		space = sdp->sd_jheightsize[x - 1] * sdp->sd_inptrs;
@@ -125,8 +127,8 @@ int read_sb(struct gfs2_sbd *sdp)
 		errno = E2BIG;
 		return -1;
 	}
-	sdp->fssize = lseek(sdp->device_fd, 0, SEEK_END) / sdp->sd_sb.sb_bsize;
-	sdp->sd_blocks_per_bitmap = (sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header))
+	sdp->fssize = lseek(sdp->device_fd, 0, SEEK_END) / sdp->sd_bsize;
+	sdp->sd_blocks_per_bitmap = (sdp->sd_bsize - sizeof(struct gfs2_meta_header))
 	                             * GFS2_NBBY;
 	sdp->qcsize = GFS2_DEFAULT_QCSIZE;
 
@@ -153,7 +155,7 @@ static int rgd_seems_ok(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 	/* A max rgrp, 2GB, divided into blocksize, divided by blocks/byte
 	   represented in the bitmap, NBBY. Rough approximation only, due to
 	   metadata headers. I'm doing the math this way to avoid overflow. */
-	most_bitmaps_possible = (GFS2_MAX_RGSIZE * 1024 * 256) / sdp->bsize;
+	most_bitmaps_possible = (GFS2_MAX_RGSIZE * 1024 * 256) / sdp->sd_bsize;
 	if (rgd->rt_length > most_bitmaps_possible)
 		return 0;
 
@@ -247,7 +249,7 @@ int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 			prev_rgd->length = rgrp_size(prev_rgd);
 		}
 
-		if(gfs2_compute_bitstructs(sdp->sd_sb.sb_bsize, rgd))
+		if(gfs2_compute_bitstructs(sdp->sd_bsize, rgd))
 			*ok = 0;
 
 		(*rgcount)++;

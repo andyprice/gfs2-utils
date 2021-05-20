@@ -322,13 +322,13 @@ static int dirent_repair(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	/* If this is a sentinel, just fix the length and move on */
 	if (first && !de->de_inum.no_formal_ino) { /* Is it a sentinel? */
 		if (type == DIR_LINEAR)
-			de->de_rec_len = ip->i_sbd->bsize -
+			de->de_rec_len = ip->i_sbd->sd_bsize -
 				sizeof(struct gfs2_dinode);
 		else
-			de->de_rec_len = ip->i_sbd->bsize -
+			de->de_rec_len = ip->i_sbd->sd_bsize -
 				sizeof(struct gfs2_leaf);
 	} else {
-		bh_end = bh->b_data + ip->i_sbd->bsize;
+		bh_end = bh->b_data + ip->i_sbd->sd_bsize;
 		/* first, figure out a probable name length */
 		p = (char *)dent + sizeof(struct gfs2_dirent);
 		while (*p &&         /* while there's a non-zero char and */
@@ -361,7 +361,7 @@ static void dirblk_truncate(struct gfs2_inode *ip, struct gfs2_dirent *fixb,
 	char *bh_end;
 	struct gfs2_dirent de;
 
-	bh_end = bh->b_data + ip->i_sbd->sd_sb.sb_bsize;
+	bh_end = bh->b_data + ip->i_sbd->sd_bsize;
 	/* truncate the block to save the most dentries.  To do this we
 	   have to patch the previous dent. */
 	gfs2_dirent_in(&de, (char *)fixb);
@@ -394,7 +394,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	char *filename;
 	int first = 1;
 
-	bh_end = bh->b_data + ip->i_sbd->bsize;
+	bh_end = bh->b_data + ip->i_sbd->sd_bsize;
 
 	if (type == DIR_LINEAR) {
 		dent = (struct gfs2_dirent *)(bh->b_data + sizeof(struct gfs2_dinode));
@@ -673,11 +673,11 @@ static void dir_leaf_reada(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize)
 	for (i = 0; i < hsize; i++) {
 		leaf_no = be64_to_cpu(tbl[i]);
 		if (valid_block_ip(ip, leaf_no))
-			t[n++] = leaf_no * sdp->bsize;
+			t[n++] = leaf_no * sdp->sd_bsize;
 	}
 	qsort(t, n, sizeof(uint64_t), u64cmp);
 	for (i = 0; i < n; i++)
-		posix_fadvise(sdp->device_fd, t[i], sdp->bsize, POSIX_FADV_WILLNEED);
+		posix_fadvise(sdp->device_fd, t[i], sdp->sd_bsize, POSIX_FADV_WILLNEED);
 }
 
 /* Checks exhash directory entries */
@@ -890,14 +890,14 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 						pass->private);
 				if (err)
 					error = err;
-				tot_ealen += sdp->sd_sb.sb_bsize -
+				tot_ealen += sdp->sd_bsize -
 					sizeof(struct gfs2_meta_header);
 				ea_data_ptr++;
 			}
 		}
 		offset += be32_to_cpu(ea_hdr->ea_rec_len);
 		if (ea_hdr->ea_flags & GFS2_EAFLAG_LAST ||
-		   offset >= ip->i_sbd->sd_sb.sb_bsize || ea_hdr->ea_rec_len == 0){
+		   offset >= ip->i_sbd->sd_bsize || ea_hdr->ea_rec_len == 0){
 			break;
 		}
 		ea_hdr_prev = ea_hdr;
@@ -970,7 +970,7 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 	int leaf_pointers = 0, leaf_pointer_errors = 0;
 
 	ea_leaf_ptr = (uint64_t *)(indirect_buf->b_data + offset);
-	end = ea_leaf_ptr + ((sdp->sd_sb.sb_bsize - offset) / 8);
+	end = ea_leaf_ptr + ((sdp->sd_bsize - offset) / 8);
 
 	while (*ea_leaf_ptr && (ea_leaf_ptr < end)){
 		block = be64_to_cpu(*ea_leaf_ptr);
@@ -1123,8 +1123,8 @@ static void file_ra(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			extlen = block - sblock;
 			if (extlen > 1 && extlen <= maxptrs) {
 				posix_fadvise(sdp->device_fd,
-					      sblock * sdp->bsize,
-					      (extlen + 1) * sdp->bsize,
+					      sblock * sdp->sd_bsize,
+					      (extlen + 1) * sdp->sd_bsize,
 					      POSIX_FADV_WILLNEED);
 				return;
 			}
@@ -1132,7 +1132,7 @@ static void file_ra(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		extlen = 0;
 	}
 	for (p = (uint64_t *)(bh->b_data + head_size);
-	     p < (uint64_t *)(bh->b_data + sdp->bsize); p++) {
+	     p < (uint64_t *)(bh->b_data + sdp->sd_bsize); p++) {
 		if (*p) {
 			if (!sblock) {
 				sblock = be64_to_cpu(*p);
@@ -1148,16 +1148,16 @@ static void file_ra(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		if (extlen && sblock) {
 			if (extlen > 1)
 				extlen--;
-			posix_fadvise(sdp->device_fd, sblock * sdp->bsize,
-				      extlen * sdp->bsize,
+			posix_fadvise(sdp->device_fd, sblock * sdp->sd_bsize,
+				      extlen * sdp->sd_bsize,
 				      POSIX_FADV_WILLNEED);
 			extlen = 0;
 			p--;
 		}
 	}
 	if (extlen)
-		posix_fadvise(sdp->device_fd, sblock * sdp->bsize,
-			      extlen * sdp->bsize, POSIX_FADV_WILLNEED);
+		posix_fadvise(sdp->device_fd, sblock * sdp->sd_bsize,
+			      extlen * sdp->sd_bsize, POSIX_FADV_WILLNEED);
 }
 
 static int do_check_metalist(struct iptr iptr, int height, struct gfs2_buffer_head **bhp,
@@ -1252,7 +1252,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 				iblk_type = GFS2_METATYPE_IN;
 			if (ip->i_sbd->gfs1) {
 				head_size = sizeof(struct gfs_indirect);
-				maxptrs = (ip->i_sbd->bsize - head_size) /
+				maxptrs = (ip->i_sbd->sd_bsize - head_size) /
 					sizeof(uint64_t);
 			} else {
 				head_size = sizeof(struct gfs2_meta_header);
@@ -1280,7 +1280,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 				file_ra(ip, iptr.ipt_bh, head_size, maxptrs, h);
 
 			/* Now check the metadata itself */
-			for (; iptr.ipt_off < ip->i_sbd->bsize; iptr.ipt_off += sizeof(uint64_t)) {
+			for (; iptr.ipt_off < ip->i_sbd->sd_bsize; iptr.ipt_off += sizeof(uint64_t)) {
 				struct gfs2_buffer_head *nbh = NULL;
 
 				if (skip_this_pass || fsck_abort)
@@ -1398,7 +1398,7 @@ static int metawalk_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass
 	int error = 0, rc = 0;
 	uint64_t block;
 	__be64 *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
-	__be64 *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->bsize);
+	__be64 *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->sd_bsize);
 	__be64 *ptr;
 	uint64_t metablock = bh->b_blocknr;
 
@@ -1464,7 +1464,7 @@ static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 			   struct error_block *error_blk, int error)
 {
 	__be64 *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
-	__be64 *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->bsize);
+	__be64 *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->sd_bsize);
 	__be64 *ptr;
 	uint64_t metablock = bh->b_blocknr;
 	int rc = 0;

@@ -174,8 +174,8 @@ static lgfs2_rgrps_t rgrps_init(struct gfs2_sbd *sdp)
 			if ((min_io_sz > phy_sector_sz) &&
 			    (opt_io_sz > phy_sector_sz) &&
 			    (opt_io_sz % min_io_sz == 0)) {
-					al_base = opt_io_sz / sdp->bsize;
-					al_off = min_io_sz / sdp->bsize;
+					al_base = opt_io_sz / sdp->sd_bsize;
+					al_off = min_io_sz / sdp->sd_bsize;
 			}
 
 		}
@@ -208,7 +208,7 @@ static unsigned initialize_new_portion(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs)
 	unsigned rgcount = 0;
 	uint64_t rgaddr = fssize;
 
-	discard_blocks(sdp->device_fd, rgaddr * sdp->bsize, fsgrowth * sdp->bsize);
+	discard_blocks(sdp->device_fd, rgaddr * sdp->sd_bsize, fsgrowth * sdp->sd_bsize);
 	/* Build the remaining resource groups */
 	while (1) {
 		int err = 0;
@@ -332,7 +332,7 @@ static void print_info(struct gfs2_sbd *sdp, char *device, char *mnt_path)
 		   (unsigned long long)sdp->device.length,
 		   (unsigned long long)sdp->device.length);
 	log_notice(_("The file system will grow by %lluMB.\n"),
-		   (unsigned long long)(fsgrowth * sdp->bsize) / MB);
+		   (unsigned long long)(fsgrowth * sdp->sd_bsize) / MB);
 }
 
 static int open_rindex(char *metafs_path, int mode)
@@ -366,7 +366,7 @@ int main(int argc, char *argv[])
 	srandom(time(NULL) ^ getpid());
 
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
-	sdp->bsize = GFS2_DEFAULT_BSIZE;
+	sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
 	sdp->rgsize = -1;
 	sdp->jsize = GFS2_DEFAULT_JSIZE;
 	sdp->qcsize = GFS2_DEFAULT_QCSIZE;
@@ -395,8 +395,8 @@ int main(int argc, char *argv[])
 			perror(mnt->mnt_fsname);
 			exit(EXIT_FAILURE);
 		}
-		sdp->sd_sb.sb_bsize = GFS2_DEFAULT_BSIZE;
-		sdp->bsize = sdp->sd_sb.sb_bsize;
+		sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
+		sdp->sd_bsize = sdp->sd_bsize;
 		if (compute_constants(sdp)) {
 			log_crit("%s\n", _("Failed to compute file system constants"));
 			exit(EXIT_FAILURE);
@@ -421,7 +421,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 		/* Get master dinode */
-		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_sb.sb_master_dir.no_addr);
+		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.no_addr);
 		if (sdp->master_dir == NULL) {
 			perror(_("Could not read master directory"));
 			exit(EXIT_FAILURE);
@@ -457,7 +457,7 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 		fsgrowth = (sdp->device.length - fssize);
-		rgcount = lgfs2_rgrps_plan(rgs, fsgrowth, ((GFS2_MAX_RGSIZE << 20) / sdp->bsize));
+		rgcount = lgfs2_rgrps_plan(rgs, fsgrowth, ((GFS2_MAX_RGSIZE << 20) / sdp->sd_bsize));
 		if (rgcount == 0) {
 			log_err( _("The calculated resource group size is too small.\n"));
 			log_err( _("%s has not grown.\n"), argv[optind]);

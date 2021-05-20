@@ -97,7 +97,7 @@ void fix_device_geometry(struct gfs2_sbd *sdp)
 {
 	struct device *device = &sdp->device;
 
-	device->length = sdp->dinfo.size / sdp->bsize;
+	device->length = sdp->dinfo.size / sdp->sd_bsize;
 
 	if (cfg_debug) {
 		printf("\nDevice Geometry:  (in FS blocks)\n");

@@ -347,7 +347,7 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 			struct_len = mtype->size;
 			ret_type = mtype->mh_type;
 		} else {
-			struct_len = sbd.bsize;
+			struct_len = sbd.sd_bsize;
 			ret_type = 0;
 		}
 	}
@@ -376,8 +376,8 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 		pgnum = (offset / screen_chunk_size);
 		if (type >= 0) {
 			print_gfs2("(p.%d of %d--%s)", pgnum + 1,
-				   (sbd.bsize % screen_chunk_size) > 0 ?
-				   sbd.bsize / screen_chunk_size + 1 : sbd.bsize /
+				   (sbd.sd_bsize % screen_chunk_size) > 0 ?
+				   sbd.sd_bsize / screen_chunk_size + 1 : sbd.sd_bsize /
 				   screen_chunk_size, allocdesc[sbd.gfs1][type]);
 		}
 		/*eol(9);*/
@@ -415,7 +415,7 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 					struct_len = (b ?
 					      sizeof(struct gfs2_meta_header) :
 					      sizeof(struct gfs2_rgrp));
-					blknum += (sbd.bsize - struct_len);
+					blknum += (sbd.sd_bsize - struct_len);
 				}
 				struct_len = sizeof(struct gfs2_meta_header);
 				/* add the number of bytes on this screen */
@@ -439,9 +439,9 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 		if (rgd)
 			gfs2_rgrp_relse(&sbd, rgd);
  	}
-	if (block == sbd.sd_sb.sb_root_dir.no_addr)
+	if (block == sbd.sd_root_dir.no_addr)
 		print_gfs2("--------------- Root directory ------------------");
-	else if (!sbd.gfs1 && block == sbd.sd_sb.sb_master_dir.no_addr)
+	else if (!sbd.gfs1 && block == sbd.sd_meta_dir.no_addr)
 		print_gfs2("-------------- Master directory -----------------");
 	else if (!sbd.gfs1 && block == RGLIST_DUMMY_BLOCK)
 		print_gfs2("------------------ RG List ----------------------");
@@ -449,11 +449,11 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 		print_gfs2("-------------------- Journal List --------------------");
 	else {
 		if (sbd.gfs1) {
-			if (block == sbd1->sb_rindex_di.no_addr)
+			if (block == sbd.sd_rindex_di.no_addr)
 				print_gfs2("---------------- rindex file -------------------");
 			else if (block == gfs1_quota_di.no_addr)
 				print_gfs2("---------------- Quota file --------------------");
-			else if (block == sbd1->sb_jindex_di.no_addr)
+			else if (block == sbd.sd_jindex_di.no_addr)
 				print_gfs2("--------------- Journal Index ------------------");
 			else if (block == gfs1_license_di.no_addr)
 				print_gfs2("--------------- License file -------------------");
@@ -504,7 +504,7 @@ static int hexdump(uint64_t startaddr, uint64_t len, int trunc_zeros,
 	int i;
 	uint64_t l;
 	const char *lpBuffer = bh->b_data;
-	const char *zeros_strt = lpBuffer + sbd.bsize;
+	const char *zeros_strt = lpBuffer + sbd.sd_bsize;
 	int print_field, cursor_line;
 	const struct lgfs2_metadata *m = get_block_type(bh->b_data);
 	uint64_t *ref;
@@ -522,7 +522,7 @@ static int hexdump(uint64_t startaddr, uint64_t len, int trunc_zeros,
 	print_entry_ndx = 0;
 	while (((termlines && line < termlines &&
 		 line <= ((screen_chunk_size / 16) + 2)) ||
-		(!termlines && l < len)) && l < sbd.bsize) {
+		(!termlines && l < len)) && l < sbd.sd_bsize) {
 		int ptr_not_null = 0;
 
 		if (termlines) {
@@ -715,7 +715,7 @@ static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
 	foffset = rg * sizeof(struct gfs2_rindex);
 	if (sbd.gfs1) {
 		uint64_t sd_jbsize =
-			(sbd.bsize - sizeof(struct gfs2_meta_header));
+			(sbd.sd_bsize - sizeof(struct gfs2_meta_header));
 
 		gfs1_adj = (foffset / sd_jbsize) *
 			sizeof(struct gfs2_meta_header);
@@ -753,7 +753,7 @@ static uint64_t get_rg_addr(int rgnum)
 	struct gfs2_inode *riinode;
 
 	if (sbd.gfs1)
-		gblock = sbd1->sb_rindex_di.no_addr;
+		gblock = sbd.sd_rindex_di.no_addr;
 	else
 		gblock = masterblock("rindex");
 	riinode = lgfs2_inode_read(&sbd, gblock);
@@ -827,7 +827,7 @@ int has_indirect_blocks(void)
 
 int block_is_rindex(uint64_t blk)
 {
-	if ((sbd.gfs1 && blk == sbd1->sb_rindex_di.no_addr) ||
+	if ((sbd.gfs1 && blk == sbd.sd_rindex_di.no_addr) ||
 	    (blk == masterblock("rindex")))
 		return TRUE;
 	return FALSE;
@@ -835,7 +835,7 @@ int block_is_rindex(uint64_t blk)
 
 int block_is_jindex(uint64_t blk)
 {
-	if ((sbd.gfs1 && blk == sbd1->sb_jindex_di.no_addr))
+	if ((sbd.gfs1 && blk == sbd.sd_jindex_di.no_addr))
 		return TRUE;
 	return FALSE;
 }
@@ -891,10 +891,11 @@ static int block_has_extended_info(void)
 
 static void read_superblock(int fd)
 {
-	sbd1 = (struct gfs_sb *)&sbd.sd_sb;
+	struct gfs2_meta_header *mh;
+
 	ioctl(fd, BLKFLSBUF, 0);
 	memset(&sbd, 0, sizeof(struct gfs2_sbd));
-	sbd.bsize = GFS2_DEFAULT_BSIZE;
+	sbd.sd_bsize = GFS2_DEFAULT_BSIZE;
 	sbd.device_fd = fd;
 	bh = bread(&sbd, 0x10);
 	sbd.jsize = GFS2_DEFAULT_JSIZE;
@@ -902,26 +903,19 @@ static void read_superblock(int fd)
 	sbd.qcsize = GFS2_DEFAULT_QCSIZE;
 	sbd.time = time(NULL);
 	sbd.rgtree.osi_node = NULL;
-	gfs2_sb_in(&sbd.sd_sb, bh->b_data);
+	lgfs2_sb_in(&sbd, bh->b_data);
 	/* Check to see if this is really gfs1 */
-	if (sbd1->sb_fs_format == GFS_FORMAT_FS &&
-		sbd1->sb_header.mh_type == GFS_METATYPE_SB &&
-		sbd1->sb_header.mh_format == GFS_FORMAT_SB &&
-		sbd1->sb_multihost_format == GFS_FORMAT_MULTI) {
-		struct gfs_sb *sbbuf = (struct gfs_sb *)bh->b_data;
-
+	mh = (struct gfs2_meta_header *)bh->b_data;
+	if (sbd.sd_fs_format == GFS_FORMAT_FS &&
+	    be32_to_cpu(mh->mh_type) == GFS_METATYPE_SB &&
+	    be32_to_cpu(mh->mh_format) == GFS_FORMAT_SB &&
+	    sbd.sd_multihost_format == GFS_FORMAT_MULTI) {
 		sbd.gfs1 = TRUE;
-		sbd1->sb_flags = be32_to_cpu(sbbuf->sb_flags);
-		sbd1->sb_seg_size = be32_to_cpu(sbbuf->sb_seg_size);
-		gfs2_inum_in(&sbd1->sb_rindex_di, (void *)&sbbuf->sb_rindex_di);
-		gfs2_inum_in(&gfs1_quota_di, (void *)&sbbuf->sb_quota_di);
-		gfs2_inum_in(&gfs1_license_di, (void *)&sbbuf->sb_license_di);
 	}
 	else
 		sbd.gfs1 = FALSE;
-	sbd.bsize = sbd.sd_sb.sb_bsize;
-	if (!sbd.bsize)
-		sbd.bsize = GFS2_DEFAULT_BSIZE;
+	if (!sbd.sd_bsize)
+		sbd.sd_bsize = GFS2_DEFAULT_BSIZE;
 	if (lgfs2_get_dev_info(fd, &sbd.dinfo)) {
 		perror(device);
 		exit(-1);
@@ -930,26 +924,25 @@ static void read_superblock(int fd)
 		fprintf(stderr, "Failed to compute constants.\n");
 		exit(-1);
 	}
-	if (sbd.gfs1 || (sbd.sd_sb.sb_header.mh_magic == GFS2_MAGIC &&
-		     sbd.sd_sb.sb_header.mh_type == GFS2_METATYPE_SB))
-		block = 0x10 * (GFS2_DEFAULT_BSIZE / sbd.bsize);
+	if (sbd.gfs1 || (be32_to_cpu(mh->mh_magic) == GFS2_MAGIC &&
+	                 be32_to_cpu(mh->mh_type) == GFS2_METATYPE_SB))
+		block = 0x10 * (GFS2_DEFAULT_BSIZE / sbd.sd_bsize);
 	else {
 		block = starting_blk = 0;
 	}
 	fix_device_geometry(&sbd);
 	if(sbd.gfs1) {
-		sbd.sd_inptrs = (sbd.bsize - sizeof(struct gfs_indirect)) /
+		sbd.sd_inptrs = (sbd.sd_bsize - sizeof(struct gfs_indirect)) /
 			sizeof(uint64_t);
-		sbd.sd_diptrs = (sbd.bsize - sizeof(struct gfs_dinode)) /
+		sbd.sd_diptrs = (sbd.sd_bsize - sizeof(struct gfs_dinode)) /
 			sizeof(uint64_t);
-		sbd.md.riinode = lgfs2_inode_read(&sbd, sbd1->sb_rindex_di.no_addr);
+		sbd.md.riinode = lgfs2_inode_read(&sbd, sbd.sd_rindex_di.no_addr);
 	} else {
-		sbd.sd_inptrs = (sbd.bsize - sizeof(struct gfs2_meta_header)) /
+		sbd.sd_inptrs = (sbd.sd_bsize - sizeof(struct gfs2_meta_header)) /
 			sizeof(uint64_t);
-		sbd.sd_diptrs = (sbd.bsize - sizeof(struct gfs2_dinode)) /
+		sbd.sd_diptrs = (sbd.sd_bsize - sizeof(struct gfs2_dinode)) /
 			sizeof(uint64_t);
-		sbd.master_dir = lgfs2_inode_read(&sbd,
-					    sbd.sd_sb.sb_master_dir.no_addr);
+		sbd.master_dir = lgfs2_inode_read(&sbd, sbd.sd_meta_dir.no_addr);
 		if (sbd.master_dir == NULL) {
 			sbd.md.riinode = NULL;
 		} else {
@@ -980,7 +973,7 @@ static int read_master_dir(void)
 {
 	ioctl(sbd.device_fd, BLKFLSBUF, 0);
 
-	bh = bread(&sbd, sbd.sd_sb.sb_master_dir.no_addr);
+	bh = bread(&sbd, sbd.sd_meta_dir.no_addr);
 	if (bh == NULL)
 		return 1;
 	di = (struct gfs2_dinode *)bh->b_data;
@@ -996,12 +989,12 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 
 	if (block == RGLIST_DUMMY_BLOCK) {
 		if (sbd.gfs1)
-			blk = sbd1->sb_rindex_di.no_addr;
+			blk = sbd.sd_rindex_di.no_addr;
 		else
 			blk = masterblock("rindex");
 	} else if (block == JOURNALS_DUMMY_BLOCK) {
 		if (sbd.gfs1)
-			blk = sbd1->sb_jindex_di.no_addr;
+			blk = sbd.sd_jindex_di.no_addr;
 		else
 			blk = masterblock("jindex");
 	} else
@@ -1013,7 +1006,7 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 	if (bh == NULL || bh->b_blocknr != blk) { /* If we changed blocks from the last read */
 		if (bh != NULL)
 			brelse(bh);
-		dev_offset = blk * sbd.bsize;
+		dev_offset = blk * sbd.sd_bsize;
 		ioctl(sbd.device_fd, BLKFLSBUF, 0);
 		if (!(bh = bread(&sbd, blk))) {
 			fprintf(stderr, "read error: %s from %s:%d: "
@@ -1030,27 +1023,27 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 		return 0;
 	indirect_blocks = 0;
 	lines_per_row[dmode] = 1;
-	if (gfs2_struct_type == GFS2_METATYPE_SB || blk == 0x10 * (4096 / sbd.bsize)) {
-		gfs2_sb_in(&sbd.sd_sb, bh->b_data);
+	if (gfs2_struct_type == GFS2_METATYPE_SB || blk == 0x10 * (4096 / sbd.sd_bsize)) {
+		lgfs2_sb_in(&sbd, bh->b_data);
 		memset(indirect, 0, sizeof(struct iinfo));
-		indirect->ii[0].block = sbd.sd_sb.sb_master_dir.no_addr;
+		indirect->ii[0].block = sbd.sd_meta_dir.no_addr;
 		indirect->ii[0].is_dir = TRUE;
 		indirect->ii[0].dirents = 2;
 
 		memcpy(&indirect->ii[0].dirent[0].filename, "root", 4);
 		indirect->ii[0].dirent[0].dirent.de_inum.no_formal_ino =
-			sbd.sd_sb.sb_root_dir.no_formal_ino;
+			sbd.sd_root_dir.no_formal_ino;
 		indirect->ii[0].dirent[0].dirent.de_inum.no_addr =
-			sbd.sd_sb.sb_root_dir.no_addr;
-		indirect->ii[0].dirent[0].block = sbd.sd_sb.sb_root_dir.no_addr;
+			sbd.sd_root_dir.no_addr;
+		indirect->ii[0].dirent[0].block = sbd.sd_root_dir.no_addr;
 		indirect->ii[0].dirent[0].dirent.de_type = DT_DIR;
 
 		memcpy(&indirect->ii[0].dirent[1].filename, "master", 7);
 		indirect->ii[0].dirent[1].dirent.de_inum.no_formal_ino = 
-			sbd.sd_sb.sb_master_dir.no_formal_ino;
+			sbd.sd_meta_dir.no_formal_ino;
 		indirect->ii[0].dirent[1].dirent.de_inum.no_addr =
-			sbd.sd_sb.sb_master_dir.no_addr;
-		indirect->ii[0].dirent[1].block = sbd.sd_sb.sb_master_dir.no_addr;
+			sbd.sd_meta_dir.no_addr;
+		indirect->ii[0].dirent[1].block = sbd.sd_meta_dir.no_addr;
 		indirect->ii[0].dirent[1].dirent.de_type = DT_DIR;
 	}
 	else if (gfs2_struct_type == GFS2_METATYPE_DI) {
@@ -1085,7 +1078,7 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 		move(line, 0);
 	}
 	if (dmode == HEX_MODE) {         /* if hex display mode           */
-		uint64_t len = sbd.bsize;
+		uint64_t len = sbd.sd_bsize;
 
 		if (gfs2_struct_type == GFS2_METATYPE_DI)
 			len = struct_len + be64_to_cpu(di->di_size);
@@ -1164,7 +1157,7 @@ static uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int p
 	int found = 0;
 	struct gfs2_buffer_head *lbh;
 
-	last_fs_block = lseek(sbd.device_fd, 0, SEEK_END) / sbd.bsize;
+	last_fs_block = lseek(sbd.device_fd, 0, SEEK_END) / sbd.sd_bsize;
 	for (blk = startblk + 1; blk < last_fs_block; blk++) {
 		lbh = bread(&sbd, blk);
 		/* Can't use get_block_type here (returns false "none") */
@@ -1197,7 +1190,7 @@ static int find_rg_metatype(struct rgrp_tree *rgd, uint64_t *blk, uint64_t start
 	int found;
 	unsigned i, j, m;
 	struct gfs2_buffer_head *bhp = NULL;
-	uint64_t *ibuf = malloc(sbd.bsize * GFS2_NBBY * sizeof(uint64_t));
+	uint64_t *ibuf = malloc(sbd.sd_bsize * GFS2_NBBY * sizeof(uint64_t));
 
 	for (i = 0; i < rgd->rt_length; i++) {
 		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_DINODE);
@@ -1322,21 +1315,21 @@ uint64_t check_keywords(const char *kword)
 	unsigned long long blk = 0;
 
 	if (!strcmp(kword, "sb") ||!strcmp(kword, "superblock"))
-		blk = 0x10 * (4096 / sbd.bsize); /* superblock */
+		blk = 0x10 * (4096 / sbd.sd_bsize); /* superblock */
 	else if (!strcmp(kword, "root") || !strcmp(kword, "rootdir"))
-		blk = sbd.sd_sb.sb_root_dir.no_addr;
+		blk = sbd.sd_root_dir.no_addr;
 	else if (!strcmp(kword, "master")) {
 		if (sbd.gfs1)
 			fprintf(stderr, "This is GFS1; there's no master directory.\n");
-		else if (!sbd.sd_sb.sb_master_dir.no_addr) {
+		else if (!sbd.sd_meta_dir.no_addr) {
 			fprintf(stderr, "GFS2 master directory not found on %s\n", device);
 			exit(-1);
 		} else
-			blk = sbd.sd_sb.sb_master_dir.no_addr;
+			blk = sbd.sd_meta_dir.no_addr;
 	}
 	else if (!strcmp(kword, "jindex")) {
 		if (sbd.gfs1)
-			blk = sbd1->sb_jindex_di.no_addr;
+			blk = sbd.sd_jindex_di.no_addr;
 		else
 			blk = masterblock("jindex"); /* journal index */
 	}
@@ -1352,7 +1345,7 @@ uint64_t check_keywords(const char *kword)
 	}
 	else if (!strcmp(kword, "rindex") || !strcmp(kword, "rgindex")) {
 		if (sbd.gfs1)
-			blk = sbd1->sb_rindex_di.no_addr;
+			blk = sbd.sd_rindex_di.no_addr;
 		else
 			blk = masterblock("rindex");
 	} else if (!strcmp(kword, "rgs")) {
@@ -1448,7 +1441,7 @@ static void hex_edit(int *exitch)
 	int left_off;
 	int ch;
 
-	left_off = ((block * sbd.bsize) < 0xffffffff) ? 9 : 17;
+	left_off = ((block * sbd.sd_bsize) < 0xffffffff) ? 9 : 17;
 	/* 8 and 16 char addresses on screen */
 	
 	if (bobgets(estring, edit_row[HEX_MODE] + 3,
@@ -1480,8 +1473,8 @@ static void hex_edit(int *exitch)
 					ch += (estring[i+1] - 'A' + 0x0a);
 				bh->b_data[offset + hexoffset] = ch;
 			}
-			if (pwrite(sbd.device_fd, bh->b_data, sbd.bsize, dev_offset) !=
-			    sbd.bsize) {
+			if (pwrite(sbd.device_fd, bh->b_data, sbd.sd_bsize, dev_offset) !=
+			    sbd.sd_bsize) {
 				fprintf(stderr, "write error: %s from %s:%d: "
 					"offset %lld (0x%llx)\n",
 					strerror(errno),
@@ -1515,10 +1508,10 @@ static void pageup(void)
 		if (dmode == GFS2_MODE || offset==0) {
 			block--;
 			if (dmode == HEX_MODE)
-				offset = (sbd.bsize % screen_chunk_size) > 0 ?
+				offset = (sbd.sd_bsize % screen_chunk_size) > 0 ?
 					screen_chunk_size *
-					(sbd.bsize / screen_chunk_size) :
-					sbd.bsize - screen_chunk_size;
+					(sbd.sd_bsize / screen_chunk_size) :
+					sbd.sd_bsize - screen_chunk_size;
 			else
 				offset = 0;
 		} else
@@ -1546,7 +1539,7 @@ static void pagedn(void)
 	else {
 		start_row[dmode] = edit_row[dmode] = 0;
 		if (dmode == GFS2_MODE ||
-		    offset + screen_chunk_size >= sbd.bsize) {
+		    offset + screen_chunk_size >= sbd.sd_bsize) {
 			block++;
 			offset = 0;
 		} else
@@ -1844,7 +1837,7 @@ static void interactive_mode(void)
 				edit_row[dmode] = 0;
 			}
 			else {
-				block = 0x10 * (4096 / sbd.bsize);
+				block = 0x10 * (4096 / sbd.sd_bsize);
 				push_block(block);
 				offset = 0;
 			}
@@ -2210,7 +2203,7 @@ static int count_dinode_bits(struct gfs2_buffer_head *rbh)
 	else
 		blk = sizeof(struct gfs2_meta_header);
 
-	for (; blk < sbd.bsize; blk++) {
+	for (; blk < sbd.sd_bsize; blk++) {
 		byte = rbh->b_data + (blk / GFS2_NBBY);
 		bit = (blk % GFS2_NBBY) * GFS2_BIT_SIZE;
 		if (((*byte >> bit) & GFS2_BIT_MASK) == GFS2_BLKST_DINODE)
@@ -2255,7 +2248,7 @@ static void rg_repair(void)
 			if (gfs2_check_meta(rbh->b_data, mtype)) { /* wrong type */
 				printf("Damaged. Repairing...");
 				/* Fix the meta header */
-				memset(rbh->b_data, 0, sbd.bsize);
+				memset(rbh->b_data, 0, sbd.sd_bsize);
 				mh = (struct gfs2_meta_header *)rbh->b_data;
 				mh->mh_magic = cpu_to_be32(GFS2_MAGIC);
 				mh->mh_type = cpu_to_be32(mtype);
@@ -2558,7 +2551,7 @@ int main(int argc, char *argv[])
 	memset(edit_size, 0, sizeof(edit_size));
 	memset(last_entry_onscreen, 0, sizeof(last_entry_onscreen));
 	dmode = INIT_MODE;
-	sbd.bsize = 4096;
+	sbd.sd_bsize = 4096;
 	block = starting_blk = 0x10;
 	for (i = 0; i < BLOCK_STACK_SIZE; i++) {
 		blockstack[i].dmode = HEX_MODE;
@@ -2582,12 +2575,12 @@ int main(int argc, char *argv[])
 	fd = open(device, O_RDWR);
 	if (fd < 0)
 		die("can't open %s: %s\n", device, strerror(errno));
-	max_block = lseek(fd, 0, SEEK_END) / sbd.bsize;
+	max_block = lseek(fd, 0, SEEK_END) / sbd.sd_bsize;
 
 	read_superblock(fd);
 	if (read_rindex())
 		exit(-1);
-	max_block = lseek(fd, 0, SEEK_END) / sbd.bsize;
+	max_block = lseek(fd, 0, SEEK_END) / sbd.sd_bsize;
 	if (sbd.gfs1)
 		edit_row[GFS2_MODE]++;
 	else if (read_master_dir() != 0)
@@ -2595,7 +2588,7 @@ int main(int argc, char *argv[])
 
 	process_parameters(argc, argv, 1); /* get what to print from cmdline */
 
-	block = blockstack[0].block = starting_blk * (4096 / sbd.bsize);
+	block = blockstack[0].block = starting_blk * (4096 / sbd.sd_bsize);
 
 	if (termlines)
 		interactive_mode();

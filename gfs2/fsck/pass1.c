@@ -898,7 +898,7 @@ static int ask_remove_eattr_entry(struct gfs2_sbd *sdp,
 	if (fix_curr)
 		curr->ea_flags |= GFS2_EAFLAG_LAST;
 	if (fix_curr_len) {
-		uint32_t max_size = sdp->sd_sb.sb_bsize;
+		uint32_t max_size = sdp->sd_bsize;
 		uint32_t offset = (uint32_t)(((unsigned long)curr) -
 					     ((unsigned long)leaf_bh->b_data));
 		curr->ea_rec_len = cpu_to_be32(max_size - offset);
@@ -938,7 +938,7 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 	char ea_name[256];
 	uint32_t offset = (uint32_t)(((unsigned long)ea_hdr) -
 				     ((unsigned long)leaf_bh->b_data));
-	uint32_t max_size = sdp->sd_sb.sb_bsize;
+	uint32_t max_size = sdp->sd_bsize;
 	uint32_t avail_size;
 	int max_ptrs;
 
@@ -968,11 +968,11 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 	strncpy(ea_name, (char *)ea_hdr + sizeof(struct gfs2_ea_header),
 		ea_hdr->ea_name_len);
 
-	if (ea_hdr->ea_type > eatype_max(sdp->sd_sb.sb_fs_format) &&
+	if (ea_hdr->ea_type > eatype_max(sdp->sd_fs_format) &&
 	   ((ea_hdr_prev) || (!ea_hdr_prev && ea_hdr->ea_type))){
 		/* Skip invalid entry */
 		log_err(_("EA (%s) type is invalid (%d > %d).\n"),
-			ea_name, ea_hdr->ea_type, eatype_max(sdp->sd_sb.sb_fs_format));
+			ea_name, ea_hdr->ea_type, eatype_max(sdp->sd_fs_format));
 		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 0, 0);
 	}
@@ -980,7 +980,7 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 	if (!ea_hdr->ea_num_ptrs)
 		return 0;
 
-	avail_size = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header);
+	avail_size = sdp->sd_bsize - sizeof(struct gfs2_meta_header);
 	max_ptrs = (be32_to_cpu(ea_hdr->ea_data_len)+avail_size-1)/avail_size;
 
 	if (max_ptrs > ea_hdr->ea_num_ptrs) {
@@ -1812,7 +1812,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 	int q;
 	/* Readahead numbers arrived at by experiment */
 	unsigned rawin = 50;
-	unsigned ralen = 100 * sdp->bsize;
+	unsigned ralen = 100 * sdp->sd_bsize;
 	unsigned r = 0;
 
 	for (i = 0; i < n; i++) {
@@ -1822,7 +1822,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 		block = ibuf[i];
 
 		if (r++ == rawin) {
-			posix_fadvise(sdp->device_fd, block * sdp->bsize, ralen, POSIX_FADV_WILLNEED);
+			posix_fadvise(sdp->device_fd, block * sdp->sd_bsize, ralen, POSIX_FADV_WILLNEED);
 			r = 0;
 		}
 
@@ -1938,7 +1938,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 static int pass1_process_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
 	unsigned k, n, i;
-	uint64_t *ibuf = malloc(sdp->bsize * GFS2_NBBY * sizeof(uint64_t));
+	uint64_t *ibuf = malloc(sdp->sd_bsize * GFS2_NBBY * sizeof(uint64_t));
 	int ret = 0;
 
 	if (ibuf == NULL)

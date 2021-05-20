@@ -350,9 +350,9 @@ close_fd:
 static int add_qc(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	int fd, error = 0;
-	char new_name[256], buf[sdp->bsize];
+	char new_name[256], buf[sdp->sd_bsize];
 	unsigned int blocks =
-		sdp->qcsize << (20 - sdp->sd_sb.sb_bsize_shift);
+		sdp->qcsize << (20 - sdp->sd_bsize_shift);
 	unsigned int x;
 	struct gfs2_meta_header mh;
 
@@ -362,9 +362,9 @@ static int add_qc(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	if ((error = set_flags(fd, JA_FL_CLEAR, FS_JOURNAL_DATA_FL)))
 		goto close_fd;
 
-	memset(buf, 0, sdp->bsize);
+	memset(buf, 0, sdp->sd_bsize);
 	for (x=0; x<blocks; x++) {
-		if (write(fd, buf, sdp->bsize) != sdp->bsize) {
+		if (write(fd, buf, sdp->sd_bsize) != sdp->sd_bsize) {
 			perror("add_qc write");
 			error = -1;
 			goto close_fd;
@@ -383,7 +383,7 @@ static int add_qc(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	gfs2_meta_header_out(&mh, buf);
 
 	for (x=0; x<blocks; x++) {
-		if (write(fd, buf, sdp->bsize) != sdp->bsize) {
+		if (write(fd, buf, sdp->sd_bsize) != sdp->sd_bsize) {
 			perror("add_qc write");
 			error = 1;
 			goto close_fd;
@@ -413,7 +413,7 @@ static int gather_info(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 		return -1;
 	}
 
-	sdp->bsize = statbuf.f_bsize;
+	sdp->sd_bsize = statbuf.f_bsize;
 	sdp->blks_total = statbuf.f_blocks;
 	sdp->blks_alloced = sdp->blks_total - statbuf.f_bfree;
 
@@ -518,12 +518,12 @@ static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	int fd, error = 0;
 	char new_name[256], *buf;
-	uint32_t x, blocks = sdp->jsize << (20 - sdp->sd_sb.sb_bsize_shift);
+	uint32_t x, blocks = sdp->jsize << (20 - sdp->sd_bsize_shift);
 	struct gfs2_log_header *lh;
 	uint64_t seq = RANDOM(blocks), addr = 0;
 	off_t off = 0;
 
-	buf = calloc(1, sdp->bsize);
+	buf = calloc(1, sdp->sd_bsize);
 	if (buf == NULL)
 		return -1;
 
@@ -562,14 +562,14 @@ static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 		lh->lh_blkno = cpu_to_be32(x);
 		hash = lgfs2_log_header_hash(buf);
 		lh->lh_hash = cpu_to_be32(hash);
-		if (!(blk_addr = find_block_address(fd, off, sdp->bsize))) {
+		if (!(blk_addr = find_block_address(fd, off, sdp->sd_bsize))) {
 			error = -1;
 			goto close_fd;
 		}
 		lh->lh_addr = cpu_to_be64(blk_addr);
-		hash = lgfs2_log_header_crc(buf, sdp->bsize);
+		hash = lgfs2_log_header_crc(buf, sdp->sd_bsize);
 		lh->lh_crc = cpu_to_be32(hash);
-		if (write(fd, buf, sdp->bsize) != sdp->bsize) {
+		if (write(fd, buf, sdp->sd_bsize) != sdp->sd_bsize) {
 			perror("add_j write");
 			error = -1;
 			goto close_fd;
@@ -579,7 +579,7 @@ static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 
 		if (++seq == blocks)
 			seq = 0;
-		off += sdp->bsize;
+		off += sdp->sd_bsize;
 
 	}
 	error = fsync(fd);
@@ -610,8 +610,8 @@ static int check_fit(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	uint64_t blks_per_j, total_blks;
 
 	blks_per_j = 1 + 1 +
-		lgfs2_space_for_data(sdp, sdp->bsize, sdp->qcsize << 20) +
-		lgfs2_space_for_data(sdp, sdp->bsize, sdp->jsize << 20);
+		lgfs2_space_for_data(sdp, sdp->sd_bsize, sdp->qcsize << 20) +
+		lgfs2_space_for_data(sdp, sdp->sd_bsize, sdp->jsize << 20);
 	total_blks = opts->journals * blks_per_j;
 
 	if (total_blks > (sdp->blks_total - sdp->blks_alloced)) {

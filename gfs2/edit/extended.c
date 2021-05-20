@@ -62,7 +62,7 @@ static int _do_indirect_extended(char *diebuf, struct iinfo *iinf, int hgt)
 		memset(&iinf->ii[x].dirent, 0, sizeof(struct gfs2_dirents));
 	}
 	headoff = sbd.gfs1 ? sizeof(struct gfs_indirect) : sizeof(struct gfs2_meta_header);
-	for (x = headoff, y = 0; x < sbd.bsize; x += sizeof(uint64_t), y++) {
+	for (x = headoff, y = 0; x < sbd.sd_bsize; x += sizeof(uint64_t), y++) {
 		p = be64_to_cpu(*(uint64_t *)(diebuf + x));
 		if (p) {
 			iinf->ii[i_blocks].block = p;
@@ -196,7 +196,7 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 
 			file_offset = metapath_to_lblock(&ind->ii[pndx].mp,
 							 cur_height) *
-				sbd.bsize;
+				sbd.sd_bsize;
 			print_gfs2("     ");
 			h = 'K';
 			human_off = (file_offset / 1024.0);
@@ -378,7 +378,7 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 			"display_indirect\n");
 		return;
 	}
-	tmpbuf = malloc(sbd.bsize);
+	tmpbuf = malloc(sbd.sd_bsize);
 	if (!tmpbuf) {
 		fprintf(stderr, "Out of memory in function "
 			"display_indirect\n");
@@ -387,7 +387,7 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 	}
 	while (thisblk) {
 		/* read in the desired block */
-		if (pread(sbd.device_fd, tmpbuf, sbd.bsize, thisblk * sbd.bsize) != sbd.bsize) {
+		if (pread(sbd.device_fd, tmpbuf, sbd.sd_bsize, thisblk * sbd.sd_bsize) != sbd.sd_bsize) {
 			fprintf(stderr, "bad read: %s from %s:%d: block %"PRIu64
 				" (0x%"PRIx64")\n", strerror(errno), __FUNCTION__,
 				__LINE__, ind->ii[pndx].block, ind->ii[pndx].block);
@@ -543,7 +543,7 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 				struct gfs2_rgrp r = {0};
 				ssize_t ret;
 
-				ret = pread(sbd.device_fd, &r, sizeof(r), rg.rt_addr * sbd.bsize);
+				ret = pread(sbd.device_fd, &r, sizeof(r), rg.rt_addr * sbd.sd_bsize);
 				if (ret != sizeof(r)) {
 					perror("Failed to read resource group");
 				} else if (sbd.gfs1) {
@@ -646,7 +646,7 @@ int display_extended(void)
 		brelse(tmp_bh);
 	} else if (block_is_journals(block)) {
 		if (sbd.gfs1)
-			block = sbd1->sb_jindex_di.no_addr;
+			block = sbd.sd_jindex_di.no_addr;
 		else
 			block = masterblock("jindex");
 		print_gfs2_jindex();
@@ -657,7 +657,7 @@ int display_extended(void)
 		return -1;
 	else if (block_is_rgtree(block)) {
 		if (sbd.gfs1)
-			tmp_bh = bread(&sbd, sbd1->sb_rindex_di.no_addr);
+			tmp_bh = bread(&sbd, sbd.sd_rindex_di.no_addr);
 		else
 			tmp_bh = bread(&sbd, masterblock("rindex"));
 		tmp_inode = lgfs2_inode_get(&sbd, tmp_bh);

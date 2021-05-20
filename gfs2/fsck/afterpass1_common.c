@@ -268,7 +268,7 @@ int delete_eattr_entry(struct gfs2_inode *ip, struct gfs2_buffer_head *leaf_bh,
 	if (!ea_hdr->ea_num_ptrs)
 		return 0;
 
-	avail_size = sdp->sd_sb.sb_bsize - sizeof(struct gfs2_meta_header);
+	avail_size = sdp->sd_bsize - sizeof(struct gfs2_meta_header);
 	max_ptrs = (be32_to_cpu(ea_hdr->ea_data_len) + avail_size - 1) /
 		avail_size;
 

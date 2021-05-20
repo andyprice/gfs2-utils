@@ -46,31 +46,15 @@ int build_master(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-/**
- * Initialise a gfs2_sb structure with sensible defaults.
- */
-void lgfs2_sb_init(struct gfs2_sb *sb, unsigned bsize, unsigned format)
-{
-	memset(sb, 0, sizeof(struct gfs2_sb));
-	sb->sb_header.mh_magic = GFS2_MAGIC;
-	sb->sb_header.mh_type = GFS2_METATYPE_SB;
-	sb->sb_header.mh_format = GFS2_FORMAT_SB;
-	sb->sb_fs_format = format;
-	sb->sb_multihost_format = GFS2_FORMAT_MULTI;
-	sb->sb_bsize = bsize;
-	sb->sb_bsize_shift = ffs(bsize) - 1;
-	uuid_generate(sb->sb_uuid);
-}
-
-int lgfs2_sb_write(const struct gfs2_sb *sb, int fd, const unsigned bsize)
+int lgfs2_sb_write(const struct gfs2_sbd *sdp, int fd)
 {
 	int i, err = -1;
 	struct iovec *iov;
-	const size_t sb_addr = GFS2_SB_ADDR * GFS2_BASIC_BLOCK / bsize;
+	const size_t sb_addr = GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sdp->sd_bsize;
 	const size_t len = sb_addr + 1;
 
 	/* We only need 2 blocks: one for zeroing and a second for the superblock */
-	char *buf = calloc(2, bsize);
+	char *buf = calloc(2, sdp->sd_bsize);
 	if (buf == NULL)
 		return -1;
 
@@ -80,13 +64,13 @@ int lgfs2_sb_write(const struct gfs2_sb *sb, int fd, const unsigned bsize)
 
 	for (i = 0; i < len; i++) {
 		iov[i].iov_base = buf;
-		iov[i].iov_len = bsize;
+		iov[i].iov_len = sdp->sd_bsize;
 	}
 
-	gfs2_sb_out(sb, buf + bsize);
-	iov[sb_addr].iov_base = buf + bsize;
+	lgfs2_sb_out(sdp, buf + sdp->sd_bsize);
+	iov[sb_addr].iov_base = buf + sdp->sd_bsize;
 
-	if (pwritev(fd, iov, len, 0) < (len * bsize))
+	if (pwritev(fd, iov, len, 0) < (len * sdp->sd_bsize))
 		goto out_iov;
 
 	err = 0;
@@ -125,14 +109,14 @@ uint32_t lgfs2_log_header_crc(char *buf, unsigned bsize)
 int lgfs2_write_journal_data(struct gfs2_inode *ip)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	unsigned blocks = (ip->i_size + sdp->bsize - 1) / sdp->bsize;
+	unsigned blocks = (ip->i_size + sdp->sd_bsize - 1) / sdp->sd_bsize;
 	uint64_t jext0 = ip->i_addr + ip->i_blocks - blocks;
 	uint64_t seq = ((blocks) * (random() / (RAND_MAX + 1.0)));
 	struct gfs2_log_header *lh;
 	uint64_t jblk = jext0;
 	char *buf;
 
-	buf = calloc(1, sdp->bsize);
+	buf = calloc(1, sdp->sd_bsize);
 	if (buf == NULL)
 		return -1;
 
@@ -152,10 +136,10 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 		hash = lgfs2_log_header_hash(buf);
 		lh->lh_hash = cpu_to_be32(hash);
 		lh->lh_addr = cpu_to_be64(jblk);
-		hash = lgfs2_log_header_crc(buf, sdp->bsize);
+		hash = lgfs2_log_header_crc(buf, sdp->sd_bsize);
 		lh->lh_crc = cpu_to_be32(hash);
 
-		if (pwrite(sdp->device_fd, buf, sdp->bsize, jblk * sdp->bsize) != sdp->bsize) {
+		if (pwrite(sdp->device_fd, buf, sdp->sd_bsize, jblk * sdp->sd_bsize) != sdp->sd_bsize) {
 			free(buf);
 			return -1;
 		}
@@ -186,9 +170,9 @@ static struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip, uint64_t lbn
 		return NULL;
 
 	if (!prealloc && new &&
-	    ip->i_size < (lbn + 1) << sdp->sd_sb.sb_bsize_shift) {
+	    ip->i_size < (lbn + 1) << sdp->sd_bsize_shift) {
 		bmodified(ip->i_bh);
-		ip->i_size = (lbn + 1) << sdp->sd_sb.sb_bsize_shift;
+		ip->i_size = (lbn + 1) << sdp->sd_bsize_shift;
 	}
 	if (dbn == ip->i_addr)
 		return ip->i_bh;
@@ -259,8 +243,8 @@ int build_journal(struct gfs2_sbd *sdp, int j, struct gfs2_inode *jindex)
 	if (sdp->md.journal[j] == NULL) {
 		return errno;
 	}
-	ret = write_journal(sdp->md.journal[j], sdp->bsize,
-			    sdp->jsize << 20 >> sdp->sd_sb.sb_bsize_shift);
+	ret = write_journal(sdp->md.journal[j], sdp->sd_bsize,
+			    sdp->jsize << 20 >> sdp->sd_bsize_shift);
 	return ret;
 }
 
@@ -387,7 +371,7 @@ int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 	struct gfs2_meta_header mh;
 	char name[256];
 	struct gfs2_inode *ip;
-	unsigned int blocks = sdp->qcsize << (20 - sdp->sd_sb.sb_bsize_shift);
+	unsigned int blocks = sdp->qcsize << (20 - sdp->sd_bsize_shift);
 	unsigned int x;
 	unsigned int hgt;
 	struct gfs2_buffer_head *bh;
@@ -403,7 +387,7 @@ int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 		return errno;
 	}
 
-	hgt = calc_tree_height(ip, (blocks + 1) * sdp->bsize);
+	hgt = calc_tree_height(ip, (blocks + 1) * sdp->sd_bsize);
 	build_height(ip, hgt);
 
 	for (x = 0; x < blocks; x++) {
@@ -411,7 +395,7 @@ int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 		if (!bh)
 			return -1;
 
-		memset(bh->b_data, 0, sdp->bsize);
+		memset(bh->b_data, 0, sdp->sd_bsize);
 		gfs2_meta_header_out(&mh, bh->b_data);
 		bmodified(bh);
 		brelse(bh);

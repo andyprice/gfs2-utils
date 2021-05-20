@@ -93,7 +93,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 		return;
 	}
 
-	bsize = (fs_is_jdata(ip)) ? sdp->sd_jbsize : sdp->bsize;
+	bsize = (fs_is_jdata(ip)) ? sdp->sd_jbsize : sdp->sd_bsize;
 
 	height = calc_tree_height(ip, (lblock + 1) * bsize);
 	if (ip->i_height < height) {
@@ -180,15 +180,15 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 		return 0;
 
 	if (!ip->i_height && /* stuffed */
-	    ((start + size) > (sdp->bsize - sizeof(struct gfs_dinode))))
+	    ((start + size) > (sdp->sd_bsize - sizeof(struct gfs_dinode))))
 		unstuff_dinode(ip);
 
 	if (journaled) {
 		lblock = offset / sdp->sd_jbsize;
 		offset %= sdp->sd_jbsize;
 	} else {
-		lblock = offset >> sdp->sd_sb.sb_bsize_shift;
-		offset &= sdp->bsize - 1;
+		lblock = offset >> sdp->sd_bsize_shift;
+		offset &= sdp->sd_bsize - 1;
 	}
 
 	if (!ip->i_height) /* stuffed */
@@ -198,8 +198,8 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 
 	while (copied < size) {
 		amount = size - copied;
-		if (amount > sdp->bsize - offset)
-			amount = sdp->bsize - offset;
+		if (amount > sdp->sd_bsize - offset)
+			amount = sdp->sd_bsize - offset;
 
 		if (!extlen){
 			new = 1;
@@ -297,7 +297,7 @@ struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 	bh = bget(sdp, di_addr);
 	if (bh == NULL)
 		return NULL;
-	if (pread(sdp->device_fd, bh->b_data, sdp->bsize, di_addr * sdp->bsize) != sdp->bsize) {
+	if (pread(sdp->device_fd, bh->b_data, sdp->sd_bsize, di_addr * sdp->sd_bsize) != sdp->sd_bsize) {
 		brelse(bh);
 		return NULL;
 	}

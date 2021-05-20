@@ -46,7 +46,6 @@ struct blkstack_info blockstack[BLOCK_STACK_SIZE];
 int identify = FALSE;
 uint64_t max_block = 0;
 int start_row[DMODES], end_row[DMODES], lines_per_row[DMODES];
-struct gfs_sb *sbd1;
 int gfs2_struct_type;
 unsigned int offset;
 struct indirect_info masterdir;
@@ -246,7 +245,7 @@ void do_dinode_extended(char *buf)
 	memset(indirect, 0, sizeof(struct iinfo));
 	if (be16_to_cpu(dip->di_height) > 0) {
 		/* Indirect pointers */
-		for (x = sizeof(struct gfs2_dinode); x < sbd.bsize;
+		for (x = sizeof(struct gfs2_dinode); x < sbd.sd_bsize;
 			 x += sizeof(uint64_t)) {
 			p = be64_to_cpu(*(uint64_t *)(buf + x));
 			if (p) {
@@ -268,7 +267,7 @@ void do_dinode_extended(char *buf)
 		indirect->ii[0].dirents = 0;
 		indirect->ii[0].block = block;
 		indirect->ii[0].is_dir = TRUE;
-		for (x = sizeof(struct gfs2_dinode); x < sbd.bsize; x += skip) {
+		for (x = sizeof(struct gfs2_dinode); x < sbd.sd_bsize; x += skip) {
 			skip = indirect_dirent(indirect->ii, buf + x,
 					       indirect->ii[0].dirents);
 			if (skip <= 0)
@@ -298,7 +297,7 @@ void do_dinode_extended(char *buf)
 				gfs2_leaf_in(&leaf, tmp_bh->b_data);
 				indirect->ii[indirect_blocks].dirents = 0;
 				for (direntcount = 0, bufoffset = sizeof(struct gfs2_leaf);
-					 bufoffset < sbd.bsize;
+					 bufoffset < sbd.sd_bsize;
 					 direntcount++, bufoffset += skip) {
 					skip = indirect_dirent(&indirect->ii[indirect_blocks],
 										   tmp_bh->b_data + bufoffset,
@@ -327,7 +326,7 @@ uint64_t do_leaf_extended(char *dlebuf, struct iinfo *indir)
 	memset(indir, 0, sizeof(*indir));
 	gfs2_leaf_in(&indir->ii[0].lf, dlebuf);
 	/* Directory Entries: */
-	for (i = sizeof(struct gfs2_leaf); i < sbd.bsize;
+	for (i = sizeof(struct gfs2_leaf); i < sbd.sd_bsize;
 	     i += de.de_rec_len) {
 		gfs2_dirent_in(&de, dlebuf + i);
 		if (de.de_inum.no_addr) {
@@ -359,7 +358,7 @@ static void do_eattr_extended(char *buf)
 	print_gfs2("Eattr Entries:");
 	eol(0);
 
-	for (x = sizeof(struct gfs2_meta_header); x < sbd.bsize; x += rec_len)
+	for (x = sizeof(struct gfs2_meta_header); x < sbd.sd_bsize; x += rec_len)
 	{
 		eol(0);
 		buf += x;

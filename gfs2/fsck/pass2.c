@@ -1017,7 +1017,7 @@ static int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
 	dip->i_blocks++;
 	bmodified(dip->i_bh);
 	nbh = bget(dip->i_sbd, *bn);
-	memset(nbh->b_data, 0, dip->i_sbd->bsize);
+	memset(nbh->b_data, 0, dip->i_sbd->sd_bsize);
 	leaf = (struct gfs2_leaf *)nbh->b_data;
 	leaf->lf_header.mh_magic = cpu_to_be32(GFS2_MAGIC);
 	leaf->lf_header.mh_type = cpu_to_be32(GFS2_METATYPE_LF);
@@ -1026,7 +1026,7 @@ static int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
 
 	/* initialize the first dirent on the new leaf block */
 	dent = (struct gfs2_dirent *)(nbh->b_data + sizeof(struct gfs2_leaf));
-	dent->de_rec_len = cpu_to_be16(dip->i_sbd->bsize -
+	dent->de_rec_len = cpu_to_be16(dip->i_sbd->sd_bsize -
 				       sizeof(struct gfs2_leaf));
 	bmodified(nbh);
 	brelse(nbh);
@@ -1119,7 +1119,7 @@ static int lost_leaf(struct gfs2_inode *ip, uint64_t *tbl, uint64_t leafno,
 		     int ref_count, int lindex, struct gfs2_buffer_head *bh)
 {
 	char *filename;
-	char *bh_end = bh->b_data + ip->i_sbd->bsize;
+	char *bh_end = bh->b_data + ip->i_sbd->sd_bsize;
 	struct gfs2_dirent de, *dent;
 	int error;
 	int isdir = 0;
@@ -1382,7 +1382,7 @@ static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
 	gfs2_dirent_in(&dentry, (char *)de);
 
 	/* If this is an empty leaf, we can just delete it and pad. */
-	if ((dentry.de_rec_len == cpu_to_be16(ip->i_sbd->bsize -
+	if ((dentry.de_rec_len == cpu_to_be16(ip->i_sbd->sd_bsize -
 					      sizeof(struct gfs2_leaf))) &&
 	    (dentry.de_inum.no_formal_ino == 0)) {
 		brelse(lbh);

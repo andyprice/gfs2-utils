@@ -307,12 +307,25 @@ struct master_dir
 
 #define LGFS2_SB_ADDR(sdp) (GFS2_SB_ADDR >> (sdp)->sd_fsb2bb_shift)
 struct gfs2_sbd {
-	struct gfs2_sb sd_sb;    /* a copy of the ondisk structure */
-
-	unsigned int bsize;	     /* The block size of the FS (in bytes) */
-	unsigned int jsize;	     /* Size of journals (in MB) */
-	unsigned int rgsize;     /* Size of resource groups (in MB) */
-	unsigned int qcsize;     /* Size of quota change files (in MB) */
+	/* CPU-endian counterparts to the on-disk superblock fields */
+	uint32_t sd_bsize;
+	uint32_t sd_fs_format;
+	uint32_t sd_multihost_format;
+	uint32_t sd_flags; /* gfs1 */
+	struct {
+		uint64_t no_formal_ino;
+		uint64_t no_addr;
+	} sd_meta_dir,
+	  sd_root_dir,
+	  sd_rindex_di,  /* gfs1 */
+	  sd_jindex_di,  /* gfs1 */
+	  sd_quota_di,   /* gfs1 */
+	  sd_license_di; /* gfs1 */
+	uint32_t sd_bsize_shift;
+	uint32_t sd_seg_size;
+	char sd_lockproto[GFS2_LOCKNAME_LEN];
+	char sd_locktable[GFS2_LOCKNAME_LEN];
+	uint8_t sd_uuid[16];
 
 	/* Constants */
 
@@ -331,7 +344,9 @@ struct gfs2_sbd {
 	uint64_t sd_heightsize[GFS2_MAX_META_HEIGHT];
 	uint64_t sd_jheightsize[GFS2_MAX_META_HEIGHT];
 
-	/* Not specified on the command line, but... */
+	unsigned int jsize;   /* Size of journals (in MB) */
+	unsigned int rgsize;  /* Size of resource groups (in MB) */
+	unsigned int qcsize;  /* Size of quota change files (in MB) */
 
 	int64_t time;
 
@@ -736,8 +751,7 @@ static inline unsigned int rgrp_size(struct rgrp_tree *rgrp)
 
 /* structures.c */
 extern int build_master(struct gfs2_sbd *sdp);
-extern void lgfs2_sb_init(struct gfs2_sb *sb, unsigned bsize, unsigned format);
-extern int lgfs2_sb_write(const struct gfs2_sb *sb, int fd, const unsigned bsize);
+extern int lgfs2_sb_write(const struct gfs2_sbd *sdp, int fd);
 extern int build_journal(struct gfs2_sbd *sdp, int j,
 			 struct gfs2_inode *jindex);
 extern int build_jindex(struct gfs2_sbd *sdp);
@@ -758,7 +772,7 @@ extern int build_statfs_change(struct gfs2_inode *per_node, unsigned int j);
 extern int build_quota_change(struct gfs2_inode *per_node, unsigned int j);
 
 /* super.c */
-extern int check_sb(struct gfs2_sb *sb);
+extern int check_sb(void *sbp);
 extern int read_sb(struct gfs2_sbd *sdp);
 extern int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok);
 extern int write_sb(struct gfs2_sbd *sdp);
@@ -774,8 +788,8 @@ extern void gfs2_inum_in(struct gfs2_inum *no, char *buf);
 extern void gfs2_inum_out(const struct gfs2_inum *no, char *buf);
 extern void gfs2_meta_header_in(struct gfs2_meta_header *mh, const char *buf);
 extern void gfs2_meta_header_out(const struct gfs2_meta_header *mh, char *buf);
-extern void gfs2_sb_in(struct gfs2_sb *sb, char *buf);
-extern void gfs2_sb_out(const struct gfs2_sb *sb, char *buf);
+extern void lgfs2_sb_in(struct gfs2_sbd *sdp, void *buf);
+extern void lgfs2_sb_out(const struct gfs2_sbd *sdp, void *buf);
 extern void lgfs2_rindex_in(lgfs2_rgrp_t rg, void *buf);
 extern void lgfs2_rindex_out(const lgfs2_rgrp_t rg, void *buf);
 extern void lgfs2_rgrp_in(lgfs2_rgrp_t rg, void *buf);

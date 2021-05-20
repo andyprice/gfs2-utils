@@ -109,14 +109,14 @@ struct rgrp_tree *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
 int lgfs2_rgrp_bitbuf_alloc(lgfs2_rgrp_t rg)
 {
 	struct gfs2_sbd *sdp = rg->rgrps->sdp;
-	size_t len = rg->rt_length * sdp->bsize;
-	unsigned long io_align = sdp->bsize;
+	size_t len = rg->rt_length * sdp->sd_bsize;
+	unsigned long io_align = sdp->sd_bsize;
 	unsigned i;
 	char *bufs;
 
 	if (rg->rgrps->align > 0) {
-		len = ROUND_UP(len, rg->rgrps->align * sdp->bsize);
-		io_align = rg->rgrps->align_off * sdp->bsize;
+		len = ROUND_UP(len, rg->rgrps->align * sdp->sd_bsize);
+		io_align = rg->rgrps->align_off * sdp->sd_bsize;
 	}
 	if (posix_memalign((void **)&bufs, io_align, len) != 0) {
 		errno = ENOMEM;
@@ -125,7 +125,7 @@ int lgfs2_rgrp_bitbuf_alloc(lgfs2_rgrp_t rg)
 	memset(bufs, 0, len);
 
 	for (i = 0; i < rg->rt_length; i++) {
-		rg->bits[i].bi_data = bufs + (i * sdp->bsize);
+		rg->bits[i].bi_data = bufs + (i * sdp->sd_bsize);
 		rg->bits[i].bi_modified = 0;
 	}
 	return 0;
@@ -189,8 +189,8 @@ void lgfs2_rgrp_crc_set(char *buf)
  */
 uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
-	unsigned length = rgd->rt_length * sdp->bsize;
-	off_t offset = rgd->rt_addr * sdp->bsize;
+	unsigned length = rgd->rt_length * sdp->sd_bsize;
+	off_t offset = rgd->rt_addr * sdp->sd_bsize;
 	char *buf;
 
 	if (length == 0 || gfs2_check_range(sdp, rgd->rt_addr))
@@ -208,7 +208,7 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 	for (unsigned i = 0; i < rgd->rt_length; i++) {
 		int mtype = (i ? GFS2_METATYPE_RB : GFS2_METATYPE_RG);
 
-		rgd->bits[i].bi_data = buf + (i * sdp->bsize);
+		rgd->bits[i].bi_data = buf + (i * sdp->sd_bsize);
 		if (gfs2_check_meta(rgd->bits[i].bi_data, mtype)) {
 			free(buf);
 			rgd->bits[0].bi_data = NULL;
@@ -232,14 +232,14 @@ void gfs2_rgrp_relse(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 	if (rgd->bits == NULL)
 		return;
 	for (unsigned i = 0; i < rgd->rt_length; i++) {
-		off_t offset = sdp->bsize * (rgd->rt_addr + i);
+		off_t offset = sdp->sd_bsize * (rgd->rt_addr + i);
 		ssize_t ret;
 
 		if (rgd->bits[i].bi_data == NULL || !rgd->bits[i].bi_modified)
 			continue;
 
-		ret = pwrite(sdp->device_fd, rgd->bits[i].bi_data, sdp->bsize, offset);
-		if (ret != sdp->bsize) {
+		ret = pwrite(sdp->device_fd, rgd->bits[i].bi_data, sdp->sd_bsize, offset);
+		if (ret != sdp->sd_bsize) {
 			fprintf(stderr, "Failed to write modified resource group at block %"PRIu64": %s\n",
 			        rgd->rt_addr, strerror(errno));
 		}
@@ -344,8 +344,8 @@ uint32_t lgfs2_rgrp_align_len(const lgfs2_rgrps_t rgs, uint32_t len)
  */
 uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgtsize)
 {
-	uint32_t maxlen = (GFS2_MAX_RGSIZE << 20) / rgs->sdp->bsize;
-	uint32_t minlen = (GFS2_MIN_RGSIZE << 20) / rgs->sdp->bsize;
+	uint32_t maxlen = (GFS2_MAX_RGSIZE << 20) / rgs->sdp->sd_bsize;
+	uint32_t minlen = (GFS2_MIN_RGSIZE << 20) / rgs->sdp->sd_bsize;
 	struct rg_spec *spec = rgs->plan->rg_specs;
 
 	/* Apps should already have checked that the rg size is <=
@@ -579,7 +579,7 @@ uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *ri, uint6
 	if (addr + len > rgs->sdp->device.length)
 		return 0;
 
-	ri_length = rgblocks2bitblocks(rgs->sdp->bsize, len, &ri_data);
+	ri_length = rgblocks2bitblocks(rgs->sdp->sd_bsize, len, &ri_data);
 	ri->ri_addr = cpu_to_be64(addr);
 	ri->ri_length = cpu_to_be32(ri_length);
 	ri->ri_data = cpu_to_be32(ri_data);
@@ -654,7 +654,7 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, ui
 	rg->rt_dinodes = 0;
 	rg->rt_skip = rg_skip;
 	rg->rt_igeneration = 0;
-	compute_bitmaps(rg, rgs->sdp->bsize);
+	compute_bitmaps(rg, rgs->sdp->sd_bsize);
 	rg->rgrps = rgs;
 	return rg;
 }
@@ -685,11 +685,11 @@ int lgfs2_rgrp_write(int fd, const lgfs2_rgrp_t rg)
 		mh->mh_format = cpu_to_be32(GFS2_FORMAT_RB);
 	}
 
-	len = sdp->bsize * rg->rt_length;
+	len = sdp->sd_bsize * rg->rt_length;
 	if (rg->rgrps->align > 0)
-		len = ROUND_UP(len, rg->rgrps->align * sdp->bsize);
+		len = ROUND_UP(len, rg->rgrps->align * sdp->sd_bsize);
 
-	ret = pwrite(fd, rg->bits[0].bi_data, len, rg->rt_addr * sdp->bsize);
+	ret = pwrite(fd, rg->bits[0].bi_data, len, rg->rt_addr * sdp->sd_bsize);
 
 	if (freebufs)
 		lgfs2_rgrp_bitbuf_free(rg);
@@ -891,7 +891,7 @@ static uint32_t lgfs2_free_extlen(const struct lgfs2_rbm *rrbm, uint32_t len)
 	while (len > 3) {
 		bi = rbm_bi(&rbm);
 		start = (uint8_t *)bi->bi_data;
-		end = start + sdp->bsize;
+		end = start + sdp->sd_bsize;
 		start += bi->bi_offset;
 		start += (rbm.offset / GFS2_NBBY);
 		bytes = (len / GFS2_NBBY) < (end - start) ? (len / GFS2_NBBY):(end - start);

@@ -107,7 +107,7 @@ static void refresh_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 		if (rgd->rt_addr + i != blkno)
 			continue;
 
-		memcpy(rgd->bits[i].bi_data, bh->b_data, sdp->bsize);
+		memcpy(rgd->bits[i].bi_data, bh->b_data, sdp->sd_bsize);
 		rgd->bits[i].bi_modified = 1;
 		if (i == 0) { /* this is the rgrp itself */
 			if (sdp->gfs1)
@@ -158,7 +158,7 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			log_err(_("Out of memory when replaying journals.\n"));
 			return FSCK_ERROR;
 		}
-		memcpy(bh_ip->b_data, bh_log->b_data, sdp->bsize);
+		memcpy(bh_ip->b_data, bh_log->b_data, sdp->sd_bsize);
 
 		check_magic = ((struct gfs2_meta_header *)
 			       (bh_ip->b_data))->mh_magic;
@@ -213,7 +213,7 @@ static int revoke_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_LB))
 				continue;
 		}
-		while (offset + sizeof(uint64_t) <= sdp->sd_sb.sb_bsize) {
+		while (offset + sizeof(uint64_t) <= sdp->sd_bsize) {
 			blkno = be64_to_cpu(*(__be64 *)(bh->b_data + offset));
 			log_info( _("Journal replay processing revoke for "
 				    "block #%lld (0x%llx) for journal+0x%x\n"),
@@ -278,7 +278,7 @@ static int databuf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			log_err(_("Out of memory when replaying journals.\n"));
 			return FSCK_ERROR;
 		}
-		memcpy(bh_ip->b_data, bh_log->b_data, sdp->bsize);
+		memcpy(bh_ip->b_data, bh_log->b_data, sdp->sd_bsize);
 
 		/* Unescape */
 		if (esc) {
@@ -399,7 +399,7 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 {
 	int error = 0, wrapped = 0;
-	uint32_t jd_blocks = ip->i_size / ip->i_sbd->sd_sb.sb_bsize;
+	uint32_t jd_blocks = ip->i_size / ip->i_sbd->sd_bsize;
 	uint32_t blk;
 	struct lgfs2_log_header lh;
 	uint64_t highest_seq = 0, lowest_seq = 0, prev_seq = 0;
@@ -467,7 +467,7 @@ int preen_is_safe(struct gfs2_sbd *sdp, int preen, int force_check)
 		return 1; /* not called by rc.sysinit--we're okay to preen */
 	if (force_check)  /* If check was forced by the user? */
 		return 1; /* user's responsibility--we're okay to preen */
-	if (!memcmp(sdp->sd_sb.sb_lockproto + 5, "nolock", 6))
+	if (!memcmp(sdp->sd_lockproto + 5, "nolock", 6))
 		return 1; /* local file system--preen is okay */
 	return 0; /* might be mounted on another node--not guaranteed safe */
 }
@@ -608,9 +608,9 @@ out:
 	log_err( _("jid=%u: Failed\n"), j);
 reinit:
 	if (query( _("Do you want to clear the journal instead? (y/n)"))) {
-		error = write_journal(sdp->md.journal[j], sdp->bsize,
+		error = write_journal(sdp->md.journal[j], sdp->sd_bsize,
 				      sdp->md.journal[j]->i_size /
-				      sdp->sd_sb.sb_bsize);
+				      sdp->sd_bsize);
 		log_err(_("jid=%u: journal was cleared.\n"), j);
 	} else {
 		log_err( _("jid=%u: journal not cleared.\n"), j);
@@ -873,7 +873,7 @@ int init_jindex(struct gfs2_sbd *sdp, int allow_ji_rebuild)
 	/* rgrepair requires the journals be read in in order to distinguish
 	   "real" rgrps from rgrps that are just copies left in journals. */
 	if (sdp->gfs1)
-		sdp->md.jiinode = lgfs2_inode_read(sdp, sbd1->sb_jindex_di.no_addr);
+		sdp->md.jiinode = lgfs2_inode_read(sdp, sdp->sd_jindex_di.no_addr);
 	else
 		gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
 

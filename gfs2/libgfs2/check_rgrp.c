@@ -34,7 +34,7 @@ static void mockup_rgrps(void)
 	ck_assert(unlink(tmpnam) == 0);
 	ck_assert(ftruncate(sdp->device_fd, MOCK_DEV_SIZE) == 0);
 
-	sdp->bsize = sdp->sd_sb.sb_bsize = 4096;
+	sdp->sd_bsize = 4096;
 	compute_constants(sdp);
 
 	rgs = lgfs2_rgrps_init(sdp, 0, 0);
@@ -115,7 +115,7 @@ START_TEST(test_rbm_find_lastblock)
 
 	/* Flag all blocks as allocated... */
 	for (i = 0; i < rg->rt_length; i++)
-		memset(rg->bits[i].bi_data, 0xff, rgs->sdp->bsize);
+		memset(rg->bits[i].bi_data, 0xff, rgs->sdp->sd_bsize);
 
 	/* ...except the final one */
 	err = gfs2_set_bitmap(rg, rg->rt_data0 + rg->rt_data - 1, GFS2_BLKST_FREE);

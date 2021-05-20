@@ -157,7 +157,6 @@ extern struct osi_root inodetree;
 extern int dups_found; /* How many duplicate references have we found? */
 extern int dups_found_first; /* How many duplicates have we found the original
 				reference for? */
-extern struct gfs_sb *sbd1;
 
 static inline int valid_block(struct gfs2_sbd *sdp, uint64_t blkno)
 {

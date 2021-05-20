@@ -44,7 +44,7 @@ void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked)
 	fsize = ip->i_size;
 	for (i = 0; i < 6 && fsize > 1024; i++)
 		fsize /= 1024;
-	chksize = blks_checked * ip->i_sbd->bsize;
+	chksize = blks_checked * ip->i_sbd->sd_bsize;
 	for (cs = 0; cs < 6 && chksize > 1024; cs++)
 		chksize /= 1024;
 	seconds = tv.tv_sec;
@@ -563,7 +563,7 @@ uint64_t find_free_blk(struct gfs2_sbd *sdp)
 		char *buf = rl->bits[block].bi_data;
 		x = (block) ? sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_rgrp);
 
-		for (; x < sdp->bsize; x++)
+		for (; x < sdp->sd_bsize; x++)
 			for (y = 0; y < GFS2_NBBY; y++) {
 				state = (buf[x] >> (GFS2_BIT_SIZE * y)) & 0x03;
 				if (state == GFS2_BLKST_FREE)
