@@ -707,9 +707,7 @@ extern int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 extern struct gfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp, char *buf);
 extern struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr);
 extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
-extern void gfs_rgrp_in(struct gfs_rgrp *rg, const char *buf);
 extern void lgfs2_gfs_rgrp_in(const lgfs2_rgrp_t rg, void *buf);
-extern void gfs_rgrp_out(const struct gfs_rgrp *rg, char *buf);
 extern void lgfs2_gfs_rgrp_out(const lgfs2_rgrp_t rg, void *buf);
 
 /* misc.c */
@@ -801,11 +799,7 @@ extern void gfs2_dirent_out(struct gfs2_dirent *de, char *buf);
 extern void gfs2_leaf_in(struct gfs2_leaf *lf, char *buf);
 extern void gfs2_leaf_out(struct gfs2_leaf *lf, char *buf);
 
-/* Printing functions */
-
-extern void gfs2_inum_print(const struct gfs2_inum *no);
-extern void gfs2_meta_header_print(const struct gfs2_meta_header *mh);
-/* These expect on-disk data instead of native-endian structs */
+/* Printing functions. These expect on-disk data */
 extern void lgfs2_inum_print(void *nop);
 extern void lgfs2_meta_header_print(void *mhp);
 extern void lgfs2_sb_print(void *sbp);

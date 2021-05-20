@@ -67,12 +67,6 @@ void gfs2_inum_out(const struct gfs2_inum *no, char *buf)
 	CPOUT_64(no, str, no_addr);
 }
 
-void gfs2_inum_print(const struct gfs2_inum *no)
-{
-	pv(no, no_formal_ino, "%"PRIu64, "0x%"PRIx64);
-	pv(no, no_addr, "%"PRIu64, "0x%"PRIx64);
-}
-
 void lgfs2_inum_print(void *nop)
 {
 	struct gfs2_inum *no = nop;
@@ -99,13 +93,6 @@ void gfs2_meta_header_out(const struct gfs2_meta_header *mh, char *buf)
 	CPOUT_32(mh, str, mh_format);
 	str->__pad0 = 0;
 	str->__pad1 = 0;
-}
-
-void gfs2_meta_header_print(const struct gfs2_meta_header *mh)
-{
-	pv(mh, mh_magic, "0x%08"PRIX32, NULL);
-	pv(mh, mh_type, "%"PRIu32, "0x%"PRIx32);
-	pv(mh, mh_format, "%"PRIu32, "0x%"PRIx32);
 }
 
 void lgfs2_meta_header_print(void *mhp)

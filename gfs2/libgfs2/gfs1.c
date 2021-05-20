@@ -320,22 +320,6 @@ void gfs_jindex_in(struct gfs_jindex *jindex, char *jbuf)
 	memcpy(jindex->ji_reserved, str->ji_reserved, 64);
 }
 
-void gfs_rgrp_in(struct gfs_rgrp *rgrp, const char *buf)
-{
-	struct gfs_rgrp *str = (struct gfs_rgrp *)buf;
-
-	gfs2_meta_header_in(&rgrp->rg_header, buf);
-	rgrp->rg_flags = be32_to_cpu(str->rg_flags);
-	rgrp->rg_free = be32_to_cpu(str->rg_free);
-	rgrp->rg_useddi = be32_to_cpu(str->rg_useddi);
-	rgrp->rg_freedi = be32_to_cpu(str->rg_freedi);
-	gfs2_inum_in(&rgrp->rg_freedi_list, (char *)&str->rg_freedi_list);
-	rgrp->rg_usedmeta = be32_to_cpu(str->rg_usedmeta);
-	rgrp->rg_freemeta = be32_to_cpu(str->rg_freemeta);
-
-	memcpy(rgrp->rg_reserved, str->rg_reserved, 64);
-}
-
 void lgfs2_gfs_rgrp_in(const lgfs2_rgrp_t rg, void *buf)
 {
 	struct gfs_rgrp *r = buf;
@@ -348,22 +332,6 @@ void lgfs2_gfs_rgrp_in(const lgfs2_rgrp_t rg, void *buf)
 	rg->rt_freedi_list.no_addr = be64_to_cpu(r->rg_freedi_list.no_addr);
 	rg->rt_usedmeta = be32_to_cpu(r->rg_usedmeta);
 	rg->rt_freemeta = be32_to_cpu(r->rg_freemeta);
-}
-
-void gfs_rgrp_out(const struct gfs_rgrp *rgrp, char *buf)
-{
-	struct gfs_rgrp *str = (struct gfs_rgrp *)buf;
-
-	gfs2_meta_header_out(&rgrp->rg_header, buf);
-	str->rg_flags = cpu_to_be32(rgrp->rg_flags);
-	str->rg_free = cpu_to_be32(rgrp->rg_free);
-	str->rg_useddi = cpu_to_be32(rgrp->rg_useddi);
-	str->rg_freedi = cpu_to_be32(rgrp->rg_freedi);
-	gfs2_inum_out(&rgrp->rg_freedi_list, (char *)&str->rg_freedi_list);
-	str->rg_usedmeta = cpu_to_be32(rgrp->rg_usedmeta);
-	str->rg_freemeta = cpu_to_be32(rgrp->rg_freemeta);
-
-	memcpy(str->rg_reserved, rgrp->rg_reserved, 64);
 }
 
 void lgfs2_gfs_rgrp_out(const lgfs2_rgrp_t rg, void *buf)
