@@ -209,25 +209,37 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 	}
 }
 
-static int indirect_dirent(struct indirect_info *indir, char *ptr, int d)
+void idirent_in(struct idirent *id, void *dep)
 {
-	struct gfs2_dirent de;
+	struct gfs2_dirent *de = dep;
 
-	gfs2_dirent_in(&de, ptr);
-	if (de.de_rec_len < sizeof(struct gfs2_dirent) ||
-		de.de_rec_len > 4096 - sizeof(struct gfs2_dirent))
+	id->inum.formal_ino = be64_to_cpu(de->de_inum.no_formal_ino);
+	id->inum.addr = be64_to_cpu(de->de_inum.no_addr);
+	id->hash = be32_to_cpu(de->de_hash);
+	id->rec_len = be16_to_cpu(de->de_rec_len);
+	id->name_len = be16_to_cpu(de->de_name_len);
+	id->type = be16_to_cpu(de->de_type);
+	id->rahead = be16_to_cpu(de->de_rahead);
+	memcpy(id->filename, (char *)de + sizeof(*de), id->name_len);
+	id->filename[id->name_len] = '\0';
+}
+
+static int indirect_dirent(struct indirect_info *indir, void *ptr, int d)
+{
+	struct gfs2_dirent *de = ptr;
+	int ret = 0;
+
+	if (be16_to_cpu(de->de_rec_len) < sizeof(struct gfs2_dirent) ||
+	    be16_to_cpu(de->de_rec_len) > 4096 - sizeof(struct gfs2_dirent))
 		return -1;
-	if (de.de_inum.no_addr) {
-		indir->block = de.de_inum.no_addr;
-		memcpy(&indir->dirent[d].dirent, &de, sizeof(struct gfs2_dirent));
-		memcpy(&indir->dirent[d].filename,
-			   ptr + sizeof(struct gfs2_dirent), de.de_name_len);
-		indir->dirent[d].filename[de.de_name_len] = '\0';
-		indir->dirent[d].block = de.de_inum.no_addr;
+	if (de->de_inum.no_addr) {
+		idirent_in(&indir->dirent[d], ptr);
+		indir->block = be64_to_cpu(de->de_inum.no_addr);
 		indir->is_dir = TRUE;
 		indir->dirents++;
+		ret = indir->dirent[d].rec_len;
 	}
-	return de.de_rec_len;
+	return ret;
 }
 
 void do_dinode_extended(char *buf)
@@ -320,29 +332,22 @@ void do_dinode_extended(char *buf)
 uint64_t do_leaf_extended(char *dlebuf, struct iinfo *indir)
 {
 	int x, i;
-	struct gfs2_dirent de;
+	struct gfs2_dirent *de;
 
 	x = 0;
 	memset(indir, 0, sizeof(*indir));
 	gfs2_leaf_in(&indir->ii[0].lf, dlebuf);
 	/* Directory Entries: */
-	for (i = sizeof(struct gfs2_leaf); i < sbd.sd_bsize;
-	     i += de.de_rec_len) {
-		gfs2_dirent_in(&de, dlebuf + i);
-		if (de.de_inum.no_addr) {
-			indir->ii[0].block = de.de_inum.no_addr;
-			indir->ii[0].dirent[x].block = de.de_inum.no_addr;
-			memcpy(&indir->ii[0].dirent[x].dirent,
-			       &de, sizeof(struct gfs2_dirent));
-			memcpy(&indir->ii[0].dirent[x].filename,
-			       dlebuf + i + sizeof(struct gfs2_dirent),
-			       de.de_name_len);
-			indir->ii[0].dirent[x].filename[de.de_name_len] = '\0';
+	for (i = sizeof(struct gfs2_leaf); i < sbd.sd_bsize; i += be16_to_cpu(de->de_rec_len)) {
+		de = (struct gfs2_dirent *)(dlebuf + i);
+		if (de->de_inum.no_addr) {
+			idirent_in(&indir->ii[0].dirent[x], de);
+			indir->ii[0].block = be64_to_cpu(de->de_inum.no_addr);
 			indir->ii[0].is_dir = TRUE;
 			indir->ii[0].dirents++;
 			x++;
 		}
-		if (de.de_rec_len <= sizeof(struct gfs2_dirent))
+		if (be16_to_cpu(de->de_rec_len) <= sizeof(struct gfs2_dirent))
 			break;
 	}
 	return indir->ii[0].lf.lf_next;

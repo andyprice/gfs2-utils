@@ -77,7 +77,7 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 
 		if (journal_num > indirect->ii[0].dirents - 2)
 			return 0;
-		jblock = indirect->ii[0].dirent[journal_num + 2].block;
+		jblock = indirect->ii[0].dirent[journal_num + 2].inum.addr;
 		j_bh = bread(&sbd, jblock);
 		jdi = (struct gfs2_dinode *)j_bh->b_data;
 		*j_size = be64_to_cpu(jdi->di_size);

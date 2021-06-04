@@ -462,7 +462,7 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 			int d;
 
 			for (d = 2; d < 8; d++) {
-				if (block == masterdir.dirent[d].block) {
+				if (block == masterdir.dirent[d].inum.addr) {
 					if (!strncmp(masterdir.dirent[d].filename, "jindex", 6))
 						print_gfs2("--------------- Journal Index ------------------");
 					else if (!strncmp(masterdir.dirent[d].filename, "per_node", 8))
@@ -687,7 +687,7 @@ uint64_t masterblock(const char *fn)
 	
 	for (d = 2; d < 8; d++)
 		if (!strncmp(masterdir.dirent[d].filename, fn, strlen(fn)))
-			return (masterdir.dirent[d].block);
+			return (masterdir.dirent[d].inum.addr);
 	return 0;
 }
 
@@ -1024,27 +1024,26 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 	indirect_blocks = 0;
 	lines_per_row[dmode] = 1;
 	if (gfs2_struct_type == GFS2_METATYPE_SB || blk == 0x10 * (4096 / sbd.sd_bsize)) {
+		struct indirect_info *ii = &indirect->ii[0];
+		struct idirent *id;
+
 		lgfs2_sb_in(&sbd, bh->b_data);
 		memset(indirect, 0, sizeof(struct iinfo));
-		indirect->ii[0].block = sbd.sd_meta_dir.no_addr;
-		indirect->ii[0].is_dir = TRUE;
-		indirect->ii[0].dirents = 2;
+		ii->block = sbd.sd_meta_dir.no_addr;
+		ii->is_dir = TRUE;
+		ii->dirents = 2;
 
-		memcpy(&indirect->ii[0].dirent[0].filename, "root", 4);
-		indirect->ii[0].dirent[0].dirent.de_inum.no_formal_ino =
-			sbd.sd_root_dir.no_formal_ino;
-		indirect->ii[0].dirent[0].dirent.de_inum.no_addr =
-			sbd.sd_root_dir.no_addr;
-		indirect->ii[0].dirent[0].block = sbd.sd_root_dir.no_addr;
-		indirect->ii[0].dirent[0].dirent.de_type = DT_DIR;
+		id = &ii->dirent[0];
+		memcpy(id->filename, "root", 4);
+		id->inum.formal_ino = sbd.sd_root_dir.no_formal_ino;
+		id->inum.addr = sbd.sd_root_dir.no_addr;
+		id->type = DT_DIR;
 
-		memcpy(&indirect->ii[0].dirent[1].filename, "master", 7);
-		indirect->ii[0].dirent[1].dirent.de_inum.no_formal_ino = 
-			sbd.sd_meta_dir.no_formal_ino;
-		indirect->ii[0].dirent[1].dirent.de_inum.no_addr =
-			sbd.sd_meta_dir.no_addr;
-		indirect->ii[0].dirent[1].block = sbd.sd_meta_dir.no_addr;
-		indirect->ii[0].dirent[1].dirent.de_type = DT_DIR;
+		id = &ii->dirent[1];
+		memcpy(id->filename, "master", 7);
+		id->inum.formal_ino = sbd.sd_meta_dir.no_formal_ino;
+		id->inum.addr = sbd.sd_meta_dir.no_addr;
+		id->type = DT_DIR;
 	}
 	else if (gfs2_struct_type == GFS2_METATYPE_DI) {
 		di = (struct gfs2_dinode *)bh->b_data;

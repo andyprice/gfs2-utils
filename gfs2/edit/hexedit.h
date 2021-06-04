@@ -63,11 +63,20 @@ extern int combined_display;
 extern int details;
 extern const char *allocdesc[2][5];
 
-struct gfs2_dirents {
-	uint64_t block;
-	struct gfs2_dirent dirent;
+struct idirent {
+	struct {
+		uint64_t formal_ino;
+		uint64_t addr;
+	} inum;
+	uint32_t hash;
+	uint16_t rec_len;
+	uint16_t name_len;
+	uint16_t type;
+	uint16_t rahead;
 	char filename[NAME_MAX];
 };
+
+extern void idirent_in(struct idirent *id, void *de);
 
 struct indirect_info {
 	int is_dir;
@@ -76,7 +85,7 @@ struct indirect_info {
 	uint32_t dirents;
 	struct gfs2_leaf lf;
 	struct metapath mp;
-	struct gfs2_dirents dirent[64];
+	struct idirent dirent[64];
 	uint64_t ptroff;
 };
 

@@ -278,7 +278,7 @@ static int init_per_node_lookup(void)
 	for (i = 0; i < indirect_blocks; i++) {
 		int d;
 		for (d = 0; d < indirect->ii[i].dirents; d++) {
-			int ret = insert_per_node_lookup(indirect->ii[i].dirent[d].block);
+			int ret = insert_per_node_lookup(indirect->ii[i].dirent[d].inum.addr);
 			if (ret != 0)
 				return ret;
 		}
@@ -966,7 +966,7 @@ static void get_journal_inode_blocks(void)
 		} else {
 			if (journal + 3 > indirect->ii[0].dirents)
 				break;
-			jblock = indirect->ii[0].dirent[journal + 2].block;
+			jblock = indirect->ii[0].dirent[journal + 2].inum.addr;
 		}
 		journal_blocks[journals_found++] = jblock;
 	}
