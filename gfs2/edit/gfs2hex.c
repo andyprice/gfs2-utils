@@ -300,13 +300,11 @@ void do_dinode_extended(char *buf)
 			if (p != last || ((y + 1) * sizeof(uint64_t) == be64_to_cpu(dip->di_size))) {
 				struct gfs2_buffer_head *tmp_bh;
 				int skip = 0, direntcount = 0;
-				struct gfs2_leaf leaf;
 				unsigned int bufoffset;
 
 				if (last >= max_block)
 					break;
 				tmp_bh = bread(&sbd, last);
-				gfs2_leaf_in(&leaf, tmp_bh->b_data);
 				indirect->ii[indirect_blocks].dirents = 0;
 				for (direntcount = 0, bufoffset = sizeof(struct gfs2_leaf);
 					 bufoffset < sbd.sd_bsize;
@@ -336,7 +334,7 @@ uint64_t do_leaf_extended(char *dlebuf, struct iinfo *indir)
 
 	x = 0;
 	memset(indir, 0, sizeof(*indir));
-	gfs2_leaf_in(&indir->ii[0].lf, dlebuf);
+	memcpy(&indir->ii[0].lf, dlebuf, sizeof(struct gfs2_leaf));
 	/* Directory Entries: */
 	for (i = sizeof(struct gfs2_leaf); i < sbd.sd_bsize; i += be16_to_cpu(de->de_rec_len)) {
 		de = (struct gfs2_dirent *)(dlebuf + i);
@@ -350,7 +348,7 @@ uint64_t do_leaf_extended(char *dlebuf, struct iinfo *indir)
 		if (be16_to_cpu(de->de_rec_len) <= sizeof(struct gfs2_dirent))
 			break;
 	}
-	return indir->ii[0].lf.lf_next;
+	return be64_to_cpu(indir->ii[0].lf.lf_next);
 }
 
 static void do_eattr_extended(char *buf)

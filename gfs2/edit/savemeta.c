@@ -329,7 +329,7 @@ static size_t di_save_len(const char *buf, uint64_t owner)
 static int get_gfs_struct_info(const char *buf, uint64_t owner, unsigned *block_type,
                                unsigned *gstruct_len)
 {
-	struct gfs2_meta_header mh;
+	struct gfs2_meta_header *mh = (struct gfs2_meta_header *)buf;
 
 	if (block_type != NULL)
 		*block_type = 0;
@@ -337,17 +337,16 @@ static int get_gfs_struct_info(const char *buf, uint64_t owner, unsigned *block_
 	if (gstruct_len != NULL)
 		*gstruct_len = sbd.sd_bsize;
 
-	gfs2_meta_header_in(&mh, buf);
-	if (mh.mh_magic != GFS2_MAGIC)
+	if (be32_to_cpu(mh->mh_magic) != GFS2_MAGIC)
 		return -1;
 
 	if (block_type != NULL)
-		*block_type = mh.mh_type;
+		*block_type = be32_to_cpu(mh->mh_type);
 
 	if (gstruct_len == NULL)
 		return 0;
 
-	switch (mh.mh_type) {
+	switch (be32_to_cpu(mh->mh_type)) {
 	case GFS2_METATYPE_SB:   /* 1 (superblock) */
 		if (sbd.gfs1)
 			*gstruct_len = sizeof(struct gfs_sb);
@@ -791,12 +790,10 @@ new_range:
 
 static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, char *buf)
 {
-	struct gfs2_leaf leaf;
+	struct gfs2_leaf *leaf = (struct gfs2_leaf *)buf;
 
-	gfs2_leaf_in(&leaf, buf);
-
-	while (leaf.lf_next != 0) {
-		uint64_t blk = leaf.lf_next;
+	while (leaf->lf_next != 0) {
+		uint64_t blk = be64_to_cpu(leaf->lf_next);
 		ssize_t r;
 
 		if (gfs2_check_range(sdp, blk) != 0)
@@ -817,7 +814,7 @@ static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, char *buf)
 				return ret;
 			}
 		}
-		gfs2_leaf_in(&leaf, buf);
+		leaf = (struct gfs2_leaf *)buf;
 	}
 	return 0;
 }

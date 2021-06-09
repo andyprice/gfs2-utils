@@ -295,10 +295,6 @@ static void print_inode_type(__be16 de_type)
 	}
 }
 
-#define LEAF_HINT_FMTS "lf_inode: 0x%"PRIx64", lf_dist: %"PRIu32", " \
-                       "lf_nsec: %"PRIu32", lf_sec: %"PRIu64", "
-#define LEAF_HINT_FIELDS(lp) lp->lf_inode, lp->lf_dist, lp->lf_nsec, lp->lf_sec,
-
 static int display_leaf(struct iinfo *ind)
 {
 	struct gfs2_leaf *leaf = &ind->ii[0].lf;
@@ -309,11 +305,13 @@ static int display_leaf(struct iinfo *ind)
 	if (gfs2_struct_type == GFS2_METATYPE_SB)
 		print_gfs2("The superblock has 2 directories");
 	else
-		print_gfs2("Directory block: lf_depth:%"PRIu16", lf_entries:%"PRIu16", "
-		           LEAF_HINT_FMTS
+		print_gfs2("Directory block: "
+		           "lf_depth:%"PRIu16", lf_entries:%"PRIu16", lf_inode: 0x%"PRIx64", "
+		           "lf_dist: %"PRIu32", lf_nsec: %"PRIu32", lf_sec: %"PRIu64", "
 			   "fmt:%"PRIu32" next=0x%"PRIx64" (%d dirents).",
-			   leaf->lf_depth, leaf->lf_entries,
-		           LEAF_HINT_FIELDS(leaf)
+			   be16_to_cpu(leaf->lf_depth), be16_to_cpu(leaf->lf_entries),
+		           be64_to_cpu(leaf->lf_inode), be32_to_cpu(leaf->lf_dist),
+		           be32_to_cpu(leaf->lf_nsec), be64_to_cpu(leaf->lf_sec),
 			   leaf->lf_dirent_format,
 			   leaf->lf_next,
 			   ind->ii[0].dirents);

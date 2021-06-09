@@ -1266,7 +1266,7 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip
 	/* for all the leafs, get the leaf block and process the dirents inside */
 	for (leaf_num = 0; ; leaf_num++) {
 		uint64_t buf;
-		struct gfs2_leaf leaf;
+		struct gfs2_leaf *leaf;
 
 		error = gfs2_readi(dip, (char *)&buf, leaf_num * sizeof(uint64_t),
 						   sizeof(uint64_t));
@@ -1293,14 +1293,14 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip
 				 (unsigned long long)leaf_block);
 			break;
 		}
-		gfs2_leaf_in(&leaf, bh_leaf->b_data);
-		error = process_dirent_info(dip, sbp, bh_leaf, leaf.lf_entries, dentmod);
+		leaf = (struct gfs2_leaf *)bh_leaf->b_data;
+		error = process_dirent_info(dip, sbp, bh_leaf, be16_to_cpu(leaf->lf_entries), dentmod);
 		bmodified(bh_leaf);
 		brelse(bh_leaf);
 		if (dentmod && error == -EISDIR) /* dentmod was marked DT_DIR, break out */
 			break;
-		if (leaf.lf_next) { /* leaf has a leaf chain, process leaves in chain */
-			leaf_block = leaf.lf_next;
+		if (leaf->lf_next) { /* leaf has a leaf chain, process leaves in chain */
+			leaf_block = be64_to_cpu(leaf->lf_next);
 			error = 0;
 			goto leaf_chain;
 		}
