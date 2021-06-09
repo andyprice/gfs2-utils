@@ -402,6 +402,17 @@ struct lgfs2_dirent {
 	uint32_t dr_cookie;
 };
 
+struct lgfs2_leaf {
+	uint16_t lf_depth;
+	uint16_t lf_entries;
+	uint32_t lf_dirent_format;
+	uint64_t lf_next;
+	uint64_t lf_inode;
+	uint32_t lf_dist;
+	uint32_t lf_nsec;
+	uint64_t lf_sec;
+};
+
 struct metapath {
 	unsigned int mp_list[GFS2_MAX_META_HEIGHT];
 };
@@ -811,8 +822,8 @@ extern void lgfs2_dinode_in(struct gfs2_inode *ip, char *buf);
 extern void lgfs2_dinode_out(struct gfs2_inode *ip, char *buf);
 extern void lgfs2_dirent_in(struct lgfs2_dirent *d, void *dep);
 extern void lgfs2_dirent_out(struct lgfs2_dirent *d, void *dep);
-extern void gfs2_leaf_in(struct gfs2_leaf *lf, char *buf);
-extern void gfs2_leaf_out(struct gfs2_leaf *lf, char *buf);
+extern void lgfs2_leaf_in(struct lgfs2_leaf *lf, void *lfp);
+extern void lgfs2_leaf_out(struct lgfs2_leaf *lf, void *lfp);
 
 /* Printing functions. These expect on-disk data */
 extern void lgfs2_inum_print(void *nop);

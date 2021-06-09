@@ -1310,7 +1310,7 @@ static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
 {
 	struct gfs2_buffer_head *lbh;
 	struct lgfs2_dirent dentry;
-	struct gfs2_leaf leaf;
+	struct lgfs2_leaf leaf;
 	struct gfs2_dirent *de;
 	int changes = 0, error, i, extras, hash_index;
 	uint64_t new_leaf_blk;
@@ -1421,7 +1421,7 @@ static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
 		new_leaf_blk = find_free_blk(ip->i_sbd);
 		dir_split_leaf(ip, lindex, leafblk, lbh);
 		/* re-read the leaf to pick up dir_split_leaf's changes */
-		gfs2_leaf_in(&leaf, lbh->b_data);
+		lgfs2_leaf_in(&leaf, lbh->b_data);
 		*proper_len = 1 << (ip->i_depth - leaf.lf_depth);
 		log_err(_("Leaf block %llu (0x%llx) was split from length "
 			  "%d to %d\n"), (unsigned long long)leafblk,
@@ -1608,7 +1608,7 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 	int error = 0;
 	int lindex, len, proper_len, i, changes = 0;
 	uint64_t leafblk;
-	struct gfs2_leaf leaf;
+	struct lgfs2_leaf leaf;
 	struct gfs2_buffer_head *lbh;
 	int factor;
 	uint32_t proper_start;
@@ -1713,7 +1713,7 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 				(unsigned long long)leafblk,
 				proper_len, proper_len);
 			lbh = bread(ip->i_sbd, leafblk);
-			gfs2_leaf_in(&leaf, lbh->b_data);
+			lgfs2_leaf_in(&leaf, lbh->b_data);
 			if (gfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF) ||
 			    leaf.lf_depth > ip->i_depth)
 				leaf.lf_depth = factor;
@@ -1752,7 +1752,7 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 			/* Now we have to determine if the hash table is
 			   corrupt, or if the leaf has the wrong depth. */
 			lbh = bread(ip->i_sbd, leafblk);
-			gfs2_leaf_in(&leaf, lbh->b_data);
+			lgfs2_leaf_in(&leaf, lbh->b_data);
 			brelse(lbh);
 			/* Calculate the expected pointer count based on the
 			   leaf depth. */

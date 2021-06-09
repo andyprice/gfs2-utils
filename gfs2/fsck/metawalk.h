@@ -18,7 +18,7 @@ extern int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			    struct metawalk_fxns *pass);
 extern int check_leaf(struct gfs2_inode *ip, int lindex,
 		      struct metawalk_fxns *pass, uint64_t *leaf_no,
-		      struct gfs2_leaf *leaf, int *ref_count);
+		      struct lgfs2_leaf *leaf, int *ref_count);
 extern int _fsck_bitmap_set(struct gfs2_inode *ip, uint64_t bblock,
 			    const char *btype, int mark, int error_on_dinode,
 			    const char *caller, int line);

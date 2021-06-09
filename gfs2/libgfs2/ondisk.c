@@ -388,36 +388,32 @@ void lgfs2_dirent_out(struct lgfs2_dirent *d, void *dep)
 	de->de_cookie = cpu_to_be32(d->dr_cookie);
 }
 
-void gfs2_leaf_in(struct gfs2_leaf *lf, char *buf)
+void lgfs2_leaf_in(struct lgfs2_leaf *lf, void *lfp)
 {
-	struct gfs2_leaf *str = (struct gfs2_leaf *)buf;
+	struct gfs2_leaf *l = lfp;
 
-	gfs2_meta_header_in(&lf->lf_header, buf);
-	CPIN_16(lf, str, lf_depth);
-	CPIN_16(lf, str, lf_entries);
-	CPIN_32(lf, str, lf_dirent_format);
-	CPIN_64(lf, str, lf_next);
-	CPIN_64(lf, str, lf_inode);
-	CPIN_32(lf, str, lf_dist);
-	CPIN_32(lf, str, lf_nsec);
-	CPIN_64(lf, str, lf_sec);
-	CPIN_08(lf, str, lf_reserved2, 40);
+	lf->lf_depth = be16_to_cpu(l->lf_depth);
+	lf->lf_entries = be16_to_cpu(l->lf_entries);
+	lf->lf_dirent_format = be32_to_cpu(l->lf_dirent_format);
+	lf->lf_next = be64_to_cpu(l->lf_next);
+	lf->lf_inode = be64_to_cpu(l->lf_inode);
+	lf->lf_dist = be32_to_cpu(l->lf_dist);
+	lf->lf_nsec = be32_to_cpu(l->lf_nsec);
+	lf->lf_sec = be64_to_cpu(l->lf_sec);
 }
 
-void gfs2_leaf_out(struct gfs2_leaf *lf, char *buf)
+void lgfs2_leaf_out(struct lgfs2_leaf *lf, void *lfp)
 {
-	struct gfs2_leaf *str = (struct gfs2_leaf *)buf;
+	struct gfs2_leaf *l = lfp;
 
-	gfs2_meta_header_out(&lf->lf_header, buf);
-	CPOUT_16(lf, str, lf_depth);
-	CPOUT_16(lf, str, lf_entries);
-	CPOUT_32(lf, str, lf_dirent_format);
-	CPOUT_64(lf, str, lf_next);
-	CPOUT_64(lf, str, lf_inode);
-	CPOUT_32(lf, str, lf_dist);
-	CPOUT_32(lf, str, lf_nsec);
-	CPOUT_64(lf, str, lf_sec);
-	CPOUT_08(lf, str, lf_reserved2, 40);
+	l->lf_depth = cpu_to_be16(lf->lf_depth);
+	l->lf_entries = cpu_to_be16(lf->lf_entries);
+	l->lf_dirent_format = cpu_to_be32(lf->lf_dirent_format);
+	l->lf_next = cpu_to_be64(lf->lf_next);
+	l->lf_inode = cpu_to_be64(lf->lf_inode);
+	l->lf_dist = cpu_to_be32(lf->lf_dist);
+	l->lf_nsec = cpu_to_be32(lf->lf_nsec);
+	l->lf_sec = cpu_to_be64(lf->lf_sec);
 }
 
 void lgfs2_leaf_print(void *lfp)

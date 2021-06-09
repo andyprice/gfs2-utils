@@ -515,10 +515,11 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
  * Leaves the buffer around for further analysis (caller must brelse)
  */
 int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
-	       uint64_t *leaf_no, struct gfs2_leaf *leaf, int *ref_count)
+	       uint64_t *leaf_no, struct lgfs2_leaf *leaf, int *ref_count)
 {
 	int error = 0, fix;
 	struct gfs2_buffer_head *lbh = NULL;
+	struct gfs2_leaf *lfp;
 	uint32_t count = 0;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	const char *msg;
@@ -560,18 +561,19 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	   to use cpu_to_be32(), but we should check for incorrect values and
 	   replace them with the correct value. */
 
-	gfs2_leaf_in(leaf, lbh->b_data);
+	lgfs2_leaf_in(leaf, lbh->b_data);
 	if (leaf->lf_dirent_format == (GFS2_FORMAT_DE << 16)) {
 		log_debug( _("incorrect lf_dirent_format at leaf #%" PRIu64
 			     "\n"), *leaf_no);
 		leaf->lf_dirent_format = GFS2_FORMAT_DE;
-		gfs2_leaf_out(leaf, lbh->b_data);
+		lgfs2_leaf_out(leaf, lbh->b_data);
 		bmodified(lbh);
 		log_debug( _("Fixing lf_dirent_format.\n"));
 	}
 
+	lfp = (struct gfs2_leaf *)lbh->b_data;
 	/* Make sure it's really a leaf. */
-	if (leaf->lf_header.mh_type != GFS2_METATYPE_LF) {
+	if (be32_to_cpu(lfp->lf_header.mh_type) != GFS2_METATYPE_LF) {
 		log_err(_("Inode %"PRIu64" (0x%"PRIx64") points to bad leaf %"PRIu64
 			  " (0x%"PRIx64").\n"),
 		        ip->i_addr, ip->i_addr, *leaf_no, *leaf_no);
@@ -598,7 +600,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 		   changed it. */
 		brelse(lbh);
 		lbh = bread(sdp, *leaf_no);
-		gfs2_leaf_in(leaf, lbh->b_data);
+		lgfs2_leaf_in(leaf, lbh->b_data);
 		if (count != leaf->lf_entries) {
 			log_err(_("Leaf %"PRIu64" (0x%"PRIx64") entry count in "
 				   "directory %"PRIu64" (0x%"PRIx64") does not match "
@@ -607,7 +609,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 			        leaf->lf_entries, count);
 			if (query( _("Update leaf entry count? (y/n) "))) {
 				leaf->lf_entries = count;
-				gfs2_leaf_out(leaf, lbh->b_data);
+				lgfs2_leaf_out(leaf, lbh->b_data);
 				bmodified(lbh);
 				log_warn( _("Leaf entry count updated\n"));
 			} else
@@ -789,7 +791,7 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 
 		chained_leaf = 0;
 		do {
-			struct gfs2_leaf leaf;
+			struct lgfs2_leaf leaf;
 			if (fsck_abort) {
 				free(tbl);
 				posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
