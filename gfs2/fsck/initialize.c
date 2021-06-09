@@ -453,7 +453,7 @@ static void check_rgrps_integrity(struct gfs2_sbd *sdp)
  */
 static int rebuild_master(struct gfs2_sbd *sdp)
 {
-	struct gfs2_inum inum;
+	struct lgfs2_inum inum;
 	struct gfs2_buffer_head *bh = NULL;
 	int err = 0;
 
@@ -463,8 +463,8 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		return -1;
 	}
 	log_err(_("Trying to rebuild the master directory.\n"));
-	inum.no_formal_ino = sdp->md.next_inum++;
-	inum.no_addr = sdp->sd_meta_dir.no_addr;
+	inum.in_formal_ino = sdp->md.next_inum++;
+	inum.in_addr = sdp->sd_meta_dir.no_addr;
 	err = init_dinode(sdp, &bh, &inum, S_IFDIR | 0755, GFS2_DIF_SYSTEM, &inum);
 	if (err != 0)
 		return -1;
@@ -476,8 +476,8 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 	sdp->master_dir->bh_owned = 1;
 
 	if (fix_md.jiinode) {
-		inum.no_formal_ino = sdp->md.next_inum++;
-		inum.no_addr = fix_md.jiinode->i_addr;
+		inum.in_formal_ino = sdp->md.next_inum++;
+		inum.in_addr = fix_md.jiinode->i_addr;
 		err = dir_add(sdp->master_dir, "jindex", 6, &inum,
 		              IF2DT(S_IFDIR | 0700));
 		if (err) {
@@ -494,8 +494,8 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 	}
 
 	if (fix_md.pinode) {
-		inum.no_formal_ino = sdp->md.next_inum++;
-		inum.no_addr = fix_md.pinode->i_addr;
+		inum.in_formal_ino = sdp->md.next_inum++;
+		inum.in_addr = fix_md.pinode->i_addr;
 		err = dir_add(sdp->master_dir, "per_node", 8, &inum,
 			IF2DT(S_IFDIR | 0700));
 		if (err) {
@@ -514,8 +514,8 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 	}
 
 	if (fix_md.inum) {
-		inum.no_formal_ino = sdp->md.next_inum++;
-		inum.no_addr = fix_md.inum->i_addr;
+		inum.in_formal_ino = sdp->md.next_inum++;
+		inum.in_addr = fix_md.inum->i_addr;
 		err = dir_add(sdp->master_dir, "inum", 4, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
@@ -532,8 +532,8 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 	}
 
 	if (fix_md.statfs) {
-		inum.no_formal_ino = sdp->md.next_inum++;
-		inum.no_addr = fix_md.statfs->i_addr;
+		inum.in_formal_ino = sdp->md.next_inum++;
+		inum.in_addr = fix_md.statfs->i_addr;
 		err = dir_add(sdp->master_dir, "statfs", 6, &inum,
 			      IF2DT(S_IFREG | 0600));
 		if (err) {
@@ -550,8 +550,8 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 	}
 
 	if (fix_md.riinode) {
-		inum.no_formal_ino = sdp->md.next_inum++;
-		inum.no_addr = fix_md.riinode->i_addr;
+		inum.in_formal_ino = sdp->md.next_inum++;
+		inum.in_addr = fix_md.riinode->i_addr;
 		err = dir_add(sdp->master_dir, "rindex", 6, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
@@ -567,8 +567,8 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 	}
 
 	if (fix_md.qinode) {
-		inum.no_formal_ino = sdp->md.next_inum++;
-		inum.no_addr = fix_md.qinode->i_addr;
+		inum.in_formal_ino = sdp->md.next_inum++;
+		inum.in_addr = fix_md.qinode->i_addr;
 		err = dir_add(sdp->master_dir, "quota", 5, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
@@ -987,7 +987,7 @@ static int is_journal_copy(struct gfs2_inode *ip)
 static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 {
 	struct gfs2_inode *child_ip;
-	struct gfs2_inum inum;
+	struct lgfs2_inum inum;
 	int error;
 
 	if (ip->i_formal_ino == 2) {
@@ -1032,10 +1032,10 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 			         ip->i_addr);
 			fix_md.pinode = ip;
 			error = dir_search(ip, "..", 2, NULL, &inum);
-			if (!error && inum.no_addr) {
-				sdp->sd_meta_dir.no_addr = inum.no_addr;
+			if (!error && inum.in_addr) {
+				sdp->sd_meta_dir.no_addr = inum.in_addr;
 				log_warn(_("From per_node's '..' master directory backtracked to: "
-					   "0x%"PRIx64"\n"), inum.no_addr);
+					   "0x%"PRIx64"\n"), inum.in_addr);
 			}
 			return;
 		}
@@ -1076,7 +1076,7 @@ out_discard_ip:
 static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 {
 	struct gfs2_inode *parent_ip;
-	struct gfs2_inum inum;
+	struct lgfs2_inum inum;
 	int error;
 
 	if (sdp->sd_root_dir.no_addr) /* if we know the root dinode */
@@ -1126,8 +1126,8 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		ip = parent_ip;
 	}
 	error = dir_search(ip, "..", 2, NULL, &inum);
-	if (!error && inum.no_addr && inum.no_addr < possible_root) {
-			possible_root = inum.no_addr;
+	if (!error && inum.in_addr && inum.in_addr < possible_root) {
+			possible_root = inum.in_addr;
 			log_debug(_("Found a possible root at: 0x%"PRIx64"\n"),
 				  possible_root);
 	}
@@ -1278,8 +1278,6 @@ static int sb_repair(struct gfs2_sbd *sdp)
 		return -1;
 	}
 	if (!sdp->sd_root_dir.no_addr) {
-		struct gfs2_inum inum;
-
 		log_err(_("Unable to locate the root directory.\n"));
 		if (possible_root == HIGHEST_BLOCK) {
 			/* Take advantage of the fact that mkfs.gfs2
@@ -1294,6 +1292,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 		sdp->md.rooti = lgfs2_inode_read(sdp, possible_root);
 		if (!sdp->md.rooti || sdp->md.rooti->i_magic != GFS2_MAGIC) {
 			struct gfs2_buffer_head *bh = NULL;
+			struct lgfs2_inum inum;
 
 			log_err(_("The root dinode block is destroyed.\n"));
 			log_err(_("At this point I recommend "
@@ -1306,8 +1305,8 @@ static int sb_repair(struct gfs2_sbd *sdp)
 					  "reinitialized; aborting.\n"));
 				return -1;
 			}
-			inum.no_formal_ino = 1;
-			inum.no_addr = possible_root;
+			inum.in_formal_ino = 1;
+			inum.in_addr = possible_root;
 			error = init_dinode(sdp, &bh, &inum, S_IFDIR | 0755, 0, &inum);
 			if (error != 0)
 				return -1;

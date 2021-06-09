@@ -231,18 +231,16 @@ static int resuscitate_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			      uint32_t *count, int *lindex, void *priv)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_dirent dentry, *de;
+	struct lgfs2_dirent d;
 	char tmp_name[PATH_MAX];
 	uint64_t block;
 
-	memset(&dentry, 0, sizeof(struct gfs2_dirent));
-	gfs2_dirent_in(&dentry, (char *)dent);
-	de = &dentry;
-	block = de->de_inum.no_addr;
+	lgfs2_dirent_in(&d, dent);
+	block = d.dr_inum.in_addr;
 	/* Start of checks */
 	memset(tmp_name, 0, sizeof(tmp_name));
-	if (de->de_name_len < sizeof(tmp_name))
-		strncpy(tmp_name, filename, de->de_name_len);
+	if (d.dr_name_len < sizeof(tmp_name))
+		strncpy(tmp_name, filename, d.dr_name_len);
 	else
 		strncpy(tmp_name, filename, sizeof(tmp_name) - 1);
 	if (!valid_block_ip(ip, block)) {
@@ -1214,7 +1212,7 @@ struct metawalk_fxns eattr_undo_fxns = {
 static int set_ip_blockmap(struct gfs2_inode *ip)
 {
 	uint64_t block = ip->i_bh->b_blocknr;
-	struct gfs2_inum no;
+	struct lgfs2_inum no;
 	uint32_t mode;
 	const char *ty;
 
@@ -1248,8 +1246,8 @@ static int set_ip_blockmap(struct gfs2_inode *ip)
 	default:
 		return -EINVAL;
 	}
-	no.no_addr = ip->i_addr;
-	no.no_formal_ino = ip->i_formal_ino;
+	no.in_addr = ip->i_addr;
+	no.in_formal_ino = ip->i_formal_ino;
 	if (fsck_blockmap_set(ip, block, ty, GFS2_BLKST_DINODE) ||
 	    (mode == S_IFDIR && !dirtree_insert(no))) {
 		stack;
@@ -1599,9 +1597,9 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 					  filename, GFS2_BLKST_DINODE);
 			ds.q = GFS2_BLKST_DINODE;
 			if (isdir) {
-				struct gfs2_inum no = {
-					.no_addr = (*sysinode)->i_addr,
-					.no_formal_ino = (*sysinode)->i_formal_ino
+				struct lgfs2_inum no = {
+					.in_addr = (*sysinode)->i_addr,
+					.in_formal_ino = (*sysinode)->i_formal_ino
 				};
 				dirtree_insert(no);
 			}
@@ -1652,9 +1650,9 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 					  filename, GFS2_BLKST_DINODE);
 			ds.q = GFS2_BLKST_DINODE;
 			if (isdir) {
-				struct gfs2_inum no = {
-					.no_addr = (*sysinode)->i_addr,
-					.no_formal_ino = (*sysinode)->i_formal_ino
+				struct lgfs2_inum no = {
+					.in_addr = (*sysinode)->i_addr,
+					.in_formal_ino = (*sysinode)->i_formal_ino
 				};
 				dirtree_insert(no);
 			}
@@ -1769,21 +1767,21 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 	journal_count = sdp->md.journals;
 	/* gfs1's journals aren't dinode, they're just a bunch of blocks. */
 	if (sdp->gfs1) {
-		struct gfs2_inum no;
+		struct lgfs2_inum no;
 		/* gfs1 has four dinodes that are set in the superblock and
 		   therefore not linked to anything else. We need to adjust
 		   the link counts so pass4 doesn't get confused. */
-		no.no_addr = sdp->md.statfs->i_addr;
-		no.no_formal_ino = sdp->md.statfs->i_formal_ino;
+		no.in_addr = sdp->md.statfs->i_addr;
+		no.in_formal_ino = sdp->md.statfs->i_formal_ino;
 		incr_link_count(no, NULL, _("gfs1 statfs inode"));
-		no.no_addr = sdp->md.jiinode->i_addr;
-		no.no_formal_ino = sdp->md.jiinode->i_formal_ino;
+		no.in_addr = sdp->md.jiinode->i_addr;
+		no.in_formal_ino = sdp->md.jiinode->i_formal_ino;
 		incr_link_count(no, NULL, _("gfs1 jindex inode"));
-		no.no_addr = sdp->md.riinode->i_addr;
-		no.no_formal_ino = sdp->md.riinode->i_formal_ino;
+		no.in_addr = sdp->md.riinode->i_addr;
+		no.in_formal_ino = sdp->md.riinode->i_formal_ino;
 		incr_link_count(no, NULL, _("gfs1 rindex inode"));
-		no.no_addr = sdp->md.qinode->i_addr;
-		no.no_formal_ino = sdp->md.qinode->i_formal_ino;
+		no.in_addr = sdp->md.qinode->i_addr;
+		no.in_formal_ino = sdp->md.qinode->i_formal_ino;
 		incr_link_count(no, NULL, _("gfs1 quota inode"));
 		return 0;
 	}

@@ -1135,7 +1135,7 @@ static int get_next_leaf(struct gfs2_inode *dip,struct gfs2_buffer_head *bh_in,
 }
 
 static int dir_e_add(struct gfs2_inode *dip, const char *filename, int len,
-		      struct gfs2_inum *inum, unsigned int type)
+		      struct lgfs2_inum *inum, unsigned int type)
 {
 	struct gfs2_buffer_head *bh, *nbh;
 	struct gfs2_leaf *leaf, *nleaf;
@@ -1211,7 +1211,7 @@ restart:
 			}
 		}
 
-		gfs2_inum_out(inum, (char *)&dent->de_inum);
+		lgfs2_inum_out(inum, &dent->de_inum);
 		dent->de_hash = cpu_to_be32(hash);
 		dent->de_type = cpu_to_be16(type);
 		memcpy((char *)(dent + 1), filename, len);
@@ -1292,7 +1292,7 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 }
 
 static int dir_l_add(struct gfs2_inode *dip, const char *filename, int len,
-		      struct gfs2_inum *inum, unsigned int type)
+		      struct lgfs2_inum *inum, unsigned int type)
 {
 	struct gfs2_dirent *dent;
 	int err = 0;
@@ -1303,7 +1303,7 @@ static int dir_l_add(struct gfs2_inode *dip, const char *filename, int len,
 		return err;
 	}
 
-	gfs2_inum_out(inum, (char *)&dent->de_inum);
+	lgfs2_inum_out(inum, &dent->de_inum);
 	dent->de_hash = gfs2_disk_hash(filename, len);
 	dent->de_hash = cpu_to_be32(dent->de_hash);
 	dent->de_type = cpu_to_be16(type);
@@ -1313,7 +1313,7 @@ static int dir_l_add(struct gfs2_inode *dip, const char *filename, int len,
 }
 
 int dir_add(struct gfs2_inode *dip, const char *filename, int len,
-	     struct gfs2_inum *inum, unsigned int type)
+	     struct lgfs2_inum *inum, unsigned int type)
 {
 	int err = 0;
 	if (dip->i_flags & GFS2_DIF_EXHASH)
@@ -1323,8 +1323,8 @@ int dir_add(struct gfs2_inode *dip, const char *filename, int len,
 	return err;
 }
 
-static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, struct gfs2_inum *inum,
-                         unsigned int mode, uint32_t flags, struct gfs2_inum *parent, int gfs1)
+static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, struct lgfs2_inum *inum,
+                         unsigned int mode, uint32_t flags, struct lgfs2_inum *parent, int gfs1)
 {
 	struct gfs2_buffer_head *bh;
 	struct gfs2_dinode *di;
@@ -1340,7 +1340,7 @@ static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, st
 		return 1;
 
 	if (*bhp == NULL) {
-		*bhp = bget(sdp, inum->no_addr);
+		*bhp = bget(sdp, inum->in_addr);
 		if (*bhp == NULL)
 			return 1;
 	}
@@ -1352,8 +1352,8 @@ static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, st
 	di->di_header.mh_magic = cpu_to_be32(GFS2_MAGIC);
 	di->di_header.mh_type = cpu_to_be32(GFS2_METATYPE_DI);
 	di->di_header.mh_format = cpu_to_be32(GFS2_FORMAT_DI);
-	di->di_num.no_formal_ino = cpu_to_be64(inum->no_formal_ino);
-	di->di_num.no_addr = cpu_to_be64(inum->no_addr);
+	di->di_num.no_formal_ino = cpu_to_be64(inum->in_formal_ino);
+	di->di_num.no_addr = cpu_to_be64(inum->in_addr);
 	di->di_mode = cpu_to_be32(mode);
 	di->di_nlink = cpu_to_be32(1);
 	di->di_blocks = cpu_to_be64(1);
@@ -1380,8 +1380,8 @@ static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, st
 
 		hash = gfs2_disk_hash("..", 2);
 		len = sdp->sd_bsize - (p - bh->b_data);
-		de.de_inum.no_formal_ino = cpu_to_be64(parent->no_formal_ino);
-		de.de_inum.no_addr = cpu_to_be64(parent->no_addr);
+		de.de_inum.no_formal_ino = cpu_to_be64(parent->in_formal_ino);
+		de.de_inum.no_addr = cpu_to_be64(parent->in_addr);
 		de.de_hash = cpu_to_be32(hash);
 		de.de_rec_len = cpu_to_be16(len);
 		de.de_name_len = cpu_to_be16(2);
@@ -1401,8 +1401,8 @@ static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, st
 	return 0;
 }
 
-int init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, struct gfs2_inum *inum,
-                unsigned int mode, uint32_t flags, struct gfs2_inum *parent)
+int init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, struct lgfs2_inum *inum,
+                unsigned int mode, uint32_t flags, struct lgfs2_inum *parent)
 {
 	return __init_dinode(sdp, bhp, inum, mode, flags, parent, 0);
 }
@@ -1482,7 +1482,7 @@ static struct gfs2_inode *__createi(struct gfs2_inode *dip,
 {
 	struct gfs2_sbd *sdp = dip->i_sbd;
 	uint64_t bn;
-	struct gfs2_inum inum;
+	struct lgfs2_inum inum;
 	struct gfs2_buffer_head *bh = NULL;
 	struct gfs2_inode *ip;
 	int err = 0;
@@ -1490,19 +1490,19 @@ static struct gfs2_inode *__createi(struct gfs2_inode *dip,
 
 	gfs2_lookupi(dip, filename, strlen(filename), &ip);
 	if (!ip) {
-		struct gfs2_inum parent = {
-			.no_formal_ino = dip->i_formal_ino,
-			.no_addr = dip->i_addr,
+		struct lgfs2_inum parent = {
+			.in_formal_ino = dip->i_formal_ino,
+			.in_addr = dip->i_addr,
 		};
 		err = lgfs2_dinode_alloc(sdp, 1, &bn);
 		if (err != 0)
 			return NULL;
 
 		if (if_gfs1)
-			inum.no_formal_ino = bn;
+			inum.in_formal_ino = bn;
 		else
-			inum.no_formal_ino = sdp->md.next_inum++;
-		inum.no_addr = bn;
+			inum.in_formal_ino = sdp->md.next_inum++;
+		inum.in_addr = bn;
 
 		err = dir_add(dip, filename, strlen(filename), &inum, IF2DT(mode));
 		if (err)
@@ -1692,7 +1692,7 @@ static int linked_leaf_search(struct gfs2_inode *dip, const char *filename,
  * Returns:
  */
 static int dir_e_search(struct gfs2_inode *dip, const char *filename,
-			int len, unsigned int *type, struct gfs2_inum *inum)
+			int len, unsigned int *type, struct lgfs2_inum *inum)
 {
 	struct gfs2_buffer_head *bh = NULL;
 	struct gfs2_dirent *dent;
@@ -1702,7 +1702,7 @@ static int dir_e_search(struct gfs2_inode *dip, const char *filename,
 	if (error)
 		return error;
 
-	gfs2_inum_in(inum, (char *)&dent->de_inum);
+	lgfs2_inum_in(inum, &dent->de_inum);
 	if (type)
 		*type = be16_to_cpu(dent->de_type);
 
@@ -1721,7 +1721,7 @@ static int dir_e_search(struct gfs2_inode *dip, const char *filename,
  * Returns:
  */
 static int dir_l_search(struct gfs2_inode *dip, const char *filename,
-			int len, unsigned int *type, struct gfs2_inum *inum)
+			int len, unsigned int *type, struct lgfs2_inum *inum)
 {
 	struct gfs2_dirent *dent;
 	int error;
@@ -1731,7 +1731,7 @@ static int dir_l_search(struct gfs2_inode *dip, const char *filename,
 
 	error = leaf_search(dip, dip->i_bh, filename, len, &dent, NULL);
 	if (!error) {
-		gfs2_inum_in(inum, (char *)&dent->de_inum);
+		lgfs2_inum_in(inum, &dent->de_inum);
 		if(type)
 			*type = be16_to_cpu(dent->de_type);
 	}
@@ -1752,7 +1752,7 @@ static int dir_l_search(struct gfs2_inode *dip, const char *filename,
  * Returns: 0 if found, -1 on failure, -ENOENT if not found.
  */
 int dir_search(struct gfs2_inode *dip, const char *filename, int len,
-		      unsigned int *type, struct gfs2_inum *inum)
+		      unsigned int *type, struct lgfs2_inum *inum)
 {
 	int error;
 
@@ -1868,7 +1868,7 @@ int gfs2_lookupi(struct gfs2_inode *dip, const char *filename, int len,
 {
 	struct gfs2_sbd *sdp = dip->i_sbd;
 	int error = 0;
-	struct gfs2_inum inum;
+	struct lgfs2_inum inum;
 
 	*ipp = NULL;
 
@@ -1880,7 +1880,7 @@ int gfs2_lookupi(struct gfs2_inode *dip, const char *filename, int len,
 	}
 	error = dir_search(dip, filename, len, NULL, &inum);
 	if (!error)
-		*ipp = lgfs2_inode_read(sdp, inum.no_addr);
+		*ipp = lgfs2_inode_read(sdp, inum.in_addr);
 
 	return error;
 }

@@ -823,27 +823,25 @@ static int check_jindex_dent(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			     struct gfs2_buffer_head *bh, char *filename,
 			     uint32_t *count, int *lindex, void *priv)
 {
-	struct gfs2_dirent dentry, *de;
+	struct lgfs2_dirent d;
 	int i;
 
-	memset(&dentry, 0, sizeof(struct gfs2_dirent));
-	gfs2_dirent_in(&dentry, (char *)dent);
-	de = &dentry;
+	lgfs2_dirent_in(&d, dent);
 
-	if (de->de_name_len == 1 && filename[0] == '.')
+	if (d.dr_name_len == 1 && filename[0] == '.')
 		goto dirent_good;
-	if (de->de_name_len == 2 && filename[0] == '.' && filename[1] == '.')
+	if (d.dr_name_len == 2 && filename[0] == '.' && filename[1] == '.')
 		goto dirent_good;
 
-	if ((de->de_name_len >= 11) || /* "journal9999" */
-	    (de->de_name_len <= 7) ||
+	if ((d.dr_name_len >= 11) || /* "journal9999" */
+	    (d.dr_name_len <= 7) ||
 	    (strncmp(filename, "journal", 7))) {
-		bad_journalname(filename, de->de_name_len);
+		bad_journalname(filename, d.dr_name_len);
 		return -1;
 	}
-	for (i = 7; i < de->de_name_len; i++) {
+	for (i = 7; i < d.dr_name_len; i++) {
 		if (filename[i] < '0' || filename[i] > '9') {
-			bad_journalname(filename, de->de_name_len);
+			bad_journalname(filename, d.dr_name_len);
 			return -2;
 		}
 	}

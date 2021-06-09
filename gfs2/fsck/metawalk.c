@@ -304,7 +304,7 @@ void fsck_inode_put(struct gfs2_inode **ip_in)
 /**
  * dirent_repair - attempt to repair a corrupt directory entry.
  * @bh - The buffer header that contains the bad dirent
- * @de - The directory entry in native format
+ * @dh - The directory entry in native format
  * @dent - The directory entry in on-disk format
  * @type - Type of directory (DIR_LINEAR or DIR_EXHASH)
  * @first - TRUE if this is the first dirent in the buffer
@@ -313,19 +313,19 @@ void fsck_inode_put(struct gfs2_inode **ip_in)
  * know at this point is that the length field is wrong.
  */
 static int dirent_repair(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
-		  struct gfs2_dirent *de, struct gfs2_dirent *dent,
+		  struct lgfs2_dirent *d, struct gfs2_dirent *dent,
 		  int type, int first)
 {
 	char *bh_end, *p;
 	int calc_de_name_len = 0;
-	
+
 	/* If this is a sentinel, just fix the length and move on */
-	if (first && !de->de_inum.no_formal_ino) { /* Is it a sentinel? */
+	if (first && !d->dr_inum.in_formal_ino) { /* Is it a sentinel? */
 		if (type == DIR_LINEAR)
-			de->de_rec_len = ip->i_sbd->sd_bsize -
+			d->dr_rec_len = ip->i_sbd->sd_bsize -
 				sizeof(struct gfs2_dinode);
 		else
-			de->de_rec_len = ip->i_sbd->sd_bsize -
+			d->dr_rec_len = ip->i_sbd->sd_bsize -
 				sizeof(struct gfs2_leaf);
 	} else {
 		bh_end = bh->b_data + ip->i_sbd->sd_bsize;
@@ -342,12 +342,12 @@ static int dirent_repair(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		/* There can often be noise at the end, so only          */
 		/* Trust the shorter of the two in case we have too much */
 		/* Or rather, only trust ours if it's shorter.           */
-		if (!de->de_name_len || de->de_name_len > NAME_MAX ||
-		    calc_de_name_len < de->de_name_len) /* if dent is hosed */
-			de->de_name_len = calc_de_name_len; /* use ours */
-		de->de_rec_len = GFS2_DIRENT_SIZE(de->de_name_len);
+		if (!d->dr_name_len || d->dr_name_len > NAME_MAX ||
+		    calc_de_name_len < d->dr_name_len) /* if dent is hosed */
+			d->dr_name_len = calc_de_name_len; /* use ours */
+		d->dr_rec_len = GFS2_DIRENT_SIZE(d->dr_name_len);
 	}
-	gfs2_dirent_out(de, (char *)dent);
+	lgfs2_dirent_out(d, dent);
 	bmodified(bh);
 	return 0;
 }
@@ -359,14 +359,14 @@ static void dirblk_truncate(struct gfs2_inode *ip, struct gfs2_dirent *fixb,
 			    struct gfs2_buffer_head *bh)
 {
 	char *bh_end;
-	struct gfs2_dirent de;
+	struct lgfs2_dirent d;
 
 	bh_end = bh->b_data + ip->i_sbd->sd_bsize;
 	/* truncate the block to save the most dentries.  To do this we
 	   have to patch the previous dent. */
-	gfs2_dirent_in(&de, (char *)fixb);
-	de.de_rec_len = bh_end - (char *)fixb;
-	gfs2_dirent_out(&de, (char *)fixb);
+	lgfs2_dirent_in(&d, fixb);
+	d.dr_rec_len = bh_end - (char *)fixb;
+	lgfs2_dirent_out(&d, fixb);
 	bmodified(bh);
 }
 
@@ -387,8 +387,8 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			 int type, uint32_t *count, int lindex,
 			 struct metawalk_fxns *pass)
 {
-	struct gfs2_dirent *dent;
-	struct gfs2_dirent de, *prev;
+	struct gfs2_dirent *dent, *prev;
+	struct lgfs2_dirent d;
 	int error = 0;
 	char *bh_end;
 	char *filename;
@@ -412,20 +412,19 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	while (1) {
 		if (skip_this_pass || fsck_abort)
 			return FSCK_OK;
-		memset(&de, 0, sizeof(struct gfs2_dirent));
-		gfs2_dirent_in(&de, (char *)dent);
+		lgfs2_dirent_in(&d, dent);
 		filename = (char *)dent + sizeof(struct gfs2_dirent);
 
-		if (de.de_rec_len < sizeof(struct gfs2_dirent) +
-		    de.de_name_len ||
-		    (de.de_inum.no_formal_ino && !de.de_name_len && !first)) {
+		if (d.dr_rec_len < sizeof(struct gfs2_dirent) +
+		    d.dr_name_len ||
+		    (d.dr_inum.in_formal_ino && !d.dr_name_len && !first)) {
 			log_err(_("Directory block %"PRIu64" (0x%"PRIx64"), "
 			          "entry %d of directory %"PRIu64" (0x%"PRIx64") "
 			          "is corrupt.\n"),
 				bh->b_blocknr, bh->b_blocknr, (*count) + 1,
 				ip->i_addr, ip->i_addr);
 			if (query( _("Attempt to repair it? (y/n) "))) {
-				if (dirent_repair(ip, bh, &de, dent, type,
+				if (dirent_repair(ip, bh, &d, dent, type,
 						  first)) {
 					if (first) /* make a new sentinel */
 						dirblk_truncate(ip, dent, bh);
@@ -448,8 +447,8 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 				return 0;
 			}
 		}
-		if (!de.de_inum.no_formal_ino){
-			if (first){
+		if (!d.dr_inum.in_formal_ino) {
+			if (first) {
 				log_debug( _("First dirent is a sentinel (place holder).\n"));
 				first = 0;
 			} else {
@@ -471,12 +470,12 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 				return 0;
 			}
 		} else {
-			if (!de.de_inum.no_addr && first) { /* reverse sentinel */
+			if (!d.dr_inum.in_addr && first) { /* reverse sentinel */
 				log_debug( _("First dirent is a Sentinel (place holder).\n"));
 				/* Swap the two to silently make it a proper sentinel */
-				de.de_inum.no_addr = de.de_inum.no_formal_ino;
-				de.de_inum.no_formal_ino = 0;
-				gfs2_dirent_out(&de, (char *)dent);
+				d.dr_inum.in_addr = d.dr_inum.in_formal_ino;
+				d.dr_inum.in_formal_ino = 0;
+				lgfs2_dirent_out(&d, dent);
 				bmodified(bh);
 				/* Mark dirent buffer as modified */
 				first = 0;
@@ -492,7 +491,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			}
 		}
 
-		if ((char *)dent + de.de_rec_len >= bh_end){
+		if ((char *)dent + d.dr_rec_len >= bh_end){
 			log_debug(_("Last entry processed for %"PRIu64"->%"PRIu64
 			            "(0x%"PRIx64"->0x%"PRIx64"), di_blocks=%"PRIu64".\n"),
 			            ip->i_addr, bh->b_blocknr, ip->i_addr,
@@ -505,7 +504,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		if (!error || first)
 			prev = dent;
 		first = 0;
-		dent = (struct gfs2_dirent *)((char *)dent + de.de_rec_len);
+		dent = (struct gfs2_dirent *)((char *)dent + d.dr_rec_len);
 	}
 	return 0;
 }

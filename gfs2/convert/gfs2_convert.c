@@ -1106,19 +1106,19 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 	return 0;
 }/* inode_renumber */
 
-/* ------------------------------------------------------------------------- */
-/* fetch_inum - fetch an inum entry from disk, given its block               */
-/* ------------------------------------------------------------------------- */
+/**
+ * fetch_inum - fetch an inum entry from disk, given its block
+ */
 static int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
-		      struct gfs2_inum *inum, uint64_t *eablk)
+		      struct lgfs2_inum *inum, uint64_t *eablk)
 {
 	struct gfs2_inode *fix_inode;
 
 	fix_inode = lgfs2_inode_read(sbp, iblock);
 	if (fix_inode == NULL)
 		return 1;
-	inum->no_formal_ino = fix_inode->i_formal_ino;
-	inum->no_addr = fix_inode->i_addr;
+	inum->in_formal_ino = fix_inode->i_formal_ino;
+	inum->in_addr = fix_inode->i_addr;
 	if (eablk)
 		*eablk = fix_inode->i_eattr;
 
@@ -1150,7 +1150,7 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 	/* Go through every dirent in the buffer and process it. */
 	/* Turns out you can't trust dir_entries is correct.     */
 	for (de = 0; ; de++) {
-		struct gfs2_inum inum;
+		struct lgfs2_inum inum;
 		int dent_was_gfs1;
 
 		if (dentmod) {
@@ -1174,17 +1174,17 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 			fflush(stdout);
 		}
 		/* fix the dirent's inode number based on the inode */
-		gfs2_inum_in(&inum, (char *)&dent->de_inum);
+		lgfs2_inum_in(&inum, &dent->de_inum);
 		dent_was_gfs1 = (dent->de_inum.no_addr == dent->de_inum.no_formal_ino);
-		if (inum.no_formal_ino) { /* if not a sentinel (placeholder) */
-			error = fetch_inum(sbp, inum.no_addr, &inum, NULL);
+		if (inum.in_formal_ino) { /* if not a sentinel (placeholder) */
+			error = fetch_inum(sbp, inum.in_addr, &inum, NULL);
 			if (error) {
-				log_crit(_("Error retrieving inode 0x%llx\n"),
-					 (unsigned long long)inum.no_addr);
+				log_crit(_("Error retrieving inode 0x%"PRIx64"\n"),
+				         inum.in_addr);
 				break;
 			}
 			/* fix the dirent's inode number from the fetched inum. */
-			dent->de_inum.no_formal_ino = cpu_to_be64(inum.no_formal_ino);
+			dent->de_inum.no_formal_ino = cpu_to_be64(inum.in_formal_ino);
 		}
 		/* Fix the dirent's filename hash: They are the same as gfs1 */
 		/* dent->de_hash = cpu_to_be32(gfs2_disk_hash((char *)(dent + 1), */
@@ -1231,7 +1231,7 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 			struct inode_dir_block *fix;
 			osi_list_foreach(tmp, &cdpns_to_fix.list) {
 				fix = osi_list_entry(tmp, struct inode_dir_block, list);
-				if (fix->di_addr == inum.no_addr)
+				if (fix->di_addr == inum.in_addr)
 					fix->di_paddr = dip->i_addr;
 			}
 		}
@@ -1392,7 +1392,7 @@ static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 
 	cdpns_fixed = 0;
 	osi_list_foreach_safe(tmp, cdpn_to_fix, x) {
-		struct gfs2_inum fix, dir;
+		struct lgfs2_inum fix, dir;
 		struct inode_dir_block *l_fix;
 		struct gfs2_buffer_head *bh = NULL;
 		struct gfs2_inode *fix_inode;
@@ -1588,7 +1588,7 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 {
 	struct gfs2_buffer_head *bh;
 	int rgcount;
-	struct gfs2_inum inum;
+	struct lgfs2_inum inum;
 
 	memset(sbp, 0, sizeof(struct gfs2_sbd));
 	if ((sbp->device_fd = open(opts->device, O_RDWR)) < 0) {
@@ -1667,15 +1667,15 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 		exit(-1);
 	}
 	/* get gfs1 rindex inode - gfs1's rindex inode ptr became __pad2 */
-	gfs2_inum_in(&inum, (char *)&gfs1_sb.sb_rindex_di);
-	sbp->md.riinode = lgfs2_gfs_inode_read(sbp, inum.no_addr);
+	lgfs2_inum_in(&inum, &gfs1_sb.sb_rindex_di);
+	sbp->md.riinode = lgfs2_gfs_inode_read(sbp, inum.in_addr);
 	if (sbp->md.riinode == NULL) {
 		log_crit(_("Could not read resource group index: %s\n"), strerror(errno));
 		exit(-1);
 	}
 	/* get gfs1 jindex inode - gfs1's journal index inode ptr became master */
-	gfs2_inum_in(&inum, (char *)&gfs1_sb.sb_jindex_di);
-	sbp->md.jiinode = lgfs2_inode_read(sbp, inum.no_addr);
+	lgfs2_inum_in(&inum, &gfs1_sb.sb_jindex_di);
+	sbp->md.jiinode = lgfs2_inode_read(sbp, inum.in_addr);
 	if (sbp->md.jiinode == NULL) {
 		log_crit(_("Could not read journal index: %s\n"), strerror(errno));
 		exit(-1);
@@ -1958,25 +1958,25 @@ static void write_statfs_file(struct gfs2_sbd *sdp)
 /* ------------------------------------------------------------------------- */
 static void remove_obsolete_gfs1(struct gfs2_sbd *sbp)
 {
-	struct gfs2_inum inum;
+	struct lgfs2_inum inum;
 
 	log_notice(_("Removing obsolete GFS1 file system structures.\n"));
 	fflush(stdout);
 	/* Delete the old gfs1 Journal index: */
-	gfs2_inum_in(&inum, (char *)&gfs1_sb.sb_jindex_di);
-	gfs2_freedi(sbp, inum.no_addr);
+	lgfs2_inum_in(&inum, &gfs1_sb.sb_jindex_di);
+	gfs2_freedi(sbp, inum.in_addr);
 
 	/* Delete the old gfs1 rgindex: */
-	gfs2_inum_in(&inum, (char *)&gfs1_sb.sb_rindex_di);
-	gfs2_freedi(sbp, inum.no_addr);
+	lgfs2_inum_in(&inum, &gfs1_sb.sb_rindex_di);
+	gfs2_freedi(sbp, inum.in_addr);
 
 	/* Delete the old gfs1 Quota file: */
-	gfs2_inum_in(&inum, (char *)&gfs1_sb.sb_quota_di);
-	gfs2_freedi(sbp, inum.no_addr);
+	lgfs2_inum_in(&inum, &gfs1_sb.sb_quota_di);
+	gfs2_freedi(sbp, inum.in_addr);
 
 	/* Delete the old gfs1 License file: */
-	gfs2_inum_in(&inum, (char *)&gfs1_sb.sb_license_di);
-	gfs2_freedi(sbp, inum.no_addr);
+	lgfs2_inum_in(&inum, &gfs1_sb.sb_license_di);
+	gfs2_freedi(sbp, inum.in_addr);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -2116,7 +2116,7 @@ static int check_fit(struct gfs2_sbd *sdp)
  */
 static void copy_quotas(struct gfs2_sbd *sdp)
 {
-	struct gfs2_inum inum;
+	struct lgfs2_inum inum;
 	struct gfs2_inode *oq_ip, *nq_ip;
 	int err;
 
@@ -2126,8 +2126,8 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 		exit(1);
 	}
 
-	gfs2_inum_in(&inum, (char *)&gfs1_sb.sb_quota_di);
-	oq_ip = lgfs2_inode_read(sdp, inum.no_addr);
+	lgfs2_inum_in(&inum, (char *)&gfs1_sb.sb_quota_di);
+	oq_ip = lgfs2_inode_read(sdp, inum.in_addr);
 	if (oq_ip == NULL) {
 		fprintf(stderr, _("Couldn't lookup old quota file: %s\n"), strerror(errno));
 		exit(1);

@@ -25,7 +25,7 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 	int filename_len = 2;
 	int err;
 	struct gfs2_inode *ip, *pip;
-	struct gfs2_inum no;
+	struct lgfs2_inum no;
 
 	ip = fsck_load_inode(sdp, block);
 	pip = fsck_load_inode(sdp, newdotdot);
@@ -40,8 +40,8 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 		log_warn( _("Unable to remove \"..\" directory entry.\n"));
 	else
 		decr_link_count(olddotdot, block, sdp->gfs1, _("old \"..\""));
-	no.no_addr = pip->i_addr;
-	no.no_formal_ino = pip->i_formal_ino;
+	no.in_addr = pip->i_addr;
+	no.in_formal_ino = pip->i_formal_ino;
 	err = dir_add(ip, filename, filename_len, &no,
 		      (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 	if (err) {
@@ -68,29 +68,23 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 	if (!di->treewalk_parent)
 		return NULL;
 
-	if (di->dotdot_parent.no_addr == di->treewalk_parent) {
-		q_dotdot = bitmap_type(sdp, di->dotdot_parent.no_addr);
+	if (di->dotdot_parent.in_addr == di->treewalk_parent) {
+		q_dotdot = bitmap_type(sdp, di->dotdot_parent.in_addr);
 		if (q_dotdot != GFS2_BLKST_DINODE) {
-			log_err( _("Orphaned directory at block %llu (0x%llx) "
-				   "moved to lost+found\n"),
-				 (unsigned long long)di->dinode.no_addr,
-				 (unsigned long long)di->dinode.no_addr);
+			log_err(_("Orphaned directory at block %"PRIu64" (0x%"PRIx64") "
+			          "moved to lost+found\n"),
+			        di->dinode.in_addr, di->dinode.in_addr);
 			return NULL;
 		}
 		goto out;
 	}
 
-	log_warn( _("Directory '..' and treewalk connections disagree for "
-		    "inode %llu (0x%llx)\n"),
-		  (unsigned long long)di->dinode.no_addr,
-		  (unsigned long long)di->dinode.no_addr);
-	log_notice( _("'..' has %llu (0x%llx), treewalk has %llu (0x%llx)\n"),
-		    (unsigned long long)di->dotdot_parent.no_addr,
-		    (unsigned long long)di->dotdot_parent.no_addr,
-		    (unsigned long long)di->treewalk_parent,
-		    (unsigned long long)di->treewalk_parent);
-	q_dotdot = bitmap_type(sdp, di->dotdot_parent.no_addr);
-	dt_dotdot = dirtree_find(di->dotdot_parent.no_addr);
+	log_warn(_("Directory '..' and treewalk connections disagree for inode %"PRIu64" (0x%"PRIx64")\n"),
+	         di->dinode.in_addr, di->dinode.in_addr);
+	log_notice(_("'..' has %"PRIu64" (0x%"PRIx64"), treewalk has %"PRIu64" (0x%"PRIx64")\n"),
+	           di->dotdot_parent.in_addr, di->dotdot_parent.in_addr, di->treewalk_parent, di->treewalk_parent);
+	q_dotdot = bitmap_type(sdp, di->dotdot_parent.in_addr);
+	dt_dotdot = dirtree_find(di->dotdot_parent.in_addr);
 	q_treewalk = bitmap_type(sdp, di->treewalk_parent);
 	dt_treewalk = dirtree_find(di->treewalk_parent);
 	/* if the dotdot entry isn't a directory, but the
@@ -111,9 +105,9 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 				  (unsigned long long)di->treewalk_parent,
 				  (unsigned long long)di->treewalk_parent);
 			attach_dotdot_to(sdp, di->treewalk_parent,
-					 di->dotdot_parent.no_addr,
-					 di->dinode.no_addr);
-			di->dotdot_parent.no_addr = di->treewalk_parent;
+					 di->dotdot_parent.in_addr,
+					 di->dinode.in_addr);
+			di->dotdot_parent.in_addr = di->treewalk_parent;
 		}
 		goto out;
 	}
@@ -121,9 +115,9 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 		log_err( _("Both .. and treewalk parents are directories, "
 			   "going with treewalk...\n"));
 		attach_dotdot_to(sdp, di->treewalk_parent,
-				 di->dotdot_parent.no_addr,
-				 di->dinode.no_addr);
-		di->dotdot_parent.no_addr = di->treewalk_parent;
+				 di->dotdot_parent.in_addr,
+				 di->dinode.in_addr);
+		di->dotdot_parent.in_addr = di->treewalk_parent;
 		goto out;
 	}
 	log_warn( _(".. parent is valid, but treewalk is bad - reattaching to "
@@ -131,35 +125,30 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 
 	/* FIXME: add a dinode for this entry instead? */
 
-	if (!query( _("Remove directory entry for bad inode %llu (0x%llx) in "
-		      "%llu (0x%llx)? (y/n)"),
-		    (unsigned long long)di->dinode.no_addr,
-		    (unsigned long long)di->dinode.no_addr,
-		    (unsigned long long)di->treewalk_parent,
-		    (unsigned long long)di->treewalk_parent)) {
+	if (!query(_("Remove directory entry for bad inode %"PRIu64" (0x%"PRIx64") "
+	             "in %"PRIu64" (0x%"PRIx64")? (y/n)"),
+	           di->dinode.in_addr, di->dinode.in_addr,
+	           di->treewalk_parent, di->treewalk_parent)) {
 		log_err( _("Directory entry to invalid inode remains\n"));
 		return NULL;
 	}
-	error = remove_dentry_from_dir(sdp, di->treewalk_parent,
-				       di->dinode.no_addr);
+	error = remove_dentry_from_dir(sdp, di->treewalk_parent, di->dinode.in_addr);
 	if (error < 0) {
 		stack;
 		return NULL;
 	}
 	if (error > 0)
-		log_warn( _("Unable to find dentry for block %llu"
-			    " (0x%llx) in %llu (0x%llx)\n"),
-			  (unsigned long long)di->dinode.no_addr,
-			  (unsigned long long)di->dinode.no_addr,
-			  (unsigned long long)di->treewalk_parent,
-			  (unsigned long long)di->treewalk_parent);
+		log_warn(_("Unable to find dentry for block %"PRIu64" (0x%"PRIx64") "
+		           "in %"PRIu64" (0x%"PRIx64")\n"),
+		         di->dinode.in_addr, di->dinode.in_addr,
+		         di->treewalk_parent, di->treewalk_parent);
 	log_warn( _("Directory entry removed\n"));
 	log_info( _("Marking directory unlinked\n"));
 
 	return NULL;
 
 out:
-	pdi = dirtree_find(di->dotdot_parent.no_addr);
+	pdi = dirtree_find(di->dotdot_parent.in_addr);
 
 	return pdi;
 }
@@ -233,31 +222,26 @@ int pass3(struct gfs2_sbd *sdp)
 			tdi = mark_and_return_parent(sdp, di);
 
 			if (tdi) {
-				log_debug( _("Directory at block %llu "
-					     "(0x%llx) connected\n"),
-					   (unsigned long long)di->dinode.no_addr,
-					   (unsigned long long)di->dinode.no_addr);
+				log_debug(_("Directory at block %"PRIu64" (0x%"PRIx64") connected\n"),
+				          di->dinode.in_addr, di->dinode.in_addr);
 				di = tdi;
 				continue;
 			}
-			q = bitmap_type(sdp, di->dinode.no_addr);
-			ip = fsck_load_inode(sdp, di->dinode.no_addr);
+			q = bitmap_type(sdp, di->dinode.in_addr);
+			ip = fsck_load_inode(sdp, di->dinode.in_addr);
 			if (q == GFS2_BLKST_FREE) {
 				log_err( _("Found unlinked directory "
-					   "containing bad block at block %llu"
-					   " (0x%llx)\n"),
-					(unsigned long long)di->dinode.no_addr,
-					(unsigned long long)di->dinode.no_addr);
+					   "containing bad block at block %"PRIu64
+					   " (0x%"PRIx64")\n"),
+				        di->dinode.in_addr, di->dinode.in_addr);
 				if (query(_("Clear unlinked directory "
 					   "with bad blocks? (y/n) "))) {
-					log_warn( _("inode %lld (0x%llx) is "
-						    "now marked as free\n"),
-						  (unsigned long long)
-						  di->dinode.no_addr,
-						  (unsigned long long)
-						  di->dinode.no_addr);
+					log_warn(_("inode %"PRIu64" (0x%"PRIx64") is "
+					           "now marked as free\n"),
+					         di->dinode.in_addr,
+					         di->dinode.in_addr);
 					check_n_fix_bitmap(sdp, ip->i_rgd,
-							   di->dinode.no_addr,
+							   di->dinode.in_addr,
 							   0, GFS2_BLKST_FREE);
 					fsck_inode_put(&ip);
 					break;
@@ -274,29 +258,26 @@ int pass3(struct gfs2_sbd *sdp)
 					fsck_inode_put(&ip);
 					break;
 				}
-				log_warn( _("inode %lld (0x%llx) is now "
+				log_warn( _("inode %"PRIu64" (0x%"PRIx64") is now "
 					    "marked as free\n"),
-					  (unsigned long long)di->dinode.no_addr,
-					  (unsigned long long)di->dinode.no_addr);
+				         di->dinode.in_addr, di->dinode.in_addr);
 				check_n_fix_bitmap(sdp, ip->i_rgd,
-						   di->dinode.no_addr, 0,
+						   di->dinode.in_addr, 0,
 						   GFS2_BLKST_FREE);
 				log_err( _("The block was cleared\n"));
 				fsck_inode_put(&ip);
 				break;
 			}
 
-			log_err( _("Found unlinked directory at block %llu"
-				   " (0x%llx)\n"),
-				 (unsigned long long)di->dinode.no_addr,
-				 (unsigned long long)di->dinode.no_addr);
+			log_err(_("Found unlinked directory at block %"PRIu64" (0x%"PRIx64")\n"),
+			        di->dinode.in_addr, di->dinode.in_addr);
 			/* Don't skip zero size directories with eattrs */
 			if (!ip->i_size && !ip->i_eattr){
 				log_err( _("Unlinked directory has zero "
 					   "size.\n"));
 				if (query( _("Remove zero-size unlinked "
 					    "directory? (y/n) "))) {
-					fsck_bitmap_set(ip, di->dinode.no_addr,
+					fsck_bitmap_set(ip, di->dinode.in_addr,
 						_("zero-sized unlinked inode"),
 							GFS2_BLKST_FREE);
 					fsck_inode_put(&ip);

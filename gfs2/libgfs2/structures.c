@@ -19,7 +19,7 @@
 
 int build_master(struct gfs2_sbd *sdp)
 {
-	struct gfs2_inum inum;
+	struct lgfs2_inum inum;
 	uint64_t bn;
 	struct gfs2_buffer_head *bh = NULL;
 	int err = lgfs2_dinode_alloc(sdp, 1, &bn);
@@ -27,8 +27,8 @@ int build_master(struct gfs2_sbd *sdp)
 	if (err != 0)
 		return -1;
 
-	inum.no_formal_ino = sdp->md.next_inum++;
-	inum.no_addr = bn;
+	inum.in_formal_ino = sdp->md.next_inum++;
+	inum.in_addr = bn;
 
 	err = init_dinode(sdp, &bh, &inum, S_IFDIR | 0755, GFS2_DIF_SYSTEM, &inum);
 	if (err != 0)
@@ -255,7 +255,7 @@ int build_journal(struct gfs2_sbd *sdp, int j, struct gfs2_inode *jindex)
  * nmemb: The number of entries in the list (number of journals).
  * Returns 0 on success or non-zero on error with errno set.
  */
-int lgfs2_build_jindex(struct gfs2_inode *master, struct gfs2_inum *jnls, size_t nmemb)
+int lgfs2_build_jindex(struct gfs2_inode *master, struct lgfs2_inum *jnls, size_t nmemb)
 {
 	char fname[GFS2_FNAMESIZE + 1];
 	struct gfs2_inode *jindex;
@@ -559,7 +559,7 @@ int build_quota(struct gfs2_sbd *sdp)
 
 int build_root(struct gfs2_sbd *sdp)
 {
-	struct gfs2_inum inum;
+	struct lgfs2_inum inum;
 	uint64_t bn;
 	struct gfs2_buffer_head *bh = NULL;
 	int err = lgfs2_dinode_alloc(sdp, 1, &bn);
@@ -567,8 +567,8 @@ int build_root(struct gfs2_sbd *sdp)
 	if (err != 0)
 		return -1;
 
-	inum.no_formal_ino = sdp->md.next_inum++;
-	inum.no_addr = bn;
+	inum.in_formal_ino = sdp->md.next_inum++;
+	inum.in_addr = bn;
 
 	err = init_dinode(sdp, &bh, &inum, S_IFDIR | 0755, 0, &inum);
 	if (err != 0)

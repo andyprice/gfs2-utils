@@ -186,22 +186,22 @@ static int scan_inode_list(struct gfs2_sbd *sdp)
 		ii = (struct inode_info *)tmp;
 		/* Don't check reference counts on the special gfs files */
 		if (sdp->gfs1 &&
-		    ((ii->di_num.no_addr == sdp->md.riinode->i_addr) ||
-		     (ii->di_num.no_addr == sdp->md.qinode->i_addr) ||
-		     (ii->di_num.no_addr == sdp->md.statfs->i_addr)))
+		    ((ii->num.in_addr == sdp->md.riinode->i_addr) ||
+		     (ii->num.in_addr == sdp->md.qinode->i_addr) ||
+		     (ii->num.in_addr == sdp->md.statfs->i_addr)))
 			continue;
 		if (ii->counted_links == 0) {
-			if (handle_unlinked(sdp, ii->di_num.no_addr,
+			if (handle_unlinked(sdp, ii->num.in_addr,
 					    &ii->counted_links, &lf_addition))
 				continue;
 		} /* if (ii->counted_links == 0) */
 		else if (ii->di_nlink != ii->counted_links) {
-			handle_inconsist(sdp, ii->di_num.no_addr,
+			handle_inconsist(sdp, ii->num.in_addr,
 					 &ii->di_nlink, ii->counted_links);
 		}
 		log_debug( _("block %llu (0x%llx) has link count %d\n"),
-			 (unsigned long long)ii->di_num.no_addr,
-			 (unsigned long long)ii->di_num.no_addr, ii->di_nlink);
+			 (unsigned long long)ii->num.in_addr,
+			 (unsigned long long)ii->num.in_addr, ii->di_nlink);
 	} /* osi_list_foreach(tmp, list) */
 
 	return adjust_lf_links(lf_addition);
@@ -222,19 +222,18 @@ static int scan_dir_list(struct gfs2_sbd *sdp)
 		di = (struct dir_info *)tmp;
 		/* Don't check reference counts on the special gfs files */
 		if (sdp->gfs1 &&
-		    di->dinode.no_addr == sdp->md.jiinode->i_addr)
+		    di->dinode.in_addr == sdp->md.jiinode->i_addr)
 			continue;
 		if (di->counted_links == 0) {
-			if (handle_unlinked(sdp, di->dinode.no_addr,
+			if (handle_unlinked(sdp, di->dinode.in_addr,
 					    &di->counted_links, &lf_addition))
 				continue;
 		} else if (di->di_nlink != di->counted_links) {
-			handle_inconsist(sdp, di->dinode.no_addr,
+			handle_inconsist(sdp, di->dinode.in_addr,
 					 &di->di_nlink, di->counted_links);
 		}
-		log_debug( _("block %llu (0x%llx) has link count %d\n"),
-			 (unsigned long long)di->dinode.no_addr,
-			 (unsigned long long)di->dinode.no_addr, di->di_nlink);
+		log_debug(_("block %"PRIu64" (0x%"PRIx64") has link count %d\n"),
+		          di->dinode.in_addr, di->dinode.in_addr, di->di_nlink);
 	} /* osi_list_foreach(tmp, list) */
 
 	return adjust_lf_links(lf_addition);

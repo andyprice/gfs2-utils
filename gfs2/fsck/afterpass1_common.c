@@ -118,13 +118,11 @@ static int remove_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	/* the metawalk_fxn's private field must be set to the dentry
 	 * block we want to clear */
 	uint64_t *dentryblock = (uint64_t *) private;
-	struct gfs2_dirent dentry, *de;
+	struct lgfs2_dirent d;
 
-	memset(&dentry, 0, sizeof(struct gfs2_dirent));
-	gfs2_dirent_in(&dentry, (char *)dent);
-	de = &dentry;
+	lgfs2_dirent_in(&d, dent);
 
-	if (de->de_inum.no_addr == *dentryblock)
+	if (d.dr_inum.in_addr == *dentryblock)
 		dirent2_del(ip, bh, prev_de, dent);
 	else
 		(*count)++;

@@ -38,33 +38,20 @@
 #define CPIN_64(s1, s2, member) {(s1->member) = be64_to_cpu((s2->member));}
 #define CPOUT_64(s1, s2, member) {(s2->member) = cpu_to_be64((s1->member));}
 
-/*
- * gfs2_xxx_in - read in an xxx struct
- * first arg: the cpu-order structure
- * buf: the disk-order block data
- *
- * gfs2_xxx_out - write out an xxx struct
- * first arg: the cpu-order structure
- * buf: the disk-order block data
- *
- * gfs2_xxx_print - print out an xxx struct
- * first arg: the cpu-order structure
- */
-
-void gfs2_inum_in(struct gfs2_inum *no, char *buf)
+void lgfs2_inum_in(struct lgfs2_inum *i, void *inp)
 {
-	struct gfs2_inum *str = (struct gfs2_inum *)buf;
+	struct gfs2_inum *in = inp;
 
-	CPIN_64(no, str, no_formal_ino);
-	CPIN_64(no, str, no_addr);
+	i->in_formal_ino = be64_to_cpu(in->no_formal_ino);
+	i->in_addr = be64_to_cpu(in->no_addr);
 }
 
-void gfs2_inum_out(const struct gfs2_inum *no, char *buf)
+void lgfs2_inum_out(struct lgfs2_inum *i, void *inp)
 {
-	struct gfs2_inum *str = (struct gfs2_inum *)buf;
+	struct gfs2_inum *in = inp;
 
-	CPOUT_64(no, str, no_formal_ino);
-	CPOUT_64(no, str, no_addr);
+	in->no_formal_ino = cpu_to_be64(i->in_formal_ino);
+	in->no_addr = cpu_to_be64(i->in_addr);
 }
 
 void lgfs2_inum_print(void *nop)
@@ -375,32 +362,30 @@ void lgfs2_dinode_print(void *dip)
 	printbe64(di, di_eattr);
 }
 
-void gfs2_dirent_in(struct gfs2_dirent *de, char *buf)
+void lgfs2_dirent_in(struct lgfs2_dirent *d, void *dep)
 {
-	struct gfs2_dirent *str = (struct gfs2_dirent *)buf;
+	struct gfs2_dirent *de = dep;
 
-	gfs2_inum_in(&de->de_inum, buf);
-	CPIN_32(de, str, de_hash);
-	CPIN_16(de, str, de_rec_len);
-	CPIN_16(de, str, de_name_len);
-	CPIN_16(de, str, de_type);
-	CPIN_16(de, str, de_rahead);
-	CPIN_32(de, str, de_cookie);
-	CPIN_08(de, str, pad3, 8);
+	lgfs2_inum_in(&d->dr_inum, &de->de_inum);
+	d->dr_hash = be32_to_cpu(de->de_hash);
+	d->dr_rec_len = be16_to_cpu(de->de_rec_len);
+	d->dr_name_len = be16_to_cpu(de->de_name_len);
+	d->dr_type = be16_to_cpu(de->de_type);
+	d->dr_rahead = be16_to_cpu(de->de_rahead);
+	d->dr_cookie = be32_to_cpu(de->de_cookie);
 }
 
-void gfs2_dirent_out(struct gfs2_dirent *de, char *buf)
+void lgfs2_dirent_out(struct lgfs2_dirent *d, void *dep)
 {
-	struct gfs2_dirent *str = (struct gfs2_dirent *)buf;
+	struct gfs2_dirent *de = dep;
 
-	gfs2_inum_out(&de->de_inum, buf);
-	CPOUT_32(de, str, de_hash);
-	CPOUT_16(de, str, de_rec_len);
-	CPOUT_16(de, str, de_name_len);
-	CPOUT_16(de, str, de_type);
-	CPOUT_16(de, str, de_rahead);
-	CPOUT_32(de, str, de_cookie);
-	CPOUT_08(de, str, pad3, 8);
+	lgfs2_inum_out(&d->dr_inum, &de->de_inum);
+	de->de_hash = cpu_to_be32(d->dr_hash);
+	de->de_rec_len = cpu_to_be16(d->dr_rec_len);
+	de->de_name_len = cpu_to_be16(d->dr_name_len);
+	de->de_type = cpu_to_be16(d->dr_type);
+	de->de_rahead = cpu_to_be16(d->dr_rahead);
+	de->de_cookie = cpu_to_be32(d->dr_cookie);
 }
 
 void gfs2_leaf_in(struct gfs2_leaf *lf, char *buf)

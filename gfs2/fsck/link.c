@@ -60,9 +60,9 @@ int set_di_nlink(struct gfs2_inode *ip)
 	/* If the list has entries, look for one that matches inode_no */
 	ii = inodetree_find(ip->i_addr);
 	if (!ii) {
-		struct gfs2_inum no = {
-			.no_addr = ip->i_addr,
-			.no_formal_ino = ip->i_formal_ino
+		struct lgfs2_inum no = {
+			.in_addr = ip->i_addr,
+			.in_formal_ino = ip->i_formal_ino
 		};
 		ii = inodetree_insert(no);
 	}
@@ -81,48 +81,47 @@ int set_di_nlink(struct gfs2_inode *ip)
 		  (unsigned long long)referenced_from, counted_links,	\
 		  (unsigned long long)no_addr, why);
 
-int incr_link_count(struct gfs2_inum no, struct gfs2_inode *ip,
-		    const char *why)
+int incr_link_count(struct lgfs2_inum no, struct gfs2_inode *ip, const char *why)
 {
 	struct inode_info *ii = NULL;
 	uint64_t referenced_from = ip ? ip->i_addr : 0;
 	struct dir_info *di;
 	struct gfs2_inode *link_ip;
 
-	di = dirtree_find(no.no_addr);
+	di = dirtree_find(no.in_addr);
 	if (di) {
-		if (di->dinode.no_formal_ino != no.no_formal_ino)
+		if (di->dinode.in_formal_ino != no.in_formal_ino)
 			return INCR_LINK_INO_MISMATCH;
 
 		di->counted_links++;
-		whyincr(no.no_addr, why, referenced_from, di->counted_links);
+		whyincr(no.in_addr, why, referenced_from, di->counted_links);
 		return INCR_LINK_GOOD;
 	}
-	ii = inodetree_find(no.no_addr);
+	ii = inodetree_find(no.in_addr);
 	/* If the list has entries, look for one that matches inode_no */
 	if (ii) {
-		if (ii->di_num.no_formal_ino != no.no_formal_ino)
+		if (ii->num.in_formal_ino != no.in_formal_ino)
 			return INCR_LINK_INO_MISMATCH;
 
 		ii->counted_links++;
-		whyincr(no.no_addr, why, referenced_from, ii->counted_links);
+		whyincr(no.in_addr, why, referenced_from, ii->counted_links);
 		return INCR_LINK_GOOD;
 	}
-	if (link1_type(&clink1map, no.no_addr) != 1) {
-		link1_set(&clink1map, no.no_addr, 1);
-		whyincr(no.no_addr, why, referenced_from, 1);
+	if (link1_type(&clink1map, no.in_addr) != 1) {
+		link1_set(&clink1map, no.in_addr, 1);
+		whyincr(no.in_addr, why, referenced_from, 1);
 		return INCR_LINK_GOOD;
 	}
 
-	link_ip = fsck_load_inode(ip->i_sbd, no.no_addr);
+	link_ip = fsck_load_inode(ip->i_sbd, no.in_addr);
 	/* Check formal ino against dinode before adding to inode tree. */
-	if (no.no_formal_ino != link_ip->i_formal_ino) {
+	if (no.in_formal_ino != link_ip->i_formal_ino) {
 		fsck_inode_put(&link_ip);
 		return INCR_LINK_INO_MISMATCH; /* inode mismatch */
 	}
 	/* Move it from the link1 maps to a real inode tree entry */
-	link1_set(&nlink1map, no.no_addr, 0);
-	link1_set(&clink1map, no.no_addr, 0);
+	link1_set(&nlink1map, no.in_addr, 0);
+	link1_set(&clink1map, no.in_addr, 0);
 
 	/* If no match was found, it must be a hard link. In theory, it can't
 	   be a duplicate because those were resolved in pass1b. Add a new
@@ -132,17 +131,17 @@ int incr_link_count(struct gfs2_inum no, struct gfs2_inode *ip,
 		log_debug( _("Ref: (0x%llx) Error incrementing link for "
 			     "(0x%llx)!\n"),
 			   (unsigned long long)referenced_from,
-			   (unsigned long long)no.no_addr);
+			   (unsigned long long)no.in_addr);
 		fsck_inode_put(&link_ip);
 		return INCR_LINK_BAD;
 	}
-	ii->di_num.no_addr = link_ip->i_addr;
-	ii->di_num.no_formal_ino = link_ip->i_formal_ino;
+	ii->num.in_addr = link_ip->i_addr;
+	ii->num.in_formal_ino = link_ip->i_formal_ino;
 	fsck_inode_put(&link_ip);
 	ii->di_nlink = 1; /* Must be 1 or it wouldn't have gotten into the
 			     nlink1map */
 	ii->counted_links = 2;
-	whyincr(no.no_addr, why, referenced_from, ii->counted_links);
+	whyincr(no.in_addr, why, referenced_from, ii->counted_links);
 	/* We transitioned a dentry link count from 1 to 2, and we know it's
 	   not a directory. But the new reference has the correct formal
 	   inode number, so the first reference is suspect: we need to

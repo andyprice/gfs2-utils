@@ -160,7 +160,7 @@ static void opts_init(struct mkfs_opts *opts)
 	opts->format = GFS2_FORMAT_FS;
 }
 
-struct gfs2_inum *mkfs_journals = NULL;
+struct lgfs2_inum *mkfs_journals = NULL;
 
 #ifndef BLKDISCARD
 #define BLKDISCARD      _IO(0x12,119)
@@ -901,8 +901,8 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 			fprintf(stderr, _("Failed to write data blocks for journal %u\n"), j);
 			return result;
 		}
-		mkfs_journals[j].no_addr = in.i_addr;
-		mkfs_journals[j].no_formal_ino = in.i_formal_ino;
+		mkfs_journals[j].in_addr = in.i_addr;
+		mkfs_journals[j].in_formal_ino = in.i_formal_ino;
 	}
 	gfs2_progress_close(&progress, _("Done\n"));
 

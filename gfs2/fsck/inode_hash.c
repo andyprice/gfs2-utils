@@ -19,9 +19,9 @@ struct inode_info *inodetree_find(uint64_t block)
 	while (node) {
 		struct inode_info *data = (struct inode_info *)node;
 
-		if (block < data->di_num.no_addr)
+		if (block < data->num.in_addr)
 			node = node->osi_left;
-		else if (block > data->di_num.no_addr)
+		else if (block > data->num.in_addr)
 			node = node->osi_right;
 		else
 			return data;
@@ -29,7 +29,7 @@ struct inode_info *inodetree_find(uint64_t block)
 	return NULL;
 }
 
-struct inode_info *inodetree_insert(struct gfs2_inum di_num)
+struct inode_info *inodetree_insert(struct lgfs2_inum no)
 {
 	struct osi_node **newn = &inodetree.osi_node, *parent = NULL;
 	struct inode_info *data;
@@ -39,9 +39,9 @@ struct inode_info *inodetree_insert(struct gfs2_inum di_num)
 		struct inode_info *cur = (struct inode_info *)*newn;
 
 		parent = *newn;
-		if (di_num.no_addr < cur->di_num.no_addr)
+		if (no.in_addr < cur->num.in_addr)
 			newn = &((*newn)->osi_left);
-		else if (di_num.no_addr > cur->di_num.no_addr)
+		else if (no.in_addr > cur->num.in_addr)
 			newn = &((*newn)->osi_right);
 		else
 			return cur;
@@ -53,7 +53,7 @@ struct inode_info *inodetree_insert(struct gfs2_inum di_num)
 		return NULL;
 	}
 	/* Add new node and rebalance tree. */
-	data->di_num = di_num;
+	data->num = no;
 	osi_link_node(&data->node, parent, newn);
 	osi_insert_color(&data->node, &inodetree);
 
