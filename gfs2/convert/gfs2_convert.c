@@ -278,12 +278,12 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 	struct gfs2_buffer_head *bh;
 	unsigned int amount, ptramt;
 	int hdrsize, h, copied = 0, new;
-	struct gfs2_meta_header mh;
+	struct gfs2_meta_header mh = {0};
 	char *srcptr = (char *)first_nonzero_ptr;
 
-	mh.mh_magic = GFS2_MAGIC;
-	mh.mh_type = GFS2_METATYPE_IN;
-	mh.mh_format = GFS2_FORMAT_IN;
+	mh.mh_magic = cpu_to_be32(GFS2_MAGIC);
+	mh.mh_type = cpu_to_be32(GFS2_METATYPE_IN);
+	mh.mh_format = cpu_to_be32(GFS2_FORMAT_IN);
 	if (!ip->i_height)
 		unstuff_dinode(ip);
 
@@ -304,7 +304,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 			bh = bread(sbp, block);
 			if (new)
 				memset(bh->b_data, 0, sbp->sd_bsize);
-			gfs2_meta_header_out(&mh, bh->b_data);
+			memcpy(bh->b_data, &mh, sizeof(mh));
 			bmodified(bh);
 		}
 
@@ -436,11 +436,11 @@ static uint64_t fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 	struct gfs2_buffer_head *bh;
 	unsigned int amount, ptramt;
 	int h, copied = 0, new = 0;
-	struct gfs2_meta_header mh;
+	struct gfs2_meta_header mh = {0};
 
-	mh.mh_magic = GFS2_MAGIC;
-	mh.mh_type = GFS2_METATYPE_IN;
-	mh.mh_format = GFS2_FORMAT_IN;
+	mh.mh_magic = cpu_to_be32(GFS2_MAGIC);
+	mh.mh_type = cpu_to_be32(GFS2_METATYPE_IN);
+	mh.mh_format = cpu_to_be32(GFS2_FORMAT_IN);
 
 	if (!ip->i_height)
 		unstuff_dinode(ip);
@@ -463,7 +463,7 @@ static uint64_t fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 			if (new)
 				memset(bh->b_data, 0, sbp->sd_bsize);
 			if (h < (blk->height - 1)) {
-				gfs2_meta_header_out(&mh, bh->b_data);
+				memcpy(bh->b_data, &mh, sizeof(mh));
 				bmodified(bh);
 			}
 		}
@@ -1835,12 +1835,12 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 	struct gfs_jindex *jndx;
 	struct rgrp_tree *rgd, *rgdhigh;
 	struct osi_node *n, *next = NULL;
-	struct gfs2_meta_header mh;
+	struct gfs2_meta_header mh = {0};
 	uint64_t ri_addr;
 
-	mh.mh_magic = GFS2_MAGIC;
-	mh.mh_type = GFS2_METATYPE_RB;
-	mh.mh_format = GFS2_FORMAT_RB;
+	mh.mh_magic = cpu_to_be32(GFS2_MAGIC);
+	mh.mh_type = cpu_to_be32(GFS2_METATYPE_RB);
+	mh.mh_format = cpu_to_be32(GFS2_FORMAT_RB);
 	log_notice(_("Converting journal space to rg space.\n"));
 	/* Go through each journal, converting them one by one */
 	for (j = 0; j < orig_journals; j++) { /* for each journal */
@@ -1907,7 +1907,7 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 		rgd->bits[0].bi_modified = 1;
 
 		for (unsigned i = 1; i < rgd->rt_length; i++) {
-			gfs2_meta_header_out(&mh, rgd->bits[i].bi_data);
+			memcpy(rgd->bits[i].bi_data, &mh, sizeof(mh));
 			rgd->bits[i].bi_modified = 1;
 		}
 	} /* for each journal */

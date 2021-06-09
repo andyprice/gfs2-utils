@@ -246,14 +246,14 @@ void unstuff_dinode(struct gfs2_inode *ip)
 		if (lgfs2_meta_alloc(ip, &block))
 			exit(1);
 		if (isdir) {
-			struct gfs2_meta_header mh;
+			struct gfs2_meta_header mh = {
+				.mh_magic = cpu_to_be32(GFS2_MAGIC),
+				.mh_type = cpu_to_be32(GFS2_METATYPE_JD),
+				.mh_format = cpu_to_be32(GFS2_FORMAT_JD)
+			};
 
 			bh = bget(sdp, block);
-			mh.mh_magic = GFS2_MAGIC;
-			mh.mh_type = GFS2_METATYPE_JD;
-			mh.mh_format = GFS2_FORMAT_JD;
-			gfs2_meta_header_out(&mh, bh->b_data);
-
+			memcpy(bh->b_data, &mh, sizeof(mh));
 			buffer_copy_tail(sdp, bh,
 					 sizeof(struct gfs2_meta_header),
 					 ip->i_bh, sizeof(struct gfs2_dinode));
@@ -399,15 +399,16 @@ void build_height(struct gfs2_inode *ip, int height)
 			}
 
 		if (new_block) {
-			struct gfs2_meta_header mh;
+			struct gfs2_meta_header mh = {
+				.mh_magic = cpu_to_be32(GFS2_MAGIC),
+				.mh_type = cpu_to_be32(GFS2_METATYPE_IN),
+				.mh_format = cpu_to_be32(GFS2_FORMAT_IN)
+			};
 
 			if (lgfs2_meta_alloc(ip, &block))
 				exit(1);
 			bh = bget(sdp, block);
-			mh.mh_magic = GFS2_MAGIC;
-			mh.mh_type = GFS2_METATYPE_IN;
-			mh.mh_format = GFS2_FORMAT_IN;
-			gfs2_meta_header_out(&mh, bh->b_data);
+			memcpy(bh->b_data, &mh, sizeof(mh));
 			buffer_copy_tail(sdp, bh,
 					 sizeof(struct gfs2_meta_header),
 					 ip->i_bh, sizeof(struct gfs2_dinode));
@@ -514,12 +515,13 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			return;
 
 		if (*new) {
-			struct gfs2_meta_header mh;
+			struct gfs2_meta_header mh = {
+				.mh_magic = cpu_to_be32(GFS2_MAGIC),
+				.mh_type = cpu_to_be32(GFS2_METATYPE_IN),
+				.mh_format = cpu_to_be32(GFS2_FORMAT_IN)
+			};
 			bh = bget(sdp, *dblock);
-			mh.mh_magic = GFS2_MAGIC;
-			mh.mh_type = GFS2_METATYPE_IN;
-			mh.mh_format = GFS2_FORMAT_IN;
-			gfs2_meta_header_out(&mh, bh->b_data);
+			memcpy(bh->b_data, &mh, sizeof(mh));
 			bmodified(bh);
 		} else {
 			if (*dblock == ip->i_addr)
@@ -707,11 +709,12 @@ int __gfs2_writei(struct gfs2_inode *ip, void *buf,
 		if (new) {
 			bh = bget(sdp, dblock);
 			if (isdir) {
-				struct gfs2_meta_header mh;
-				mh.mh_magic = GFS2_MAGIC;
-				mh.mh_type = GFS2_METATYPE_JD;
-				mh.mh_format = GFS2_FORMAT_JD;
-				gfs2_meta_header_out(&mh, bh->b_data);
+				struct gfs2_meta_header mh = {
+					.mh_magic = cpu_to_be32(GFS2_MAGIC),
+					.mh_type = cpu_to_be32(GFS2_METATYPE_JD),
+					.mh_format = cpu_to_be32(GFS2_FORMAT_JD),
+				};
+				memcpy(bh->b_data, &mh, sizeof(mh));
 				bmodified(bh);
 			}
 		} else {
@@ -907,11 +910,12 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
 		exit(1);
 	nbh = bget(dip->i_sbd, bn);
 	{
-		struct gfs2_meta_header mh;
-		mh.mh_magic = GFS2_MAGIC;
-		mh.mh_type = GFS2_METATYPE_LF;
-		mh.mh_format = GFS2_FORMAT_LF;
-		gfs2_meta_header_out(&mh, nbh->b_data);
+		struct gfs2_meta_header mh = {
+			.mh_magic = cpu_to_be32(GFS2_MAGIC),
+			.mh_type = cpu_to_be32(GFS2_METATYPE_LF),
+			.mh_format = cpu_to_be32(GFS2_FORMAT_LF)
+		};
+		memcpy(nbh->b_data, &mh, sizeof(mh));
 		bmodified(nbh);
 		buffer_clear_tail(dip->i_sbd, nbh,
 				  sizeof(struct gfs2_meta_header));
@@ -1182,15 +1186,15 @@ restart:
 				continue;
 
 			} else {
-				struct gfs2_meta_header mh;
-
+				struct gfs2_meta_header mh = {
+					.mh_magic = cpu_to_be32(GFS2_MAGIC),
+					.mh_type = cpu_to_be32(GFS2_METATYPE_LF),
+					.mh_format = cpu_to_be32(GFS2_FORMAT_LF)
+				};
 				if (lgfs2_meta_alloc(dip, &bn))
 					exit(1);
 				nbh = bget(dip->i_sbd, bn);
-				mh.mh_magic = GFS2_MAGIC;
-				mh.mh_type = GFS2_METATYPE_LF;
-				mh.mh_format = GFS2_FORMAT_LF;
-				gfs2_meta_header_out(&mh, nbh->b_data);
+				memcpy(nbh->b_data, &mh, sizeof(mh));
 				bmodified(nbh);
 
 				leaf->lf_next = cpu_to_be64(bn);
@@ -1239,11 +1243,12 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 		exit(1);
 	bh = bget(sdp, bn);
 	{
-		struct gfs2_meta_header mh;
-		mh.mh_magic = GFS2_MAGIC;
-		mh.mh_type = GFS2_METATYPE_LF;
-		mh.mh_format = GFS2_FORMAT_LF;
-		gfs2_meta_header_out(&mh, bh->b_data);
+		struct gfs2_meta_header mh = {
+			.mh_magic = cpu_to_be32(GFS2_MAGIC),
+			.mh_type = cpu_to_be32(GFS2_METATYPE_LF),
+			.mh_format = cpu_to_be32(GFS2_FORMAT_LF)
+		};
+		memcpy(bh->b_data, &mh, sizeof(mh));
 		bmodified(bh);
 	}
 
@@ -1434,9 +1439,9 @@ int lgfs2_write_filemeta(struct gfs2_inode *ip)
 	uint64_t ptr0 = ip->i_addr + 1;
 	unsigned ptrs = 1;
 	struct gfs2_meta_header mh = {
-		.mh_magic = GFS2_MAGIC,
-		.mh_type = GFS2_METATYPE_IN,
-		.mh_format = GFS2_FORMAT_IN,
+		.mh_magic = cpu_to_be32(GFS2_MAGIC),
+		.mh_type = cpu_to_be32(GFS2_METATYPE_IN),
+		.mh_format = cpu_to_be32(GFS2_FORMAT_IN)
 	};
 	struct gfs2_buffer_head *bh = bget(sdp, ip->i_addr);
 	if (bh == NULL)
@@ -1462,7 +1467,7 @@ int lgfs2_write_filemeta(struct gfs2_inode *ip)
 				lgfs2_dinode_out(ip, bh->b_data);
 			} else {
 				start += sizeof(struct gfs2_meta_header);
-				gfs2_meta_header_out(&mh, bh->b_data);
+				memcpy(bh->b_data, &mh, sizeof(mh));
 			}
 			lgfs2_fill_indir(start, bh->b_data + sdp->sd_bsize, ptr0, ptrs, &p);
 			if (bwrite(bh)) {

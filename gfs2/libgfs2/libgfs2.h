@@ -810,8 +810,6 @@ extern void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 
 extern void lgfs2_inum_in(struct lgfs2_inum *i, void *inp);
 extern void lgfs2_inum_out(struct lgfs2_inum *i, void *inp);
-extern void gfs2_meta_header_in(struct gfs2_meta_header *mh, const char *buf);
-extern void gfs2_meta_header_out(const struct gfs2_meta_header *mh, char *buf);
 extern void lgfs2_sb_in(struct gfs2_sbd *sdp, void *buf);
 extern void lgfs2_sb_out(const struct gfs2_sbd *sdp, void *buf);
 extern void lgfs2_rindex_in(lgfs2_rgrp_t rg, void *buf);

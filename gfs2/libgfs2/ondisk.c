@@ -9,13 +9,6 @@
 #include <uuid.h>
 #include "libgfs2.h"
 
-#define pv(struct, member, fmt, fmt2) do {				\
-		print_it("  "#member, fmt, fmt2, struct->member);	\
-	} while (0);
-#define pv2(struct, member, fmt, fmt2) do {				\
-		print_it("  ", fmt, fmt2, struct->member);		\
-	} while (0);
-
 #define printbe16(struct, member) do { \
 		print_it("  "#member, "%"PRIu16, "0x%"PRIx16, be16_to_cpu(struct->member)); \
 	} while(0)
@@ -28,15 +21,6 @@
 #define print8(struct, member) do { \
 		print_it("  "#member, "%"PRIu8, "0x%"PRIx8, struct->member); \
 	} while(0)
-
-#define CPIN_08(s1, s2, member, count) {memcpy((s1->member), (s2->member), (count));}
-#define CPOUT_08(s1, s2, member, count) {memcpy((s2->member), (s1->member), (count));}
-#define CPIN_16(s1, s2, member) {(s1->member) = be16_to_cpu((s2->member));}
-#define CPOUT_16(s1, s2, member) {(s2->member) = cpu_to_be16((s1->member));}
-#define CPIN_32(s1, s2, member) {(s1->member) = be32_to_cpu((s2->member));}
-#define CPOUT_32(s1, s2, member) {(s2->member) = cpu_to_be32((s1->member));}
-#define CPIN_64(s1, s2, member) {(s1->member) = be64_to_cpu((s2->member));}
-#define CPOUT_64(s1, s2, member) {(s2->member) = cpu_to_be64((s1->member));}
 
 void lgfs2_inum_in(struct lgfs2_inum *i, void *inp)
 {
@@ -60,26 +44,6 @@ void lgfs2_inum_print(void *nop)
 
 	printbe64(no, no_formal_ino);
 	printbe64(no, no_addr);
-}
-
-void gfs2_meta_header_in(struct gfs2_meta_header *mh, const char *buf)
-{
-	const struct gfs2_meta_header *str = (struct gfs2_meta_header *)buf;
-
-	CPIN_32(mh, str, mh_magic);
-	CPIN_32(mh, str, mh_type);
-	CPIN_32(mh, str, mh_format);
-}
-
-void gfs2_meta_header_out(const struct gfs2_meta_header *mh, char *buf)
-{
-	struct gfs2_meta_header *str = (struct gfs2_meta_header *)buf;
-
-	CPOUT_32(mh, str, mh_magic);
-	CPOUT_32(mh, str, mh_type);
-	CPOUT_32(mh, str, mh_format);
-	str->__pad0 = 0;
-	str->__pad1 = 0;
 }
 
 void lgfs2_meta_header_print(void *mhp)

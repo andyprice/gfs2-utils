@@ -319,7 +319,6 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 	uint64_t rgrp_dist = 0, used_blocks, block, next_block, twogigs;
 	struct rgrp_tree *rgd = NULL, *next_rgd;
 	struct gfs2_buffer_head *bh;
-	struct gfs2_meta_header mh;
 	int first, length, b, found;
 	uint64_t mega_in_blocks;
 	uint32_t free_blocks;
@@ -353,15 +352,17 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 	first = 1;
 	found = 0;
 	while (1) {
+		struct gfs2_meta_header *mh;
+
 		if (block >= sdp->device.length)
 			break;
 		if (block >= prevrgd->rt_addr + twogigs)
 			break;
 		bh = bread(sdp, block);
-		gfs2_meta_header_in(&mh, bh->b_data);
-		if ((mh.mh_magic != GFS2_MAGIC) ||
-		    (first && mh.mh_type != GFS2_METATYPE_RG) ||
-		    (!first && mh.mh_type != GFS2_METATYPE_RB)) {
+		mh = (struct gfs2_meta_header *)bh->b_data;
+		if ((be32_to_cpu(mh->mh_magic) != GFS2_MAGIC) ||
+		    (first && be32_to_cpu(mh->mh_type) != GFS2_METATYPE_RG) ||
+		    (!first && be32_to_cpu(mh->mh_type) != GFS2_METATYPE_RB)) {
 			brelse(bh);
 			break;
 		}
@@ -391,22 +392,21 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 			if (next_block + b >= sdp->device.length)
 				break;
 			bh = bread(sdp, next_block + b);
-			gfs2_meta_header_in(&mh, bh->b_data);
-			brelse(bh);
-			if (mh.mh_magic == GFS2_MAGIC) {
-				if (mh.mh_type == GFS2_METATYPE_RG) {
+			mh = (struct gfs2_meta_header *)bh->b_data;
+			if (be32_to_cpu(mh->mh_magic) == GFS2_MAGIC) {
+				if (be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RG)
 					found = 1;
-					break;
-				}
 				/* if the first thing we find is a bitmap,
 				   there must be a damaged rgrp on the
 				   previous block. */
-				if (mh.mh_type == GFS2_METATYPE_RB) {
+				if (be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RB) {
 					found = 1;
 					rgrp_dist--;
-					break;
 				}
 			}
+			brelse(bh);
+			if (found)
+				break;
 			rgrp_dist++;
 		}
 		if (found) {
@@ -429,7 +429,7 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 {
 	uint64_t rgrp_dist = 0, block, twogigs, last_block, last_meg;
 	struct gfs2_buffer_head *bh;
-	struct gfs2_meta_header mh;
+	struct gfs2_meta_header *mh;
 	int b, mega_in_blocks;
 
 	/* Skip ahead the previous amount: we might get lucky.
@@ -438,14 +438,16 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 		return sdp->fssize - blk;
 
 	bh = bread(sdp, blk + last_bump);
-	gfs2_meta_header_in(&mh, bh->b_data);
-	brelse(bh);
-	if (mh.mh_magic == GFS2_MAGIC && mh.mh_type == GFS2_METATYPE_RG) {
+	mh = (struct gfs2_meta_header *)bh->b_data;
+	if (be32_to_cpu(mh->mh_magic) == GFS2_MAGIC &&
+	    be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RG) {
 		log_info( _("rgrp found at 0x%llx, length=%lld\n"),
 			  (unsigned long long)blk + last_bump,
 			  (unsigned long long)last_bump);
+		brelse(bh);
 		return last_bump;
 	}
+	brelse(bh);
 
 	rgrp_dist = AWAY_FROM_BITMAPS; /* Get away from any bitmaps
 					  associated with the previous rgrp */
@@ -464,15 +466,19 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 		last_meg = mega_in_blocks;
 	}
 	for (b = AWAY_FROM_BITMAPS; b < last_block; b++) {
+		uint32_t magic, type;
+
 		bh = bread(sdp, block + b);
-		gfs2_meta_header_in(&mh, bh->b_data);
+		mh = (struct gfs2_meta_header *)bh->b_data;
+		magic = be32_to_cpu(mh->mh_magic);
+		type = be32_to_cpu(mh->mh_type);
 		brelse(bh);
-		if (mh.mh_magic == GFS2_MAGIC) {
-			if (mh.mh_type == GFS2_METATYPE_RG)
+		if (magic == GFS2_MAGIC) {
+			if (type == GFS2_METATYPE_RG)
 				break;
 			/* if the first thing we find is a bitmap, there must
 			   be a damaged rgrp on the previous block. */
-			if (mh.mh_type == GFS2_METATYPE_RB) {
+			if (type == GFS2_METATYPE_RB) {
 				rgrp_dist--;
 				break;
 			}
@@ -923,11 +929,11 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
 	}
 	if (x) {
 		struct gfs2_meta_header mh = {
-			.mh_magic = GFS2_MAGIC,
-			.mh_type = GFS2_METATYPE_RB,
-			.mh_format = GFS2_FORMAT_RB
+			.mh_magic = cpu_to_be32(GFS2_MAGIC),
+			.mh_type = cpu_to_be32(GFS2_METATYPE_RB),
+			.mh_format = cpu_to_be32(GFS2_FORMAT_RB)
 		};
-		gfs2_meta_header_out(&mh, buf);
+		memcpy(buf, &mh, sizeof(mh));
 	} else {
 		rg->rt_free = rg->rt_data;
 		if (sdp->gfs1)

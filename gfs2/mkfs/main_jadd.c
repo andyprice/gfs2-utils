@@ -377,10 +377,10 @@ static int add_qc(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 	}
 
 	memset(&mh, 0, sizeof(struct gfs2_meta_header));
-	mh.mh_magic = GFS2_MAGIC;
-	mh.mh_type = GFS2_METATYPE_QC;
-	mh.mh_format = GFS2_FORMAT_QC;
-	gfs2_meta_header_out(&mh, buf);
+	mh.mh_magic = cpu_to_be32(GFS2_MAGIC);
+	mh.mh_type = cpu_to_be32(GFS2_METATYPE_QC);
+	mh.mh_format = cpu_to_be32(GFS2_FORMAT_QC);
+	memcpy(buf, &mh, sizeof(mh));
 
 	for (x=0; x<blocks; x++) {
 		if (write(fd, buf, sdp->sd_bsize) != sdp->sd_bsize) {

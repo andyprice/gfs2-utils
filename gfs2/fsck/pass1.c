@@ -522,7 +522,8 @@ static int pass1_check_data(struct gfs2_inode *ip, uint64_t metablock,
 	q = block_type(bl, block);
 	if (q != GFS2_BLKST_FREE) {
 		struct gfs2_buffer_head *bh;
-		struct gfs2_meta_header mh;
+		struct gfs2_meta_header *mh;
+		uint32_t mh_type;
 
 		log_err(_("Found duplicate %s block %"PRIu64" (0x%"PRIx64") "
 		          "referenced as data by dinode %"PRIu64" (0x%"PRIx64") "),
@@ -548,13 +549,14 @@ static int pass1_check_data(struct gfs2_inode *ip, uint64_t metablock,
 			return 1;
 		case GFS2_BLKST_USED: /* tough decision: May be data or meta */
 			bh = bread(ip->i_sbd, block);
-			gfs2_meta_header_in(&mh, bh->b_data);
+			mh = (struct gfs2_meta_header *)bh->b_data;
+			mh_type = be32_to_cpu(mh->mh_type);
 			brelse(bh);
-			if (mh.mh_magic == GFS2_MAGIC &&
-			    mh.mh_type >= GFS2_METATYPE_RG &&
-			    mh.mh_type <= GFS2_METATYPE_QC &&
-			    mh.mh_type != GFS2_METATYPE_DI &&
-			    mh.mh_format % 100 == 0) {
+			if (be32_to_cpu(mh->mh_magic) == GFS2_MAGIC &&
+			    mh_type >= GFS2_METATYPE_RG &&
+			    mh_type <= GFS2_METATYPE_QC &&
+			    mh_type != GFS2_METATYPE_DI &&
+			    be32_to_cpu(mh->mh_format) % 100 == 0) {
 				log_info(_("The block was processed earlier "
 					   "as valid metadata, so it can't "
 					   "possibly be data.\n"));

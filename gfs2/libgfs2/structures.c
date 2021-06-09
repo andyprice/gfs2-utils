@@ -377,9 +377,9 @@ int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 	struct gfs2_buffer_head *bh;
 
 	memset(&mh, 0, sizeof(struct gfs2_meta_header));
-	mh.mh_magic = GFS2_MAGIC;
-	mh.mh_type = GFS2_METATYPE_QC;
-	mh.mh_format = GFS2_FORMAT_QC;
+	mh.mh_magic = cpu_to_be32(GFS2_MAGIC);
+	mh.mh_type = cpu_to_be32(GFS2_METATYPE_QC);
+	mh.mh_format = cpu_to_be32(GFS2_FORMAT_QC);
 
 	sprintf(name, "quota_change%u", j);
 	ip = createi(per_node, name, S_IFREG | 0600, GFS2_DIF_SYSTEM);
@@ -396,7 +396,7 @@ int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 			return -1;
 
 		memset(bh->b_data, 0, sdp->sd_bsize);
-		gfs2_meta_header_out(&mh, bh->b_data);
+		memcpy(bh->b_data, &mh, sizeof(mh));
 		bmodified(bh);
 		brelse(bh);
 	}

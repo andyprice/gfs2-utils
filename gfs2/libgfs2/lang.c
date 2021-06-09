@@ -551,11 +551,11 @@ static struct lgfs2_lang_result *ast_interp_set(struct lgfs2_lang_state *state,
 
 	if (lookup->ast_right->ast_type == AST_EX_TYPESPEC) {
 		struct gfs2_meta_header mh = {
-			.mh_magic = GFS2_MAGIC,
-			.mh_type = result->lr_mtype->mh_type,
-			.mh_format = result->lr_mtype->mh_format,
+			.mh_magic = cpu_to_be32(GFS2_MAGIC),
+			.mh_type = cpu_to_be32(result->lr_mtype->mh_type),
+			.mh_format = cpu_to_be32(result->lr_mtype->mh_format),
 		};
-		gfs2_meta_header_out(&mh, result->lr_buf);
+		memcpy(result->lr_buf, &mh, sizeof(mh));
 		lookup = lookup->ast_right;
 	}
 

@@ -1147,7 +1147,6 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
 	uint32_t chk;
 	char *p;
 	int found_rg;
-	struct gfs2_meta_header mh;
 
 	sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
 	max_rg_size = 524288;
@@ -1173,15 +1172,19 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
 		/* Try all the block sizes in 512 byte multiples */
 		for (bsize2 = GFS2_BASIC_BLOCK; bsize2 <= GFS2_DEFAULT_BSIZE;
 		     bsize2 += GFS2_BASIC_BLOCK) {
+			struct gfs2_meta_header *mh;
+			int is_rb;
+
 			rb_addr = (bh->b_blocknr *
 				   (GFS2_DEFAULT_BSIZE / bsize2)) +
 				(bsize / bsize2) + 1;
 			sdp->sd_bsize = bsize2; /* temporarily */
 			rb_bh = bread(sdp, rb_addr);
-			gfs2_meta_header_in(&mh, rb_bh->b_data);
+			mh = (struct gfs2_meta_header *)rb_bh->b_data;
+			is_rb = (be32_to_cpu(mh->mh_magic) == GFS2_MAGIC &&
+			         be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RB);
 			brelse(rb_bh);
-			if (mh.mh_magic == GFS2_MAGIC &&
-			    mh.mh_type == GFS2_METATYPE_RB) {
+			if (is_rb) {
 				log_debug(_("boff:%d bsize2:%d rg:0x%llx, "
 					    "rb:0x%llx\n"), bsize, bsize2,
 					  (unsigned long long)blk,
