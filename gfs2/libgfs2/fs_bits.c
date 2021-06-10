@@ -38,7 +38,7 @@
  * single test (on 64 bit arches).
  */
 
-static inline uint64_t gfs2_bit_search(const unsigned long long *ptr,
+static inline uint64_t gfs2_bit_search(const __le64 *ptr,
 				       unsigned long long mask,
 				       uint8_t state)
 {
@@ -67,13 +67,12 @@ static inline uint64_t gfs2_bit_search(const unsigned long long *ptr,
 unsigned long gfs2_bitfit(const unsigned char *buf, const unsigned int len,
 			  unsigned long goal, unsigned char state)
 {
-	unsigned long spoint = (goal << 1) & ((8 * sizeof(unsigned long long)) - 1);
-	const unsigned long long *ptr = ((unsigned long long *)buf) + (goal >> 5);
-	const unsigned long long *end = (unsigned long long *)
-		(buf + ALIGN(len, sizeof(unsigned long long)));
-	unsigned long long tmp;
-	unsigned long long mask = 0x5555555555555555ULL;
-	unsigned long bit;
+	uint32_t spoint = (goal << 1) & ((8 * sizeof(uint64_t)) - 1);
+	const __le64 *ptr = ((__le64 *)buf) + (goal >> 5);
+	const __le64 *end = (__le64 *) (buf + ALIGN(len, sizeof(uint64_t)));
+	uint64_t tmp;
+	uint64_t mask = 0x5555555555555555ULL;
+	uint32_t bit;
 
 	if (state > 3)
 		return 0;
@@ -87,9 +86,9 @@ unsigned long gfs2_bitfit(const unsigned char *buf, const unsigned int len,
 		ptr++;
 	}
 	/* Mask off any bits which are more than len bytes from the start */
-	if (ptr == end && (len & (sizeof(unsigned long long) - 1)))
-		tmp &= (((unsigned long long)~0) >>
-			(64 - 8 * (len & (sizeof(unsigned long long) - 1))));
+	if (ptr == end && (len & (sizeof(uint64_t) - 1)))
+		tmp &= (((uint64_t)~0) >>
+			(64 - 8 * (len & (sizeof(uint64_t) - 1))));
 	/* Didn't find anything, so return */
 	if (tmp == 0)
 		return BFITNOENT;
