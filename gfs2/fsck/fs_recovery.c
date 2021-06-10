@@ -625,7 +625,7 @@ static int rangecheck_jblock(struct gfs2_inode *ip, uint64_t block)
 	if((block > ip->i_sbd->fssize) || (block <= LGFS2_SB_ADDR(ip->i_sbd))) {
 		log_info( _("Bad block pointer (out of range) found in "
 			    "journal inode %"PRIu64" (0x%"PRIx64").\n"),
-			  ip->i_addr, ip->i_addr);
+			  ip->i_num.in_addr, ip->i_num.in_addr);
 		return META_ERROR; /* Exits check_metatree quicker */
 	}
 	return META_IS_GOOD;
@@ -650,7 +650,7 @@ static int rangecheck_jmeta(struct iptr iptr, struct gfs2_buffer_head **bh, int 
 				   "indirect block pointer %"PRIu64" (0x%"PRIx64") "
 				   "(points to something that is not an "
 				   "indirect block).\n"),
-			        ip->i_addr, ip->i_addr, block, block);
+			        ip->i_num.in_addr, ip->i_num.in_addr, block, block);
 			brelse(*bh);
 			*bh = NULL;
 			return META_SKIP_FURTHER;
@@ -871,7 +871,7 @@ int init_jindex(struct gfs2_sbd *sdp, int allow_ji_rebuild)
 	/* rgrepair requires the journals be read in in order to distinguish
 	   "real" rgrps from rgrps that are just copies left in journals. */
 	if (sdp->gfs1)
-		sdp->md.jiinode = lgfs2_inode_read(sdp, sdp->sd_jindex_di.no_addr);
+		sdp->md.jiinode = lgfs2_inode_read(sdp, sdp->sd_jindex_di.in_addr);
 	else
 		gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
 

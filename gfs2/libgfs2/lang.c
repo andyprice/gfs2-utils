@@ -158,11 +158,11 @@ static uint64_t ast_lookup_path(char *path, struct gfs2_sbd *sbd)
 	uint64_t bn = 0;
 
 	segment = strtok_r(path, "/", &c);
-	ip = lgfs2_inode_read(sbd, sbd->sd_root_dir.no_addr);
+	ip = lgfs2_inode_read(sbd, sbd->sd_root_dir.in_addr);
 
 	while (ip != NULL) {
 		if (segment == NULL) { // No more segments
-			bn = ip->i_addr;
+			bn = ip->i_num.in_addr;
 			inode_put(&ip);
 			return bn;
 		}
@@ -215,13 +215,13 @@ static uint64_t ast_lookup_id(const char *id, struct gfs2_sbd *sbd)
 		bn = LGFS2_SB_ADDR(sbd);
 		break;
 	case ID_MASTER:
-		bn = sbd->sd_meta_dir.no_addr;
+		bn = sbd->sd_meta_dir.in_addr;
 		break;
 	case ID_ROOT:
-		bn = sbd->sd_root_dir.no_addr;
+		bn = sbd->sd_root_dir.in_addr;
 		break;
 	case ID_RINDEX:
-		bn = sbd->md.riinode->i_addr;
+		bn = sbd->md.riinode->i_num.in_addr;
 		break;
 	default:
 		return 0;

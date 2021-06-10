@@ -30,7 +30,7 @@ void lgfs2_inum_in(struct lgfs2_inum *i, void *inp)
 	i->in_addr = be64_to_cpu(in->no_addr);
 }
 
-void lgfs2_inum_out(struct lgfs2_inum *i, void *inp)
+void lgfs2_inum_out(const struct lgfs2_inum *i, void *inp)
 {
 	struct gfs2_inum *in = inp;
 
@@ -66,18 +66,13 @@ void lgfs2_sb_in(struct gfs2_sbd *sdp, void *buf)
 	sdp->sd_bsize = be32_to_cpu(sb->sb_bsize);
 	sdp->sd_bsize_shift = be32_to_cpu(sb->sb_bsize_shift);
 	sdp->sd_seg_size = be32_to_cpu(sb1->sb_seg_size);
-	sdp->sd_meta_dir.no_formal_ino = be64_to_cpu(sb->sb_master_dir.no_formal_ino);
-	sdp->sd_meta_dir.no_addr = be64_to_cpu(sb->sb_master_dir.no_addr);
-	sdp->sd_root_dir.no_formal_ino = be64_to_cpu(sb->sb_root_dir.no_formal_ino);
-	sdp->sd_root_dir.no_addr = be64_to_cpu(sb->sb_root_dir.no_addr);
+	lgfs2_inum_in(&sdp->sd_meta_dir, &sb->sb_master_dir);
+	lgfs2_inum_in(&sdp->sd_root_dir, &sb->sb_root_dir);
 	memcpy(sdp->sd_lockproto, sb->sb_lockproto, GFS2_LOCKNAME_LEN);
 	memcpy(sdp->sd_locktable, sb->sb_locktable, GFS2_LOCKNAME_LEN);
-	sdp->sd_rindex_di.no_formal_ino = be64_to_cpu(sb1->sb_rindex_di.no_formal_ino);
-	sdp->sd_rindex_di.no_addr = be64_to_cpu(sb1->sb_rindex_di.no_addr);
-	sdp->sd_quota_di.no_formal_ino = be64_to_cpu(sb1->sb_quota_di.no_formal_ino);
-	sdp->sd_quota_di.no_addr = be64_to_cpu(sb1->sb_quota_di.no_addr);
-	sdp->sd_license_di.no_formal_ino = be64_to_cpu(sb1->sb_license_di.no_formal_ino);
-	sdp->sd_license_di.no_addr = be64_to_cpu(sb1->sb_license_di.no_addr);
+	lgfs2_inum_in(&sdp->sd_rindex_di, &sb1->sb_rindex_di);
+	lgfs2_inum_in(&sdp->sd_quota_di, &sb1->sb_quota_di);
+	lgfs2_inum_in(&sdp->sd_license_di, &sb1->sb_license_di);
 	memcpy(sdp->sd_uuid, sb->sb_uuid, sizeof(sdp->sd_uuid));
 }
 
@@ -95,18 +90,13 @@ void lgfs2_sb_out(const struct gfs2_sbd *sdp, void *buf)
 	sb->sb_bsize = cpu_to_be32(sdp->sd_bsize);
 	sb->sb_bsize_shift = cpu_to_be32(sdp->sd_bsize_shift);
 	sb1->sb_seg_size = cpu_to_be32(sdp->sd_seg_size);
-	sb->sb_master_dir.no_formal_ino = cpu_to_be64(sdp->sd_meta_dir.no_formal_ino);
-	sb->sb_master_dir.no_addr = cpu_to_be64(sdp->sd_meta_dir.no_addr);
-	sb->sb_root_dir.no_formal_ino = cpu_to_be64(sdp->sd_root_dir.no_formal_ino);
-	sb->sb_root_dir.no_addr = cpu_to_be64(sdp->sd_root_dir.no_addr);
+	lgfs2_inum_out(&sdp->sd_meta_dir, &sb->sb_master_dir);
+	lgfs2_inum_out(&sdp->sd_root_dir, &sb->sb_root_dir);
 	memcpy(sb->sb_lockproto, sdp->sd_lockproto, GFS2_LOCKNAME_LEN);
 	memcpy(sb->sb_locktable, sdp->sd_locktable, GFS2_LOCKNAME_LEN);
-	sb1->sb_rindex_di.no_formal_ino = cpu_to_be64(sdp->sd_rindex_di.no_formal_ino);
-	sb1->sb_rindex_di.no_addr = cpu_to_be64(sdp->sd_rindex_di.no_addr);
-	sb1->sb_quota_di.no_formal_ino = cpu_to_be64(sdp->sd_quota_di.no_formal_ino);
-	sb1->sb_quota_di.no_addr = cpu_to_be64(sdp->sd_quota_di.no_addr);
-	sb1->sb_license_di.no_formal_ino = cpu_to_be64(sdp->sd_license_di.no_formal_ino);
-	sb1->sb_license_di.no_addr = cpu_to_be64(sdp->sd_license_di.no_addr);
+	lgfs2_inum_out(&sdp->sd_rindex_di, &sb1->sb_rindex_di);
+	lgfs2_inum_out(&sdp->sd_quota_di, &sb1->sb_quota_di);
+	lgfs2_inum_out(&sdp->sd_license_di, &sb1->sb_license_di);
 	memcpy(sb->sb_uuid, sdp->sd_uuid, 16);
 }
 
@@ -223,10 +213,9 @@ void lgfs2_dinode_in(struct gfs2_inode *ip, char *buf)
 	struct gfs2_dinode *di = (struct gfs2_dinode *)buf;
 
 	ip->i_magic = be32_to_cpu(di->di_header.mh_magic);
-	ip->i_type = be32_to_cpu(di->di_header.mh_type);
+	ip->i_mh_type = be32_to_cpu(di->di_header.mh_type);
 	ip->i_format = be32_to_cpu(di->di_header.mh_format);
-	ip->i_formal_ino = be64_to_cpu(di->di_num.no_formal_ino);
-	ip->i_addr = be64_to_cpu(di->di_num.no_addr);
+	lgfs2_inum_in(&ip->i_num, &di->di_num);
 	ip->i_mode = be32_to_cpu(di->di_mode);
 	ip->i_uid = be32_to_cpu(di->di_uid);
 	ip->i_gid = be32_to_cpu(di->di_gid);
@@ -243,14 +232,9 @@ void lgfs2_dinode_in(struct gfs2_inode *ip, char *buf)
 	ip->i_generation = be64_to_cpu(di->di_generation);
 	ip->i_flags = be32_to_cpu(di->di_flags);
 	ip->i_payload_format = be32_to_cpu(di->di_payload_format);
-	ip->i_pad1 = be16_to_cpu(di->__pad1);
 	ip->i_height = be16_to_cpu(di->di_height);
-	ip->i_pad2 = be32_to_cpu(di->__pad2);
-	ip->i_pad3 = be16_to_cpu(di->__pad3);
 	ip->i_depth = be16_to_cpu(di->di_depth);
 	ip->i_entries = be32_to_cpu(di->di_entries);
-	ip->i_pad4_addr = be64_to_cpu(di->__pad4.no_addr);
-	ip->i_pad4_formal_ino = be64_to_cpu(di->__pad4.no_formal_ino);
 	ip->i_eattr = be64_to_cpu(di->di_eattr);
 	ip->i_atime_nsec = be32_to_cpu(di->di_atime_nsec);
 	ip->i_mtime_nsec = be32_to_cpu(di->di_mtime_nsec);
@@ -262,10 +246,9 @@ void lgfs2_dinode_out(struct gfs2_inode *ip, char *buf)
 	struct gfs2_dinode *di = (struct gfs2_dinode *)buf;
 
 	di->di_header.mh_magic = cpu_to_be32(ip->i_magic);
-	di->di_header.mh_type = cpu_to_be32(ip->i_type);
+	di->di_header.mh_type = cpu_to_be32(ip->i_mh_type);
 	di->di_header.mh_format = cpu_to_be32(ip->i_format);
-	di->di_num.no_formal_ino = cpu_to_be64(ip->i_formal_ino);
-	di->di_num.no_addr = cpu_to_be64(ip->i_addr);
+	lgfs2_inum_out(&ip->i_num, &di->di_num);
 	di->di_mode = cpu_to_be32(ip->i_mode);
 	di->di_uid = cpu_to_be32(ip->i_uid);
 	di->di_gid = cpu_to_be32(ip->i_gid);
@@ -277,23 +260,14 @@ void lgfs2_dinode_out(struct gfs2_inode *ip, char *buf)
 	di->di_ctime = cpu_to_be64(ip->i_ctime);
 	di->di_major = cpu_to_be32(ip->i_major);
 	di->di_minor = cpu_to_be32(ip->i_minor);
-
 	di->di_goal_meta = cpu_to_be64(ip->i_goal_meta);
 	di->di_goal_data = cpu_to_be64(ip->i_goal_data);
 	di->di_generation = cpu_to_be64(ip->i_generation);
-
 	di->di_flags = cpu_to_be32(ip->i_flags);
 	di->di_payload_format = cpu_to_be32(ip->i_payload_format);
-	di->__pad1 = cpu_to_be16(ip->i_pad1);
 	di->di_height = cpu_to_be16(ip->i_height);
-	di->__pad2 = cpu_to_be32(ip->i_pad2);
-	di->__pad3 = cpu_to_be16(ip->i_pad3);
 	di->di_depth = cpu_to_be16(ip->i_depth);
 	di->di_entries = cpu_to_be32(ip->i_entries);
-
-	di->__pad4.no_addr = cpu_to_be64(ip->i_pad4_addr);
-	di->__pad4.no_formal_ino = cpu_to_be64(ip->i_pad4_formal_ino);
-
 	di->di_eattr = cpu_to_be64(ip->i_eattr);
 	di->di_atime_nsec = cpu_to_be32(ip->i_atime_nsec);
 	di->di_mtime_nsec = cpu_to_be32(ip->i_mtime_nsec);

@@ -874,7 +874,7 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 		}
 		/* Allocate at the beginning of the rgrp, bypassing extent search */
 		lgfs2_rindex_out(rg, &ri);
-		in.i_addr = be64_to_cpu(ri.ri_data0);
+		in.i_num.in_addr = be64_to_cpu(ri.ri_data0);
 		/* In order to keep writes sequential here, we have to allocate
 		   the journal, then write the rgrp header (which is now in its
 		   final form) and then write the journal out */
@@ -901,8 +901,7 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 			fprintf(stderr, _("Failed to write data blocks for journal %u\n"), j);
 			return result;
 		}
-		mkfs_journals[j].in_addr = in.i_addr;
-		mkfs_journals[j].in_formal_ino = in.i_formal_ino;
+		mkfs_journals[j] = in.i_num;
 	}
 	gfs2_progress_close(&progress, _("Done\n"));
 
@@ -1207,8 +1206,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, _("Error building '%s': %s\n"), "master", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	sbd.sd_meta_dir.no_addr = sbd.master_dir->i_addr;
-	sbd.sd_meta_dir.no_formal_ino = sbd.master_dir->i_formal_ino;
+	sbd.sd_meta_dir = sbd.master_dir->i_num;
 
 	error = lgfs2_build_jindex(sbd.master_dir, mkfs_journals, opts.journals);
 	if (error) {
@@ -1251,8 +1249,7 @@ int main(int argc, char *argv[])
 		printf("%s", _("Done\n"));
 
 	build_root(&sbd);
-	sbd.sd_root_dir.no_addr = sbd.md.rooti->i_addr;
-	sbd.sd_root_dir.no_formal_ino = sbd.md.rooti->i_formal_ino;
+	sbd.sd_root_dir = sbd.md.rooti->i_num;
 
 	strncpy(sbd.sd_lockproto, opts.lockproto, GFS2_LOCKNAME_LEN - 1);
 	strncpy(sbd.sd_locktable, opts.locktable, GFS2_LOCKNAME_LEN - 1);

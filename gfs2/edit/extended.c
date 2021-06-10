@@ -329,17 +329,17 @@ static int display_leaf(struct iinfo *ind)
 				    line - start_line - 1 ==
 				    edit_row[dmode] - start_row[dmode]) {
 					COLORS_HIGHLIGHT;
-					sprintf(estring, "%"PRIx64, ind->ii[0].dirent[d].inum.addr);
+					sprintf(estring, "%"PRIx64, ind->ii[0].dirent[d].inum.in_addr);
 					strcpy(edit_fmt, "%llx");
 				}
 			}
 			print_gfs2("%d/%d [%08"PRIX32"] %"PRIu64"/%"PRIu64" (0x%"PRIx64"/0x%"PRIx64") +%"PRIu16": ",
 				   total_dirents, d + 1,
 				   ind->ii[0].dirent[d].hash,
-				   ind->ii[0].dirent[d].inum.formal_ino,
-				   ind->ii[0].dirent[d].inum.addr,
-				   ind->ii[0].dirent[d].inum.formal_ino,
-				   ind->ii[0].dirent[d].inum.addr,
+				   ind->ii[0].dirent[d].inum.in_formal_ino,
+				   ind->ii[0].dirent[d].inum.in_addr,
+				   ind->ii[0].dirent[d].inum.in_formal_ino,
+				   ind->ii[0].dirent[d].inum.in_addr,
 				   ind->ii[0].dirent[d].rahead
 			);
 		}
@@ -477,10 +477,10 @@ static int print_gfs2_jindex(void)
 	for (d = 0; d < indirect->ii[0].dirents; d++) {
 		if (strncmp(indirect->ii[0].dirent[d].filename, "journal", 7))
 			continue;
-		ip = lgfs2_inode_read(&sbd, indirect->ii[0].dirent[d].inum.addr);
+		ip = lgfs2_inode_read(&sbd, indirect->ii[0].dirent[d].inum.in_addr);
 		print_gfs2("%s: 0x%-5"PRIx64" %"PRIu64"MB ",
 			   indirect->ii[0].dirent[d].filename,
-			   indirect->ii[0].dirent[d].inum.addr,
+			   indirect->ii[0].dirent[d].inum.in_addr,
 			   ip->i_size / 1048576);
 		error = lgfs2_find_jhead(ip, &head);
 		if (error) {
@@ -644,7 +644,7 @@ int display_extended(void)
 		brelse(tmp_bh);
 	} else if (block_is_journals(block)) {
 		if (sbd.gfs1)
-			block = sbd.sd_jindex_di.no_addr;
+			block = sbd.sd_jindex_di.in_addr;
 		else
 			block = masterblock("jindex");
 		print_gfs2_jindex();
@@ -655,7 +655,7 @@ int display_extended(void)
 		return -1;
 	else if (block_is_rgtree(block)) {
 		if (sbd.gfs1)
-			tmp_bh = bread(&sbd, sbd.sd_rindex_di.no_addr);
+			tmp_bh = bread(&sbd, sbd.sd_rindex_di.in_addr);
 		else
 			tmp_bh = bread(&sbd, masterblock("rindex"));
 		tmp_inode = lgfs2_inode_get(&sbd, tmp_bh);

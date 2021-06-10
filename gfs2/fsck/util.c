@@ -51,7 +51,8 @@ void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked)
 	percent = (blks_checked * 100) / ip->i_blocks;
 	log_notice(_("\rChecking %"PRIu64"%c of %"PRIu64"%c of file at %"PRIu64" (0x%"PRIx64")"
 		      "- %"PRIu64" percent complete.                   \r"),
-	           chksize, human_abbrev[cs], fsize, human_abbrev[i], ip->i_addr, ip->i_addr, percent);
+	           chksize, human_abbrev[cs], fsize, human_abbrev[i], ip->i_num.in_addr,
+	           ip->i_num.in_addr, percent);
 	fflush(stdout);
 }
 
@@ -277,13 +278,13 @@ struct inode_with_dups *find_dup_ref_inode(struct duptree *dt,
 	osi_list_foreach(ref, &dt->ref_invinode_list) {
 		id = osi_list_entry(ref, struct inode_with_dups, list);
 
-		if (id->block_no == ip->i_addr)
+		if (id->block_no == ip->i_num.in_addr)
 			return id;
 	}
 	osi_list_foreach(ref, &dt->ref_inode_list) {
 		id = osi_list_entry(ref, struct inode_with_dups, list);
 
-		if (id->block_no == ip->i_addr)
+		if (id->block_no == ip->i_num.in_addr)
 			return id;
 	}
 	return NULL;
@@ -363,7 +364,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 			 (unsigned long long)block);
 		log_info(_("I'll consider the reference from inode %"PRIu64
 			   " (0x%"PRIx64") the first reference.\n"),
-		         ip->i_addr, ip->i_addr);
+		         ip->i_num.in_addr, ip->i_num.in_addr);
 		dt->dup_flags |= DUPFLAG_REF1_IS_DUPL;
 		dt->refs++;
 	}
@@ -388,8 +389,8 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 			log_crit( _("Unable to allocate inode_with_dups structure\n"));
 			return META_ERROR;
 		}
-		id->block_no = ip->i_addr;
-		q = bitmap_type(ip->i_sbd, ip->i_addr);
+		id->block_no = ip->i_num.in_addr;
+		q = bitmap_type(ip->i_sbd, ip->i_num.in_addr);
 		/* If it's an invalid dinode, put it first on the invalid
 		   inode reference list otherwise put it on the normal list. */
 		if (!inode_valid || q == GFS2_BLKST_UNLINKED)
@@ -413,7 +414,7 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	           "as %s in %s inode #%"PRIu64" (0x%"PRIx64")\n"),
 		  id->dup_count, block, block, reftypes[reftype],
 		  inode_valid ? _("valid") : _("invalid"),
-		  ip->i_addr, ip->i_addr);
+		  ip->i_num.in_addr, ip->i_num.in_addr);
 	if (first)
 		log_info( _("This is the original reference.\n"));
 	else {
@@ -609,14 +610,14 @@ void delete_all_dups(struct gfs2_inode *ip)
 
 		osi_list_foreach_safe(tmp, &dt->ref_invinode_list, x) {
 			id = osi_list_entry(tmp, struct inode_with_dups, list);
-			if (id->block_no == ip->i_addr) {
+			if (id->block_no == ip->i_num.in_addr) {
 				dup_listent_delete(dt, id);
 				found = 1;
 			}
 		}
 		osi_list_foreach_safe(tmp, &dt->ref_inode_list, x) {
 			id = osi_list_entry(tmp, struct inode_with_dups, list);
-			if (id->block_no == ip->i_addr) {
+			if (id->block_no == ip->i_num.in_addr) {
 				dup_listent_delete(dt, id);
 				found = 1;
 			}

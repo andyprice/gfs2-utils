@@ -41,29 +41,26 @@ int set_di_nlink(struct gfs2_inode *ip)
 	struct dir_info *di;
 
 	if (is_dir(ip, ip->i_sbd->gfs1)) {
-		di = dirtree_find(ip->i_addr);
+		di = dirtree_find(ip->i_num.in_addr);
 		if (di == NULL) {
 			log_err(_("Error: directory %"PRIu64" (0x%"PRIx64") is not "
 				  "in the dir_tree (set).\n"),
-			        ip->i_addr, ip->i_addr);
+			        ip->i_num.in_addr, ip->i_num.in_addr);
 			return -1;
 		}
 		di->di_nlink = ip->i_nlink;
 		return 0;
 	}
 	if (ip->i_nlink == 1) {
-		link1_set(&nlink1map, ip->i_addr, 1);
+		link1_set(&nlink1map, ip->i_num.in_addr, 1);
 		return 0;
 	}
 	/*log_debug( _("Setting link count to %u for %" PRIu64
 	  " (0x%" PRIx64 ")\n"), count, inode_no, inode_no);*/
 	/* If the list has entries, look for one that matches inode_no */
-	ii = inodetree_find(ip->i_addr);
+	ii = inodetree_find(ip->i_num.in_addr);
 	if (!ii) {
-		struct lgfs2_inum no = {
-			.in_addr = ip->i_addr,
-			.in_formal_ino = ip->i_formal_ino
-		};
+		struct lgfs2_inum no = ip->i_num;
 		ii = inodetree_insert(no);
 	}
 	if (ii)
@@ -84,7 +81,7 @@ int set_di_nlink(struct gfs2_inode *ip)
 int incr_link_count(struct lgfs2_inum no, struct gfs2_inode *ip, const char *why)
 {
 	struct inode_info *ii = NULL;
-	uint64_t referenced_from = ip ? ip->i_addr : 0;
+	uint64_t referenced_from = ip ? ip->i_num.in_addr : 0;
 	struct dir_info *di;
 	struct gfs2_inode *link_ip;
 
@@ -115,7 +112,7 @@ int incr_link_count(struct lgfs2_inum no, struct gfs2_inode *ip, const char *why
 
 	link_ip = fsck_load_inode(ip->i_sbd, no.in_addr);
 	/* Check formal ino against dinode before adding to inode tree. */
-	if (no.in_formal_ino != link_ip->i_formal_ino) {
+	if (no.in_formal_ino != link_ip->i_num.in_formal_ino) {
 		fsck_inode_put(&link_ip);
 		return INCR_LINK_INO_MISMATCH; /* inode mismatch */
 	}
@@ -135,8 +132,8 @@ int incr_link_count(struct lgfs2_inum no, struct gfs2_inode *ip, const char *why
 		fsck_inode_put(&link_ip);
 		return INCR_LINK_BAD;
 	}
-	ii->num.in_addr = link_ip->i_addr;
-	ii->num.in_formal_ino = link_ip->i_formal_ino;
+	ii->num.in_addr = link_ip->i_num.in_addr;
+	ii->num.in_formal_ino = link_ip->i_num.in_formal_ino;
 	fsck_inode_put(&link_ip);
 	ii->di_nlink = 1; /* Must be 1 or it wouldn't have gotten into the
 			     nlink1map */

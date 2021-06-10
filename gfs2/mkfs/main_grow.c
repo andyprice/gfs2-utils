@@ -421,7 +421,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 		/* Get master dinode */
-		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.no_addr);
+		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.in_addr);
 		if (sdp->master_dir == NULL) {
 			perror(_("Could not read master directory"));
 			exit(EXIT_FAILURE);

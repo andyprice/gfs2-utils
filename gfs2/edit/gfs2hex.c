@@ -213,8 +213,7 @@ void idirent_in(struct idirent *id, void *dep)
 {
 	struct gfs2_dirent *de = dep;
 
-	id->inum.formal_ino = be64_to_cpu(de->de_inum.no_formal_ino);
-	id->inum.addr = be64_to_cpu(de->de_inum.no_addr);
+	lgfs2_inum_in(&id->inum, &de->de_inum);
 	id->hash = be32_to_cpu(de->de_hash);
 	id->rec_len = be16_to_cpu(de->de_rec_len);
 	id->name_len = be16_to_cpu(de->de_name_len);

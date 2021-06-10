@@ -247,6 +247,11 @@ struct gfs2_buffer_head {
 	int b_modified;
 };
 
+struct lgfs2_inum {
+	uint64_t in_formal_ino;
+	uint64_t in_addr;
+};
+
 struct gfs2_inode {
 	struct gfs2_buffer_head *i_bh;
 	struct gfs2_sbd *i_sbd;
@@ -255,10 +260,9 @@ struct gfs2_inode {
 
 	/* Native-endian versions of the dinode fields */
 	uint32_t i_magic;
-	uint32_t i_type;
+	uint32_t i_mh_type;
 	uint32_t i_format;
-	uint64_t i_formal_ino;
-	uint64_t i_addr;
+	struct lgfs2_inum i_num;
 	uint32_t i_mode;
 	uint32_t i_uid;
 	uint32_t i_gid;
@@ -270,23 +274,32 @@ struct gfs2_inode {
 	uint64_t i_ctime;
 	uint32_t i_major;
 	uint32_t i_minor;
-	uint64_t i_goal_meta;
-	uint64_t i_goal_data;
-	uint64_t i_generation;
+
 	uint32_t i_flags;
 	uint32_t i_payload_format;
-	uint16_t i_pad1;
 	uint16_t i_height;
-	uint32_t i_pad2;
-	uint16_t i_pad3;
 	uint16_t i_depth;
 	uint32_t i_entries;
-	uint64_t i_pad4_addr;
-	uint64_t i_pad4_formal_ino;
 	uint64_t i_eattr;
-	uint32_t i_atime_nsec;
-	uint32_t i_mtime_nsec;
-	uint32_t i_ctime_nsec;
+	union {
+		struct { /* gfs2 */
+			uint64_t i_goal_meta;
+			uint64_t i_goal_data;
+			uint64_t i_generation;
+			uint32_t i_atime_nsec;
+			uint32_t i_mtime_nsec;
+			uint32_t i_ctime_nsec;
+		};
+		struct { /* gfs */
+			uint64_t i_rgrp;
+			uint32_t i_goal_rgrp;
+			uint32_t i_goal_dblk;
+			uint32_t i_goal_mblk;
+			uint16_t i_di_type;
+			uint32_t i_incarn;
+			struct lgfs2_inum i_next_unused;
+		};
+	};
 };
 
 struct master_dir
@@ -312,15 +325,12 @@ struct gfs2_sbd {
 	uint32_t sd_fs_format;
 	uint32_t sd_multihost_format;
 	uint32_t sd_flags; /* gfs1 */
-	struct {
-		uint64_t no_formal_ino;
-		uint64_t no_addr;
-	} sd_meta_dir,
-	  sd_root_dir,
-	  sd_rindex_di,  /* gfs1 */
-	  sd_jindex_di,  /* gfs1 */
-	  sd_quota_di,   /* gfs1 */
-	  sd_license_di; /* gfs1 */
+	struct lgfs2_inum sd_meta_dir;
+	struct lgfs2_inum sd_root_dir;
+	struct lgfs2_inum sd_rindex_di;  /* gfs1 */
+	struct lgfs2_inum sd_jindex_di;  /* gfs1 */
+	struct lgfs2_inum sd_quota_di;   /* gfs1 */
+	struct lgfs2_inum sd_license_di; /* gfs1 */
 	uint32_t sd_bsize_shift;
 	uint32_t sd_seg_size;
 	char sd_lockproto[GFS2_LOCKNAME_LEN];
@@ -373,11 +383,6 @@ struct gfs2_sbd {
 	uint64_t rg_one_length;
 	uint64_t rg_length;
 	int gfs1;
-};
-
-struct lgfs2_inum {
-	uint64_t in_formal_ino;
-	uint64_t in_addr;
 };
 
 struct lgfs2_log_header {
@@ -808,7 +813,7 @@ extern void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 /* Translation functions */
 
 extern void lgfs2_inum_in(struct lgfs2_inum *i, void *inp);
-extern void lgfs2_inum_out(struct lgfs2_inum *i, void *inp);
+extern void lgfs2_inum_out(const struct lgfs2_inum *i, void *inp);
 extern void lgfs2_sb_in(struct gfs2_sbd *sdp, void *buf);
 extern void lgfs2_sb_out(const struct gfs2_sbd *sdp, void *buf);
 extern void lgfs2_rindex_in(lgfs2_rgrp_t rg, void *buf);

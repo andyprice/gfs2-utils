@@ -439,9 +439,9 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 		if (rgd)
 			gfs2_rgrp_relse(&sbd, rgd);
  	}
-	if (block == sbd.sd_root_dir.no_addr)
+	if (block == sbd.sd_root_dir.in_addr)
 		print_gfs2("--------------- Root directory ------------------");
-	else if (!sbd.gfs1 && block == sbd.sd_meta_dir.no_addr)
+	else if (!sbd.gfs1 && block == sbd.sd_meta_dir.in_addr)
 		print_gfs2("-------------- Master directory -----------------");
 	else if (!sbd.gfs1 && block == RGLIST_DUMMY_BLOCK)
 		print_gfs2("------------------ RG List ----------------------");
@@ -449,11 +449,11 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 		print_gfs2("-------------------- Journal List --------------------");
 	else {
 		if (sbd.gfs1) {
-			if (block == sbd.sd_rindex_di.no_addr)
+			if (block == sbd.sd_rindex_di.in_addr)
 				print_gfs2("---------------- rindex file -------------------");
 			else if (block == gfs1_quota_di.no_addr)
 				print_gfs2("---------------- Quota file --------------------");
-			else if (block == sbd.sd_jindex_di.no_addr)
+			else if (block == sbd.sd_jindex_di.in_addr)
 				print_gfs2("--------------- Journal Index ------------------");
 			else if (block == gfs1_license_di.no_addr)
 				print_gfs2("--------------- License file -------------------");
@@ -462,7 +462,7 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 			int d;
 
 			for (d = 2; d < 8; d++) {
-				if (block == masterdir.dirent[d].inum.addr) {
+				if (block == masterdir.dirent[d].inum.in_addr) {
 					if (!strncmp(masterdir.dirent[d].filename, "jindex", 6))
 						print_gfs2("--------------- Journal Index ------------------");
 					else if (!strncmp(masterdir.dirent[d].filename, "per_node", 8))
@@ -687,7 +687,7 @@ uint64_t masterblock(const char *fn)
 	
 	for (d = 2; d < 8; d++)
 		if (!strncmp(masterdir.dirent[d].filename, fn, strlen(fn)))
-			return (masterdir.dirent[d].inum.addr);
+			return (masterdir.dirent[d].inum.in_addr);
 	return 0;
 }
 
@@ -753,7 +753,7 @@ static uint64_t get_rg_addr(int rgnum)
 	struct gfs2_inode *riinode;
 
 	if (sbd.gfs1)
-		gblock = sbd.sd_rindex_di.no_addr;
+		gblock = sbd.sd_rindex_di.in_addr;
 	else
 		gblock = masterblock("rindex");
 	riinode = lgfs2_inode_read(&sbd, gblock);
@@ -827,7 +827,7 @@ int has_indirect_blocks(void)
 
 int block_is_rindex(uint64_t blk)
 {
-	if ((sbd.gfs1 && blk == sbd.sd_rindex_di.no_addr) ||
+	if ((sbd.gfs1 && blk == sbd.sd_rindex_di.in_addr) ||
 	    (blk == masterblock("rindex")))
 		return TRUE;
 	return FALSE;
@@ -835,7 +835,7 @@ int block_is_rindex(uint64_t blk)
 
 int block_is_jindex(uint64_t blk)
 {
-	if ((sbd.gfs1 && blk == sbd.sd_jindex_di.no_addr))
+	if ((sbd.gfs1 && blk == sbd.sd_jindex_di.in_addr))
 		return TRUE;
 	return FALSE;
 }
@@ -936,13 +936,13 @@ static void read_superblock(int fd)
 			sizeof(uint64_t);
 		sbd.sd_diptrs = (sbd.sd_bsize - sizeof(struct gfs_dinode)) /
 			sizeof(uint64_t);
-		sbd.md.riinode = lgfs2_inode_read(&sbd, sbd.sd_rindex_di.no_addr);
+		sbd.md.riinode = lgfs2_inode_read(&sbd, sbd.sd_rindex_di.in_addr);
 	} else {
 		sbd.sd_inptrs = (sbd.sd_bsize - sizeof(struct gfs2_meta_header)) /
 			sizeof(uint64_t);
 		sbd.sd_diptrs = (sbd.sd_bsize - sizeof(struct gfs2_dinode)) /
 			sizeof(uint64_t);
-		sbd.master_dir = lgfs2_inode_read(&sbd, sbd.sd_meta_dir.no_addr);
+		sbd.master_dir = lgfs2_inode_read(&sbd, sbd.sd_meta_dir.in_addr);
 		if (sbd.master_dir == NULL) {
 			sbd.md.riinode = NULL;
 		} else {
@@ -973,7 +973,7 @@ static int read_master_dir(void)
 {
 	ioctl(sbd.device_fd, BLKFLSBUF, 0);
 
-	bh = bread(&sbd, sbd.sd_meta_dir.no_addr);
+	bh = bread(&sbd, sbd.sd_meta_dir.in_addr);
 	if (bh == NULL)
 		return 1;
 	di = (struct gfs2_dinode *)bh->b_data;
@@ -989,12 +989,12 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 
 	if (block == RGLIST_DUMMY_BLOCK) {
 		if (sbd.gfs1)
-			blk = sbd.sd_rindex_di.no_addr;
+			blk = sbd.sd_rindex_di.in_addr;
 		else
 			blk = masterblock("rindex");
 	} else if (block == JOURNALS_DUMMY_BLOCK) {
 		if (sbd.gfs1)
-			blk = sbd.sd_jindex_di.no_addr;
+			blk = sbd.sd_jindex_di.in_addr;
 		else
 			blk = masterblock("jindex");
 	} else
@@ -1029,20 +1029,18 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 
 		lgfs2_sb_in(&sbd, bh->b_data);
 		memset(indirect, 0, sizeof(struct iinfo));
-		ii->block = sbd.sd_meta_dir.no_addr;
+		ii->block = sbd.sd_meta_dir.in_addr;
 		ii->is_dir = TRUE;
 		ii->dirents = 2;
 
 		id = &ii->dirent[0];
 		memcpy(id->filename, "root", 4);
-		id->inum.formal_ino = sbd.sd_root_dir.no_formal_ino;
-		id->inum.addr = sbd.sd_root_dir.no_addr;
+		id->inum = sbd.sd_root_dir;
 		id->type = DT_DIR;
 
 		id = &ii->dirent[1];
 		memcpy(id->filename, "master", 7);
-		id->inum.formal_ino = sbd.sd_meta_dir.no_formal_ino;
-		id->inum.addr = sbd.sd_meta_dir.no_addr;
+		id->inum = sbd.sd_meta_dir;
 		id->type = DT_DIR;
 	}
 	else if (gfs2_struct_type == GFS2_METATYPE_DI) {
@@ -1316,19 +1314,19 @@ uint64_t check_keywords(const char *kword)
 	if (!strcmp(kword, "sb") ||!strcmp(kword, "superblock"))
 		blk = 0x10 * (4096 / sbd.sd_bsize); /* superblock */
 	else if (!strcmp(kword, "root") || !strcmp(kword, "rootdir"))
-		blk = sbd.sd_root_dir.no_addr;
+		blk = sbd.sd_root_dir.in_addr;
 	else if (!strcmp(kword, "master")) {
 		if (sbd.gfs1)
 			fprintf(stderr, "This is GFS1; there's no master directory.\n");
-		else if (!sbd.sd_meta_dir.no_addr) {
+		else if (!sbd.sd_meta_dir.in_addr) {
 			fprintf(stderr, "GFS2 master directory not found on %s\n", device);
 			exit(-1);
 		} else
-			blk = sbd.sd_meta_dir.no_addr;
+			blk = sbd.sd_meta_dir.in_addr;
 	}
 	else if (!strcmp(kword, "jindex")) {
 		if (sbd.gfs1)
-			blk = sbd.sd_jindex_di.no_addr;
+			blk = sbd.sd_jindex_di.in_addr;
 		else
 			blk = masterblock("jindex"); /* journal index */
 	}
@@ -1344,7 +1342,7 @@ uint64_t check_keywords(const char *kword)
 	}
 	else if (!strcmp(kword, "rindex") || !strcmp(kword, "rgindex")) {
 		if (sbd.gfs1)
-			blk = sbd.sd_rindex_di.no_addr;
+			blk = sbd.sd_rindex_di.in_addr;
 		else
 			blk = masterblock("rindex");
 	} else if (!strcmp(kword, "rgs")) {

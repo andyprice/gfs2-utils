@@ -40,8 +40,7 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 		log_warn( _("Unable to remove \"..\" directory entry.\n"));
 	else
 		decr_link_count(olddotdot, block, sdp->gfs1, _("old \"..\""));
-	no.in_addr = pip->i_addr;
-	no.in_formal_ino = pip->i_formal_ino;
+	no = pip->i_num;
 	err = dir_add(ip, filename, filename_len, &no,
 		      (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 	if (err) {
@@ -166,38 +165,38 @@ int pass3(struct gfs2_sbd *sdp)
 	struct gfs2_inode *ip;
 	int q;
 
-	di = dirtree_find(sdp->md.rooti->i_addr);
+	di = dirtree_find(sdp->md.rooti->i_num.in_addr);
 	if (di) {
 		log_info( _("Marking root inode connected\n"));
 		di->checked = 1;
 	}
 	if (sdp->gfs1) {
-		di = dirtree_find(sdp->md.statfs->i_addr);
+		di = dirtree_find(sdp->md.statfs->i_num.in_addr);
 		if (di) {
 			log_info( _("Marking GFS1 statfs file inode "
 				    "connected\n"));
 			di->checked = 1;
 		}
-		di = dirtree_find(sdp->md.jiinode->i_addr);
+		di = dirtree_find(sdp->md.jiinode->i_num.in_addr);
 		if (di) {
 			log_info( _("Marking GFS1 jindex file inode "
 				    "connected\n"));
 			di->checked = 1;
 		}
-		di = dirtree_find(sdp->md.riinode->i_addr);
+		di = dirtree_find(sdp->md.riinode->i_num.in_addr);
 		if (di) {
 			log_info( _("Marking GFS1 rindex file inode "
 				    "connected\n"));
 			di->checked = 1;
 		}
-		di = dirtree_find(sdp->md.qinode->i_addr);
+		di = dirtree_find(sdp->md.qinode->i_num.in_addr);
 		if (di) {
 			log_info( _("Marking GFS1 quota file inode "
 				    "connected\n"));
 			di->checked = 1;
 		}
 	} else {
-		di = dirtree_find(sdp->master_dir->i_addr);
+		di = dirtree_find(sdp->master_dir->i_num.in_addr);
 		if (di) {
 			log_info( _("Marking master directory inode "
 				    "connected\n"));

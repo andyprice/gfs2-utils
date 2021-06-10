@@ -29,14 +29,14 @@ struct metawalk_fxns pass4_fxns_delete = {
 static int fix_link_count(uint32_t counted_links, struct gfs2_inode *ip)
 {
 	log_info(_("Fixing inode link count (%d->%d) for %"PRIu64" (0x%"PRIx64") \n"),
-	         ip->i_nlink, counted_links, ip->i_addr, ip->i_addr);
+	         ip->i_nlink, counted_links, ip->i_num.in_addr, ip->i_num.in_addr);
 	if (ip->i_nlink == counted_links)
 		return 0;
 	ip->i_nlink = counted_links;
 	bmodified(ip->i_bh);
 
 	log_debug(_("Changing inode %"PRIu64" (0x%"PRIx64") to have %u links\n"),
-	          ip->i_addr, ip->i_addr, counted_links);
+	          ip->i_num.in_addr, ip->i_num.in_addr, counted_links);
 	return 0;
 }
 
@@ -161,7 +161,7 @@ static int adjust_lf_links(int lf_addition)
 	if (!lf_addition)
 		return 0;
 
-	if (!(lf_di = dirtree_find(lf_dip->i_addr))) {
+	if (!(lf_di = dirtree_find(lf_dip->i_num.in_addr))) {
 		log_crit(_("Unable to find lost+found inode in "
 			   "inode_hash!!\n"));
 		return -1;
@@ -186,9 +186,9 @@ static int scan_inode_list(struct gfs2_sbd *sdp)
 		ii = (struct inode_info *)tmp;
 		/* Don't check reference counts on the special gfs files */
 		if (sdp->gfs1 &&
-		    ((ii->num.in_addr == sdp->md.riinode->i_addr) ||
-		     (ii->num.in_addr == sdp->md.qinode->i_addr) ||
-		     (ii->num.in_addr == sdp->md.statfs->i_addr)))
+		    ((ii->num.in_addr == sdp->md.riinode->i_num.in_addr) ||
+		     (ii->num.in_addr == sdp->md.qinode->i_num.in_addr) ||
+		     (ii->num.in_addr == sdp->md.statfs->i_num.in_addr)))
 			continue;
 		if (ii->counted_links == 0) {
 			if (handle_unlinked(sdp, ii->num.in_addr,
@@ -222,7 +222,7 @@ static int scan_dir_list(struct gfs2_sbd *sdp)
 		di = (struct dir_info *)tmp;
 		/* Don't check reference counts on the special gfs files */
 		if (sdp->gfs1 &&
-		    di->dinode.in_addr == sdp->md.jiinode->i_addr)
+		    di->dinode.in_addr == sdp->md.jiinode->i_num.in_addr)
 			continue;
 		if (di->counted_links == 0) {
 			if (handle_unlinked(sdp, di->dinode.in_addr,

@@ -59,7 +59,7 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 	for (j = 0; j < sdp->md.journals; j++) {
 		ip = sdp->md.journal[j];
 		log_debug(_("Checking for rgrps in journal%d which starts at block 0x%"PRIx64".\n"),
-		          j, ip->i_addr);
+		          j, ip->i_num.in_addr);
 		jblocks = ip->i_size / sdp->sd_bsize;
 		false_count = 0;
 		for (b = 0; b < jblocks; b++) {

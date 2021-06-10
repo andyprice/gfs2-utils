@@ -95,7 +95,7 @@ static inline int is_dir(struct gfs2_inode *ip, int gfs1)
 
 static inline uint32_t gfs_to_gfs2_mode(struct gfs2_inode *ip)
 {
-	uint16_t gfs1mode = ip->i_pad1;
+	uint16_t gfs1mode = ip->i_di_type;
 
 	switch (gfs1mode) {
 	case GFS_FILE_DIR:

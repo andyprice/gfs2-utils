@@ -46,7 +46,7 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 
 	/* Figure out the block of the jindex file */
 	if (sbd.gfs1)
-		jindex_block = sbd.sd_jindex_di.no_addr;
+		jindex_block = sbd.sd_jindex_di.in_addr;
 	else
 		jindex_block = masterblock("jindex");
 	/* read in the block */
@@ -77,7 +77,7 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 
 		if (journal_num > indirect->ii[0].dirents - 2)
 			return 0;
-		jblock = indirect->ii[0].dirent[journal_num + 2].inum.addr;
+		jblock = indirect->ii[0].dirent[journal_num + 2].inum.in_addr;
 		j_bh = bread(&sbd, jblock);
 		jdi = (struct gfs2_dinode *)j_bh->b_data;
 		*j_size = be64_to_cpu(jdi->di_size);

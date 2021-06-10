@@ -174,7 +174,7 @@ int _fsck_bitmap_set(struct gfs2_inode *ip, uint64_t bblock,
 	static const char *prev_caller = NULL;
 
 	if (print_level >= MSG_DEBUG) {
-		if ((ip->i_addr == prev_ino_addr) &&
+		if ((ip->i_num.in_addr == prev_ino_addr) &&
 		    (mark == prev_mark) && caller == prev_caller) {
 			log_info("(0x%"PRIx64") ", bblock);
 			prevcount++;
@@ -184,13 +184,13 @@ int _fsck_bitmap_set(struct gfs2_inode *ip, uint64_t bblock,
 			}
 		/* I'm circumventing the log levels here on purpose to make the
 		   output easier to debug. */
-		} else if (ip->i_addr == bblock) {
+		} else if (ip->i_num.in_addr == bblock) {
 			if (prevcount) {
 				log_info("\n");
 				prevcount = 0;
 			}
 			printf(_("(%s:%d) %s inode found at block (0x%"PRIx64"): marking as '%s'\n"),
-			       caller, fline, btype, ip->i_addr, block_type_string(mark));
+			       caller, fline, btype, ip->i_num.in_addr, block_type_string(mark));
 		} else {
 			if (prevcount) {
 				log_info("\n");
@@ -198,9 +198,9 @@ int _fsck_bitmap_set(struct gfs2_inode *ip, uint64_t bblock,
 			}
 			printf(_("(%s:%d) inode (0x%"PRIx64") references %s block"
 			         " (0x%"PRIx64"): marking as '%s'\n"),
-			      caller, fline, ip->i_addr, btype, bblock, block_type_string(mark));
+			      caller, fline, ip->i_num.in_addr, btype, bblock, block_type_string(mark));
 		}
-		prev_ino_addr = ip->i_addr;
+		prev_ino_addr = ip->i_num.in_addr;
 		prev_mark = mark;
 		prev_caller = caller;
 	}
@@ -232,24 +232,24 @@ struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp, uint64_t block)
 {
 	int j;
 
-	if (lf_dip && lf_dip->i_addr == block)
+	if (lf_dip && lf_dip->i_num.in_addr == block)
 		return lf_dip;
 	if (!sdp->gfs1)
 		return is_system_inode(sdp, block);
 
-	if (sdp->md.statfs && block == sdp->md.statfs->i_addr)
+	if (sdp->md.statfs && block == sdp->md.statfs->i_num.in_addr)
 		return sdp->md.statfs;
-	if (sdp->md.jiinode && block == sdp->md.jiinode->i_addr)
+	if (sdp->md.jiinode && block == sdp->md.jiinode->i_num.in_addr)
 		return sdp->md.jiinode;
-	if (sdp->md.riinode && block == sdp->md.riinode->i_addr)
+	if (sdp->md.riinode && block == sdp->md.riinode->i_num.in_addr)
 		return sdp->md.riinode;
-	if (sdp->md.qinode && block == sdp->md.qinode->i_addr)
+	if (sdp->md.qinode && block == sdp->md.qinode->i_num.in_addr)
 		return sdp->md.qinode;
-	if (sdp->md.rooti && block == sdp->md.rooti->i_addr)
+	if (sdp->md.rooti && block == sdp->md.rooti->i_num.in_addr)
 		return sdp->md.rooti;
 	for (j = 0; j < sdp->md.journals; j++)
 		if (sdp->md.journal && sdp->md.journal[j] &&
-		    block == sdp->md.journal[j]->i_addr)
+		    block == sdp->md.journal[j]->i_num.in_addr)
 			return sdp->md.journal[j];
 	return NULL;
 }
@@ -296,7 +296,7 @@ void fsck_inode_put(struct gfs2_inode **ip_in)
 	struct gfs2_inode *ip = *ip_in;
 	struct gfs2_inode *sysip;
 
-	sysip = fsck_system_inode(ip->i_sbd, ip->i_addr);
+	sysip = fsck_system_inode(ip->i_sbd, ip->i_num.in_addr);
 	if (!sysip)
 		inode_put(ip_in);
 }
@@ -422,7 +422,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 			          "entry %d of directory %"PRIu64" (0x%"PRIx64") "
 			          "is corrupt.\n"),
 				bh->b_blocknr, bh->b_blocknr, (*count) + 1,
-				ip->i_addr, ip->i_addr);
+				ip->i_num.in_addr, ip->i_num.in_addr);
 			if (query( _("Attempt to repair it? (y/n) "))) {
 				if (dirent_repair(ip, bh, &d, dent, type,
 						  first)) {
@@ -456,7 +456,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 					"zero in leaf %"PRIu64" (0x%"PRIx64") of "
 					"directory %"PRIu64" (0x%"PRIx64")!\n"),
 					bh->b_blocknr, bh->b_blocknr,
-					ip->i_addr, ip->i_addr);
+					ip->i_num.in_addr, ip->i_num.in_addr);
 				if (query(_("Attempt to remove it? (y/n) "))) {
 					dirblk_truncate(ip, prev, bh);
 					log_err(_("The corrupt directory "
@@ -494,7 +494,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		if ((char *)dent + d.dr_rec_len >= bh_end){
 			log_debug(_("Last entry processed for %"PRIu64"->%"PRIu64
 			            "(0x%"PRIx64"->0x%"PRIx64"), di_blocks=%"PRIu64".\n"),
-			            ip->i_addr, bh->b_blocknr, ip->i_addr,
+			            ip->i_num.in_addr, bh->b_blocknr, ip->i_num.in_addr,
 			            bh->b_blocknr, ip->i_blocks);
 			break;
 		}
@@ -529,7 +529,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	if (!valid_block_ip(ip, *leaf_no)) {
 		log_err( _("Leaf block #%"PRIu64" (0x%"PRIx64") is out of range for "
 			   "directory #%"PRIu64" (0x%"PRIx64") at index %d (0x%x).\n"),
-			 *leaf_no, *leaf_no, ip->i_addr, ip->i_addr,
+			 *leaf_no, *leaf_no, ip->i_num.in_addr, ip->i_num.in_addr,
 			 lindex, lindex);
 		msg = _("that is out of range");
 		goto bad_leaf;
@@ -576,7 +576,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	if (be32_to_cpu(lfp->lf_header.mh_type) != GFS2_METATYPE_LF) {
 		log_err(_("Inode %"PRIu64" (0x%"PRIx64") points to bad leaf %"PRIu64
 			  " (0x%"PRIx64").\n"),
-		        ip->i_addr, ip->i_addr, *leaf_no, *leaf_no);
+		        ip->i_num.in_addr, ip->i_num.in_addr, *leaf_no, *leaf_no);
 		msg = _("that is not a leaf");
 		goto bad_leaf;
 	}
@@ -605,7 +605,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 			log_err(_("Leaf %"PRIu64" (0x%"PRIx64") entry count in "
 				   "directory %"PRIu64" (0x%"PRIx64") does not match "
 				   "number of entries found - is %u, found %u\n"),
-			        *leaf_no, *leaf_no, ip->i_addr, ip->i_addr,
+			        *leaf_no, *leaf_no, ip->i_num.in_addr, ip->i_num.in_addr,
 			        leaf->lf_entries, count);
 			if (query( _("Update leaf entry count? (y/n) "))) {
 				leaf->lf_entries = count;
@@ -621,7 +621,7 @@ out:
 	if (di_depth < ip->i_depth) {
 		log_debug(_("Depth of directory %"PRIu64" (0x%"PRIx64") changed from "
 			    "%d to %d; adjusting ref_count from %d to %d\n"),
-		          ip->i_addr, ip->i_addr, di_depth, ip->i_depth,
+		          ip->i_num.in_addr, ip->i_num.in_addr, di_depth, ip->i_depth,
 			  *ref_count, (*ref_count) << (ip->i_depth - di_depth));
 		(*ref_count) <<= (ip->i_depth - di_depth);
 	}
@@ -643,7 +643,7 @@ bad_leaf:
 	if (di_depth < ip->i_depth) {
 		log_debug(_("Depth of directory %"PRIu64" (0x%"PRIx64") changed from "
 			    "%d to %d. Adjusting ref_count from %d to %d\n"),
-		          ip->i_addr, ip->i_addr, di_depth, ip->i_depth,
+		          ip->i_num.in_addr, ip->i_num.in_addr, di_depth, ip->i_depth,
 			  *ref_count, (*ref_count) << (ip->i_depth - di_depth));
 		(*ref_count) <<= (ip->i_depth - di_depth);
 	}
@@ -748,7 +748,7 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	}
 	if (first_ok_leaf == -1) { /* no valid leaf found */
 		log_err(_("Directory #%"PRIu64" (0x%"PRIx64") has no valid leaf blocks\n"),
-		        ip->i_addr, ip->i_addr);
+		        ip->i_num.in_addr, ip->i_num.in_addr);
 		free(tbl);
 		posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 		return 1;
@@ -763,7 +763,7 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 
 		if (!tbl_valid) {
 			free(tbl);
-			log_debug(_("Re-reading 0x%"PRIx64" hash table.\n"), ip->i_addr);
+			log_debug(_("Re-reading 0x%"PRIx64" hash table.\n"), ip->i_num.in_addr);
 			tbl = get_dir_hash(ip);
 			if (tbl == NULL) {
 				perror("get_dir_hash");
@@ -819,19 +819,19 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		} while (1); /* while we have chained leaf blocks */
 		if (orig_di_depth != ip->i_depth) {
 			log_debug(_("Depth of 0x%"PRIx64" changed from %d to %d\n"),
-			          ip->i_addr, orig_di_depth, ip->i_depth);
+			          ip->i_num.in_addr, orig_di_depth, ip->i_depth);
 			tbl_valid = 0;
 			lindex <<= (ip->i_depth - orig_di_depth);
 			hsize = (1 << ip->i_depth);
 		}
 		if (orig_di_height != ip->i_height) {
 			log_debug(_("Height of 0x%"PRIx64" changed from %d to %d\n"),
-			          ip->i_addr, orig_di_height, ip->i_height);
+			          ip->i_num.in_addr, orig_di_height, ip->i_height);
 			tbl_valid = 0;
 		}
 		if (orig_di_blocks != ip->i_blocks) {
 			log_debug(_("Block count of 0x%"PRIx64" changed from %"PRIu64" to %"PRIu64"\n"),
-			          ip->i_addr, orig_di_blocks, ip->i_blocks);
+			          ip->i_num.in_addr, orig_di_blocks, ip->i_blocks);
 			tbl_valid = 0;
 		}
 		lindex += ref_count;
@@ -927,7 +927,7 @@ static int check_leaf_eattr(struct gfs2_inode *ip, uint64_t block,
 
 		log_debug(_("Checking EA leaf block #%"PRIu64" (0x%"PRIx64") for "
 			     "inode #%"PRIu64" (0x%"PRIx64").\n"),
-		          block, block, ip->i_addr, ip->i_addr);
+		          block, block, ip->i_num.in_addr, ip->i_num.in_addr);
 
 		error = pass->check_eattr_leaf(ip, block, parent, &bh,
 					       pass->private);
@@ -1064,8 +1064,8 @@ int check_inode_eattr(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 
 		log_debug(_("Checking EA indirect block #%"PRIu64" (0x%"PRIx64") for "
 			     "inode #%"PRIu64" (0x%"PRIx64")..\n"),
-		          ip->i_eattr, ip->i_eattr, ip->i_addr, ip->i_addr);
-		error = pass->check_eattr_indir(ip, ip->i_eattr, ip->i_addr,
+		          ip->i_eattr, ip->i_eattr, ip->i_num.in_addr, ip->i_num.in_addr);
+		error = pass->check_eattr_indir(ip, ip->i_eattr, ip->i_num.in_addr,
 						&indirect_buf, pass->private);
 		if (!error) {
 			error = check_indirect_eattr(ip, ip->i_eattr,
@@ -1077,7 +1077,7 @@ int check_inode_eattr(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			brelse(indirect_buf);
 		return error;
 	}
-	error = check_leaf_eattr(ip, ip->i_eattr, ip->i_addr, pass);
+	error = check_leaf_eattr(ip, ip->i_eattr, ip->i_num.in_addr, pass);
 	if (error)
 		stack;
 
@@ -1405,7 +1405,7 @@ static int metawalk_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass
 
 	/* If there isn't much pointer corruption check the pointers */
 	log_debug("Processing data blocks for inode 0x%"PRIx64", metadata block 0x%"PRIx64".\n",
-	          ip->i_addr, metablock);
+	          ip->i_num.in_addr, metablock);
 	for (ptr = ptr_start ; ptr < ptr_end && !fsck_abort; ptr++) {
 		if (!*ptr)
 			continue;
@@ -1568,7 +1568,7 @@ int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		log_notice( _("\rLarge file at %"PRIu64" (0x%"PRIx64") - 100 percent "
 			      "complete.                                   "
 			      "\n"),
-			    ip->i_addr, ip->i_addr);
+			    ip->i_num.in_addr, ip->i_num.in_addr);
 		fflush(stdout);
 	}
 undo_metalist:
@@ -1577,7 +1577,7 @@ undo_metalist:
 	log_err(_("Error: inode %"PRIu64" (0x%"PRIx64") had unrecoverable errors at "
 	          "metadata block %"PRIu64" (0x%"PRIx64"), offset %d (0x%x), block "
 	          "%"PRIu64" (0x%"PRIx64").\n"),
-	        ip->i_addr, ip->i_addr, error_blk.metablk, error_blk.metablk,
+	        ip->i_num.in_addr, ip->i_num.in_addr, error_blk.metablk, error_blk.metablk,
 		error_blk.metaoff, error_blk.metaoff, error_blk.errblk, error_blk.errblk);
 	if (!query( _("Remove the invalid inode? (y/n) "))) {
 		free_metalist(ip, metalist);
@@ -1613,7 +1613,7 @@ undo_metalist:
 							"block undoing work "
 							"for inode %"PRIu64" "
 							"(0x%"PRIx64").\n",
-							ip->i_addr, ip->i_addr);
+							ip->i_num.in_addr, ip->i_num.in_addr);
 						rc = 0;
 					}
 				}
@@ -1630,7 +1630,7 @@ undo_metalist:
 	   to undo. */
 	delete_all_dups(ip);
 	/* Set the dinode as "bad" so it gets deleted */
-	fsck_bitmap_set(ip, ip->i_addr, "corrupt", GFS2_BLKST_FREE);
+	fsck_bitmap_set(ip, ip->i_num.in_addr, "corrupt", GFS2_BLKST_FREE);
 	log_err(_("The corrupt inode was invalidated.\n"));
 out:
 	free_metalist(ip, metalist);

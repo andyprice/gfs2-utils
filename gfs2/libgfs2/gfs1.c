@@ -33,7 +33,7 @@ gfs1_metapointer(char *buf, unsigned int height, struct metapath *mp)
 
 int is_gfs_dir(struct gfs2_inode *ip)
 {
-	if (ip->i_pad1 == GFS_FILE_DIR)
+	if (ip->i_di_type == GFS_FILE_DIR)
 		return 1;
 	return 0;
 }
@@ -86,7 +86,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 
 	if (!ip->i_height) { /* stuffed */
 		if (!lblock) {
-			*dblock = ip->i_addr;
+			*dblock = ip->i_num.in_addr;
 			if (extlen)
 				*extlen = 1;
 		}
@@ -125,7 +125,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			memcpy(bh->b_data, &mh, sizeof(mh));
 			bmodified(bh);
 		} else {
-			if (*dblock == ip->i_addr)
+			if (*dblock == ip->i_num.in_addr)
 				bh = ip->i_bh;
 			else
 				bh = bread(sdp, *dblock);
@@ -208,12 +208,12 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 				return -1;
 		}
 
-		if (dblock == ip->i_addr)
+		if (dblock == ip->i_num.in_addr)
 			bh = ip->i_bh;
 		else
 			bh = bread(sdp, dblock);
 
-		if (journaled && dblock != ip->i_addr ) {
+		if (journaled && dblock != ip->i_num.in_addr ) {
 			struct gfs2_meta_header mh = {
 				.mh_magic = cpu_to_be32(GFS2_MAGIC),
 				.mh_type = cpu_to_be32(GFS2_METATYPE_JD),
@@ -256,10 +256,10 @@ static struct gfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp, char *buf)
 	}
 	di = (struct gfs_dinode *)buf;
 	ip->i_magic = be32_to_cpu(di->di_header.mh_magic);
-	ip->i_type = be32_to_cpu(di->di_header.mh_type);
+	ip->i_mh_type = be32_to_cpu(di->di_header.mh_type);
 	ip->i_format = be32_to_cpu(di->di_header.mh_format);
-	ip->i_formal_ino = be64_to_cpu(di->di_num.no_formal_ino);
-	ip->i_addr = be64_to_cpu(di->di_num.no_addr);
+	ip->i_num.in_formal_ino = be64_to_cpu(di->di_num.no_formal_ino);
+	ip->i_num.in_addr = be64_to_cpu(di->di_num.no_addr);
 	ip->i_mode = be32_to_cpu(di->di_mode);
 	ip->i_uid = be32_to_cpu(di->di_uid);
 	ip->i_gid = be32_to_cpu(di->di_gid);
@@ -275,7 +275,7 @@ static struct gfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp, char *buf)
 	ip->i_goal_meta = (uint64_t)be32_to_cpu(di->di_goal_mblk);
 	ip->i_flags = be32_to_cpu(di->di_flags);
 	ip->i_payload_format = be32_to_cpu(di->di_payload_format);
-	ip->i_pad1 = be16_to_cpu(di->di_type);
+	ip->i_di_type = be16_to_cpu(di->di_type);
 	ip->i_height = be16_to_cpu(di->di_height);
 	ip->i_depth = be16_to_cpu(di->di_depth);
 	ip->i_entries = be32_to_cpu(di->di_entries);

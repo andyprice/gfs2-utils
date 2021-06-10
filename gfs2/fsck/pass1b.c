@@ -350,17 +350,17 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 				   and dirtree entries exist. That way, the
 				   bitmap_set will do proper accounting for
 				   the rgrp dinode count. */
-				fsck_bitmap_set(ip, ip->i_addr,
+				fsck_bitmap_set(ip, ip->i_num.in_addr,
 						_("duplicate referencing bad"),
 						GFS2_BLKST_FREE);
 				/* Remove the inode from the inode tree */
-				ii = inodetree_find(ip->i_addr);
+				ii = inodetree_find(ip->i_num.in_addr);
 				if (ii)
 					inodetree_delete(ii);
-				di = dirtree_find(ip->i_addr);
+				di = dirtree_find(ip->i_num.in_addr);
 				if (di)
 					dirtree_delete(di);
-				link1_set(&nlink1map, ip->i_addr,
+				link1_set(&nlink1map, ip->i_num.in_addr,
 					  0);
 				/* We delete the dup_handler inode count and
 				   duplicate id BEFORE clearing the metadata,
@@ -424,13 +424,13 @@ static int clone_data(struct gfs2_inode *ip, uint64_t metablock,
 	if (clonet->first) {
 		log_debug(_("Inode %"PRIu64" (0x%"PRIx64")'s first reference to "
 		            "block %"PRIu64" (0x%"PRIx64") is targeted for cloning.\n"),
-		          ip->i_addr, ip->i_addr, block, block);
+		          ip->i_num.in_addr, ip->i_num.in_addr, block, block);
 		clonet->first = 0;
 		return 0;
 	}
 	log_err(_("Error: Inode %"PRIu64" (0x%"PRIx64")'s reference to block %"PRIu64
 	          " (0x%"PRIx64") should be replaced with a clone.\n"),
-	        ip->i_addr, ip->i_addr, block, block);
+	        ip->i_num.in_addr, ip->i_num.in_addr, block, block);
 	if (query( _("Okay to clone the duplicated reference? (y/n) "))) {
 		error = lgfs2_meta_alloc(ip, &cloneblock);
 		if (!error) {
@@ -493,7 +493,7 @@ static void clone_dup_ref_in_inode(struct gfs2_inode *ip, struct duptree *dt)
 
 	log_err(_("There are multiple references to block %"PRIu64" (0x%"PRIx64") in "
 	          "inode %"PRIu64" (0x%"PRIx64")\n"),
-	        ip->i_addr, ip->i_addr, dt->block, dt->block);
+	        ip->i_num.in_addr, ip->i_num.in_addr, dt->block, dt->block);
 	error = check_metatree(ip, &pass1b_fxns_clone);
 	if (error) {
 		log_err(_("Error cloning duplicate reference(s) to block %"PRIu64
@@ -875,7 +875,7 @@ static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
 
 	/* double-check the meta header just to be sure it's metadata */
 	if (ip->i_magic != GFS2_MAGIC ||
-	    ip->i_type != GFS2_METATYPE_DI) {
+	    ip->i_mh_type != GFS2_METATYPE_DI) {
 		if (!sdp->gfs1)
 			log_debug( _("Block %lld (0x%llx) is not a dinode.\n"),
 				   (unsigned long long)inode,

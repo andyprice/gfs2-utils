@@ -709,7 +709,7 @@ static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip)
 	if (((isreg||isdir) && ip->i_height <= 1) ||
 	    (isjdata && ip->i_height == 0)) {
 		if (!issys)
-			ip->i_goal_meta = ip->i_addr;
+			ip->i_goal_meta = ip->i_num.in_addr;
 		return 0; /* nothing to do */
 	}
 
@@ -801,7 +801,7 @@ static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, s
 			return -1;
 		}
 		memset(fix, 0, sizeof(struct inode_dir_block));
-		fix->di_addr = ip->i_addr;
+		fix->di_addr = ip->i_num.in_addr;
 		osi_list_add_prev((osi_list_t *)&fix->list,
 				  (osi_list_t *)&cdpns_to_fix);
 	}
@@ -865,13 +865,13 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 		return -1;
 	}
 
-	inode_was_gfs1 = (inode->i_formal_ino == inode->i_addr);
+	inode_was_gfs1 = (inode->i_num.in_formal_ino == inode->i_num.in_addr);
 	/* Fix the inode number: */
-	inode->i_formal_ino = sbp->md.next_inum;
+	inode->i_num.in_formal_ino = sbp->md.next_inum;
 
 	/* Fix the inode type: gfs1 uses di_type, gfs2 uses di_mode. */
 	inode->i_mode &= ~S_IFMT;
-	switch (inode->i_pad1) { /* formerly di_type */
+	switch (inode->i_di_type) {
 	case GFS_FILE_DIR:           /* directory        */
 		inode->i_mode |= S_IFDIR;
 		/* Add this directory to the list of dirs to fix later. */
@@ -882,7 +882,7 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 			goto err_freei;
 		}
 		memset(fixdir, 0, sizeof(struct inode_block));
-		fixdir->di_addr = inode->i_addr;
+		fixdir->di_addr = inode->i_num.in_addr;
 		osi_list_add_prev((osi_list_t *)&fixdir->list,
 						  (osi_list_t *)&dirs_to_fix);
 		break;
@@ -1058,8 +1058,8 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 				break;
 			/* If this is the root inode block, remember it for later: */
 			if (block == root_inode_addr) {
-				sbp->sd_root_dir.no_addr = block;
-				sbp->sd_root_dir.no_formal_ino = sbp->md.next_inum;
+				sbp->sd_root_dir.in_addr = block;
+				sbp->sd_root_dir.in_formal_ino = sbp->md.next_inum;
 			}
 			bh = bread(sbp, block);
 			if (!gfs2_check_meta(bh->b_data, GFS_METATYPE_DI)) {/* if it is an dinode */
@@ -1117,8 +1117,8 @@ static int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
 	fix_inode = lgfs2_inode_read(sbp, iblock);
 	if (fix_inode == NULL)
 		return 1;
-	inum->in_formal_ino = fix_inode->i_formal_ino;
-	inum->in_addr = fix_inode->i_addr;
+	inum->in_formal_ino = fix_inode->i_num.in_formal_ino;
+	inum->in_addr = fix_inode->i_num.in_addr;
 	if (eablk)
 		*eablk = fix_inode->i_eattr;
 
@@ -1232,7 +1232,7 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 			osi_list_foreach(tmp, &cdpns_to_fix.list) {
 				fix = osi_list_entry(tmp, struct inode_dir_block, list);
 				if (fix->di_addr == inum.in_addr)
-					fix->di_paddr = dip->i_addr;
+					fix->di_paddr = dip->i_num.in_addr;
 			}
 		}
 
@@ -2234,7 +2234,7 @@ int main(int argc, char **argv)
 	/* ---------------------------------------------- */
 	if (!error) {
 		/* Add a string notifying inode converstion start? */
-		error = inode_renumber(&sb2, sb2.sd_root_dir.no_addr,
+		error = inode_renumber(&sb2, sb2.sd_root_dir.in_addr,
 				       (osi_list_t *)&cdpns_to_fix);
 		if (error)
 			log_crit(_("\n%s: Error renumbering inodes.\n"), opts.device);
@@ -2296,8 +2296,7 @@ int main(int argc, char **argv)
 				   "GFS2 file system structures.\n"), sb2.jsize);
 		/* Build the master subdirectory. */
 		build_master(&sb2); /* Does not do inode_put */
-		sb2.sd_meta_dir.no_addr = sb2.master_dir->i_addr;
-		sb2.sd_meta_dir.no_formal_ino = sb2.master_dir->i_formal_ino;
+		sb2.sd_meta_dir = sb2.master_dir->i_num;
 		/* Build empty journal index file. */
 		error = conv_build_jindex(&sb2);
 		if (error) {

@@ -635,13 +635,13 @@ static const char *show_inode(const char *id, int fd, unsigned long long block)
 			if (error)
 				break;
 			/* Stop at the root inode */
-			if (ip->i_addr == parent->i_addr) {
+			if (ip->i_num.in_addr == parent->i_num.in_addr) {
 				inode_put(&parent);
 				break;
 			}
 			inode_put(&ip);
 			ip = parent;
-			dirarray[subdepth++] = parent->i_addr;
+			dirarray[subdepth++] = parent->i_num.in_addr;
 		}
 		display_filename(fd, block, dirarray, subdepth);
 	} else if (S_ISREG(ip->i_mode)) {

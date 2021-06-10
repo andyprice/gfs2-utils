@@ -88,7 +88,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 	if (q == GFS2_BLKST_FREE) {
 		log_info(_("%s block %"PRIu64" (0x%"PRIx64"), part of inode "
 		           "%"PRIu64" (0x%"PRIx64"), was already free.\n"),
-		        btype, block, block, ip->i_addr, ip->i_addr);
+		        btype, block, block, ip->i_num.in_addr, ip->i_num.in_addr);
 		return META_IS_GOOD;
 	}
 	if (find_remove_dup(ip, block, btype, &removed_lastmeta)) { /* a dup */
@@ -101,7 +101,7 @@ static int delete_block_if_notdup(struct gfs2_inode *ip, uint64_t block,
 		log_err(_("Not clearing duplicate reference in inode at block #%"PRIu64
 		          " (0x%"PRIx64") to block #%"PRIu64" (0x%"PRIx64") "
 		          "because it's referenced by another inode.\n"),
-		        ip->i_addr, ip->i_addr, block, block);
+		        ip->i_num.in_addr, ip->i_num.in_addr, block, block);
 	} else {
 		check_n_fix_bitmap(ip->i_sbd, ip->i_rgd, block, 0,
 				   GFS2_BLKST_FREE);

@@ -278,7 +278,7 @@ static int init_per_node_lookup(void)
 	for (i = 0; i < indirect_blocks; i++) {
 		int d;
 		for (d = 0; d < indirect->ii[i].dirents; d++) {
-			int ret = insert_per_node_lookup(indirect->ii[i].dirent[d].inum.addr);
+			int ret = insert_per_node_lookup(indirect->ii[i].dirent[d].inum.in_addr);
 			if (ret != 0)
 				return ret;
 		}
@@ -946,7 +946,7 @@ static void get_journal_inode_blocks(void)
 			struct gfs_jindex ji;
 			char jbuf[sizeof(struct gfs_jindex)];
 
-			j_inode = lgfs2_gfs_inode_read(&sbd, sbd.sd_jindex_di.no_addr);
+			j_inode = lgfs2_gfs_inode_read(&sbd, sbd.sd_jindex_di.in_addr);
 			if (j_inode == NULL) {
 				fprintf(stderr, "Error reading journal inode: %s\n", strerror(errno));
 				return;
@@ -963,7 +963,7 @@ static void get_journal_inode_blocks(void)
 		} else {
 			if (journal + 3 > indirect->ii[0].dirents)
 				break;
-			jblock = indirect->ii[0].dirent[journal + 2].inum.addr;
+			jblock = indirect->ii[0].dirent[journal + 2].inum.in_addr;
 		}
 		journal_blocks[journals_found++] = jblock;
 	}
@@ -1159,7 +1159,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 		uint64_t blk;
 		int j;
 
-		blk = sbd.sd_rindex_di.no_addr;
+		blk = sbd.sd_rindex_di.in_addr;
 		buf = check_read_block(sbd.device_fd, blk, blk, NULL, NULL);
 		if (buf != NULL) {
 			save_buf(&mfd, buf, blk, sbd.sd_bsize);

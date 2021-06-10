@@ -110,7 +110,7 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	unsigned blocks = (ip->i_size + sdp->sd_bsize - 1) / sdp->sd_bsize;
-	uint64_t jext0 = ip->i_addr + ip->i_blocks - blocks;
+	uint64_t jext0 = ip->i_num.in_addr + ip->i_blocks - blocks;
 	uint64_t seq = ((blocks) * (random() / (RAND_MAX + 1.0)));
 	struct gfs2_log_header *lh;
 	uint64_t jblk = jext0;
@@ -125,7 +125,7 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 	lh->lh_header.mh_type = cpu_to_be32(GFS2_METATYPE_LH);
 	lh->lh_header.mh_format = cpu_to_be32(GFS2_FORMAT_LH);
 	lh->lh_flags = cpu_to_be32(GFS2_LOG_HEAD_UNMOUNT | GFS2_LOG_HEAD_USERSPACE);
-	lh->lh_jinode = cpu_to_be64(ip->i_addr);
+	lh->lh_jinode = cpu_to_be64(ip->i_num.in_addr);
 
 	crc32c_optimization_init();
 	do {
@@ -174,7 +174,7 @@ static struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip, uint64_t lbn
 		bmodified(ip->i_bh);
 		ip->i_size = (lbn + 1) << sdp->sd_bsize_shift;
 	}
-	if (dbn == ip->i_addr)
+	if (dbn == ip->i_num.in_addr)
 		return ip->i_bh;
 	else
 		return bread(sdp, dbn);
@@ -212,7 +212,7 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 		lh->lh_header.mh_type = cpu_to_be32(GFS2_METATYPE_LH);
 		lh->lh_header.mh_format = cpu_to_be32(GFS2_FORMAT_LH);
 		lh->lh_flags = cpu_to_be32(GFS2_LOG_HEAD_UNMOUNT | GFS2_LOG_HEAD_USERSPACE);
-		lh->lh_jinode = cpu_to_be64(jnl->i_addr);
+		lh->lh_jinode = cpu_to_be64(jnl->i_num.in_addr);
 		lh->lh_sequence = cpu_to_be64(seq);
 		lh->lh_blkno = cpu_to_be32(x);
 

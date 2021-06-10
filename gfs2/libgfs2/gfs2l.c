@@ -131,7 +131,7 @@ static int openfs(const char *path, struct gfs2_sbd *sdp)
 		return 1;
 	}
 
-	sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.no_addr);
+	sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.in_addr);
 	gfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
 	sdp->fssize = sdp->device.length;
 	if (sdp->md.riinode) {

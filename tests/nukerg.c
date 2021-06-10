@@ -288,7 +288,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 		perror("Failed to read superblock\n");
 		return 1;
 	}
-	sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.no_addr);
+	sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.in_addr);
 	if (sdp->master_dir == NULL) {
 		fprintf(stderr, "Failed to read master directory inode.\n");
 		return 1;

@@ -64,25 +64,25 @@ struct gfs2_inode *is_system_inode(struct gfs2_sbd *sdp, uint64_t block)
 {
 	int j;
 
-	if (sdp->md.inum && block == sdp->md.inum->i_addr)
+	if (sdp->md.inum && block == sdp->md.inum->i_num.in_addr)
 		return sdp->md.inum;
-	if (sdp->md.statfs && block == sdp->md.statfs->i_addr)
+	if (sdp->md.statfs && block == sdp->md.statfs->i_num.in_addr)
 		return sdp->md.statfs;
-	if (sdp->md.jiinode && block == sdp->md.jiinode->i_addr)
+	if (sdp->md.jiinode && block == sdp->md.jiinode->i_num.in_addr)
 		return sdp->md.jiinode;
-	if (sdp->md.riinode && block == sdp->md.riinode->i_addr)
+	if (sdp->md.riinode && block == sdp->md.riinode->i_num.in_addr)
 		return sdp->md.riinode;
-	if (sdp->md.qinode && block == sdp->md.qinode->i_addr)
+	if (sdp->md.qinode && block == sdp->md.qinode->i_num.in_addr)
 		return sdp->md.qinode;
-	if (sdp->md.pinode && block == sdp->md.pinode->i_addr)
+	if (sdp->md.pinode && block == sdp->md.pinode->i_num.in_addr)
 		return sdp->md.pinode;
-	if (sdp->md.rooti && block == sdp->md.rooti->i_addr)
+	if (sdp->md.rooti && block == sdp->md.rooti->i_num.in_addr)
 		return sdp->md.rooti;
-	if (sdp->master_dir && block == sdp->master_dir->i_addr)
+	if (sdp->master_dir && block == sdp->master_dir->i_num.in_addr)
 		return sdp->master_dir;
 	for (j = 0; j < sdp->md.journals; j++)
 		if (sdp->md.journal && sdp->md.journal[j] &&
-		    block == sdp->md.journal[j]->i_addr)
+		    block == sdp->md.journal[j]->i_num.in_addr)
 			return sdp->md.journal[j];
 	return NULL;
 }
@@ -90,7 +90,7 @@ struct gfs2_inode *is_system_inode(struct gfs2_sbd *sdp, uint64_t block)
 void inode_put(struct gfs2_inode **ip_in)
 {
 	struct gfs2_inode *ip = *ip_in;
-	uint64_t block = ip->i_addr;
+	uint64_t block = ip->i_num.in_addr;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 
 	if (ip->i_bh->b_modified) {
@@ -318,8 +318,8 @@ int lgfs2_file_alloc(lgfs2_rgrp_t rg, uint64_t di_size, struct gfs2_inode *ip, u
 	struct lgfs2_rbm rbm = { .rgd = rg, .offset = 0, .bii = 0 };
 	uint32_t blocks = lgfs2_space_for_data(sdp, sdp->sd_bsize, di_size);
 
-	if (ip->i_addr != 0) {
-		if (lgfs2_rbm_from_block(&rbm, ip->i_addr) != 0)
+	if (ip->i_num.in_addr != 0) {
+		if (lgfs2_rbm_from_block(&rbm, ip->i_num.in_addr) != 0)
 			return 1;
 	} else if (lgfs2_rbm_find(&rbm, GFS2_BLKST_FREE, &blocks) != 0) {
 		return 1;
@@ -334,16 +334,16 @@ int lgfs2_file_alloc(lgfs2_rgrp_t rg, uint64_t di_size, struct gfs2_inode *ip, u
 	ip->i_sbd = sdp;
 
 	ip->i_magic = GFS2_MAGIC;
-	ip->i_type = GFS2_METATYPE_DI;
+	ip->i_mh_type = GFS2_METATYPE_DI;
 	ip->i_format = GFS2_FORMAT_DI;
 	ip->i_size = di_size;
-	ip->i_addr = lgfs2_rbm_to_block(&rbm);
-	ip->i_formal_ino = sdp->md.next_inum++;
+	ip->i_num.in_addr = lgfs2_rbm_to_block(&rbm);
+	ip->i_num.in_formal_ino = sdp->md.next_inum++;
 	ip->i_mode = mode;
 	ip->i_nlink = 1;
 	ip->i_blocks = blocks;
 	ip->i_atime = ip->i_mtime = ip->i_ctime = sdp->time;
-	ip->i_goal_data = ip->i_addr + ip->i_blocks - 1;
+	ip->i_goal_data = ip->i_num.in_addr + ip->i_blocks - 1;
 	ip->i_goal_meta = ip->i_goal_data - ((di_size + sdp->sd_bsize - 1) / sdp->sd_bsize);
 	ip->i_height = calc_tree_height(ip, di_size);
 	ip->i_flags = flags;
@@ -485,7 +485,7 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 
 	if (inode_is_stuffed(ip)) {
 		if (!lblock) {
-			*dblock = ip->i_addr;
+			*dblock = ip->i_num.in_addr;
 			if (extlen)
 				*extlen = 1;
 		}
@@ -524,7 +524,7 @@ void block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			memcpy(bh->b_data, &mh, sizeof(mh));
 			bmodified(bh);
 		} else {
-			if (*dblock == ip->i_addr)
+			if (*dblock == ip->i_num.in_addr)
 				bh = ip->i_bh;
 			else
 				bh = bread(sdp, *dblock);
@@ -626,7 +626,7 @@ int gfs2_readi(struct gfs2_inode *ip, void *buf,
 		}
 
 		if (dblock) {
-			if (dblock == ip->i_addr)
+			if (dblock == ip->i_num.in_addr)
 				bh = ip->i_bh;
 			else
 				bh = bread(sdp, dblock);
@@ -718,7 +718,7 @@ int __gfs2_writei(struct gfs2_inode *ip, void *buf,
 				bmodified(bh);
 			}
 		} else {
-			if (dblock == ip->i_addr)
+			if (dblock == ip->i_num.in_addr)
 				bh = ip->i_bh;
 			else
 				bh = bread(sdp, dblock);
@@ -1002,7 +1002,7 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
 	oleaf->lf_depth = cpu_to_be16(oleaf->lf_depth);
 	nleaf->lf_depth = oleaf->lf_depth;
 
-	nleaf->lf_inode = cpu_to_be64(dip->i_addr);
+	nleaf->lf_inode = cpu_to_be64(dip->i_num.in_addr);
 	dip->i_blocks++;
 	bmodified(dip->i_bh);
 
@@ -1202,7 +1202,7 @@ restart:
 				nleaf = (struct gfs2_leaf *)nbh->b_data;
 				nleaf->lf_depth = leaf->lf_depth;
 				nleaf->lf_dirent_format = cpu_to_be32(GFS2_FORMAT_DE);
-				nleaf->lf_inode = cpu_to_be64(dip->i_addr);
+				nleaf->lf_inode = cpu_to_be64(dip->i_num.in_addr);
 				err = dirent_alloc(dip, nbh, len, &dent);
 				if (err)
 					return err;
@@ -1255,7 +1255,7 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 	leaf = (struct gfs2_leaf *)bh->b_data;
 	leaf->lf_dirent_format = cpu_to_be32(GFS2_FORMAT_DE);
 	leaf->lf_entries = cpu_to_be16(dip->i_entries);
-	leaf->lf_inode = cpu_to_be64(dip->i_addr);
+	leaf->lf_inode = cpu_to_be64(dip->i_num.in_addr);
 	buffer_copy_tail(sdp, bh, sizeof(struct gfs2_leaf),
 			 dip->i_bh, sizeof(struct gfs2_dinode));
 
@@ -1436,14 +1436,14 @@ int lgfs2_write_filemeta(struct gfs2_inode *ip)
 	struct metapath mp;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint64_t dblocks = (ip->i_size + sdp->sd_bsize - 1) / sdp->sd_bsize;
-	uint64_t ptr0 = ip->i_addr + 1;
+	uint64_t ptr0 = ip->i_num.in_addr + 1;
 	unsigned ptrs = 1;
 	struct gfs2_meta_header mh = {
 		.mh_magic = cpu_to_be32(GFS2_MAGIC),
 		.mh_type = cpu_to_be32(GFS2_METATYPE_IN),
 		.mh_format = cpu_to_be32(GFS2_FORMAT_IN)
 	};
-	struct gfs2_buffer_head *bh = bget(sdp, ip->i_addr);
+	struct gfs2_buffer_head *bh = bget(sdp, ip->i_num.in_addr);
 	if (bh == NULL)
 		return 1;
 
@@ -1495,10 +1495,8 @@ static struct gfs2_inode *__createi(struct gfs2_inode *dip,
 
 	gfs2_lookupi(dip, filename, strlen(filename), &ip);
 	if (!ip) {
-		struct lgfs2_inum parent = {
-			.in_formal_ino = dip->i_formal_ino,
-			.in_addr = dip->i_addr,
-		};
+		struct lgfs2_inum parent = dip->i_num;
+
 		err = lgfs2_dinode_alloc(sdp, 1, &bn);
 		if (err != 0)
 			return NULL;

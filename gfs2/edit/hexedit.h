@@ -64,10 +64,7 @@ extern int details;
 extern const char *allocdesc[2][5];
 
 struct idirent {
-	struct {
-		uint64_t formal_ino;
-		uint64_t addr;
-	} inum;
+	struct lgfs2_inum inum;
 	uint32_t hash;
 	uint16_t rec_len;
 	uint16_t name_len;

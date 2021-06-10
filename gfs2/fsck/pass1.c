@@ -135,7 +135,7 @@ static int pass1_repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no,
 	int pad_size, i;
 
 	log_err(_("Directory Inode %"PRIu64" (0x%"PRIx64") points to leaf %"PRIu64" (0x%"PRIx64") %s.\n"),
-	       ip->i_addr, ip->i_addr, *leaf_no, *leaf_no, msg);
+	       ip->i_num.in_addr, ip->i_num.in_addr, *leaf_no, *leaf_no, msg);
 	if (!query( _("Attempt to patch around it? (y/n) "))) {
 		log_err( _("Bad leaf left in place.\n"));
 		goto out;
@@ -150,14 +150,14 @@ static int pass1_repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no,
 	pad_size = ref_count * sizeof(uint64_t);
 	log_err(_("Writing zeros to the hash table of directory %"PRIu64
 	          " (0x%"PRIx64") at index: 0x%x for 0x%x pointers.\n"),
-	        ip->i_addr, ip->i_addr, lindex, ref_count);
+	        ip->i_num.in_addr, ip->i_num.in_addr, lindex, ref_count);
 	if (ip->i_sbd->gfs1)
 		gfs1_writei(ip, padbuf, lindex * sizeof(uint64_t), pad_size);
 	else
 		gfs2_writei(ip, padbuf, lindex * sizeof(uint64_t), pad_size);
 	free(padbuf);
 	log_err(_("Directory Inode %"PRIu64" (0x%"PRIx64") patched.\n"),
-	        ip->i_addr, ip->i_addr);
+	        ip->i_num.in_addr, ip->i_num.in_addr);
 
 out:
 	*leaf_no = 0;
@@ -200,10 +200,10 @@ static int resuscitate_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, 
 	*was_duplicate = 0;
 	*bh = NULL;
 	if (!valid_block_ip(ip, block)){ /* blk outside of FS */
-		fsck_blockmap_set(ip, ip->i_addr, _("itself"), GFS2_BLKST_UNLINKED);
+		fsck_blockmap_set(ip, ip->i_num.in_addr, _("itself"), GFS2_BLKST_UNLINKED);
 		log_err(_("Bad indirect block pointer (invalid or out of "
 		          "range) found in system inode %"PRIu64" (0x%"PRIx64").\n"),
-		        ip->i_addr, ip->i_addr);
+		        ip->i_num.in_addr, ip->i_num.in_addr);
 		*is_valid = 0;
 		return META_IS_GOOD;
 	}
@@ -246,7 +246,7 @@ static int resuscitate_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	if (!valid_block_ip(ip, block)) {
 		log_err(_("Block # referenced by system directory entry %s in inode "
 		          "%"PRIu64" (0x%"PRIx64") is invalid or out of range; ignored.\n"),
-		        tmp_name, ip->i_addr, ip->i_addr);
+		        tmp_name, ip->i_num.in_addr, ip->i_num.in_addr);
 		return 0;
 	}
 	/* If this is a system dinode, we'll handle it later in
@@ -286,7 +286,7 @@ static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 		log_err(_("Found duplicate block #%"PRIu64" (0x%"PRIx64") referenced "
 		          "as a directory leaf in dinode "
 		          "%"PRIu64" (0x%"PRIx64") - was marked %d (%s)\n"),
-		        block, block, ip->i_addr, ip->i_addr, q,
+		        block, block, ip->i_num.in_addr, ip->i_num.in_addr, q,
 		        block_type_string(q));
 		add_duplicate_ref(ip, block, REF_AS_META, 0, INODE_VALID);
 		if (q == (ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
@@ -321,11 +321,11 @@ static int pass1_check_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, 
 		   "unrecoverable" errors.  The inode itself should be
 		   set "free" and removed from the inodetree by
 		   undo_check_metalist. */
-		fsck_blockmap_set(ip, ip->i_addr,
+		fsck_blockmap_set(ip, ip->i_num.in_addr,
 				  _("bad block referencing"), GFS2_BLKST_UNLINKED);
 		log_debug(_("Bad indirect block (invalid/out of range) "
 		            "found in inode %"PRIu64" (0x%"PRIx64").\n"),
-		          ip->i_addr, ip->i_addr);
+		          ip->i_num.in_addr, ip->i_num.in_addr);
 
 		return META_SKIP_FURTHER;
 	}
@@ -341,7 +341,7 @@ static int pass1_check_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, 
 		log_err(_("Found duplicate block #%"PRIu64" (0x%"PRIx64") referenced "
 		          "as metadata in indirect block for dinode "
 		          "%"PRIu64" (0x%"PRIx64") - was marked %d (%s)\n"),
-			 block, block, ip->i_addr, ip->i_addr, q,
+			 block, block, ip->i_num.in_addr, ip->i_num.in_addr, q,
 			 block_type_string(q));
 		*was_duplicate = 1;
 	}
@@ -353,7 +353,7 @@ static int pass1_check_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, 
 		log_err(_("Inode %"PRIu64" (0x%"PRIx64") has a bad indirect block "
 		          "pointer %"PRIu64" (0x%"PRIx64") (points to something "
 		          "that is not %s).\n"),
-			 ip->i_addr, ip->i_addr, block, block, blktypedesc);
+			 ip->i_num.in_addr, ip->i_num.in_addr, block, block, blktypedesc);
 		if (query(_("Zero the indirect block pointer? (y/n) "))){
 			*iptr_ptr(iptr) = 0;
 			bmodified(iptr.ipt_bh);
@@ -400,7 +400,7 @@ static int undo_reference(struct gfs2_inode *ip, uint64_t block, int meta,
 	struct rgrp_tree *rgd;
 
 	if (!valid_block_ip(ip, block)) { /* blk outside of FS */
-		fsck_blockmap_set(ip, ip->i_addr, _("bad block referencing"), GFS2_BLKST_FREE);
+		fsck_blockmap_set(ip, ip->i_num.in_addr, _("bad block referencing"), GFS2_BLKST_FREE);
 		return 1;
 	}
 
@@ -487,7 +487,7 @@ static int blockmap_set_as_data(struct gfs2_inode *ip, uint64_t block)
 
 	log_err(_("Inode %"PRIu64" (0x%"PRIx64") has a reference to block %"PRIu64" (0x%"PRIx64") "
 	          "as a data block, but it appears to be a dinode we haven't checked yet.\n"),
-	        ip->i_addr, ip->i_addr, block, block);
+	        ip->i_num.in_addr, ip->i_num.in_addr, block, block);
 	error = -1;
 out:
 	if (!error)
@@ -506,8 +506,8 @@ static int pass1_check_data(struct gfs2_inode *ip, uint64_t metablock,
 	if (!valid_block_ip(ip, block)) {
 		log_err(_("inode %"PRIu64" (0x%"PRIx64") has a bad data block pointer "
 		          "%"PRIu64" (0x%"PRIx64") (invalid or out of range) "),
-		        ip->i_addr, ip->i_addr, block, block);
-		if (metablock == ip->i_addr)
+		        ip->i_num.in_addr, ip->i_num.in_addr, block, block);
+		if (metablock == ip->i_num.in_addr)
 			log_err("\n");
 		else
 			log_err(_("from metadata block %"PRIu64" (0x%"PRIx64")\n"),
@@ -515,7 +515,7 @@ static int pass1_check_data(struct gfs2_inode *ip, uint64_t metablock,
 		/* Mark the owner of this block with the bad_block
 		 * designator so we know to check it for out of range
 		 * blocks later */
-		fsck_blockmap_set(ip, ip->i_addr, _("bad (out of range) data"), GFS2_BLKST_UNLINKED);
+		fsck_blockmap_set(ip, ip->i_num.in_addr, _("bad (out of range) data"), GFS2_BLKST_UNLINKED);
 		return -1;
 	}
 	bc->data_count++; /* keep the count sane anyway */
@@ -528,8 +528,8 @@ static int pass1_check_data(struct gfs2_inode *ip, uint64_t metablock,
 		log_err(_("Found duplicate %s block %"PRIu64" (0x%"PRIx64") "
 		          "referenced as data by dinode %"PRIu64" (0x%"PRIx64") "),
 		        block_type_string(q),
-		        block, block, ip->i_addr, ip->i_addr);
-		if (metablock == ip->i_addr)
+		        block, block, ip->i_num.in_addr, ip->i_num.in_addr);
+		if (metablock == ip->i_num.in_addr)
 			log_err("\n");
 		else
 			log_err(_("from metadata block %llu (0x%llx)\n"),
@@ -608,7 +608,7 @@ static int ask_remove_inode_eattr(struct gfs2_inode *ip,
 	if (ip->i_eattr == 0)
 		return 0; /* eattr was removed prior to this call */
 	log_err(_("Inode %"PRIu64" (0x%"PRIx64") has unrecoverable Extended Attribute errors.\n"),
-	        ip->i_addr, ip->i_addr);
+	        ip->i_num.in_addr, ip->i_num.in_addr);
 	if (query( _("Clear all Extended Attributes from the inode? (y/n) "))){
 		undo_reference(ip, ip->i_eattr, 0, bc);
 		ip->i_eattr = 0;
@@ -664,7 +664,7 @@ static int undo_eattr_indir_or_leaf(struct gfs2_inode *ip, uint64_t block,
 static void complain_eas(struct gfs2_inode *ip, uint64_t block,
 			 const char *emsg)
 {
-	log_err(_("Inode #%"PRIu64" (0x%"PRIx64"): %s"), ip->i_addr, ip->i_addr, emsg);
+	log_err(_("Inode #%"PRIu64" (0x%"PRIx64"): %s"), ip->i_num.in_addr, ip->i_num.in_addr, emsg);
 	log_err(_(" at block #%"PRIu64" (0x%"PRIx64").\n"), block, block);
 }
 
@@ -733,11 +733,11 @@ static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 	if (leaf_pointer_errors == leaf_pointers) /* All eas were bad */
 		return ask_remove_inode_eattr(ip, bc);
 	log_debug(_("Marking inode #%"PRIu64" (0x%"PRIx64") with extended attribute block\n"),
-		   ip->i_addr, ip->i_addr);
+		   ip->i_num.in_addr, ip->i_num.in_addr);
 	if (!leaf_pointer_errors)
 		return 0;
 	log_err(_("Inode %"PRIu64" (0x%"PRIx64") has recoverable indirect extended attribute errors.\n"),
-	        ip->i_addr, ip->i_addr);
+	        ip->i_num.in_addr, ip->i_num.in_addr);
 	if (query( _("Okay to fix the block count for the inode? (y/n) "))) {
 		ip->i_blocks = 1 + bc->indir_count + bc->data_count + bc->ea_count;
 		bmodified(ip->i_bh);
@@ -833,7 +833,7 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, int i,
 		log_err(_("Inode #%"PRIu64" (0x%"PRIx64"): extended attribute block "
 		          "%"PRIu64" (0x%"PRIx64") has an extended leaf block #%"PRIu64" "
 		          "(0x%"PRIx64") that is invalid or out of range.\n"),
-		        ip->i_addr, ip->i_addr, ip->i_eattr, ip->i_eattr, el_blk, el_blk);
+		        ip->i_num.in_addr, ip->i_num.in_addr, ip->i_eattr, ip->i_eattr, el_blk, el_blk);
 		fsck_blockmap_set(ip, ip->i_eattr, _("bad (out of range) Extended Attribute "),
 		                  GFS2_BLKST_UNLINKED);
 		error = 1;
@@ -877,7 +877,7 @@ static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 		log_warn(_("Inode #%"PRIu64" (0x%"PRIx64"): extended attribute leaf "
 		           "block #%"PRIu64" (0x%"PRIx64") is invalid or out of "
 		           "range.\n"),
-		         ip->i_addr, ip->i_addr, block, block);
+		         ip->i_num.in_addr, ip->i_num.in_addr, block, block);
 		fsck_blockmap_set(ip, ip->i_eattr, _("bad (out of range) extended attribute leaf"),
 		                  GFS2_BLKST_UNLINKED);
 		return 1;
@@ -1036,7 +1036,7 @@ static int mark_block_invalid(struct gfs2_inode *ip, uint64_t block,
 		log_info(_("%s block %"PRIu64" (0x%"PRIx64"), part of inode "
 		           "%"PRIu64" (0x%"PRIx64"), was previously referenced so "
 		           "the invalid reference is ignored.\n"),
-		         btype, block, block, ip->i_addr, ip->i_addr);
+		         btype, block, block, ip->i_num.in_addr, ip->i_num.in_addr);
 		return META_IS_GOOD;
 	}
 	fsck_blockmap_set(ip, block, btype, GFS2_BLKST_UNLINKED);
@@ -1126,7 +1126,7 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 		(*bad_pointers)++;
 		log_info(_("Bad %s block pointer (invalid or out of range "
 		           "#%ld) found in inode %"PRIu64" (0x%"PRIx64").\n"),
-		         btypes[btype], *bad_pointers, ip->i_addr, ip->i_addr);
+		         btypes[btype], *bad_pointers, ip->i_num.in_addr, ip->i_num.in_addr);
 		if ((*bad_pointers) <= BAD_POINTER_TOLERANCE)
 			return META_IS_GOOD;
 		else
@@ -1138,13 +1138,13 @@ static int rangecheck_block(struct gfs2_inode *ip, uint64_t block,
 		(*bad_pointers)++;
 		log_info(_("Duplicated %s block pointer (violation %ld, block %"PRIu64
 		           " (0x%"PRIx64")) found in inode %"PRIu64" (0x%"PRIx64").\n"),
-			  btypes[btype], *bad_pointers, block, block, ip->i_addr, ip->i_addr);
+			  btypes[btype], *bad_pointers, block, block, ip->i_num.in_addr, ip->i_num.in_addr);
 		if ((*bad_pointers) <= BAD_POINTER_TOLERANCE)
 			return META_IS_GOOD;
 		else {
 			log_debug(_("Inode 0x%"PRIx64" bad pointer tolerance "
 			            "exceeded: block 0x%"PRIx64".\n"),
-			          ip->i_addr, block);
+			          ip->i_num.in_addr, block);
 			return META_ERROR; /* Exits check_metatree quicker */
 		}
 	}
@@ -1248,8 +1248,7 @@ static int set_ip_blockmap(struct gfs2_inode *ip)
 	default:
 		return -EINVAL;
 	}
-	no.in_addr = ip->i_addr;
-	no.in_formal_ino = ip->i_formal_ino;
+	no = ip->i_num;
 	if (fsck_blockmap_set(ip, block, ty, GFS2_BLKST_DINODE) ||
 	    (mode == S_IFDIR && !dirtree_insert(no))) {
 		stack;
@@ -1349,7 +1348,7 @@ static int pass1_check_metatree(struct gfs2_inode *ip,
 
 	error = check_metatree(ip, pass);
 	if (error)
-		gfs2_blockmap_set(bl, ip->i_addr, GFS2_BLKST_FREE);
+		gfs2_blockmap_set(bl, ip->i_num.in_addr, GFS2_BLKST_FREE);
 	return error;
 }
 
@@ -1377,7 +1376,7 @@ static void reprocess_inode(struct gfs2_inode *ip, const char *desc)
 	alloc_fxns.private = (void *)desc;
 	log_info(_("%s inode %"PRIu64" (0x%"PRIx64") had blocks added; reprocessing "
 	           "its metadata tree at height=%d.\n"), desc,
-	         ip->i_addr, ip->i_addr, ip->i_height);
+	         ip->i_num.in_addr, ip->i_num.in_addr, ip->i_height);
 	error = pass1_check_metatree(ip, &alloc_fxns);
 	if (error)
 		log_err( _("Error %d reprocessing the %s metadata tree.\n"),
@@ -1404,8 +1403,8 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	error = pass1_check_metatree(ip, &rangecheck_fxns);
 	if (bad_pointers > BAD_POINTER_TOLERANCE) {
 		log_err(_("Error: inode %"PRIu64" (0x%"PRIx64") has more than %d bad pointers.\n"),
-		        ip->i_addr, ip->i_addr, BAD_POINTER_TOLERANCE);
-		fsck_blockmap_set(ip, ip->i_addr, _("badly corrupt"), GFS2_BLKST_FREE);
+		        ip->i_num.in_addr, ip->i_num.in_addr, BAD_POINTER_TOLERANCE);
+		fsck_blockmap_set(ip, ip->i_num.in_addr, _("badly corrupt"), GFS2_BLKST_FREE);
 		return 0;
 	}
 
@@ -1417,7 +1416,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		   processed its metadata with pass1_fxns, none of its
 		   metadata will be flagged as metadata or data blocks yet.
 		   Therefore, we don't need to invalidate anything. */
-		fsck_blockmap_set(ip, ip->i_addr, _("invalid mode"), GFS2_BLKST_FREE);
+		fsck_blockmap_set(ip, ip->i_num.in_addr, _("invalid mode"), GFS2_BLKST_FREE);
 		return 0;
 	} else if (error)
 		goto bad_dinode;
@@ -1454,7 +1453,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 			}
 			log_err(_("Clearing the bad Extended Attributes in "
 			          "inode %"PRIu64" (0x%"PRIx64").\n"),
-			        ip->i_addr, ip->i_addr);
+			        ip->i_num.in_addr, ip->i_num.in_addr);
 			eattr_undo_fxns.private = &bc;
 			check_inode_eattr(ip, &eattr_undo_fxns);
 			ask_remove_inode_eattr(ip, &bc);
@@ -1465,7 +1464,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	if (ip->i_blocks != (1 + bc.indir_count + bc.data_count + bc.ea_count)) {
 		log_err(_("Inode #%"PRIu64" (0x%"PRIx64"): Ondisk block count (%"PRIu64
 			") does not match what fsck found (%"PRIu64")\n"),
-		        ip->i_addr, ip->i_addr, ip->i_blocks, 1 + bc.indir_count +
+		        ip->i_num.in_addr, ip->i_num.in_addr, ip->i_blocks, 1 + bc.indir_count +
 		        bc.data_count + bc.ea_count);
 		log_info(_("inode has: %"PRIu64", but fsck counts: Dinode:1 + "
 		           "indir:%"PRIu64" + data: %"PRIu64" + ea: %"PRIu64"\n"),
@@ -1474,10 +1473,10 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 			ip->i_blocks = 1 + bc.indir_count + bc.data_count + bc.ea_count;
 			bmodified(ip->i_bh);
 			log_err(_("Block count for #%"PRIu64" (0x%"PRIx64") fixed\n"),
-			        ip->i_addr, ip->i_addr);
+			        ip->i_num.in_addr, ip->i_num.in_addr);
 		} else
 			log_err(_("Bad block count for #%"PRIu64" (0x%"PRIx64") not fixed\n"),
-			        ip->i_addr, ip->i_addr);
+			        ip->i_num.in_addr, ip->i_num.in_addr);
 	}
 
 	return 0;
@@ -1495,15 +1494,15 @@ static void check_i_goal(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	    ip->i_goal_meta > sdp->fssize) {
 		log_err(_("Inode #%"PRIu64" (0x%"PRIx64"): Bad allocation goal block "
 		          "found: %"PRIu64" (0x%"PRIx64")\n"),
-		        ip->i_addr, ip->i_addr, ip->i_goal_meta, ip->i_goal_meta);
+		        ip->i_num.in_addr, ip->i_num.in_addr, ip->i_goal_meta, ip->i_goal_meta);
 		if (query(_("Fix goal block in inode #%"PRIu64" (0x%"PRIx64")? (y/n) "),
-		          ip->i_addr, ip->i_addr)) {
-			ip->i_goal_meta = ip->i_addr;
+		          ip->i_num.in_addr, ip->i_num.in_addr)) {
+			ip->i_goal_meta = ip->i_num.in_addr;
 			bmodified(ip->i_bh);
 		} else
 			log_err(_("Allocation goal block in inode #%"PRIu64
 			          " (0x%"PRIx64") not fixed\n"),
-			        ip->i_addr, ip->i_addr);
+			        ip->i_num.in_addr, ip->i_num.in_addr);
 	}
 }
 
@@ -1520,25 +1519,25 @@ static int handle_di(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 
 	ip = fsck_inode_get(sdp, rgd, bh);
 
-	if (ip->i_addr != block) {
+	if (ip->i_num.in_addr != block) {
 		log_err(_("Inode #%"PRIu64" (0x%"PRIx64"): Bad inode address found: %"PRIu64
 		          " (0x%"PRIx64")\n"),
-		        block, block, ip->i_addr, ip->i_addr);
+		        block, block, ip->i_num.in_addr, ip->i_num.in_addr);
 		if (query(_("Fix address in inode at block #%"PRIu64" (0x%"PRIx64")? (y/n) "),
 		          block, block)) {
-			ip->i_addr = ip->i_formal_ino = block;
+			ip->i_num.in_addr = ip->i_num.in_formal_ino = block;
 			bmodified(ip->i_bh);
 		} else
 			log_err(_("Address in inode at block #%"PRIu64" (0x%"PRIx64" not fixed\n"),
 			        block, block);
 	}
-	if (sdp->gfs1 && ip->i_formal_ino != block) {
+	if (sdp->gfs1 && ip->i_num.in_formal_ino != block) {
 		log_err(_("Inode #%"PRIu64" (0x%"PRIx64"): GFS1 formal inode number "
 		          "mismatch: was %"PRIu64" (0x%"PRIx64")\n"),
-		        block, block, ip->i_formal_ino, ip->i_formal_ino);
+		        block, block, ip->i_num.in_formal_ino, ip->i_num.in_formal_ino);
 		if (query(_("Fix formal inode number in inode #%"PRIu64" (0x%"PRIx64")? (y/n) "),
 		          block, block)) {
-			ip->i_formal_ino = block;
+			ip->i_num.in_formal_ino = block;
 			bmodified(ip->i_bh);
 		} else
 			log_err( _("Inode number in inode at block #%lld "
@@ -1570,7 +1569,7 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 	if (*sysinode) {
 		/* Read in the system inode, look at its dentries, and start
 		 * reading through them */
-		iblock = (*sysinode)->i_addr;
+		iblock = (*sysinode)->i_num.in_addr;
 		log_info( _("System inode for '%s' is located at block %llu"
 			 " (0x%llx)\n"), filename,
 			 (unsigned long long)iblock,
@@ -1595,14 +1594,11 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 		if (ds.q == GFS2_BLKST_FREE) {
 			log_info( _("The inode exists but the block is not "
 				    "marked 'in use'; fixing it.\n"));
-			fsck_blockmap_set(*sysinode, (*sysinode)->i_addr,
+			fsck_blockmap_set(*sysinode, (*sysinode)->i_num.in_addr,
 					  filename, GFS2_BLKST_DINODE);
 			ds.q = GFS2_BLKST_DINODE;
 			if (isdir) {
-				struct lgfs2_inum no = {
-					.in_addr = (*sysinode)->i_addr,
-					.in_formal_ino = (*sysinode)->i_formal_ino
-				};
+				struct lgfs2_inum no = (*sysinode)->i_num;
 				dirtree_insert(no);
 			}
 		}
@@ -1648,14 +1644,11 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 			}
 			if (*sysinode == sdp->md.jiinode)
 				ji_update(sdp);
-			fsck_blockmap_set(*sysinode, (*sysinode)->i_addr,
+			fsck_blockmap_set(*sysinode, (*sysinode)->i_num.in_addr,
 					  filename, GFS2_BLKST_DINODE);
 			ds.q = GFS2_BLKST_DINODE;
 			if (isdir) {
-				struct lgfs2_inum no = {
-					.in_addr = (*sysinode)->i_addr,
-					.in_formal_ino = (*sysinode)->i_formal_ino
-				};
+				struct lgfs2_inum no = (*sysinode)->i_num;
 				dirtree_insert(no);
 			}
 		} else {
@@ -1714,7 +1707,7 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 	   All other system dinodes in master will be taken care of by function
 	   resuscitate_metalist.  But master won't since it has no parent.*/
 	if (!sdp->gfs1) {
-		fsck_blockmap_set(sdp->master_dir, sdp->master_dir->i_addr,
+		fsck_blockmap_set(sdp->master_dir, sdp->master_dir->i_num.in_addr,
 				  "master", GFS2_BLKST_DINODE);
 		if (check_system_inode(sdp, &sdp->master_dir, "master",
 				       build_master, 1, NULL, 1)) {
@@ -1724,7 +1717,7 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 	}
 	/* Mark the root dinode as a "dinode" in the block map as we did
 	   for master, since it has no parent. */
-	fsck_blockmap_set(sdp->md.rooti, sdp->md.rooti->i_addr,
+	fsck_blockmap_set(sdp->md.rooti, sdp->md.rooti->i_num.in_addr,
 			  "root", GFS2_BLKST_DINODE);
 	if (check_system_inode(sdp, &sdp->md.rooti, "root", build_root, 1,
 			       NULL, 0)) {
@@ -1773,17 +1766,13 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 		/* gfs1 has four dinodes that are set in the superblock and
 		   therefore not linked to anything else. We need to adjust
 		   the link counts so pass4 doesn't get confused. */
-		no.in_addr = sdp->md.statfs->i_addr;
-		no.in_formal_ino = sdp->md.statfs->i_formal_ino;
+		no = sdp->md.statfs->i_num;
 		incr_link_count(no, NULL, _("gfs1 statfs inode"));
-		no.in_addr = sdp->md.jiinode->i_addr;
-		no.in_formal_ino = sdp->md.jiinode->i_formal_ino;
+		no = sdp->md.jiinode->i_num;
 		incr_link_count(no, NULL, _("gfs1 jindex inode"));
-		no.in_addr = sdp->md.riinode->i_addr;
-		no.in_formal_ino = sdp->md.riinode->i_formal_ino;
+		no = sdp->md.riinode->i_num;
 		incr_link_count(no, NULL, _("gfs1 rindex inode"));
-		no.in_addr = sdp->md.qinode->i_addr;
-		no.in_formal_ino = sdp->md.qinode->i_formal_ino;
+		no = sdp->md.qinode->i_num;
 		incr_link_count(no, NULL, _("gfs1 quota inode"));
 		return 0;
 	}
@@ -1879,7 +1868,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 				 (unsigned long long)block,
 				 block_type_string(q));
 			ip = fsck_inode_get(sdp, rgd, bh);
-			if (is_inode && ip->i_addr == block)
+			if (is_inode && ip->i_num.in_addr == block)
 				add_duplicate_ref(ip, block, REF_IS_INODE, 0,
 						  INODE_VALID);
 			else
@@ -2127,7 +2116,7 @@ int pass1(struct gfs2_sbd *sdp)
 			}
 			/* rgrps and bitmaps don't have bits to represent
 			   their blocks, so don't do this:
-			check_n_fix_bitmap(sdp, rgd, rgd->ri.ri_addr + i, 0,
+			check_n_fix_bitmap(sdp, rgd, rgd->ri.ri_num.in_addr + i, 0,
 			gfs2_meta_rgrp);*/
 		}
 

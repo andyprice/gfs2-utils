@@ -464,7 +464,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 	}
 	log_err(_("Trying to rebuild the master directory.\n"));
 	inum.in_formal_ino = sdp->md.next_inum++;
-	inum.in_addr = sdp->sd_meta_dir.no_addr;
+	inum.in_addr = sdp->sd_meta_dir.in_addr;
 	err = init_dinode(sdp, &bh, &inum, S_IFDIR | 0755, GFS2_DIF_SYSTEM, &inum);
 	if (err != 0)
 		return -1;
@@ -477,7 +477,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 
 	if (fix_md.jiinode) {
 		inum.in_formal_ino = sdp->md.next_inum++;
-		inum.in_addr = fix_md.jiinode->i_addr;
+		inum.in_addr = fix_md.jiinode->i_num.in_addr;
 		err = dir_add(sdp->master_dir, "jindex", 6, &inum,
 		              IF2DT(S_IFDIR | 0700));
 		if (err) {
@@ -495,7 +495,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 
 	if (fix_md.pinode) {
 		inum.in_formal_ino = sdp->md.next_inum++;
-		inum.in_addr = fix_md.pinode->i_addr;
+		inum.in_addr = fix_md.pinode->i_num.in_addr;
 		err = dir_add(sdp->master_dir, "per_node", 8, &inum,
 			IF2DT(S_IFDIR | 0700));
 		if (err) {
@@ -515,7 +515,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 
 	if (fix_md.inum) {
 		inum.in_formal_ino = sdp->md.next_inum++;
-		inum.in_addr = fix_md.inum->i_addr;
+		inum.in_addr = fix_md.inum->i_num.in_addr;
 		err = dir_add(sdp->master_dir, "inum", 4, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
@@ -533,7 +533,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 
 	if (fix_md.statfs) {
 		inum.in_formal_ino = sdp->md.next_inum++;
-		inum.in_addr = fix_md.statfs->i_addr;
+		inum.in_addr = fix_md.statfs->i_num.in_addr;
 		err = dir_add(sdp->master_dir, "statfs", 6, &inum,
 			      IF2DT(S_IFREG | 0600));
 		if (err) {
@@ -551,7 +551,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 
 	if (fix_md.riinode) {
 		inum.in_formal_ino = sdp->md.next_inum++;
-		inum.in_addr = fix_md.riinode->i_addr;
+		inum.in_addr = fix_md.riinode->i_num.in_addr;
 		err = dir_add(sdp->master_dir, "rindex", 6, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
@@ -568,7 +568,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 
 	if (fix_md.qinode) {
 		inum.in_formal_ino = sdp->md.next_inum++;
-		inum.in_addr = fix_md.qinode->i_addr;
+		inum.in_addr = fix_md.qinode->i_num.in_addr;
 		err = dir_add(sdp->master_dir, "quota", 5, &inum,
 			IF2DT(S_IFREG | 0600));
 		if (err) {
@@ -800,7 +800,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 	log_info( _("Initializing special inodes...\n"));
 
 	/* Get root dinode */
-	sdp->md.rooti = lgfs2_inode_read(sdp, sdp->sd_root_dir.no_addr);
+	sdp->md.rooti = lgfs2_inode_read(sdp, sdp->sd_root_dir.in_addr);
 	if (sdp->md.rooti == NULL)
 		return -1;
 
@@ -845,19 +845,19 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 
 	if (sdp->gfs1) {
 		/* In gfs1, the license_di is always 3 blocks after the jindex_di */
-		if ((sdp->sd_license_di.no_addr != sdp->sd_jindex_di.no_addr + 3) ||
-		    (sdp->sd_license_di.no_formal_ino != sdp->sd_jindex_di.no_addr + 3)) {
+		if ((sdp->sd_license_di.in_addr != sdp->sd_jindex_di.in_addr + 3) ||
+		    (sdp->sd_license_di.in_formal_ino != sdp->sd_jindex_di.in_addr + 3)) {
 			if (!query( _("The gfs system statfs inode pointer is incorrect. "
 				      "Okay to correct? (y/n) "))) {
 				log_err( _("fsck.gfs2 cannot continue without a valid "
 					   "statfs file; aborting.\n"));
 				goto fail;
 			}
-			sdp->sd_license_di.no_addr = sdp->sd_license_di.no_formal_ino
-				= sdp->sd_jindex_di.no_addr + 3;
+			sdp->sd_license_di.in_addr = sdp->sd_license_di.in_formal_ino
+				= sdp->sd_jindex_di.in_addr + 3;
 		}
 
-		sdp->md.statfs = lgfs2_inode_read(sdp, sdp->sd_license_di.no_addr);
+		sdp->md.statfs = lgfs2_inode_read(sdp, sdp->sd_license_di.in_addr);
 		if (sdp->md.statfs == NULL) {
 			log_crit(_("Error reading statfs inode: %s\n"), strerror(errno));
 			goto fail;
@@ -902,19 +902,19 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 
 	if (sdp->gfs1) {
 		/* In gfs1, the quota_di is always 2 blocks after the jindex_di */
-		if ((sdp->sd_quota_di.no_addr != sdp->sd_jindex_di.no_addr + 2) ||
-		    (sdp->sd_quota_di.no_formal_ino != sdp->sd_jindex_di.no_addr + 2)) {
+		if ((sdp->sd_quota_di.in_addr != sdp->sd_jindex_di.in_addr + 2) ||
+		    (sdp->sd_quota_di.in_formal_ino != sdp->sd_jindex_di.in_addr + 2)) {
 			if (!query( _("The gfs system quota inode pointer is incorrect. "
 				      " Okay to correct? (y/n) "))) {
 				log_err( _("fsck.gfs2 cannot continue without a valid "
 					   "quota file; aborting.\n"));
 				goto fail;
 			}
-			sdp->sd_quota_di.no_addr = sdp->sd_quota_di.no_formal_ino
-				= sdp->sd_jindex_di.no_addr + 2;
+			sdp->sd_quota_di.in_addr = sdp->sd_quota_di.in_formal_ino
+				= sdp->sd_jindex_di.in_addr + 2;
 		}
 
-		sdp->md.qinode = lgfs2_inode_read(sdp, sdp->sd_quota_di.no_addr);
+		sdp->md.qinode = lgfs2_inode_read(sdp, sdp->sd_quota_di.in_addr);
 		if (sdp->md.qinode == NULL) {
 			log_crit(_("Error reading quota inode: %s\n"), strerror(errno));
 			goto fail;
@@ -969,7 +969,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
  */
 static int is_journal_copy(struct gfs2_inode *ip)
 {
-	if (ip->i_addr == ip->i_bh->b_blocknr)
+	if (ip->i_num.in_addr == ip->i_bh->b_blocknr)
 		return 0;
 	return 1; /* journal copy */
 }
@@ -990,20 +990,20 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	struct lgfs2_inum inum;
 	int error;
 
-	if (ip->i_formal_ino == 2) {
-		if (sdp->sd_meta_dir.no_addr)
+	if (ip->i_num.in_formal_ino == 2) {
+		if (sdp->sd_meta_dir.in_addr)
 			return;
 		log_warn(_("Found system master directory at: 0x%"PRIx64".\n"),
-			 ip->i_addr);
-		sdp->sd_meta_dir.no_addr = ip->i_addr;
+			 ip->i_num.in_addr);
+		sdp->sd_meta_dir.in_addr = ip->i_num.in_addr;
 		return;
 	}
-	if ((!sdp->gfs1 && ip->i_formal_ino == 3) ||
+	if ((!sdp->gfs1 && ip->i_num.in_formal_ino == 3) ||
 	    (sdp->gfs1 && (ip->i_flags & GFS2_DIF_JDATA) &&
 	     (ip->i_size % sizeof(struct gfs_jindex) == 0))) {
 		if (fix_md.jiinode || is_journal_copy(ip))
 			goto out_discard_ip;
-		log_warn(_("Found system jindex file at: 0x%"PRIx64"\n"), ip->i_addr);
+		log_warn(_("Found system jindex file at: 0x%"PRIx64"\n"), ip->i_num.in_addr);
 		fix_md.jiinode = ip;
 	} else if (!sdp->gfs1 && is_dir(ip, sdp->gfs1)) {
 		/* Check for a jindex dir entry. Only one system dir has a
@@ -1015,9 +1015,9 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 				goto out_discard_ip;
 			}
 			fix_md.jiinode = child_ip;
-			sdp->sd_meta_dir.no_addr = ip->i_addr;
+			sdp->sd_meta_dir.in_addr = ip->i_num.in_addr;
 			log_warn(_("Found system master directory at: 0x%"PRIx64"\n"),
-			         ip->i_addr);
+			         ip->i_num.in_addr);
 			return;
 		}
 
@@ -1029,40 +1029,40 @@ static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 			if (fix_md.pinode || is_journal_copy(ip))
 				goto out_discard_ip;
 			log_warn(_("Found system per_node directory at: 0x%"PRIx64"\n"),
-			         ip->i_addr);
+			         ip->i_num.in_addr);
 			fix_md.pinode = ip;
 			error = dir_search(ip, "..", 2, NULL, &inum);
 			if (!error && inum.in_addr) {
-				sdp->sd_meta_dir.no_addr = inum.in_addr;
+				sdp->sd_meta_dir.in_addr = inum.in_addr;
 				log_warn(_("From per_node's '..' master directory backtracked to: "
 					   "0x%"PRIx64"\n"), inum.in_addr);
 			}
 			return;
 		}
-		log_debug(_("Unknown system directory at block 0x%"PRIx64"\n"), ip->i_addr);
+		log_debug(_("Unknown system directory at block 0x%"PRIx64"\n"), ip->i_num.in_addr);
 		goto out_discard_ip;
 	} else if (!sdp->gfs1 && ip->i_size == 8) {
 		if (fix_md.inum || is_journal_copy(ip))
 			goto out_discard_ip;
 		fix_md.inum = ip;
-		log_warn(_("Found system inum file at: 0x%"PRIx64"\n"), ip->i_addr);
+		log_warn(_("Found system inum file at: 0x%"PRIx64"\n"), ip->i_num.in_addr);
 	} else if (ip->i_size == 24) {
 		if (fix_md.statfs || is_journal_copy(ip))
 			goto out_discard_ip;
 		fix_md.statfs = ip;
-		log_warn(_("Found system statfs file at: 0x%"PRIx64"\n"), ip->i_addr);
+		log_warn(_("Found system statfs file at: 0x%"PRIx64"\n"), ip->i_num.in_addr);
 	} else if ((ip->i_size % 96) == 0) {
 		if (fix_md.riinode || is_journal_copy(ip))
 			goto out_discard_ip;
 		fix_md.riinode = ip;
-		log_warn(_("Found system rindex file at: 0x%"PRIx64"\n"), ip->i_addr);
+		log_warn(_("Found system rindex file at: 0x%"PRIx64"\n"), ip->i_num.in_addr);
 	} else if (!fix_md.qinode && ip->i_size >= 176 &&
-	           ip->i_formal_ino >= 12 &&
-	           ip->i_formal_ino <= 100) {
+	           ip->i_num.in_formal_ino >= 12 &&
+	           ip->i_num.in_formal_ino <= 100) {
 		if (is_journal_copy(ip))
 			goto out_discard_ip;
 		fix_md.qinode = ip;
-		log_warn(_("Found system quota file at: 0x%"PRIx64"\n"), ip->i_addr);
+		log_warn(_("Found system quota file at: 0x%"PRIx64"\n"), ip->i_num.in_addr);
 	} else {
 out_discard_ip:
 		inode_put(&ip);
@@ -1079,23 +1079,23 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	struct lgfs2_inum inum;
 	int error;
 
-	if (sdp->sd_root_dir.no_addr) /* if we know the root dinode */
+	if (sdp->sd_root_dir.in_addr) /* if we know the root dinode */
 		return;             /* we don't need to find the root */
 	if (!is_dir(ip, sdp->gfs1))  /* if this isn't a directory */
 		return;             /* it can't lead us to the root anyway */
 
-	if (ip->i_formal_ino == 1) {
+	if (ip->i_num.in_formal_ino == 1) {
 		struct gfs2_buffer_head *root_bh;
 
-		if (ip->i_addr == ip->i_bh->b_blocknr) {
+		if (ip->i_num.in_addr == ip->i_bh->b_blocknr) {
 			log_warn(_("Found the root directory at: 0x%"PRIx64".\n"),
-			         ip->i_addr);
-			sdp->sd_root_dir.no_addr = ip->i_addr;
+			         ip->i_num.in_addr);
+			sdp->sd_root_dir.in_addr = ip->i_num.in_addr;
 			return;
 		}
 		log_warn(_("The root dinode should be at block 0x%"PRIx64" but it "
 			   "seems to be destroyed.\n"),
-		         ip->i_addr);
+		         ip->i_num.in_addr);
 		log_warn(_("Found a copy of the root directory in a journal "
 			   "at block: 0x%"PRIx64".\n"),
 			 ip->i_bh->b_blocknr);
@@ -1103,7 +1103,7 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 			log_err(_("Damaged root dinode not fixed.\n"));
 			return;
 		}
-		root_bh = bread(sdp, ip->i_addr);
+		root_bh = bread(sdp, ip->i_num.in_addr);
 		memcpy(root_bh->b_data, ip->i_bh->b_data, sdp->sd_bsize);
 		bmodified(root_bh);
 		brelse(root_bh);
@@ -1112,10 +1112,10 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 	}
 	while (ip) {
 		gfs2_lookupi(ip, "..", 2, &parent_ip);
-		if (parent_ip && parent_ip->i_addr == ip->i_addr) {
+		if (parent_ip && parent_ip->i_num.in_addr == ip->i_num.in_addr) {
 			log_warn(_("Found the root directory at: 0x%"PRIx64"\n"),
-				 ip->i_addr);
-			sdp->sd_root_dir.no_addr = ip->i_addr;
+				 ip->i_num.in_addr);
+			sdp->sd_root_dir.in_addr = ip->i_num.in_addr;
 			inode_put(&parent_ip);
 			inode_put(&ip);
 			return;
@@ -1276,22 +1276,22 @@ static int sb_repair(struct gfs2_sbd *sdp)
 				GFS2_DEFAULT_BSIZE);
 	if (error)
 		return error;
-	if (!sdp->sd_meta_dir.no_addr) {
+	if (!sdp->sd_meta_dir.in_addr) {
 		log_err(_("Unable to locate the system master  directory.\n"));
 		return -1;
 	}
-	if (!sdp->sd_root_dir.no_addr) {
+	if (!sdp->sd_root_dir.in_addr) {
 		log_err(_("Unable to locate the root directory.\n"));
 		if (possible_root == HIGHEST_BLOCK) {
 			/* Take advantage of the fact that mkfs.gfs2
 			   creates master immediately after root. */
 			log_err(_("Can't find any dinodes that might "
 				  "be the root; using master - 1.\n"));
-			possible_root = sdp->sd_meta_dir.no_addr - 1;
+			possible_root = sdp->sd_meta_dir.in_addr - 1;
 		}
 		log_err(_("Found a possible root at: 0x%llx\n"),
 			(unsigned long long)possible_root);
-		sdp->sd_root_dir.no_addr = possible_root;
+		sdp->sd_root_dir.in_addr = possible_root;
 		sdp->md.rooti = lgfs2_inode_read(sdp, possible_root);
 		if (!sdp->md.rooti || sdp->md.rooti->i_magic != GFS2_MAGIC) {
 			struct gfs2_buffer_head *bh = NULL;
@@ -1319,16 +1319,16 @@ static int sb_repair(struct gfs2_sbd *sdp)
 	/* Step 3 - Rebuild the lock protocol and file system table name */
 	if (query(_("Okay to fix the GFS2 superblock? (y/n)"))) {
 		log_info(_("Found system master directory at: 0x%"PRIx64"\n"),
-			 sdp->sd_meta_dir.no_addr);
-		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.no_addr);
+			 sdp->sd_meta_dir.in_addr);
+		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.in_addr);
 		if (sdp->master_dir == NULL) {
 			log_crit(_("Error reading master inode: %s\n"), strerror(errno));
 			return -1;
 		}
-		sdp->master_dir->i_addr = sdp->sd_meta_dir.no_addr;
+		sdp->master_dir->i_num.in_addr = sdp->sd_meta_dir.in_addr;
 		log_info(_("Found the root directory at: 0x%"PRIx64"\n"),
-			 sdp->sd_root_dir.no_addr);
-		sdp->md.rooti = lgfs2_inode_read(sdp, sdp->sd_root_dir.no_addr);
+			 sdp->sd_root_dir.in_addr);
+		sdp->md.rooti = lgfs2_inode_read(sdp, sdp->sd_root_dir.in_addr);
 		if (sdp->md.rooti == NULL) {
 			log_crit(_("Error reading root inode: %s\n"), strerror(errno));
 			return -1;
@@ -1431,7 +1431,7 @@ static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
 		lh.lh_header.mh_format = GFS2_FORMAT_LH;
 		lh.lh_header.__pad0 = 0x101674; /* mh_generation */
 		lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
-		lh.lh_first = sdp->md.journal[jnum]->i_addr + (seg * sdp->sd_seg_size);
+		lh.lh_first = sdp->md.journal[jnum]->i_num.in_addr + (seg * sdp->sd_seg_size);
 		lh.lh_sequence = sequence;
 
 		bh = bget(sdp, lh.lh_first * sdp->sd_bsize);
@@ -1555,7 +1555,7 @@ static int init_rindex(struct gfs2_sbd *sdp)
 	int err;
 
 	if (sdp->gfs1)
-		sdp->md.riinode = lgfs2_inode_read(sdp, sdp->sd_rindex_di.no_addr);
+		sdp->md.riinode = lgfs2_inode_read(sdp, sdp->sd_rindex_di.in_addr);
 	else
 		gfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
 
@@ -1644,14 +1644,14 @@ int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
 	if (sdp->gfs1)
 		sdp->master_dir = NULL;
 	else
-		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.no_addr);
+		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.in_addr);
 	if (!sdp->gfs1 &&
 	    (sdp->master_dir->i_magic != GFS2_MAGIC ||
-	     sdp->master_dir->i_type != GFS2_METATYPE_DI ||
+	     sdp->master_dir->i_mh_type != GFS2_METATYPE_DI ||
 	     !sdp->master_dir->i_size)) {
 		inode_put(&sdp->master_dir);
 		rebuild_master(sdp);
-		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.no_addr);
+		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.in_addr);
 		if (sdp->master_dir == NULL) {
 			log_crit(_("Error reading master directory: %s\n"), strerror(errno));
 			return FSCK_ERROR;
