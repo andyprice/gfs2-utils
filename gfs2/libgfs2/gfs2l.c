@@ -28,10 +28,16 @@ static int metastrcmp(const void *a, const void *b)
 	return strcmp(m1->name, m2->name);
 }
 
-static void print_structs(void)
+static int print_structs(void)
 {
-	const struct lgfs2_metadata *mlist[lgfs2_metadata_size];
+	const struct lgfs2_metadata **mlist;
 	int i;
+
+	mlist = calloc(lgfs2_metadata_size, sizeof(struct lgfs2_metadata *));
+	if (mlist == NULL) {
+		perror("Failed to create metadata type array");
+		return 1;
+	}
 	for (i = 0; i < lgfs2_metadata_size; i++)
 		mlist[i] = &lgfs2_metadata[i];
 
@@ -39,6 +45,8 @@ static void print_structs(void)
 	for (i = 0; i < lgfs2_metadata_size; i++)
 		if (mlist[i]->mh_type != GFS2_METATYPE_NONE)
 			printf("%s\n", mlist[i]->name);
+	free(mlist);
+	return 0;
 }
 
 static void print_fields(const char *name)
@@ -69,8 +77,7 @@ static int getopts(int argc, char *argv[], struct cmdopts *opts)
 			}
 			break;
 		case 'T':
-			print_structs();
-			exit(0);
+			exit(print_structs());
 		case 'F':
 			print_fields(optarg);
 			exit(0);

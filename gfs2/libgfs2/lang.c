@@ -327,13 +327,13 @@ static int field_print(char *buf, uint64_t addr, const struct lgfs2_metadata *mt
 			printf("%"PRIu8"\n", *(uint8_t *)fieldp);
 			break;
 		case 2:
-			printf("%"PRIu16"\n", be16_to_cpu(*(uint16_t *)fieldp));
+			printf("%"PRIu16"\n", be16_to_cpu(*(__be16 *)fieldp));
 			break;
 		case 4:
-			printf("%"PRIu32"\n", be32_to_cpu(*(uint32_t *)fieldp));
+			printf("%"PRIu32"\n", be32_to_cpu(*(__be32 *)fieldp));
 			break;
 		case 8:
-			printf("%"PRIu64"\n", be64_to_cpu(*(uint64_t *)fieldp));
+			printf("%"PRIu64"\n", be64_to_cpu(*(__be64 *)fieldp));
 			break;
 		default:
 			// "Reserved" field so just print 0
