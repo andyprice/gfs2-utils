@@ -338,7 +338,6 @@ void lgfs2_dirent_in(struct lgfs2_dirent *d, void *dep)
 	d->dr_name_len = be16_to_cpu(de->de_name_len);
 	d->dr_type = be16_to_cpu(de->de_type);
 	d->dr_rahead = be16_to_cpu(de->de_rahead);
-	d->dr_cookie = be32_to_cpu(de->de_cookie);
 }
 
 void lgfs2_dirent_out(struct lgfs2_dirent *d, void *dep)
@@ -351,7 +350,6 @@ void lgfs2_dirent_out(struct lgfs2_dirent *d, void *dep)
 	de->de_name_len = cpu_to_be16(d->dr_name_len);
 	de->de_type = cpu_to_be16(d->dr_type);
 	de->de_rahead = cpu_to_be16(d->dr_rahead);
-	de->de_cookie = cpu_to_be32(d->dr_cookie);
 }
 
 void lgfs2_leaf_in(struct lgfs2_leaf *lf, void *lfp)

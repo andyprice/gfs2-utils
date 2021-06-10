@@ -399,7 +399,6 @@ struct lgfs2_dirent {
 	uint16_t dr_name_len;
 	uint16_t dr_type;
 	uint16_t dr_rahead;
-	uint32_t dr_cookie;
 };
 
 struct lgfs2_leaf {
