@@ -272,7 +272,7 @@ static void mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,
 /*                actual data blocks intact.                                 */
 /* ------------------------------------------------------------------------- */
 static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
-		  struct blocklist *blk, uint64_t *first_nonzero_ptr,
+		  struct blocklist *blk, __be64 *first_nonzero_ptr,
 		  unsigned int size)
 {
 	uint64_t block;
@@ -503,7 +503,8 @@ static int get_inode_metablocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip, str
 	struct blocklist *blk, *newblk;
 	struct gfs2_buffer_head *bh, *dibh = ip->i_bh;
 	osi_list_t *tmp;
-	uint64_t *ptr1, block;
+	uint64_t block;
+	__be64 *ptr1;
 	int h, ptrnum;
 	int bufsize = sbp->sd_bsize - sizeof(struct gfs_indirect);
 
@@ -537,7 +538,7 @@ static int get_inode_metablocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip, str
 
 		if (blk->height >= ip->i_height - 1)
 			continue;
-		for (ptr1 = (uint64_t *)blk->ptrbuf, ptrnum = 0;
+		for (ptr1 = (__be64 *)blk->ptrbuf, ptrnum = 0;
 		     ptrnum < sbp->sd_inptrs; ptr1++, ptrnum++) {
 			if (!*ptr1)
 				continue;
@@ -585,7 +586,7 @@ static int fix_ind_reg_or_dir(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint3
 		       uint32_t gfs2_hgt, struct blocklist *blk, struct blocklist *blocks)
 {
 	unsigned int len, bufsize;
-	uint64_t *ptr1, *ptr2;
+	__be64 *ptr1, *ptr2;
 	int ptrnum;
 	struct metapath gfs2mp;
 
@@ -599,14 +600,14 @@ static int fix_ind_reg_or_dir(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint3
 	   That's a problem if the file system is full. 
 	   So I'm trying to truncate the data at the start and end 
 	   of the buffers (i.e. write only what we need to). */
-	for (ptr1 = (uint64_t *)blk->ptrbuf, ptrnum = 0;
+	for (ptr1 = (__be64 *)blk->ptrbuf, ptrnum = 0;
 	     ptrnum < sbp->sd_inptrs; ptr1++, ptrnum++) {
 		if (*ptr1 != 0x00)
 			break;
 		len -= sizeof(uint64_t);
 	}
 	/* Skip zero bytes at the end of the buffer */
-	ptr2 = (uint64_t *)(blk->ptrbuf + bufsize) - 1;
+	ptr2 = (__be64 *)(blk->ptrbuf + bufsize) - 1;
 	while (len > 0 && *ptr2 == 0) {
 		ptr2--;
 		len -= sizeof(uint64_t);
@@ -630,7 +631,8 @@ static int fix_ind_jdata(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint32_t d
 	/*FIXME: Messages here should be different, to not conflit with messages in get_inode_metablocks */
 	struct blocklist *newblk;
 	unsigned int len, bufsize;
-	uint64_t *ptr1, block;
+	uint64_t block;
+	__be64 *ptr1;
 	int ptrnum, h;
 	struct metapath gfs2mp;
 	struct gfs2_buffer_head *bh;
@@ -640,7 +642,7 @@ static int fix_ind_jdata(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint32_t d
 	 * For each metadata block that holds jdata block pointers,
 	 * get the blk pointers and copy them block by block
 	 */
-	for (ptr1 = (uint64_t *) blk->ptrbuf, ptrnum = 0;
+	for (ptr1 = (__be64 *)blk->ptrbuf, ptrnum = 0;
 	     ptrnum < sbp->sd_inptrs; ptr1++, ptrnum++) {
 		if (!*ptr1)
 			continue;
@@ -1156,7 +1158,7 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 
 		if (dentmod) {
 			if (dent->de_type == cpu_to_be16(DT_LNK)
-			    && cpu_to_be64(dent->de_inum.no_addr) == dentmod) {
+			    && be64_to_cpu(dent->de_inum.no_addr) == dentmod) {
 				dent->de_type = cpu_to_be16(DT_DIR);
 				error = -EISDIR;
 				break;
@@ -1266,8 +1268,8 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip
 	prev_leaf_block = 0;
 	/* for all the leafs, get the leaf block and process the dirents inside */
 	for (leaf_num = 0; ; leaf_num++) {
-		uint64_t buf;
 		struct gfs2_leaf *leaf;
+		__be64 buf;
 
 		error = gfs2_readi(dip, (char *)&buf, leaf_num * sizeof(uint64_t),
 						   sizeof(uint64_t));
@@ -1442,18 +1444,6 @@ static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 } /* fix_cdpn_symlinks */
 
 /* ------------------------------------------------------------------------- */
-/* Fetch gfs1 jindex structure from buffer                                   */
-/* ------------------------------------------------------------------------- */
-static void gfs1_jindex_in(struct gfs_jindex *jindex, char *buf)
-{
-	struct gfs_jindex *str = (struct gfs_jindex *)buf;
-
-	jindex->ji_addr = be64_to_cpu(str->ji_addr);
-	jindex->ji_nsegment = be32_to_cpu(str->ji_nsegment);
-	memset(jindex->ji_reserved, 0, 64);
-}
-
-/* ------------------------------------------------------------------------- */
 /* read_gfs1_jiindex - read the gfs1 jindex file.                            */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
@@ -1488,7 +1478,7 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 	ip->i_mode &= ~S_IFMT;
 	ip->i_mode |= S_IFDIR;
 	for (j = 0; ; j++) {
-		struct gfs_jindex *journ;
+		uint32_t nseg;
 
 		error = gfs2_readi(ip, buf, j * sizeof(struct gfs_jindex),
 						   sizeof(struct gfs_jindex));
@@ -1499,9 +1489,9 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 					" journal index file.\n"));
 			goto fail;
 		}
-		journ = sd_jindex + j;
-		gfs1_jindex_in(journ, buf);
-		sdp->jsize = (journ->ji_nsegment * 16 * sdp->sd_bsize) >> 20;
+		memcpy(sd_jindex + j, buf, sizeof(struct gfs_jindex));
+		nseg = be32_to_cpu(sd_jindex[j].ji_nsegment);
+		sdp->jsize = (nseg * 16 * sdp->sd_bsize) >> 20;
 	}
 	ip->i_mode = tmp_mode;
 	if(j * sizeof(struct gfs_jindex) != ip->i_size){
@@ -1833,7 +1823,6 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 {
 	int error = 0;
 	int j;
-	struct gfs_jindex *jndx;
 	struct rgrp_tree *rgd, *rgdhigh;
 	struct osi_node *n, *next = NULL;
 	struct gfs2_meta_header mh = {0};
@@ -1845,9 +1834,12 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 	log_notice(_("Converting journal space to rg space.\n"));
 	/* Go through each journal, converting them one by one */
 	for (j = 0; j < orig_journals; j++) { /* for each journal */
+		uint32_t ji_nsegs;
+		uint64_t ji_addr;
 		uint64_t size;
 
-		jndx = &sd_jindex[j];
+		ji_nsegs = be32_to_cpu(sd_jindex[j].ji_nsegment);
+		ji_addr = be64_to_cpu(sd_jindex[j].ji_addr);
 		/* go through all rg index entries, keeping track of the
 		   highest that's still in the first subdevice.
 		   Note: we really should go through all of the rgindex because
@@ -1858,7 +1850,7 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 		for (n = osi_first(&sdp->rgtree); n; n = next) {
 			next = osi_next(n);
 			rgd = (struct rgrp_tree *)n;
-			if (rgd->rt_addr < jndx->ji_addr &&
+			if (rgd->rt_addr < ji_addr &&
 				((rgdhigh == NULL) ||
 				 (rgd->rt_addr > rgdhigh->rt_addr)))
 				rgdhigh = rgd;
@@ -1868,20 +1860,19 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 			return -1;
 		}
 		log_info(_("Addr 0x%"PRIx64" comes after rg at addr 0x%"PRIx64"\n"),
-		         jndx->ji_addr, rgdhigh->rt_addr);
-		ri_addr = jndx->ji_addr;
+		         ji_addr, rgdhigh->rt_addr);
+		ri_addr = ji_addr;
 		/* Allocate a new rgd entry which includes rg and ri. */
 		rgd = rgrp_insert(&sdp->rgtree, ri_addr);
 		/* convert the gfs1 rgrp into a new gfs2 rgrp */
-		size = jndx->ji_nsegment *
-			be32_to_cpu(gfs1_sb.sb_seg_size);
+		size = ji_nsegs * be32_to_cpu(gfs1_sb.sb_seg_size);
 		rgd->rt_flags = 0;
 		rgd->rt_dinodes = 0;
 
-		rgd->rt_addr = jndx->ji_addr; /* new rg addr becomes ji addr */
+		rgd->rt_addr = ji_addr; /* new rg addr becomes ji addr */
 		rgd->rt_length = rgrp_length(size, sdp); /* aka bitblocks */
 
-		rgd->rt_data0 = jndx->ji_addr + rgd->rt_length;
+		rgd->rt_data0 = ji_addr + rgd->rt_length;
 		rgd->rt_data = size - rgd->rt_length;
 		/* Round down to nearest multiple of GFS2_NBBY */
 		while (rgd->rt_data & 0x03)
@@ -1921,16 +1912,16 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 static void update_inode_file(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip = sdp->md.inum;
-	uint64_t buf;
+	__be64 buf;
 	int count;
-	
+
 	buf = cpu_to_be64(sdp->md.next_inum);
 	count = gfs2_writei(ip, &buf, 0, sizeof(uint64_t));
 	if (count != sizeof(uint64_t)) {
 		fprintf(stderr, "update_inode_file\n");
 		exit(1);
 	}
-	
+
 	log_debug(_("\nNext Inum: %llu\n"), (unsigned long long)sdp->md.next_inum);
 }/* update_inode_file */
 
