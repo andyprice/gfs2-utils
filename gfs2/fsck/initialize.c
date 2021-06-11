@@ -34,7 +34,6 @@ static int was_mounted_ro = 0;
 static uint64_t possible_root = HIGHEST_BLOCK;
 static struct master_dir fix_md;
 static unsigned long long blks_2free = 0;
-extern int sb_fixed;
 
 /**
  * block_mounters

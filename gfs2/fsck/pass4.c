@@ -16,7 +16,7 @@
 #include "util.h"
 #include "afterpass1_common.h"
 
-struct metawalk_fxns pass4_fxns_delete = {
+static struct metawalk_fxns pass4_fxns_delete = {
 	.private = NULL,
 	.check_metalist = delete_metadata,
 	.check_data = delete_data,

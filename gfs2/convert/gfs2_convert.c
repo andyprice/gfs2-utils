@@ -94,24 +94,25 @@ struct gfs2_options {
 	unsigned int query:1;
 };
 
-struct gfs_sb gfs1_sb;
-struct gfs2_sbd sb2;
-struct inode_block dirs_to_fix;  /* linked list of directories to fix */
-struct inode_dir_block cdpns_to_fix; /* linked list of cdpn symlinks */
-int seconds;
-struct timeval tv;
-uint64_t dirs_fixed;
-uint64_t cdpns_fixed;
-uint64_t dirents_fixed;
-struct gfs_jindex *sd_jindex = NULL;    /* gfs1 journal index in memory */
-int gfs2_inptrs;
-uint64_t gfs2_heightsize[GFS2_MAX_META_HEIGHT];
-uint64_t gfs2_jheightsize[GFS2_MAX_META_HEIGHT];
-uint32_t gfs2_max_height;
-uint32_t gfs2_max_jheight;
-uint64_t jindex_addr = 0, rindex_addr = 0;
+static struct gfs_sb gfs1_sb;
+static struct gfs2_sbd sb2;
+static struct inode_block dirs_to_fix;  /* linked list of directories to fix */
+static struct inode_dir_block cdpns_to_fix; /* linked list of cdpn symlinks */
+static int seconds;
+static struct timeval tv;
+static uint64_t dirs_fixed;
+static uint64_t cdpns_fixed;
+static uint64_t dirents_fixed;
+static struct gfs_jindex *sd_jindex = NULL;    /* gfs1 journal index in memory */
+static int gfs2_inptrs;
+static uint64_t gfs2_heightsize[GFS2_MAX_META_HEIGHT];
+static uint64_t gfs2_jheightsize[GFS2_MAX_META_HEIGHT];
+static uint32_t gfs2_max_height;
+static uint32_t gfs2_max_jheight;
+static uint64_t jindex_addr = 0, rindex_addr = 0;
+static unsigned orig_journals = 0;
+
 int print_level = MSG_NOTICE;
-unsigned orig_journals = 0;
 
 /* ------------------------------------------------------------------------- */
 /* This function is for libgfs's sake.                                       */
@@ -773,7 +774,7 @@ out:
 	return error;
 }
 
-const char *cdpn[14] = {"{hostname}", "{mach}", "{os}", "{uid}", "{gid}", "{sys}", "{jid}",
+static const char *cdpn[14] = {"{hostname}", "{mach}", "{os}", "{uid}", "{gid}", "{sys}", "{jid}",
 			"@hostname", "@mach", "@os", "@uid", "@gid", "@sys", "@jid"};
 static int has_cdpn(const char *str)
 {

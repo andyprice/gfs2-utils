@@ -10,7 +10,7 @@
 
 #include <libgfs2.h>
 
-const char *prog_name = "nukerg";
+static const char *prog_name = "nukerg";
 
 static void usage(void)
 {

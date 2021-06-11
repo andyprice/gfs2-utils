@@ -16,9 +16,8 @@
 #include <unistd.h>
 #include "tunegfs2.h"
 
-struct tunegfs2 tunegfs2_struct;
-struct tunegfs2 *tfs = &tunegfs2_struct;
-
+static struct tunegfs2 tunegfs2_struct;
+static struct tunegfs2 *tfs = &tunegfs2_struct;
 
 static void parse_mount_options(char *arg)
 {

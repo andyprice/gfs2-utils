@@ -21,9 +21,9 @@
 
 #define MAX_FILENAME 256
 
-struct metawalk_fxns pass2_fxns;
+static struct metawalk_fxns pass2_fxns;
 
-struct metawalk_fxns delete_eattrs = {
+static struct metawalk_fxns delete_eattrs = {
 	.check_eattr_indir = delete_eattr_indir,
 	.check_eattr_leaf = delete_eattr_leaf,
 	.check_eattr_entry = delete_eattr_entry,
@@ -144,7 +144,7 @@ static int check_file_type(uint64_t block, uint8_t de_type, int q,
 	return *isdir;
 }
 
-struct metawalk_fxns pass2_fxns_delete = {
+static struct metawalk_fxns pass2_fxns_delete = {
 	.private = NULL,
 	.check_metalist = delete_metadata,
 	.check_data = delete_data,
@@ -1262,7 +1262,7 @@ out:
  * We don't want it to do the "wrong leaf" thing, or set_parent_dir either.
  * We just want a basic sanity check on pointers and lengths.
  */
-struct metawalk_fxns leafck_fxns = {
+static struct metawalk_fxns leafck_fxns = {
 	.check_leaf_depth = check_leaf_depth,
 	.check_dentry = basic_check_dentry,
 	.repair_leaf = pass2_repair_leaf,
@@ -1766,7 +1766,7 @@ static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
 	return error;
 }
 
-struct metawalk_fxns pass2_fxns = {
+static struct metawalk_fxns pass2_fxns = {
 	.private = NULL,
 	.check_leaf_depth = check_leaf_depth,
 	.check_leaf = NULL,
@@ -1815,7 +1815,7 @@ static int check_data_qc(struct gfs2_inode *ip, uint64_t metablock,
 	return 0;
 }
 
-struct metawalk_fxns quota_change_fxns = {
+static struct metawalk_fxns quota_change_fxns = {
 	.check_metalist = check_metalist_qc,
 	.check_data = check_data_qc,
 };

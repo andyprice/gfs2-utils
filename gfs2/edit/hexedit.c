@@ -36,19 +36,13 @@ const char *allocdesc[2][5] = {
 	{"Free ", "Data ", "Unlnk", "Meta ", "Resrv"},
 	{"Free ", "Data ", "FreeM", "Meta ", "Resrv"},};
 
-struct gfs2_buffer_head *bh;
-struct gfs2_rgrp *lrgrp;
-struct gfs2_meta_header *lmh;
-struct gfs2_dinode *ldi;
-struct gfs2_leaf *lleaf;
-struct gfs2_log_header *llh;
-struct gfs2_log_descriptor *lld;
-int pgnum;
-int details = 0;
-long int gziplevel = 9;
+static struct gfs2_buffer_head *bh;
+static int pgnum;
+static long int gziplevel = 9;
 static int termcols;
+
+int details = 0;
 char *device = NULL;
-extern uint64_t block;
 
 /* ------------------------------------------------------------------------- */
 /* erase - clear the screen */

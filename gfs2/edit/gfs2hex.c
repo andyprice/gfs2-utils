@@ -28,7 +28,7 @@
 	} while(0)
 
 struct gfs2_dinode *di;
-int line, termlines, modelines[DMODES];
+int line, termlines;
 char edit_fmt[80];
 char estring[1024];
 char efield[64];
@@ -63,7 +63,7 @@ const char *termtype;
 WINDOW *wind;
 int dsplines = 0;
 
-const char *block_type_str[15] = {
+static const char *block_type_str[15] = {
 	"Clump",
 	"Superblock",
 	"Resource Group Header",

@@ -60,9 +60,9 @@ struct metafd {
 	const char* (*strerr)(struct metafd *mfd);
 };
 
-char *restore_buf;
-ssize_t restore_left;
-off_t restore_off;
+static char *restore_buf;
+static ssize_t restore_left;
+static off_t restore_off;
 #define RESTORE_BUF_SIZE (2 * 1024 * 1024)
 
 static char *restore_buf_next(struct metafd *mfd, size_t required_len)
@@ -184,7 +184,6 @@ static uint64_t journal_blocks[MAX_JOURNALS_SAVED];
 static uint64_t gfs1_journal_size = 0; /* in blocks */
 static int journals_found = 0;
 int print_level = MSG_NOTICE;
-extern char *device;
 
 static int block_is_a_journal(uint64_t blk)
 {
@@ -196,7 +195,7 @@ static int block_is_a_journal(uint64_t blk)
 	return FALSE;
 }
 
-struct osi_root per_node_tree;
+static struct osi_root per_node_tree;
 struct per_node_node {
 	struct osi_node node;
 	uint64_t block;

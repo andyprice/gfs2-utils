@@ -32,17 +32,18 @@ uint64_t last_fs_block, last_reported_block = -1;
 int64_t last_reported_fblock = -1000000;
 int skip_this_pass = 0, fsck_abort = 0;
 int errors_found = 0, errors_corrected = 0;
-const char *pass = "";
 uint64_t last_data_block;
 uint64_t first_data_block;
-int preen = 0, force_check = 0;
 struct osi_root dup_blocks;
 struct osi_root dirtree;
 struct osi_root inodetree;
 int dups_found = 0, dups_found_first = 0;
-struct gfs_sb *sbd1 = NULL;
 int sb_fixed = 0;
 int print_level = MSG_NOTICE;
+
+static int preen = 0;
+static int force_check = 0;
+static const char *pass_name = "";
 
 /* This function is for libgfs2's sake.                                      */
 void print_it(const char *label, const char *fmt, const char *fmt2, ...)
@@ -148,8 +149,8 @@ static void interrupt(int sig)
 		sprintf(progress, _("processing block %llu out of %llu\n"),
 			(unsigned long long)last_reported_block,
 			(unsigned long long)last_fs_block);
-	
-	response = generic_interrupt("fsck.gfs2", pass, progress,
+
+	response = generic_interrupt("fsck.gfs2", pass_name, progress,
 				     _("Do you want to abort fsck.gfs2, skip " \
 				     "the rest of this pass or continue " \
 				     "(a/s/c)?"), "asc");
@@ -253,7 +254,7 @@ static int fsck_pass(const struct fsck_pass *p, struct gfs2_sbd *sdp)
 
 	if (fsck_abort)
 		return FSCK_CANCELED;
-	pass = p->name;
+	pass_name = p->name;
 
 	log_notice( _("Starting %s\n"), p->name);
 	gettimeofday(&timer, NULL);

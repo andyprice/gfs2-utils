@@ -29,8 +29,8 @@
 #include "metawalk.h"
 #include "fs_recovery.h"
 
-struct special_blocks gfs1_rindex_blks;
-struct gfs2_bmap *bl = NULL;
+static struct special_blocks gfs1_rindex_blks;
+static struct gfs2_bmap *bl = NULL;
 
 struct block_count {
 	uint64_t indir_count;
@@ -164,7 +164,7 @@ out:
 	return 0;
 }
 
-struct metawalk_fxns pass1_fxns = {
+static struct metawalk_fxns pass1_fxns = {
 	.private = NULL,
 	.check_leaf = p1check_leaf,
 	.check_metalist = pass1_check_metalist,
@@ -265,7 +265,7 @@ static int resuscitate_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	return 0;
 }
 
-struct metawalk_fxns sysdir_fxns = {
+static struct metawalk_fxns sysdir_fxns = {
 	.private = NULL,
 	.check_metalist = resuscitate_metalist,
 	.check_dentry = resuscitate_dentry,
@@ -1088,7 +1088,7 @@ static int invalidate_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 				  NULL, NULL);
 }
 
-struct metawalk_fxns invalidate_fxns = {
+static struct metawalk_fxns invalidate_fxns = {
 	.private = NULL,
 	.check_metalist = invalidate_metadata,
 	.check_data = invalidate_data,
@@ -1111,7 +1111,7 @@ struct metawalk_fxns invalidate_fxns = {
  * Returns: 0 if good range, otherwise != 0
  */
 enum b_types { BTYPE_META, BTYPE_LEAF, BTYPE_DATA, BTYPE_IEATTR, BTYPE_EATTR};
-const char *btypes[5] = {
+static const char *btypes[5] = {
 	"metadata", "leaf", "data", "indirect extended attribute",
 	"extended attribute" };
 
@@ -1189,7 +1189,7 @@ static int rangecheck_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 	return rangecheck_block(ip, block, NULL, BTYPE_EATTR, private);
 }
 
-struct metawalk_fxns rangecheck_fxns = {
+static struct metawalk_fxns rangecheck_fxns = {
         .private = NULL,
 	.readahead = 1,
         .check_metalist = rangecheck_metadata,
@@ -1200,7 +1200,7 @@ struct metawalk_fxns rangecheck_fxns = {
 	.delete_block = delete_block,
 };
 
-struct metawalk_fxns eattr_undo_fxns = {
+static struct metawalk_fxns eattr_undo_fxns = {
 	.private = NULL,
 	.check_eattr_indir = undo_eattr_indir_or_leaf,
 	.check_eattr_leaf = undo_eattr_indir_or_leaf,
@@ -1319,7 +1319,7 @@ static int alloc_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	return 0;
 }
 
-struct metawalk_fxns alloc_fxns = {
+static struct metawalk_fxns alloc_fxns = {
 	.private = NULL,
 	.check_leaf = alloc_leaf,
 	.check_metalist = alloc_metalist,

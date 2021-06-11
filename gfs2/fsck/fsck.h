@@ -199,5 +199,6 @@ struct special_blocks {
 extern struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num);
 extern void gfs2_special_set(struct special_blocks *blocklist, uint64_t block);
 extern void gfs2_special_free(struct special_blocks *blist);
+extern int sb_fixed;
 
 #endif /* _FSCK_H */

@@ -16,8 +16,8 @@
 #include "fsck.h"
 #include "fs_recovery.h"
 
-int rindex_modified = 0;
-struct special_blocks false_rgrps;
+static int rindex_modified = 0;
+static struct special_blocks false_rgrps;
 
 #define BAD_RG_PERCENT_TOLERANCE 11
 #define AWAY_FROM_BITMAPS 0x1000

@@ -62,6 +62,7 @@ extern int dsp_lines[DMODES];
 extern int combined_display;
 extern int details;
 extern const char *allocdesc[2][5];
+extern char *device;
 
 struct idirent {
 	struct lgfs2_inum inum;

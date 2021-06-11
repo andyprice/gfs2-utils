@@ -160,7 +160,7 @@ static void opts_init(struct mkfs_opts *opts)
 	opts->format = GFS2_FORMAT_FS;
 }
 
-struct lgfs2_inum *mkfs_journals = NULL;
+static struct lgfs2_inum *mkfs_journals = NULL;
 
 #ifndef BLKDISCARD
 #define BLKDISCARD      _IO(0x12,119)

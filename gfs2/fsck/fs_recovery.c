@@ -19,11 +19,13 @@
 #define JOURNAL_NAME_SIZE 18
 #define JOURNAL_SEQ_TOLERANCE 10
 
-unsigned int sd_found_jblocks = 0, sd_replayed_jblocks = 0;
-unsigned int sd_found_metablocks = 0, sd_replayed_metablocks = 0;
-unsigned int sd_found_revokes = 0;
-osi_list_t sd_revoke_list;
-unsigned int sd_replay_tail;
+static unsigned int sd_found_jblocks = 0;
+static unsigned int sd_replayed_jblocks = 0;
+static unsigned int sd_found_metablocks = 0;
+static unsigned int sd_replayed_metablocks = 0;
+static unsigned int sd_found_revokes = 0;
+static osi_list_t sd_revoke_list;
+static unsigned int sd_replay_tail;
 
 struct gfs2_revoke_replay {
 	osi_list_t rr_list;
@@ -666,7 +668,7 @@ static int rangecheck_jdata(struct gfs2_inode *ip, uint64_t metablock,
 	return rangecheck_jblock(ip, block);
 }
 
-struct metawalk_fxns rangecheck_journal = {
+static struct metawalk_fxns rangecheck_journal = {
 	.private = NULL,
 	.invalid_meta_is_fatal = 1,
 	.check_metalist = rangecheck_jmeta,
@@ -854,7 +856,7 @@ dirent_good:
 	return 0;
 }
 
-struct metawalk_fxns jindex_check_fxns = {
+static struct metawalk_fxns jindex_check_fxns = {
 	.private = NULL,
 	.check_dentry = check_jindex_dent,
 };

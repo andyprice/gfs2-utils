@@ -143,14 +143,14 @@ enum summary_types {
 	stypes = 7,
 };
 
-char *debugfs;
-int termcols = 80, termlines = 30, done = 0;
-unsigned glocks = 0;
-const char *termtype;
-WINDOW *wind;
-int bufsize = 4 * 1024 * 1024;
-char *glock[MAX_GLOCKS];
-int iterations = 0, show_reservations = 0, iters_done = 0;
+static char *debugfs;
+static int termcols = 80, termlines = 30, done = 0;
+static unsigned glocks = 0;
+static const char *termtype;
+static WINDOW *wind;
+static int bufsize = 4 * 1024 * 1024;
+static char *glock[MAX_GLOCKS];
+static int iterations = 0, show_reservations = 0, iters_done = 0;
 struct mount_point {
 	struct mount_point *next;
 	char *device;
@@ -158,27 +158,26 @@ struct mount_point {
 	int fd;
 	struct gfs2_sbd sb;
 };
-struct mount_point *mounts;
-char dlmwlines[MAX_LINES][96]; /* waiters lines */
-char dlmglines[MAX_LINES][97]; /* granted lines */
-char contended_filenames[MAX_FILES][PATH_MAX];
-unsigned long long contended_blocks[MAX_FILES];
-int contended_count = 0;
-int line = 0;
-const char *prog_name;
-char dlm_dirtbl_size[32], dlm_rsbtbl_size[32], dlm_lkbtbl_size[32];
-int bsize = 0;
-char print_dlm_grants = 1;
-char *gbuf = NULL; /* glocks buffer */
-char *gpos = NULL;
-char *gnextpos = NULL;
-int gmaxpos = 0;
-
-char *dbuf = NULL; /* dlm locks buffer */
-char *dpos = NULL;
-char *dnextpos = NULL;
-int dmaxpos = 0;
-char hostname[256];
+static struct mount_point *mounts;
+static char dlmwlines[MAX_LINES][96]; /* waiters lines */
+static char dlmglines[MAX_LINES][97]; /* granted lines */
+static char contended_filenames[MAX_FILES][PATH_MAX];
+static unsigned long long contended_blocks[MAX_FILES];
+static int contended_count = 0;
+static int line = 0;
+static const char *prog_name;
+static char dlm_dirtbl_size[32], dlm_rsbtbl_size[32], dlm_lkbtbl_size[32];
+static int bsize = 0;
+static char print_dlm_grants = 1;
+static char *gbuf = NULL; /* glocks buffer */
+static char *gpos = NULL;
+static char *gnextpos = NULL;
+static int gmaxpos = 0;
+static char *dbuf = NULL; /* dlm locks buffer */
+static char *dpos = NULL;
+static char *dnextpos = NULL;
+static int dmaxpos = 0;
+static char hostname[256];
 
 /*
  * init_colors
