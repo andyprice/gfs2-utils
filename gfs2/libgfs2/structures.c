@@ -589,7 +589,7 @@ int build_root(struct gfs2_sbd *sdp)
 int do_init_inum(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip = sdp->md.inum;
-	uint64_t buf;
+	__be64 buf;
 	int count;
 
 	buf = cpu_to_be64(sdp->md.next_inum);
@@ -626,11 +626,10 @@ int do_init_statfs(struct gfs2_sbd *sdp)
 
 int gfs2_check_meta(const char *buf, int type)
 {
-	uint32_t check_magic = ((struct gfs2_meta_header *)buf)->mh_magic;
-	uint32_t check_type = ((struct gfs2_meta_header *)buf)->mh_type;
+	struct gfs2_meta_header *mh = (struct gfs2_meta_header *)buf;
+	uint32_t check_magic = be32_to_cpu(mh->mh_magic);
+	uint32_t check_type = be32_to_cpu(mh->mh_type);
 
-	check_magic = be32_to_cpu(check_magic);
-	check_type = be32_to_cpu(check_type);
 	if((check_magic != GFS2_MAGIC) || (type && (check_type != type)))
 		return -1;
 	return 0;

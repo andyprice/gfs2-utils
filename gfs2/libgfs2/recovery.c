@@ -71,7 +71,8 @@ int lgfs2_get_log_header(struct gfs2_inode *ip, unsigned int blk,
 	struct gfs2_buffer_head *bh;
 	struct lgfs2_log_header lh;
 	struct gfs2_log_header *tmp;
-	uint32_t hash, saved_hash;
+	__be32 saved_hash;
+	uint32_t hash;
 	uint32_t lh_crc = 0;
 	uint32_t crc;
 	int error;

@@ -873,13 +873,13 @@ int lgfs2_field_str(char *str, const size_t size, const char *blk, const struct 
 			value = *(uint8_t *)fieldp;
 			break;
 		case sizeof(uint16_t):
-			value = be16_to_cpu(*(uint16_t *)fieldp);
+			value = be16_to_cpu(*(__be16 *)fieldp);
 			break;
 		case sizeof(uint32_t):
-			value = be32_to_cpu(*(uint32_t *)fieldp);
+			value = be32_to_cpu(*(__be32 *)fieldp);
 			break;
 		case sizeof(uint64_t):
-			value = be64_to_cpu(*(uint64_t *)fieldp);
+			value = be64_to_cpu(*(__be64 *)fieldp);
 			break;
 		default:
 			*str = 0;
@@ -948,13 +948,13 @@ int lgfs2_field_assign(char *blk, const struct lgfs2_metafield *field, const voi
 		*fieldp = (uint8_t)num;
 		return 0;
 	case sizeof(uint16_t):
-		*(uint16_t *)fieldp = cpu_to_be16((uint16_t)num);
+		*(__be16 *)fieldp = cpu_to_be16((uint16_t)num);
 		return 0;
 	case sizeof(uint32_t):
-		*(uint32_t *)fieldp = cpu_to_be32((uint32_t)num);
+		*(__be32 *)fieldp = cpu_to_be32((uint32_t)num);
 		return 0;
 	case sizeof(uint64_t):
-		*(uint64_t *)fieldp = cpu_to_be64((uint64_t)num);
+		*(__be64 *)fieldp = cpu_to_be64((uint64_t)num);
 		return 0;
 	default:
 		/* Will never happen */

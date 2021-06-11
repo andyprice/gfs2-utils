@@ -14,14 +14,14 @@
 #include "libgfs2.h"
 #include "rgrp.h"
 
-static __inline__ uint64_t *metapointer(char *buf,
+static __inline__ __be64 *metapointer(char *buf,
 					unsigned int height,
 					struct metapath *mp)
 {
 	unsigned int head_size = (height > 0) ?
 		sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_dinode);
 
-	return ((uint64_t *)(buf + head_size)) + mp->mp_list[height];
+	return ((__be64 *)(buf + head_size)) + mp->mp_list[height];
 }
 
 /* Detect directory is a stuffed inode */
@@ -272,7 +272,7 @@ void unstuff_dinode(struct gfs2_inode *ip)
 	buffer_clear_tail(sdp, ip->i_bh, sizeof(struct gfs2_dinode));
 
 	if (ip->i_size) {
-		*(uint64_t *)(ip->i_bh->b_data + sizeof(struct gfs2_dinode)) = cpu_to_be64(block);
+		*(__be64 *)(ip->i_bh->b_data + sizeof(struct gfs2_dinode)) = cpu_to_be64(block);
 		/* no need: bmodified(ip->i_bh); buffer_clear_tail does it */
 		ip->i_blocks++;
 	}
@@ -419,7 +419,7 @@ void build_height(struct gfs2_inode *ip, int height)
 		buffer_clear_tail(sdp, ip->i_bh, sizeof(struct gfs2_dinode));
 
 		if (new_block) {
-			*(uint64_t *)(ip->i_bh->b_data + sizeof(struct gfs2_dinode)) = cpu_to_be64(block);
+			*(__be64 *)(ip->i_bh->b_data + sizeof(struct gfs2_dinode)) = cpu_to_be64(block);
 			/* no need: bmodified(ip->i_bh);*/
 			ip->i_blocks++;
 		}
@@ -444,7 +444,7 @@ void lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		  unsigned int height, struct metapath *mp,
 		  int create, int *new, uint64_t *block)
 {
-	uint64_t *ptr = metapointer(bh->b_data, height, mp);
+	__be64 *ptr = metapointer(bh->b_data, height, mp);
 
 	if (*ptr) {
 		*block = be64_to_cpu(*ptr);
@@ -861,9 +861,10 @@ void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 	bmodified(bh);
 	if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_LF) == 0) {
 		struct gfs2_leaf *lf = (struct gfs2_leaf *)bh->b_data;
+		uint16_t entries;
 
-		lf->lf_entries = be16_to_cpu(lf->lf_entries) - 1;
-		lf->lf_entries = cpu_to_be16(lf->lf_entries);
+		entries = be16_to_cpu(lf->lf_entries) - 1;
+		lf->lf_entries = cpu_to_be16(entries);
 	}
 
 	if (dip->i_entries) {
@@ -885,9 +886,9 @@ void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 
 int lgfs2_get_leaf_ptr(struct gfs2_inode *dip, const uint32_t lindex, uint64_t *ptr)
 {
-	uint64_t leaf_no;
-	int count = gfs2_readi(dip, (char *)&leaf_no, lindex * sizeof(uint64_t), sizeof(uint64_t));
-	if (count != sizeof(uint64_t))
+	__be64 leaf_no;
+	int count = gfs2_readi(dip, (char *)&leaf_no, lindex * sizeof(__be64), sizeof(__be64));
+	if (count != sizeof(__be64))
 		return -1;
 
 	*ptr = be64_to_cpu(leaf_no);
@@ -901,7 +902,9 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
 	struct gfs2_leaf *nleaf, *oleaf;
 	struct gfs2_dirent *dent, *prev = NULL, *next = NULL, *new;
 	uint32_t len, half_len, divider;
-	uint64_t bn, *lp;
+	uint16_t depth;
+	uint64_t bn;
+	__be64 *lp;
 	uint32_t name_len;
 	int x, moved = 0;
 	int count;
@@ -929,7 +932,7 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
 	len = 1 << (dip->i_depth - be16_to_cpu(oleaf->lf_depth));
 	half_len = len >> 1;
 
-	lp = calloc(1, half_len * sizeof(uint64_t));
+	lp = calloc(1, half_len * sizeof(__be64));
 	if (lp == NULL) {
 		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
 		exit(-1);
@@ -961,6 +964,8 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
 
 		if (dent->de_inum.no_formal_ino &&
 		    be32_to_cpu(dent->de_hash) < divider) {
+			uint16_t entries;
+
 			name_len = be16_to_cpu(dent->de_name_len);
 
 			if (dirent_alloc(dip, nbh, name_len, &new)) {
@@ -973,8 +978,8 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
 			new->de_type = dent->de_type;
 			memcpy((char *)(new + 1), (char *)(dent + 1), name_len);
 
-			nleaf->lf_entries = be16_to_cpu(nleaf->lf_entries) + 1;
-			nleaf->lf_entries = cpu_to_be16(nleaf->lf_entries);
+			entries = be16_to_cpu(nleaf->lf_entries) + 1;
+			nleaf->lf_entries = cpu_to_be16(entries);
 
 			dirent2_del(dip, obh, prev, dent);
 
@@ -998,8 +1003,8 @@ void dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_no,
 		dip->i_entries--;
 	}
 
-	oleaf->lf_depth = be16_to_cpu(oleaf->lf_depth) + 1;
-	oleaf->lf_depth = cpu_to_be16(oleaf->lf_depth);
+	depth = be16_to_cpu(oleaf->lf_depth) + 1;
+	oleaf->lf_depth = cpu_to_be16(depth);
 	nleaf->lf_depth = oleaf->lf_depth;
 
 	nleaf->lf_inode = cpu_to_be64(dip->i_num.in_addr);
@@ -1162,6 +1167,8 @@ restart:
 		return err;
 
 	for (;;) {
+		uint16_t entries;
+
 		bh = bread(dip->i_sbd, leaf_no);
 		leaf = (struct gfs2_leaf *)bh->b_data;
 
@@ -1220,8 +1227,8 @@ restart:
 		dent->de_type = cpu_to_be16(type);
 		memcpy((char *)(dent + 1), filename, len);
 
-		leaf->lf_entries = be16_to_cpu(leaf->lf_entries) + 1;
-		leaf->lf_entries = cpu_to_be16(leaf->lf_entries);
+		entries = be16_to_cpu(leaf->lf_entries) + 1;
+		leaf->lf_entries = cpu_to_be16(entries);
 
 		bmodified(bh);
 		brelse(bh);
@@ -1235,9 +1242,11 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 	struct gfs2_dirent *dent;
 	struct gfs2_buffer_head *bh;
 	struct gfs2_leaf *leaf;
+	uint16_t rec_len;
 	int y;
 	uint32_t x;
-	uint64_t *lp, bn;
+	uint64_t bn;
+	__be64 *lp;
 
 	if (lgfs2_meta_alloc(dip, &bn))
 		exit(1);
@@ -1269,16 +1278,16 @@ static void dir_make_exhash(struct gfs2_inode *dip)
 			break;
 	} while (gfs2_dirent_next(dip, bh, &dent) == 0);
 
-	dent->de_rec_len = be16_to_cpu(dent->de_rec_len);
-	dent->de_rec_len = cpu_to_be16(dent->de_rec_len +
-		sizeof(struct gfs2_dinode) - sizeof(struct gfs2_leaf));
+	rec_len = be16_to_cpu(dent->de_rec_len) +
+		sizeof(struct gfs2_dinode) - sizeof(struct gfs2_leaf);
+	dent->de_rec_len = cpu_to_be16(rec_len);
 
 	/* no need to: bmodified(bh); (buffer_copy_tail does it) */
 	brelse(bh);
 
 	buffer_clear_tail(sdp, dip->i_bh, sizeof(struct gfs2_dinode));
 
-	lp = (uint64_t *)(dip->i_bh->b_data + sizeof(struct gfs2_dinode));
+	lp = (__be64 *)(dip->i_bh->b_data + sizeof(struct gfs2_dinode));
 
 	for (x = sdp->sd_hash_ptrs; x--; lp++)
 		*lp = cpu_to_be64(bn);
@@ -1300,6 +1309,7 @@ static int dir_l_add(struct gfs2_inode *dip, const char *filename, int len,
 		      struct lgfs2_inum *inum, unsigned int type)
 {
 	struct gfs2_dirent *dent;
+	uint32_t de_hash;
 	int err = 0;
 
 	if (dirent_alloc(dip, dip->i_bh, len, &dent)) {
@@ -1309,8 +1319,8 @@ static int dir_l_add(struct gfs2_inode *dip, const char *filename, int len,
 	}
 
 	lgfs2_inum_out(inum, &dent->de_inum);
-	dent->de_hash = gfs2_disk_hash(filename, len);
-	dent->de_hash = cpu_to_be32(dent->de_hash);
+	de_hash = gfs2_disk_hash(filename, len);
+	dent->de_hash = cpu_to_be32(de_hash);
 	dent->de_type = cpu_to_be16(type);
 	memcpy((char *)(dent + 1), filename, len);
 	bmodified(dip->i_bh);
@@ -1418,7 +1428,7 @@ static void lgfs2_fill_indir(char *start, char *end, uint64_t ptr0, unsigned n, 
 	memset(start, 0, end - start);
 	for (bp = start; bp < end && *p < n; bp += sizeof(uint64_t)) {
 		uint64_t pn = ptr0 + *p;
-		*(uint64_t *)bp = cpu_to_be64(pn);
+		*(__be64 *)bp = cpu_to_be64(pn);
 		(*p)++;
 	}
 }
@@ -1918,9 +1928,10 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 	struct gfs2_inode *ip;
 	struct gfs2_buffer_head *bh, *nbh;
 	int h, head_size;
-	uint64_t *ptr, block;
+	uint64_t block;
 	struct rgrp_tree *rgd;
 	uint32_t height;
+	__be64 *ptr;
 	osi_list_t metalist[GFS2_MAX_META_HEIGHT];
 	osi_list_t *cur_list, *next_list, *tmp;
 
@@ -1946,7 +1957,7 @@ int gfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 			bh = osi_list_entry(tmp, struct gfs2_buffer_head,
 					    b_altlist);
 
-			for (ptr = (uint64_t *)(bh->b_data + head_size);
+			for (ptr = (__be64 *)(bh->b_data + head_size);
 			     (char *)ptr < (bh->b_data + sdp->sd_bsize); ptr++) {
 				if (!*ptr)
 					continue;

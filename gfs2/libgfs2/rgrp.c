@@ -157,7 +157,7 @@ int lgfs2_rgrp_crc_check(char *buf)
 {
 	int ret = 0;
 	struct gfs2_rgrp *rg = (struct gfs2_rgrp *)buf;
-	uint32_t crc = rg->rg_crc;
+	__be32 crc = rg->rg_crc;
 
 	if (crc == 0)
 		return 0;
