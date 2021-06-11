@@ -49,9 +49,7 @@ int start_row[DMODES], end_row[DMODES], lines_per_row[DMODES];
 int gfs2_struct_type;
 unsigned int offset;
 struct indirect_info masterdir;
-struct gfs2_inum gfs1_quota_di;
 int print_entry_ndx;
-struct gfs2_inum gfs1_license_di;
 int screen_chunk_size = 512;
 uint64_t temp_blk;
 int color_scheme = 0;
@@ -244,12 +242,13 @@ static int indirect_dirent(struct indirect_info *indir, void *ptr, int d)
 void do_dinode_extended(char *buf)
 {
 	struct gfs2_dinode *dip = (void *)buf;
+	struct gfs_dinode *dip1 = (void *)buf;
 	unsigned int x, y, ptroff = 0;
 	uint64_t p, last;
 	int isdir = 0;
 
 	if (S_ISDIR(be32_to_cpu(dip->di_mode)) ||
-	    (sbd.gfs1 && be16_to_cpu(dip->__pad1) == GFS_FILE_DIR))
+	    (sbd.gfs1 && be16_to_cpu(dip1->di_type) == GFS_FILE_DIR))
 		isdir = 1;
 
 	indirect_blocks = 0;
@@ -258,7 +257,7 @@ void do_dinode_extended(char *buf)
 		/* Indirect pointers */
 		for (x = sizeof(struct gfs2_dinode); x < sbd.sd_bsize;
 			 x += sizeof(uint64_t)) {
-			p = be64_to_cpu(*(uint64_t *)(buf + x));
+			p = be64_to_cpu(*(__be64 *)(buf + x));
 			if (p) {
 				indirect->ii[indirect_blocks].block = p;
 				indirect->ii[indirect_blocks].mp.mp_list[0] =
@@ -289,12 +288,12 @@ void do_dinode_extended(char *buf)
 	         dip->di_height == 0) {
 		/* Leaf Pointers: */
 
-		last = be64_to_cpu(*(uint64_t *)(buf + sizeof(struct gfs2_dinode)));
+		last = be64_to_cpu(*(__be64 *)(buf + sizeof(struct gfs2_dinode)));
 
 		for (x = sizeof(struct gfs2_dinode), y = 0;
 			 y < (1 << be16_to_cpu(dip->di_depth));
 			 x += sizeof(uint64_t), y++) {
-			p = be64_to_cpu(*(uint64_t *)(buf + x));
+			p = be64_to_cpu(*(__be64 *)(buf + x));
 
 			if (p != last || ((y + 1) * sizeof(uint64_t) == be64_to_cpu(dip->di_size))) {
 				struct gfs2_buffer_head *tmp_bh;

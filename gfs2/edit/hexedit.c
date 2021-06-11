@@ -40,6 +40,8 @@ static struct gfs2_buffer_head *bh;
 static int pgnum;
 static long int gziplevel = 9;
 static int termcols;
+static struct lgfs2_inum gfs1_quota_di;
+static struct lgfs2_inum gfs1_license_di;
 
 int details = 0;
 char *device = NULL;
@@ -445,11 +447,11 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 		if (sbd.gfs1) {
 			if (block == sbd.sd_rindex_di.in_addr)
 				print_gfs2("---------------- rindex file -------------------");
-			else if (block == gfs1_quota_di.no_addr)
+			else if (block == gfs1_quota_di.in_addr)
 				print_gfs2("---------------- Quota file --------------------");
 			else if (block == sbd.sd_jindex_di.in_addr)
 				print_gfs2("--------------- Journal Index ------------------");
-			else if (block == gfs1_license_di.no_addr)
+			else if (block == gfs1_license_di.in_addr)
 				print_gfs2("--------------- License file -------------------");
 		}
 		else {
@@ -501,13 +503,13 @@ static int hexdump(uint64_t startaddr, uint64_t len, int trunc_zeros,
 	const char *zeros_strt = lpBuffer + sbd.sd_bsize;
 	int print_field, cursor_line;
 	const struct lgfs2_metadata *m = get_block_type(bh->b_data);
-	uint64_t *ref;
+	__be64 *ref;
 	int ptroffset = 0;
 
 	strcpy(edit_fmt,"%02x");
 	pointer = (unsigned char *)lpBuffer + offset;
 	ptr2 = (unsigned char *)lpBuffer + offset;
-	ref = (uint64_t *)lpBuffer + offset;
+	ref = (__be64 *)lpBuffer + offset;
 	if (trunc_zeros) {
 		while (zeros_strt > lpBuffer && (*(zeros_strt - 1) == 0))
 			zeros_strt--;
@@ -810,11 +812,13 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 /* ------------------------------------------------------------------------ */
 int has_indirect_blocks(void)
 {
+	struct gfs_dinode *d1 = (struct gfs_dinode *)di;
+
 	if (indirect_blocks || gfs2_struct_type == GFS2_METATYPE_SB ||
 	    gfs2_struct_type == GFS2_METATYPE_LF ||
 	    (gfs2_struct_type == GFS2_METATYPE_DI &&
 	     (S_ISDIR(be32_to_cpu(di->di_mode)) ||
-	      (sbd.gfs1 && be16_to_cpu(di->__pad1) == GFS_FILE_DIR))))
+	      (sbd.gfs1 && be16_to_cpu(d1->di_type) == GFS_FILE_DIR))))
 		return TRUE;
 	return FALSE;
 }
@@ -843,7 +847,7 @@ int block_is_inum_file(uint64_t blk)
 
 int block_is_statfs_file(uint64_t blk)
 {
-	if (sbd.gfs1 && blk == gfs1_license_di.no_addr)
+	if (sbd.gfs1 && blk == gfs1_license_di.in_addr)
 		return TRUE;
 	if (!sbd.gfs1 && blk == masterblock("statfs"))
 		return TRUE;
@@ -852,7 +856,7 @@ int block_is_statfs_file(uint64_t blk)
 
 int block_is_quota_file(uint64_t blk)
 {
-	if (sbd.gfs1 && blk == gfs1_quota_di.no_addr)
+	if (sbd.gfs1 && blk == gfs1_quota_di.in_addr)
 		return TRUE;
 	if (!sbd.gfs1 && blk == masterblock("quota"))
 		return TRUE;
@@ -1330,7 +1334,7 @@ uint64_t check_keywords(const char *kword)
 		blk = masterblock("inum");
 	else if (!strcmp(kword, "statfs")) {
 		if (sbd.gfs1)
-			blk = gfs1_license_di.no_addr;
+			blk = gfs1_license_di.in_addr;
 		else
 			blk = masterblock("statfs");
 	}
@@ -1343,7 +1347,7 @@ uint64_t check_keywords(const char *kword)
 		blk = RGLIST_DUMMY_BLOCK;
 	} else if (!strcmp(kword, "quota")) {
 		if (sbd.gfs1)
-			blk = gfs1_quota_di.no_addr;
+			blk = gfs1_quota_di.in_addr;
 		else
 			blk = masterblock("quota");
 	} else if (!strncmp(kword, "rg ", 3)) {
@@ -1548,7 +1552,7 @@ static void jump(void)
 {
 	if (dmode == HEX_MODE) {
 		unsigned int col2;
-		uint64_t *b;
+		__be64 *b;
 		const struct lgfs2_metadata *mtype = get_block_type(bh->b_data);
 		uint32_t block_type = 0;
 
@@ -1563,7 +1567,7 @@ static void jump(void)
 			temp_blk = bh->b_blocknr + pnum + 1;
 		} else if (edit_row[dmode] >= 0) {
 			col2 = edit_col[dmode] & 0x08;/* thus 0-7->0, 8-15->8 */
-			b = (uint64_t *)&bh->b_data[edit_row[dmode]*16 +
+			b = (__be64 *)&bh->b_data[edit_row[dmode]*16 +
 						    offset + col2];
 			temp_blk = be64_to_cpu(*b);
 		}

@@ -32,17 +32,23 @@
 /* Header for the savemeta output file */
 struct savemeta_header {
 #define SAVEMETA_MAGIC (0x01171970)
-	uint32_t sh_magic;
+	__be32 sh_magic;
 #define SAVEMETA_FORMAT (1)
-	uint32_t sh_format; /* In case we want to change the layout */
-	uint64_t sh_time; /* When savemeta was run */
-	uint64_t sh_fs_bytes; /* Size of the fs */
+	__be32 sh_format; /* In case we want to change the layout */
+	__be64 sh_time; /* When savemeta was run */
+	__be64 sh_fs_bytes; /* Size of the fs */
 	uint8_t __reserved[104];
 };
 
+struct savemeta {
+	time_t sm_time;
+	unsigned sm_format;
+	size_t sm_fs_bytes;
+};
+
 struct saved_metablock {
-	uint64_t blk;
-	uint16_t siglen; /* significant data length */
+	__be64 blk;
+	__be16 siglen; /* significant data length */
 /* This needs to be packed because old versions of gfs2_edit read and write the
    individual fields separately, so the hole after siglen must be eradicated
    before the struct reflects what's on disk. */
@@ -296,15 +302,17 @@ static int block_is_systemfile(uint64_t blk)
 static size_t di_save_len(const char *buf, uint64_t owner)
 {
 	const struct gfs2_dinode *dn;
+	const struct gfs_dinode *d1;
 	uint16_t di_height;
 	uint32_t di_mode;
 	int gfs1dir;
 
 	dn = (void *)buf;
+	d1 = (void *)buf;
 	di_mode = be32_to_cpu(dn->di_mode);
 	di_height = be16_to_cpu(dn->di_height);
 	/* __pad1 is di_type in gfs1 */
-	gfs1dir = sbd.gfs1 && (be16_to_cpu(dn->__pad1) == GFS_FILE_DIR);
+	gfs1dir = sbd.gfs1 && (be16_to_cpu(d1->di_type) == GFS_FILE_DIR);
 
 	/* Do not save (user) data from the inode block unless they are
 	   indirect pointers, dirents, symlinks or fs internal data */
@@ -697,8 +705,9 @@ static void save_ea_block(struct metafd *mfd, char *buf, uint64_t owner)
 	int e;
 
 	for (e = sizeof(struct gfs2_meta_header); e < sbd.sd_bsize; e += rec_len) {
-		uint64_t blk, *b;
+		uint64_t blk;
 		int charoff, i;
+		__be64 *b;
 
 		ea = (void *)(buf + e);
 		/* ea_num_ptrs and ea_name_len are u8 so no endianness worries */
@@ -709,7 +718,7 @@ static void save_ea_block(struct metafd *mfd, char *buf, uint64_t owner)
 				sizeof(struct gfs2_ea_header) +
 				sizeof(uint64_t) - 1;
 			charoff /= sizeof(uint64_t);
-			b = (uint64_t *)buf;
+			b = (__be64 *)buf;
 			b += charoff + i;
 			blk = be64_to_cpu(*b);
 			_buf = check_read_block(sbd.device_fd, blk, owner, NULL, NULL);
@@ -751,9 +760,9 @@ static void save_indirect_blocks(struct metafd *mfd, char *buf, uint64_t owner,
 {
 	uint64_t old_block = 0, indir_block;
 	struct block_range *br = NULL;
-	uint64_t *ptr;
+	__be64 *ptr;
 
-	for (ptr = (uint64_t *)(buf + headsize);
+	for (ptr = (__be64 *)(buf + headsize);
 	     (char *)ptr < (buf + sbd.sd_bsize); ptr++) {
 		if (!*ptr)
 			continue;
@@ -854,6 +863,7 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 {
 	struct block_range_queue indq[GFS2_MAX_META_HEIGHT] = {{NULL}};
 	struct gfs2_dinode *dip = (struct gfs2_dinode *)ibuf;
+	struct gfs_dinode *dip1 = (struct gfs_dinode *)ibuf;
 	uint16_t height;
 	int is_exhash;
 
@@ -869,7 +879,7 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 	   the hash table exists, and we have to save the directory data. */
 
 	is_exhash = (S_ISDIR(be32_to_cpu(dip->di_mode)) ||
-	             (sbd.gfs1 && be16_to_cpu(dip->__pad1) == GFS_FILE_DIR)) &&
+	             (sbd.gfs1 && be16_to_cpu(dip1->di_type) == GFS_FILE_DIR)) &&
 	             be32_to_cpu(dip->di_flags) & GFS2_DIF_EXHASH;
 	if (is_exhash)
 		height++;
@@ -1090,24 +1100,23 @@ static int save_header(struct metafd *mfd, uint64_t fsbytes)
 	return 0;
 }
 
-static int parse_header(char *buf, struct savemeta_header *smh)
+static int parse_header(char *buf, struct savemeta *sm)
 {
-	struct savemeta_header *smh_be = (void *)buf;
+	struct savemeta_header *smh = (void *)buf;
 
-	if (be32_to_cpu(smh_be->sh_magic) != SAVEMETA_MAGIC) {
+	if (be32_to_cpu(smh->sh_magic) != SAVEMETA_MAGIC) {
 		printf("No valid file header found. Falling back to old format...\n");
 		return 1;
 	}
-	if (be32_to_cpu(smh_be->sh_format) > SAVEMETA_FORMAT) {
+	if (be32_to_cpu(smh->sh_format) > SAVEMETA_FORMAT) {
 		printf("This version of gfs2_edit is too old to restore this metadata format.\n");
 		return -1;
 	}
-	smh->sh_magic = be32_to_cpu(smh_be->sh_magic);
-	smh->sh_format = be32_to_cpu(smh_be->sh_format);
-	smh->sh_time = be64_to_cpu(smh_be->sh_time);
-	smh->sh_fs_bytes = be64_to_cpu(smh_be->sh_fs_bytes);
-	printf("Metadata saved at %s", ctime((time_t *)&smh->sh_time)); /* ctime() adds \n */
-	printf("File system size %.2fGB\n", smh->sh_fs_bytes / ((float)(1 << 30)));
+	sm->sm_format = be32_to_cpu(smh->sh_format);
+	sm->sm_time = be64_to_cpu(smh->sh_time);
+	sm->sm_fs_bytes = be64_to_cpu(smh->sh_fs_bytes);
+	printf("Metadata saved at %s", ctime(&sm->sm_time)); /* ctime() adds \n */
+	printf("File system size %.2fGB\n", sm->sm_fs_bytes / ((float)(1 << 30)));
 	return 0;
 }
 
@@ -1206,34 +1215,35 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	exit(0);
 }
 
-static char *restore_block(struct metafd *mfd, struct saved_metablock *svb)
+static char *restore_block(struct metafd *mfd, uint64_t *blk, uint16_t *siglen)
 {
-	struct saved_metablock *svb_be;
+	struct saved_metablock *svb;
 	const char *errstr;
 	char *buf = NULL;
 
-	svb_be = (struct saved_metablock *)(restore_buf_next(mfd, sizeof(*svb)));
-	if (svb_be == NULL)
+	svb = (struct saved_metablock *)(restore_buf_next(mfd, sizeof(*svb)));
+	if (svb == NULL)
 		goto nobuffer;
-	svb->blk = be64_to_cpu(svb_be->blk);
-	svb->siglen = be16_to_cpu(svb_be->siglen);
+	*blk = be64_to_cpu(svb->blk);
+	*siglen = be16_to_cpu(svb->siglen);
 
-	if (sbd.fssize && svb->blk >= sbd.fssize) {
+	if (sbd.fssize && *blk >= sbd.fssize) {
 		fprintf(stderr, "Error: File system is too small to restore this metadata.\n");
-		fprintf(stderr, "File system is %llu blocks. Restore block = %llu\n",
-		        (unsigned long long)sbd.fssize, (unsigned long long)svb->blk);
+		fprintf(stderr, "File system is %"PRIu64" blocks. Restore block = %"PRIu64"\n",
+		        sbd.fssize, *blk);
 		return NULL;
 	}
 
-	if (svb->siglen > sbd.sd_bsize) {
+	if (*siglen > sbd.sd_bsize) {
 		fprintf(stderr, "Bad record length: %u for block %"PRIu64" (0x%"PRIx64").\n",
-			svb->siglen, svb->blk, svb->blk);
+			*siglen, *blk, *blk);
 		return NULL;
 	}
 
-	buf = restore_buf_next(mfd, svb->siglen);
-	if (buf != NULL)
+	buf = restore_buf_next(mfd, *siglen);
+	if (buf != NULL) {
 		return buf;
+	}
 nobuffer:
 	if (mfd->eof)
 		return NULL;
@@ -1266,7 +1276,6 @@ static int restore_super(struct metafd *mfd, void *buf, int printonly)
 
 static int restore_data(int fd, struct metafd *mfd, int printonly)
 {
-	struct saved_metablock savedata = {0};
 	uint64_t writes = 0;
 	char *buf;
 
@@ -1277,9 +1286,11 @@ static int restore_data(int fd, struct metafd *mfd, int printonly)
 	}
 
 	while (TRUE) {
+		uint16_t siglen = 0;
+		uint64_t blk = 0;
 		char *bp;
 
-		bp = restore_block(mfd, &savedata);
+		bp = restore_block(mfd, &blk, &siglen);
 		if (bp == NULL && mfd->eof)
 			break;
 		if (bp == NULL) {
@@ -1287,23 +1298,21 @@ static int restore_data(int fd, struct metafd *mfd, int printonly)
 			return -1;
 		}
 		if (printonly) {
-			if (printonly > 1 && printonly == savedata.blk) {
-				display_block_type(bp, savedata.blk, TRUE);
+			if (printonly > 1 && printonly == blk) {
+				display_block_type(bp, blk, TRUE);
 				display_gfs2(bp);
 				break;
 			} else if (printonly == 1) {
-				print_gfs2("%"PRId64" (l=0x%x): ", blks_saved, savedata.siglen);
-				display_block_type(bp, savedata.blk, TRUE);
+				print_gfs2("%"PRId64" (l=0x%x): ", blks_saved, siglen);
+				display_block_type(bp, blk, TRUE);
 			}
 		} else {
-			report_progress(savedata.blk, 0);
-			memcpy(buf, bp, savedata.siglen);
-			memset(buf + savedata.siglen, 0, sbd.sd_bsize - savedata.siglen);
-			if (pwrite(fd, buf, sbd.sd_bsize, savedata.blk * sbd.sd_bsize) != sbd.sd_bsize) {
-				fprintf(stderr, "write error: %s from %s:%d: block %lld (0x%llx)\n",
-					strerror(errno), __FUNCTION__, __LINE__,
-					(unsigned long long)savedata.blk,
-					(unsigned long long)savedata.blk);
+			report_progress(blk, 0);
+			memcpy(buf, bp, siglen);
+			memset(buf + siglen, 0, sbd.sd_bsize - siglen);
+			if (pwrite(fd, buf, sbd.sd_bsize, blk * sbd.sd_bsize) != sbd.sd_bsize) {
+				fprintf(stderr, "write error: %s from %s:%d: block %"PRIu64" (0x%"PRIx64")\n",
+					strerror(errno), __FUNCTION__, __LINE__, blk, blk);
 				free(buf);
 				return -1;
 			}
@@ -1326,8 +1335,9 @@ static void complain(const char *complaint)
 	    "<dest file system>\n");
 }
 
-static int restore_init(const char *path, struct metafd *mfd, struct savemeta_header *smh, int printonly)
+static int restore_init(const char *path, struct metafd *mfd, int printonly)
 {
+	struct savemeta sm = {0};
 	struct gfs2_sb rsb;
 	uint16_t sb_siglen;
 	char *end;
@@ -1355,10 +1365,10 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 		return -1;
 	}
 	bp = restore_buf;
-	ret = parse_header(bp, smh);
+	ret = parse_header(bp, &sm);
 	if (ret == 0) {
-		bp = restore_buf + sizeof(*smh);
-		restore_off = sizeof(*smh);
+		bp = restore_buf + sizeof(struct savemeta_header);
+		restore_off = sizeof(struct savemeta_header);
 	} else if (ret == -1) {
 		return -1;
 	}
@@ -1381,10 +1391,10 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 	if (ret != 0)
 		return ret;
 
-	if (smh->sh_fs_bytes > 0) {
-		sbd.fssize = smh->sh_fs_bytes / sbd.sd_bsize;
+	if (sm.sm_fs_bytes > 0) {
+		sbd.fssize = sm.sm_fs_bytes / sbd.sd_bsize;
 		printf("Saved file system size is %"PRIu64" blocks, %.2fGB\n",
-		       sbd.fssize, smh->sh_fs_bytes / ((float)(1 << 30)));
+		       sbd.fssize, sm.sm_fs_bytes / ((float)(1 << 30)));
 	}
 	printf("Block size is %uB\n", sbd.sd_bsize);
 	printf("This is gfs%c metadata.\n", sbd.gfs1 ? '1': '2');
@@ -1403,7 +1413,6 @@ static int restore_init(const char *path, struct metafd *mfd, struct savemeta_he
 
 void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 {
-	struct savemeta_header smh = {0};
 	struct metafd mfd = {0};
 	int error;
 
@@ -1422,7 +1431,7 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 				  optional block no */
 		printonly = check_keywords(out_device);
 
-	error = restore_init(in_fn, &mfd, &smh, printonly);
+	error = restore_init(in_fn, &mfd, printonly);
 	if (error != 0)
 		exit(error);
 

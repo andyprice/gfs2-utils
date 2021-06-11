@@ -61,7 +61,7 @@ static int _do_indirect_extended(char *diebuf, struct iinfo *iinf, int hgt)
 	}
 	headoff = sbd.gfs1 ? sizeof(struct gfs_indirect) : sizeof(struct gfs2_meta_header);
 	for (x = headoff, y = 0; x < sbd.sd_bsize; x += sizeof(uint64_t), y++) {
-		p = be64_to_cpu(*(uint64_t *)(diebuf + x));
+		p = be64_to_cpu(*(__be64 *)(diebuf + x));
 		if (p) {
 			iinf->ii[i_blocks].block = p;
 			iinf->ii[i_blocks].mp.mp_list[hgt] = i_blocks;
@@ -228,7 +228,7 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 	return 0;
 }
 
-static void print_inode_type(__be16 de_type)
+static void print_inode_type(uint16_t de_type)
 {
 	if (sbd.gfs1) {
 		switch(de_type) {
@@ -558,7 +558,8 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 
 static int print_inum(struct gfs2_inode *dii)
 {
-	uint64_t inum, inodenum;
+	uint64_t inodenum;
+	__be64 inum;
 	int rc;
 	
 	rc = gfs2_readi(dii, (void *)&inum, 0, sizeof(inum));

@@ -36,7 +36,6 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 	uint64_t jindex_block, jblock = 0;
 	int amtread;
 	struct gfs2_buffer_head *jindex_bh, *j_bh;
-	char jbuf[sbd.sd_bsize];
 
 	journal_num = atoi(journal + 7);
 	if (journal_num < 0)
@@ -56,17 +55,17 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 
 	if (sbd.gfs1) {
 		struct gfs2_inode *jiinode;
+		struct gfs_jindex jidx;
 
 		jiinode = lgfs2_inode_get(&sbd, jindex_bh);
 		if (jiinode == NULL)
 			return 0;
-		amtread = gfs2_readi(jiinode, (void *)&jbuf,
+		amtread = gfs2_readi(jiinode, &jidx,
 				   journal_num * sizeof(struct gfs_jindex),
 				   sizeof(struct gfs_jindex));
 		if (amtread) {
-			struct gfs_jindex *ji = (struct gfs_jindex *)jbuf;
-			jblock = be64_to_cpu(ji->ji_addr);
-			*j_size = (uint64_t)be32_to_cpu(ji->ji_nsegment) * 0x10;
+			jblock = be64_to_cpu(jidx.ji_addr);
+			*j_size = (uint64_t)be32_to_cpu(jidx.ji_nsegment) * 0x10;
 		}
 		inode_put(&jiinode);
 	} else {
@@ -174,10 +173,10 @@ static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
  * This function checks a log descriptor buffer to see if it contains
  * references to a given traced block, or its rgrp bitmap block.
  */
-static int ld_is_pertinent(const uint64_t *b, const char *end, uint64_t tblk,
+static int ld_is_pertinent(const __be64 *b, const char *end, uint64_t tblk,
 			   struct rgrp_tree *rgd, uint64_t bitblk)
 {
-	const uint64_t *blk = b;
+	const __be64 *blk = b;
 
 	if (!tblk)
 		return 1;
@@ -196,7 +195,7 @@ static int ld_is_pertinent(const uint64_t *b, const char *end, uint64_t tblk,
  * print_ld_blks - print all blocks given in a log descriptor
  * returns: the number of block numbers it printed
  */
-static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
+static int print_ld_blks(const __be64 *b, const char *end, int start_line,
 			 uint64_t tblk, uint64_t *tblk_off, uint64_t bitblk,
 			 struct rgrp_tree *rgd, uint64_t abs_block, int prnt,
 			 uint64_t *bblk_off, int is_meta_ld)
@@ -223,13 +222,12 @@ static int print_ld_blks(const uint64_t *b, const char *end, int start_line,
 				if (is_meta_ld) {
 					j_bmap_bh = bread(&sbd, abs_block +
 							  bcount);
-					sprintf(str, "0x%llx %2s",
-						(unsigned long long)be64_to_cpu(*b),
+					sprintf(str, "0x%"PRIx64" %2s",
+						be64_to_cpu(*b),
 						mtypes[lgfs2_get_block_type(j_bmap_bh->b_data)]);
 					brelse(j_bmap_bh);
 				} else {
-					sprintf(str, "0x%llx",
-						(unsigned long long)be64_to_cpu(*b));
+					sprintf(str, "0x%"PRIx64, be64_to_cpu(*b));
 				}
 				print_gfs2("%-18.18s ", str);
 			}
@@ -360,7 +358,7 @@ static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 		      uint64_t *tblk_off, uint64_t bitblk,
 		      struct rgrp_tree *rgd, int *prnt, uint64_t *bblk_off)
 {
-	uint64_t *b;
+	__be64 *b;
 	struct gfs2_log_descriptor *ld = (void *)buf;
 	int ltndx, is_meta_ld = 0;
 	int ld_blocks = 0;
@@ -379,9 +377,9 @@ static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 		 "Quota", "Final Entry", "Unknown"}};
 
 	if (sbd.gfs1)
-		b = (uint64_t *)(buf + sizeof(struct gfs_log_descriptor));
+		b = (__be64 *)(buf + sizeof(struct gfs_log_descriptor));
 	else
-		b = (uint64_t *)(buf + sizeof(struct gfs2_log_descriptor));
+		b = (__be64 *)(buf + sizeof(struct gfs2_log_descriptor));
 	*prnt = ld_is_pertinent(b, (buf + sbd.sd_bsize), tblk, rgd, bitblk);
 
 	if (*prnt) {
@@ -418,7 +416,7 @@ static int meta_has_ref(uint64_t abs_block, int tblk)
 	const struct lgfs2_metadata *mtype;
 	struct gfs2_buffer_head *mbh;
 	int structlen = 0, has_ref = 0;
-	uint64_t *b;
+	__be64 *b;
 	struct gfs2_dinode *dinode;
 
 	mbh = bread(&sbd, abs_block);
@@ -431,7 +429,7 @@ static int meta_has_ref(uint64_t abs_block, int tblk)
 				has_ref = 1;
 		}
 	}
-	b = (uint64_t *)(mbh->b_data + structlen);
+	b = (__be64 *)(mbh->b_data + structlen);
 	while (!has_ref && mtype && (char *)b < mbh->b_data + sbd.sd_bsize) {
 		if (be64_to_cpu(*b) == tblk)
 			has_ref = 1;
@@ -452,10 +450,11 @@ static int meta_has_ref(uint64_t abs_block, int tblk)
 static uint64_t get_ldref(uint64_t abs_ld, int offset_from_ld)
 {
 	struct gfs2_buffer_head *jbh;
-	uint64_t *b, refblk;
+	uint64_t refblk;
+	__be64 *b;
 
 	jbh = bread(&sbd, abs_ld);
-	b = (uint64_t *)(jbh->b_data + sizeof(struct gfs2_log_descriptor));
+	b = (__be64 *)(jbh->b_data + sizeof(struct gfs2_log_descriptor));
 	b += offset_from_ld - 1;
 	refblk = be64_to_cpu(*b);
 	brelse(jbh);
@@ -618,7 +617,7 @@ void dump_journal(const char *journal, int tblk)
 			eol(0);
 		} else if ((ld_blocks > 0) &&
 			   (sbd.gfs1 || block_type == GFS2_METATYPE_LB)) {
-			uint64_t *b = (uint64_t *)(buf + (sbd.gfs1 ? 0 : sizeof(struct gfs2_meta_header)));
+			__be64 *b = (__be64 *)(buf + (sbd.gfs1 ? 0 : sizeof(struct gfs2_meta_header)));
 
 			print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log descriptor"
 				   " continuation block", abs_block,
