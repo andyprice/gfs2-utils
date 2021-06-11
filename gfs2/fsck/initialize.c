@@ -1468,7 +1468,7 @@ static int reset_journal_seg_size(struct gfs2_sbd *sdp, unsigned int jsize, unsi
 static int correct_journal_seg_size(struct gfs2_sbd *sdp)
 {
 	int count;
-	struct gfs_jindex ji_0, ji_1;
+	struct gfs_jindex *ji_0, *ji_1;
 	char buf[sizeof(struct gfs_jindex)];
 	unsigned int jsize = GFS2_DEFAULT_JSIZE * 1024 * 1024;
 
@@ -1478,7 +1478,7 @@ static int correct_journal_seg_size(struct gfs2_sbd *sdp)
 			   "Aborting\n"), count);
 		return -1;
 	}
-	gfs_jindex_in(&ji_0, buf);
+	ji_0 = (struct gfs_jindex *)buf;
 
 	if (sdp->md.journals == 1) {
 		if (sdp->sd_seg_size == 0) {
@@ -1505,11 +1505,11 @@ static int correct_journal_seg_size(struct gfs2_sbd *sdp)
 			   "Aborting\n"), count);
 		return -1;
 	}
-	gfs_jindex_in(&ji_1, buf);
+	ji_1 = (struct gfs_jindex *)buf;
 
-	jsize = (ji_1.ji_addr - ji_0.ji_addr) * sdp->sd_bsize;
+	jsize = (be64_to_cpu(ji_1->ji_addr) - be64_to_cpu(ji_0->ji_addr)) * sdp->sd_bsize;
 out:
-	return reset_journal_seg_size(sdp, jsize, ji_0.ji_nsegment);
+	return reset_journal_seg_size(sdp, jsize, be32_to_cpu(ji_0->ji_nsegment));
 }
 
 /*
@@ -1521,7 +1521,7 @@ out:
 static int reconstruct_journals(struct gfs2_sbd *sdp)
 {
 	int i, count;
-	struct gfs_jindex ji;
+	struct gfs_jindex *ji;
 	char buf[sizeof(struct gfs_jindex)];
 
 	/* Ensure that sb_seg_size is valid */
@@ -1537,10 +1537,10 @@ static int reconstruct_journals(struct gfs2_sbd *sdp)
 				   sizeof(struct gfs_jindex));
 		if (count != sizeof(struct gfs_jindex))
 			return 0;
-		gfs_jindex_in(&ji, buf);
+		ji = (struct gfs_jindex *)buf;
 		if ((i % 2) == 0)
 			log_err(".");
-		if (reconstruct_single_journal(sdp, i, ji.ji_nsegment))
+		if (reconstruct_single_journal(sdp, i, be32_to_cpu(ji->ji_nsegment)))
 			return -1;
 	}
 	log_err(_("\nJournals cleared.\n"));

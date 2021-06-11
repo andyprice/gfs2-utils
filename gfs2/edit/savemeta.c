@@ -943,7 +943,7 @@ static void get_journal_inode_blocks(void)
 		struct gfs2_inode *j_inode = NULL;
 
 		if (sbd.gfs1) {
-			struct gfs_jindex ji;
+			struct gfs_jindex *ji;
 			char jbuf[sizeof(struct gfs_jindex)];
 
 			j_inode = lgfs2_gfs_inode_read(&sbd, sbd.sd_jindex_di.in_addr);
@@ -957,9 +957,9 @@ static void get_journal_inode_blocks(void)
 			inode_put(&j_inode);
 			if (!amt)
 				break;
-			gfs_jindex_in(&ji, jbuf);
-			jblock = ji.ji_addr;
-			gfs1_journal_size = (uint64_t)ji.ji_nsegment * 16;
+			ji = (struct gfs_jindex *)jbuf;
+			jblock = be64_to_cpu(ji->ji_addr);
+			gfs1_journal_size = (uint64_t)be32_to_cpu(ji->ji_nsegment) * 16;
 		} else {
 			if (journal + 3 > indirect->ii[0].dirents)
 				break;

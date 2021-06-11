@@ -752,7 +752,6 @@ int ji_update(struct gfs2_sbd *sdp)
 	char journal_name[JOURNAL_NAME_SIZE];
 	int i, error;
 	char buf[sizeof(struct gfs_jindex)];
-	struct gfs_jindex ji;
 
 	if (!ip) {
 		log_crit(_("Journal index inode not found.\n"));
@@ -778,6 +777,8 @@ int ji_update(struct gfs2_sbd *sdp)
 	memset(journal_name, 0, sizeof(*journal_name));
 	for (i = 0; i < sdp->md.journals; i++) {
 		if (sdp->gfs1) {
+			struct gfs_jindex *ji;
+
 			error = gfs2_readi(ip,
 					   buf, i * sizeof(struct gfs_jindex),
 					   sizeof(struct gfs_jindex));
@@ -788,8 +789,8 @@ int ji_update(struct gfs2_sbd *sdp)
 					" journal index file.\n"));
 				return -1;
 			}
-			gfs_jindex_in(&ji, buf);
-			sdp->md.journal[i] = lgfs2_inode_read(sdp, ji.ji_addr);
+			ji = (struct gfs_jindex *)buf;
+			sdp->md.journal[i] = lgfs2_inode_read(sdp, be64_to_cpu(ji->ji_addr));
 			if (sdp->md.journal[i] == NULL)
 				return -1;
 		} else {

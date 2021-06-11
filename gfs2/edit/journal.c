@@ -58,7 +58,6 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 
 	if (sbd.gfs1) {
 		struct gfs2_inode *jiinode;
-		struct gfs_jindex ji;
 
 		jiinode = lgfs2_inode_get(&sbd, jindex_bh);
 		if (jiinode == NULL)
@@ -67,9 +66,9 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 				   journal_num * sizeof(struct gfs_jindex),
 				   sizeof(struct gfs_jindex));
 		if (amtread) {
-			gfs_jindex_in(&ji, jbuf);
-			jblock = ji.ji_addr;
-			*j_size = (uint64_t)ji.ji_nsegment * 0x10;
+			struct gfs_jindex *ji = (struct gfs_jindex *)jbuf;
+			jblock = be64_to_cpu(ji->ji_addr);
+			*j_size = (uint64_t)be32_to_cpu(ji->ji_nsegment) * 0x10;
 		}
 		inode_put(&jiinode);
 	} else {

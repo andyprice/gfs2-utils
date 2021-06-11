@@ -22,13 +22,13 @@ static __inline__ int fs_is_jdata(struct gfs2_inode *ip)
         return ip->i_flags & GFS2_DIF_JDATA;
 }
 
-static __inline__ uint64_t *
+static __inline__ __be64 *
 gfs1_metapointer(char *buf, unsigned int height, struct metapath *mp)
 {
 	unsigned int head_size = (height > 0) ?
 		sizeof(struct gfs_indirect) : sizeof(struct gfs_dinode);
 
-	return ((uint64_t *)(buf + head_size)) + mp->mp_list[height];
+	return ((__be64 *)(buf + head_size)) + mp->mp_list[height];
 }
 
 int is_gfs_dir(struct gfs2_inode *ip)
@@ -42,7 +42,7 @@ void gfs1_lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		  unsigned int height, struct metapath *mp,
 		  int create, int *new, uint64_t *block)
 {
-	uint64_t *ptr = gfs1_metapointer(bh->b_data, height, mp);
+	__be64 *ptr = gfs1_metapointer(bh->b_data, height, mp);
 
 	if (*ptr) {
 		*block = be64_to_cpu(*ptr);
@@ -305,19 +305,6 @@ struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 	ip->i_bh = bh;
 	ip->bh_owned = 1;
 	return ip;
-}
-
-/* ------------------------------------------------------------------------ */
-/* gfs_jindex_in - read in a gfs1 jindex structure.                         */
-/* ------------------------------------------------------------------------ */
-void gfs_jindex_in(struct gfs_jindex *jindex, char *jbuf)
-{
-	struct gfs_jindex *str = (struct gfs_jindex *) jbuf;
-
-	jindex->ji_addr = be64_to_cpu(str->ji_addr);
-	jindex->ji_nsegment = be32_to_cpu(str->ji_nsegment);
-	jindex->ji_pad = be32_to_cpu(str->ji_pad);
-	memcpy(jindex->ji_reserved, str->ji_reserved, 64);
 }
 
 void lgfs2_gfs_rgrp_in(const lgfs2_rgrp_t rg, void *buf)

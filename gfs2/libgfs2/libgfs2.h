@@ -736,7 +736,6 @@ extern int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 		       unsigned int size);
 extern struct gfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp, char *buf);
 extern struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr);
-extern void gfs_jindex_in(struct gfs_jindex *jindex, char *buf);
 extern void lgfs2_gfs_rgrp_in(const lgfs2_rgrp_t rg, void *buf);
 extern void lgfs2_gfs_rgrp_out(const lgfs2_rgrp_t rg, void *buf);
 

@@ -424,15 +424,15 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 
 static void gfs_jindex_print(struct gfs_jindex *ji)
 {
-        pv(ji, ji_addr, "%"PRIu64, "0x%"PRIx64);
-        pv(ji, ji_nsegment, "%"PRIu32, "0x%"PRIx32);
-        pv(ji, ji_pad, "%"PRIu32, "0x%"PRIx32);
+	print_it("  ji_addr", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(ji->ji_addr));
+	print_it("  ji_nsegment", "%"PRIu32, "0x%"PRIx32, be32_to_cpu(ji->ji_nsegment));
+	print_it("  ji_pad", "%"PRIu32, "0x%"PRIx32, be32_to_cpu(ji->ji_pad));
 }
 
 static int print_gfs_jindex(struct gfs2_inode *dij)
 {
 	int error, start_line;
-	struct gfs_jindex ji;
+	struct gfs_jindex *ji;
 	char jbuf[sizeof(struct gfs_jindex)];
 
 	start_line = line;
@@ -444,7 +444,7 @@ static int print_gfs_jindex(struct gfs2_inode *dij)
 		error = gfs2_readi(dij, (void *)&jbuf,
 				   print_entry_ndx*sizeof(struct gfs_jindex),
 				   sizeof(struct gfs_jindex));
-		gfs_jindex_in(&ji, jbuf);
+		ji = (struct gfs_jindex *)jbuf;
 		if (!error) /* end of file */
 			break;
 		if (!termlines ||
@@ -454,13 +454,13 @@ static int print_gfs_jindex(struct gfs2_inode *dij)
 			if (edit_row[dmode] == print_entry_ndx) {
 				COLORS_HIGHLIGHT;
 				strcpy(efield, "ji_addr");
-				sprintf(estring, "%"PRIx64, ji.ji_addr);
+				sprintf(estring, "%"PRIx64, be64_to_cpu(ji->ji_addr));
 			}
 			print_gfs2("Journal #%d", print_entry_ndx);
 			eol(0);
 			if (edit_row[dmode] == print_entry_ndx)
 				COLORS_NORMAL;
-			gfs_jindex_print(&ji);
+			gfs_jindex_print(ji);
 			last_entry_onscreen[dmode] = print_entry_ndx;
 		}
 	}
