@@ -128,7 +128,7 @@ extern char generic_interrupt(const char *caller, const char *where,
                        const char *answers);
 extern char gfs2_getch(void);
 extern uint64_t find_free_blk(struct gfs2_sbd *sdp);
-extern uint64_t *get_dir_hash(struct gfs2_inode *ip);
+extern __be64 *get_dir_hash(struct gfs2_inode *ip);
 extern void delete_all_dups(struct gfs2_inode *ip);
 extern void print_pass_duration(const char *name, struct timeval *start);
 

@@ -163,7 +163,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 		brelse(bh);
 }
 
-int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
+int gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
 		unsigned int size)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -222,7 +222,7 @@ int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
 			memcpy(bh->b_data, &mh, sizeof(mh));
 		}
 
-		memcpy(bh->b_data + offset, buf + copied, amount);
+		memcpy(bh->b_data + offset, (char *)buf + copied, amount);
 		bmodified(bh);
 		if (bh != ip->i_bh)
 			brelse(bh);

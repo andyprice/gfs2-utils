@@ -732,7 +732,7 @@ extern void gfs1_lookup_block(struct gfs2_inode *ip,
 			      int create, int *new, uint64_t *block);
 extern void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			   uint64_t *dblock, uint32_t *extlen, int prealloc);
-extern int gfs1_writei(struct gfs2_inode *ip, char *buf, uint64_t offset,
+extern int gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
 		       unsigned int size);
 extern struct gfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp, char *buf);
 extern struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr);

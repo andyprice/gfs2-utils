@@ -663,7 +663,7 @@ static int u64cmp(const void *p1, const void *p2)
 	return 0;
 }
 
-static void dir_leaf_reada(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize)
+static void dir_leaf_reada(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize)
 {
 	uint64_t *t = alloca(hsize * sizeof(uint64_t));
 	uint64_t leaf_no;
@@ -692,7 +692,7 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	int lindex;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	int ref_count, orig_ref_count, orig_di_depth, orig_di_height;
-	uint64_t *tbl;
+	__be64 *tbl;
 	int chained_leaf, tbl_valid;
 
 	tbl = get_dir_hash(ip);
@@ -846,7 +846,7 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 			       struct metawalk_fxns *pass)
 {
 	struct gfs2_ea_header *ea_hdr, *ea_hdr_prev = NULL;
-	uint64_t *ea_data_ptr = NULL;
+	__be64 *ea_data_ptr = NULL;
 	int i;
 	int error = 0, err;
 	uint32_t offset = (uint32_t)sizeof(struct gfs2_meta_header);
@@ -873,7 +873,7 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 			uint32_t tot_ealen = 0;
 			struct gfs2_sbd *sdp = ip->i_sbd;
 
-			ea_data_ptr = ((uint64_t *)((char *)ea_hdr +
+			ea_data_ptr = ((__be64 *)((char *)ea_hdr +
 						    sizeof(struct gfs2_ea_header) +
 						    ((ea_hdr->ea_name_len + 7) & ~7)));
 
@@ -962,7 +962,7 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 				struct metawalk_fxns *pass)
 {
 	int error = 0, err;
-	uint64_t *ea_leaf_ptr, *end;
+	__be64 *ea_leaf_ptr, *end;
 	uint64_t block;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	int first_ea_is_bad = 0;
@@ -970,7 +970,7 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 	uint64_t offset = ip->i_sbd->gfs1 ? sizeof(struct gfs_indirect) : sizeof(struct gfs2_meta_header);
 	int leaf_pointers = 0, leaf_pointer_errors = 0;
 
-	ea_leaf_ptr = (uint64_t *)(indirect_buf->b_data + offset);
+	ea_leaf_ptr = (__be64 *)(indirect_buf->b_data + offset);
 	end = ea_leaf_ptr + ((sdp->sd_bsize - offset) / 8);
 
 	while (*ea_leaf_ptr && (ea_leaf_ptr < end)){
@@ -1112,11 +1112,12 @@ static void file_ra(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		    int head_size, int maxptrs, int h)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	uint64_t *p, sblock = 0, block;
+	uint64_t sblock = 0, block;
 	int extlen = 0;
+	__be64 *p;
 
 	if (h + 2 == ip->i_height) {
-		p = (uint64_t *)(bh->b_data + head_size);
+		p = (__be64 *)(bh->b_data + head_size);
 		if (*p && *(p + 1)) {
 			sblock = be64_to_cpu(*p);
 			p++;
@@ -1132,8 +1133,8 @@ static void file_ra(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		}
 		extlen = 0;
 	}
-	for (p = (uint64_t *)(bh->b_data + head_size);
-	     p < (uint64_t *)(bh->b_data + sdp->sd_bsize); p++) {
+	for (p = (__be64 *)(bh->b_data + head_size);
+	     p < (__be64 *)(bh->b_data + sdp->sd_bsize); p++) {
 		if (*p) {
 			if (!sblock) {
 				sblock = be64_to_cpu(*p);
@@ -1225,9 +1226,9 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 	uint32_t height = ip->i_height;
 	struct gfs2_buffer_head *metabh = ip->i_bh;
 	osi_list_t *prev_list, *cur_list, *tmp;
-	struct iptr iptr = { .ipt_ip = ip, 0};
+	struct iptr iptr = { .ipt_ip = ip, NULL, 0};
 	int h, head_size, iblk_type;
-	uint64_t *undoptr;
+	__be64 *undoptr;
 	int maxptrs;
 	int error;
 
@@ -1308,7 +1309,7 @@ error_undo: /* undo what we've done so far for this block */
 
 	log_info(_("Undoing the work we did before the error on block %"PRIu64" (0x%"PRIx64").\n"),
 	         iptr.ipt_bh->b_blocknr, iptr.ipt_bh->b_blocknr);
-	for (undoptr = (uint64_t *)(iptr_buf(iptr) + head_size);
+	for (undoptr = (__be64 *)(iptr_buf(iptr) + head_size);
 	     undoptr < iptr_ptr(iptr) && undoptr < iptr_endptr(iptr);
 	     undoptr++) {
 		uint64_t block = be64_to_cpu(*undoptr);
@@ -1398,8 +1399,8 @@ static int metawalk_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass
 {
 	int error = 0, rc = 0;
 	uint64_t block;
-	__be64 *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
-	__be64 *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->sd_bsize);
+	__be64 *ptr_start = (__be64 *)(bh->b_data + hdr_size(bh, height));
+	__be64 *ptr_end = (__be64 *)(bh->b_data + ip->i_sbd->sd_bsize);
 	__be64 *ptr;
 	uint64_t metablock = bh->b_blocknr;
 
@@ -1464,8 +1465,8 @@ static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
 			   struct gfs2_buffer_head *bh, unsigned int height,
 			   struct error_block *error_blk, int error)
 {
-	__be64 *ptr_start = (uint64_t *)(bh->b_data + hdr_size(bh, height));
-	__be64 *ptr_end = (uint64_t *)(bh->b_data + ip->i_sbd->sd_bsize);
+	__be64 *ptr_start = (__be64 *)(bh->b_data + hdr_size(bh, height));
+	__be64 *ptr_end = (__be64 *)(bh->b_data + ip->i_sbd->sd_bsize);
 	__be64 *ptr;
 	uint64_t metablock = bh->b_blocknr;
 	int rc = 0;

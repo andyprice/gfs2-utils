@@ -48,9 +48,9 @@ struct iptr {
 	unsigned ipt_off;
 };
 
-#define iptr_ptr(i) ((uint64_t *)(i.ipt_bh->b_data + i.ipt_off))
+#define iptr_ptr(i) ((__be64 *)(i.ipt_bh->b_data + i.ipt_off))
 #define iptr_block(i) be64_to_cpu(*iptr_ptr(i))
-#define iptr_endptr(i) ((uint64_t *)(iptr.ipt_bh->b_data + i.ipt_ip->i_sbd->sd_bsize))
+#define iptr_endptr(i) ((__be64 *)(iptr.ipt_bh->b_data + i.ipt_ip->i_sbd->sd_bsize))
 #define iptr_buf(i) (i.ipt_bh->b_data)
 
 /* metawalk_fxns: function pointers to check various parts of the fs
@@ -114,7 +114,7 @@ struct metawalk_fxns {
 				  struct gfs2_ea_header *ea_hdr_prev,
 				  void *private);
 	int (*check_eattr_extentry) (struct gfs2_inode *ip, int i,
-				     uint64_t *ea_data_ptr,
+				     __be64 *ea_data_ptr,
 				     struct gfs2_buffer_head *leaf_bh,
 				     uint32_t tot_ealen,
 				     struct gfs2_ea_header *ea_hdr,
@@ -123,7 +123,7 @@ struct metawalk_fxns {
 	int (*finish_eattr_indir) (struct gfs2_inode *ip, int leaf_pointers,
 				   int leaf_pointer_errors, void *private);
 	void (*big_file_msg) (struct gfs2_inode *ip, uint64_t blks_checked);
-	int (*check_hash_tbl) (struct gfs2_inode *ip, uint64_t *tbl,
+	int (*check_hash_tbl) (struct gfs2_inode *ip, __be64 *tbl,
 			       unsigned hsize, void *private);
 	int (*repair_leaf) (struct gfs2_inode *ip, uint64_t *leaf_no,
 			    int lindex, int ref_count, const char *msg);

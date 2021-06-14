@@ -43,7 +43,7 @@ struct meta_blk_ref {
 
 static int clone_data(struct gfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
-		      struct gfs2_buffer_head *bh, uint64_t *ptr);
+		      struct gfs2_buffer_head *bh, __be64 *ptr);
 
 static void log_inode_reference(struct duptree *dt, osi_list_t *tmp, int inval)
 {
@@ -85,7 +85,7 @@ static int findref_data(struct gfs2_inode *ip, uint64_t metablock,
 
 	if (block == mbr->block) {
 		mbr->metablock = bh->b_blocknr;
-		mbr->off = (ptr - (uint64_t *)bh->b_data);
+		mbr->off = (ptr - (__be64 *)bh->b_data);
 		log_debug("Duplicate data reference located on metadata "
 			  "block 0x%llx, offset 0x%x\n",
 			  (unsigned long long)mbr->metablock, mbr->off);
@@ -105,7 +105,7 @@ static void clone_data_block(struct gfs2_sbd *sdp, struct duptree *dt,
 	struct clone_target clone = {.dup_block = dt->block,};
 	struct gfs2_inode *ip;
 	struct gfs2_buffer_head *bh;
-	uint64_t *ptr;
+	__be64 *ptr;
 
 	if (!(query(_("Okay to clone data block %lld (0x%llx) for inode "
 		      "%lld (0x%llx)? (y/n) "),
@@ -125,7 +125,7 @@ static void clone_data_block(struct gfs2_sbd *sdp, struct duptree *dt,
 			bh = bread(sdp, metaref.metablock);
 		else
 			bh = ip->i_bh;
-		ptr = (uint64_t *)bh->b_data + metaref.off;
+		ptr = (__be64 *)bh->b_data + metaref.off;
 		clone_data(ip, 0, dt->block, &clone, bh, ptr);
 		if (metaref.metablock != id->block_no)
 			brelse(bh);
@@ -644,7 +644,7 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 	osi_list_t *tmp;
 	struct dup_handler dh = {0};
 	struct gfs2_buffer_head *bh;
-	uint32_t cmagic, ctype;
+	__be32 cmagic, ctype;
 	enum dup_ref_type acceptable_ref;
 	uint64_t dup_blk;
 
@@ -836,7 +836,7 @@ static int check_eattr_entry_refs(struct gfs2_inode *ip,
 }
 
 static int check_eattr_extentry_refs(struct gfs2_inode *ip, int i,
-				     uint64_t *ea_data_ptr,
+				     __be64 *ea_data_ptr,
 				     struct gfs2_buffer_head *leaf_bh,
 				     uint32_t tot_ealen,
 				     struct gfs2_ea_header *ea_hdr,

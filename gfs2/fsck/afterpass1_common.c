@@ -279,7 +279,7 @@ int delete_eattr_entry(struct gfs2_inode *ip, struct gfs2_buffer_head *leaf_bh,
 	return 0;
 }
 
-int delete_eattr_extentry(struct gfs2_inode *ip, int i, uint64_t *ea_data_ptr,
+int delete_eattr_extentry(struct gfs2_inode *ip, int i, __be64 *ea_data_ptr,
 			  struct gfs2_buffer_head *leaf_bh, uint32_t tot_ealen,
 			  struct gfs2_ea_header *ea_hdr,
 			  struct gfs2_ea_header *ea_hdr_prev, void *private)

@@ -60,7 +60,7 @@ static int check_eattr_entries(struct gfs2_inode *ip,
 			       struct gfs2_ea_header *ea_hdr_prev,
 			       void *private);
 static int check_extended_leaf_eattr(struct gfs2_inode *ip, int i,
-				     uint64_t *data_ptr,
+				     __be64 *data_ptr,
 				     struct gfs2_buffer_head *leaf_bh,
 				     uint32_t tot_ealen,
 				     struct gfs2_ea_header *ea_hdr,
@@ -817,7 +817,7 @@ static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
  * Returns: 0 if correct[able], -1 if removal is needed
  */
 static int check_extended_leaf_eattr(struct gfs2_inode *ip, int i,
-				     uint64_t *data_ptr,
+				     __be64 *data_ptr,
 				     struct gfs2_buffer_head *leaf_bh,
 				     uint32_t tot_ealen,
 				     struct gfs2_ea_header *ea_hdr,
@@ -1705,7 +1705,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 
 	for (i = 0; i < n; i++) {
 		int is_inode;
-		uint32_t check_magic;
+		__be32 check_magic;
 
 		block = ibuf[i];
 

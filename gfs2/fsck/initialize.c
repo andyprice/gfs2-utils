@@ -788,7 +788,7 @@ static int fetch_rgrps(struct gfs2_sbd *sdp)
  */
 static int init_system_inodes(struct gfs2_sbd *sdp)
 {
-	uint64_t inumbuf = 0;
+	__be64 inumbuf = 0;
 	char *buf;
 	int err;
 
@@ -1143,8 +1143,6 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
 	uint64_t blk, max_rg_size, rb_addr;
 	struct gfs2_buffer_head *bh, *rb_bh;
 	uint32_t bsize, bsize2;
-	uint32_t chk;
-	char *p;
 	int found_rg;
 
 	sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
@@ -1154,14 +1152,13 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
 	for (blk = startblock; blk < startblock + max_rg_size; blk++) {
 		bh = bread(sdp, blk);
 		found_rg = 0;
-		for (bsize = 0; bsize < GFS2_DEFAULT_BSIZE;
-		     bsize += GFS2_BASIC_BLOCK) {
-			p = bh->b_data + bsize;
-			chk = ((struct gfs2_meta_header *)p)->mh_magic;
-			if (be32_to_cpu(chk) != GFS2_MAGIC)
+		for (bsize = 0; bsize < GFS2_DEFAULT_BSIZE; bsize += GFS2_BASIC_BLOCK) {
+			struct gfs2_meta_header *mhp;
+
+			mhp = (struct gfs2_meta_header *)(bh->b_data + bsize);
+			if (be32_to_cpu(mhp->mh_magic) != GFS2_MAGIC)
 				continue;
-			chk = ((struct gfs2_meta_header *)p)->mh_type;
-			if (be32_to_cpu(chk) == GFS2_METATYPE_RG) {
+			if (be32_to_cpu(mhp->mh_type) == GFS2_METATYPE_RG) {
 				found_rg = 1;
 				break;
 			}
@@ -1382,23 +1379,6 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-static void gfs_log_header_out(struct gfs_log_header *head, char *buf)
-{
-        struct gfs_log_header *str = (struct gfs_log_header *) buf;
-
-	str->lh_header.mh_magic = cpu_to_be32(head->lh_header.mh_magic);
-	str->lh_header.mh_type = cpu_to_be32(head->lh_header.mh_type);
-	str->lh_header.mh_format = cpu_to_be32(head->lh_header.mh_format);
-	str->lh_header.__pad0 = cpu_to_be32(head->lh_header.__pad0);
-
-	str->lh_flags = cpu_to_be32(head->lh_flags);
-	str->lh_pad = cpu_to_be32(head->lh_pad);
-	str->lh_first = cpu_to_be64(head->lh_first);
-	str->lh_sequence = cpu_to_be64(head->lh_sequence);
-	str->lh_tail = cpu_to_be64(head->lh_tail);
-	str->lh_last_dump = cpu_to_be64(head->lh_last_dump);
-}
-
 /*
  * reconstruct_single_journal - write a fresh GFS1 journal
  * @sdp: superblock
@@ -1413,31 +1393,33 @@ static void gfs_log_header_out(struct gfs_log_header *head, char *buf)
 static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
 				      uint32_t ji_nsegment)
 {
-	struct gfs_log_header lh;
-	uint32_t seg, sequence;
+	uint64_t first = sdp->md.journal[jnum]->i_num.in_addr;
 	struct gfs2_buffer_head *bh;
+	uint64_t sequence;
 
 	srandom(time(NULL));
 	sequence = ji_nsegment / (RAND_MAX + 1.0) * random();
 
 	log_info(_("Clearing journal %d\n"), jnum);
 
-	for (seg = 0; seg < ji_nsegment; seg++){
-		memset(&lh, 0, sizeof(struct gfs_log_header));
+	for (int seg = 0; seg < ji_nsegment; seg++, first += sdp->sd_seg_size){
+		struct gfs_log_header *lh;
+		char *p;
 
-		lh.lh_header.mh_magic = GFS2_MAGIC;
-		lh.lh_header.mh_type = GFS2_METATYPE_LH;
-		lh.lh_header.mh_format = GFS2_FORMAT_LH;
-		lh.lh_header.__pad0 = 0x101674; /* mh_generation */
-		lh.lh_flags = GFS2_LOG_HEAD_UNMOUNT;
-		lh.lh_first = sdp->md.journal[jnum]->i_num.in_addr + (seg * sdp->sd_seg_size);
-		lh.lh_sequence = sequence;
+		bh = bget(sdp, first); /* Zeroes the block */
+		lh = (struct gfs_log_header *)bh->b_data;
 
-		bh = bget(sdp, lh.lh_first * sdp->sd_bsize);
-		memset(bh->b_data, 0, sdp->sd_bsize);
-		gfs_log_header_out(&lh, bh->b_data);
-		gfs_log_header_out(&lh, bh->b_data + GFS2_BASIC_BLOCK -
-				   sizeof(struct gfs_log_header));
+		lh->lh_header.mh_magic = cpu_to_be32(GFS2_MAGIC);
+		lh->lh_header.mh_type = cpu_to_be32(GFS2_METATYPE_LH);
+		lh->lh_header.mh_format = cpu_to_be32(GFS2_FORMAT_LH);
+		lh->lh_header.__pad0 = cpu_to_be64(0x101674); /* mh_generation */
+		lh->lh_flags = cpu_to_be32(GFS2_LOG_HEAD_UNMOUNT);
+		lh->lh_first = cpu_to_be64(first);
+		lh->lh_sequence = cpu_to_be64(sequence);
+
+		p = bh->b_data + GFS2_BASIC_BLOCK - sizeof(struct gfs_log_header);
+		memcpy(p, bh->b_data, sizeof(struct gfs_log_header));
+		bmodified(bh);
 		brelse(bh);
 
 		if (++sequence == ji_nsegment)

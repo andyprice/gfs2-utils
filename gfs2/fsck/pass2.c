@@ -300,7 +300,7 @@ static int wrong_leaf(struct gfs2_inode *ip, struct lgfs2_inum *entry,
 	struct gfs2_buffer_head *dest_lbh;
 	uint64_t planned_leaf, real_leaf;
 	int li, dest_ref, error;
-	uint64_t *tbl;
+	__be64 *tbl;
 	int di_depth;
 
 	log_err(_("Directory entry '%s' at block %"PRIu64" (0x%"PRIx64") is on the wrong leaf block.\n"),
@@ -938,12 +938,11 @@ static int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
 	struct gfs2_dirent *dent;
 	int count, i;
 	int factor = 0, pad_size;
-	uint64_t *cpyptr;
-	char *padbuf;
+	__be64 *padbuf, *cpyptr;
 	int divisor = num_copies;
 	int end_lindex = start_lindex + num_copies;
 
-	padbuf = malloc(num_copies * sizeof(uint64_t));
+	padbuf = calloc(num_copies, sizeof(__be64));
 	/* calculate the depth needed for the new leaf */
 	while (divisor > 1) {
 		factor++;
@@ -992,7 +991,7 @@ static int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
 	brelse(nbh);
 
 	/* pad the hash table with the new leaf block */
-	cpyptr = (uint64_t *)padbuf;
+	cpyptr = padbuf;
 	for (i = start_lindex; i < end_lindex; i++) {
 		*cpyptr = cpu_to_be64(*bn);
 		cpyptr++;
@@ -1024,7 +1023,7 @@ static int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
  * @lindex: index location within the hash table to pad
  * @len: number of pointers to be padded
  */
-static void pad_with_leafblks(struct gfs2_inode *ip, uint64_t *tbl,
+static void pad_with_leafblks(struct gfs2_inode *ip, __be64 *tbl,
 			      int lindex, int len)
 {
 	int new_len, i;
@@ -1075,7 +1074,7 @@ static void pad_with_leafblks(struct gfs2_inode *ip, uint64_t *tbl,
  * directory entries to lost+found so we don't overwrite the good leaf. Then
  * we need to pad the gap we leave.
  */
-static int lost_leaf(struct gfs2_inode *ip, uint64_t *tbl, uint64_t leafno,
+static int lost_leaf(struct gfs2_inode *ip, __be64 *tbl, uint64_t leafno,
 		     int ref_count, int lindex, struct gfs2_buffer_head *bh)
 {
 	char *filename;
@@ -1292,7 +1291,7 @@ static struct metawalk_fxns leafck_fxns = {
  *
  * Returns: 0 - no changes made, or X if changes were made
  */
-static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
+static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 			 uint64_t leafblk, int lindex, uint32_t proper_start,
 			 int len, int *proper_len, int factor)
 {
@@ -1471,7 +1470,7 @@ static int fix_hashtable(struct gfs2_inode *ip, uint64_t *tbl, unsigned hsize,
 }
 
 /* check_hash_tbl_dups - check for the same leaf in multiple places */
-static int check_hash_tbl_dups(struct gfs2_inode *ip, uint64_t *tbl,
+static int check_hash_tbl_dups(struct gfs2_inode *ip, __be64 *tbl,
 			       unsigned hsize, int lindex, int len)
 {
 	int l, len2;
@@ -1590,7 +1589,7 @@ static int check_hash_tbl_dups(struct gfs2_inode *ip, uint64_t *tbl,
  *       we may need to reference leaf blocks to fix it, which means we need
  *       to check and/or fix a leaf block along the way.
  */
-static int check_hash_tbl(struct gfs2_inode *ip, uint64_t *tbl,
+static int check_hash_tbl(struct gfs2_inode *ip, __be64 *tbl,
 			  unsigned hsize, void *private)
 {
 	int error = 0;

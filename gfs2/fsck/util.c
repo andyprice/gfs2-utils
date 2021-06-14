@@ -575,11 +575,11 @@ uint64_t find_free_blk(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-uint64_t *get_dir_hash(struct gfs2_inode *ip)
+__be64 *get_dir_hash(struct gfs2_inode *ip)
 {
 	unsigned hsize = (1 << ip->i_depth) * sizeof(uint64_t);
 	int ret;
-	uint64_t *tbl = malloc(hsize);
+	__be64 *tbl = malloc(hsize);
 
 	if (tbl == NULL)
 		return NULL;

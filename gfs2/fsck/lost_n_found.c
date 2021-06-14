@@ -172,7 +172,7 @@ void make_sure_lf_exists(struct gfs2_inode *ip)
  */
 int add_inode_to_lf(struct gfs2_inode *ip){
 	char tmp_name[256];
-	__be32 inode_type;
+	unsigned inode_type;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_inum no;
 	int err = 0;

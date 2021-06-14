@@ -138,7 +138,7 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 	gfs2_replay_incr_blk(ip, &start);
 
 	for (; blks; gfs2_replay_incr_blk(ip, &start), blks--) {
-		uint32_t check_magic;
+		struct gfs2_meta_header *mhp;
 
 		sd_found_metablocks++;
 
@@ -162,10 +162,8 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 		}
 		memcpy(bh_ip->b_data, bh_log->b_data, sdp->sd_bsize);
 
-		check_magic = ((struct gfs2_meta_header *)
-			       (bh_ip->b_data))->mh_magic;
-		check_magic = be32_to_cpu(check_magic);
-		if (check_magic != GFS2_MAGIC) {
+		mhp = (struct gfs2_meta_header *)bh_ip->b_data;
+		if (be32_to_cpu(mhp->mh_magic) != GFS2_MAGIC) {
 			log_err(_("Journal corruption detected at block #"
 				  "%lld (0x%llx) for journal+0x%x.\n"),
 				(unsigned long long)blkno, (unsigned long long)blkno,
@@ -322,15 +320,13 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 	offset &= ~(sizeof(__be64) - 1);
 
 	while (start != end) {
-		uint32_t check_magic;
+		struct gfs2_meta_header *mhp;
 
 		error = gfs2_replay_read_block(ip, start, &bh);
 		if (error)
 			return error;
-		check_magic = ((struct gfs2_meta_header *)
-			       (bh->b_data))->mh_magic;
-		check_magic = be32_to_cpu(check_magic);
-		if (check_magic != GFS2_MAGIC) {
+		mhp = (struct gfs2_meta_header *)bh->b_data;
+		if (be32_to_cpu(mhp->mh_magic) != GFS2_MAGIC) {
 			bmodified(bh);
 			brelse(bh);
 			return -EIO;
