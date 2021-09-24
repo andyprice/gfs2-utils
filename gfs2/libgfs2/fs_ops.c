@@ -93,21 +93,16 @@ void inode_put(struct gfs2_inode **ip_in)
 	uint64_t block = ip->i_num.in_addr;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 
-	if (ip->i_bh->b_modified) {
-		lgfs2_dinode_out(ip, ip->i_bh->b_data);
-		if (!ip->bh_owned && is_system_inode(sdp, block))
-			fprintf(stderr, "Warning: Change made to inode "
-				"were discarded.\n");
-		/* This is for debugging only: a convenient place to set
-		   a breakpoint. This means a system inode was modified but
-		   not written.  That's not fatal: some places like
-		   adjust_inode in gfs2_convert will do this on purpose.
-		   It can also point out a coding problem, but we don't
-		   want to raise alarm in the users either. */
+	if (ip->i_bh != NULL) {
+		if (ip->i_bh->b_modified) {
+			lgfs2_dinode_out(ip, ip->i_bh->b_data);
+			if (!ip->bh_owned && is_system_inode(sdp, block))
+				fprintf(stderr, "Warning: Changes made to inode were discarded.\n");
+		}
+		if (ip->bh_owned)
+			brelse(ip->i_bh);
+		ip->i_bh = NULL;
 	}
-	if (ip->bh_owned)
-		brelse(ip->i_bh);
-	ip->i_bh = NULL;
 	free(ip);
 	*ip_in = NULL; /* make sure the memory isn't accessed again */
 }
