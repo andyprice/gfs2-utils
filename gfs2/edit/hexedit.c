@@ -624,12 +624,15 @@ static int hexdump(uint64_t startaddr, uint64_t len, int trunc_zeros,
 		}
 		if (m && cursor_line) {
 			const uint32_t block_type = m->mh_type;
+			int isdir;
+
+			isdir = ((block_type == GFS2_METATYPE_DI) &&
+			         (((struct gfs2_dinode*)bh->b_data)->di_height ||
+				  S_ISDIR(be32_to_cpu(di->di_mode))));
 
 			if (block_type == GFS2_METATYPE_IN ||
-			    block_type == GFS2_METATYPE_LD ||
-			    ((block_type == GFS2_METATYPE_DI) &&
-			     ((struct gfs2_dinode*)bh->b_data)->di_height) ||
-			     S_ISDIR(be32_to_cpu(di->di_mode))) {
+			    block_type == GFS2_METATYPE_LD || isdir) {
+
 				ptroffset = edit_row[dmode] * 16 +
 					edit_col[dmode];
 
