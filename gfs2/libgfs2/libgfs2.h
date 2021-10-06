@@ -325,10 +325,13 @@ struct gfs2_sbd {
 	uint32_t sd_fs_format;
 	uint32_t sd_multihost_format;
 	uint32_t sd_flags; /* gfs1 */
-	struct lgfs2_inum sd_meta_dir;
+	/* gfs1's sb_jindex_di is gfs2's sb_master_dir */
+	union {
+		struct lgfs2_inum sd_meta_dir;
+		struct lgfs2_inum sd_jindex_di;  /* gfs1 */
+	};
 	struct lgfs2_inum sd_root_dir;
 	struct lgfs2_inum sd_rindex_di;  /* gfs1 */
-	struct lgfs2_inum sd_jindex_di;  /* gfs1 */
 	struct lgfs2_inum sd_quota_di;   /* gfs1 */
 	struct lgfs2_inum sd_license_di; /* gfs1 */
 	uint32_t sd_bsize_shift;

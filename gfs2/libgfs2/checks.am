@@ -7,7 +7,7 @@ check_libgfs2_SOURCES = \
 	rgrp.c check_rgrp.c \
 	crc32c.c \
 	gfs2_disk_hash.c \
-	ondisk.c \
+	ondisk.c check_ondisk.c \
 	buf.c \
 	device_geometry.c \
 	fs_ops.c \
