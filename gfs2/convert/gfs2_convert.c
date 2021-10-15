@@ -867,6 +867,7 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 		log_crit(_("Error reading inode: %s\n"), strerror(errno));
 		return -1;
 	}
+	inode->i_bh = bh;
 
 	inode_was_gfs1 = (inode->i_num.in_formal_ino == inode->i_num.in_addr);
 	/* Fix the inode number: */
