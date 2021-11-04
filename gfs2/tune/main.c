@@ -65,6 +65,7 @@ static void version(void)
 int main(int argc, char **argv)
 {
 	int c, status;
+	int flags = O_RDWR | O_EXCL;
 
 	memset(tfs, 0, sizeof(struct tunegfs2));
 	while((c = getopt(argc, argv, "hL:U:lo:Vr:")) != -1) {
@@ -82,6 +83,7 @@ int main(int argc, char **argv)
 			break;
 		case 'l':
 			tfs->opt_list = 1;
+			flags = O_RDONLY;
 			break;
 		case 'o':
 			parse_mount_options(optarg);
@@ -113,11 +115,11 @@ int main(int argc, char **argv)
 	}
 
 	tfs->devicename = argv[optind];
-	tfs->fd = open(tfs->devicename, O_RDWR); 
+	tfs->fd = open(tfs->devicename, flags);
 
 	if (tfs->fd < 0) {
-		fprintf(stderr, _("Unable to open device %s\n"),
-				tfs->devicename);
+		fprintf(stderr, _("Unable to open device %s: %s\n"),
+				tfs->devicename, strerror(errno));
 		return EX_IOERR;
 	}
 
@@ -160,10 +162,8 @@ int main(int argc, char **argv)
 			goto out;
 	}
 
-	if (tfs->opt_list) {
-		version();
+	if (tfs->opt_list)
 		print_super(tfs);
-	}
 
 	close(tfs->fd);
 out:

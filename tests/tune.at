@@ -15,3 +15,33 @@ AT_CHECK([$GFS_MKFS -p lock_nolock -o format=1801 $GFS_TGT], 0, [ignore], [ignor
 AT_CHECK([tunegfs2 -r 1802 $GFS_TGT], 0, [ignore], [ignore])
 AT_CHECK([fsck.gfs2 -n $GFS_TGT], 0, [ignore], [ignore])
 AT_CLEANUP
+
+AT_SETUP([Handle bad fs])
+AT_KEYWORDS(tunegfs2 tune)
+AT_CHECK([tunegfs2 -l /dev/null], 74, [ignore], [Device does not contain a GFS or GFS2 file system
+])
+AT_CHECK([tunegfs2 -l /dev/zero], 74, [ignore], [Device does not contain a GFS or GFS2 file system
+])
+AT_CLEANUP
+
+AT_SETUP([Expected output])
+AT_KEYWORDS(tunegfs2 tune)
+AT_CHECK([echo -n "File system volume name: cluster:fsname
+File system UUID: e90815fc-087b-460c-b8a5-8edc8a2ed691
+File system magic number: 0x1161970
+File system format version: 1802
+Block size: 4096
+Block shift: 12
+Root inode: 16709
+Master inode: 16437
+Lock protocol: lock_nolock
+Lock table: cluster:fsname
+" > expout], 0, [ignore], [ignore])
+# Create the fs without alignment so that we can predict the root inode address
+AT_CHECK([$GFS_MKFS -p lock_nolock -t cluster:fsname -o align=0 $GFS_TGT], 0, [ignore], [ignore])
+# Set a known UUID to ease comparison
+AT_CHECK([tunegfs2 -U e90815fc-087b-460c-b8a5-8edc8a2ed691 $GFS_TGT], 0, [ignore], [ignore])
+# Check tunegfs2 set the UUID correctly with gfs2_edit
+AT_CHECK([gfs2_edit -p sb field sb_uuid $GFS_TGT | tr -d '\n'], 0, [e90815fc-087b-460c-b8a5-8edc8a2ed691], [ignore])
+AT_CHECK([tunegfs2 -l $GFS_TGT], 0, [expout], [stderr])
+AT_CLEANUP
