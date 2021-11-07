@@ -221,10 +221,10 @@ static void gfs2instr(const char *s1, const char *s2)
 {
 	COLORS_HIGHLIGHT;
 	move(line,0);
-	printw(s1);
+	printw("%s", s1);
 	COLORS_NORMAL;
 	move(line,17);
-	printw(s2);
+	printw("%s", s2);
 	line++;
 }
 
