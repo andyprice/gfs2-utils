@@ -32,8 +32,8 @@ File system magic number: 0x1161970
 File system format version: 1802
 Block size: 4096
 Block shift: 12
-Root inode: 16709
-Master inode: 16437
+Root inode: 33127
+Master inode: 32854
 Lock protocol: lock_nolock
 Lock table: cluster:fsname
 " > expout], 0, [ignore], [ignore])

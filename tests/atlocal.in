@@ -1,5 +1,5 @@
 GFS_TGT="$abs_builddir/testvol"
-GFS_TGT_SZ=10
+GFS_TGT_SZ=20
 GFS_MKFS="mkfs.gfs2 -O -D"
 
 gfs_max_blocks()
