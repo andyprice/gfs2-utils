@@ -754,7 +754,6 @@ static void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree, i
 {
 	struct device *dev;
 	struct rgrp_tree *rl, *rlast = NULL;
-	struct osi_node *n, *next = NULL;
 	unsigned int rgrp = 0, nrgrp, rglength;
 	uint64_t rgaddr;
 
@@ -771,20 +770,11 @@ static void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree, i
 		uint64_t old_length, new_chunk;
 		unsigned new_rgrps;
 
-		printf("Existing resource groups:\n");
-		for (rgrp = 0, n = osi_first(rgtree); n; n = next, rgrp++) {
-			next = osi_next(n);
-			rl = (struct rgrp_tree *)n;
+		for (struct osi_node *n = osi_first(rgtree); n; n = osi_next(n))
+			rlast = (struct rgrp_tree *)n;
 
-			printf("%d: start: %" PRIu64 " (0x%"
-				 PRIx64 "), length = %"PRIu64" (0x%"
-				 PRIx64 ")\n", rgrp + 1, rl->start, rl->start,
-				 rl->length, rl->length);
-			rlast = rl;
-		}
-		rlast->start = rlast->rt_addr;
 		rglength = rgrp_size(rlast);
-		rlast->length = rglength;
+		rlast->rt_skip = rglength;
 		old_length = rlast->rt_addr + rglength;
 		new_chunk = dev->length - old_length;
 		new_rgrps = new_chunk / rglength;
@@ -795,20 +785,15 @@ static void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree, i
 		printf("\nNew resource groups:\n");
 	for (; rgrp < nrgrp; rgrp++) {
 		if (rgrp) {
-			rgaddr = rlast->start + rlast->length;
+			rgaddr = rlast->rt_addr + rlast->rt_skip;
 			rl = rgrp_insert(rgtree, rgaddr);
-			rl->length = rglength;
+			rl->rt_skip = rglength;
 		} else {
 			rgaddr = LGFS2_SB_ADDR(sdp) + 1;
 			rl = rgrp_insert(rgtree, rgaddr);
-			rl->length = dev->length -
+			rl->rt_skip = dev->length -
 				(nrgrp - 1) * (dev->length / nrgrp);
 		}
-		rl->start = rgaddr;
-		/* printf("%d: start: %" PRIu64 " (0x%"
-			 PRIx64 "), length = %"PRIu64" (0x%"
-			 PRIx64 ")\n", rgrp + 1, rl->start, rl->start,
-			 rl->length, rl->length);*/
 		rlast = rl;
 	}
 
@@ -825,11 +810,10 @@ static int calc_rgrps(struct gfs2_sbd *sdp)
 		next = osi_next(n);
 		rl = (struct rgrp_tree *)n;
 
-		bitblocks = rgblocks2bitblocks(sdp->sd_bsize, rl->length, &rgblocks);
+		bitblocks = rgblocks2bitblocks(sdp->sd_bsize, rl->rt_skip, &rgblocks);
 
-		rl->rt_addr = rl->start;
 		rl->rt_length = bitblocks;
-		rl->rt_data0 = rl->start + bitblocks;
+		rl->rt_data0 = rl->rt_addr + bitblocks;
 		rl->rt_data = rgblocks;
 		rl->rt_bitbytes = rgblocks / GFS2_NBBY;
 		rl->rt_free = rgblocks;
@@ -970,8 +954,6 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
 			fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
 			exit(-1);
 		}
-		exp->start = rgd->start;
-		exp->length = rgd->length;
 		exp->rt_data0 = rgd->rt_data0;
 		exp->rt_data = rgd->rt_data;
 		exp->rt_length = rgd->rt_length;

@@ -224,29 +224,26 @@ int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 			*ok = 0;
 			if (prev_rgd == NULL)
 				continue;
-			addr = prev_rgd->rt_addr + prev_rgd->length;
+			addr = prev_rgd->rt_data0 + prev_rgd->rt_data;
 		}
 		rgd = rgrp_insert(&sdp->rgtree, addr);
 		rgd->rt_length = be32_to_cpu(ri.ri_length);
 		rgd->rt_data0 = be64_to_cpu(ri.ri_data0);
 		rgd->rt_data = be32_to_cpu(ri.ri_data);
 		rgd->rt_bitbytes = be32_to_cpu(ri.ri_bitbytes);
-		rgd->start = addr;
 		if (prev_rgd) {
 			/* If rg addresses go backwards, it's not sane
 			   (or it's converted from gfs1). */
 			if (!sdp->gfs1) {
-				if (prev_rgd->start >= rgd->start)
+				if (prev_rgd->rt_addr >= rgd->rt_addr)
 					*ok = 0;
 				else if (!rgd_seems_ok(sdp, rgd))
 					*ok = 0;
 				else if (*ok && rg > 2 && prev_length &&
-				    prev_length != rgd->start -
-				    prev_rgd->start)
+				    prev_length != rgd->rt_addr - prev_rgd->rt_addr)
 					*ok = good_on_disk(sdp, rgd);
 			}
-			prev_length = rgd->start - prev_rgd->start;
-			prev_rgd->length = rgrp_size(prev_rgd);
+			prev_length = rgd->rt_addr - prev_rgd->rt_addr;
 		}
 
 		if(gfs2_compute_bitstructs(sdp->sd_bsize, rgd))
@@ -255,8 +252,6 @@ int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 		(*rgcount)++;
 		prev_rgd = rgd;
 	}
-	if (prev_rgd)
-		prev_rgd->length = rgrp_size(prev_rgd);
 	if (*rgcount == 0)
 		return -1;
 	return 0;

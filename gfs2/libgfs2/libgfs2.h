@@ -175,8 +175,6 @@ typedef struct _lgfs2_rgrps *lgfs2_rgrps_t;
 
 struct rgrp_tree {
 	struct osi_node node;
-	uint64_t start;	   /* The offset of the beginning of this resource group */
-	uint64_t length;	/* The length of this resource group */
 	struct gfs2_bitmap *bits;
 	lgfs2_rgrps_t rgrps;
 
