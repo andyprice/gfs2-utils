@@ -376,7 +376,6 @@ struct gfs2_sbd {
 
 	uint64_t orig_rgrps;
 	uint64_t rgrps;
-	uint64_t new_rgrps;
 	struct osi_root rgtree;
 	struct osi_root rgcalc;
 

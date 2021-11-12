@@ -758,7 +758,6 @@ static void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree, i
 	unsigned int rgrp = 0, nrgrp, rglength;
 	uint64_t rgaddr;
 
-	sdp->new_rgrps = 0;
 	dev = &sdp->device;
 
 	/* If this is a new file system, compute the length and number */
@@ -768,9 +767,9 @@ static void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree, i
 		dev->length -= LGFS2_SB_ADDR(sdp) + 1;
 		nrgrp = how_many_rgrps(sdp, dev, rgsize_specified);
 		rglength = dev->length / nrgrp;
-		sdp->new_rgrps = nrgrp;
 	} else {
 		uint64_t old_length, new_chunk;
+		unsigned new_rgrps;
 
 		printf("Existing resource groups:\n");
 		for (rgrp = 0, n = osi_first(rgtree); n; n = next, rgrp++) {
@@ -788,8 +787,8 @@ static void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree, i
 		rlast->length = rglength;
 		old_length = rlast->rt_addr + rglength;
 		new_chunk = dev->length - old_length;
-		sdp->new_rgrps = new_chunk / rglength;
-		nrgrp = rgrp + sdp->new_rgrps;
+		new_rgrps = new_chunk / rglength;
+		nrgrp = rgrp + new_rgrps;
 	}
 
 	if (rgrp < nrgrp)
