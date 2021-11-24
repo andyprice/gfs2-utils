@@ -706,11 +706,10 @@ out:
  *
  * Returns: the number of RGs
  */
-static uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgsize_specified)
+static uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev)
 {
 	uint64_t nrgrp;
 	uint32_t rgblocks1, rgblocksn, bitblocks1, bitblocksn;
-	int bitmap_overflow = 0;
 
 	while (1) {
 		nrgrp = DIV_RU(dev->length, (sdp->rgsize << 20) / sdp->sd_bsize);
@@ -720,25 +719,16 @@ static uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgs
 		/* calculate size of the first rgrp */
 		bitblocks1 = rgblocks2bitblocks(sdp->sd_bsize, dev->length - (nrgrp - 1) * (dev->length / nrgrp),
 		                                &rgblocks1);
-		if (bitblocks1 > 2149 || bitblocksn > 2149) {
-			bitmap_overflow = 1;
-			if (sdp->rgsize <= GFS2_DEFAULT_RGSIZE) {
-				fprintf(stderr, "error: It is not possible "
-					"to use the entire device with "
-					"block size %u bytes.\n",
-					sdp->sd_bsize);
-				exit(-1);
-			}
-			sdp->rgsize -= GFS2_DEFAULT_RGSIZE; /* smaller rgs */
-			continue;
-		}
-		if (bitmap_overflow ||
-		    rgsize_specified || /* If user specified an rg size or */
-		    nrgrp <= GFS2_EXCESSIVE_RGS || /* not an excessive # or  */
-		    sdp->rgsize >= 2048)   /* we reached the max rg size */
+		if (bitblocks1 <= 2149 && bitblocksn <= 2149)
 			break;
 
-		sdp->rgsize += GFS2_DEFAULT_RGSIZE; /* bigger rgs */
+		sdp->rgsize -= GFS2_DEFAULT_RGSIZE; /* smaller rgs */
+
+		if (sdp->rgsize < GFS2_DEFAULT_RGSIZE) {
+			log_err(_("Cannot use the entire device with block size %u bytes.\n"),
+			        sdp->sd_bsize);
+			return 0;
+		}
 	}
 
 	log_debug("  rg sz = %"PRIu32"\n  nrgrp = %"PRIu64"\n", sdp->rgsize,
@@ -761,7 +751,9 @@ static struct osi_root compute_rgrp_layout(struct gfs2_sbd *sdp)
 	dev = &sdp->device;
 
 	dev->length -= LGFS2_SB_ADDR(sdp) + 1;
-	nrgrp = how_many_rgrps(sdp, dev, 1);
+	nrgrp = how_many_rgrps(sdp, dev);
+	if (nrgrp == 0)
+		return (struct osi_root){NULL};
 	rglength = dev->length / nrgrp;
 
 	for (; rgrp < nrgrp; rgrp++) {
@@ -841,7 +833,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 	/* Try all possible rgrp sizes: 2048, 1024, 512, 256, 128, 64, 32 */
 	for (sdp->rgsize = GFS2_DEFAULT_RGSIZE; sdp->rgsize >= 32;
 	     sdp->rgsize /= 2) {
-		num_rgrps = how_many_rgrps(sdp, &sdp->device, 1);
+		num_rgrps = how_many_rgrps(sdp, &sdp->device);
 		if (num_rgrps == *num_rgs) {
 			log_info(_("rgsize must be: %lld (0x%llx)\n"),
 				 (unsigned long long)sdp->rgsize,
