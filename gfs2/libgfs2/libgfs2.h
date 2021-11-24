@@ -375,7 +375,6 @@ struct gfs2_sbd {
 	uint64_t orig_rgrps;
 	uint64_t rgrps;
 	struct osi_root rgtree;
-	struct osi_root rgcalc;
 
 	struct gfs2_inode *master_dir;
 	struct master_dir md;

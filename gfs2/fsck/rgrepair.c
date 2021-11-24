@@ -18,6 +18,7 @@
 
 static int rindex_modified = 0;
 static struct special_blocks false_rgrps;
+static struct osi_root rgcalc;
 
 #define BAD_RG_PERCENT_TOLERANCE 11
 #define AWAY_FROM_BITMAPS 0x1000
@@ -544,7 +545,7 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 		return -1;
 	}
 
-	sdp->rgcalc.osi_node = NULL;
+	rgcalc.osi_node = NULL;
 	grow_segments = find_shortest_rgdist(sdp, &rg_dist[0], &rg_dcnt[0]);
 	for (i = 0; i < grow_segments; i++)
 		log_info(_("Segment %d: rgrp distance: 0x%llx, count: %d\n"),
@@ -563,7 +564,7 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 		rg_was_fnd = (!gfs2_check_meta(bh->b_data, GFS2_METATYPE_RG));
 		brelse(bh);
 		/* Allocate a new RG and index. */
-		calc_rgd = rgrp_insert(&sdp->rgcalc, blk);
+		calc_rgd = rgrp_insert(&rgcalc, blk);
 		if (!calc_rgd) {
 			log_crit( _("Can't allocate memory for rgrp repair.\n"));
 			goto out;
@@ -679,7 +680,7 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
         /* Now dump out the information (if verbose mode) */      
         /* ---------------------------------------------- */
         log_debug( _("rindex rebuilt as follows:\n"));
-	for (n = osi_first(&sdp->rgcalc), rgi = 0; n; n = next, rgi++) {
+	for (n = osi_first(&rgcalc), rgi = 0; n; n = next, rgi++) {
 		next = osi_next(n);
 		calc_rgd = (struct rgrp_tree *)n;
                 log_debug("%d: 0x%"PRIx64"/%"PRIx32"/0x%"PRIx64"/0x%"PRIx32"/0x%"PRIx32"\n",
@@ -780,7 +781,7 @@ static int calc_rgrps(struct gfs2_sbd *sdp)
 	struct rgrp_tree *rl;
 	uint32_t rgblocks, bitblocks;
 
-	for (n = osi_first(&sdp->rgcalc); n; n = next) {
+	for (n = osi_first(&rgcalc); n; n = next) {
 		next = osi_next(n);
 		rl = (struct rgrp_tree *)n;
 
@@ -827,7 +828,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 	/* ----------------------------------------------------------------- */
 	*num_rgs = sdp->md.riinode->i_size / sizeof(struct gfs2_rindex);
 
-	sdp->rgcalc.osi_node = NULL;
+	rgcalc.osi_node = NULL;
 	fix_device_geometry(sdp);
 
 	/* Try all possible rgrp sizes: 2048, 1024, 512, 256, 128, 64, 32 */
@@ -842,7 +843,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 		}
 	}
 	/* Compute the default resource group layout as mkfs would have done */
-	sdp->rgcalc = compute_rgrp_layout(sdp);
+	rgcalc = compute_rgrp_layout(sdp);
 	if (calc_rgrps(sdp)) { /* Calculate but don't write to disk. */
 		fprintf(stderr, _("Failed to build resource groups\n"));
 		exit(-1);
@@ -923,7 +924,7 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
 		rgd = (struct rgrp_tree *)n;
-		exp = rgrp_insert(&sdp->rgcalc, rgd->rt_addr);
+		exp = rgrp_insert(&rgcalc, rgd->rt_addr);
 		if (exp == NULL) {
 			fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
 			exit(-1);
@@ -975,7 +976,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		}
 		error = expect_rindex_sanity(sdp, &calc_rg_count);
 		if (error) {
-			gfs2_rgrp_free(sdp, &sdp->rgcalc);
+			gfs2_rgrp_free(sdp, &rgcalc);
 			return error;
 		}
 	} else if (trust_lvl == OPEN_MINDED) { /* If we can't trust RG index */
@@ -985,7 +986,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		/* Calculate our own RG index for comparison */
 		error = gfs2_rindex_calculate(sdp, &calc_rg_count);
 		if (error) { /* If calculated RGs don't match the fs */
-			gfs2_rgrp_free(sdp, &sdp->rgcalc);
+			gfs2_rgrp_free(sdp, &rgcalc);
 			return -1;
 		}
 	} else if (trust_lvl == DISTRUST) { /* If we can't trust RG index */
@@ -995,7 +996,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		error = rindex_rebuild(sdp, &calc_rg_count, 0);
 		if (error) {
 			log_crit( _("Error rebuilding rgrp list.\n"));
-			gfs2_rgrp_free(sdp, &sdp->rgcalc);
+			gfs2_rgrp_free(sdp, &rgcalc);
 			return -1;
 		}
 	} else if (trust_lvl == INDIGNATION) { /* If we can't trust anything */
@@ -1005,7 +1006,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		error = rindex_rebuild(sdp, &calc_rg_count, 1);
 		if (error) {
 			log_crit( _("Error rebuilding rgrp list.\n"));
-			gfs2_rgrp_free(sdp, &sdp->rgcalc);
+			gfs2_rgrp_free(sdp, &rgcalc);
 			return -1;
 		}
 	}
@@ -1016,7 +1017,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		log_warn( _("WARNING: rindex file has an invalid size.\n"));
 		if (!query( _("Truncate the rindex size? (y/n)"))) {
 			log_err(_("The rindex was not repaired.\n"));
-			gfs2_rgrp_free(sdp, &sdp->rgcalc);
+			gfs2_rgrp_free(sdp, &rgcalc);
 			gfs2_rgrp_free(sdp, &sdp->rgtree);
 			return -1;
 		}
@@ -1040,7 +1041,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		   then try again with a little more DISTRUST. */
 		if ((trust_lvl < DISTRUST) ||
 		    !query( _("Attempt to use what rgrps we can? (y/n)"))) {
-			gfs2_rgrp_free(sdp, &sdp->rgcalc);
+			gfs2_rgrp_free(sdp, &rgcalc);
 			gfs2_rgrp_free(sdp, &sdp->rgtree);
 			log_err(_("The rindex was not repaired.\n"));
 			return -1;
@@ -1064,7 +1065,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 	/* abandon this method of recovery and try a better one.         */
 	/* ------------------------------------------------------------- */
 	discrepancies = 0;
-	for (rg = 0, n = osi_first(&sdp->rgtree), e = osi_first(&sdp->rgcalc);
+	for (rg = 0, n = osi_first(&sdp->rgtree), e = osi_first(&rgcalc);
 	     n && e && !fsck_abort && rg < calc_rg_count; rg++) {
 		struct rgrp_tree *expected, *actual;
 
@@ -1106,7 +1107,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 			log_warn( _("%d out of %d rgrps (%d percent) did not "
 				    "match what was expected.\n"),
 				  discrepancies, rg, percent);
-			gfs2_rgrp_free(sdp, &sdp->rgcalc);
+			gfs2_rgrp_free(sdp, &rgcalc);
 			gfs2_rgrp_free(sdp, &sdp->rgtree);
 			return -1;
 		}
@@ -1118,7 +1119,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 	/* Our rindex should be pretty predictable unless we've grown    */
 	/* so look for index problems first before looking at the rgs.   */
 	/* ------------------------------------------------------------- */
-	for (rg = 0, n = osi_first(&sdp->rgtree), e = osi_first(&sdp->rgcalc);
+	for (rg = 0, n = osi_first(&sdp->rgtree), e = osi_first(&rgcalc);
 	     e && !fsck_abort && rg < calc_rg_count; rg++) {
 		struct rgrp_tree *expected, *actual;
 
@@ -1211,7 +1212,7 @@ int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 			i++;
 		} while (i < rgd->rt_length);
 	}
-	gfs2_rgrp_free(sdp, &sdp->rgcalc);
+	gfs2_rgrp_free(sdp, &rgcalc);
 	gfs2_rgrp_free(sdp, &sdp->rgtree);
 	/* We shouldn't need to worry about getting the user's permission to
 	   make changes here. If b_modified is true, they already gave their
