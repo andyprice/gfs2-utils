@@ -750,47 +750,28 @@ static uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev, int rgs
 /**
  * compute_rgrp_layout - figure out where the RG in a FS are
  */
-static void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree, int rgsize_specified)
+static struct osi_root compute_rgrp_layout(struct gfs2_sbd *sdp)
 {
 	struct device *dev;
 	struct rgrp_tree *rl, *rlast = NULL;
 	unsigned int rgrp = 0, nrgrp, rglength;
+	struct osi_root rgtree = {NULL};
 	uint64_t rgaddr;
 
 	dev = &sdp->device;
 
-	/* If this is a new file system, compute the length and number */
-	/* of rgs based on the size of the device.                     */
-	/* If we have existing RGs (i.e. gfs2_grow) find the last one. */
-	if (!rgtree->osi_node) {
-		dev->length -= LGFS2_SB_ADDR(sdp) + 1;
-		nrgrp = how_many_rgrps(sdp, dev, rgsize_specified);
-		rglength = dev->length / nrgrp;
-	} else {
-		uint64_t old_length, new_chunk;
-		unsigned new_rgrps;
+	dev->length -= LGFS2_SB_ADDR(sdp) + 1;
+	nrgrp = how_many_rgrps(sdp, dev, 1);
+	rglength = dev->length / nrgrp;
 
-		for (struct osi_node *n = osi_first(rgtree); n; n = osi_next(n))
-			rlast = (struct rgrp_tree *)n;
-
-		rglength = rgrp_size(rlast);
-		rlast->rt_skip = rglength;
-		old_length = rlast->rt_addr + rglength;
-		new_chunk = dev->length - old_length;
-		new_rgrps = new_chunk / rglength;
-		nrgrp = rgrp + new_rgrps;
-	}
-
-	if (rgrp < nrgrp)
-		printf("\nNew resource groups:\n");
 	for (; rgrp < nrgrp; rgrp++) {
 		if (rgrp) {
 			rgaddr = rlast->rt_addr + rlast->rt_skip;
-			rl = rgrp_insert(rgtree, rgaddr);
+			rl = rgrp_insert(&rgtree, rgaddr);
 			rl->rt_skip = rglength;
 		} else {
 			rgaddr = LGFS2_SB_ADDR(sdp) + 1;
-			rl = rgrp_insert(rgtree, rgaddr);
+			rl = rgrp_insert(&rgtree, rgaddr);
 			rl->rt_skip = dev->length -
 				(nrgrp - 1) * (dev->length / nrgrp);
 		}
@@ -798,6 +779,7 @@ static void compute_rgrp_layout(struct gfs2_sbd *sdp, struct osi_root *rgtree, i
 	}
 
 	sdp->rgrps = nrgrp;
+	return rgtree;
 }
 
 static int calc_rgrps(struct gfs2_sbd *sdp)
@@ -868,7 +850,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 		}
 	}
 	/* Compute the default resource group layout as mkfs would have done */
-	compute_rgrp_layout(sdp, &sdp->rgcalc, 1);
+	sdp->rgcalc = compute_rgrp_layout(sdp);
 	if (calc_rgrps(sdp)) { /* Calculate but don't write to disk. */
 		fprintf(stderr, _("Failed to build resource groups\n"));
 		exit(-1);
