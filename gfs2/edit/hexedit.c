@@ -1592,7 +1592,9 @@ static void jump(void)
 
 static void print_block_type(uint64_t tblock, const struct lgfs2_metadata *type)
 {
-	if (type != NULL && type->nfields > 0)
+	if (type == NULL)
+		return;
+	if (type->nfields > 0)
 		printf("%d (Block %"PRIu64" is type %d: %s)\n", type->mh_type,
 		       tblock, type->mh_type, type->display);
 	else
