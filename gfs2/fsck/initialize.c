@@ -730,7 +730,7 @@ static int fetch_rgrps_level(struct gfs2_sbd *sdp, enum rgindex_trust_level lvl,
 
 	log_notice(_("Level %d resource group check: %s.\n"), lvl + 1, level_desc[lvl]);
 
-	if (rg_repair(sdp, lvl, ok) != 0)
+	if (rindex_repair(sdp, lvl, ok) != 0)
 		goto fail;
 
 	if (rindex_read(sdp, count, ok) != 0 || !*ok)

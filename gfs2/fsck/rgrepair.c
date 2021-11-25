@@ -946,7 +946,7 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
 }
 
 /*
- * rg_repair - try to repair a damaged rg index (rindex)
+ * rindex_repair - try to repair a damaged rg index (rindex)
  * trust_lvl - This is how much we trust the rindex file.
  *             BLIND_FAITH means we take the rindex at face value.
  *             OPEN_MINDED means it might be okay, but we should verify it.
@@ -956,7 +956,7 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
  *             was converted from GFS via gfs2_convert, and its rgrps are
  *             not on nice boundaries thanks to previous gfs_grow ops. Lovely.
  */
-int rg_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
+int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 {
 	struct osi_node *n, *next = NULL, *e, *enext;
 	int error, discrepancies, percent;
