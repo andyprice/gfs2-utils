@@ -811,16 +811,13 @@ static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, char *buf)
 		if (r != sdp->sd_bsize) {
 			fprintf(stderr, "Failed to read leaf block %"PRIx64": %s\n",
 			        blk, strerror(errno));
-			free(buf);
 			return 1;
 		}
 		report_progress(blk, 0);
 		if (gfs2_check_meta(buf, GFS2_METATYPE_LF) == 0) {
 			int ret = save_buf(mfd, buf, blk, sdp->sd_bsize);
-			if (ret != 0) {
-				free(buf);
+			if (ret != 0)
 				return ret;
-			}
 		}
 		leaf = (struct gfs2_leaf *)buf;
 	}
@@ -838,8 +835,7 @@ static void save_leaf_blocks(struct metafd *mfd, struct block_range_queue *q)
 			save_leaf_chain(mfd, &sbd, buf);
 		}
 		q->tail = br->next;
-		free(br->buf);
-		free(br);
+		block_range_free(&br);
 	}
 }
 
