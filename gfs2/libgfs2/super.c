@@ -68,8 +68,10 @@ int read_sb(struct gfs2_sbd *sdp)
 	bh = bread(sdp, GFS2_SB_ADDR >> sdp->sd_fsb2bb_shift);
 
 	ret = check_sb(bh->b_data);
-	if (ret < 0)
+	if (ret < 0) {
+		brelse(bh);
 		return ret;
+	}
 	if (ret == 1)
 		sdp->gfs1 = 1;
 
