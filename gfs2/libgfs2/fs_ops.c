@@ -1882,7 +1882,7 @@ int gfs2_lookupi(struct gfs2_inode *dip, const char *filename, int len,
 
 	if (!len || len > GFS2_FNAMESIZE)
 		return -ENAMETOOLONG;
-	if (gfs2_filecmp(filename, (char *)".", 1)) {
+	if (gfs2_filecmp(filename, ".", 1)) {
 		*ipp = dip;
 		return 0;
 	}
