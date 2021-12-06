@@ -38,9 +38,6 @@ int compute_heightsize(unsigned bsize, uint64_t *heightsize,
 
 int compute_constants(struct gfs2_sbd *sdp)
 {
-	uint32_t hash_blocks, ind_blocks, leaf_blocks;
-	uint32_t tmp_blocks;
-
 	sdp->md.next_inum = 1;
 
 	sdp->sd_bsize_shift = ffs(sdp->sd_bsize) - 1;
@@ -57,21 +54,6 @@ int compute_constants(struct gfs2_sbd *sdp)
 	sdp->sd_hash_ptrs = sdp->sd_hash_bsize / sizeof(uint64_t);
 	sdp->sd_blocks_per_bitmap = (sdp->sd_bsize - sizeof(struct gfs2_meta_header))
 	                             * GFS2_NBBY;
-
-	/*  Compute maximum reservation required to add a entry to a directory  */
-
-	hash_blocks = DIV_RU(sizeof(uint64_t) * (1 << GFS2_DIR_MAX_DEPTH),
-			     sdp->sd_jbsize);
-
-	ind_blocks = 0;
-	for (tmp_blocks = hash_blocks; tmp_blocks > sdp->sd_diptrs;) {
-		tmp_blocks = DIV_RU(tmp_blocks, sdp->sd_inptrs);
-		ind_blocks += tmp_blocks;
-	}
-
-	leaf_blocks = 2 + GFS2_DIR_MAX_DEPTH;
-
-	sdp->sd_max_dirres = hash_blocks + ind_blocks + leaf_blocks;
 
 	if (compute_heightsize(sdp->sd_bsize, sdp->sd_heightsize, &sdp->sd_max_height,
 				sdp->sd_bsize, sdp->sd_diptrs, sdp->sd_inptrs)) {

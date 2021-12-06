@@ -349,7 +349,6 @@ struct gfs2_sbd {
 	uint32_t sd_hash_bsize_shift;
 	uint32_t sd_hash_ptrs;
 	uint32_t sd_blocks_per_bitmap;
-	uint32_t sd_max_dirres;
 	uint32_t sd_max_height;
 	uint32_t sd_max_jheight;
 	uint64_t sd_heightsize[GFS2_MAX_META_HEIGHT];
