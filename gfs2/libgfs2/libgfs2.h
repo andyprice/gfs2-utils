@@ -358,7 +358,7 @@ struct gfs2_sbd {
 	unsigned int rgsize;  /* Size of resource groups (in MB) */
 	unsigned int qcsize;  /* Size of quota change files (in MB) */
 
-	int64_t time;
+	int64_t sd_time;
 
 	struct lgfs2_dev_info dinfo;
 	struct device device;

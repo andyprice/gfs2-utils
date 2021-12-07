@@ -902,7 +902,7 @@ static void read_superblock(int fd)
 	sbd.jsize = GFS2_DEFAULT_JSIZE;
 	sbd.rgsize = GFS2_DEFAULT_RGSIZE;
 	sbd.qcsize = GFS2_DEFAULT_QCSIZE;
-	sbd.time = time(NULL);
+	sbd.sd_time = time(NULL);
 	sbd.rgtree.osi_node = NULL;
 	lgfs2_sb_in(&sbd, bh->b_data);
 	/* Check to see if this is really gfs1 */

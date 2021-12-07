@@ -975,7 +975,7 @@ static int default_journal_size(unsigned bsize, uint64_t num_blocks)
 static int sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsize)
 {
 	memset(sdp, 0, sizeof(struct gfs2_sbd));
-	sdp->time = time(NULL);
+	sdp->sd_time = time(NULL);
 	sdp->rgtree.osi_node = NULL;
 	sdp->rgsize = opts->rgsize;
 	sdp->qcsize = opts->qcsize;

@@ -1595,7 +1595,7 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 	sbp->jsize = GFS2_DEFAULT_JSIZE;
 	sbp->rgsize = GFS2_DEFAULT_RGSIZE;
 	sbp->qcsize = GFS2_DEFAULT_QCSIZE;
-	sbp->time = time(NULL);
+	sbp->sd_time = time(NULL);
 	sbp->blks_total = 0;   /* total blocks         - total them up later */
 	sbp->blks_alloced = 0; /* blocks allocated     - total them up later */
 	sbp->dinodes_alloced = 0; /* dinodes allocated - total them up later */

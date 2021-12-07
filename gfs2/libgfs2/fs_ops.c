@@ -337,7 +337,7 @@ int lgfs2_file_alloc(lgfs2_rgrp_t rg, uint64_t di_size, struct gfs2_inode *ip, u
 	ip->i_mode = mode;
 	ip->i_nlink = 1;
 	ip->i_blocks = blocks;
-	ip->i_atime = ip->i_mtime = ip->i_ctime = sdp->time;
+	ip->i_atime = ip->i_mtime = ip->i_ctime = sdp->sd_time;
 	ip->i_goal_data = ip->i_num.in_addr + ip->i_blocks - 1;
 	ip->i_goal_meta = ip->i_goal_data - ((di_size + sdp->sd_bsize - 1) / sdp->sd_bsize);
 	ip->i_height = calc_tree_height(ip, di_size);
@@ -1367,7 +1367,7 @@ static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, st
 	di->di_mode = cpu_to_be32(mode);
 	di->di_nlink = cpu_to_be32(1);
 	di->di_blocks = cpu_to_be64(1);
-	di->di_atime = di->di_mtime = di->di_ctime = cpu_to_be64(sdp->time);
+	di->di_atime = di->di_mtime = di->di_ctime = cpu_to_be64(sdp->sd_time);
 	di->di_goal_meta = di->di_goal_data = cpu_to_be64(bh->b_blocknr);
 	di->di_flags = cpu_to_be32(flags);
 
