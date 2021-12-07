@@ -371,16 +371,13 @@ struct gfs2_sbd {
 	uint64_t blks_alloced;
 	uint64_t dinodes_alloced;
 
-	uint64_t orig_rgrps;
 	uint64_t rgrps;
 	struct osi_root rgtree;
 
 	struct gfs2_inode *master_dir;
 	struct master_dir md;
 
-	uint64_t rg_one_length;
-	uint64_t rg_length;
-	int gfs1;
+	unsigned int gfs1:1;
 };
 
 struct lgfs2_log_header {
