@@ -22,7 +22,7 @@ document is a good guideline:
     http://www.kernel.org/doc/Documentation/CodingStyle
 
 We use git for managing our source code and we assume here that you're familiar
-with git. Patches should apply cleanly to the latest master branch of
+with git. Patches should apply cleanly to the latest main branch of
 gfs2-utils.git
 
     https://pagure.io/gfs2-utils
