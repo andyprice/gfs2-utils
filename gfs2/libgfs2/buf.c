@@ -61,10 +61,9 @@ int __breadm(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhs, size_t n,
 
 		ret = preadv(sdp->device_fd, iovbase, j, (block + i) * sdp->sd_bsize);
 		if (ret != size) {
-			fprintf(stderr, "bad read: %s from %s:%d: block %llu (0x%llx) "
+			fprintf(stderr, "bad read: %s from %s:%d: block %"PRIu64" "
 					"count: %d size: %zd ret: %zd\n", strerror(errno),
-					caller, line, (unsigned long long)block,
-					(unsigned long long)block, j, size, ret);
+					caller, line, block, j, size, ret);
 			exit(-1);
 		}
 		i += j;
