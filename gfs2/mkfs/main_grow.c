@@ -324,15 +324,12 @@ trunc:
  */
 static void print_info(struct gfs2_sbd *sdp, char *device, char *mnt_path)
 {
-	log_notice("FS: %-25s%s\n", _("Mount point:"), mnt_path);
-	log_notice("FS: %-25s%s\n", _("Device:"), device);
-	log_notice("FS: %-25s%llu (0x%llx)\n", _("Size:"),
-		   (unsigned long long)fssize, (unsigned long long)fssize);
-	log_notice("DEV: %-24s%llu (0x%llx)\n", _("Length:"),
-		   (unsigned long long)sdp->device.length,
-		   (unsigned long long)sdp->device.length);
-	log_notice(_("The file system will grow by %lluMB.\n"),
-		   (unsigned long long)(fsgrowth * sdp->sd_bsize) / MB);
+	log_notice(_("Mount point: %s\n"), mnt_path);
+	log_notice(_("Device: %s\n"), device);
+	log_notice(_("Size: %"PRIu64" blocks\n"), fssize);
+	log_notice(_("Length: %"PRIu64" blocks\n"), sdp->device.length);
+	log_notice(_("The file system will grow by %"PRIu64"MB.\n"),
+	           (fsgrowth * sdp->sd_bsize) / MB);
 }
 
 static int open_rindex(char *metafs_path, int mode)
