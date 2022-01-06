@@ -181,9 +181,9 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 			if (edit_row[dmode] >= 0 &&
 			    line - start_line ==
 			    edit_row[dmode] - start_row[dmode]) { 
-				sprintf(estring, "%llx",
-					(unsigned long long)ind->ii[print_entry_ndx].block);
-				strcpy(edit_fmt, "%llx");
+				sprintf(estring, "%"PRIx64,
+				        ind->ii[print_entry_ndx].block);
+				strcpy(edit_fmt, "%"PRIx64);
 				edit_size[dmode] = strlen(estring);
 				COLORS_NORMAL;
 			}

@@ -237,8 +237,7 @@ static int print_ld_blks(const __be64 *b, const char *end, int start_line,
 				(*bblk_off)++;
 			if (tblk && (be64_to_cpu(*b) == tblk)) {
 				found_tblk = 1;
-				print_gfs2("<-------------------------0x%llx ",
-					   (unsigned long long)tblk);
+				print_gfs2("<-------------------------0x%"PRIx64" ", tblk);
 				eol(18 * (bcount % 4) + 1);
 				print_gfs2("                    ");
 			}
@@ -269,15 +268,12 @@ static int print_ld_blks(const __be64 *b, const char *end, int start_line,
 						exit(1);
 					}
 					rgd->bits[bmap].bi_data = save_ptr;
-					print_gfs2("bit for blk 0x%llx is %d "
-						   "(%s)",
-						   (unsigned long long)tblk,
-						   type,
+					print_gfs2("bit for blk 0x%"PRIx64" is %d (%s)",
+						   tblk, type,
 						   allocdesc[sbd.gfs1][type]);
 				} else {
-					print_gfs2("bitmap for blk 0x%llx "
-						   "was revoked",
-						   (unsigned long long)tblk);
+					print_gfs2("bitmap for blk 0x%"PRIx64" was revoked",
+					           tblk);
 				}
 				eol(18 * (bcount % 4) + 1);
 				print_gfs2("                    ");
@@ -503,7 +499,7 @@ static void display_log_header(void *buf, uint64_t *highest_seq, uint64_t abs_bl
  * block, (2) metadata in the journal that references the block, or (3)
  * rgrp bitmaps that reference that block's allocation bit status.
  */
-void dump_journal(const char *journal, int tblk)
+void dump_journal(const char *journal, uint64_t tblk)
 {
 	const struct lgfs2_metadata *mtype;
 	struct gfs2_buffer_head *j_bh = NULL;
@@ -526,7 +522,7 @@ void dump_journal(const char *journal, int tblk)
 	print_gfs2("Dumping journal #%d.", journal_num);
 	if (tblk) {
 		dmode = HEX_MODE;
-		print_gfs2(" Tracing block 0x%llx", (unsigned long long)tblk);
+		print_gfs2(" Tracing block 0x%"PRIx64, tblk);
 	}
 	eol(0);
 	jblock = find_journal_block(journal, &j_size);
@@ -552,7 +548,7 @@ void dump_journal(const char *journal, int tblk)
 
 		rgd = gfs2_blk2rgrpd(&sbd, tblk);
 		if (!rgd) {
-			print_gfs2("Can't locate the rgrp for block 0x%x",
+			print_gfs2("Can't locate the rgrp for block 0x%"PRIx64,
 				   tblk);
 			eol(0);
 		} else {
@@ -575,10 +571,8 @@ void dump_journal(const char *journal, int tblk)
 
 		wrappt = find_wrap_pt(j_inode, jbuf, jblock, j_size);
 		wp = wrappt / (sbd.gfs1 ? 1 : sbd.sd_bsize);
-		print_gfs2("Starting at journal wrap block: 0x%llx "
-			   "(j + 0x%llx)",
-			   (unsigned long long)jblock + wp,
-			   (unsigned long long)wp);
+		print_gfs2("Starting at journal wrap block: 0x%"PRIx64" (j + 0x%"PRIx64")",
+		           jblock + wp, wp);
 		eol(0);
 	}
 

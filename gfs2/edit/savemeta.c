@@ -1131,8 +1131,8 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	blks_saved = 0;
 	if (sbd.gfs1)
 		sbd.sd_bsize = sbd.sd_bsize;
-	printf("There are %llu blocks of %u bytes in the filesystem.\n",
-	                     (unsigned long long)sbd.fssize, sbd.sd_bsize);
+	printf("There are %"PRIu64" blocks of %u bytes in the filesystem.\n",
+	       sbd.fssize, sbd.sd_bsize);
 
 	printf("Filesystem size: %.2fGB\n", (sbd.fssize * sbd.sd_bsize) / ((float)(1 << 30)));
 	get_journal_inode_blocks();

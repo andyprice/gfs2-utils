@@ -1011,10 +1011,9 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 		ioctl(sbd.device_fd, BLKFLSBUF, 0);
 		if (!(bh = bread(&sbd, blk))) {
 			fprintf(stderr, "read error: %s from %s:%d: "
-				"offset %lld (0x%llx)\n",
+				"offset %"PRIu64" (0x%"PRIx64")\n",
 				strerror(errno), __FUNCTION__, __LINE__,
-				(unsigned long long)dev_offset,
-				(unsigned long long)dev_offset);
+				dev_offset, dev_offset);
 			exit(-1);
 		}
 	}
@@ -1173,9 +1172,9 @@ static uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int p
 		blk = 0;
 	if (print) {
 		if (dmode == HEX_MODE)
-			printf("0x%llx\n", (unsigned long long)blk);
+			printf("0x%"PRIx64"\n", blk);
 		else
-			printf("%llu\n", (unsigned long long)blk);
+			printf("%"PRIu64"\n", blk);
 	}
 	gfs2_rgrp_free(&sbd, &sbd.rgtree);
 	if (print)
@@ -1260,9 +1259,9 @@ static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int pri
 		blk = 0;
 	if (print) {
 		if (dmode == HEX_MODE)
-			printf("0x%llx\n", (unsigned long long)blk);
+			printf("0x%"PRIx64"\n", blk);
 		else
-			printf("%llu\n", (unsigned long long)blk);
+			printf("%"PRIu64"\n", blk);
 	}
 	gfs2_rgrp_free(&sbd, &sbd.rgtree);
 	if (print)
@@ -1310,7 +1309,7 @@ static uint64_t find_metablockoftype(const char *strtype, int print)
 /* ------------------------------------------------------------------------ */
 uint64_t check_keywords(const char *kword)
 {
-	unsigned long long blk = 0;
+	uint64_t blk = 0;
 
 	if (!strcmp(kword, "sb") ||!strcmp(kword, "superblock"))
 		blk = 0x10 * (4096 / sbd.sd_bsize); /* superblock */
@@ -1367,9 +1366,9 @@ uint64_t check_keywords(const char *kword)
 	} else if (kword[0]=='/') /* search */
 		blk = find_metablockoftype(&kword[1], 0);
 	else if (kword[0]=='0' && kword[1]=='x') /* hex addr */
-		sscanf(kword, "%llx", &blk);/* retrieve in hex */
+		sscanf(kword, "%"SCNx64, &blk);/* retrieve in hex */
 	else
-		sscanf(kword, "%llu", &blk); /* retrieve decimal */
+		sscanf(kword, "%"SCNu64, &blk); /* retrieve decimal */
 
 	return blk;
 }
@@ -1474,11 +1473,10 @@ static void hex_edit(int *exitch)
 			if (pwrite(sbd.device_fd, bh->b_data, sbd.sd_bsize, dev_offset) !=
 			    sbd.sd_bsize) {
 				fprintf(stderr, "write error: %s from %s:%d: "
-					"offset %lld (0x%llx)\n",
+					"offset %"PRIu64" (0x%"PRIx64")\n",
 					strerror(errno),
 					__FUNCTION__, __LINE__,
-					(unsigned long long)dev_offset,
-					(unsigned long long)dev_offset);
+					dev_offset, dev_offset);
 				exit(-1);
 			}
 			fsync(sbd.device_fd);
@@ -1649,9 +1647,9 @@ static void find_print_block_rg(int bitmap)
 
 			}
 			if (dmode == HEX_MODE)
-				printf("0x%llx\n",(unsigned long long)rgblock);
+				printf("0x%"PRIx64"\n", rgblock);
 			else
-				printf("%llu\n", (unsigned long long)rgblock);
+				printf("%"PRIu64"\n", rgblock);
 		} else {
 			printf("-1 (block invalid or part of an rgrp).\n");
 		}
@@ -2383,13 +2381,13 @@ static void process_parameters(int argc, char *argv[], int pass)
 
 		if (!strncmp(argv[i], "journal", 7) && isdigit(argv[i][7]) &&
 		    strcmp(argv[i+1], "field")) {
-			int blk = 0;
+			uint64_t blk = 0;
 
 			if (i < argc - 1 && isdigit(argv[i + 1][0])) {
 				if (argv[i + 1][0]=='0' && argv[i + 1][1]=='x')
-					sscanf(argv[i + 1], "%x", &blk);
+					sscanf(argv[i + 1], "%"SCNx64, &blk);
 				else
-					blk = atoi(argv[i + 1]);
+					sscanf(argv[i + 1], "%"SCNu64, &blk);
 			}
 			dump_journal(argv[i], blk);
 			continue;
@@ -2404,9 +2402,7 @@ static void process_parameters(int argc, char *argv[], int pass)
 		else if (!strcmp(argv[i], "identify"))
 			identify = TRUE;
 		else if (!strcmp(argv[i], "size")) {
-			printf("Device size: %llu (0x%llx)\n",
-			       (unsigned long long)max_block,
-			       (unsigned long long)max_block);
+			printf("Device size: %"PRIu64" blocks\n", max_block);
 			exit(EXIT_SUCCESS);
 		} else if (!strcmp(argv[i], "rgcount"))
 			rgcount();
