@@ -59,9 +59,9 @@ int print_super(const struct tunegfs2 *tfs)
 	printf(_("File system format version: %"PRIu32"\n"), be32_to_cpu(tfs->sb->sb_fs_format));
 	printf(_("Block size: %d\n"), be32_to_cpu(tfs->sb->sb_bsize));
 	printf(_("Block shift: %d\n"), be32_to_cpu(tfs->sb->sb_bsize_shift));
-	printf(_("Root inode: %llu\n"), (unsigned long long)be64_to_cpu(tfs->sb->sb_root_dir.no_addr));
+	printf(_("Root inode: %"PRIu64"\n"), be64_to_cpu(tfs->sb->sb_root_dir.no_addr));
 	if (is_gfs2(tfs))
-		printf(_("Master inode: %llu\n"), (unsigned long long)be64_to_cpu(tfs->sb->sb_master_dir.no_addr));
+		printf(_("Master inode: %"PRIu64"\n"), be64_to_cpu(tfs->sb->sb_master_dir.no_addr));
 	printf(_("Lock protocol: %s\n"), tfs->sb->sb_lockproto);
 	printf(_("Lock table: %s\n"), tfs->sb->sb_locktable);
 
