@@ -146,9 +146,8 @@ static void interrupt(int sig)
 	if (!last_reported_block || last_reported_block == last_fs_block)
 		sprintf(progress, _("progress unknown.\n"));
 	else
-		sprintf(progress, _("processing block %llu out of %llu\n"),
-			(unsigned long long)last_reported_block,
-			(unsigned long long)last_fs_block);
+		sprintf(progress, _("processing block %"PRIu64" out of %"PRIu64"\n"),
+		        last_reported_block, last_fs_block);
 
 	response = generic_interrupt("fsck.gfs2", pass_name, progress,
 				     _("Do you want to abort fsck.gfs2, skip " \
@@ -215,15 +214,13 @@ static int check_statfs(struct gfs2_sbd *sdp)
 	log_err( _("free:    %"PRId64" (0x%"PRIx64")\n"), sc_free, sc_free);
 	log_err( _("dinodes: %"PRId64" (0x%"PRIx64")\n\n"), sc_dinodes, sc_dinodes);
 	log_err( _("Calculated statfs values:\n"));
-	log_err( _("blocks:  %lld (0x%llx)\n"),
-		 (unsigned long long)sdp->blks_total,
-		 (unsigned long long)sdp->blks_total);
-	log_err( _("free:    %lld (0x%llx)\n"),
-		 (unsigned long long)(sdp->blks_total - sdp->blks_alloced),
-		 (unsigned long long)(sdp->blks_total - sdp->blks_alloced));
-	log_err( _("dinodes: %lld (0x%llx)\n"),
-		 (unsigned long long)sdp->dinodes_alloced,
-		 (unsigned long long)sdp->dinodes_alloced);
+	log_err( _("blocks:  %"PRIu64" (0x%"PRIx64")\n"),
+	        sdp->blks_total, sdp->blks_total);
+	log_err( _("free:    %"PRIu64" (0x%"PRIx64")\n"),
+	        (sdp->blks_total - sdp->blks_alloced),
+	        (sdp->blks_total - sdp->blks_alloced));
+	log_err( _("dinodes: %"PRIu64" (0x%"PRIx64")\n"),
+	        sdp->dinodes_alloced, sdp->dinodes_alloced);
 
 	errors_found++;
 	if (!query( _("Okay to fix the master statfs file? (y/n)"))) {

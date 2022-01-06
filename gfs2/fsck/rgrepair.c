@@ -131,11 +131,10 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 			if (rgs_sampled >= 6) {
 				uint64_t nblk;
 
-				log_info(_("rgrp not found at block 0x%llx. "
-					   "Last found rgrp was 0x%llx. "
+				log_info(_("rgrp not found at block 0x%"PRIx64". "
+					   "Last found rgrp was 0x%"PRIx64". "
 					   "Checking the next one.\n"),
-					 (unsigned long long)blk,
-					 (unsigned long long)block_last_rg);
+				         blk, block_last_rg);
 				/* check for just a damaged rgrp */
 				nblk = blk + dist_array[gsegment];
 				if (is_false_rg(nblk)) {
@@ -180,15 +179,13 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 							    array minus 1. */
 			continue;
 		}
-		log_info(_("segment %d: rgrp found at block 0x%llx\n"),
-			 gsegment + 1, (unsigned long long)blk);
+		log_info(_("segment %d: rgrp found at block 0x%"PRIx64"\n"),
+		         gsegment + 1, blk);
 		dist = blk - block_last_rg;
 		if (blk > LGFS2_SB_ADDR(sdp) + 1) { /* not the very first rgrp */
 
-			log_info("dist 0x%llx = 0x%llx - 0x%llx ",
-				 (unsigned long long)dist,
-				 (unsigned long long)blk,
-				 (unsigned long long)block_last_rg);
+			log_info("dist 0x%"PRIx64" = 0x%"PRIx64" - 0x%"PRIx64" ",
+			         dist, blk, block_last_rg);
 			/**
 			 * We found an RG.  Check to see if we need to set the
 			 * first_rg_dist based on whether it is still at its
@@ -208,10 +205,8 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 			log_info("\n");
 			if (++rgs_sampled == 6) {
 				dist_array[gsegment] = shortest_dist_btwn_rgs;
-				log_info(_("Settled on distance 0x%llx for "
-					   "segment %d\n"),
-					 (unsigned long long)
-					 dist_array[gsegment], gsegment + 1);
+				log_info(_("Settled on distance 0x%"PRIx64" for segment %d\n"),
+				         dist_array[gsegment], gsegment + 1);
 			}
 		} else {
 			gsegment++;
@@ -244,15 +239,14 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 		if (be64_to_cpu(ri.ri_addr) > LGFS2_SB_ADDR(sdp) + 1) { /* sanity check */
 			log_warn( _("rgrp 2 is damaged: getting dist from index: "));
 			*dist_array = be64_to_cpu(ri.ri_addr) - (LGFS2_SB_ADDR(sdp) + 1);
-			log_warn("0x%llx\n", (unsigned long long)*dist_array);
+			log_warn("0x%"PRIx64"\n", *dist_array);
 		} else {
 			log_warn( _("rgrp index 2 is damaged: extrapolating dist: "));
 			*dist_array = sdp->device.length - (sdp->rgrps - 1) *
 				(sdp->device.length / sdp->rgrps);
-			log_warn("0x%llx\n", (unsigned long long)*dist_array);
+			log_warn("0x%"PRIx64"\n", *dist_array);
 		}
-		log_debug( _("Adjusted first rgrp distance: 0x%llx\n"),
-			   (unsigned long long)*dist_array);
+		log_debug(_("Adjusted first rgrp distance: 0x%"PRIx64"\n"), *dist_array);
 	} /* if first RG distance is within tolerance */
 
 	gfs2_special_free(&false_rgrps);
@@ -442,9 +436,8 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 	mh = (struct gfs2_meta_header *)bh->b_data;
 	if (be32_to_cpu(mh->mh_magic) == GFS2_MAGIC &&
 	    be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RG) {
-		log_info( _("rgrp found at 0x%llx, length=%lld\n"),
-			  (unsigned long long)blk + last_bump,
-			  (unsigned long long)last_bump);
+		log_info(_("rgrp found at 0x%"PRIx64", length=%"PRIu64"\n"),
+		         blk + last_bump, last_bump);
 		brelse(bh);
 		return last_bump;
 	}
@@ -548,8 +541,8 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 	rgcalc.osi_node = NULL;
 	grow_segments = find_shortest_rgdist(sdp, &rg_dist[0], &rg_dcnt[0]);
 	for (i = 0; i < grow_segments; i++)
-		log_info(_("Segment %d: rgrp distance: 0x%llx, count: %d\n"),
-			  i + 1, (unsigned long long)rg_dist[i], rg_dcnt[i]);
+		log_info(_("Segment %d: rgrp distance: 0x%"PRIx64", count: %d\n"),
+			  i + 1, rg_dist[i], rg_dcnt[i]);
 	number_of_rgs = segment_rgs = 0;
 	/* -------------------------------------------------------------- */
 	/* Now go through the RGs and verify their integrity, fixing as   */
@@ -559,7 +552,7 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 	block_bump = rg_dist[0];
 	blk = LGFS2_SB_ADDR(sdp) + 1;
 	while (blk <= sdp->device.length) {
-		log_debug( _("Block 0x%llx\n"), (unsigned long long)blk);
+		log_debug( _("Block 0x%"PRIx64"\n"), blk);
 		bh = bread(sdp, blk);
 		rg_was_fnd = (!gfs2_check_meta(bh->b_data, GFS2_METATYPE_RG));
 		brelse(bh);
@@ -576,10 +569,8 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 			/* ------------------------------------------------- */
 			corrupt_rgs++;
 			if (corrupt_rgs < 5)
-				log_debug(_("Missing or damaged rgrp at block "
-					    "%llu (0x%llx)\n"),
-					  (unsigned long long)blk,
-					  (unsigned long long)blk);
+				log_debug(_("Missing or damaged rgrp at block %"PRIu64" (0x%"PRIx64")\n"),
+				          blk, blk);
 			else {
 				log_crit( _("Error: too many missing or "
 					    "damaged rgrps using this method. "
@@ -619,11 +610,11 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 		number_of_rgs++;
 		segment_rgs++;
 		if (rg_was_fnd)
-			log_info( _("  rgrp %d at block 0x%llx intact\n"),
-				  number_of_rgs, (unsigned long long)blk);
+			log_info( _("  rgrp %d at block 0x%"PRIx64" intact\n"),
+				  number_of_rgs, blk);
 		else
-			log_warn( _("* rgrp %d at block 0x%llx *** DAMAGED ***\n"),
-				  number_of_rgs, (unsigned long long)blk);
+			log_warn( _("* rgrp %d at block 0x%"PRIx64" *** DAMAGED ***\n"),
+				  number_of_rgs, blk);
 		prev_rgd = calc_rgd;
 		/*
 		 * Figure out where our next rgrp should be.
@@ -651,11 +642,9 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 						   block_bump);
 		if (block_bump != 1) {
 			if (rg_was_fnd)
-				log_info( _(" [length 0x%llx]\n"),
-					  (unsigned long long)block_bump);
+				log_info(_(" [length 0x%"PRIx64"]\n"), block_bump);
 			else
-				log_warn( _(" [length 0x%llx]\n"),
-					  (unsigned long long)block_bump);
+				log_warn(_(" [length 0x%"PRIx64"]\n"), block_bump);
 		} else {
 			log_warn("\n");
 		}
@@ -836,9 +825,8 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 	     sdp->rgsize /= 2) {
 		num_rgrps = how_many_rgrps(sdp, &sdp->device);
 		if (num_rgrps == *num_rgs) {
-			log_info(_("rgsize must be: %lld (0x%llx)\n"),
-				 (unsigned long long)sdp->rgsize,
-				 (unsigned long long)sdp->rgsize);
+			log_info(_("rgsize must be: %u (0x%x)\n"),
+			        sdp->rgsize, sdp->rgsize);
 			break;
 		}
 	}
@@ -848,8 +836,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 		fprintf(stderr, _("Failed to build resource groups\n"));
 		exit(-1);
 	}
-	log_debug( _("fs_total_size = 0x%llx blocks.\n"),
-		  (unsigned long long)sdp->device.length);
+	log_debug(_("fs_total_size = 0x%"PRIx64" blocks.\n"), sdp->device.length);
 	log_warn( _("L3: number of rgs in the index = %d.\n"), *num_rgs);
 	return 0;
 }
@@ -1026,8 +1013,8 @@ int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		bmodified(sdp->md.riinode->i_bh);
 		log_err(_("Changing rindex size to %"PRIu64".\n"), sdp->md.riinode->i_size);
 	}
-	log_warn( _("L%d: number of rgs expected     = %lld.\n"), trust_lvl + 1,
-		 (unsigned long long)sdp->rgrps);
+	log_warn(_("L%d: number of rgs expected     = %"PRIu64".\n"), trust_lvl + 1,
+	         sdp->rgrps);
 	if (calc_rg_count != sdp->rgrps) {
 		int most_that_fit;
 

@@ -418,10 +418,9 @@ static int undo_reference(struct gfs2_inode *ip, uint64_t block, int meta,
 		} while (id);
 
 		if (dt->refs) {
-			log_err(_("Block %llu (0x%llx) is still referenced "
+			log_err(_("Block %"PRIu64" (0x%"PRIx64") is still referenced "
 				  "from another inode; not freeing.\n"),
-				(unsigned long long)block,
-				(unsigned long long)block);
+			        block, block);
 			if (dt->refs == 1) {
 				log_err(_("This was the only duplicate "
 					  "reference so far; removing it.\n"));
@@ -532,9 +531,8 @@ static int pass1_check_data(struct gfs2_inode *ip, uint64_t metablock,
 		if (metablock == ip->i_num.in_addr)
 			log_err("\n");
 		else
-			log_err(_("from metadata block %llu (0x%llx)\n"),
-				(unsigned long long)metablock,
-				(unsigned long long)metablock);
+			log_err(_("from metadata block %"PRIu64" (0x%"PRIx64")\n"),
+			        metablock, metablock);
 
 		switch (q) {
 		case GFS2_BLKST_DINODE:
@@ -587,15 +585,13 @@ static int pass1_check_data(struct gfs2_inode *ip, uint64_t metablock,
 	   In gfs2, "meta" is only for dinodes. So here we dummy up the
 	   blocks so that the bitmap isn't changed improperly. */
 	if (ip->i_sbd->gfs1 && ip == ip->i_sbd->md.riinode) {
-		log_info(_("Block %lld (0x%llx) is a GFS1 rindex block\n"),
-			 (unsigned long long)block, (unsigned long long)block);
+		log_info(_("Block %"PRIu64" (0x%"PRIx64") is a GFS1 rindex block\n"),
+		         block, block);
 		gfs2_special_set(&gfs1_rindex_blks, block);
 		fsck_blockmap_set(ip, block, "rgrp", GFS2_BLKST_DINODE);
-		/*gfs2_meta_rgrp);*/
 	} else if (ip->i_sbd->gfs1 && ip->i_flags & GFS2_DIF_JDATA) {
-		log_info(_("Block %lld (0x%llx) is a GFS1 journaled data "
-			   "block\n"),
-			 (unsigned long long)block, (unsigned long long)block);
+		log_info(_("Block %"PRIu64" (0x%"PRIx64") is a GFS1 journaled data block\n"),
+		         block, block);
 		fsck_blockmap_set(ip, block, "jdata", GFS2_BLKST_DINODE);
 	} else
 		return blockmap_set_as_data(ip, block);
@@ -844,10 +840,8 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, int i,
 	if (bh)
 		brelse(bh);
 	if (error) {
-		log_err(_("Bad extended attribute found at block %lld "
-			  "(0x%llx)"),
-			(unsigned long long)be64_to_cpu(*data_ptr),
-			(unsigned long long)be64_to_cpu(*data_ptr));
+		log_err(_("Bad extended attribute found at block %"PRIu64" (0x%"PRIx64")"),
+		        be64_to_cpu(*data_ptr), be64_to_cpu(*data_ptr));
 		if (query( _("Repair the bad Extended Attribute? (y/n) "))) {
 			ea_hdr->ea_num_ptrs = i;
 			ea_hdr->ea_data_len = cpu_to_be32(tot_ealen);
@@ -910,12 +904,10 @@ static int ask_remove_eattr_entry(struct gfs2_sbd *sdp,
 			be32_to_cpu(prev->ea_rec_len);
 		prev->ea_rec_len = cpu_to_be32(tmp32);
 		if (curr->ea_flags & GFS2_EAFLAG_LAST)
-			prev->ea_flags |= GFS2_EAFLAG_LAST;	
+			prev->ea_flags |= GFS2_EAFLAG_LAST;
 	}
-	log_err( _("Bad Extended Attribute at block #%llu"
-		   " (0x%llx) removed.\n"),
-		 (unsigned long long)leaf_bh->b_blocknr,
-		 (unsigned long long)leaf_bh->b_blocknr);
+	log_err(_("Bad Extended Attribute at block %"PRIu64" (0x%"PRIx64") removed.\n"),
+	        leaf_bh->b_blocknr, leaf_bh->b_blocknr);
 	bmodified(leaf_bh);
 	return 1;
 }
@@ -1172,10 +1164,8 @@ static int alloc_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
 	*bh = bread(ip->i_sbd, block);
 	q = bitmap_type(ip->i_sbd, block);
 	if (q == GFS2_BLKST_FREE) {
-		log_debug(_("%s reference to new metadata block "
-			    "%lld (0x%llx) is now marked as indirect.\n"),
-			  desc, (unsigned long long)block,
-			  (unsigned long long)block);
+		log_debug(_("%s reference to new metadata block %"PRIu64" (0x%"PRIx64") is now marked as indirect.\n"),
+		          desc, block, block);
 		gfs2_blockmap_set(bl, block, ip->i_sbd->gfs1 ?
 				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	}
@@ -1194,10 +1184,8 @@ static int alloc_data(struct gfs2_inode *ip, uint64_t metablock,
 	   after the bitmap has been set but before the blockmap has. */
 	q = bitmap_type(ip->i_sbd, block);
 	if (q == GFS2_BLKST_FREE) {
-		log_debug(_("%s reference to new data block "
-			    "%lld (0x%llx) is now marked as data.\n"),
-			  desc, (unsigned long long)block,
-			  (unsigned long long)block);
+		log_debug(_("%s reference to new data block %"PRIu64" (0x%"PRIx64") is now marked as data.\n"),
+		          desc, block, block);
 		gfs2_blockmap_set(bl, block, GFS2_BLKST_USED);
 	}
 	return 0;
@@ -1439,10 +1427,8 @@ static int handle_di(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 			ip->i_num.in_formal_ino = block;
 			bmodified(ip->i_bh);
 		} else
-			log_err( _("Inode number in inode at block #%lld "
-				   "(0x%llx) not fixed\n"),
-				 (unsigned long long)block,
-				 (unsigned long long)block);
+			log_err(_("Inode number in inode at block %"PRIu64" (0x%"PRIx64") not fixed\n"),
+			        block, block);
 	}
 	check_i_goal(sdp, ip);
 	error = handle_ip(sdp, ip);
@@ -1469,15 +1455,11 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 		/* Read in the system inode, look at its dentries, and start
 		 * reading through them */
 		iblock = (*sysinode)->i_num.in_addr;
-		log_info( _("System inode for '%s' is located at block %llu"
-			 " (0x%llx)\n"), filename,
-			 (unsigned long long)iblock,
-			 (unsigned long long)iblock);
+		log_info(_("System inode for '%s' is located at block %"PRIu64" (0x%"PRIx64")\n"),
+		         filename, iblock, iblock);
 		if (gfs2_check_meta((*sysinode)->i_bh->b_data, GFS2_METATYPE_DI)) {
-			log_err( _("Found invalid system dinode at block #"
-				   "%llu (0x%llx)\n"),
-				 (unsigned long long)iblock,
-				 (unsigned long long)iblock);
+			log_err(_("Found invalid system dinode at block %"PRIu64" (0x%"PRIx64")\n"),
+			        iblock, iblock);
 			gfs2_blockmap_set(bl, iblock, GFS2_BLKST_FREE);
 			check_n_fix_bitmap(sdp, (*sysinode)->i_rgd, iblock, 0,
 					   GFS2_BLKST_FREE);
@@ -1716,10 +1698,8 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 
 		/* skip gfs1 rindex indirect blocks */
 		if (sdp->gfs1 && blockfind(&gfs1_rindex_blks, block)) {
-			log_debug(_("Skipping rindex indir block "
-				    "%lld (0x%llx)\n"),
-				  (unsigned long long)block,
-				  (unsigned long long)block);
+			log_debug(_("Skipping rindex indir block %"PRIu64" (0x%"PRIx64")\n"),
+			          block, block);
 			continue;
 		}
 		warm_fuzzy_stuff(block);
@@ -1734,10 +1714,8 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 			fflush(stdout);
 		}
 		if (fsck_system_inode(sdp, block)) {
-			log_debug(_("Already processed system inode "
-				    "%lld (0x%llx)\n"),
-				  (unsigned long long)block,
-				  (unsigned long long)block);
+			log_debug(_("Already processed system inode %"PRIu64" (0x%"PRIx64")\n"),
+			          block, block);
 			continue;
 		}
 
@@ -1754,18 +1732,16 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 		if (q != GFS2_BLKST_FREE) {
 			if (be32_to_cpu(check_magic) == GFS2_MAGIC &&
 			    sdp->gfs1 && !is_inode) {
-				log_debug(_("Block 0x%llx assumed to be "
+				log_debug(_("Block 0x%"PRIx64" assumed to be "
 					    "previously processed GFS1 "
 					    "non-dinode metadata.\n"),
-					  (unsigned long long)block);
+				          block);
 				brelse(bh);
 				continue;
 			}
-			log_err( _("Found a duplicate inode block at #%llu "
-				   "(0x%llx) previously marked as a %s\n"),
-				 (unsigned long long)block,
-				 (unsigned long long)block,
-				 block_type_string(q));
+			log_err(_("Found a duplicate inode block at %"PRIu64" (0x%"PRIx64") "
+			          "previously marked as a %s\n"),
+			         block, block, block_type_string(q));
 			ip = fsck_inode_get(sdp, rgd, bh);
 			if (is_inode && ip->i_num.in_addr == block)
 				add_duplicate_ref(ip, block, REF_IS_INODE, 0,
@@ -1798,12 +1774,9 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 					continue;
 				}
 			}
-			log_err( _("Found invalid inode at block #"
-				   "%llu (0x%llx)\n"),
-				 (unsigned long long)block,
-				 (unsigned long long)block);
-			check_n_fix_bitmap(sdp, rgd, block, 0,
-					   GFS2_BLKST_FREE);
+			log_err(_("Found invalid inode at block %"PRIu64" (0x%"PRIx64")\n"),
+			        block, block);
+			check_n_fix_bitmap(sdp, rgd, block, 0, GFS2_BLKST_FREE);
 		} else if (handle_di(sdp, rgd, bh) < 0) {
 			stack;
 			brelse(bh);
@@ -1930,8 +1903,8 @@ static void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il)
 static void enomem(uint64_t addl_mem_needed)
 {
 	log_crit( _("This system doesn't have enough memory and swap space to fsck this file system.\n"));
-	log_crit( _("Additional memory needed is approximately: %lluMB\n"),
-		  (unsigned long long)(addl_mem_needed / 1048576ULL));
+	log_crit( _("Additional memory needed is approximately: %"PRIu64"MB\n"),
+	         (uint64_t)(addl_mem_needed / 1048576ULL));
 	log_crit( _("Please increase your swap space by that amount and run fsck.gfs2 again.\n"));
 }
 

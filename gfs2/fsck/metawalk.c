@@ -49,9 +49,9 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 	}
 	old_state = lgfs2_get_bitmap(sdp, blk, rgd);
 	if (old_state < 0) {
-		log_err( _("Block %llu (0x%llx) is not represented in the "
+		log_err(_("Block %"PRIu64" (0x%"PRIx64") is not represented in the "
 			   "system bitmap; part of an rgrp or superblock.\n"),
-			 (unsigned long long)blk, (unsigned long long)blk);
+		        blk, blk);
 		return -1;
 	}
 	if (old_state == new_state)
@@ -59,19 +59,15 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 
 	if (error_on_dinode && old_state == GFS2_BLKST_DINODE &&
 	    new_state != GFS2_BLKST_FREE) {
-		log_debug(_("Reference as '%s' to block %llu (0x%llx) which "
-			    "was marked as dinode. Needs further "
-			    "investigation.\n"),
-			  allocdesc[sdp->gfs1][new_state],
-			  (unsigned long long)blk, (unsigned long long)blk);
+		log_debug(_("Reference as '%s' to block %"PRIu64" (0x%"PRIx64") which "
+			    "was marked as dinode. Needs further investigation.\n"),
+		          allocdesc[sdp->gfs1][new_state], blk, blk);
 		return 1;
 	}
 	/* Keep these messages as short as possible, or the output gets to be
 	   huge and unmanageable. */
-	log_err( _("Block %llu (0x%llx) was '%s', should be %s.\n"),
-		 (unsigned long long)blk, (unsigned long long)blk,
-		 allocdesc[sdp->gfs1][old_state],
-		 allocdesc[sdp->gfs1][new_state]);
+	log_err(_("Block %"PRIu64" (0x%"PRIx64") was '%s', should be %s.\n"),
+	        blk, blk, allocdesc[sdp->gfs1][old_state], allocdesc[sdp->gfs1][new_state]);
 	if (!query( _("Fix the bitmap? (y/n)"))) {
 		log_err( _("The bitmap inconsistency was ignored.\n"));
 		return 0;
@@ -402,9 +398,8 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		dent = (struct gfs2_dirent *)(bh->b_data + sizeof(struct gfs2_dinode));
 	} else {
 		dent = (struct gfs2_dirent *)(bh->b_data + sizeof(struct gfs2_leaf));
-		log_debug( _("Checking leaf %llu (0x%llx)\n"),
-			  (unsigned long long)bh->b_blocknr,
-			  (unsigned long long)bh->b_blocknr);
+		log_debug(_("Checking leaf %"PRIu64" (0x%"PRIx64")\n"),
+		          bh->b_blocknr, bh->b_blocknr);
 	}
 
 	prev = NULL;
@@ -550,10 +545,9 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	if (error >= 0 && pass->check_leaf) {
 		error = pass->check_leaf(ip, *leaf_no, pass->private);
 		if (error == -EEXIST) {
-			log_info(_("Previous reference to leaf %lld (0x%llx) "
+			log_info(_("Previous reference to leaf %"PRIu64" (0x%"PRIx64") "
 				   "has already checked it; skipping.\n"),
-				 (unsigned long long)*leaf_no,
-				 (unsigned long long)*leaf_no);
+			         *leaf_no, *leaf_no);
 			brelse(lbh);
 			return error;
 		}
@@ -802,10 +796,9 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 			error = check_leaf(ip, lindex, pass, &leaf_no, &leaf,
 					   &ref_count);
 			if (ref_count != orig_ref_count) {
-				log_debug(_("Ref count of leaf 0x%llx "
-					    "changed from %d to %d.\n"),
-					  (unsigned long long)leaf_no,
-					  orig_ref_count, ref_count);
+				log_debug(_("Ref count of leaf 0x%"PRIx64
+				            " changed from %d to %d.\n"),
+				          leaf_no, orig_ref_count, ref_count);
 				tbl_valid = 0;
 			}
 			if (error < 0) {
@@ -816,8 +809,8 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 				break;
 			leaf_no = leaf.lf_next;
 			chained_leaf++;
-			log_debug( _("Leaf chain #%d (0x%llx) detected.\n"),
-				   chained_leaf, (unsigned long long)leaf_no);
+			log_debug(_("Leaf chain #%d (0x%"PRIx64") detected.\n"),
+			          chained_leaf, leaf_no);
 		} while (1); /* while we have chained leaf blocks */
 		if (orig_di_depth != ip->i_depth) {
 			log_debug(_("Depth of 0x%"PRIx64" changed from %d to %d\n"),
@@ -981,26 +974,18 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 		err = check_leaf_eattr(ip, block, indirect, pass);
 		if (err) {
 			error = err;
-			log_err(_("Error detected in leaf block %lld (0x%llx) "
-				  "referenced by indirect block %lld (0x%llx)"
-				  ".\n"),
-				(unsigned long long)block,
-				(unsigned long long)block,
-				(unsigned long long)indirect,
-				(unsigned long long)indirect);
+			log_err(_("Error detected in leaf block %"PRIu64" (0x%"PRIx64") "
+				  "referenced by indirect block %"PRIu64" (0x%"PRIx64").\n"),
+			        block, block, indirect, indirect);
 			log_err(_("Subsequent leaf block pointers should be "
 				  "cleared.\n"));
 		}
 		if (error) { /* leaf blocks following an error must also be
 				treated as error blocks and cleared. */
 			leaf_pointer_errors++;
-			log_err(_("Pointer to EA leaf block %lld (0x%llx) in "
-				  "indirect block %lld (0x%llx) should be "
-				  "cleared.\n"),
-				(unsigned long long)block,
-				(unsigned long long)block,
-				(unsigned long long)indirect,
-				(unsigned long long)indirect);
+			log_err(_("Pointer to EA leaf block %"PRIu64" (0x%"PRIx64") in "
+				  "indirect block %"PRIu64" (0x%"PRIx64") should be cleared.\n"),
+			        block, block, indirect, indirect);
 		}
 		/* If the first eattr lead is bad, we can't have a hole, so we
 		   have to treat this as an unrecoverable eattr error and
@@ -1593,10 +1578,8 @@ undo_metalist:
 			bh = osi_list_entry(list->next,
 					    struct gfs2_buffer_head,
 					    b_altlist);
-			log_err(_("Undoing metadata work for block %llu "
-				  "(0x%llx)\n"),
-				(unsigned long long)bh->b_blocknr,
-				(unsigned long long)bh->b_blocknr);
+			log_err(_("Undoing metadata work for block %"PRIu64" (0x%"PRIx64")\n"),
+			        bh->b_blocknr, bh->b_blocknr);
 			if (i)
 				rc = pass->undo_check_meta(ip, bh->b_blocknr,
 							   i, pass->private);

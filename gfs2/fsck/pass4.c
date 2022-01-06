@@ -55,15 +55,13 @@ static int handle_unlinked(struct gfs2_sbd *sdp, uint64_t no_addr,
 	struct gfs2_inode *ip;
 	int q;
 
-	log_err( _("Found unlinked inode at %llu (0x%llx)\n"),
-		 (unsigned long long)no_addr, (unsigned long long)no_addr);
+	log_err(_("Found unlinked inode at %"PRIu64" (0x%"PRIx64")\n"),
+	        no_addr, no_addr);
 	q = bitmap_type(sdp, no_addr);
 	if (q == GFS2_BLKST_FREE) {
-		log_err( _("Unlinked inode %llu (0x%llx) contains bad "
-			   "blocks\n"), (unsigned long long)no_addr,
-			 (unsigned long long)no_addr);
-		if (query(_("Delete unlinked inode with bad blocks? "
-			    "(y/n) "))) {
+		log_err(_("Unlinked inode %"PRIu64" (0x%"PRIx64") contains bad blocks\n"),
+		        no_addr, no_addr);
+		if (query(_("Delete unlinked inode with bad blocks? (y/n) "))) {
 			ip = fsck_load_inode(sdp, no_addr);
 			check_inode_eattr(ip, &pass4_fxns_delete);
 			check_metatree(ip, &pass4_fxns_delete);
@@ -72,15 +70,12 @@ static int handle_unlinked(struct gfs2_sbd *sdp, uint64_t no_addr,
 			fsck_inode_put(&ip);
 			return 1;
 		} else {
-			log_err( _("Unlinked inode with bad blocks not "
-				   "cleared\n"));
+			log_err(_("Unlinked inode with bad blocks not cleared\n"));
 		}
 	}
 	if (q != GFS2_BLKST_DINODE) {
-		log_err( _("Unlinked block %lld (0x%llx) marked as inode is "
-			   "not an inode (%d)\n"),
-			 (unsigned long long)no_addr,
-			 (unsigned long long)no_addr, q);
+		log_err(_("Unlinked block %"PRIu64" (0x%"PRIx64") marked as inode is not an inode (%d)\n"),
+		        no_addr, no_addr, q);
 		ip = fsck_load_inode(sdp, no_addr);
 		if (query(_("Delete unlinked inode? (y/n) "))) {
 			check_inode_eattr(ip, &pass4_fxns_delete);
@@ -126,28 +121,22 @@ static int handle_unlinked(struct gfs2_sbd *sdp, uint64_t no_addr,
 static void handle_inconsist(struct gfs2_sbd *sdp, uint64_t no_addr,
 			     uint32_t *di_nlink, uint32_t counted_links)
 {
-	log_err( _("Link count inconsistent for inode %llu"
-		   " (0x%llx) has %u but fsck found %u.\n"),
-		 (unsigned long long)no_addr, (unsigned long long)no_addr,
-		 *di_nlink, counted_links);
+	log_err(_("Link count inconsistent for inode %"PRIu64" (0x%"PRIx64") has %u but fsck found %u.\n"),
+	        no_addr, no_addr, *di_nlink, counted_links);
 	/* Read in the inode, adjust the link count, and write it back out */
-	if (query( _("Update link count for inode %llu (0x%llx) ? (y/n) "),
-		   (unsigned long long)no_addr, (unsigned long long)no_addr)) {
+	if (query(_("Update link count for inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
+	          no_addr, no_addr)) {
 		struct gfs2_inode *ip;
 
 		ip = fsck_load_inode(sdp, no_addr); /* bread, inode_get */
 		fix_link_count(counted_links, ip);
 		*di_nlink = counted_links;
 		fsck_inode_put(&ip); /* out, brelse, free */
-		log_warn(_("Link count updated to %d for inode %llu "
-			   "(0x%llx)\n"), *di_nlink,
-			 (unsigned long long)no_addr,
-			 (unsigned long long)no_addr);
+		log_warn(_("Link count updated to %d for inode %"PRIu64" (0x%"PRIx64")\n"),
+		         *di_nlink, no_addr, no_addr);
 	} else {
-		log_err( _("Link count for inode %llu (0x%llx) still "
-			   "incorrect\n"),
-			 (unsigned long long)no_addr,
-			 (unsigned long long)no_addr);
+		log_err(_("Link count for inode %"PRIu64" (0x%"PRIx64") still incorrect\n"),
+		        no_addr, no_addr);
 	}
 }
 
@@ -199,9 +188,8 @@ static int scan_inode_list(struct gfs2_sbd *sdp)
 			handle_inconsist(sdp, ii->num.in_addr,
 					 &ii->di_nlink, ii->counted_links);
 		}
-		log_debug( _("block %llu (0x%llx) has link count %d\n"),
-			 (unsigned long long)ii->num.in_addr,
-			 (unsigned long long)ii->num.in_addr, ii->di_nlink);
+		log_debug(_("block %"PRIu64" (0x%"PRIx64") has link count %d\n"),
+		          ii->num.in_addr, ii->num.in_addr, ii->di_nlink);
 	} /* osi_list_foreach(tmp, list) */
 
 	return adjust_lf_links(lf_addition);

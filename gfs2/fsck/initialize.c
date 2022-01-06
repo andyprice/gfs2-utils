@@ -33,7 +33,7 @@
 static int was_mounted_ro = 0;
 static uint64_t possible_root = HIGHEST_BLOCK;
 static struct master_dir fix_md;
-static unsigned long long blks_2free = 0;
+static uint64_t blks_2free = 0;
 
 /**
  * block_mounters
@@ -152,10 +152,9 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 
 	last_fs_block = rmax;
 	if (last_fs_block > 0xffffffff && sizeof(unsigned long) <= 4) {
-		log_crit( _("This file system is too big for this computer to handle.\n"));
-		log_crit( _("Last fs block = 0x%llx, but sizeof(unsigned long) is %zu bytes.\n"),
-			 (unsigned long long)last_fs_block,
-			 sizeof(unsigned long));
+		log_crit(_("This file system is too big for this computer to handle.\n"));
+		log_crit(_("Last fs block = 0x%"PRIx64", but sizeof(unsigned long) is %zu bytes.\n"),
+		         last_fs_block, sizeof(unsigned long));
 		goto fail;
 	}
 
@@ -163,24 +162,21 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	first_data_block = rmin;
 
 	if (fsck_lseek(sdp->device_fd, (last_fs_block * sdp->sd_bsize))){
-		log_crit( _("Can't seek to last block in file system: %llu"
-			 " (0x%llx)\n"), (unsigned long long)last_fs_block,
-			 (unsigned long long)last_fs_block);
+		log_crit(_("Can't seek to last block in file system: %"PRIu64" (0x%"PRIx64")\n"),
+		         last_fs_block, last_fs_block);
 		goto fail;
 	}
 
 	memset(buf, 0, sdp->sd_bsize);
 	error = read(sdp->device_fd, buf, sdp->sd_bsize);
 	if (error != sdp->sd_bsize){
-		log_crit( _("Can't read last block in file system (error %u), "
-			 "last_fs_block: %llu (0x%llx)\n"), error,
-			 (unsigned long long)last_fs_block,
-			 (unsigned long long)last_fs_block);
+		log_crit(_("Can't read last block in file system (error %u), "
+		           "last_fs_block: %"PRIu64" (0x%"PRIx64")\n"),
+		         error, last_fs_block, last_fs_block);
 		goto fail;
 	}
 
-	log_info(_("0x%llx to 0x%llx\n"), (unsigned long long)first_data_block,
-		 (unsigned long long)last_data_block);
+	log_info(_("0x%"PRIx64" to 0x%"PRIx64"\n"), first_data_block, last_data_block);
 	return 0;
 
  fail:
@@ -256,13 +252,11 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				}
 				/* GFS2_BLKST_UNLINKED */
 				if (sdp->gfs1)
-					log_info(_("Free metadata block 0x%llx"
-						   " found.\n"),
-						 (unsigned long long)diblock);
+					log_info(_("Free metadata block 0x%"PRIx64" found.\n"),
+					         diblock);
 				else
-					log_info(_("Unlinked dinode 0x%llx "
-						   "found.\n"),
-						 (unsigned long long)diblock);
+					log_info(_("Unlinked dinode 0x%"PRIx64" found.\n"),
+					         diblock);
 				if (!asked) {
 					char msg[256];
 
@@ -288,17 +282,15 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				rgd->rt_free++;
 				if (sdp->gfs1 && rgd->rt_freemeta)
 					rgd->rt_freemeta--;
-				log_info(_("Free metadata block %lld (0x%llx) "
-					   "reclaimed.\n"),
-					 (unsigned long long)diblock,
-					 (unsigned long long)diblock);
+				log_info(_("Free metadata block %"PRIu64" (0x%"PRIx64") reclaimed.\n"),
+				         diblock, diblock);
 				bh = bread(sdp, diblock);
 				if (!gfs2_check_meta(bh->b_data, GFS2_METATYPE_DI)) {
 					struct gfs2_inode *ip =
 						fsck_inode_get(sdp, rgd, bh);
 					if (ip->i_blocks > 1) {
 						blks_2free += ip->i_blocks - 1;
-						log_info(_("%llu blocks "
+						log_info(_("%"PRIu64" blocks "
 							   "(total) may need "
 							   "to be freed in "
 							   "pass 5.\n"),
@@ -393,14 +385,6 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 		} else
 			log_err( _("The rgrp was not fixed.\n"));
 	}
-	/*
-	else {
-		log_debug( _("Resource group %lld (0x%llx) free space "
-			     "is consistent: free: %d reclaimed: %d\n"),
-			   (unsigned long long)rgd->ri.ri_addr,
-			   (unsigned long long)rgd->ri.ri_addr,
-			   rg_free, rg_reclaimed);
-	}*/
 }
 
 /**
@@ -441,9 +425,9 @@ static void check_rgrps_integrity(struct gfs2_sbd *sdp)
 			 rgs_good, rgs_cleaned, rgs_bad, rgs_fixed,
 			 rgs_good + rgs_bad + rgs_cleaned);
 		if (rgs_cleaned && blks_2free)
-			log_err(_("%lld blocks may need to be freed in pass 5 "
+			log_err(_("%"PRIu64" blocks may need to be freed in pass 5 "
 				  "due to the cleaned resource groups.\n"),
-				blks_2free);
+			        blks_2free);
 	}
 }
 
@@ -1181,10 +1165,9 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
 			         be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RB);
 			brelse(rb_bh);
 			if (is_rb) {
-				log_debug(_("boff:%d bsize2:%d rg:0x%llx, "
-					    "rb:0x%llx\n"), bsize, bsize2,
-					  (unsigned long long)blk,
-					  (unsigned long long)rb_addr);
+				log_debug(_("boff:%d bsize2:%d rg:0x%"PRIx64", "
+					    "rb:0x%"PRIx64"\n"), bsize, bsize2,
+				          blk, rb_addr);
 				*known_bsize = bsize2;
 				break;
 			}
@@ -1285,8 +1268,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 				  "be the root; using master - 1.\n"));
 			possible_root = sdp->sd_meta_dir.in_addr - 1;
 		}
-		log_err(_("Found a possible root at: 0x%llx\n"),
-			(unsigned long long)possible_root);
+		log_err(_("Found a possible root at: 0x%"PRIx64"\n"), possible_root);
 		sdp->sd_root_dir.in_addr = possible_root;
 		sdp->md.rooti = lgfs2_inode_read(sdp, possible_root);
 		if (!sdp->md.rooti || sdp->md.rooti->i_magic != GFS2_MAGIC) {

@@ -72,11 +72,10 @@ int set_di_nlink(struct gfs2_inode *ip)
 
 /* I'm making whyincr a macro rather than function so that the debug output
  * matches older versions. */
-#define whyincr(no_addr, why, referenced_from, counted_links)		\
-	log_debug(_("Dir (0x%llx) incremented counted links to %u "	\
-		    "for (0x%llx) via %s\n"),				\
-		  (unsigned long long)referenced_from, counted_links,	\
-		  (unsigned long long)no_addr, why);
+#define whyincr(no_addr, why, referenced_from, counted_links)             \
+	log_debug(_("Dir (0x%"PRIx64") incremented counted links to %u "  \
+		    "for (0x%"PRIx64") via %s\n"),                        \
+		  referenced_from, counted_links, no_addr, why);
 
 int incr_link_count(struct lgfs2_inum no, struct gfs2_inode *ip, const char *why)
 {
@@ -125,10 +124,8 @@ int incr_link_count(struct lgfs2_inum no, struct gfs2_inode *ip, const char *why
 	   inodetree entry and set its counted links to 2 */
 	ii = inodetree_insert(no);
 	if (!ii) {
-		log_debug( _("Ref: (0x%llx) Error incrementing link for "
-			     "(0x%llx)!\n"),
-			   (unsigned long long)referenced_from,
-			   (unsigned long long)no.in_addr);
+		log_debug(_("Ref: 0x%"PRIx64" Error incrementing link for 0x%"PRIx64"\n"),
+		          referenced_from, no.in_addr);
 		fsck_inode_put(&link_ip);
 		return INCR_LINK_BAD;
 	}
@@ -146,11 +143,10 @@ int incr_link_count(struct lgfs2_inum no, struct gfs2_inode *ip, const char *why
 	return INCR_LINK_CHECK_ORIG;
 }
 
-#define whydecr(no_addr, why, referenced_from, counted_links)		\
-	log_debug(_("Dir (0x%llx) decremented counted links to %u "	\
-		    "for (0x%llx) via %s\n"),				\
-		  (unsigned long long)referenced_from, counted_links,	\
-		  (unsigned long long)no_addr, why);
+#define whydecr(no_addr, why, referenced_from, counted_links)             \
+	log_debug(_("Dir (0x%"PRIx64") decremented counted links to %u "  \
+	            "for (0x%"PRIx64") via %s\n"),                        \
+		  referenced_from, counted_links, no_addr, why);
 
 int decr_link_count(uint64_t inode_no, uint64_t referenced_from, int gfs1,
 		    const char *why)
@@ -161,10 +157,8 @@ int decr_link_count(uint64_t inode_no, uint64_t referenced_from, int gfs1,
 	di = dirtree_find(inode_no);
 	if (di) {
 		if (!di->counted_links) {
-			log_debug( _("Dir (0x%llx)'s link to "
-				     "(0x%llx) via %s is zero!\n"),
-				   (unsigned long long)referenced_from,
-				   (unsigned long long)inode_no, why);
+			log_debug(_("Dir 0x%"PRIx64"'s link to 0x%"PRIx64" via %s is zero!\n"),
+			          referenced_from, inode_no, why);
 			return 0;
 		}
 		di->counted_links--;
@@ -177,10 +171,8 @@ int decr_link_count(uint64_t inode_no, uint64_t referenced_from, int gfs1,
 	 * inode_no */
 	if (ii) {
 		if (!ii->counted_links) {
-			log_debug( _("Dir (0x%llx)'s link to "
-			     "(0x%llx) via %s is zero!\n"),
-			   (unsigned long long)referenced_from,
-			   (unsigned long long)inode_no, why);
+			log_debug(_("Dir 0x%"PRIx64"'s link to 0x%"PRIx64" via %s is zero!\n"),
+			          referenced_from, inode_no, why);
 			return 0;
 		}
 		ii->counted_links--;
@@ -193,8 +185,7 @@ int decr_link_count(uint64_t inode_no, uint64_t referenced_from, int gfs1,
 		return 0;
 	}
 
-	log_debug( _("No match found when decrementing link for (0x%llx)!\n"),
-		   (unsigned long long)inode_no);
+	log_debug(_("No match found when decrementing link for (0x%"PRIx64")!\n"), inode_no);
 	return -1;
 
 }

@@ -78,8 +78,7 @@ void warm_fuzzy_stuff(uint64_t block)
 			seconds = tv.tv_sec;
 			if (last_fs_block) {
 				percent = (block * 100) / last_fs_block;
-				log_notice( _("\r%llu percent complete.\r"),
-					   (unsigned long long)percent);
+				log_notice(_("\r%"PRIu64" percent complete.\r"), percent);
 				fflush(stdout);
 			}
 		}
@@ -357,11 +356,10 @@ int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 	   reference the same as the first. If we do, we'll never be able to
 	   resolve it. The first reference can't be the second reference. */
 	if (id && first && !(dt->dup_flags & DUPFLAG_REF1_FOUND)) {
-		log_info(_("Original reference to block %llu (0x%llx) was "
+		log_info(_("Original reference to block %"PRIu64" (0x%"PRIx64") was "
 			   "either found to be bad and deleted, or else "
 			   "a duplicate within the same inode.\n"),
-			 (unsigned long long)block,
-			 (unsigned long long)block);
+		         block, block);
 		log_info(_("I'll consider the reference from inode %"PRIu64
 			   " (0x%"PRIx64") the first reference.\n"),
 		         ip->i_num.in_addr, ip->i_num.in_addr);
@@ -504,12 +502,10 @@ enum dup_ref_type get_ref_type(struct inode_with_dups *id)
 
 void dup_listent_delete(struct duptree *dt, struct inode_with_dups *id)
 {
-	log_err( _("Removing duplicate reference to block %llu (0x%llx) "
-		   "referenced as %s by dinode %llu (0x%llx)\n"),
-		 (unsigned long long)dt->block, (unsigned long long)dt->block,
-		 reftypes[get_ref_type(id)], (unsigned long long)id->block_no,
-		 (unsigned long long)id->block_no);
-	dt->refs--; /* one less reference */
+	log_err(_("Removing duplicate reference to block %"PRIu64" (0x%"PRIx64") "
+	          "referenced as %s by dinode %"PRIu64" (0x%"PRIx64")\n"),
+	        dt->block, dt->block, reftypes[get_ref_type(id)], id->block_no, id->block_no);
+	dt->refs--;
 	if (id->name)
 		free(id->name);
 	osi_list_del(&id->list);
@@ -626,13 +622,13 @@ void delete_all_dups(struct gfs2_inode *ip)
 			continue;
 
 		if (dt->refs == 0) {
-			log_debug(_("This was the last reference: 0x%llx is "
+			log_debug(_("This was the last reference: 0x%"PRIx64" is "
 				    "no longer a duplicate.\n"),
-				  (unsigned long long)dt->block);
-			dup_delete(dt); /* not duplicate now */
+			          dt->block);
+			dup_delete(dt);
 		} else {
-			log_debug(_("%d references remain to 0x%llx\n"),
-				  dt->refs, (unsigned long long)dt->block);
+			log_debug(_("%d references remain to 0x%"PRIx64"\n"),
+				  dt->refs, dt->block);
 			if (dt->refs > 1)
 				continue;
 
@@ -646,9 +642,8 @@ void delete_all_dups(struct gfs2_inode *ip)
 						    struct inode_with_dups,
 						    list);
 			if (id)
-				log_debug("Last reference is from inode "
-					  "0x%llx\n",
-					  (unsigned long long)id->block_no);
+				log_debug("Last reference is from inode 0x%"PRIx64"\n",
+				          id->block_no);
 		}
 	}
 }

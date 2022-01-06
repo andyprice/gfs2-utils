@@ -99,10 +99,8 @@ static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
 				   "lost+found\n"));
 			return NULL;
 		} else {
-			log_warn( _("Treewalk parent is correct, fixing "
-				    "dotdot -> %llu (0x%llx)\n"),
-				  (unsigned long long)di->treewalk_parent,
-				  (unsigned long long)di->treewalk_parent);
+			log_warn(_("Treewalk parent is correct, fixing dotdot -> %"PRIu64" (0x%"PRIx64")\n"),
+			         di->treewalk_parent, di->treewalk_parent);
 			attach_dotdot_to(sdp, di->treewalk_parent,
 					 di->dotdot_parent.in_addr,
 					 di->dinode.in_addr);

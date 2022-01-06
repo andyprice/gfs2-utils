@@ -139,10 +139,8 @@ int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 	int q;
 	int error;
 
-	log_debug( _("Removing dentry %llu (0x%llx) from directory %llu"
-		     " (0x%llx)\n"), (unsigned long long)dentryblock,
-		  (unsigned long long)dentryblock,
-		  (unsigned long long)dir, (unsigned long long)dir);
+	log_debug(_("Removing dentry %"PRIu64" (0x%"PRIx64") from directory %"PRIu64" (0x%"PRIx64")\n"),
+	          dentryblock, dentryblock, dir, dir);
 	if (!valid_block(sdp, dir)) {
 		log_err( _("Parent directory is invalid\n"));
 		return 1;
@@ -290,10 +288,8 @@ int delete_eattr_extentry(struct gfs2_inode *ip, int i, __be64 *ea_data_ptr,
 	error = delete_block_if_notdup(ip, block, NULL,
 				       _("extended attribute"), NULL, private);
 	if (error) {
-		log_err(_("Bad extended attribute found at block %lld "
-			  "(0x%llx)"),
-			(unsigned long long)be64_to_cpu(*ea_data_ptr),
-			(unsigned long long)be64_to_cpu(*ea_data_ptr));
+		log_err(_("Bad extended attribute found at block %"PRIu64 " (0x%"PRIx64")"),
+		        be64_to_cpu(*ea_data_ptr), be64_to_cpu(*ea_data_ptr));
 		if (query( _("Repair the bad Extended Attribute? (y/n) "))) {
 			ea_hdr->ea_num_ptrs = i;
 			ea_hdr->ea_data_len = cpu_to_be32(tot_ealen);

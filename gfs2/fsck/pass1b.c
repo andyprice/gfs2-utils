@@ -61,12 +61,9 @@ static void log_inode_reference(struct duptree *dt, osi_list_t *tmp, int inval)
 			id->reftypecount[REF_AS_EA]);
 	if (inval)
 		log_warn( _("Invalid "));
-	log_warn( _("Inode %s (%lld/0x%llx) has %d reference(s) to "
-		    "block %llu (0x%llx) (%s)\n"), id->name,
-		  (unsigned long long)id->block_no,
-		  (unsigned long long)id->block_no, id->dup_count,
-		  (unsigned long long)dt->block,
-		  (unsigned long long)dt->block, reftypestring);
+	log_warn(_("Inode %s (%"PRIu64"/0x%"PRIx64") has %d reference(s) to block %"PRIu64" (0x%"PRIx64") (%s)\n"),
+	         id->name, id->block_no, id->block_no, id->dup_count, dt->block, dt->block,
+	         reftypestring);
 }
 
 static int findref_meta(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
@@ -86,9 +83,8 @@ static int findref_data(struct gfs2_inode *ip, uint64_t metablock,
 	if (block == mbr->block) {
 		mbr->metablock = bh->b_blocknr;
 		mbr->off = (ptr - (__be64 *)bh->b_data);
-		log_debug("Duplicate data reference located on metadata "
-			  "block 0x%llx, offset 0x%x\n",
-			  (unsigned long long)mbr->metablock, mbr->off);
+		log_debug("Duplicate data reference located on metadata block 0x%"PRIx64", offset 0x%x\n",
+		          mbr->metablock, mbr->off);
 	}
 	return META_IS_GOOD;
 }
@@ -107,12 +103,8 @@ static void clone_data_block(struct gfs2_sbd *sdp, struct duptree *dt,
 	struct gfs2_buffer_head *bh;
 	__be64 *ptr;
 
-	if (!(query(_("Okay to clone data block %lld (0x%llx) for inode "
-		      "%lld (0x%llx)? (y/n) "),
-		    (unsigned long long)dt->block,
-		    (unsigned long long)dt->block,
-		    (unsigned long long)id->block_no,
-		    (unsigned long long)id->block_no))) {
+	if (!(query(_("Okay to clone data block %"PRIu64" (0x%"PRIx64") for inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
+	            dt->block, dt->block, id->block_no, id->block_no))) {
 		log_warn(_("The duplicate reference was not cloned.\n"));
 		return;
 	}
@@ -233,15 +225,12 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 			   list, it's better to delete it. */
 			if (q == GFS2_BLKST_DINODE) {
 				found_good_ref = 1;
-				log_warn( _("Inode %s (%lld/0x%llx)'s "
-					    "reference to block %llu (0x%llx) "
+				log_warn(_("Inode %s (%"PRIu64"/0x%"PRIx64")'s "
+					    "reference to block %"PRIu64" (0x%"PRIx64") "
 					    "as '%s' is acceptable.\n"),
-					  id->name,
-					  (unsigned long long)id->block_no,
-					  (unsigned long long)id->block_no,
-					  (unsigned long long)dt->block,
-					  (unsigned long long)dt->block,
-					  reftypes[this_ref]);
+				          id->name,
+				          id->block_no, id->block_no, dt->block, dt->block,
+				          reftypes[this_ref]);
 				continue; /* don't delete the dinode */
 			}
 		}
@@ -253,20 +242,16 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 			found_good_ref = 1;
 			continue; /* don't delete the dinode */
 		}
-		log_warn( _("Inode %s (%lld/0x%llx) references block "
-			    "%llu (0x%llx) as '%s', but the block is "
+		log_warn(_("Inode %s (%"PRIu64"/0x%"PRIx64") references block "
+			    "%"PRIu64" (0x%"PRIx64") as '%s', but the block is "
 			    "really %s.\n"),
-			  id->name, (unsigned long long)id->block_no,
-			  (unsigned long long)id->block_no,
-			  (unsigned long long)dt->block,
-			  (unsigned long long)dt->block,
+			  id->name, id->block_no, id->block_no, dt->block, dt->block,
 			  reftypes[this_ref], reftypes[acceptable_ref]);
 		if (this_ref == REF_AS_EA) {
-			if (!(query( _("Okay to remove extended attributes "
-				       "from %s inode %lld (0x%llx)? (y/n) "),
+			if (!(query(_("Okay to remove extended attributes "
+				       "from %s inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
 				     (inval ? _("invalidated") : ""),
-				     (unsigned long long)id->block_no,
-				     (unsigned long long)id->block_no))) {
+			            id->block_no, id->block_no))) {
 				log_warn( _("The bad EA reference was not "
 					    "cleared."));
 				/* delete the list entry so we don't leak
@@ -284,11 +269,9 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 			dup_listent_delete(dt, id);
 			revise_dup_handler(dt->block, dh);
 			continue;
-		} else if (!(query( _("Okay to delete %s inode %lld (0x%llx)? "
-				      "(y/n) "),
+		} else if (!(query(_("Okay to delete %s inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
 				    (inval ? _("invalidated") : ""),
-				    (unsigned long long)id->block_no,
-				    (unsigned long long)id->block_no))) {
+				    id->block_no, id->block_no))) {
 			log_warn( _("The bad inode was not cleared."));
 			/* delete the list entry so we don't leak memory but
 			   leave the reference count. If we decrement the
@@ -299,19 +282,14 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 			continue;
 		}
 		if (q == GFS2_BLKST_FREE)
-			log_warn( _("Inode %lld (0x%llx) was previously "
-				    "deleted.\n"),
-				  (unsigned long long)id->block_no,
-				  (unsigned long long)id->block_no);
+			log_warn(_("Inode %"PRIu64" (0x%"PRIx64") was previously deleted.\n"),
+			         id->block_no, id->block_no);
 		else if (this_ref == REF_AS_EA)
-			log_warn(_("Pass1b is removing extended attributes "
-				   "from inode %lld (0x%llx).\n"),
-				 (unsigned long long)id->block_no,
-				 (unsigned long long)id->block_no);
+			log_warn(_("Pass1b is removing extended attributes from inode %"PRIu64" (0x%"PRIx64").\n"),
+			         id->block_no, id->block_no);
 		else
-			log_warn(_("Pass1b is deleting inode %lld (0x%llx).\n"),
-				 (unsigned long long)id->block_no,
-				 (unsigned long long)id->block_no);
+			log_warn(_("Pass1b is deleting inode %"PRIu64" (0x%"PRIx64").\n"),
+			         id->block_no, id->block_no);
 
 		ip = fsck_load_inode(sdp, id->block_no);
 		/* If we've already deleted this dinode, don't try to delete
@@ -444,34 +422,27 @@ static int clone_data(struct gfs2_inode *ip, uint64_t metablock,
 				/* Now fix the reference: */
 				*ptr = cpu_to_be64(cloneblock);
 				bmodified(bh);
-				log_err(_("Duplicate reference to block %lld "
-					  "(0x%llx) was cloned to block %lld "
-					  "(0x%llx).\n"),
-					(unsigned long long)block,
-					(unsigned long long)block,
-					(unsigned long long)cloneblock,
-					(unsigned long long)cloneblock);
+				log_err(_("Duplicate reference to block %"PRIu64
+				          " (0x%"PRIx64") was cloned to block %"PRIu64
+					  " (0x%"PRIx64").\n"),
+				        block, block, cloneblock, cloneblock);
 				return 0;
 			}
 		}
 		log_err(_("Error: Unable to allocate a new data block.\n"));
 		if (!query("Should I zero the reference instead? (y/n)")) {
-			log_err(_("Duplicate reference to block %lld "
-				  "(0x%llx) was not fixed.\n"),
-				(unsigned long long)block,
-				(unsigned long long)block);
+			log_err(_("Duplicate reference to block %"PRIu64
+			          " (0x%"PRIx64") was not fixed.\n"),
+			        block, block);
 			return 0;
 		}
 		*ptr = 0;
 		bmodified(bh);
-		log_err(_("Duplicate reference to block %lld (0x%llx) was "
-			  "zeroed.\n"),
-			(unsigned long long)block,
-			(unsigned long long)block);
+		log_err(_("Duplicate reference to block %"PRIu64" (0x%"PRIx64") was zeroed.\n"),
+		        block, block);
 	} else {
-		log_err(_("Duplicate reference to block %lld (0x%llx) "
-			  "was not fixed.\n"), (unsigned long long)block,
-			(unsigned long long)block);
+		log_err(_("Duplicate reference to block %"PRIu64" (0x%"PRIx64") was not fixed.\n"),
+		        block, block);
 	}
 	return 0;
 }
@@ -549,10 +520,8 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 	osi_list_t *tmp;
 	int q;
 
-	log_notice( _("Block %llu (0x%llx) has only one remaining "
-		      "valid inode referencing it.\n"),
-		    (unsigned long long)dt->block,
-		    (unsigned long long)dt->block);
+	log_notice(_("Block %"PRIu64" (0x%"PRIx64") has only one remaining valid inode referencing it.\n"),
+	           dt->block, dt->block);
 	/* If we're down to a single reference (and not all references
 	   deleted, which may be the case of an inode that has only
 	   itself and a reference), we need to reset the block type
@@ -560,11 +529,10 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 	   in the list, not the structure's place holder. */
 	tmp = dt->ref_inode_list.next;
 	id = osi_list_entry(tmp, struct inode_with_dups, list);
-	log_debug( _("----------------------------------------------\n"
+	log_debug(_("----------------------------------------------\n"
 		     "Step 4. Set block type based on the remaining "
-		     "reference in inode %lld (0x%llx).\n"),
-		   (unsigned long long)id->block_no,
-		   (unsigned long long)id->block_no);
+		     "reference in inode %"PRIu64" (0x%"PRIx64").\n"),
+	          id->block_no, id->block_no);
 	ip = fsck_load_inode(sdp, id->block_no);
 
 	if (dt->dup_flags & DUPFLAG_REF1_IS_DUPL)
@@ -572,10 +540,9 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 
 	q = bitmap_type(sdp, id->block_no);
 	if (q == GFS2_BLKST_FREE) {
-		log_debug( _("The remaining reference inode %lld (0x%llx) was "
+		log_debug(_("The remaining reference inode %"PRIu64" (0x%"PRIx64") was "
 			     "already marked free.\n"),
-			   (unsigned long long)id->block_no,
-			   (unsigned long long)id->block_no);
+		          id->block_no, id->block_no);
 	} else if (id->reftypecount[REF_IS_INODE]) {
 		set_ip_bitmap(ip);
 	} else if (id->reftypecount[REF_AS_DATA]) {
@@ -601,18 +568,14 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 					GFS2_BLKST_USED);
 		else {
 			log_err(_("Error: The remaining reference to block "
-				  " %lld (0x%llx) is as extended attribute, "
-				  "in inode %lld (0x%llx) but the block is "
-				  "not an EA.\n"),
-				(unsigned long long)dt->block,
-				(unsigned long long)dt->block,
-				(unsigned long long)id->block_no,
-				(unsigned long long)id->block_no);
+				  " %"PRIu64" (0x%"PRIx64") is as extended attribute, "
+				  "in inode %"PRIu64" (0x%"PRIx64") but the block is "
+				  "not an extended attribute block.\n"),
+			        dt->block, dt->block, id->block_no, id->block_no);
 			if (query(_("Okay to remove the bad extended "
-				    "attribute from inode %lld (0x%llx)? "
+				    "attribute from inode %"PRIu64" (0x%"PRIx64")? "
 				    "(y/n) "),
-				  (unsigned long long)id->block_no,
-				  (unsigned long long)id->block_no)) {
+			          id->block_no, id->block_no)) {
 				ip->i_eattr = 0;
 				ip->i_flags &= ~GFS2_DIF_EA_INDIRECT;
 				ip->i_blocks--;
@@ -629,8 +592,7 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 		}
 	}
 	fsck_inode_put(&ip); /* out, brelse, free */
-	log_debug(_("Done with duplicate reference to block 0x%llx\n"),
-		  (unsigned long long)dt->block);
+	log_debug(_("Done with duplicate reference to block 0x%"PRIx64"\n"), dt->block);
 	dup_delete(dt);
 }
 
@@ -652,11 +614,9 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 	revise_dup_handler(dup_blk, &dh);
 
 	/* Log the duplicate references */
-	log_notice( _("Block %llu (0x%llx) has %d inodes referencing it"
+	log_notice(_("Block %"PRIu64" (0x%"PRIx64") has %d inodes referencing it"
 		   " for a total of %d duplicate references:\n"),
-		    (unsigned long long)dt->block,
-		    (unsigned long long)dt->block,
-		    dh.ref_inode_count, dh.ref_count);
+	           dt->block, dt->block, dh.ref_inode_count, dh.ref_count);
 
 	osi_list_foreach(tmp, &dt->ref_invinode_list)
 		log_inode_reference(dt, tmp, 1);
@@ -709,12 +669,11 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 	 *          All block types are unacceptable, so we use REF_TYPES.
 	 */
 	if (dh.ref_count > 1) {
-		log_debug( _("----------------------------------------------\n"
-			     "Step 1: Eliminate references to block %llu "
-			     "(0x%llx) that were previously marked "
+		log_debug(_("----------------------------------------------\n"
+			     "Step 1: Eliminate references to block %"PRIu64" "
+			     "(0x%"PRIx64") that were previously marked "
 			     "invalid.\n"),
-			   (unsigned long long)dt->block,
-			   (unsigned long long)dt->block);
+		          dt->block, dt->block);
 		resolve_dup_references(sdp, dt, &dt->ref_invinode_list,
 				       &dh, 1, REF_TYPES);
 		revise_dup_handler(dup_blk, &dh);
@@ -725,11 +684,10 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 	 *          directory inode referencing a data block as a leaf block.
 	 */
 	if (dh.ref_count > 1) {
-		log_debug( _("----------------------------------------------\n"
-			     "Step 2: Eliminate references to block %llu "
-			     "(0x%llx) that need the wrong block type.\n"),
-			   (unsigned long long)dt->block,
-			   (unsigned long long)dt->block);
+		log_debug(_("----------------------------------------------\n"
+			     "Step 2: Eliminate references to block %"PRIu64" "
+			     "(0x%"PRIx64") that need the wrong block type.\n"),
+		          dt->block, dt->block);
 		resolve_dup_references(sdp, dt, &dt->ref_inode_list, &dh, 0,
 				       acceptable_ref);
 		revise_dup_handler(dup_blk, &dh);
@@ -739,11 +697,10 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 	 *          All block types are fair game, so we use REF_TYPES.
 	 */
 	if (dh.ref_count > 1) {
-		log_debug( _("----------------------------------------------\n"
-			     "Step 3: Choose one reference to block %llu "
-			     "(0x%llx) to keep.\n"),
-			   (unsigned long long)dt->block,
-			   (unsigned long long)dt->block);
+		log_debug(_("----------------------------------------------\n"
+			     "Step 3: Choose one reference to block %"PRIu64" "
+			     "(0x%"PRIx64") to keep.\n"),
+		          dt->block, dt->block);
 		resolve_dup_references(sdp, dt, &dt->ref_inode_list, &dh, 0,
 				       REF_TYPES);
 		revise_dup_handler(dup_blk, &dh);
@@ -755,17 +712,15 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 		resolve_last_reference(sdp, dt, acceptable_ref);
 	} else {
 		/* They may have answered no and not fixed all references. */
-		log_debug( _("All duplicate references to block 0x%llx were "
-			     "processed.\n"), (unsigned long long)dup_blk);
+		log_debug( _("All duplicate references to block 0x%"PRIx64" were processed.\n"), dup_blk);
 		if (dh.ref_count) {
 			log_debug(_("Done with duplicate reference to block "
-				    "0x%llx, but %d references remain.\n"),
-				  (unsigned long long)dup_blk, dh.ref_count);
+				    "0x%"PRIx64", but %d references remain.\n"),
+			          dup_blk, dh.ref_count);
 		} else {
-			log_notice( _("Block %llu (0x%llx) has no more "
+			log_notice(_("Block %"PRIu64" (0x%"PRIx64") has no more "
 				      "references; Marking as 'free'.\n"),
-				    (unsigned long long)dup_blk,
-				    (unsigned long long)dup_blk);
+			           dup_blk, dup_blk);
 			if (dh.dt)
 				dup_delete(dh.dt);
 			check_n_fix_bitmap(sdp, NULL, dup_blk, 0,
@@ -877,9 +832,8 @@ static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
 	if (ip->i_magic != GFS2_MAGIC ||
 	    ip->i_mh_type != GFS2_METATYPE_DI) {
 		if (!sdp->gfs1)
-			log_debug( _("Block %lld (0x%llx) is not a dinode.\n"),
-				   (unsigned long long)inode,
-				   (unsigned long long)inode);
+			log_debug(_("Block %"PRIu64" (0x%"PRIx64") is not a dinode.\n"),
+			          inode, inode);
 		error = 1;
 		goto out;
 	}
@@ -922,9 +876,8 @@ int pass1b(struct gfs2_sbd *sdp)
 	/* Rescan the fs looking for pointers to blocks that are in
 	 * the duplicate block map */
 	log_info( _("Scanning filesystem for inodes containing duplicate blocks...\n"));
-	log_debug( _("Filesystem has %llu (0x%llx) blocks total\n"),
-		  (unsigned long long)last_fs_block,
-		  (unsigned long long)last_fs_block);
+	log_debug(_("Filesystem has %"PRIu64" (0x%"PRIx64") blocks total\n"),
+	          last_fs_block, last_fs_block);
 	for (i = 0; i < last_fs_block; i++) {
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			goto out;
@@ -940,10 +893,8 @@ int pass1b(struct gfs2_sbd *sdp)
 			continue;
 
 		if (q == GFS2_BLKST_UNLINKED) {
-			log_debug( _("Error: block %lld (0x%llx) is still "
-				     "marked UNLINKED.\n"),
-				   (unsigned long long)i,
-				   (unsigned long long)i);
+			log_debug(_("Error: block %"PRIu64" (0x%"PRIx64") is still marked UNLINKED.\n"),
+			          i, i);
 			return FSCK_ERROR;
 		}
 

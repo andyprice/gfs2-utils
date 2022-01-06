@@ -320,11 +320,8 @@ static int wrong_leaf(struct gfs2_inode *ip, struct lgfs2_inum *entry,
 		return -1;
 	}
 	planned_leaf = be64_to_cpu(tbl[hash_index]);
-	log_err(_("Moving it from leaf %llu (0x%llx) to %llu (0x%llx)\n"),
-		(unsigned long long)be64_to_cpu(tbl[*lindex]),
-		(unsigned long long)be64_to_cpu(tbl[*lindex]),
-		(unsigned long long)planned_leaf,
-		(unsigned long long)planned_leaf);
+	log_err(_("Moving it from leaf %"PRIu64" (0x%"PRIx64") to %"PRIu64" (0x%"PRIx64")\n"),
+	        be64_to_cpu(tbl[*lindex]), be64_to_cpu(tbl[*lindex]), planned_leaf, planned_leaf);
 	/* Can't trust lf_depth; we have to count */
 	dest_ref = 0;
 	for (li = 0; li < (1 << ip->i_depth); li++) {
@@ -968,10 +965,10 @@ static int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
 	}
 	fsck_bitmap_set(dip, *bn, _("directory leaf"), dip->i_sbd->gfs1 ?
 			GFS2_BLKST_DINODE : GFS2_BLKST_USED);
-	log_err(_("A new directory leaf was allocated at block %lld "
-		  "(0x%llx) to fill the %d (0x%x) pointer gap %s the existing "
-		  "pointer at index %d (0x%x).\n"), (unsigned long long)*bn,
-		(unsigned long long)*bn, num_copies, num_copies,
+	log_err(_("A new directory leaf was allocated at block %"PRIu64" "
+		  "(0x%"PRIx64") to fill the %d (0x%x) pointer gap %s the existing "
+		  "pointer at index %d (0x%x).\n"), *bn, *bn,
+		num_copies, num_copies,
 		before_or_after, start_lindex, start_lindex);
 	dip->i_blocks++;
 	bmodified(dip->i_bh);
@@ -1049,11 +1046,9 @@ static void pad_with_leafblks(struct gfs2_inode *ip, __be64 *tbl,
 			new_len <<= 1;
 		}
 		write_new_leaf(ip, lindex, new_len, "after", &new_leaf_blk);
-		log_err(_("New leaf block was allocated at %llu (0x%llx) for "
+		log_err(_("New leaf block was allocated at %"PRIu64" (0x%"PRIx64") for "
 			  "index %d (0x%x), length %d\n"),
-			(unsigned long long)new_leaf_blk,
-			(unsigned long long)new_leaf_blk,
-			lindex, lindex, new_len);
+		        new_leaf_blk, new_leaf_blk, lindex, lindex, new_len);
 		fsck_bitmap_set(ip, new_leaf_blk, _("pad leaf"),
 				ip->i_sbd->gfs1 ?
 				GFS2_BLKST_DINODE : GFS2_BLKST_USED);
@@ -1084,9 +1079,9 @@ static int lost_leaf(struct gfs2_inode *ip, __be64 *tbl, uint64_t leafno,
 	int error;
 	int isdir = 0;
 
-	log_err(_("Leaf block %llu (0x%llx) seems to be out of place and its "
+	log_err(_("Leaf block %"PRIu64" (0x%"PRIx64") seems to be out of place and its "
 		  "contents need to be moved to lost+found.\n"),
-		(unsigned long long)leafno, (unsigned long long)leafno);
+	        leafno, leafno);
 	if (!query( _("Attempt to fix it? (y/n) "))) {
 		log_err( _("Directory leaf was not fixed.\n"));
 		return 0;
@@ -1341,10 +1336,9 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 	    (dentry.dr_inum.in_formal_ino == 0)) {
 		brelse(lbh);
 		gfs2_free_block(ip->i_sbd, leafblk);
-		log_err(_("Out of place leaf block %llu (0x%llx) had no "
+		log_err(_("Out of place leaf block %"PRIu64" (0x%"PRIx64") had no "
 			"entries, so it was deleted.\n"),
-			(unsigned long long)leafblk,
-			(unsigned long long)leafblk);
+		        leafblk, leafblk);
 		pad_with_leafblks(ip, tbl, lindex, len);
 		log_err(_("Reprocessing index 0x%x (case 1).\n"), lindex);
 		return 1;
@@ -1410,19 +1404,17 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 		/* re-read the leaf to pick up dir_split_leaf's changes */
 		lgfs2_leaf_in(&leaf, lbh->b_data);
 		*proper_len = 1 << (ip->i_depth - leaf.lf_depth);
-		log_err(_("Leaf block %llu (0x%llx) was split from length "
-			  "%d to %d\n"), (unsigned long long)leafblk,
-			(unsigned long long)leafblk, len, *proper_len);
+		log_err(_("Leaf block %"PRIu64" (0x%"PRIx64") was split from length %d to %d\n"),
+		        leafblk, leafblk, len, *proper_len);
 		if (*proper_len < 0) {
 			log_err(_("Programming error: proper_len=%d, "
 				  "di_depth = %d, lf_depth = %d.\n"),
 				*proper_len, ip->i_depth, leaf.lf_depth);
 			exit(FSCK_ERROR);
 		}
-		log_err(_("New split-off leaf block was allocated at %lld "
-			  "(0x%llx) for index %d (0x%x)\n"),
-			(unsigned long long)new_leaf_blk,
-			(unsigned long long)new_leaf_blk, lindex, lindex);
+		log_err(_("New split-off leaf block was allocated at %"PRIu64" "
+			  "(0x%"PRIx64") for index %d (0x%x)\n"),
+		        new_leaf_blk, new_leaf_blk, lindex, lindex);
 		fsck_bitmap_set(ip, new_leaf_blk, _("split leaf"),
 				ip->i_sbd->gfs1 ?
 				GFS2_BLKST_DINODE : GFS2_BLKST_USED);
@@ -1440,9 +1432,9 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 		len -= (*proper_len);
 	}
 	if (*proper_len < len) {
-		log_err(_("There are %d pointers, but leaf 0x%llx's "
+		log_err(_("There are %d pointers, but leaf 0x%"PRIx64"'s "
 			  "depth, %d, only allows %d\n"),
-			len, (unsigned long long)leafblk, leaf.lf_depth,
+			len, leafblk, leaf.lf_depth,
 			*proper_len);
 	}
 	brelse(lbh);
@@ -1459,9 +1451,8 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 			break;
 	}
 	if (extras) {
-		log_err(_("Found %d extra pointers to leaf %llu (0x%llx)\n"),
-			extras, (unsigned long long)leafblk,
-			(unsigned long long)leafblk);
+		log_err(_("Found %d extra pointers to leaf %"PRIu64" (0x%"PRIx64")\n"),
+		        extras, leafblk, leafblk);
 		pad_with_leafblks(ip, tbl, lindex, extras);
 		log_err(_("Reprocessing index 0x%x (case 2).\n"), lindex);
 		return 1;
@@ -1537,9 +1528,8 @@ static int check_hash_tbl_dups(struct gfs2_inode *ip, __be64 *tbl,
 			bmodified(ip->i_bh);
 			pad_with_leafblks(ip, tbl, l, len2);
 		} else {
-			log_debug(_("Hash index 0x%x is the proper "
-				    "reference to leaf 0x%llx.\n"),
-				  l, (unsigned long long)leafblk);
+			log_debug(_("Hash index 0x%x is the proper reference to leaf 0x%"PRIx64".\n"),
+			          l, leafblk);
 		}
 		/* Check the original ref: both references might be bad.
 		   If both were bad, just return and if we encounter it
@@ -1560,9 +1550,8 @@ static int check_hash_tbl_dups(struct gfs2_inode *ip, __be64 *tbl,
 			   return to start fresh */
 			return -EFAULT;
 		} else {
-			log_debug(_("Hash index 0x%x is the proper "
-				    "reference to leaf 0x%llx.\n"),
-				  lindex, (unsigned long long)leafblk);
+			log_debug(_("Hash index 0x%x is the proper reference to leaf 0x%"PRIx64".\n"),
+			          lindex, leafblk);
 		}
 	}
 	return 0;
@@ -1667,12 +1656,9 @@ static int check_hash_tbl(struct gfs2_inode *ip, __be64 *tbl,
 		   is the calculation used by the kernel, and dir_split_leaf */
 		proper_start = (lindex & ~(proper_len - 1));
 		if (lindex != proper_start) {
-			log_debug(_("lindex 0x%llx is not a proper starting "
-				    "point for leaf %llu (0x%llx): 0x%llx\n"),
-				  (unsigned long long)lindex,
-				  (unsigned long long)leafblk,
-				  (unsigned long long)leafblk,
-				  (unsigned long long)proper_start);
+			log_debug(_("lindex 0x%x is not a proper starting "
+				    "point for leaf %"PRIu64" (0x%"PRIx64"): 0x%"PRIx32"\n"),
+			          lindex, leafblk, leafblk, proper_start);
 			changes = fix_hashtable(ip, tbl, hsize, leafblk,
 						lindex, proper_start, len,
 						&proper_len, factor);
@@ -1694,11 +1680,9 @@ static int check_hash_tbl(struct gfs2_inode *ip, __be64 *tbl,
 		   depth, and adjust the hash table accordingly. */
 		if (len != proper_len) {
 			log_err(_("Length %d (0x%x) is not a proper length "
-				  "for leaf %llu (0x%llx). Valid boundary "
+				  "for leaf %"PRIu64" (0x%"PRIx64"). Valid boundary "
 				  "assumed to be %d (0x%x).\n"), len, len,
-				(unsigned long long)leafblk,
-				(unsigned long long)leafblk,
-				proper_len, proper_len);
+				leafblk, leafblk, proper_len, proper_len);
 			lbh = bread(ip->i_sbd, leafblk);
 			lgfs2_leaf_in(&leaf, lbh->b_data);
 			if (gfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF) ||
@@ -1746,9 +1730,8 @@ static int check_hash_tbl(struct gfs2_inode *ip, __be64 *tbl,
 			proper_len = 1 << (ip->i_depth - leaf.lf_depth);
 			if (proper_len != len) {
 				log_debug(_("Length 0x%x is not proper for "
-					    "leaf %llu (0x%llx): 0x%x\n"),
-					  len, (unsigned long long)leafblk,
-					  (unsigned long long)leafblk,
+					    "leaf %"PRIu64" (0x%"PRIx64"): 0x%x\n"),
+					  len, leafblk, leafblk,
 					  proper_len);
 				changes = fix_hashtable(ip, tbl, hsize,
 							leafblk, lindex,
@@ -1804,9 +1787,9 @@ static int check_data_qc(struct gfs2_inode *ip, uint64_t metablock,
 
 	bh = bread(ip->i_sbd, block);
 	if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_QC) != 0) {
-		log_crit(_("Error: quota_change block at %lld (0x%llx) is "
+		log_crit(_("Error: quota_change block at %"PRIu64" (0x%"PRIx64") is "
 			   "the wrong metadata type.\n"),
-			 (unsigned long long)block, (unsigned long long)block);
+		         block, block);
 		brelse(bh);
 		return -1;
 	}
@@ -1830,7 +1813,7 @@ static struct metawalk_fxns quota_change_fxns = {
  *
  * Returns: 0 if all went well, else error. */
 static int check_pernode_for(int x, struct gfs2_inode *pernode, const char *fn,
-			     unsigned long long filelen, int multiple,
+			     size_t filelen, int multiple,
 			     struct metawalk_fxns *pass,
 			     int builder(struct gfs2_inode *per_node,
 					 unsigned int j))
@@ -1853,8 +1836,8 @@ static int check_pernode_for(int x, struct gfs2_inode *pernode, const char *fn,
 	else if (multiple && (ip->i_size % filelen))
 		valid_size = 0;
 	if (!valid_size) {
-		log_err(_("System file %s has an invalid size. Is %"PRIu64", "
-			  "should be %llu.\n"), fn, ip->i_size, filelen);
+		log_err(_("System file %s has an invalid size. Is %"PRIu64", should be %zu.\n"),
+		        fn, ip->i_size, filelen);
 		if (!query( _("Rebuild the system file? (y/n) ")))
 			goto out_good;
 		fsck_inode_put(&ip);
@@ -2026,37 +2009,29 @@ static int pass2_check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 			stack;
 			return FSCK_ERROR;
 		}
-		if (query(_("Remove directory entry for bad inode "
-		            "%llu (0x%llx) in %llu (0x%llx)? (y/n)"),
-			  (unsigned long long)dirblk,
-			  (unsigned long long)dirblk,
-			  (unsigned long long)di->treewalk_parent,
-			  (unsigned long long)di->treewalk_parent)) {
+		if (query(_("Remove directory entry for bad inode %"PRIu64" (0x%"PRIx64") in %"PRIu64" (0x%"PRIx64")? (y/n)"),
+		          dirblk, dirblk, di->treewalk_parent, di->treewalk_parent)) {
 			error = remove_dentry_from_dir(sdp, di->treewalk_parent, dirblk);
 			if (error < 0) {
 				stack;
 				return FSCK_ERROR;
 			}
 			if (error > 0) {
-				log_warn(_("Unable to find dentry for %llu (0x%llx) "
-				           "in %llu (0x%llx)\n"),
-					  (unsigned long long)dirblk,
-					  (unsigned long long)dirblk,
-					  (unsigned long long)di->treewalk_parent,
-					  (unsigned long long)di->treewalk_parent);
+				log_warn(_("Unable to find dentry for %"PRIu64" (0x%"PRIx64") in %"PRIu64" (0x%"PRIx64")\n"),
+				         dirblk, dirblk, di->treewalk_parent, di->treewalk_parent);
 			}
 			log_warn(_("Directory entry removed\n"));
 		} else
 			log_err(_("Directory entry to invalid inode remains.\n"));
 
-		log_debug(_("Directory block %lld (0x%llx) is now marked as 'invalid'\n"),
-			   (unsigned long long)dirblk, (unsigned long long)dirblk);
+		log_debug(_("Directory block %"PRIu64" (0x%"PRIx64") is now marked as 'invalid'\n"),
+		          dirblk, dirblk);
 		check_n_fix_bitmap(sdp, ip->i_rgd, dirblk, 0, GFS2_BLKST_FREE);
 	}
 
 	if (!ds.dotdir) {
-		log_err(_("No '.' entry found for directory inode at block %llu (0x%llx)\n"),
-			(unsigned long long)dirblk, (unsigned long long)dirblk);
+		log_err(_("No '.' entry found for directory inode at block %"PRIu64" (0x%"PRIx64")\n"),
+		        dirblk, dirblk);
 
 		if (query( _("Is it okay to add '.' entry? (y/n) "))) {
 			struct lgfs2_inum no = ip->i_num;
@@ -2158,8 +2133,8 @@ int pass2(struct gfs2_sbd *sdp)
 			continue;
 		}
 
-		log_debug(_("Checking directory inode at block %llu (0x%llx)\n"),
-			  (unsigned long long)dirblk, (unsigned long long)dirblk);
+		log_debug(_("Checking directory inode at block %"PRIu64" (0x%"PRIx64")\n"),
+		          dirblk, dirblk);
 
 		ip = fsck_load_inode(sdp, dirblk);
 		if (ip == NULL) {

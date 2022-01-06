@@ -64,56 +64,43 @@ static int check_block_status(struct gfs2_sbd *sdp,  struct gfs2_bmap *bl,
 		   and should be cleaned up by the file system eventually.
 		   So we ignore it. */
 		if (q == GFS2_BLKST_UNLINKED) {
-			log_err( _("Unlinked inode found at block %llu "
-				   "(0x%llx).\n"),
-				 (unsigned long long)block,
-				 (unsigned long long)block);
+			log_err(_("Unlinked inode found at block %"PRIu64" (0x%"PRIx64").\n"),
+			        block, block);
 			if (query(_("Do you want to reclaim the block? "
 				   "(y/n) "))) {
 				lgfs2_rgrp_t rg = gfs2_blk2rgrpd(sdp, block);
 				if (gfs2_set_bitmap(rg, block, GFS2_BLKST_FREE))
-					log_err(_("Unlinked block %llu "
-						  "(0x%llx) bitmap not fixed."
-						  "\n"),
-						(unsigned long long)block,
-						(unsigned long long)block);
+					log_err(_("Unlinked block %"PRIu64" (0x%"PRIx64") bitmap not fixed.\n"),
+					        block, block);
 				else {
-					log_err(_("Unlinked block %llu "
-						  "(0x%llx) bitmap fixed.\n"),
-						(unsigned long long)block,
-						(unsigned long long)block);
+					log_err(_("Unlinked block %"PRIu64" (0x%"PRIx64") bitmap fixed.\n"),
+					        block, block);
 					count[GFS2_BLKST_UNLINKED]--;
 					count[GFS2_BLKST_FREE]++;
 				}
 			} else {
-				log_info( _("Unlinked block found at block %llu"
-					    " (0x%llx), left unchanged.\n"),
-					(unsigned long long)block,
-					(unsigned long long)block);
+				log_info(_("Unlinked block found at block %"PRIu64" (0x%"PRIx64"), left unchanged.\n"),
+				         block, block);
 			}
 		} else if (rg_status != q) {
-			log_err( _("Block %llu (0x%llx) bitmap says %u (%s) "
-				   "but FSCK saw %u (%s)\n"),
-				 (unsigned long long)block,
-				 (unsigned long long)block, rg_status,
+			log_err(_("Block %"PRIu64" (0x%"PRIx64") bitmap says %u (%s) but FSCK saw %u (%s)\n"),
+				 block, block, rg_status,
 				 block_type_string(rg_status), q,
 				 block_type_string(q));
 			if (q) /* Don't print redundant "free" */
 				log_err( _("Metadata type is %u (%s)\n"), q,
 					 block_type_string(q));
 
-			if (query(_("Fix bitmap for block %llu (0x%llx) ? (y/n) "),
-				 (unsigned long long)block,
-				 (unsigned long long)block)) {
+			if (query(_("Fix bitmap for block %"PRIu64" (0x%"PRIx64")? (y/n) "),
+			          block, block)) {
 				lgfs2_rgrp_t rg = gfs2_blk2rgrpd(sdp, block);
 				if (gfs2_set_bitmap(rg, block, q))
 					log_err( _("Repair failed.\n"));
 				else
 					log_err( _("Fixed.\n"));
 			} else
-				log_err( _("Bitmap at block %llu (0x%llx) left inconsistent\n"),
-					(unsigned long long)block,
-					(unsigned long long)block);
+				log_err(_("Bitmap at block %"PRIu64" (0x%"PRIx64") left inconsistent\n"),
+				        block, block);
 		}
 		(*rg_block)++;
 		bit += GFS2_BIT_SIZE;
@@ -219,7 +206,7 @@ int pass5(struct gfs2_sbd *sdp, struct gfs2_bmap *bl)
 		next = osi_next(n);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
-		log_info( _("Verifying Resource Group #%llu\n"), (unsigned long long)rg_count);
+		log_info(_("Verifying resource group %"PRIu64"\n"), rg_count);
 		memset(count, 0, sizeof(count));
 		rgp = (struct rgrp_tree *)n;
 
