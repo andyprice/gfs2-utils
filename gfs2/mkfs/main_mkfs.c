@@ -168,16 +168,15 @@ static struct lgfs2_inum *mkfs_journals = NULL;
 
 static int discard_blocks(int fd, uint64_t len, int debug)
 {
-        __uint64_t range[2];
+        uint64_t range[2];
 
 	range[0] = 0;
 	range[1] = len;
 	if (debug)
 		/* Translators: "discard" is a request sent to a storage device to
 		 * discard a range of blocks. */
-		printf(_("Issuing discard request: range: %llu - %llu..."),
-		       (unsigned long long)range[0],
-		       (unsigned long long)range[1]);
+		printf(_("Issuing discard request: range: %"PRIu64" - %"PRIu64"..."),
+		       range[0], range[1]);
 	if (ioctl(fd, BLKDISCARD, &range) < 0) {
 		if (debug)
 			printf("%s = %d\n", _("error"), errno);
