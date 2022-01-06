@@ -33,7 +33,7 @@ static int check_block_status(struct gfs2_sbd *sdp,  struct gfs2_bmap *bl,
 	while (byte < end) {
 		rg_status = ((*byte >> bit) & GFS2_BIT_MASK);
 		block = rg_data + *rg_block;
-		warm_fuzzy_stuff(block);
+		display_progress(block);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return 0;
 

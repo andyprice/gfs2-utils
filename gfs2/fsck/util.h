@@ -14,7 +14,7 @@
 
 struct di_info *search_list(osi_list_t *list, uint64_t addr);
 void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked);
-void warm_fuzzy_stuff(uint64_t block);
+void display_progress(uint64_t block);
 int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
 		      enum dup_ref_type reftype, int first, int inode_valid);
 extern struct inode_with_dups *find_dup_ref_inode(struct duptree *dt,

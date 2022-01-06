@@ -56,9 +56,7 @@ void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked)
 	fflush(stdout);
 }
 
-/* Put out a warm, fuzzy message every second so the user     */
-/* doesn't think we hung.  (This may take a long time).       */
-void warm_fuzzy_stuff(uint64_t block)
+void display_progress(uint64_t block)
 {
 	static uint64_t one_percent = 0;
 	static struct timeval tv;

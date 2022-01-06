@@ -2118,7 +2118,7 @@ int pass2(struct gfs2_sbd *sdp)
 
 		dt = (struct dir_info *)tmp;
 		dirblk = dt->dinode.in_addr;
-		warm_fuzzy_stuff(dirblk);
+		display_progress(dirblk);
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return FSCK_OK;
 

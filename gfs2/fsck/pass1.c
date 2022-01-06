@@ -1702,7 +1702,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 			          block, block);
 			continue;
 		}
-		warm_fuzzy_stuff(block);
+		display_progress(block);
 
 		if (fsck_abort) { /* if asked to abort */
 			gfs2_special_free(&gfs1_rindex_blks);

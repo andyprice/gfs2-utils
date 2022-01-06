@@ -898,7 +898,7 @@ int pass1b(struct gfs2_sbd *sdp)
 			return FSCK_ERROR;
 		}
 
-		warm_fuzzy_stuff(i);
+		display_progress(i);
 		if (find_block_ref(sdp, i) < 0) {
 			stack;
 			rc = FSCK_ERROR;
