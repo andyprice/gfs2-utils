@@ -162,7 +162,7 @@ static struct mount_point *mounts;
 static char dlmwlines[MAX_LINES][96]; /* waiters lines */
 static char dlmglines[MAX_LINES][97]; /* granted lines */
 static char contended_filenames[MAX_FILES][PATH_MAX];
-static unsigned long long contended_blocks[MAX_FILES];
+static uint64_t contended_blocks[MAX_FILES];
 static int contended_count = 0;
 static int line = 0;
 static const char *prog_name;
@@ -571,8 +571,7 @@ void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 	va_end(args);
 }
 
-static void display_filename(int fd, unsigned long long block,
-			     unsigned long long dirarray[256], int subdepth)
+static void display_filename(int fd, uint64_t block, uint64_t *dirarray, int subdepth)
 {
 	struct mount_point *mp;
 	int i, subs;
@@ -591,7 +590,7 @@ static void display_filename(int fd, unsigned long long block,
 			break;
 		}
 	}
-	sprintf(blk, "%lld", block);
+	sprintf(blk, "%"PRIu64, block);
 	if (i >= contended_count) {
 		memset(contended_filenames[i], 0, PATH_MAX);
 		strcat(contended_filenames[i], mp->dir);
@@ -613,7 +612,7 @@ static void display_filename(int fd, unsigned long long block,
 	eol(0);
 }
 
-static const char *show_inode(const char *id, int fd, unsigned long long block)
+static const char *show_inode(const char *id, int fd, uint64_t block)
 {
 	struct gfs2_inode *ip;
 	const char *inode_type = NULL;
@@ -622,7 +621,7 @@ static const char *show_inode(const char *id, int fd, unsigned long long block)
 	ip = lgfs2_inode_read(&sbd, block);
 	if (S_ISDIR(ip->i_mode)) {
 		struct gfs2_inode *parent;
-		unsigned long long dirarray[256];
+		uint64_t dirarray[256];
 		int subdepth = 0, error;
 
 		inode_type = "directory ";
@@ -664,7 +663,7 @@ static const char *show_inode(const char *id, int fd, unsigned long long block)
 static const char *show_details(const char *id, const char *fsname, int btype,
 				int trace_dir_path)
 {
-	unsigned long long block = 0;
+	uint64_t block = 0;
 	const char *blk_type = NULL;
 	struct mount_point *mp;
 	FILE *dlmf;
@@ -732,7 +731,7 @@ static const char *show_details(const char *id, const char *fsname, int btype,
 	}
 
 	/* Read the inode in so we can see its type. */
-	sscanf(id, "%llx", &block);
+	sscanf(id, "%"PRIx64, &block);
 	if (block) {
 		if (btype == 2)
 			if (trace_dir_path)
@@ -931,7 +930,7 @@ static void show_dlm_grants(int locktype, const char *g_line, int dlmgrants,
 	char dlm_resid[75];
 	unsigned int lkb_id, lkbnodeid, remid, ownpid, exflags, flags, status;
 	unsigned int grmode, rqmode, nodeid, length;
-	unsigned long long xid, us;
+	uint64_t xid, us;
 	char trgt_res_name[64], res_name[64], *p1, *p2;
 	const char *procname;
 
@@ -960,7 +959,7 @@ lkb_id  n   remid  pid x e f s g rq u n ln res_name 1234567890123456
 		if (strncmp(dlm_resid, p1, 24))
 			continue;
 
-		sscanf(dlmglines[i], "%x %d %x %u %llu %x %x %d %d %d %llu "
+		sscanf(dlmglines[i], "%x %d %x %u %"SCNu64" %x %x %d %d %d %"SCNu64" "
 		       "%u %d \"%24s\"\n",
 		       &lkb_id, &lkbnodeid, &remid, &ownpid, &xid, &exflags,
 		       &flags, &status, &grmode, &rqmode, &us, &nodeid,
