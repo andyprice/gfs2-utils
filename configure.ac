@@ -104,9 +104,15 @@ PKG_CHECK_MODULES([check], [check >= 0.10.0],
 AM_CONDITIONAL([HAVE_CHECK], [test "x$have_check" = "xyes"])
 
 PKG_CHECK_MODULES([zlib],[zlib])
-PKG_CHECK_MODULES([bzip2],[bzip2])
 PKG_CHECK_MODULES([blkid],[blkid])
 PKG_CHECK_MODULES([uuid],[uuid])
+
+PKG_CHECK_MODULES([bzip2],[bzip2],,
+	[check_lib_no_libs bz2 BZ2_bzReadOpen])
+
+if test -z "$bzip2_CFLAGS"  && test -z "$bzip2_LIBS"; then
+	bzip2_LIBS=-lbz2
+fi
 
 # old versions of ncurses don't ship pkg-config files
 PKG_CHECK_MODULES([ncurses],[ncurses],,
