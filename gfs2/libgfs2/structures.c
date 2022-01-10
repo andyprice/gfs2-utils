@@ -38,10 +38,6 @@ int build_master(struct gfs2_sbd *sdp)
 	if (sdp->master_dir == NULL)
 		return -1;
 
-	if (cfg_debug) {
-		printf("\nMaster dir:\n");
-		lgfs2_dinode_print(bh->b_data);
-	}
 	sdp->master_dir->bh_owned = 1;
 	return 0;
 }

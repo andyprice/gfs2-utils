@@ -1205,6 +1205,10 @@ int main(int argc, char *argv[])
 		fprintf(stderr, _("Error building '%s': %s\n"), "master", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+	if (opts.debug) {
+		printf("Metafs inode:\n");
+		lgfs2_dinode_print(sbd.master_dir->i_bh->b_data);
+	}
 	sbd.sd_meta_dir = sbd.master_dir->i_num;
 
 	error = lgfs2_build_jindex(sbd.master_dir, mkfs_journals, opts.journals);
