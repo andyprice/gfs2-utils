@@ -133,10 +133,10 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgd;
-	char buf[sdp->sd_bsize];
 	uint64_t rmax = 0;
 	uint64_t rmin = 0;
-	int error;
+	ssize_t count;
+	char *buf;
 
 	log_info( _("Setting block ranges..."));
 
@@ -161,18 +161,16 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 	last_data_block = rmax;
 	first_data_block = rmin;
 
-	if (fsck_lseek(sdp->device_fd, (last_fs_block * sdp->sd_bsize))){
-		log_crit(_("Can't seek to last block in file system: %"PRIu64" (0x%"PRIx64")\n"),
-		         last_fs_block, last_fs_block);
-		goto fail;
+	buf = calloc(1, sdp->sd_bsize);
+	if (buf == NULL) {
+		log_crit(_("Failed to determine file system boundaries: %s\n"), strerror(errno));
+		return -1;
 	}
-
-	memset(buf, 0, sdp->sd_bsize);
-	error = read(sdp->device_fd, buf, sdp->sd_bsize);
-	if (error != sdp->sd_bsize){
-		log_crit(_("Can't read last block in file system (error %u), "
-		           "last_fs_block: %"PRIu64" (0x%"PRIx64")\n"),
-		         error, last_fs_block, last_fs_block);
+	count = pread(sdp->device_fd, buf, sdp->sd_bsize, (last_fs_block * sdp->sd_bsize));
+	free(buf);
+	if (count != sdp->sd_bsize) {
+		log_crit(_("Failed to read highest block number (%"PRIx64"): %s\n"),
+		         last_fs_block, strerror(errno));
 		goto fail;
 	}
 

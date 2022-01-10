@@ -6,9 +6,6 @@
 #include "fsck.h"
 #include "libgfs2.h"
 
-#define fsck_lseek(fd, off) \
-  ((lseek((fd), (off), SEEK_SET) == (off)) ? 0 : -1)
-
 #define INODE_VALID 1
 #define INODE_INVALID 0
 
