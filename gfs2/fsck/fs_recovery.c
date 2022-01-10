@@ -848,6 +848,27 @@ static struct metawalk_fxns jindex_check_fxns = {
 	.check_dentry = check_jindex_dent,
 };
 
+int build_jindex(struct gfs2_sbd *sdp)
+{
+	struct gfs2_inode *jindex;
+
+	jindex = createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
+			 GFS2_DIF_SYSTEM);
+	if (jindex == NULL) {
+		return errno;
+	}
+	sdp->md.journal = malloc(sdp->md.journals * sizeof(struct gfs2_inode *));
+	for (unsigned j = 0; j < sdp->md.journals; j++) {
+		int ret = build_journal(sdp, j, jindex);
+		if (ret)
+			return ret;
+		inode_put(&sdp->md.journal[j]);
+	}
+	free(sdp->md.journal);
+	inode_put(&jindex);
+	return 0;
+}
+
 /**
  * init_jindex - read in the rindex file
  */

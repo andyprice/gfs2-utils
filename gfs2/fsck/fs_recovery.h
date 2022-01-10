@@ -8,6 +8,7 @@ extern int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 extern int preen_is_safe(struct gfs2_sbd *sdp, int preen, int force_check);
 
 extern int ji_update(struct gfs2_sbd *sdp);
+extern int build_jindex(struct gfs2_sbd *sdp);
 extern int init_jindex(struct gfs2_sbd *sdp, int allow_ji_rebuild);
 #endif /* __FS_RECOVERY_H__ */
 

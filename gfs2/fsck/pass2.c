@@ -18,6 +18,7 @@
 #include "lost_n_found.h"
 #include "inode_hash.h"
 #include "afterpass1_common.h"
+#include "fs_recovery.h"
 
 #define MAX_FILENAME 256
 

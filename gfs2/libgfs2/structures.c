@@ -279,35 +279,6 @@ struct gfs2_inode *lgfs2_build_jindex(struct gfs2_inode *master, struct lgfs2_in
 	return jindex;
 }
 
-int build_jindex(struct gfs2_sbd *sdp)
-{
-	struct gfs2_inode *jindex;
-	unsigned int j;
-	int ret;
-
-	jindex = createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
-			 GFS2_DIF_SYSTEM);
-	if (jindex == NULL) {
-		return errno;
-	}
-	sdp->md.journal = malloc(sdp->md.journals *
-				 sizeof(struct gfs2_inode *));
-	for (j = 0; j < sdp->md.journals; j++) {
-		ret = build_journal(sdp, j, jindex);
-		if (ret)
-			return ret;
-		inode_put(&sdp->md.journal[j]);
-	}
-	if (cfg_debug) {
-		printf("\nJindex:\n");
-		lgfs2_dinode_print(jindex->i_bh->b_data);
-	}
-
-	free(sdp->md.journal);
-	inode_put(&jindex);
-	return 0;
-}
-
 int build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 {
 	char name[256];
