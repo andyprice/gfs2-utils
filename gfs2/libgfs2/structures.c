@@ -251,39 +251,32 @@ int build_journal(struct gfs2_sbd *sdp, int j, struct gfs2_inode *jindex)
  * nmemb: The number of entries in the list (number of journals).
  * Returns 0 on success or non-zero on error with errno set.
  */
-int lgfs2_build_jindex(struct gfs2_inode *master, struct lgfs2_inum *jnls, size_t nmemb)
+struct gfs2_inode *lgfs2_build_jindex(struct gfs2_inode *master, struct lgfs2_inum *jnls, size_t nmemb)
 {
 	char fname[GFS2_FNAMESIZE + 1];
 	struct gfs2_inode *jindex;
-	unsigned j;
-	int ret;
 
 	if (nmemb == 0 || jnls == NULL) {
 		errno = EINVAL;
-		return 1;
+		return NULL;
 	}
 	jindex = createi(master, "jindex", S_IFDIR | 0700, GFS2_DIF_SYSTEM);
 	if (jindex == NULL)
-		return 1;
+		return NULL;
 
 	fname[GFS2_FNAMESIZE] = '\0';
 
-	for (j = 0; j < nmemb; j++) {
+	for (unsigned j = 0; j < nmemb; j++) {
+		int ret;
+
 		snprintf(fname, GFS2_FNAMESIZE, "journal%u", j);
 		ret = dir_add(jindex, fname, strlen(fname), &jnls[j], IF2DT(S_IFREG | 0600));
 		if (ret) {
 			inode_put(&jindex);
-			return 1;
+			return NULL;
 		}
 	}
-
-	if (cfg_debug) {
-		printf("\nJindex:\n");
-		lgfs2_dinode_print(jindex->i_bh->b_data);
-	}
-
-	inode_put(&jindex);
-	return 0;
+	return jindex;
 }
 
 int build_jindex(struct gfs2_sbd *sdp)

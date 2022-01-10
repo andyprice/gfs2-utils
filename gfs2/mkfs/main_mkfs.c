@@ -941,6 +941,24 @@ static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, uint64_t *rgaddr
 	return 0;
 }
 
+static int create_jindex(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct lgfs2_inum *jnls)
+{
+	struct gfs2_inode *jindex;
+
+	jindex = lgfs2_build_jindex(sdp->master_dir, jnls, opts->journals);
+	if (jindex == NULL) {
+		fprintf(stderr, _("Error building '%s': %s\n"), "jindex", strerror(errno));
+		return 1;
+	}
+	if (opts->debug) {
+		printf("Jindex:\n");
+		lgfs2_dinode_print(jindex->i_bh->b_data);
+	}
+	inode_put(&jindex);
+	return 0;
+}
+
+
 /*
  * Find a reasonable journal file size (in blocks) given the number of blocks
  * in the filesystem.  For very small filesystems, it is not reasonable to
@@ -1211,12 +1229,11 @@ int main(int argc, char *argv[])
 	}
 	sbd.sd_meta_dir = sbd.master_dir->i_num;
 
-	error = lgfs2_build_jindex(sbd.master_dir, mkfs_journals, opts.journals);
-	if (error) {
-		fprintf(stderr, _("Error building '%s': %s\n"), "jindex", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
+	error = create_jindex(&sbd, &opts, mkfs_journals);
 	free(mkfs_journals);
+	if (error != 0)
+		exit(1);
+
 	error = build_per_node(&sbd);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "per_node", strerror(errno));
