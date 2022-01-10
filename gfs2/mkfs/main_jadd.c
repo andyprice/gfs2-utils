@@ -21,7 +21,6 @@
 #define _(String) gettext(String)
 
 #include <linux/fiemap.h>
-#include <linux/fs.h>
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
 #include "metafs.h"
