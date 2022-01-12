@@ -465,9 +465,6 @@ int do_init_inum(struct gfs2_sbd *sdp)
 	if (count != sizeof(uint64_t))
 		return -1;
 
-	if (cfg_debug)
-		printf("\nNext Inum: %"PRIu64"\n",
-		       sdp->md.next_inum);
 	return 0;
 }
 

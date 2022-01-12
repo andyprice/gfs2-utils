@@ -1356,6 +1356,9 @@ int main(int argc, char *argv[])
 	sbd.sd_locktable[GFS2_LOCKNAME_LEN - 1] = '\0';
 
 	do_init_inum(&sbd);
+	if (opts.debug)
+		printf("\nNext Inum: %"PRIu64"\n", sbd.md.next_inum);
+
 	do_init_statfs(&sbd, &sc);
 	if (opts.debug) {
 		printf("\nStatfs:\n");
