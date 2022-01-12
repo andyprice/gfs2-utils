@@ -370,42 +370,6 @@ int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 	return 0;
 }
 
-int build_per_node(struct gfs2_sbd *sdp)
-{
-	struct gfs2_inode *per_node;
-	unsigned int j;
-	int err;
-
-	per_node = createi(sdp->master_dir, "per_node", S_IFDIR | 0700,
-			   GFS2_DIF_SYSTEM);
-	if (per_node == NULL) {
-		return errno;
-	}
-
-	for (j = 0; j < sdp->md.journals; j++) {
-		err = build_inum_range(per_node, j);
-		if (err) {
-			return err;
-		}
-		err = build_statfs_change(per_node, j);
-		if (err) {
-			return err;
-		}
-		err = build_quota_change(per_node, j);
-		if (err) {
-			return err;
-		}
-	}
-
-	if (cfg_debug) {
-		printf("\nper_node:\n");
-		lgfs2_dinode_print(per_node->i_bh->b_data);
-	}
-
-	inode_put(&per_node);
-	return 0;
-}
-
 int build_inum(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;

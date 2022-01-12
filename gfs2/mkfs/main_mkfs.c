@@ -681,6 +681,46 @@ static int warn_of_destruction(const char *path)
 	return 0;
 }
 
+static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
+{
+	struct gfs2_inode *per_node;
+	unsigned int j;
+	int err;
+
+	per_node = createi(sdp->master_dir, "per_node", S_IFDIR | 0700,
+			   GFS2_DIF_SYSTEM);
+	if (per_node == NULL) {
+		fprintf(stderr, _("Error building '%s': %s\n"), "per_node", strerror(errno));
+		return -1;
+	}
+	for (j = 0; j < sdp->md.journals; j++) {
+		err = build_inum_range(per_node, j);
+		if (err) {
+			fprintf(stderr, _("Error building '%s': %s\n"), "inum_range",
+			        strerror(errno));
+			return err;
+		}
+		err = build_statfs_change(per_node, j);
+		if (err) {
+			fprintf(stderr, _("Error building '%s': %s\n"), "statfs_change",
+			        strerror(errno));
+			return err;
+		}
+		err = build_quota_change(per_node, j);
+		if (err) {
+			fprintf(stderr, _("Error building '%s': %s\n"), "quota_change",
+			        strerror(errno));
+			return err;
+		}
+	}
+	if (opts->debug) {
+		printf("\nper_node:\n");
+		lgfs2_dinode_print(per_node->i_bh->b_data);
+	}
+	inode_put(&per_node);
+	return 0;
+}
+
 static int zero_gap(struct gfs2_sbd *sdp, uint64_t addr, size_t blocks)
 {
 	struct iovec *iov;
@@ -1234,11 +1274,10 @@ int main(int argc, char *argv[])
 	if (error != 0)
 		exit(1);
 
-	error = build_per_node(&sbd);
-	if (error) {
-		fprintf(stderr, _("Error building '%s': %s\n"), "per_node", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
+	error = build_per_node(&sbd, &opts);
+	if (error != 0)
+		exit(1);
+
 	error = build_inum(&sbd);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "inum", strerror(errno));

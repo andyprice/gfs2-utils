@@ -1577,6 +1577,42 @@ static int build_a_journal(struct gfs2_sbd *sdp)
 	return 0;
 }
 
+int build_per_node(struct gfs2_sbd *sdp)
+{
+	struct gfs2_inode *per_node;
+	unsigned int j;
+	int err;
+
+	per_node = createi(sdp->master_dir, "per_node", S_IFDIR | 0700,
+			   GFS2_DIF_SYSTEM);
+	if (per_node == NULL) {
+		log_err(_("Error building '%s': %s\n"), "per_node", strerror(errno));
+		return -1;
+	}
+	for (j = 0; j < sdp->md.journals; j++) {
+		err = build_inum_range(per_node, j);
+		if (err) {
+			log_err(_("Error building '%s': %s\n"), "inum_range",
+			        strerror(errno));
+			return err;
+		}
+		err = build_statfs_change(per_node, j);
+		if (err) {
+			log_err(_("Error building '%s': %s\n"), "statfs_change",
+			        strerror(errno));
+			return err;
+		}
+		err = build_quota_change(per_node, j);
+		if (err) {
+			log_err(_("Error building '%s': %s\n"), "quota_change",
+			        strerror(errno));
+			return err;
+		}
+	}
+	inode_put(&per_node);
+	return 0;
+}
+
 static int check_system_inodes(struct gfs2_sbd *sdp)
 {
 	int journal_count;
