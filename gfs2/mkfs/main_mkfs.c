@@ -694,12 +694,20 @@ static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 		return -1;
 	}
 	for (j = 0; j < sdp->md.journals; j++) {
-		err = build_inum_range(per_node, j);
-		if (err) {
+		struct gfs2_inode *ip;
+
+		ip = build_inum_range(per_node, j);
+		if (ip == NULL) {
 			fprintf(stderr, _("Error building '%s': %s\n"), "inum_range",
 			        strerror(errno));
-			return err;
+			return 1;
 		}
+		if (opts->debug) {
+			printf("\nInum Range %u:\n", j);
+			lgfs2_dinode_print(ip->i_bh->b_data);
+		}
+		inode_put(&ip);
+
 		err = build_statfs_change(per_node, j);
 		if (err) {
 			fprintf(stderr, _("Error building '%s': %s\n"), "statfs_change",

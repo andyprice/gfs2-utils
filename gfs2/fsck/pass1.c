@@ -1590,12 +1590,16 @@ int build_per_node(struct gfs2_sbd *sdp)
 		return -1;
 	}
 	for (j = 0; j < sdp->md.journals; j++) {
-		err = build_inum_range(per_node, j);
-		if (err) {
+		struct gfs2_inode *ip;
+
+		ip = build_inum_range(per_node, j);
+		if (ip == NULL) {
 			log_err(_("Error building '%s': %s\n"), "inum_range",
 			        strerror(errno));
-			return err;
+			return 1;
 		}
+		inode_put(&ip);
+
 		err = build_statfs_change(per_node, j);
 		if (err) {
 			log_err(_("Error building '%s': %s\n"), "statfs_change",

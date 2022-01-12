@@ -1875,6 +1875,16 @@ build_it:
 	goto out_good;
 }
 
+static int fsck_build_inum_range(struct gfs2_inode *per_node, unsigned int n)
+{
+	struct gfs2_inode *ip = build_inum_range(per_node, n);
+
+	if (ip == NULL)
+		return 1;
+	inode_put(&ip);
+	return 0;
+}
+
 /* Check system directory inode                                           */
 /* Should work for all system directories: root, master, jindex, per_node */
 static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
@@ -1959,7 +1969,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		for (j = 0; j < sysinode->i_sbd->md.journals; j++) {
 			sprintf(fn, "inum_range%d", j);
 			error += check_pernode_for(j, sysinode, fn, 16, 0,
-						   NULL, build_inum_range);
+						   NULL, fsck_build_inum_range);
 			sprintf(fn, "statfs_change%d", j);
 			error += check_pernode_for(j, sysinode, fn, 24, 0,
 						   NULL, build_statfs_change);
