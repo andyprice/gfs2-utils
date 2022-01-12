@@ -2,9 +2,21 @@
 #include <string.h>
 #include <inttypes.h>
 #include <uuid.h>
+#include <stdarg.h>
 #include <libgfs2.h>
 
 #include "struct_print.h"
+
+__attribute__((format(printf,2,4)))
+static void print_it(const char *label, const char *fmt, const char *fmt2, ...)
+{
+	va_list args;
+
+	va_start(args, fmt2);
+	printf("%s: ", label);
+	vprintf(fmt, args);
+	va_end(args);
+}
 
 #define printbe16(struct, member) do { \
 		print_it("  "#member, "%"PRIu16, "0x%"PRIx16, be16_to_cpu(struct->member)); \

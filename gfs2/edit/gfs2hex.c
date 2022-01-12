@@ -18,16 +18,6 @@
 #include "gfs2hex.h"
 #include "struct_print.h"
 
-#define pv(struct, member, fmt, fmt2) do {				\
-		print_it("  "#member, fmt, fmt2, struct->member);	\
-	} while (FALSE);
-#define pv2(struct, member, fmt, fmt2) do {				\
-		print_it("  ", fmt, fmt2, struct->member);		\
-	} while (FALSE);
-#define printbe32(struct, member) do { \
-		print_it("  "#member, "%"PRIu32, "0x%"PRIx32, be32_to_cpu(struct->member)); \
-	} while(0)
-
 struct gfs2_dinode *di;
 int line, termlines;
 char edit_fmt[80];
@@ -105,107 +95,6 @@ void print_gfs2(const char *fmt, ...)
 	else
 		printf("%s", string);
 	va_end(args);
-}
-
-static void check_highlight(int highlight)
-{
-	if (!termlines || line >= termlines) /* If printing or out of bounds */
-		return;
-	if (dmode == HEX_MODE) {
-		if (line == (edit_row[dmode] * lines_per_row[dmode]) + 4) {
-			if (highlight) {
-				COLORS_HIGHLIGHT;
-				last_entry_onscreen[dmode] = print_entry_ndx;
-			} else
-				COLORS_NORMAL;
-		}
-	} else {
-		if ((line * lines_per_row[dmode]) - 4 == 
-			(edit_row[dmode] - start_row[dmode]) * lines_per_row[dmode]) {
-			if (highlight) {
-				COLORS_HIGHLIGHT;
-				last_entry_onscreen[dmode] = print_entry_ndx;
-			}
-			else
-				COLORS_NORMAL;
-		}
-	}
-}
-
-void print_it(const char *label, const char *fmt, const char *fmt2, ...)
-{
-	va_list args;
-	char tmp_string[NAME_MAX];
-	const char *fmtstring;
-	int decimalsize;
-
-	if (!termlines || line < termlines) {
-		va_start(args, fmt2);
-		check_highlight(TRUE);
-		if (termlines) {
-			move(line,0);
-			printw("%s", label);
-			move(line,24);
-		} else {
-			if (!strcmp(label, "  "))
-				printf("%-11s", label);
-			else
-				printf("%-24s", label);
-		}
-		vsprintf(tmp_string, fmt, args);
-
-		if (termlines)
-			printw("%s", tmp_string);
-		else
-			printf("%s", tmp_string);
-		check_highlight(FALSE);
-
-		if (fmt2) {
-			decimalsize = strlen(tmp_string);
-			va_end(args);
-			va_start(args, fmt2);
-			vsprintf(tmp_string, fmt2, args);
-			check_highlight(TRUE);
-			if (termlines) {
-				move(line, 50);
-				printw("%s", tmp_string);
-			} else {
-				int i;
-				for (i=20 - decimalsize; i > 0; i--)
-					printf(" ");
-				printf("%s", tmp_string);
-			}
-			check_highlight(FALSE);
-		} else {
-			if (strstr(fmt,"X") || strstr(fmt,"x"))
-				fmtstring="(hex)";
-			else if (strstr(fmt,"s"))
-				fmtstring="";
-			else
-				fmtstring="(decimal)";
-			if (termlines) {
-				move(line, 50);
-				printw("%s", fmtstring);
-			}
-			else
-				printf("%s", fmtstring);
-		}
-		if (termlines) {
-			refresh();
-			if (line == (edit_row[dmode] * lines_per_row[dmode]) + 4) {
-				strncpy(efield, label + 2, 63); /* it's indented */
-				efield[63] = '\0';
-				strcpy(estring, tmp_string);
-				strncpy(edit_fmt, fmt, 79);
-				edit_fmt[79] = '\0';
-				edit_size[dmode] = strlen(estring);
-				COLORS_NORMAL;
-			}
-			last_entry_onscreen[dmode] = (line / lines_per_row[dmode]) - 4;
-		}
-		eol(0);
-		va_end(args);
-	}
 }
 
 void idirent_in(struct idirent *id, void *dep)
@@ -368,30 +257,6 @@ static void do_eattr_extended(char *buf)
 		ea_header_print(ea);
 		rec_len = be32_to_cpu(ea->ea_rec_len);
 	}
-}
-
-/**
- * gfs_sb_print - Print out a gfs1 superblock
- * @sbp: the big-endian buffer
- */
-static void gfs_sb_print(void *sbp)
-{
-	struct gfs_sb *sb = sbp;
-
-	meta_header_print(&sb->sb_header);
-	printbe32(sb, sb_fs_format);
-	printbe32(sb, sb_multihost_format);
-	printbe32(sb, sb_flags);
-	printbe32(sb, sb_bsize);
-	printbe32(sb, sb_bsize_shift);
-	printbe32(sb, sb_seg_size);
-	inum_print(&sb->sb_jindex_di);
-	inum_print(&sb->sb_rindex_di);
-	inum_print(&sb->sb_root_di);
-	pv(sb, sb_lockproto, "%.64s", NULL);
-	pv(sb, sb_locktable, "%.64s", NULL);
-	inum_print(&sb->sb_quota_di);
-	inum_print(&sb->sb_license_di);
 }
 
 void display_gfs2(void *buf)

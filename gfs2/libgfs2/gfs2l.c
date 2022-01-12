@@ -197,6 +197,3 @@ int main(int argc, char *argv[])
 	free(opts.fspath);
 	return 0;
 }
-
-// libgfs2 still requires an external print_it function
-void print_it(const char *label, const char *fmt, const char *fmt2, ...) { return; }

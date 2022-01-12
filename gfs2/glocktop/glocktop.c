@@ -550,7 +550,8 @@ static void eol(int col) /* end of line */
 	}
 }
 
-void print_it(const char *label, const char *fmt, const char *fmt2, ...)
+__attribute__((format(printf,2,4)))
+static void print_it(const char *label, const char *fmt, const char *fmt2, ...)
 {
 	va_list args;
 	char tmp_string[128];

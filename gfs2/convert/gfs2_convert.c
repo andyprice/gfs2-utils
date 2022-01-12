@@ -115,19 +115,6 @@ static unsigned orig_journals = 0;
 int print_level = MSG_NOTICE;
 
 /* ------------------------------------------------------------------------- */
-/* This function is for libgfs's sake.                                       */
-/* ------------------------------------------------------------------------- */
-void print_it(const char *label, const char *fmt, const char *fmt2, ...)
-{
-	va_list args;
-
-	va_start(args, fmt2);
-	printf("%s: ", label);
-	vprintf(fmt, args);
-	va_end(args);
-}
-
-/* ------------------------------------------------------------------------- */
 /* convert_bitmaps - Convert gfs1 bitmaps to gfs2 bitmaps.                   */
 /*                   Fixes all unallocated metadata bitmap states (which are */
 /*                   valid in gfs1 but invalid in gfs2).                     */

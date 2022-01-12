@@ -421,13 +421,6 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 	free(more_indir);
 }
 
-static void gfs_jindex_print(struct gfs_jindex *ji)
-{
-	print_it("  ji_addr", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(ji->ji_addr));
-	print_it("  ji_nsegment", "%"PRIu32, "0x%"PRIx32, be32_to_cpu(ji->ji_nsegment));
-	print_it("  ji_pad", "%"PRIu32, "0x%"PRIx32, be32_to_cpu(ji->ji_pad));
-}
-
 static int print_gfs_jindex(struct gfs2_inode *dij)
 {
 	int error, start_line;

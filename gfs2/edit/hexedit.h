@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <string.h>
+#include <ncurses.h>
 
 #include "libgfs2.h"
 #include "copyright.cf"
@@ -20,9 +21,6 @@
 enum dsp_mode { HEX_MODE = 0, GFS2_MODE = 1, EXTENDED_MODE = 2, INIT_MODE = 3 };
 #define BLOCK_STACK_SIZE 256
 
-#define pv(struct, member, fmt, fmt2) do {				\
-		print_it("  "#member, fmt, fmt2, struct->member);	\
-	} while (FALSE);
 #define RGLIST_DUMMY_BLOCK -2
 #define JOURNALS_DUMMY_BLOCK -3
 

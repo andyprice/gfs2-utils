@@ -728,23 +728,6 @@ static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
 }
 
 /* ------------------------------------------------------------------------ */
-/* gfs_rgrp_print - print a gfs1 resource group                             */
-/* ------------------------------------------------------------------------ */
-void gfs_rgrp_print(void *rgp)
-{
-	struct gfs_rgrp *rg = rgp;
-
-	meta_header_print(&rg->rg_header);
-	printbe32(rg, rg_flags);
-	printbe32(rg, rg_free);
-	printbe32(rg, rg_useddi);
-	printbe32(rg, rg_freedi);
-	inum_print(&rg->rg_freedi_list);
-	printbe32(rg, rg_usedmeta);
-	printbe32(rg, rg_freemeta);
-}
-
-/* ------------------------------------------------------------------------ */
 /* get_rg_addr                                                              */
 /* ------------------------------------------------------------------------ */
 static uint64_t get_rg_addr(int rgnum)
@@ -2027,22 +2010,6 @@ static void interactive_mode(void)
     refresh();
     endwin();
 }/* interactive_mode */
-
-/* ------------------------------------------------------------------------ */
-/* gfs_log_header_print - print a gfs1-style log header                     */
-/* ------------------------------------------------------------------------ */
-void gfs_log_header_print(void *lhp)
-{
-	struct gfs_log_header *lh = lhp;
-
-	meta_header_print(&lh->lh_header);
-	print_it("  lh_flags", "%"PRIu32, "0x%.8"PRIx32, be32_to_cpu(lh->lh_flags));
-	print_it("  lh_pad", "%"PRIu32, "0x%"PRIx32, be32_to_cpu(lh->lh_pad));
-	print_it("  lh_first", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(lh->lh_first));
-	print_it("  lh_sequence", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(lh->lh_sequence));
-	print_it("  lh_tail", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(lh->lh_tail));
-	print_it("  lh_last_dump", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(lh->lh_last_dump));
-}
 
 /* ------------------------------------------------------------------------ */
 /* usage - print command line usage                                         */

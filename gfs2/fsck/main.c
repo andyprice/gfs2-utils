@@ -45,17 +45,6 @@ static int preen = 0;
 static int force_check = 0;
 static const char *pass_name = "";
 
-/* This function is for libgfs2's sake.                                      */
-void print_it(const char *label, const char *fmt, const char *fmt2, ...)
-{
-	va_list args;
-
-	va_start(args, fmt2);
-	printf("%s: ", label);
-	vprintf(fmt, args);
-	va_end(args);
-}
-
 static void usage(char *name)
 {
 	printf("Usage: %s [-afhnpqvVy] <device> \n", basename(name));

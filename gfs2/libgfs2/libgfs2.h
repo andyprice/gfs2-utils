@@ -796,8 +796,6 @@ extern int write_sb(struct gfs2_sbd *sdp);
 
 /* ondisk.c */
 extern uint32_t gfs2_disk_hash(const char *data, int len);
-extern void print_it(const char *label, const char *fmt, const char *fmt2, ...)
-	__attribute__((format(printf,2,4)));
 
 /* Translation functions */
 

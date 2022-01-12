@@ -343,6 +343,3 @@ int main(int argc, char **argv)
 	close(sbd.device_fd);
 	exit(0);
 }
-
-/* This function is for libgfs2's sake. */
-void print_it(const char *label, const char *fmt, const char *fmt2, ...) {}
