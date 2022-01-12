@@ -816,21 +816,6 @@ extern void lgfs2_dirent_out(struct lgfs2_dirent *d, void *dep);
 extern void lgfs2_leaf_in(struct lgfs2_leaf *lf, void *lfp);
 extern void lgfs2_leaf_out(struct lgfs2_leaf *lf, void *lfp);
 
-/* Printing functions. These expect on-disk data */
-extern void lgfs2_inum_print(void *nop);
-extern void lgfs2_meta_header_print(void *mhp);
-extern void lgfs2_sb_print(void *sbp);
-extern void lgfs2_dinode_print(void *dip);
-extern void lgfs2_log_header_print(void *lhp);
-extern void lgfs2_log_descriptor_print(void *ldp);
-extern void lgfs2_quota_print(void *qp);
-extern void lgfs2_quota_change_print(void *qcp);
-extern void lgfs2_statfs_change_print(void *scp);
-extern void lgfs2_ea_header_print(void *eap);
-extern void lgfs2_leaf_print(void *lfp);
-extern void lgfs2_rindex_print(void *rip);
-extern void lgfs2_rgrp_print(void *rgp);
-
 __END_DECLS
 
 #endif /* __LIBGFS2_DOT_H__ */

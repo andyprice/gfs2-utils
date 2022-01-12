@@ -14,10 +14,12 @@ sbin_PROGRAMS = \
 
 noinst_HEADERS = \
 	gfs2_mkfs.h \
+	struct_print.h \
 	metafs.h
 
 mkfs_gfs2_SOURCES = \
 	main_mkfs.c \
+	struct_print.c \
 	progress.c \
 	progress.h
 

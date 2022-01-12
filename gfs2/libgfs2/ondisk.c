@@ -9,19 +9,6 @@
 #include <uuid.h>
 #include "libgfs2.h"
 
-#define printbe16(struct, member) do { \
-		print_it("  "#member, "%"PRIu16, "0x%"PRIx16, be16_to_cpu(struct->member)); \
-	} while(0)
-#define printbe32(struct, member) do { \
-		print_it("  "#member, "%"PRIu32, "0x%"PRIx32, be32_to_cpu(struct->member)); \
-	} while(0)
-#define printbe64(struct, member) do { \
-		print_it("  "#member, "%"PRIu64, "0x%"PRIx64, be64_to_cpu(struct->member)); \
-	} while(0)
-#define print8(struct, member) do { \
-		print_it("  "#member, "%"PRIu8, "0x%"PRIx8, struct->member); \
-	} while(0)
-
 void lgfs2_inum_in(struct lgfs2_inum *i, void *inp)
 {
 	struct gfs2_inum *in = inp;
@@ -36,23 +23,6 @@ void lgfs2_inum_out(const struct lgfs2_inum *i, void *inp)
 
 	in->no_formal_ino = cpu_to_be64(i->in_formal_ino);
 	in->no_addr = cpu_to_be64(i->in_addr);
-}
-
-void lgfs2_inum_print(void *nop)
-{
-	struct gfs2_inum *no = nop;
-
-	printbe64(no, no_formal_ino);
-	printbe64(no, no_addr);
-}
-
-void lgfs2_meta_header_print(void *mhp)
-{
-	struct gfs2_meta_header *mh = mhp;
-
-	print_it("  mh_magic", "0x%08"PRIX32, NULL, be32_to_cpu(mh->mh_magic));
-	printbe32(mh, mh_type);
-	printbe32(mh, mh_format);
 }
 
 void lgfs2_sb_in(struct gfs2_sbd *sdp, void *buf)
@@ -100,24 +70,6 @@ void lgfs2_sb_out(const struct gfs2_sbd *sdp, void *buf)
 	memcpy(sb->sb_uuid, sdp->sd_uuid, 16);
 }
 
-void lgfs2_sb_print(void *sbp)
-{
-	struct gfs2_sb *sb = sbp;
-	char readable_uuid[36+1];
-
-	lgfs2_meta_header_print(&sb->sb_header);
-	printbe32(sb, sb_fs_format);
-	printbe32(sb, sb_multihost_format);
-	printbe32(sb, sb_bsize);
-	printbe32(sb, sb_bsize_shift);
-	lgfs2_inum_print(&sb->sb_master_dir);
-	lgfs2_inum_print(&sb->sb_root_dir);
-	print_it("  sb_lockproto", "%.64s", NULL, sb->sb_lockproto);
-	print_it("  sb_locktable", "%.64s", NULL, sb->sb_locktable);
-	uuid_unparse(sb->sb_uuid, readable_uuid);
-	print_it("  uuid", "%36s", NULL, readable_uuid);
-}
-
 void lgfs2_rindex_in(lgfs2_rgrp_t rg, void *buf)
 {
 	struct gfs2_rindex *ri = buf;
@@ -138,17 +90,6 @@ void lgfs2_rindex_out(const lgfs2_rgrp_t rg, void *buf)
 	ri->ri_data0 = cpu_to_be64(rg->rt_data0);
 	ri->ri_data = cpu_to_be32(rg->rt_data);
 	ri->ri_bitbytes = cpu_to_be32(rg->rt_bitbytes);
-}
-
-void lgfs2_rindex_print(void *rip)
-{
-	struct gfs2_rindex *ri = rip;
-
-	printbe64(ri, ri_addr);
-	printbe32(ri, ri_length);
-	printbe64(ri, ri_data0);
-	printbe32(ri, ri_data);
-	printbe32(ri, ri_bitbytes);
 }
 
 void lgfs2_rgrp_in(lgfs2_rgrp_t rg, void *buf)
@@ -181,31 +122,6 @@ void lgfs2_rgrp_out(const lgfs2_rgrp_t rg, void *buf)
 	r->rg_data = cpu_to_be32(rg->rt_rg_data);
 	r->rg_bitbytes = cpu_to_be32(rg->rt_rg_bitbytes);
 	lgfs2_rgrp_crc_set(buf);
-}
-
-void lgfs2_rgrp_print(void *rgp)
-{
-	struct gfs2_rgrp *rg = rgp;
-
-	lgfs2_meta_header_print(&rg->rg_header);
-	printbe32(rg, rg_flags);
-	printbe32(rg, rg_free);
-	printbe32(rg, rg_dinodes);
-	printbe32(rg, rg_skip);
-	printbe64(rg, rg_igeneration);
-	printbe64(rg, rg_data0);
-	printbe32(rg, rg_data);
-	printbe32(rg, rg_bitbytes);
-	printbe32(rg, rg_crc);
-}
-
-void lgfs2_quota_print(void *qp)
-{
-	struct gfs2_quota *q = qp;
-
-	printbe64(q, qu_limit);
-	printbe64(q, qu_warn);
-	printbe64(q, qu_value);
 }
 
 void lgfs2_dinode_in(struct gfs2_inode *ip, char *buf)
@@ -274,34 +190,6 @@ void lgfs2_dinode_out(struct gfs2_inode *ip, char *buf)
 	di->di_ctime_nsec = cpu_to_be32(ip->i_ctime_nsec);
 }
 
-void lgfs2_dinode_print(void *dip)
-{
-	struct gfs2_dinode *di = dip;
-
-	lgfs2_meta_header_print(&di->di_header);
-	lgfs2_inum_print(&di->di_num);
-
-	print_it("  di_mode", "0%"PRIo32, NULL, be32_to_cpu(di->di_mode));
-	printbe32(di, di_uid);
-	printbe32(di, di_gid);
-	printbe32(di, di_nlink);
-	printbe64(di, di_size);
-	printbe64(di, di_blocks);
-	printbe64(di, di_atime);
-	printbe64(di, di_mtime);
-	printbe64(di, di_ctime);
-	printbe32(di, di_major);
-	printbe32(di, di_minor);
-	printbe64(di, di_goal_meta);
-	printbe64(di, di_goal_data);
-	print_it("  di_flags", "0x%.8"PRIX32, NULL, be32_to_cpu(di->di_flags));
-	printbe32(di, di_payload_format);
-	printbe16(di, di_height);
-	printbe16(di, di_depth);
-	printbe32(di, di_entries);
-	printbe64(di, di_eattr);
-}
-
 void lgfs2_dirent_in(struct lgfs2_dirent *d, void *dep)
 {
 	struct gfs2_dirent *de = dep;
@@ -353,90 +241,3 @@ void lgfs2_leaf_out(struct lgfs2_leaf *lf, void *lfp)
 	l->lf_nsec = cpu_to_be32(lf->lf_nsec);
 	l->lf_sec = cpu_to_be64(lf->lf_sec);
 }
-
-void lgfs2_leaf_print(void *lfp)
-{
-	struct gfs2_leaf *lf = lfp;
-
-	lgfs2_meta_header_print(&lf->lf_header);
-	printbe16(lf, lf_depth);
-	printbe16(lf, lf_entries);
-	printbe32(lf, lf_dirent_format);
-	printbe64(lf, lf_next);
-	printbe64(lf, lf_inode);
-	printbe32(lf, lf_dist);
-	printbe32(lf, lf_nsec);
-	printbe64(lf, lf_sec);
-}
-
-void lgfs2_ea_header_print(void *eap)
-{
-	char buf[GFS2_EA_MAX_NAME_LEN + 1];
-	struct gfs2_ea_header *ea = eap;
-	unsigned len = ea->ea_name_len;
-
-	printbe32(ea, ea_rec_len);
-	printbe32(ea, ea_data_len);
-	print8(ea, ea_name_len);
-	print8(ea, ea_type);
-	print8(ea, ea_flags);
-	print8(ea, ea_num_ptrs);
-
-	if (len > GFS2_EA_MAX_NAME_LEN)
-		len = GFS2_EA_MAX_NAME_LEN;
-	memcpy(buf, ea + 1, len);
-	buf[len] = '\0';
-	print_it("  name", "%s", NULL, buf);
-}
-
-void lgfs2_log_header_print(void *lhp)
-{
-	struct gfs2_log_header *lh = lhp;
-
-	lgfs2_meta_header_print(&lh->lh_header);
-	printbe64(lh, lh_sequence);
-	print_it("  lh_flags", "0x%.8"PRIX32, NULL, be32_to_cpu(lh->lh_flags));
-	printbe32(lh, lh_tail);
-	printbe32(lh, lh_blkno);
-	print_it("  lh_hash", "0x%.8"PRIX32, NULL, be32_to_cpu(lh->lh_hash));
-	print_it("  lh_crc", "0x%.8"PRIX32, NULL, be32_to_cpu(lh->lh_crc));
-	printbe32(lh, lh_nsec);
-	printbe64(lh, lh_sec);
-	printbe64(lh, lh_addr);
-	printbe64(lh, lh_jinode);
-	printbe64(lh, lh_statfs_addr);
-	printbe64(lh, lh_quota_addr);
-	print_it("  lh_local_total", "%"PRId64, "0x%"PRIx64, be64_to_cpu(lh->lh_local_total));
-	print_it("  lh_local_free", "%"PRId64, "0x%"PRIx64, be64_to_cpu(lh->lh_local_free));
-	print_it("  lh_local_dinodes", "%"PRId64, "0x%"PRIx64, be64_to_cpu(lh->lh_local_dinodes));
-}
-
-void lgfs2_log_descriptor_print(void *ldp)
-{
-	struct gfs2_log_descriptor *ld = ldp;
-
-	lgfs2_meta_header_print(&ld->ld_header);
-	printbe32(ld, ld_type);
-	printbe32(ld, ld_length);
-	printbe32(ld, ld_data1);
-	printbe32(ld, ld_data2);
-}
-
-void lgfs2_statfs_change_print(void *scp)
-{
-	struct gfs2_statfs_change *sc = scp;
-
-	print_it("  sc_total", "%"PRId64, "0x%"PRIx64, be64_to_cpu(sc->sc_total));
-	print_it("  sc_free", "%"PRId64, "0x%"PRIx64, be64_to_cpu(sc->sc_free));
-	print_it("  sc_dinodes", "%"PRId64, "0x%"PRIx64, be64_to_cpu(sc->sc_dinodes));
-}
-
-void lgfs2_quota_change_print(void *qcp)
-{
-	struct gfs2_quota_change *qc = qcp;
-
-	print_it("  qc_change", "%"PRId64, "0x%"PRIx64, be64_to_cpu(qc->qc_change));
-	print_it("  qc_flags", "0x%.8"PRIX32, NULL, be32_to_cpu(qc->qc_flags));
-	printbe32(qc, qc_id);
-}
-

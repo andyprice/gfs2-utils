@@ -25,6 +25,7 @@
 #include "gfs2hex.h"
 #include "extended.h"
 #include "journal.h"
+#include "struct_print.h"
 
 #define printbe32(struct, member) do { \
 		print_it("  "#member, "%"PRIu32, "0x%"PRIx32, be32_to_cpu(struct->member)); \
@@ -733,12 +734,12 @@ void gfs_rgrp_print(void *rgp)
 {
 	struct gfs_rgrp *rg = rgp;
 
-	lgfs2_meta_header_print(&rg->rg_header);
+	meta_header_print(&rg->rg_header);
 	printbe32(rg, rg_flags);
 	printbe32(rg, rg_free);
 	printbe32(rg, rg_useddi);
 	printbe32(rg, rg_freedi);
-	lgfs2_inum_print(&rg->rg_freedi_list);
+	inum_print(&rg->rg_freedi_list);
 	printbe32(rg, rg_usedmeta);
 	printbe32(rg, rg_freemeta);
 }
@@ -799,7 +800,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 			if (sbd.gfs1)
 				gfs_rgrp_print(rg);
 			else
-				lgfs2_rgrp_print(rg);
+				rgrp_print(rg);
 		}
 		else
 			printf("RG #%d (block %"PRIu64" / 0x%"PRIx64") rg_flags = 0x%08x\n",
@@ -2034,7 +2035,7 @@ void gfs_log_header_print(void *lhp)
 {
 	struct gfs_log_header *lh = lhp;
 
-	lgfs2_meta_header_print(&lh->lh_header);
+	meta_header_print(&lh->lh_header);
 	print_it("  lh_flags", "%"PRIu32, "0x%.8"PRIx32, be32_to_cpu(lh->lh_flags));
 	print_it("  lh_pad", "%"PRIu32, "0x%"PRIx32, be32_to_cpu(lh->lh_pad));
 	print_it("  lh_first", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(lh->lh_first));

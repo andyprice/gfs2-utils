@@ -6,6 +6,7 @@ noinst_HEADERS = \
 	gfs2hex.h \
 	hexedit.h \
 	extended.h \
+	struct_print.h \
 	journal.h
 
 gfs2_edit_SOURCES = \
@@ -13,6 +14,7 @@ gfs2_edit_SOURCES = \
 	hexedit.c \
 	savemeta.c \
 	extended.c \
+	struct_print.c \
 	journal.c
 
 gfs2_edit_CPPFLAGS = \

@@ -29,6 +29,7 @@
 #include "libgfs2.h"
 #include "gfs2_mkfs.h"
 #include "progress.h"
+#include "struct_print.h"
 
 static void print_usage(const char *prog_name)
 {
@@ -702,7 +703,7 @@ static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 		}
 		if (opts->debug) {
 			printf("\nInum Range %u:\n", j);
-			lgfs2_dinode_print(ip->i_bh->b_data);
+			dinode_print(ip->i_bh->b_data);
 		}
 		inode_put(&ip);
 
@@ -714,7 +715,7 @@ static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 		}
 		if (opts->debug) {
 			printf("\nStatFS Change %u:\n", j);
-			lgfs2_dinode_print(ip->i_bh->b_data);
+			dinode_print(ip->i_bh->b_data);
 		}
 		inode_put(&ip);
 
@@ -726,13 +727,13 @@ static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 		}
 		if (opts->debug) {
 			printf("\nQuota Change %u:\n", j);
-			lgfs2_dinode_print(ip->i_bh->b_data);
+			dinode_print(ip->i_bh->b_data);
 		}
 		inode_put(&ip);
 	}
 	if (opts->debug) {
 		printf("\nper_node:\n");
-		lgfs2_dinode_print(per_node->i_bh->b_data);
+		dinode_print(per_node->i_bh->b_data);
 	}
 	inode_put(&per_node);
 	return 0;
@@ -856,7 +857,7 @@ static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrp_t rg, int debug)
 		return -1;
 	}
 	if (debug) {
-		lgfs2_rindex_print(&ri);
+		rindex_print(&ri);
 		printf("\n");
 	}
 	sdp->blks_total += be32_to_cpu(ri.ri_data);
@@ -1009,7 +1010,7 @@ static int create_jindex(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct lg
 	}
 	if (opts->debug) {
 		printf("Jindex:\n");
-		lgfs2_dinode_print(jindex->i_bh->b_data);
+		dinode_print(jindex->i_bh->b_data);
 	}
 	inode_put(&jindex);
 	return 0;
@@ -1284,7 +1285,7 @@ int main(int argc, char *argv[])
 	}
 	if (opts.debug) {
 		printf("Metafs inode:\n");
-		lgfs2_dinode_print(sbd.master_dir->i_bh->b_data);
+		dinode_print(sbd.master_dir->i_bh->b_data);
 	}
 	sbd.sd_meta_dir = sbd.master_dir->i_num;
 
@@ -1304,7 +1305,7 @@ int main(int argc, char *argv[])
 	}
 	if (opts.debug) {
 		printf("\nInum Inode:\n");
-		lgfs2_dinode_print(sbd.md.inum->i_bh->b_data);
+		dinode_print(sbd.md.inum->i_bh->b_data);
 	}
 	sbd.md.statfs = build_statfs(&sbd);
 	if (sbd.md.statfs == NULL) {
@@ -1313,7 +1314,7 @@ int main(int argc, char *argv[])
 	}
 	if (opts.debug) {
 		printf("\nStatFS Inode:\n");
-		lgfs2_dinode_print(sbd.md.statfs->i_bh->b_data);
+		dinode_print(sbd.md.statfs->i_bh->b_data);
 	}
 	ip = build_rindex(&sbd);
 	if (ip == NULL) {
@@ -1322,7 +1323,7 @@ int main(int argc, char *argv[])
 	}
 	if (opts.debug) {
 		printf("\nResource Index:\n");
-		lgfs2_dinode_print(ip->i_bh->b_data);
+		dinode_print(ip->i_bh->b_data);
 	}
 	inode_put(&ip);
 	if (!opts.quiet) {
@@ -1336,7 +1337,7 @@ int main(int argc, char *argv[])
 	}
 	if (opts.debug) {
 		printf("\nQuota:\n");
-		lgfs2_dinode_print(ip->i_bh->b_data);
+		dinode_print(ip->i_bh->b_data);
 	}
 	inode_put(&ip);
 	if (!opts.quiet)
@@ -1345,7 +1346,7 @@ int main(int argc, char *argv[])
 	build_root(&sbd);
 	if (opts.debug) {
 		printf("\nRoot directory:\n");
-		lgfs2_dinode_print(sbd.md.rooti->i_bh->b_data);
+		dinode_print(sbd.md.rooti->i_bh->b_data);
 	}
 	sbd.sd_root_dir = sbd.md.rooti->i_num;
 
@@ -1361,7 +1362,7 @@ int main(int argc, char *argv[])
 	do_init_statfs(&sbd, &sc);
 	if (opts.debug) {
 		printf("\nStatfs:\n");
-		lgfs2_statfs_change_print(&sc);
+		statfs_change_print(&sc);
 	}
 	inode_put(&sbd.md.rooti);
 	inode_put(&sbd.master_dir);

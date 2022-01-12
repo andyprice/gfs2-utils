@@ -17,13 +17,14 @@
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <dirent.h>
+#include <libgfs2.h>
 
 #include "copyright.cf"
 
 #include "hexedit.h"
-#include "libgfs2.h"
 #include "extended.h"
 #include "gfs2hex.h"
+#include "struct_print.h"
 
 static void print_block_details(struct iinfo *ind, int level, int cur_height,
 				int pndx, uint64_t file_offset);
@@ -534,7 +535,7 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 			if (edit_row[dmode] == print_entry_ndx)
 				COLORS_NORMAL;
 			if (print_rindex)
-				lgfs2_rindex_print(&ri);
+				rindex_print(&ri);
 			else {
 				struct gfs2_rgrp r = {0};
 				ssize_t ret;
@@ -545,7 +546,7 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 				} else if (sbd.gfs1) {
 					gfs_rgrp_print(&r);
 				} else {
-					lgfs2_rgrp_print(&r);
+					rgrp_print(&r);
 				}
 			}
 			last_entry_onscreen[dmode] = print_entry_ndx;
@@ -597,7 +598,7 @@ static int print_statfs(struct gfs2_inode *dis)
 	}
 	print_gfs2("statfs file contents:");
 	eol(0);
-	lgfs2_statfs_change_print(&sc);
+	statfs_change_print(&sc);
 	return 0;
 }
 
@@ -621,7 +622,7 @@ static int print_quota(struct gfs2_inode *diq)
 		}
 		print_gfs2("Entry #%d", i + 1);
 		eol(0);
-		lgfs2_quota_print(&q);
+		quota_print(&q);
 	}
 	return 0;
 }

@@ -11,11 +11,12 @@
 #include <errno.h>
 #include <curses.h>
 #include <uuid.h>
+#include <libgfs2.h>
 
 #include "hexedit.h"
 #include "extended.h"
 #include "gfs2hex.h"
-#include "libgfs2.h"
+#include "struct_print.h"
 
 #define pv(struct, member, fmt, fmt2) do {				\
 		print_it("  "#member, fmt, fmt2, struct->member);	\
@@ -364,7 +365,7 @@ static void do_eattr_extended(char *buf)
 		eol(0);
 		buf += x;
 		ea = (struct gfs2_ea_header *)buf;
-		lgfs2_ea_header_print(ea);
+		ea_header_print(ea);
 		rec_len = be32_to_cpu(ea->ea_rec_len);
 	}
 }
@@ -377,20 +378,20 @@ static void gfs_sb_print(void *sbp)
 {
 	struct gfs_sb *sb = sbp;
 
-	lgfs2_meta_header_print(&sb->sb_header);
+	meta_header_print(&sb->sb_header);
 	printbe32(sb, sb_fs_format);
 	printbe32(sb, sb_multihost_format);
 	printbe32(sb, sb_flags);
 	printbe32(sb, sb_bsize);
 	printbe32(sb, sb_bsize_shift);
 	printbe32(sb, sb_seg_size);
-	lgfs2_inum_print(&sb->sb_jindex_di);
-	lgfs2_inum_print(&sb->sb_rindex_di);
-	lgfs2_inum_print(&sb->sb_root_di);
+	inum_print(&sb->sb_jindex_di);
+	inum_print(&sb->sb_rindex_di);
+	inum_print(&sb->sb_root_di);
 	pv(sb, sb_lockproto, "%.64s", NULL);
 	pv(sb, sb_locktable, "%.64s", NULL);
-	lgfs2_inum_print(&sb->sb_quota_di);
-	lgfs2_inum_print(&sb->sb_license_di);
+	inum_print(&sb->sb_quota_di);
+	inum_print(&sb->sb_license_di);
 }
 
 void display_gfs2(void *buf)
@@ -418,41 +419,41 @@ void display_gfs2(void *buf)
 		if (sbd.gfs1)
 			gfs_sb_print(buf);
 		else
-			lgfs2_sb_print(buf);
+			sb_print(buf);
 		break;
 	case GFS2_METATYPE_RG:
 		if (sbd.gfs1)
 			gfs_rgrp_print(buf);
 		else
-			lgfs2_rgrp_print(buf);
+			rgrp_print(buf);
 		break;
 	case GFS2_METATYPE_DI:
-		lgfs2_dinode_print(di);
+		dinode_print(di);
 		break;
 	case GFS2_METATYPE_LF:
-		lgfs2_leaf_print(buf);
+		leaf_print(buf);
 		break;
 	case GFS2_METATYPE_LH:
 		if (sbd.gfs1)
 			gfs_log_header_print(buf);
 		else
-			lgfs2_log_header_print(buf);
+			log_header_print(buf);
 		break;
 	case GFS2_METATYPE_LD:
-		lgfs2_log_descriptor_print(buf);
+		log_descriptor_print(buf);
 		break;
 	case GFS2_METATYPE_EA:
 		do_eattr_extended(buf);
 		break;
 	case GFS2_METATYPE_QC:
-		lgfs2_quota_change_print(buf);
+		quota_change_print(buf);
 		break;
 	case GFS2_METATYPE_RB:
 	case GFS2_METATYPE_IN:
 	case GFS2_METATYPE_JD:
 	case GFS2_METATYPE_ED:
 	case GFS2_METATYPE_LB:
-		lgfs2_meta_header_print(mh);
+		meta_header_print(mh);
 		break;
 	default:
 		print_gfs2("Unknown block type");
