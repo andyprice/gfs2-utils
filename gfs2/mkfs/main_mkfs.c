@@ -1343,6 +1343,10 @@ int main(int argc, char *argv[])
 		printf("%s", _("Done\n"));
 
 	build_root(&sbd);
+	if (opts.debug) {
+		printf("\nRoot directory:\n");
+		lgfs2_dinode_print(sbd.md.rooti->i_bh->b_data);
+	}
 	sbd.sd_root_dir = sbd.md.rooti->i_num;
 
 	strncpy(sbd.sd_lockproto, opts.lockproto, GFS2_LOCKNAME_LEN - 1);

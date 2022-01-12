@@ -450,10 +450,6 @@ int build_root(struct gfs2_sbd *sdp)
 	if (sdp->md.rooti == NULL)
 		return -1;
 
-	if (cfg_debug) {
-		printf("\nRoot directory:\n");
-		lgfs2_dinode_print(bh->b_data);
-	}
 	sdp->md.rooti->bh_owned = 1;
 	return 0;
 }
