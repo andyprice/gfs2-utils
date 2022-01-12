@@ -1329,11 +1329,16 @@ int main(int argc, char *argv[])
 		printf("%s", _("Creating quota file: "));
 		fflush(stdout);
 	}
-	error = build_quota(&sbd);
-	if (error) {
+	ip = build_quota(&sbd);
+	if (ip == NULL) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "quota", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+	if (opts.debug) {
+		printf("\nQuota:\n");
+		lgfs2_dinode_print(ip->i_bh->b_data);
+	}
+	inode_put(&ip);
 	if (!opts.quiet)
 		printf("%s", _("Done\n"));
 

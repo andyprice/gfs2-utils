@@ -2368,12 +2368,13 @@ int main(int argc, char **argv)
 		}
 		inode_put(&ip);
 		/* Create the quota file */
-		error = build_quota(&sb2);
-		if (error) {
+		ip = build_quota(&sb2);
+		if (ip == NULL) {
 			log_crit(_("Error building quota inode: %s\n"),
 			         strerror(error));
 			exit(-1);
 		}
+		inode_put(&ip);
 
 		/* Copy out the master dinode */
 		if (sb2.master_dir->i_bh->b_modified)

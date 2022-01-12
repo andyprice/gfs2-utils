@@ -1646,6 +1646,15 @@ static int fsck_build_rindex(struct gfs2_sbd *sdp)
 	return 0;
 }
 
+static int fsck_build_quota(struct gfs2_sbd *sdp)
+{
+	struct gfs2_inode *ip = build_quota(sdp);
+	if (ip == NULL)
+		return -1;
+	inode_put(&ip);
+	return 0;
+}
+
 static int check_system_inodes(struct gfs2_sbd *sdp)
 {
 	int journal_count;
@@ -1696,7 +1705,7 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 		stack;
 		return -1;
 	}
-	if (check_system_inode(sdp, &sdp->md.qinode, "quota", build_quota,
+	if (check_system_inode(sdp, &sdp->md.qinode, "quota", fsck_build_quota,
 			       0, sdp->master_dir, !sdp->gfs1)) {
 		stack;
 		return -1;

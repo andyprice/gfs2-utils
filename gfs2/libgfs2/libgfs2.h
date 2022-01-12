@@ -780,7 +780,7 @@ extern struct gfs2_inode *lgfs2_build_jindex(struct gfs2_inode *metafs, struct l
 extern struct gfs2_inode *build_inum(struct gfs2_sbd *sdp);
 extern struct gfs2_inode *build_statfs(struct gfs2_sbd *sdp);
 extern struct gfs2_inode *build_rindex(struct gfs2_sbd *sdp);
-extern int build_quota(struct gfs2_sbd *sdp);
+extern struct gfs2_inode *build_quota(struct gfs2_sbd *sdp);
 extern int build_root(struct gfs2_sbd *sdp);
 extern int do_init_inum(struct gfs2_sbd *sdp);
 extern int do_init_statfs(struct gfs2_sbd *sdp);

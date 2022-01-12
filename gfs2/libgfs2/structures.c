@@ -402,7 +402,7 @@ struct gfs2_inode *build_rindex(struct gfs2_sbd *sdp)
 	return ip;
 }
 
-int build_quota(struct gfs2_sbd *sdp)
+struct gfs2_inode *build_quota(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 	struct gfs2_quota qu;
@@ -410,9 +410,9 @@ int build_quota(struct gfs2_sbd *sdp)
 
 	ip = createi(sdp->master_dir, "quota", S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
-	if (ip == NULL) {
-		return errno;
-	}
+	if (ip == NULL)
+		return NULL;
+
 	ip->i_payload_format = GFS2_FORMAT_QU;
 	bmodified(ip->i_bh);
 
@@ -421,18 +421,12 @@ int build_quota(struct gfs2_sbd *sdp)
 
 	count = gfs2_writei(ip, &qu, ip->i_size, sizeof(struct gfs2_quota));
 	if (count != sizeof(struct gfs2_quota))
-		return -1;
+		return NULL;
 	count = gfs2_writei(ip, &qu, ip->i_size, sizeof(struct gfs2_quota));
 	if (count != sizeof(struct gfs2_quota))
-		return -1;
+		return NULL;
 
-	if (cfg_debug) {
-		printf("\nRoot quota:\n");
-		lgfs2_quota_print(&qu);
-	}
-
-	inode_put(&ip);
-	return 0;
+	return ip;
 }
 
 int build_root(struct gfs2_sbd *sdp)

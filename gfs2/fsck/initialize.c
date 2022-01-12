@@ -562,11 +562,12 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			exit(FSCK_ERROR);
 		}
 	} else {
-		err = build_quota(sdp);
-		if (err) {
-			log_crit(_("Error %d building quota inode\n"), err);
+		struct gfs2_inode *qip = build_quota(sdp);
+		if (qip == NULL) {
+			log_crit(_("Error building quota inode: %s\n"), strerror(errno));
 			exit(FSCK_ERROR);
 		}
+		inode_put(&qip);
 	}
 
 	log_err(_("Master directory rebuilt.\n"));
@@ -911,13 +912,13 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 				   "rebuilt.  Aborting.\n"));
 			goto fail;
 		}
-		err = build_quota(sdp);
-		if (err) {
-			log_crit(_("Error %d rebuilding quota inode\n"), err);
+		sdp->md.qinode = build_quota(sdp);
+		if (sdp->md.qinode == NULL) {
+			log_crit(_("Error rebuilding quota inode: %s\n"), strerror(errno));
 			exit(FSCK_ERROR);
 		}
-		gfs2_lookupi(sdp->master_dir, "quota", 5, &sdp->md.qinode);
-		if (!sdp->md.qinode) {
+		lgfs2_dinode_out(sdp->md.qinode, sdp->md.qinode->i_bh->b_data);
+		if (bwrite(sdp->md.qinode->i_bh) != 0) {
 			log_crit(_("Unable to rebuild system quota file "
 				   "inode.  Aborting.\n"));
 			goto fail;
