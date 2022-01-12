@@ -359,23 +359,13 @@ struct gfs2_inode *build_inum(struct gfs2_sbd *sdp)
 	return ip;
 }
 
-int build_statfs(struct gfs2_sbd *sdp)
+struct gfs2_inode *build_statfs(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 
 	ip = createi(sdp->master_dir, "statfs", S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
-	if (ip == NULL) {
-		return errno;
-	}
-
-	if (cfg_debug) {
-		printf("\nStatFS Inode:\n");
-		lgfs2_dinode_print(ip->i_bh->b_data);
-	}
-
-	inode_put(&ip);
-	return 0;
+	return ip;
 }
 
 int build_rindex(struct gfs2_sbd *sdp)

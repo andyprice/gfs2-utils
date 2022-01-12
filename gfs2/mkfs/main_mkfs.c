@@ -1305,12 +1305,15 @@ int main(int argc, char *argv[])
 		printf("\nInum Inode:\n");
 		lgfs2_dinode_print(sbd.md.inum->i_bh->b_data);
 	}
-	error = build_statfs(&sbd);
-	if (error) {
+	sbd.md.statfs = build_statfs(&sbd);
+	if (sbd.md.statfs == NULL) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "statfs", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	gfs2_lookupi(sbd.master_dir, "statfs", 6, &sbd.md.statfs);
+	if (opts.debug) {
+		printf("\nStatFS Inode:\n");
+		lgfs2_dinode_print(sbd.md.statfs->i_bh->b_data);
+	}
 	error = build_rindex(&sbd);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "rindex", strerror(errno));

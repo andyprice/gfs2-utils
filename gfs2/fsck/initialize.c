@@ -524,12 +524,14 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			exit(FSCK_ERROR);
 		}
 	} else {
-		err = build_statfs(sdp);
-		if (err) {
+		sdp->md.statfs = build_statfs(sdp);
+		if (sdp->md.statfs == NULL) {
 			log_crit(_("Error %d building statfs inode\n"), err);
 			exit(FSCK_ERROR);
 		}
-		gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
+		/* Write the inode but don't free it, to avoid doing an extra lookup */
+		lgfs2_dinode_out(sdp->md.statfs, sdp->md.statfs->i_bh->b_data);
+		bwrite(sdp->md.statfs->i_bh);
 	}
 
 	if (fix_md.riinode) {
@@ -851,13 +853,13 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 				   "statfs file; aborting.\n"));
 			goto fail;
 		}
-		err = build_statfs(sdp);
-		if (err) {
+		sdp->md.statfs = build_statfs(sdp);
+		if (sdp->md.statfs == NULL) {
 			log_crit(_("Error %d rebuilding statfs inode\n"), err);
 			exit(FSCK_ERROR);
 		}
-		gfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
-		if (!sdp->md.statfs) {
+		lgfs2_dinode_out(sdp->md.statfs, sdp->md.statfs->i_bh->b_data);
+		if (bwrite(sdp->md.statfs->i_bh) != 0) {
 			log_err( _("Rebuild of statfs system file failed."));
 			log_err( _("fsck.gfs2 cannot continue without "
 				   "a valid statfs file; aborting.\n"));

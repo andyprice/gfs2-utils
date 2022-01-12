@@ -1628,6 +1628,15 @@ static int fsck_build_inum(struct gfs2_sbd *sdp)
 	return 0;
 }
 
+static int fsck_build_statfs(struct gfs2_sbd *sdp)
+{
+	struct gfs2_inode *ip = build_statfs(sdp);
+	if (ip == NULL)
+		return -1;
+	inode_put(&ip);
+	return 0;
+}
+
 static int check_system_inodes(struct gfs2_sbd *sdp)
 {
 	int journal_count;
@@ -1662,7 +1671,7 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 		stack;
 		return -1;
 	}
-	if (check_system_inode(sdp, &sdp->md.statfs, "statfs", build_statfs, 0,
+	if (check_system_inode(sdp, &sdp->md.statfs, "statfs", fsck_build_statfs, 0,
 			       sdp->master_dir, !sdp->gfs1)) {
 		stack;
 		return -1;

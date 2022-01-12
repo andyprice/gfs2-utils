@@ -2350,13 +2350,12 @@ int main(int argc, char **argv)
 			exit(-1);
 		}
 		/* Create the statfs file */
-		error = build_statfs(&sb2); /* Does not do inode_put */
-		if (error) {
+		sb2.md.statfs = build_statfs(&sb2); /* Does not do inode_put */
+		if (sb2.md.statfs == NULL) {
 			log_crit(_("Error building statfs inode: %s\n"),
 			         strerror(error));
 			exit(-1);
 		}
-		gfs2_lookupi(sb2.master_dir, "statfs", 6, &sb2.md.statfs);
 		do_init_statfs(&sb2);
 
 		/* Create the resource group index file */
