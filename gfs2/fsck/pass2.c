@@ -1895,6 +1895,16 @@ static int fsck_build_statfs_change(struct gfs2_inode *per_node, unsigned int n)
 	return 0;
 }
 
+static int fsck_build_quota_change(struct gfs2_inode *per_node, unsigned int n)
+{
+	struct gfs2_inode *ip = build_quota_change(per_node, n);
+
+	if (ip == NULL)
+		return 1;
+	inode_put(&ip);
+	return 0;
+}
+
 /* Check system directory inode                                           */
 /* Should work for all system directories: root, master, jindex, per_node */
 static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
@@ -1986,7 +1996,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 			sprintf(fn, "quota_change%d", j);
 			error += check_pernode_for(j, sysinode, fn, 1048576, 1,
 						   &quota_change_fxns,
-						   build_quota_change);
+						   fsck_build_quota_change);
 		}
 	}
 	return error;

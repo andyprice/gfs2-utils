@@ -313,7 +313,7 @@ struct gfs2_inode *build_statfs_change(struct gfs2_inode *per_node, unsigned int
 	return ip;
 }
 
-int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
+struct gfs2_inode *build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 {
 	struct gfs2_sbd *sdp = per_node->i_sbd;
 	struct gfs2_meta_header mh;
@@ -331,9 +331,8 @@ int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 
 	sprintf(name, "quota_change%u", j);
 	ip = createi(per_node, name, S_IFREG | 0600, GFS2_DIF_SYSTEM);
-	if (ip == NULL) {
-		return errno;
-	}
+	if (ip == NULL)
+		return NULL;
 
 	hgt = calc_tree_height(ip, (blocks + 1) * sdp->sd_bsize);
 	build_height(ip, hgt);
@@ -341,21 +340,14 @@ int build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 	for (x = 0; x < blocks; x++) {
 		bh = get_file_buf(ip, x, 0);
 		if (!bh)
-			return -1;
+			return NULL;
 
 		memset(bh->b_data, 0, sdp->sd_bsize);
 		memcpy(bh->b_data, &mh, sizeof(mh));
 		bmodified(bh);
 		brelse(bh);
 	}
-
-	if (cfg_debug) {
-		printf("\nQuota Change %u:\n", j);
-		lgfs2_dinode_print(ip->i_bh->b_data);
-	}
-
-	inode_put(&ip);
-	return 0;
+	return ip;
 }
 
 int build_inum(struct gfs2_sbd *sdp)

@@ -789,7 +789,7 @@ extern unsigned lgfs2_bm_scan(struct rgrp_tree *rgd, unsigned idx,
 			      uint64_t *buf, uint8_t state);
 extern struct gfs2_inode *build_inum_range(struct gfs2_inode *per_node, unsigned int n);
 extern struct gfs2_inode *build_statfs_change(struct gfs2_inode *per_node, unsigned int j);
-extern int build_quota_change(struct gfs2_inode *per_node, unsigned int j);
+extern struct gfs2_inode *build_quota_change(struct gfs2_inode *per_node, unsigned int j);
 
 /* super.c */
 extern int check_sb(void *sbp);

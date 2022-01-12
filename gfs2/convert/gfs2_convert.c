@@ -2103,7 +2103,6 @@ static int build_per_node(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *per_node;
 	unsigned int j;
-	int err;
 
 	per_node = createi(sdp->master_dir, "per_node", S_IFDIR | 0700,
 			   GFS2_DIF_SYSTEM);
@@ -2130,12 +2129,13 @@ static int build_per_node(struct gfs2_sbd *sdp)
 		}
 		inode_put(&ip);
 
-		err = build_quota_change(per_node, j);
-		if (err) {
+		ip = build_quota_change(per_node, j);
+		if (ip == NULL) {
 			log_crit(_("Error building '%s': %s\n"), "quota_change",
 			         strerror(errno));
-			return err;
+			return 1;
 		}
+		inode_put(&ip);
 	}
 	inode_put(&per_node);
 	return 0;
