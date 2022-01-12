@@ -708,12 +708,18 @@ static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 		}
 		inode_put(&ip);
 
-		err = build_statfs_change(per_node, j);
-		if (err) {
+		ip = build_statfs_change(per_node, j);
+		if (ip == NULL) {
 			fprintf(stderr, _("Error building '%s': %s\n"), "statfs_change",
 			        strerror(errno));
-			return err;
+			return 1;
 		}
+		if (opts->debug) {
+			printf("\nStatFS Change %u:\n", j);
+			lgfs2_dinode_print(ip->i_bh->b_data);
+		}
+		inode_put(&ip);
+
 		err = build_quota_change(per_node, j);
 		if (err) {
 			fprintf(stderr, _("Error building '%s': %s\n"), "quota_change",

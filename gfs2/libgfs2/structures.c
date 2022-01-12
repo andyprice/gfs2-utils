@@ -296,7 +296,7 @@ struct gfs2_inode *build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 	return ip;
 }
 
-int build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
+struct gfs2_inode *build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 {
 	char name[256];
 	struct gfs2_inode *ip;
@@ -304,19 +304,13 @@ int build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 	sprintf(name, "statfs_change%u", j);
 	ip = createi(per_node, name, S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
-	if (ip == NULL) {
-		return errno;
-	}
+	if (ip == NULL)
+		return NULL;
+
 	ip->i_size = sizeof(struct gfs2_statfs_change);
 	lgfs2_dinode_out(ip, ip->i_bh->b_data);
 	bmodified(ip->i_bh);
-	if (cfg_debug) {
-		printf("\nStatFS Change %u:\n", j);
-		lgfs2_dinode_print(ip->i_bh->b_data);
-	}
-
-	inode_put(&ip);
-	return 0;
+	return ip;
 }
 
 int build_quota_change(struct gfs2_inode *per_node, unsigned int j)

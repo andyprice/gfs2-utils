@@ -2122,12 +2122,14 @@ static int build_per_node(struct gfs2_sbd *sdp)
 		}
 		inode_put(&ip);
 
-		err = build_statfs_change(per_node, j);
-		if (err) {
+		ip = build_statfs_change(per_node, j);
+		if (ip == NULL) {
 			log_crit(_("Error building '%s': %s\n"), "statfs_change",
 			         strerror(errno));
-			return err;
+			return 1;
 		}
+		inode_put(&ip);
+
 		err = build_quota_change(per_node, j);
 		if (err) {
 			log_crit(_("Error building '%s': %s\n"), "quota_change",
