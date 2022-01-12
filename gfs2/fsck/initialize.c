@@ -544,11 +544,12 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			exit(FSCK_ERROR);
 		}
 	} else {
-		err = build_rindex(sdp);
-		if (err) {
-			log_crit(_("Error %d building rindex inode\n"), err);
+		struct gfs2_inode *rip = build_rindex(sdp);
+		if (rip == NULL) {
+			log_crit(_("Error building rindex inode: %s\n"), strerror(errno));
 			exit(FSCK_ERROR);
 		}
+		inode_put(&rip);
 	}
 
 	if (fix_md.qinode) {
@@ -1514,7 +1515,7 @@ static int reconstruct_journals(struct gfs2_sbd *sdp)
  */
 static int init_rindex(struct gfs2_sbd *sdp)
 {
-	int err;
+	struct gfs2_inode *ip;
 
 	if (sdp->gfs1)
 		sdp->md.riinode = lgfs2_inode_read(sdp, sdp->sd_rindex_di.in_addr);
@@ -1529,10 +1530,12 @@ static int init_rindex(struct gfs2_sbd *sdp)
 		log_crit(_("Error: Cannot proceed without a valid rindex.\n"));
 		return -1;
 	}
-	if ((err = build_rindex(sdp))) {
-		log_crit(_("Error %d rebuilding rindex\n"), err);
+	ip = build_rindex(sdp);
+	if (ip == NULL) {
+		log_crit(_("Error rebuilding rindex: %s\n"), strerror(errno));
 		return -1;
 	}
+	inode_put(&ip);
 	return 0;
 }
 

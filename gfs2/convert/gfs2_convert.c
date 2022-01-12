@@ -2308,6 +2308,7 @@ int main(int argc, char **argv)
 	/* Create our system files and directories.       */
 	/* ---------------------------------------------- */
 	if (!error) {
+		struct gfs2_inode *ip;
 		int jreduce = 0;
 
 		/* Now we've got to treat it as a gfs2 file system */
@@ -2359,12 +2360,13 @@ int main(int argc, char **argv)
 		do_init_statfs(&sb2);
 
 		/* Create the resource group index file */
-		error = build_rindex(&sb2);
-		if (error) {
+		ip = build_rindex(&sb2);
+		if (ip == NULL) {
 			log_crit(_("Error building rindex inode: %s\n"),
-			         strerror(error));
+			         strerror(errno));
 			exit(-1);
 		}
+		inode_put(&ip);
 		/* Create the quota file */
 		error = build_quota(&sb2);
 		if (error) {

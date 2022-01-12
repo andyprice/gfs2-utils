@@ -1198,6 +1198,7 @@ int main(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd;
 	struct mkfs_opts opts;
+	struct gfs2_inode *ip;
 	lgfs2_rgrps_t rgs;
 	uint64_t rgaddr;
 	int error;
@@ -1314,11 +1315,16 @@ int main(int argc, char *argv[])
 		printf("\nStatFS Inode:\n");
 		lgfs2_dinode_print(sbd.md.statfs->i_bh->b_data);
 	}
-	error = build_rindex(&sbd);
-	if (error) {
+	ip = build_rindex(&sbd);
+	if (ip == NULL) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "rindex", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+	if (opts.debug) {
+		printf("\nResource Index:\n");
+		lgfs2_dinode_print(ip->i_bh->b_data);
+	}
+	inode_put(&ip);
 	if (!opts.quiet) {
 		printf("%s", _("Creating quota file: "));
 		fflush(stdout);

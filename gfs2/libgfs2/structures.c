@@ -368,7 +368,7 @@ struct gfs2_inode *build_statfs(struct gfs2_sbd *sdp)
 	return ip;
 }
 
-int build_rindex(struct gfs2_sbd *sdp)
+struct gfs2_inode *build_rindex(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 	struct osi_node *n, *next = NULL;
@@ -378,9 +378,9 @@ int build_rindex(struct gfs2_sbd *sdp)
 
 	ip = createi(sdp->master_dir, "rindex", S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
-	if (ip == NULL) {
-		return errno;
-	}
+	if (ip == NULL)
+		return NULL;
+
 	ip->i_payload_format = GFS2_FORMAT_RI;
 	bmodified(ip->i_bh);
 
@@ -392,20 +392,14 @@ int build_rindex(struct gfs2_sbd *sdp)
 
 		count = gfs2_writei(ip, buf, ip->i_size, sizeof(struct gfs2_rindex));
 		if (count != sizeof(struct gfs2_rindex))
-			return -1;
+			return NULL;
 	}
 	memset(buf, 0, sizeof(struct gfs2_rindex));
 	count = __gfs2_writei(ip, buf, ip->i_size, sizeof(struct gfs2_rindex), 0);
 	if (count != sizeof(struct gfs2_rindex))
-		return -1;
+		return NULL;
 
-	if (cfg_debug) {
-		printf("\nResource Index:\n");
-		lgfs2_dinode_print(ip->i_bh->b_data);
-	}
-
-	inode_put(&ip);
-	return 0;
+	return ip;
 }
 
 int build_quota(struct gfs2_sbd *sdp)
