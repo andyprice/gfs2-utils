@@ -471,7 +471,7 @@ int do_init_inum(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-int do_init_statfs(struct gfs2_sbd *sdp)
+int do_init_statfs(struct gfs2_sbd *sdp, struct gfs2_statfs_change *res)
 {
 	struct gfs2_inode *ip = sdp->md.statfs;
 	struct gfs2_statfs_change sc;
@@ -485,10 +485,8 @@ int do_init_statfs(struct gfs2_sbd *sdp)
 	if (count != sizeof(sc))
 		return -1;
 
-	if (cfg_debug) {
-		printf("\nStatfs:\n");
-		lgfs2_statfs_change_print(&sc);
-	}
+	if (res)
+		*res = sc;
 	return 0;
 }
 

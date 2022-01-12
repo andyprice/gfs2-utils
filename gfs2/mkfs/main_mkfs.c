@@ -1196,6 +1196,7 @@ static int open_dev(struct mkfs_dev *dev, int withprobe)
 #ifndef UNITTESTS
 int main(int argc, char *argv[])
 {
+	struct gfs2_statfs_change sc;
 	struct gfs2_sbd sbd;
 	struct mkfs_opts opts;
 	struct gfs2_inode *ip;
@@ -1355,8 +1356,11 @@ int main(int argc, char *argv[])
 	sbd.sd_locktable[GFS2_LOCKNAME_LEN - 1] = '\0';
 
 	do_init_inum(&sbd);
-	do_init_statfs(&sbd);
-
+	do_init_statfs(&sbd, &sc);
+	if (opts.debug) {
+		printf("\nStatfs:\n");
+		lgfs2_statfs_change_print(&sc);
+	}
 	inode_put(&sbd.md.rooti);
 	inode_put(&sbd.master_dir);
 	inode_put(&sbd.md.inum);

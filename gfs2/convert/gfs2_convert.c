@@ -2357,7 +2357,7 @@ int main(int argc, char **argv)
 			         strerror(error));
 			exit(-1);
 		}
-		do_init_statfs(&sb2);
+		do_init_statfs(&sb2, NULL);
 
 		/* Create the resource group index file */
 		ip = build_rindex(&sb2);

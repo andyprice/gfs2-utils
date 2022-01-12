@@ -228,7 +228,7 @@ static int check_statfs(struct gfs2_sbd *sdp)
 		return 0;
 	}
 
-	do_init_statfs(sdp);
+	do_init_statfs(sdp, NULL);
 	log_err( _("The statfs file was fixed.\n"));
 	errors_corrected++;
 	return 0;

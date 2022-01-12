@@ -867,7 +867,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 				   "a valid statfs file; aborting.\n"));
 			goto fail;
 		}
-		do_init_statfs(sdp);
+		do_init_statfs(sdp, NULL);
 	}
 	if (sdp->md.statfs->i_size) {
 		buf = malloc(sdp->md.statfs->i_size);
