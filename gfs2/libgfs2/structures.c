@@ -350,23 +350,13 @@ struct gfs2_inode *build_quota_change(struct gfs2_inode *per_node, unsigned int 
 	return ip;
 }
 
-int build_inum(struct gfs2_sbd *sdp)
+struct gfs2_inode *build_inum(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 
 	ip = createi(sdp->master_dir, "inum", S_IFREG | 0600,
 		     GFS2_DIF_SYSTEM | GFS2_DIF_JDATA);
-	if (ip == NULL) {
-		return errno;
-	}
-
-	if (cfg_debug) {
-		printf("\nInum Inode:\n");
-		lgfs2_dinode_print(ip->i_bh->b_data);
-	}
-
-	inode_put(&ip);
-	return 0;
+	return ip;
 }
 
 int build_statfs(struct gfs2_sbd *sdp)

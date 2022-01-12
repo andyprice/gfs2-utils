@@ -1296,12 +1296,15 @@ int main(int argc, char *argv[])
 	if (error != 0)
 		exit(1);
 
-	error = build_inum(&sbd);
-	if (error) {
+	sbd.md.inum = build_inum(&sbd);
+	if (sbd.md.inum == NULL) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "inum", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	gfs2_lookupi(sbd.master_dir, "inum", 4, &sbd.md.inum);
+	if (opts.debug) {
+		printf("\nInum Inode:\n");
+		lgfs2_dinode_print(sbd.md.inum->i_bh->b_data);
+	}
 	error = build_statfs(&sbd);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "statfs", strerror(errno));

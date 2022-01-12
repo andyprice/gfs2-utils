@@ -504,12 +504,14 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			exit(FSCK_ERROR);
 		}
 	} else {
-		err = build_inum(sdp);
-		if (err) {
-			log_crit(_("Error %d building inum inode\n"), err);
+		sdp->md.inum = build_inum(sdp);
+		if (sdp->md.inum == NULL) {
+			log_crit(_("Error building inum inode: %s\n"), strerror(errno));
 			exit(FSCK_ERROR);
 		}
-		gfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);
+		/* Write the inode but don't free it, to avoid doing an extra lookup */
+		lgfs2_dinode_out(sdp->md.inum, sdp->md.inum->i_bh->b_data);
+		bwrite(sdp->md.inum->i_bh);
 	}
 
 	if (fix_md.statfs) {
@@ -798,17 +800,14 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 					   "a valid inum file; aborting.\n"));
 				goto fail;
 			}
-			err = build_inum(sdp);
-			if (err) {
-				log_crit(_("Error %d rebuilding inum inode\n"),
-					 err);
+			sdp->md.inum = build_inum(sdp);
+			if (sdp->md.inum == NULL) {
+				log_crit(_("Error rebuilding inum inode: %s\n"), strerror(errno));
 				exit(FSCK_ERROR);
 			}
-			gfs2_lookupi(sdp->master_dir, "inum", 4,
-				     &sdp->md.inum);
-			if (!sdp->md.inum) {
-				log_crit(_("System inum inode was not rebuilt."
-					   " Aborting.\n"));
+			lgfs2_dinode_out(sdp->md.inum, sdp->md.inum->i_bh->b_data);
+			if (bwrite(sdp->md.inum->i_bh) != 0) {
+				log_crit(_("System inum inode was not rebuilt. Aborting.\n"));
 				goto fail;
 			}
 		}
