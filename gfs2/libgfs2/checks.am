@@ -12,7 +12,6 @@ check_libgfs2_SOURCES = \
 	device_geometry.c \
 	fs_ops.c \
 	structures.c \
-	config.c \
 	fs_bits.c \
 	gfs1.c \
 	misc.c \

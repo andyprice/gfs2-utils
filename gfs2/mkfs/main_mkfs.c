@@ -366,7 +366,6 @@ static int opts_get(int argc, char *argv[], struct mkfs_opts *opts)
 			break;
 		case 'D':
 			opts->debug = 1;
-			lgfs2_set_debug(1);
 			break;
 		case 'h':
 			print_usage(argv[0]);

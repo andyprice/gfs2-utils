@@ -14,7 +14,6 @@
 #include <uuid.h>
 
 #include "libgfs2.h"
-#include "config.h"
 #include "crc32c.h"
 
 int build_master(struct gfs2_sbd *sdp)

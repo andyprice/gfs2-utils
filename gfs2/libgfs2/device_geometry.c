@@ -14,7 +14,6 @@
 #include <linux/fs.h>
 
 #include "libgfs2.h"
-#include "config.h"
 
 #ifndef BLKSSZGET
 #define BLKSSZGET _IO(0x12,104)   /* logical_block_size */

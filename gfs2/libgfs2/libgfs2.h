@@ -471,9 +471,6 @@ extern uint32_t lgfs2_get_block_type(const char *buf);
 #define bread(bl, num) __bread(bl, num, __LINE__, __FUNCTION__)
 #define breadm(bl, bhs, n, block) __breadm(bl, bhs, n, block, __LINE__, __FUNCTION__)
 
-/* config.c */
-extern void lgfs2_set_debug(int enable);
-
 /* device_geometry.c */
 extern int lgfs2_get_dev_info(int fd, struct lgfs2_dev_info *i);
 extern void fix_device_geometry(struct gfs2_sbd *sdp);

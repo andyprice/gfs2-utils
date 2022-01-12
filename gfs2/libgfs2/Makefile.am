@@ -23,7 +23,6 @@ noinst_HEADERS = \
 	libgfs2.h \
 	crc32c.h \
 	lang.h \
-	config.h \
 	rgrp.h
 
 noinst_LTLIBRARIES = libgfs2.la
@@ -40,7 +39,6 @@ libgfs2_la_SOURCES = \
 	buf.c \
 	gfs2_disk_hash.c \
 	ondisk.c \
-	config.c \
 	device_geometry.c \
 	fs_ops.c \
 	recovery.c \

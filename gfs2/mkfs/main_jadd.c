@@ -158,7 +158,6 @@ static int decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp, struct
 			break;
 		case 'D':
 			opts->debug = 1;
-			lgfs2_set_debug(1);
 			break;
 		case 'h':
 			print_usage(argv[0]);
