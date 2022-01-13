@@ -139,21 +139,6 @@ void die(const char *fmt, ...)
 	exit(-1);
 }
 
-/*  Memory macros  */
-
-#define type_alloc(ptr, type, count) \
-{ \
-  (ptr) = (type *)malloc(sizeof(type) * (count)); \
-  if (!(ptr)) \
-    die("unable to allocate memory on line %d of file %s\n", \
-	__LINE__, __FILE__); \
-}
-
-#define printk printw
-
-/*  Divide x by y.  Round up if there is a remainder.  */
-#define DIV_RU(x, y) (((x) + (y) - 1) / (y))
-
 #define TITLE1 "gfs2_edit - Global File System Editor (use with extreme caution)"
 #define TITLE2 REDHAT_COPYRIGHT " - Press H for help"
 

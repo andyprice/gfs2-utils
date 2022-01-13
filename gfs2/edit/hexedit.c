@@ -27,10 +27,6 @@
 #include "journal.h"
 #include "struct_print.h"
 
-#define printbe32(struct, member) do { \
-		print_it("  "#member, "%"PRIu32, "0x%"PRIx32, be32_to_cpu(struct->member)); \
-	} while(0)
-
 const char *mtypes[] = {"none", "sb", "rg", "rb", "di", "in", "lf", "jd",
 			"lh", "ld", "ea", "ed", "lb", "13", "qc"};
 const char *allocdesc[2][5] = {
