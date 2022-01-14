@@ -2317,8 +2317,8 @@ static void process_parameters(int argc, char *argv[], int pass)
 	uint64_t keyword_blk;
 
 	if (argc < 2) {
-		usage();
-		die("no device specified\n");
+		fprintf(stderr, "No device specified\n");
+		exit(1);
 	}
 	for (i = 1; i < argc; i++) {
 		if (!pass) { /* first pass */
@@ -2500,8 +2500,10 @@ int main(int argc, char *argv[])
 	int i, j, fd;
 
 	indirect = malloc(sizeof(struct iinfo));
-	if (!indirect)
-		die("Out of memory.");
+	if (indirect == NULL) {
+		perror("Failed to allocate indirect info");
+		exit(1);
+	}
 	memset(indirect, 0, sizeof(struct iinfo));
 	memset(start_row, 0, sizeof(start_row));
 	memset(lines_per_row, 0, sizeof(lines_per_row));
@@ -2533,8 +2535,10 @@ int main(int argc, char *argv[])
 		dmode = HEX_MODE;
 
 	fd = open(device, O_RDWR);
-	if (fd < 0)
-		die("can't open %s: %s\n", device, strerror(errno));
+	if (fd < 0) {
+		fprintf(stderr, "Failed to open '%s': %s\n", device, strerror(errno));
+		exit(1);
+	}
 	max_block = lseek(fd, 0, SEEK_END) / sbd.sd_bsize;
 
 	read_superblock(fd);

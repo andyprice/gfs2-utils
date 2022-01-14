@@ -1324,11 +1324,10 @@ static int restore_data(int fd, struct metafd *mfd, int printonly)
 	return 0;
 }
 
-static void complain(const char *complaint)
+static void restoremeta_usage(void)
 {
-	fprintf(stderr, "%s\n", complaint);
-	die("Format is: \ngfs2_edit restoremeta <file to restore> "
-	    "<dest file system>\n");
+	fprintf(stderr, "Usage:\n");
+	fprintf(stderr, "gfs2_edit restoremeta <metadata_file> <block_device>\n");
 }
 
 static int restore_init(const char *path, struct metafd *mfd, int printonly)
@@ -1413,16 +1412,23 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 	int error;
 
 	termlines = 0;
-	if (!in_fn)
-		complain("No source file specified.");
-	if (!printonly && !out_device)
-		complain("No destination file system specified.");
-
+	if (in_fn == NULL || in_fn[0] == '\0') {
+		fprintf(stderr, "No source file specified.");
+		restoremeta_usage();
+		exit(1);
+	}
+	if (!printonly && (out_device == NULL || out_device[0] == '\0')) {
+		fprintf(stderr, "No destination file system specified.");
+		restoremeta_usage();
+		exit(1);
+	}
 	if (!printonly) {
 		sbd.device_fd = open(out_device, O_RDWR);
-		if (sbd.device_fd < 0)
-			die("Can't open destination file system %s: %s\n",
+		if (sbd.device_fd < 0) {
+			fprintf(stderr, "Failed to open target '%s': %s\n",
 			    out_device, strerror(errno));
+			exit(1);
+		}
 	} else if (out_device) /* for printsavedmeta, the out_device is an
 				  optional block no */
 		printonly = check_keywords(out_device);

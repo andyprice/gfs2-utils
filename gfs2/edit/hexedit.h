@@ -128,17 +128,6 @@ static inline int block_is_journals(uint64_t blk)
 #define SCREEN_HEIGHT   (16)
 #define SCREEN_WIDTH    (16)
 
-/* die() used to be in libgfs2.h */
-static __inline__ __attribute__((noreturn, format (printf, 1, 2)))
-void die(const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	exit(-1);
-}
-
 #define TITLE1 "gfs2_edit - Global File System Editor (use with extreme caution)"
 #define TITLE2 REDHAT_COPYRIGHT " - Press H for help"
 
