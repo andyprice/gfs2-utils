@@ -238,8 +238,6 @@ static void gfs2instr(const char *s1, const char *s2)
 
 static void print_usage(void)
 {
-	int ch;
-
 	line = 2;
 	Erase();
 	display_title_lines();
@@ -280,7 +278,7 @@ static void print_usage(void)
 	move(line++, 0);
 	printw("Press any key to return.");
 	refresh();
-	while ((ch=getch()) == 0); // wait for input
+	getch(); // wait for input
 	Erase();
 }
 
