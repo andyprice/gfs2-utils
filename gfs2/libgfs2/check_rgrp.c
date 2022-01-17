@@ -35,7 +35,7 @@ static void mockup_rgrps(void)
 	ck_assert(ftruncate(sdp->device_fd, MOCK_DEV_SIZE) == 0);
 
 	sdp->sd_bsize = 4096;
-	compute_constants(sdp);
+	lgfs2_compute_constants(sdp);
 
 	rgs = lgfs2_rgrps_init(sdp, 0, 0);
 	ck_assert(rgs != NULL);

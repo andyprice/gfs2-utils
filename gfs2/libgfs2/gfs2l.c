@@ -120,7 +120,7 @@ static int openfs(const char *path, struct gfs2_sbd *sdp)
 	memset(sdp, 0, sizeof(*sdp));
 	sdp->sd_bsize = GFS2_BASIC_BLOCK;
 	sdp->device_fd = fd;
-	ret = compute_constants(sdp);
+	ret = lgfs2_compute_constants(sdp);
 	if (ret != 0) {
 		perror("Bad constants");
 		return 1;

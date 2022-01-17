@@ -899,7 +899,7 @@ static void read_superblock(int fd)
 		perror(device);
 		exit(-1);
 	}
-	if(compute_constants(&sbd)) {
+	if(lgfs2_compute_constants(&sbd)) {
 		fprintf(stderr, "Failed to compute constants.\n");
 		exit(-1);
 	}

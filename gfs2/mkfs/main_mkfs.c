@@ -1064,7 +1064,7 @@ static int sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsize
 	sdp->sd_bsize_shift = ffs(bsize) - 1;
 	uuid_generate(sdp->sd_uuid);
 
-	if (compute_constants(sdp)) {
+	if (lgfs2_compute_constants(sdp)) {
 		perror(_("Failed to compute file system constants"));
 		return -1;
 	}

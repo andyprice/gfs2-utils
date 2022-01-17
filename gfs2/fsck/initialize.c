@@ -1341,7 +1341,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 	sdp->rgtree.osi_node = NULL;
 
 	sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
-	if (compute_constants(sdp)) {
+	if (lgfs2_compute_constants(sdp)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));
 		return FSCK_ERROR;
 	}

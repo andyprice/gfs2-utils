@@ -12,7 +12,7 @@
 #define PAGE_SIZE (4096)
 #define DIV_RU(x, y) (((x) + (y) - 1) / (y))
 
-int compute_heightsize(unsigned bsize, uint64_t *heightsize,
+int lgfs2_compute_heightsize(unsigned bsize, uint64_t *heightsize,
 	uint32_t *maxheight, uint32_t bsize1, int diptrs, int inptrs)
 {
 	heightsize[0] = bsize - sizeof(struct gfs2_dinode);
@@ -36,7 +36,7 @@ int compute_heightsize(unsigned bsize, uint64_t *heightsize,
 	return 0;
 }
 
-int compute_constants(struct gfs2_sbd *sdp)
+int lgfs2_compute_constants(struct gfs2_sbd *sdp)
 {
 	sdp->md.next_inum = 1;
 
@@ -55,11 +55,11 @@ int compute_constants(struct gfs2_sbd *sdp)
 	sdp->sd_blocks_per_bitmap = (sdp->sd_bsize - sizeof(struct gfs2_meta_header))
 	                             * GFS2_NBBY;
 
-	if (compute_heightsize(sdp->sd_bsize, sdp->sd_heightsize, &sdp->sd_max_height,
+	if (lgfs2_compute_heightsize(sdp->sd_bsize, sdp->sd_heightsize, &sdp->sd_max_height,
 				sdp->sd_bsize, sdp->sd_diptrs, sdp->sd_inptrs)) {
 		return -1;
 	}
-	if (compute_heightsize(sdp->sd_bsize, sdp->sd_jheightsize, &sdp->sd_max_jheight,
+	if (lgfs2_compute_heightsize(sdp->sd_bsize, sdp->sd_jheightsize, &sdp->sd_max_jheight,
 				sdp->sd_jbsize, sdp->sd_diptrs, sdp->sd_inptrs)) {
 		return -1;
 	}

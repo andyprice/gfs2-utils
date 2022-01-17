@@ -679,7 +679,7 @@ int main(int argc, char *argv[])
 		goto umount_meta;
 	}
 
-	if ((ret = compute_constants(sdp))) {
+	if ((ret = lgfs2_compute_constants(sdp))) {
 		perror(_("Failed to compute file system constants"));
 		goto free_paths;
 	}

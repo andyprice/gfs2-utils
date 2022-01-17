@@ -725,9 +725,9 @@ extern void lgfs2_gfs_rgrp_in(const lgfs2_rgrp_t rg, void *buf);
 extern void lgfs2_gfs_rgrp_out(const lgfs2_rgrp_t rg, void *buf);
 
 /* misc.c */
-extern int compute_heightsize(unsigned bsize, uint64_t *heightsize,
+extern int lgfs2_compute_heightsize(unsigned bsize, uint64_t *heightsize,
 		uint32_t *maxheight, uint32_t bsize1, int diptrs, int inptrs);
-extern int compute_constants(struct gfs2_sbd *sdp);
+extern int lgfs2_compute_constants(struct gfs2_sbd *sdp);
 extern int lgfs2_open_mnt(const char *path, int dirflags, int *dirfd, int devflags, int *devfd, struct mntent **mnt);
 extern int lgfs2_open_mnt_dev(const char *path, int flags, struct mntent **mnt);
 extern int lgfs2_open_mnt_dir(const char *path, int flags, struct mntent **mnt);

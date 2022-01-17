@@ -280,7 +280,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 {
 	sdp->sd_bsize = GFS2_BASIC_BLOCK;
 
-	if (compute_constants(sdp) != 0) {
+	if (lgfs2_compute_constants(sdp) != 0) {
 		fprintf(stderr, "Failed to compute file system constants.\n");
 		return 1;
 	}

@@ -1585,7 +1585,7 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 	sbp->dinodes_alloced = 0; /* dinodes allocated - total them up later */
 	sbp->sd_bsize = GFS2_DEFAULT_BSIZE;
 	sbp->rgtree.osi_node = NULL;
-	if (compute_constants(sbp)) {
+	if (lgfs2_compute_constants(sbp)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(-1);
 	}
@@ -1605,13 +1605,13 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 		sizeof(uint64_t);
 	sbp->sd_jbsize = sbp->sd_bsize - sizeof(struct gfs2_meta_header);
 	lgfs2_brelse(bh);
-	if (compute_heightsize(sbp->sd_bsize, sbp->sd_heightsize, &sbp->sd_max_height,
+	if (lgfs2_compute_heightsize(sbp->sd_bsize, sbp->sd_heightsize, &sbp->sd_max_height,
 				sbp->sd_bsize, sbp->sd_diptrs, sbp->sd_inptrs)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(-1);
 	}
 
-	if (compute_heightsize(sbp->sd_bsize, sbp->sd_jheightsize, &sbp->sd_max_jheight,
+	if (lgfs2_compute_heightsize(sbp->sd_bsize, sbp->sd_jheightsize, &sbp->sd_max_jheight,
 				sbp->sd_jbsize, sbp->sd_diptrs, sbp->sd_inptrs)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(-1);
@@ -1622,13 +1622,13 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 	gfs2_inptrs = (sbp->sd_bsize - sizeof(struct gfs2_meta_header)) /
                 sizeof(uint64_t); /* How many ptrs can we fit on a block? */
 	memset(gfs2_heightsize, 0, sizeof(gfs2_heightsize));
-	if (compute_heightsize(sbp->sd_bsize, gfs2_heightsize, &gfs2_max_height,
+	if (lgfs2_compute_heightsize(sbp->sd_bsize, gfs2_heightsize, &gfs2_max_height,
 				sbp->sd_bsize, sbp->sd_diptrs, gfs2_inptrs)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(-1);
 	}
 	memset(gfs2_jheightsize, 0, sizeof(gfs2_jheightsize));
-	if (compute_heightsize(sbp->sd_bsize, gfs2_jheightsize, &gfs2_max_jheight,
+	if (lgfs2_compute_heightsize(sbp->sd_bsize, gfs2_jheightsize, &gfs2_max_jheight,
 				sbp->sd_jbsize, sbp->sd_diptrs, gfs2_inptrs)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));
 		exit(-1);
@@ -2299,7 +2299,7 @@ int main(int argc, char **argv)
 		int jreduce = 0;
 
 		/* Now we've got to treat it as a gfs2 file system */
-		if (compute_constants(&sb2)) {
+		if (lgfs2_compute_constants(&sb2)) {
 			log_crit("%s\n", _("Failed to compute file system constants"));
 			exit(-1);
 		}
