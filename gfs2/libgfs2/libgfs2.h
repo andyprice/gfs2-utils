@@ -412,7 +412,7 @@ struct lgfs2_leaf {
 	uint64_t lf_sec;
 };
 
-struct metapath {
+struct lgfs2_metapath {
 	unsigned int mp_list[GFS2_MAX_META_HEIGHT];
 };
 
@@ -494,9 +494,9 @@ extern int lgfs2_set_bitmap(lgfs2_rgrp_t rg, uint64_t blkno, int state);
 #define IS_LEAF     (1)
 #define IS_DINODE   (2)
 
-extern void lgfs2_find_metapath(struct lgfs2_inode *ip, uint64_t block, struct metapath *mp);
+extern void lgfs2_find_metapath(struct lgfs2_inode *ip, uint64_t block, struct lgfs2_metapath *mp);
 extern void lgfs2_lookup_block(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
-			 unsigned int height, struct metapath *mp,
+			 unsigned int height, struct lgfs2_metapath *mp,
 			 int create, int *new, uint64_t *block);
 extern struct lgfs2_inode *lgfs2_inode_get(struct lgfs2_sbd *sdp,
 				    struct lgfs2_buffer_head *bh);
@@ -710,7 +710,7 @@ struct gfs_log_descriptor {
 extern int lgfs2_is_gfs_dir(struct lgfs2_inode *ip);
 extern void lgfs2_gfs1_lookup_block(struct lgfs2_inode *ip,
 			      struct lgfs2_buffer_head *bh,
-			      unsigned int height, struct metapath *mp,
+			      unsigned int height, struct lgfs2_metapath *mp,
 			      int create, int *new, uint64_t *block);
 extern void lgfs2_gfs1_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 			   uint64_t *dblock, uint32_t *extlen, int prealloc);

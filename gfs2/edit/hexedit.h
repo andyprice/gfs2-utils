@@ -78,7 +78,7 @@ struct indirect_info {
 	uint64_t block;
 	uint32_t dirents;
 	struct gfs2_leaf lf;
-	struct metapath mp;
+	struct lgfs2_metapath mp;
 	struct idirent dirent[64];
 	uint64_t ptroff;
 };
@@ -96,7 +96,7 @@ struct blkstack_info {
 	int edit_col[DMODES];
 	enum dsp_mode dmode;
 	int gfs2_struct_type;
-	struct metapath mp;
+	struct lgfs2_metapath mp;
 };
 
 extern struct blkstack_info blockstack[BLOCK_STACK_SIZE];

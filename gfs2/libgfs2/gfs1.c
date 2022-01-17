@@ -23,7 +23,7 @@ static __inline__ int fs_is_jdata(struct lgfs2_inode *ip)
 }
 
 static __inline__ __be64 *
-gfs1_metapointer(char *buf, unsigned int height, struct metapath *mp)
+gfs1_metapointer(char *buf, unsigned int height, struct lgfs2_metapath *mp)
 {
 	unsigned int head_size = (height > 0) ?
 		sizeof(struct gfs_indirect) : sizeof(struct gfs_dinode);
@@ -39,7 +39,7 @@ int lgfs2_is_gfs_dir(struct lgfs2_inode *ip)
 }
 
 void lgfs2_gfs1_lookup_block(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
-		  unsigned int height, struct metapath *mp,
+		  unsigned int height, struct lgfs2_metapath *mp,
 		  int create, int *new, uint64_t *block)
 {
 	__be64 *ptr = gfs1_metapointer(bh->b_data, height, mp);
@@ -72,7 +72,7 @@ void lgfs2_gfs1_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 {
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_buffer_head *bh;
-	struct metapath mp;
+	struct lgfs2_metapath mp;
 	int create = *new;
 	unsigned int bsize;
 	unsigned int height;

@@ -1032,7 +1032,7 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 			for (i = 0; i < 512; i++)
 				memcpy(&indirect->ii[i].mp,
 				       &blockstack[blockhist - 1].mp,
-				       sizeof(struct metapath));
+				       sizeof(struct lgfs2_metapath));
 		}
 		indirect_blocks = do_indirect_extended(bh->b_data, indirect);
 	}
@@ -1091,7 +1091,7 @@ static void push_block(uint64_t blk)
 		if (edit_row[dmode] >= 0 && !block_is_rindex(block))
 			memcpy(&blockstack[bhst].mp,
 			       &indirect->ii[edit_row[dmode]].mp,
-			       sizeof(struct metapath));
+			       sizeof(struct lgfs2_metapath));
 		blockhist++;
 		blockstack[blockhist % BLOCK_STACK_SIZE].block = blk;
 	}

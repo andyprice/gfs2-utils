@@ -16,7 +16,7 @@
 
 static __inline__ __be64 *metapointer(char *buf,
 					unsigned int height,
-					struct metapath *mp)
+					struct lgfs2_metapath *mp)
 {
 	unsigned int head_size = (height > 0) ?
 		sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_dinode);
@@ -423,12 +423,12 @@ void lgfs2_build_height(struct lgfs2_inode *ip, int height)
 	}
 }
 
-void lgfs2_find_metapath(struct lgfs2_inode *ip, uint64_t block, struct metapath *mp)
+void lgfs2_find_metapath(struct lgfs2_inode *ip, uint64_t block, struct lgfs2_metapath *mp)
 {
 	const uint32_t inptrs = ip->i_sbd->sd_inptrs;
 	unsigned int i = ip->i_height;
 
-	memset(mp, 0, sizeof(struct metapath));
+	memset(mp, 0, sizeof(struct lgfs2_metapath));
 	while (i--) {
 		mp->mp_list[i] = block % inptrs;
 		block /= inptrs;
@@ -436,7 +436,7 @@ void lgfs2_find_metapath(struct lgfs2_inode *ip, uint64_t block, struct metapath
 }
 
 void lgfs2_lookup_block(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
-                        unsigned int height, struct metapath *mp,
+                        unsigned int height, struct lgfs2_metapath *mp,
                         int create, int *new, uint64_t *block)
 {
 	__be64 *ptr = metapointer(bh->b_data, height, mp);
@@ -466,7 +466,7 @@ void lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 {
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_buffer_head *bh;
-	struct metapath mp;
+	struct lgfs2_metapath mp;
 	int create = *new;
 	unsigned int bsize;
 	unsigned int height;
@@ -1437,7 +1437,7 @@ static void lgfs2_fill_indir(char *start, char *end, uint64_t ptr0, unsigned n, 
 int lgfs2_write_filemeta(struct lgfs2_inode *ip)
 {
 	unsigned height = 0;
-	struct metapath mp;
+	struct lgfs2_metapath mp;
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	uint64_t dblocks = (ip->i_size + sdp->sd_bsize - 1) / sdp->sd_bsize;
 	uint64_t ptr0 = ip->i_num.in_addr + 1;

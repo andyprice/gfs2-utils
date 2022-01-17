@@ -97,7 +97,7 @@ static int dinode_valid(void)
 	return 0;
 }
 
-static uint64_t metapath_to_lblock(struct metapath *mp, int hgt)
+static uint64_t metapath_to_lblock(struct lgfs2_metapath *mp, int hgt)
 {
 	int h;
 	uint64_t lblock = 0;
@@ -401,7 +401,7 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 			for (x = 0; x < 512; x++) {
 				memcpy(&more_indir->ii[x].mp,
 				       &ind->ii[pndx].mp,
-				       sizeof(struct metapath));
+				       sizeof(struct lgfs2_metapath));
 				more_indir->ii[x].mp.mp_list[cur_height+1] = x;
 			}
 			more_ind = _do_indirect_extended(tmpbuf, more_indir,

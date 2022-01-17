@@ -82,7 +82,7 @@ struct inode_block {
 struct blocklist {
 	osi_list_t list;
 	uint64_t block;
-	struct metapath mp;
+	struct lgfs2_metapath mp;
 	int height;
 	char *ptrbuf;
 };
@@ -219,7 +219,7 @@ static unsigned int calc_gfs2_tree_height(struct lgfs2_inode *ip, uint64_t size)
 /* mp_gfs1_to_gfs2 - convert a gfs1 metapath to a gfs2 metapath.             */
 /* ------------------------------------------------------------------------- */
 static void mp_gfs1_to_gfs2(struct lgfs2_sbd *sbp, int gfs1_h, int gfs2_h,
-		     struct metapath *gfs1mp, struct metapath *gfs2mp)
+		     struct lgfs2_metapath *gfs1mp, struct lgfs2_metapath *gfs2mp)
 {
 	uint64_t lblock;
 	int h;
@@ -378,7 +378,7 @@ static void fix_metatree(struct lgfs2_sbd *sbp, struct lgfs2_inode *ip,
 /* ------------------------------------------------------------------------- */
 
 static void jdata_mp_gfs1_to_gfs2(struct lgfs2_sbd *sbp, int gfs1_h, int gfs2_h,
-			   struct metapath *gfs1mp, struct metapath *gfs2mp,
+			   struct lgfs2_metapath *gfs1mp, struct lgfs2_metapath *gfs2mp,
 			   unsigned int *len, uint64_t dinode_size)
 {
 	uint64_t offset;
@@ -575,7 +575,7 @@ static int fix_ind_reg_or_dir(struct lgfs2_sbd *sbp, struct lgfs2_inode *ip, uin
 	unsigned int len, bufsize;
 	__be64 *ptr1, *ptr2;
 	int ptrnum;
-	struct metapath gfs2mp;
+	struct lgfs2_metapath gfs2mp;
 
 	bufsize = sbp->sd_bsize - sizeof(struct gfs_indirect);
 	len = bufsize;
@@ -601,7 +601,7 @@ static int fix_ind_reg_or_dir(struct lgfs2_sbd *sbp, struct lgfs2_inode *ip, uin
 	}
 	blk->mp.mp_list[di_height - 1] = ptrnum;
 	mp_gfs1_to_gfs2(sbp, di_height, gfs2_hgt, &blk->mp, &gfs2mp);
-	memcpy(&blk->mp, &gfs2mp, sizeof(struct metapath));
+	memcpy(&blk->mp, &gfs2mp, sizeof(struct lgfs2_metapath));
 	blk->height -= di_height - gfs2_hgt;
 	if (len) {
 		fix_metatree(sbp, ip, blk, ptr1, len);
@@ -621,7 +621,7 @@ static int fix_ind_jdata(struct lgfs2_sbd *sbp, struct lgfs2_inode *ip, uint32_t
 	uint64_t block;
 	__be64 *ptr1;
 	int ptrnum, h;
-	struct metapath gfs2mp;
+	struct lgfs2_metapath gfs2mp;
 	struct lgfs2_buffer_head *bh;
 
 	bufsize = sbp->sd_bsize - sizeof(struct gfs2_meta_header);
@@ -670,7 +670,7 @@ static int fix_ind_jdata(struct lgfs2_sbd *sbp, struct lgfs2_inode *ip, uint32_t
 		len = bufsize;
 		jdata_mp_gfs1_to_gfs2(sbp, di_height, gfs2_hgt, &newblk->mp, &gfs2mp,
 				      &len, dinode_size);
-		memcpy(&newblk->mp, &gfs2mp, sizeof(struct metapath));
+		memcpy(&newblk->mp, &gfs2mp, sizeof(struct lgfs2_metapath));
 		newblk->height -= di_height - gfs2_hgt;
 		if (len)
 			ip->i_goal_meta = fix_jdatatree(sbp, ip, newblk,
