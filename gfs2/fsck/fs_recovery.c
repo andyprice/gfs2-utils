@@ -135,9 +135,9 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 	if (pass != 1 || be32_to_cpu(ld->ld_type) != GFS2_LOG_DESC_METADATA)
 		return 0;
 
-	gfs2_replay_incr_blk(ip, &start);
+	lgfs2_replay_incr_blk(ip, &start);
 
-	for (; blks; gfs2_replay_incr_blk(ip, &start), blks--) {
+	for (; blks; lgfs2_replay_incr_blk(ip, &start), blks--) {
 		struct gfs2_meta_header *mhp;
 
 		sd_found_metablocks++;
@@ -147,7 +147,7 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 		if (revoke_check(sdp, blkno, start))
 			continue;
 
-		error = gfs2_replay_read_block(ip, start, &bh_log);
+		error = lgfs2_replay_read_block(ip, start, &bh_log);
 		if (error)
 			return error;
 
@@ -200,8 +200,8 @@ static int revoke_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 
 	offset = sizeof(struct gfs2_log_descriptor);
 
-	for (; blks; gfs2_replay_incr_blk(ip, &start), blks--) {
-		error = gfs2_replay_read_block(ip, start, &bh);
+	for (; blks; lgfs2_replay_incr_blk(ip, &start), blks--) {
+		error = lgfs2_replay_read_block(ip, start, &bh);
 		if (error)
 			return error;
 
@@ -246,8 +246,8 @@ static int databuf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 	if (pass != 1 || be32_to_cpu(ld->ld_type) != GFS2_LOG_DESC_JDATA)
 		return 0;
 
-	gfs2_replay_incr_blk(ip, &start);
-	for (; blks; gfs2_replay_incr_blk(ip, &start), blks--) {
+	lgfs2_replay_incr_blk(ip, &start);
+	for (; blks; lgfs2_replay_incr_blk(ip, &start), blks--) {
 		blkno = be64_to_cpu(*ptr);
 		ptr++;
 		esc = be64_to_cpu(*ptr);
@@ -258,7 +258,7 @@ static int databuf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 		if (revoke_check(sdp, blkno, start))
 			continue;
 
-		error = gfs2_replay_read_block(ip, start, &bh_log);
+		error = lgfs2_replay_read_block(ip, start, &bh_log);
 		if (error)
 			return error;
 
@@ -313,7 +313,7 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 	while (start != end) {
 		struct gfs2_meta_header *mhp;
 
-		error = gfs2_replay_read_block(ip, start, &bh);
+		error = lgfs2_replay_read_block(ip, start, &bh);
 		if (error)
 			return error;
 		mhp = (struct gfs2_meta_header *)bh->b_data;
@@ -330,7 +330,7 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 
 			error = lgfs2_get_log_header(ip, start, &lh);
 			if (!error) {
-				gfs2_replay_incr_blk(ip, &start);
+				lgfs2_replay_incr_blk(ip, &start);
 				lgfs2_bmodified(bh);
 				lgfs2_brelse(bh);
 				continue;
@@ -369,7 +369,7 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 		}
 
 		while (length--)
-			gfs2_replay_incr_blk(ip, &start);
+			lgfs2_replay_incr_blk(ip, &start);
 
 		lgfs2_bmodified(bh);
 		lgfs2_brelse(bh);

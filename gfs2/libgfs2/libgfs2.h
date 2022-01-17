@@ -730,8 +730,8 @@ extern int lgfs2_open_mnt_dev(const char *path, int flags, struct mntent **mnt);
 extern int lgfs2_open_mnt_dir(const char *path, int flags, struct mntent **mnt);
 
 /* recovery.c */
-extern void gfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk);
-extern int gfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
+extern void lgfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk);
+extern int lgfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
 				  struct gfs2_buffer_head **bh);
 extern int lgfs2_get_log_header(struct gfs2_inode *ip, unsigned int blk,
                                 struct lgfs2_log_header *head);

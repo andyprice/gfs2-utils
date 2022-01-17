@@ -14,7 +14,7 @@
 #include <string.h>
 #include "libgfs2.h"
 
-void gfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk)
+void lgfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk)
 {
 	uint32_t jd_blocks = ip->i_size / ip->i_sbd->sd_bsize;
 
@@ -22,7 +22,7 @@ void gfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk)
                 *blk = 0;
 }
 
-int gfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
+int lgfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
 			   struct gfs2_buffer_head **bh)
 {
 	int new = 0;
@@ -77,7 +77,7 @@ int lgfs2_get_log_header(struct gfs2_inode *ip, unsigned int blk,
 	uint32_t crc;
 	int error;
 
-	error = gfs2_replay_read_block(ip, blk, &bh);
+	error = lgfs2_replay_read_block(ip, blk, &bh);
 	if (error)
 		return error;
 
@@ -240,7 +240,7 @@ int lgfs2_clean_journal(struct gfs2_inode *ip, struct lgfs2_log_header *head)
 	uint64_t dblock;
 
 	lblock = head->lh_blkno;
-	gfs2_replay_incr_blk(ip, &lblock);
+	lgfs2_replay_incr_blk(ip, &lblock);
 	lgfs2_block_map(ip, lblock, &new, &dblock, NULL, 0);
 	if (!dblock)
 		return -EIO;
