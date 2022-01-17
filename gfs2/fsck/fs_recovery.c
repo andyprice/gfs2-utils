@@ -33,7 +33,7 @@ struct gfs2_revoke_replay {
 	unsigned int rr_where;
 };
 
-int gfs2_revoke_add(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where)
+static int revoke_add(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where)
 {
 	osi_list_t *tmp, *head = &sd_revoke_list;
 	struct gfs2_revoke_replay *rr;
@@ -62,7 +62,7 @@ int gfs2_revoke_add(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where)
 	return 1;
 }
 
-int gfs2_revoke_check(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where)
+static int revoke_check(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where)
 {
 	osi_list_t *tmp;
 	struct gfs2_revoke_replay *rr;
@@ -86,7 +86,7 @@ int gfs2_revoke_check(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where)
 	return (wrap) ? (a || b) : (a && b);
 }
 
-void gfs2_revoke_clean(struct gfs2_sbd *sdp)
+static void revoke_clean(struct gfs2_sbd *sdp)
 {
 	osi_list_t *head = &sd_revoke_list;
 	struct gfs2_revoke_replay *rr;
@@ -144,7 +144,7 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 
 		blkno = be64_to_cpu(*ptr);
 		ptr++;
-		if (gfs2_revoke_check(sdp, blkno, start))
+		if (revoke_check(sdp, blkno, start))
 			continue;
 
 		error = gfs2_replay_read_block(ip, start, &bh_log);
@@ -213,7 +213,7 @@ static int revoke_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			blkno = be64_to_cpu(*(__be64 *)(bh->b_data + offset));
 			log_info(_("Journal replay processing revoke for block #%"PRIu64" (0x%"PRIx64") for journal+0x%x\n"),
 			         blkno, blkno, start);
-			error = gfs2_revoke_add(sdp, blkno, start);
+			error = revoke_add(sdp, blkno, start);
 			if (error < 0)
 				return error;
 			else if (error)
@@ -255,7 +255,7 @@ static int databuf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 
 		sd_found_jblocks++;
 
-		if (gfs2_revoke_check(sdp, blkno, start))
+		if (revoke_check(sdp, blkno, start))
 			continue;
 
 		error = gfs2_replay_read_block(ip, start, &bh_log);
@@ -578,7 +578,7 @@ static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
 		}
 	}
 	log_info( _("jid=%u: Found %u revoke tags\n"), j, sd_found_revokes);
-	gfs2_revoke_clean(sdp);
+	revoke_clean(sdp);
 	error = lgfs2_clean_journal(ip, &head);
 	if (error)
 		goto out;

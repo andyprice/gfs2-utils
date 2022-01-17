@@ -733,10 +733,6 @@ extern int lgfs2_open_mnt_dir(const char *path, int flags, struct mntent **mnt);
 extern void gfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk);
 extern int gfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
 				  struct gfs2_buffer_head **bh);
-extern int gfs2_revoke_add(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where);
-extern int gfs2_revoke_check(struct gfs2_sbd *sdp, uint64_t blkno,
-			     unsigned int where);
-extern void gfs2_revoke_clean(struct gfs2_sbd *sdp);
 extern int lgfs2_get_log_header(struct gfs2_inode *ip, unsigned int blk,
                                 struct lgfs2_log_header *head);
 extern int lgfs2_find_jhead(struct gfs2_inode *ip, struct lgfs2_log_header *head);
