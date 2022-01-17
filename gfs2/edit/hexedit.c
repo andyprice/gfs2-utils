@@ -700,7 +700,7 @@ static void rgcount(void)
 /* ------------------------------------------------------------------------ */
 /* find_rgrp_block - locate the block for a given rgrp number               */
 /* ------------------------------------------------------------------------ */
-static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
+static uint64_t find_rgrp_block(struct lgfs2_inode *dif, int rg)
 {
 	int amt;
 	struct gfs2_rindex ri;
@@ -727,7 +727,7 @@ static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
 static uint64_t get_rg_addr(int rgnum)
 {
 	uint64_t rgblk = 0, gblock;
-	struct gfs2_inode *riinode;
+	struct lgfs2_inode *riinode;
 
 	if (sbd.gfs1)
 		gblock = sbd.sd_rindex_di.in_addr;

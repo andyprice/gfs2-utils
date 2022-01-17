@@ -284,7 +284,7 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				         diblock, diblock);
 				bh = lgfs2_bread(sdp, diblock);
 				if (!lgfs2_check_meta(bh->b_data, GFS2_METATYPE_DI)) {
-					struct gfs2_inode *ip =
+					struct lgfs2_inode *ip =
 						fsck_inode_get(sdp, rgd, bh);
 					if (ip->i_blocks > 1) {
 						blks_2free += ip->i_blocks - 1;
@@ -544,7 +544,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			exit(FSCK_ERROR);
 		}
 	} else {
-		struct gfs2_inode *rip = lgfs2_build_rindex(sdp);
+		struct lgfs2_inode *rip = lgfs2_build_rindex(sdp);
 		if (rip == NULL) {
 			log_crit(_("Error building rindex inode: %s\n"), strerror(errno));
 			exit(FSCK_ERROR);
@@ -562,7 +562,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			exit(FSCK_ERROR);
 		}
 	} else {
-		struct gfs2_inode *qip = lgfs2_build_quota(sdp);
+		struct lgfs2_inode *qip = lgfs2_build_quota(sdp);
 		if (qip == NULL) {
 			log_crit(_("Error building quota inode: %s\n"), strerror(errno));
 			exit(FSCK_ERROR);
@@ -951,7 +951,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
  * A real dinode will be located at the block number in its no_addr.
  * A journal-copy will be at a different block (inside the journal).
  */
-static int is_journal_copy(struct gfs2_inode *ip)
+static int is_journal_copy(struct lgfs2_inode *ip)
 {
 	if (ip->i_num.in_addr == ip->i_bh->b_blocknr)
 		return 0;
@@ -968,9 +968,9 @@ static int is_journal_copy(struct gfs2_inode *ip)
  * the per_node directory will have a ".." entry that will lead us to
  * the master dinode if it's been destroyed.
  */
-static void peruse_system_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
+static void peruse_system_dinode(struct gfs2_sbd *sdp, struct lgfs2_inode *ip)
 {
-	struct gfs2_inode *child_ip;
+	struct lgfs2_inode *child_ip;
 	struct lgfs2_inum inum;
 	int error;
 
@@ -1057,9 +1057,9 @@ out_discard_ip:
  * peruse_user_dinode - process a user dinode trying to find the root directory
  *
  */
-static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
+static void peruse_user_dinode(struct gfs2_sbd *sdp, struct lgfs2_inode *ip)
 {
-	struct gfs2_inode *parent_ip;
+	struct lgfs2_inode *parent_ip;
 	struct lgfs2_inum inum;
 	int error;
 
@@ -1194,7 +1194,7 @@ static int peruse_metadata(struct gfs2_sbd *sdp, uint64_t startblock)
 {
 	uint64_t blk, max_rg_size;
 	struct gfs2_buffer_head *bh;
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 
 	max_rg_size = 2147483648ull / sdp->sd_bsize;
 	/* Max RG size is 2GB. 2G / bsize. */
@@ -1516,7 +1516,7 @@ static int reconstruct_journals(struct gfs2_sbd *sdp)
  */
 static int init_rindex(struct gfs2_sbd *sdp)
 {
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 
 	if (sdp->gfs1)
 		sdp->md.riinode = lgfs2_inode_read(sdp, sdp->sd_rindex_di.in_addr);

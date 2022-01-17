@@ -615,13 +615,13 @@ static void display_filename(int fd, uint64_t block, uint64_t *dirarray, int sub
 
 static const char *show_inode(const char *id, int fd, uint64_t block)
 {
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 	const char *inode_type = NULL;
 	struct gfs2_sbd sbd = { .device_fd = fd, .sd_bsize = bsize };
 
 	ip = lgfs2_inode_read(&sbd, block);
 	if (S_ISDIR(ip->i_mode)) {
-		struct gfs2_inode *parent;
+		struct lgfs2_inode *parent;
 		uint64_t dirarray[256];
 		int subdepth = 0, error;
 

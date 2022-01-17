@@ -472,7 +472,7 @@ unsigned lgfs2_rindex_read_fd(int fd, lgfs2_rgrps_t rgs)
  * Returns the new rindex entry added to the set or NULL on error with errno
  * set.
  */
-lgfs2_rgrp_t lgfs2_rindex_read_one(struct gfs2_inode *rip, lgfs2_rgrps_t rgs, unsigned i)
+lgfs2_rgrp_t lgfs2_rindex_read_one(struct lgfs2_inode *rip, lgfs2_rgrps_t rgs, unsigned i)
 {
 	uint64_t off = i * sizeof(struct gfs2_rindex);
 	struct gfs2_rindex ri;

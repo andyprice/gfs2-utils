@@ -266,7 +266,7 @@ static int insert_per_node_lookup(uint64_t blk)
 static int init_per_node_lookup(void)
 {
 	int i;
-	struct gfs2_inode *per_node_di;
+	struct lgfs2_inode *per_node_di;
 
 	if (sbd.gfs1)
 		return FALSE;
@@ -945,7 +945,7 @@ static void get_journal_inode_blocks(void)
 	for (journal = 0; ; journal++) { /* while journals exist */
 		uint64_t jblock;
 		int amt;
-		struct gfs2_inode *j_inode = NULL;
+		struct lgfs2_inode *j_inode = NULL;
 
 		if (sbd.gfs1) {
 			struct gfs_jindex *ji;

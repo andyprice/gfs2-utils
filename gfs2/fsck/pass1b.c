@@ -41,7 +41,7 @@ struct meta_blk_ref {
 	int off; /* offset to the reference within the buffer */
 };
 
-static int clone_data(struct gfs2_inode *ip, uint64_t metablock,
+static int clone_data(struct lgfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
 		      struct gfs2_buffer_head *bh, __be64 *ptr);
 
@@ -74,7 +74,7 @@ static int findref_meta(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
 	return META_IS_GOOD;
 }
 
-static int findref_data(struct gfs2_inode *ip, uint64_t metablock,
+static int findref_data(struct lgfs2_inode *ip, uint64_t metablock,
 			uint64_t block, void *private,
 			struct gfs2_buffer_head *bh, __be64 *ptr)
 {
@@ -99,7 +99,7 @@ static void clone_data_block(struct gfs2_sbd *sdp, struct duptree *dt,
 		.check_data = findref_data,
 	};
 	struct clone_target clone = {.dup_block = dt->block,};
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 	struct gfs2_buffer_head *bh;
 	__be64 *ptr;
 
@@ -180,7 +180,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 				   struct dup_handler *dh,
 				   int inval, int acceptable_ref)
 {
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 	struct inode_with_dups *id;
 	osi_list_t *tmp, *x;
 	struct metawalk_fxns pass1b_fxns_delete = {
@@ -373,7 +373,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 static int clone_check_meta(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
                             int *is_valid, int *was_duplicate, void *private)
 {
-	struct gfs2_inode *ip = iptr.ipt_ip;
+	struct lgfs2_inode *ip = iptr.ipt_ip;
 	uint64_t block = iptr_block(iptr);
 
 	*was_duplicate = 0;
@@ -387,7 +387,7 @@ static int clone_check_meta(struct iptr iptr, struct gfs2_buffer_head **bh, int 
  * This function remembers the first reference to the specified block, and
  * clones all subsequent references to it (with permission).
  */
-static int clone_data(struct gfs2_inode *ip, uint64_t metablock,
+static int clone_data(struct lgfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
 		      struct gfs2_buffer_head *bh, __be64 *ptr)
 {
@@ -452,7 +452,7 @@ static int clone_data(struct gfs2_inode *ip, uint64_t metablock,
  * This function traverses the metadata tree of an inode, cloning all
  * but the first reference to a duplicate block reference.
  */
-static void clone_dup_ref_in_inode(struct gfs2_inode *ip, struct duptree *dt)
+static void clone_dup_ref_in_inode(struct lgfs2_inode *ip, struct duptree *dt)
 {
 	int error;
 	struct clone_target clonet = {.dup_block = dt->block, .first = 1};
@@ -472,7 +472,7 @@ static void clone_dup_ref_in_inode(struct gfs2_inode *ip, struct duptree *dt)
 	}
 }
 
-static int set_ip_bitmap(struct gfs2_inode *ip)
+static int set_ip_bitmap(struct lgfs2_inode *ip)
 {
 	uint64_t block = ip->i_bh->b_blocknr;
 	uint32_t mode;
@@ -515,7 +515,7 @@ static int set_ip_bitmap(struct gfs2_inode *ip)
 static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 				   enum dup_ref_type acceptable_ref)
 {
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 	struct inode_with_dups *id;
 	osi_list_t *tmp;
 	int q;
@@ -730,7 +730,7 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 	return 0;
 }
 
-static int check_leaf_refs(struct gfs2_inode *ip, uint64_t block,
+static int check_leaf_refs(struct lgfs2_inode *ip, uint64_t block,
 			   void *private)
 {
 	return add_duplicate_ref(ip, block, REF_AS_META, 1, INODE_VALID);
@@ -739,7 +739,7 @@ static int check_leaf_refs(struct gfs2_inode *ip, uint64_t block,
 static int check_metalist_refs(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
                                int *is_valid, int *was_duplicate, void *private)
 {
-	struct gfs2_inode *ip = iptr.ipt_ip;
+	struct lgfs2_inode *ip = iptr.ipt_ip;
 	uint64_t block = iptr_block(iptr);
 
 	*was_duplicate = 0;
@@ -747,14 +747,14 @@ static int check_metalist_refs(struct iptr iptr, struct gfs2_buffer_head **bh, i
 	return add_duplicate_ref(ip, block, REF_AS_META, 1, INODE_VALID);
 }
 
-static int check_data_refs(struct gfs2_inode *ip, uint64_t metablock,
+static int check_data_refs(struct lgfs2_inode *ip, uint64_t metablock,
 			   uint64_t block, void *private,
 			   struct gfs2_buffer_head *bh, __be64 *ptr)
 {
 	return add_duplicate_ref(ip, block, REF_AS_DATA, 1, INODE_VALID);
 }
 
-static int check_eattr_indir_refs(struct gfs2_inode *ip, uint64_t block,
+static int check_eattr_indir_refs(struct lgfs2_inode *ip, uint64_t block,
 				  uint64_t parent,
 				  struct gfs2_buffer_head **bh, void *private)
 {
@@ -768,7 +768,7 @@ static int check_eattr_indir_refs(struct gfs2_inode *ip, uint64_t block,
 	return error;
 }
 
-static int check_eattr_leaf_refs(struct gfs2_inode *ip, uint64_t block,
+static int check_eattr_leaf_refs(struct lgfs2_inode *ip, uint64_t block,
 				 uint64_t parent, struct gfs2_buffer_head **bh,
 				 void *private)
 {
@@ -781,7 +781,7 @@ static int check_eattr_leaf_refs(struct gfs2_inode *ip, uint64_t block,
 	return error;
 }
 
-static int check_eattr_entry_refs(struct gfs2_inode *ip,
+static int check_eattr_entry_refs(struct lgfs2_inode *ip,
 				  struct gfs2_buffer_head *leaf_bh,
 				  struct gfs2_ea_header *ea_hdr,
 				  struct gfs2_ea_header *ea_hdr_prev,
@@ -790,7 +790,7 @@ static int check_eattr_entry_refs(struct gfs2_inode *ip,
 	return 0;
 }
 
-static int check_eattr_extentry_refs(struct gfs2_inode *ip, int i,
+static int check_eattr_extentry_refs(struct lgfs2_inode *ip, int i,
 				     __be64 *ea_data_ptr,
 				     struct gfs2_buffer_head *leaf_bh,
 				     uint32_t tot_ealen,
@@ -813,7 +813,7 @@ static int check_eattr_extentry_refs(struct gfs2_inode *ip, int i,
 /* Finds all references to duplicate blocks in the metadata */
 static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
 {
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 	int error = 0;
 	struct metawalk_fxns find_refs = {
 		.private = NULL,

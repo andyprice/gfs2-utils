@@ -14,7 +14,7 @@
 #include <string.h>
 #include "libgfs2.h"
 
-void lgfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk)
+void lgfs2_replay_incr_blk(struct lgfs2_inode *ip, unsigned int *blk)
 {
 	uint32_t jd_blocks = ip->i_size / ip->i_sbd->sd_bsize;
 
@@ -22,7 +22,7 @@ void lgfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk)
                 *blk = 0;
 }
 
-int lgfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
+int lgfs2_replay_read_block(struct lgfs2_inode *ip, unsigned int blk,
 			   struct gfs2_buffer_head **bh)
 {
 	int new = 0;
@@ -65,7 +65,7 @@ static void log_header_in(struct lgfs2_log_header *lh, char *buf)
  *          errno on error
  */
 
-int lgfs2_get_log_header(struct gfs2_inode *ip, unsigned int blk,
+int lgfs2_get_log_header(struct lgfs2_inode *ip, unsigned int blk,
                          struct lgfs2_log_header *head)
 {
 	struct gfs2_buffer_head *bh;
@@ -113,7 +113,7 @@ int lgfs2_get_log_header(struct gfs2_inode *ip, unsigned int blk,
  *
  * Returns: errno
  */
-static int find_good_lh(struct gfs2_inode *ip, unsigned int *blk, struct lgfs2_log_header *head)
+static int find_good_lh(struct lgfs2_inode *ip, unsigned int *blk, struct lgfs2_log_header *head)
 {
 	unsigned int orig_blk = *blk;
 	int error;
@@ -143,7 +143,7 @@ static int find_good_lh(struct gfs2_inode *ip, unsigned int *blk, struct lgfs2_l
  * Returns: errno
  */
 
-static int jhead_scan(struct gfs2_inode *ip, struct lgfs2_log_header *head)
+static int jhead_scan(struct lgfs2_inode *ip, struct lgfs2_log_header *head)
 {
 	unsigned int blk = head->lh_blkno;
 	uint32_t jd_blocks = ip->i_size / ip->i_sbd->sd_bsize;
@@ -182,7 +182,7 @@ static int jhead_scan(struct gfs2_inode *ip, struct lgfs2_log_header *head)
  * Returns: errno
  */
 
-int lgfs2_find_jhead(struct gfs2_inode *ip, struct lgfs2_log_header *head)
+int lgfs2_find_jhead(struct lgfs2_inode *ip, struct lgfs2_log_header *head)
 {
 	struct lgfs2_log_header lh_1, lh_m;
 	uint32_t blk_1, blk_2, blk_m;
@@ -230,7 +230,7 @@ int lgfs2_find_jhead(struct gfs2_inode *ip, struct lgfs2_log_header *head)
  * Returns: errno
  */
 
-int lgfs2_clean_journal(struct gfs2_inode *ip, struct lgfs2_log_header *head)
+int lgfs2_clean_journal(struct lgfs2_inode *ip, struct lgfs2_log_header *head)
 {
 	unsigned int lblock;
 	struct gfs2_log_header *lh;

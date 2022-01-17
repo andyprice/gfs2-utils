@@ -153,7 +153,7 @@ static uint64_t ast_lookup_path(char *path, struct gfs2_sbd *sbd)
 {
 	int err = 0;
 	char *c = NULL;
-	struct gfs2_inode *ip, *iptmp;
+	struct lgfs2_inode *ip, *iptmp;
 	char *segment;
 	uint64_t bn = 0;
 

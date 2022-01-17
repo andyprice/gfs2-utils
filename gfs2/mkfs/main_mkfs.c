@@ -683,7 +683,7 @@ static int warn_of_destruction(const char *path)
 
 static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 {
-	struct gfs2_inode *per_node;
+	struct lgfs2_inode *per_node;
 	unsigned int j;
 
 	per_node = lgfs2_createi(sdp->master_dir, "per_node", S_IFDIR | 0700,
@@ -693,7 +693,7 @@ static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 		return -1;
 	}
 	for (j = 0; j < sdp->md.journals; j++) {
-		struct gfs2_inode *ip;
+		struct lgfs2_inode *ip;
 
 		ip = lgfs2_build_inum_range(per_node, j);
 		if (ip == NULL) {
@@ -910,7 +910,7 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 	for (j = 0; j < opts->journals; j++) {
 		int result;
 		lgfs2_rgrp_t rg;
-		struct gfs2_inode in = {0};
+		struct lgfs2_inode in = {0};
 		struct gfs2_rindex ri;
 
 		gfs2_progress_update(&progress, (j + 1));
@@ -1001,7 +1001,7 @@ static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, uint64_t *rgaddr
 
 static int create_jindex(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct lgfs2_inum *jnls)
 {
-	struct gfs2_inode *jindex;
+	struct lgfs2_inode *jindex;
 
 	jindex = lgfs2_build_jindex(sdp->master_dir, jnls, opts->journals);
 	if (jindex == NULL) {
@@ -1199,7 +1199,7 @@ int main(int argc, char *argv[])
 	struct gfs2_statfs_change sc;
 	struct gfs2_sbd sbd;
 	struct mkfs_opts opts;
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 	lgfs2_rgrps_t rgs;
 	uint64_t rgaddr;
 	int error;

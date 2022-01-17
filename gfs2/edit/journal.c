@@ -54,7 +54,7 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 		do_dinode_extended(jindex_bh->b_data); /* parse dir. */
 
 	if (sbd.gfs1) {
-		struct gfs2_inode *jiinode;
+		struct lgfs2_inode *jiinode;
 		struct gfs_jindex jidx;
 
 		jiinode = lgfs2_inode_get(&sbd, jindex_bh);
@@ -102,7 +102,7 @@ static void check_journal_wrap(uint64_t seq, uint64_t *highest_seq)
  * fsck_readi - same as libgfs2's lgfs2_readi, but sets absolute block #
  *              of the first bit of data read.
  */
-static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
+static int fsck_readi(struct lgfs2_inode *ip, void *rbuf, uint64_t roffset,
 	       unsigned int size, uint64_t *abs_block)
 {
 	struct gfs2_sbd *sdp;
@@ -317,7 +317,7 @@ static int is_wrap_pt(void *buf, uint64_t *highest_seq)
  * find_wrap_pt - figure out where a journal wraps
  * Returns: The wrap point, in bytes
  */
-static uint64_t find_wrap_pt(struct gfs2_inode *ji, char *jbuf, uint64_t jblock, uint64_t j_size)
+static uint64_t find_wrap_pt(struct lgfs2_inode *ji, char *jbuf, uint64_t jblock, uint64_t j_size)
 {
 	uint64_t jb = 0;
 	uint64_t highest_seq = 0;
@@ -505,7 +505,7 @@ void dump_journal(const char *journal, uint64_t tblk)
 	struct gfs2_buffer_head *j_bh = NULL;
 	uint64_t jblock, j_size, jb, abs_block, saveblk, wrappt = 0;
 	int start_line, journal_num;
-	struct gfs2_inode *j_inode = NULL;
+	struct lgfs2_inode *j_inode = NULL;
 	int ld_blocks = 0, offset_from_ld = 0;
 	uint64_t tblk_off = 0, bblk_off = 0, bitblk = 0;
 	uint64_t highest_seq = 0;

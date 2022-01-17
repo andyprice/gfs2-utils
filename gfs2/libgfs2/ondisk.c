@@ -124,7 +124,7 @@ void lgfs2_rgrp_out(const lgfs2_rgrp_t rg, void *buf)
 	lgfs2_rgrp_crc_set(buf);
 }
 
-void lgfs2_dinode_in(struct gfs2_inode *ip, char *buf)
+void lgfs2_dinode_in(struct lgfs2_inode *ip, char *buf)
 {
 	struct gfs2_dinode *di = (struct gfs2_dinode *)buf;
 
@@ -157,7 +157,7 @@ void lgfs2_dinode_in(struct gfs2_inode *ip, char *buf)
 	ip->i_ctime_nsec = be32_to_cpu(di->di_ctime_nsec);
 }
 
-void lgfs2_dinode_out(struct gfs2_inode *ip, char *buf)
+void lgfs2_dinode_out(struct lgfs2_inode *ip, char *buf)
 {
 	struct gfs2_dinode *di = (struct gfs2_dinode *)buf;
 

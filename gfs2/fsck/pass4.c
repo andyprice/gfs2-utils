@@ -26,7 +26,7 @@ static struct metawalk_fxns pass4_fxns_delete = {
 
 /* Updates the link count of an inode to what the fsck has seen for
  * link count */
-static int fix_link_count(uint32_t counted_links, struct gfs2_inode *ip)
+static int fix_link_count(uint32_t counted_links, struct lgfs2_inode *ip)
 {
 	log_info(_("Fixing inode link count (%d->%d) for %"PRIu64" (0x%"PRIx64") \n"),
 	         ip->i_nlink, counted_links, ip->i_num.in_addr, ip->i_num.in_addr);
@@ -52,7 +52,7 @@ static int fix_link_count(uint32_t counted_links, struct gfs2_inode *ip)
 static int handle_unlinked(struct gfs2_sbd *sdp, uint64_t no_addr,
 			   uint32_t *counted_links, int *lf_addition)
 {
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 	int q;
 
 	log_err(_("Found unlinked inode at %"PRIu64" (0x%"PRIx64")\n"),
@@ -126,7 +126,7 @@ static void handle_inconsist(struct gfs2_sbd *sdp, uint64_t no_addr,
 	/* Read in the inode, adjust the link count, and write it back out */
 	if (query(_("Update link count for inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
 	          no_addr, no_addr)) {
-		struct gfs2_inode *ip;
+		struct lgfs2_inode *ip;
 
 		ip = fsck_load_inode(sdp, no_addr); /* lgfs2_bread, inode_get */
 		fix_link_count(counted_links, ip);

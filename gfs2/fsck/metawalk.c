@@ -159,7 +159,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 /*
  * _fsck_bitmap_set - Mark a block in the bitmap, and adjust free space.
  */
-int _fsck_bitmap_set(struct gfs2_inode *ip, uint64_t bblock,
+int _fsck_bitmap_set(struct lgfs2_inode *ip, uint64_t bblock,
 		     const char *btype, int mark,
 		     int error_on_dinode, const char *caller, int fline)
 {
@@ -224,7 +224,7 @@ struct duptree *dupfind(uint64_t block)
 	return NULL;
 }
 
-struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp, uint64_t block)
+struct lgfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp, uint64_t block)
 {
 	int j;
 
@@ -252,9 +252,9 @@ struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp, uint64_t block)
 
 /* fsck_load_inode - same as gfs2_load_inode() in libgfs2 but system inodes
    get special treatment. */
-struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sdp, uint64_t block)
+struct lgfs2_inode *fsck_load_inode(struct gfs2_sbd *sdp, uint64_t block)
 {
-	struct gfs2_inode *ip = NULL;
+	struct lgfs2_inode *ip = NULL;
 
 	ip = fsck_system_inode(sdp, block);
 	if (ip)
@@ -266,11 +266,11 @@ struct gfs2_inode *fsck_load_inode(struct gfs2_sbd *sdp, uint64_t block)
 
 /* fsck_inode_get - same as inode_get() in libgfs2 but system inodes
    get special treatment. */
-struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
+struct lgfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				  struct gfs2_buffer_head *bh)
 {
-	struct gfs2_inode *sysip;
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *sysip;
+	struct lgfs2_inode *ip;
 
 	sysip = fsck_system_inode(sdp, bh->b_blocknr);
 	if (sysip)
@@ -289,10 +289,10 @@ struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 
 /* fsck_inode_put - same as lgfs2_inode_put() in libgfs2 but system inodes
    get special treatment. */
-void fsck_inode_put(struct gfs2_inode **ip_in)
+void fsck_inode_put(struct lgfs2_inode **ip_in)
 {
-	struct gfs2_inode *ip = *ip_in;
-	struct gfs2_inode *sysip;
+	struct lgfs2_inode *ip = *ip_in;
+	struct lgfs2_inode *sysip;
 
 	sysip = fsck_system_inode(ip->i_sbd, ip->i_num.in_addr);
 	if (!sysip)
@@ -310,7 +310,7 @@ void fsck_inode_put(struct gfs2_inode **ip_in)
  * This function tries to repair a corrupt directory entry.  All we
  * know at this point is that the length field is wrong.
  */
-static int dirent_repair(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
+static int dirent_repair(struct lgfs2_inode *ip, struct gfs2_buffer_head *bh,
 		  struct lgfs2_dirent *d, struct gfs2_dirent *dent,
 		  int type, int first)
 {
@@ -353,7 +353,7 @@ static int dirent_repair(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 /**
  * dirblk_truncate - truncate a directory block
  */
-static void dirblk_truncate(struct gfs2_inode *ip, struct gfs2_dirent *fixb,
+static void dirblk_truncate(struct lgfs2_inode *ip, struct gfs2_dirent *fixb,
 			    struct gfs2_buffer_head *bh)
 {
 	char *bh_end;
@@ -381,7 +381,7 @@ static void dirblk_truncate(struct gfs2_inode *ip, struct gfs2_dirent *fixb,
  * returns: 0 - good block or it was repaired to be good
  *         -1 - error occurred
  */
-static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
+static int check_entries(struct lgfs2_inode *ip, struct gfs2_buffer_head *bh,
 			 int type, uint32_t *count, int lindex,
 			 struct metawalk_fxns *pass)
 {
@@ -511,7 +511,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
  * Reads in the leaf block
  * Leaves the buffer around for further analysis (caller must lgfs2_brelse)
  */
-int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
+int check_leaf(struct lgfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	       uint64_t *leaf_no, struct lgfs2_leaf *leaf, int *ref_count)
 {
 	int error = 0, fix;
@@ -659,7 +659,7 @@ static int u64cmp(const void *p1, const void *p2)
 	return 0;
 }
 
-static void dir_leaf_reada(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize)
+static void dir_leaf_reada(struct lgfs2_inode *ip, __be64 *tbl, unsigned hsize)
 {
 	uint64_t *t = alloca(hsize * sizeof(uint64_t));
 	uint64_t leaf_no;
@@ -678,7 +678,7 @@ static void dir_leaf_reada(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize)
 }
 
 /* Checks exhash directory entries */
-int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
+int check_leaf_blks(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	int error = 0;
 	unsigned hsize = (1 << ip->i_depth);
@@ -836,7 +836,7 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	return 0;
 }
 
-static int check_eattr_entries(struct gfs2_inode *ip,
+static int check_eattr_entries(struct lgfs2_inode *ip,
 			       struct gfs2_buffer_head *bh,
 			       struct metawalk_fxns *pass)
 {
@@ -912,7 +912,7 @@ static int check_eattr_entries(struct gfs2_inode *ip,
  *
  * Returns: 0 on success, 1 if removal is needed, -1 on error
  */
-static int check_leaf_eattr(struct gfs2_inode *ip, uint64_t block,
+static int check_leaf_eattr(struct lgfs2_inode *ip, uint64_t block,
 			    uint64_t parent, struct metawalk_fxns *pass)
 {
 	struct gfs2_buffer_head *bh = NULL;
@@ -952,7 +952,7 @@ static int check_leaf_eattr(struct gfs2_inode *ip, uint64_t block,
  *
  * Returns: 0 on success -1 on error
  */
-static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
+static int check_indirect_eattr(struct lgfs2_inode *ip, uint64_t indirect,
 				struct gfs2_buffer_head *indirect_buf,
 				struct metawalk_fxns *pass)
 {
@@ -1037,7 +1037,7 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
  *
  * Returns: 0 on success, -1 on error
  */
-int check_inode_eattr(struct gfs2_inode *ip, struct metawalk_fxns *pass)
+int check_inode_eattr(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	int error = 0;
 	struct gfs2_buffer_head *indirect_buf = NULL;
@@ -1074,7 +1074,7 @@ int check_inode_eattr(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 /**
  * free_metalist - free all metadata on a multi-level metadata list
  */
-static void free_metalist(struct gfs2_inode *ip, osi_list_t *mlp)
+static void free_metalist(struct lgfs2_inode *ip, osi_list_t *mlp)
 {
 	unsigned int height = ip->i_height;
 	unsigned int i;
@@ -1095,7 +1095,7 @@ static void free_metalist(struct gfs2_inode *ip, osi_list_t *mlp)
 	}
 }
 
-static void file_ra(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
+static void file_ra(struct lgfs2_inode *ip, struct gfs2_buffer_head *bh,
 		    int head_size, int maxptrs, int h)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -1152,7 +1152,7 @@ static void file_ra(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 static int do_check_metalist(struct iptr iptr, int height, struct gfs2_buffer_head **bhp,
                              struct metawalk_fxns *pass)
 {
-	struct gfs2_inode *ip = iptr.ipt_ip;
+	struct lgfs2_inode *ip = iptr.ipt_ip;
 	uint64_t block = iptr_block(iptr);
 	int was_duplicate = 0;
 	int is_valid = 1;
@@ -1207,7 +1207,7 @@ static int do_check_metalist(struct iptr iptr, int height, struct gfs2_buffer_he
  * @ip:
  * @mlp:
  */
-static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
+static int build_and_check_metalist(struct lgfs2_inode *ip, osi_list_t *mlp,
 				    struct metawalk_fxns *pass)
 {
 	uint32_t height = ip->i_height;
@@ -1380,7 +1380,7 @@ static void report_data_error(uint64_t metablock, int offset, uint64_t block,
  *          1 if errors were found and corrected
  *          2 (ENOENT) is there were too many bad pointers
  */
-static int metawalk_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
+static int metawalk_check_data(struct lgfs2_inode *ip, struct metawalk_fxns *pass,
 		      struct gfs2_buffer_head *bh, unsigned int height,
 		      uint64_t *blks_checked, struct error_block *error_blk)
 {
@@ -1448,7 +1448,7 @@ static int report_undo_data_error(uint64_t metablock, int offset, uint64_t block
 	return 0;
 }
 
-static int undo_check_data(struct gfs2_inode *ip, struct metawalk_fxns *pass,
+static int undo_check_data(struct lgfs2_inode *ip, struct metawalk_fxns *pass,
 			   struct gfs2_buffer_head *bh, unsigned int height,
 			   struct error_block *error_blk, int error)
 {
@@ -1491,7 +1491,7 @@ static unsigned int should_check(struct gfs2_buffer_head *bh, unsigned int heigh
  * @pass: structure passed in from caller to determine the sub-functions
  *
  */
-int check_metatree(struct gfs2_inode *ip, struct metawalk_fxns *pass)
+int check_metatree(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	unsigned int height = ip->i_height;
 	osi_list_t *metalist = alloca((height + 1) * sizeof(*metalist));
@@ -1624,7 +1624,7 @@ out:
 }
 
 /* Checks stuffed inode directories */
-int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
+int check_linear_dir(struct lgfs2_inode *ip, struct gfs2_buffer_head *bh,
 		     struct metawalk_fxns *pass)
 {
 	int error = 0;
@@ -1639,7 +1639,7 @@ int check_linear_dir(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	return error;
 }
 
-int check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip, struct metawalk_fxns *pass)
+int check_dir(struct gfs2_sbd *sdp, struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	int error = 0;
 

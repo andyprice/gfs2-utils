@@ -95,14 +95,14 @@ static int set_dotdot_dir(struct gfs2_sbd *sdp, uint64_t childblock, struct lgfs
 	return 0;
 }
 
-static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
+static int check_eattr_indir(struct lgfs2_inode *ip, uint64_t block,
 			     uint64_t parent, struct gfs2_buffer_head **bh,
 			     void *private)
 {
 	*bh = lgfs2_bread(ip->i_sbd, block);
 	return 0;
 }
-static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
+static int check_eattr_leaf(struct lgfs2_inode *ip, uint64_t block,
 			    uint64_t parent, struct gfs2_buffer_head **bh,
 			    void *private)
 {
@@ -160,14 +160,14 @@ static struct metawalk_fxns pass2_fxns_delete = {
  * Returns: 0 if the dirent was repaired
  *          1 if the caller should delete the dirent
  */
-static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
+static int bad_formal_ino(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			  struct lgfs2_inum entry, const char *tmp_name,
 			  int q, struct lgfs2_dirent *d,
 			  struct gfs2_buffer_head *bh)
 {
 	struct inode_info *ii;
 	struct dir_info *di = NULL;
-	struct gfs2_inode *child_ip;
+	struct lgfs2_inode *child_ip;
 	struct lgfs2_inum childs_dotdot;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	int error;
@@ -181,7 +181,7 @@ static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		if (di)
 			inum = di->dinode;
 		else if (link1_type(&clink1map, entry.in_addr) == 1) {
-			struct gfs2_inode *dent_ip;
+			struct lgfs2_inode *dent_ip;
 
 			dent_ip = fsck_load_inode(ip->i_sbd, entry.in_addr);
 			inum.in_addr = dent_ip->i_num.in_addr;
@@ -232,12 +232,12 @@ static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	return 0;
 }
 
-static int hash_table_index(uint32_t hash, struct gfs2_inode *ip)
+static int hash_table_index(uint32_t hash, struct lgfs2_inode *ip)
 {
 	return hash >> (32 - ip->i_depth);
 }
 
-static int hash_table_max(int lindex, struct gfs2_inode *ip,
+static int hash_table_max(int lindex, struct lgfs2_inode *ip,
 		   struct gfs2_buffer_head *bh)
 {
 	struct gfs2_leaf *leaf = (struct gfs2_leaf *)bh->b_data;
@@ -245,7 +245,7 @@ static int hash_table_max(int lindex, struct gfs2_inode *ip,
 		lindex - 1;
 }
 
-static int check_leaf_depth(struct gfs2_inode *ip, uint64_t leaf_no,
+static int check_leaf_depth(struct lgfs2_inode *ip, uint64_t leaf_no,
 			    int ref_count, struct gfs2_buffer_head *lbh)
 {
 	struct gfs2_leaf *leaf = (struct gfs2_leaf *)lbh->b_data;
@@ -290,7 +290,7 @@ static int check_leaf_depth(struct gfs2_inode *ip, uint64_t leaf_no,
  * Returns: 1 if the dirent is to be removed, 0 if it needs to be kept,
  *          or -1 on error
  */
-static int wrong_leaf(struct gfs2_inode *ip, struct lgfs2_inum *entry,
+static int wrong_leaf(struct lgfs2_inode *ip, struct lgfs2_inum *entry,
 		      const char *tmp_name, int *lindex, int lindex_max,
 		      int hash_index, struct gfs2_buffer_head *bh,
 		      struct dir_status *ds, struct gfs2_dirent *dent,
@@ -420,7 +420,7 @@ static int wrong_leaf(struct gfs2_inode *ip, struct lgfs2_inum *entry,
  *
  * Returns: 1 means corruption, nuke the dentry, 0 means checks pass
  */
-static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
+static int basic_dentry_checks(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			       struct lgfs2_inum *entry, const char *tmp_name,
 			       uint32_t *count, struct lgfs2_dirent *d,
 			       struct dir_status *ds, int *q,
@@ -428,7 +428,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint32_t calculated_hash;
-	struct gfs2_inode *entry_ip = NULL;
+	struct lgfs2_inode *entry_ip = NULL;
 	int error;
 	struct inode_info *ii;
 	struct dir_info *di = NULL;
@@ -614,7 +614,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	return 0;
 }
 
-static int dirref_find(struct gfs2_inode *ip, struct gfs2_dirent *dent,
+static int dirref_find(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 		       struct gfs2_dirent *prev, struct gfs2_buffer_head *bh,
 		       char *filename, uint32_t *count, int *lindex,
 		       void *private)
@@ -683,7 +683,7 @@ static int check_suspicious_dirref(struct gfs2_sbd *sdp,
 {
 	struct osi_node *tmp, *next = NULL;
 	struct dir_info *dt;
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 	uint64_t dirblk;
 	int error = FSCK_OK;
 	struct metawalk_fxns dirref_hunt = {
@@ -718,7 +718,7 @@ static int check_suspicious_dirref(struct gfs2_sbd *sdp,
 
 /* FIXME: should maybe refactor this a bit - but need to deal with
  * FIXMEs internally first */
-static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
+static int check_dentry(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			struct gfs2_dirent *prev_de,
 			struct gfs2_buffer_head *bh, char *filename,
 			uint32_t *count, int *lindex, void *priv)
@@ -729,7 +729,7 @@ static int check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	struct lgfs2_inum entry;
 	struct dir_status *ds = (struct dir_status *) priv;
 	int error;
-	struct gfs2_inode *entry_ip = NULL;
+	struct lgfs2_inode *entry_ip = NULL;
 	struct lgfs2_dirent d;
 	int hash_index; /* index into the hash table based on the hash */
 	int lindex_max; /* largest acceptable hash table index for hash */
@@ -927,7 +927,7 @@ nuke_dentry:
  * @before_or_after: desc. of whether this is being added before/after/etc.
  * @bn: pointer to return the newly allocated leaf's block number
  */
-static int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
+static int write_new_leaf(struct lgfs2_inode *dip, int start_lindex,
 			  int num_copies, const char *before_or_after,
 			  uint64_t *bn)
 {
@@ -1021,7 +1021,7 @@ static int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
  * @lindex: index location within the hash table to pad
  * @len: number of pointers to be padded
  */
-static void pad_with_leafblks(struct gfs2_inode *ip, __be64 *tbl,
+static void pad_with_leafblks(struct lgfs2_inode *ip, __be64 *tbl,
 			      int lindex, int len)
 {
 	int new_len, i;
@@ -1070,7 +1070,7 @@ static void pad_with_leafblks(struct gfs2_inode *ip, __be64 *tbl,
  * directory entries to lost+found so we don't overwrite the good leaf. Then
  * we need to pad the gap we leave.
  */
-static int lost_leaf(struct gfs2_inode *ip, __be64 *tbl, uint64_t leafno,
+static int lost_leaf(struct lgfs2_inode *ip, __be64 *tbl, uint64_t leafno,
 		     int ref_count, int lindex, struct gfs2_buffer_head *bh)
 {
 	char *filename;
@@ -1164,7 +1164,7 @@ static int lost_leaf(struct gfs2_inode *ip, __be64 *tbl, uint64_t leafno,
 	return 1;
 }
 
-static int basic_check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
+static int basic_check_dentry(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			      struct gfs2_dirent *prev_de,
 			      struct gfs2_buffer_head *bh, char *filename,
 			      uint32_t *count, int *lindex, void *priv)
@@ -1209,7 +1209,7 @@ static int basic_check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
  * so that they replace the bad ones.  We have to hack up the old
  * leaf a bit, but it's better than deleting the whole directory,
  * which is what used to happen before. */
-static int pass2_repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no,
+static int pass2_repair_leaf(struct lgfs2_inode *ip, uint64_t *leaf_no,
 			     int lindex, int ref_count, const char *msg)
 {
 	int new_leaf_blks = 0, error, refs;
@@ -1287,7 +1287,7 @@ static struct metawalk_fxns leafck_fxns = {
  *
  * Returns: 0 - no changes made, or X if changes were made
  */
-static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
+static int fix_hashtable(struct lgfs2_inode *ip, __be64 *tbl, unsigned hsize,
 			 uint64_t leafblk, int lindex, uint32_t proper_start,
 			 int len, int *proper_len, int factor)
 {
@@ -1462,7 +1462,7 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 }
 
 /* check_hash_tbl_dups - check for the same leaf in multiple places */
-static int check_hash_tbl_dups(struct gfs2_inode *ip, __be64 *tbl,
+static int check_hash_tbl_dups(struct lgfs2_inode *ip, __be64 *tbl,
 			       unsigned hsize, int lindex, int len)
 {
 	int l, len2;
@@ -1579,7 +1579,7 @@ static int check_hash_tbl_dups(struct gfs2_inode *ip, __be64 *tbl,
  *       we may need to reference leaf blocks to fix it, which means we need
  *       to check and/or fix a leaf block along the way.
  */
-static int check_hash_tbl(struct gfs2_inode *ip, __be64 *tbl,
+static int check_hash_tbl(struct lgfs2_inode *ip, __be64 *tbl,
 			  unsigned hsize, void *private)
 {
 	int error = 0;
@@ -1766,7 +1766,7 @@ static struct metawalk_fxns pass2_fxns = {
 static int check_metalist_qc(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
                              int *is_valid, int *was_duplicate, void *private)
 {
-	struct gfs2_inode *ip = iptr.ipt_ip;
+	struct lgfs2_inode *ip = iptr.ipt_ip;
 	uint64_t block = iptr_block(iptr);
 
 	*was_duplicate = 0;
@@ -1775,7 +1775,7 @@ static int check_metalist_qc(struct iptr iptr, struct gfs2_buffer_head **bh, int
 	return META_IS_GOOD;
 }
 
-static int check_data_qc(struct gfs2_inode *ip, uint64_t metablock,
+static int check_data_qc(struct lgfs2_inode *ip, uint64_t metablock,
 			 uint64_t block, void *private,
 			 struct gfs2_buffer_head *bbh, __be64 *ptr)
 {
@@ -1813,13 +1813,13 @@ static struct metawalk_fxns quota_change_fxns = {
  * @builder - a rebuild function for the file
  *
  * Returns: 0 if all went well, else error. */
-static int check_pernode_for(int x, struct gfs2_inode *pernode, const char *fn,
+static int check_pernode_for(int x, struct lgfs2_inode *pernode, const char *fn,
 			     size_t filelen, int multiple,
 			     struct metawalk_fxns *pass,
-			     int builder(struct gfs2_inode *per_node,
+			     int builder(struct lgfs2_inode *per_node,
 					 unsigned int j))
 {
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 	int error, valid_size = 1;
 
 	log_debug(_("Checking system file %s\n"), fn);
@@ -1875,9 +1875,9 @@ build_it:
 	goto out_good;
 }
 
-static int build_inum_range(struct gfs2_inode *per_node, unsigned int n)
+static int build_inum_range(struct lgfs2_inode *per_node, unsigned int n)
 {
-	struct gfs2_inode *ip = lgfs2_build_inum_range(per_node, n);
+	struct lgfs2_inode *ip = lgfs2_build_inum_range(per_node, n);
 
 	if (ip == NULL)
 		return 1;
@@ -1885,9 +1885,9 @@ static int build_inum_range(struct gfs2_inode *per_node, unsigned int n)
 	return 0;
 }
 
-static int build_statfs_change(struct gfs2_inode *per_node, unsigned int n)
+static int build_statfs_change(struct lgfs2_inode *per_node, unsigned int n)
 {
-	struct gfs2_inode *ip = lgfs2_build_statfs_change(per_node, n);
+	struct lgfs2_inode *ip = lgfs2_build_statfs_change(per_node, n);
 
 	if (ip == NULL)
 		return 1;
@@ -1895,9 +1895,9 @@ static int build_statfs_change(struct gfs2_inode *per_node, unsigned int n)
 	return 0;
 }
 
-static int build_quota_change(struct gfs2_inode *per_node, unsigned int n)
+static int build_quota_change(struct lgfs2_inode *per_node, unsigned int n)
 {
-	struct gfs2_inode *ip = lgfs2_build_quota_change(per_node, n);
+	struct lgfs2_inode *ip = lgfs2_build_quota_change(per_node, n);
 
 	if (ip == NULL)
 		return 1;
@@ -1907,7 +1907,7 @@ static int build_quota_change(struct gfs2_inode *per_node, unsigned int n)
 
 /* Check system directory inode                                           */
 /* Should work for all system directories: root, master, jindex, per_node */
-static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
+static int check_system_dir(struct lgfs2_inode *sysinode, const char *dirname,
 		     int builder(struct gfs2_sbd *sdp))
 {
 	uint64_t iblock = 0;
@@ -2018,7 +2018,7 @@ static inline int is_system_dir(struct gfs2_sbd *sdp, uint64_t block)
 	return 0;
 }
 
-static int pass2_check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
+static int pass2_check_dir(struct gfs2_sbd *sdp, struct lgfs2_inode *ip)
 {
 	uint64_t dirblk = ip->i_num.in_addr;
 	struct dir_status ds = {0};
@@ -2109,7 +2109,7 @@ static int pass2_check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 int pass2(struct gfs2_sbd *sdp)
 {
 	struct osi_node *tmp, *next = NULL;
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 	struct dir_info *dt;
 	uint64_t dirblk;
 	int error;

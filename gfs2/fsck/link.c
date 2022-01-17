@@ -35,7 +35,7 @@ int link1_set(struct gfs2_bmap *bmap, uint64_t bblock, int mark)
 	return 0;
 }
 
-int set_di_nlink(struct gfs2_inode *ip)
+int set_di_nlink(struct lgfs2_inode *ip)
 {
 	struct inode_info *ii;
 	struct dir_info *di;
@@ -77,12 +77,12 @@ int set_di_nlink(struct gfs2_inode *ip)
 		    "for (0x%"PRIx64") via %s\n"),                        \
 		  referenced_from, counted_links, no_addr, why);
 
-int incr_link_count(struct lgfs2_inum no, struct gfs2_inode *ip, const char *why)
+int incr_link_count(struct lgfs2_inum no, struct lgfs2_inode *ip, const char *why)
 {
 	struct inode_info *ii = NULL;
 	uint64_t referenced_from = ip ? ip->i_num.in_addr : 0;
 	struct dir_info *di;
-	struct gfs2_inode *link_ip;
+	struct lgfs2_inode *link_ip;
 
 	di = dirtree_find(no.in_addr);
 	if (di) {

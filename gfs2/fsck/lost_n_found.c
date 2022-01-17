@@ -18,7 +18,7 @@
 #include "metawalk.h"
 #include "util.h"
 
-static void add_dotdot(struct gfs2_inode *ip)
+static void add_dotdot(struct lgfs2_inode *ip)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct dir_info *di;
@@ -32,7 +32,7 @@ static void add_dotdot(struct gfs2_inode *ip)
 	   back out the links. */
 	di = dirtree_find(ip->i_num.in_addr);
 	if (di && valid_block(sdp, di->dotdot_parent.in_addr)) {
-		struct gfs2_inode *dip;
+		struct lgfs2_inode *dip;
 
 		log_debug(_("Directory (0x%"PRIx64") already had a '..' link to (0x%"PRIx64").\n"),
 		          ip->i_num.in_addr, di->dotdot_parent.in_addr);
@@ -90,7 +90,7 @@ static void add_dotdot(struct gfs2_inode *ip)
 	}
 }
 
-void make_sure_lf_exists(struct gfs2_inode *ip)
+void make_sure_lf_exists(struct lgfs2_inode *ip)
 {
 	struct dir_info *di;
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -170,7 +170,7 @@ void make_sure_lf_exists(struct gfs2_inode *ip)
  *
  * Returns: 0 on success, -1 on failure.
  */
-int add_inode_to_lf(struct gfs2_inode *ip){
+int add_inode_to_lf(struct lgfs2_inode *ip){
 	char tmp_name[256];
 	unsigned inode_type;
 	struct gfs2_sbd *sdp = ip->i_sbd;

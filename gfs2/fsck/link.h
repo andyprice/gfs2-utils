@@ -12,8 +12,8 @@ enum {
 };
 
 int link1_set(struct gfs2_bmap *bmap, uint64_t bblock, int mark);
-int set_di_nlink(struct gfs2_inode *ip);
-int incr_link_count(struct lgfs2_inum no, struct gfs2_inode *ip, const char *why);
+int set_di_nlink(struct lgfs2_inode *ip);
+int incr_link_count(struct lgfs2_inum no, struct lgfs2_inode *ip, const char *why);
 int decr_link_count(uint64_t inode_no, uint64_t referenced_from, int gfs1,
 		    const char *why);
 

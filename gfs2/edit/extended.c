@@ -421,7 +421,7 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 	free(more_indir);
 }
 
-static int print_gfs_jindex(struct gfs2_inode *dij)
+static int print_gfs_jindex(struct lgfs2_inode *dij)
 {
 	int error, start_line;
 	struct gfs_jindex *ji;
@@ -464,7 +464,7 @@ static int print_gfs2_jindex(void)
 {
 	int d, error;
 	struct lgfs2_log_header head;
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 
 	for (d = 0; d < indirect->ii[0].dirents; d++) {
 		if (strncmp(indirect->ii[0].dirent[d].filename, "journal", 7))
@@ -489,7 +489,7 @@ static int print_gfs2_jindex(void)
 	return 0;
 }
 
-static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
+static int parse_rindex(struct lgfs2_inode *dip, int print_rindex)
 {
 	int error, start_line;
 	struct gfs2_rindex ri;
@@ -550,7 +550,7 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 	return error;
 }
 
-static int print_inum(struct gfs2_inode *dii)
+static int print_inum(struct lgfs2_inode *dii)
 {
 	uint64_t inodenum;
 	__be64 inum;
@@ -573,7 +573,7 @@ static int print_inum(struct gfs2_inode *dii)
 	return 0;
 }
 
-static int print_statfs(struct gfs2_inode *dis)
+static int print_statfs(struct lgfs2_inode *dis)
 {
 	struct gfs2_statfs_change sc;
 	int rc;
@@ -595,7 +595,7 @@ static int print_statfs(struct gfs2_inode *dis)
 	return 0;
 }
 
-static int print_quota(struct gfs2_inode *diq)
+static int print_quota(struct lgfs2_inode *diq)
 {
 	struct gfs2_quota q;
 	int i, error;
@@ -622,7 +622,7 @@ static int print_quota(struct gfs2_inode *diq)
 
 int display_extended(void)
 {
-	struct gfs2_inode *tmp_inode;
+	struct lgfs2_inode *tmp_inode;
 	struct gfs2_buffer_head *tmp_bh;
 
 	dsplines = termlines - line - 1;

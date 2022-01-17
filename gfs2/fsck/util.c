@@ -21,7 +21,7 @@ const char *reftypes[REF_TYPES + 1] = {"data", "metadata",
 				       "an extended attribute", "an inode",
 				       "unimportant"};
 
-void big_file_comfort(struct gfs2_inode *ip, uint64_t blks_checked)
+void big_file_comfort(struct lgfs2_inode *ip, uint64_t blks_checked)
 {
 	static struct timeval tv;
 	static uint32_t seconds = 0;
@@ -267,7 +267,7 @@ static struct duptree *gfs2_dup_set(uint64_t dblock, int create)
  * find_dup_ref_inode - find a duplicate reference inode entry for an inode
  */
 struct inode_with_dups *find_dup_ref_inode(struct duptree *dt,
-					   struct gfs2_inode *ip)
+					   struct lgfs2_inode *ip)
 {
 	osi_list_t *ref;
 	struct inode_with_dups *id;
@@ -323,7 +323,7 @@ int count_dup_meta_refs(struct duptree *dt)
  *         called from pass1, which is the second reference, which determined
  *         it was a duplicate..
  */
-int add_duplicate_ref(struct gfs2_inode *ip, uint64_t block,
+int add_duplicate_ref(struct lgfs2_inode *ip, uint64_t block,
 		      enum dup_ref_type reftype, int first, int inode_valid)
 {
 	struct inode_with_dups *id;
@@ -569,7 +569,7 @@ uint64_t find_free_blk(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-__be64 *get_dir_hash(struct gfs2_inode *ip)
+__be64 *get_dir_hash(struct lgfs2_inode *ip)
 {
 	unsigned hsize = (1 << ip->i_depth) * sizeof(uint64_t);
 	int ret;
@@ -587,7 +587,7 @@ __be64 *get_dir_hash(struct gfs2_inode *ip)
 	return tbl;
 }
 
-void delete_all_dups(struct gfs2_inode *ip)
+void delete_all_dups(struct lgfs2_inode *ip)
 {
 	struct osi_node *n, *next;
 	struct duptree *dt;

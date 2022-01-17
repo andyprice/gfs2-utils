@@ -17,7 +17,7 @@
 /* GFS1 compatibility functions - so that programs like gfs2_convert
    and gfs2_edit can examine/manipulate GFS1 file systems. */
 
-static __inline__ int fs_is_jdata(struct gfs2_inode *ip)
+static __inline__ int fs_is_jdata(struct lgfs2_inode *ip)
 {
         return ip->i_flags & GFS2_DIF_JDATA;
 }
@@ -31,14 +31,14 @@ gfs1_metapointer(char *buf, unsigned int height, struct metapath *mp)
 	return ((__be64 *)(buf + head_size)) + mp->mp_list[height];
 }
 
-int lgfs2_is_gfs_dir(struct gfs2_inode *ip)
+int lgfs2_is_gfs_dir(struct lgfs2_inode *ip)
 {
 	if (ip->i_di_type == GFS_FILE_DIR)
 		return 1;
 	return 0;
 }
 
-void lgfs2_gfs1_lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
+void lgfs2_gfs1_lookup_block(struct lgfs2_inode *ip, struct gfs2_buffer_head *bh,
 		  unsigned int height, struct metapath *mp,
 		  int create, int *new, uint64_t *block)
 {
@@ -67,7 +67,7 @@ void lgfs2_gfs1_lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	*new = 1;
 }
 
-void lgfs2_gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
+void lgfs2_gfs1_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 		    uint64_t *dblock, uint32_t *extlen, int prealloc)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -163,7 +163,7 @@ void lgfs2_gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 		lgfs2_brelse(bh);
 }
 
-int lgfs2_gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
+int lgfs2_gfs1_writei(struct lgfs2_inode *ip, void *buf, uint64_t offset,
 		unsigned int size)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -245,12 +245,12 @@ int lgfs2_gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
 	return copied;
 }
 
-static struct gfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp, char *buf)
+static struct lgfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp, char *buf)
 {
 	struct gfs_dinode *di;
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 
-	ip = calloc(1, sizeof(struct gfs2_inode));
+	ip = calloc(1, sizeof(struct lgfs2_inode));
 	if (ip == NULL) {
 		return NULL;
 	}
@@ -284,15 +284,15 @@ static struct gfs2_inode *__gfs_inode_get(struct gfs2_sbd *sdp, char *buf)
 	return ip;
 }
 
-struct gfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp, char *buf)
+struct lgfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp, char *buf)
 {
 	return __gfs_inode_get(sdp, buf);
 }
 
-struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
+struct lgfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 {
 	struct gfs2_buffer_head *bh;
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 
 	bh = lgfs2_bget(sdp, di_addr);
 	if (bh == NULL)

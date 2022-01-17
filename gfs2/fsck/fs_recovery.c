@@ -121,7 +121,7 @@ static void refresh_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 	}
 }
 
-static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
+static int buf_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 				struct gfs2_log_descriptor *ld, __be64 *ptr,
 				int pass)
 {
@@ -182,7 +182,7 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 	return error;
 }
 
-static int revoke_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
+static int revoke_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 				   struct gfs2_log_descriptor *ld, __be64 *ptr,
 				   int pass)
 {
@@ -232,7 +232,7 @@ static int revoke_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 	return 0;
 }
 
-static int databuf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
+static int databuf_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 				    struct gfs2_log_descriptor *ld,
 				    __be64 *ptr, int pass)
 {
@@ -298,7 +298,7 @@ static int databuf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
  * Returns: errno
  */
 
-static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
+static int foreach_descriptor(struct lgfs2_inode *ip, unsigned int start,
 		       unsigned int end, int pass)
 {
 	struct gfs2_buffer_head *bh;
@@ -385,7 +385,7 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
  *
  * Returns: The number of sequencing errors (hopefully none).
  */
-static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
+static int check_journal_seq_no(struct lgfs2_inode *ip, int fix)
 {
 	int error = 0, wrapped = 0;
 	uint32_t jd_blocks = ip->i_size / ip->i_sbd->sd_bsize;
@@ -476,7 +476,7 @@ int preen_is_safe(struct gfs2_sbd *sdp, int preen, int force_check)
  * Returns: errno
  */
 
-static int gfs2_recover_journal(struct gfs2_inode *ip, int j, int preen,
+static int gfs2_recover_journal(struct lgfs2_inode *ip, int j, int preen,
 				int force_check, int *was_clean)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -609,7 +609,7 @@ reinit:
 
 /* We can't use the rangecheck function from pass1 because we haven't gone
  * through initialization properly yet. */
-static int rangecheck_jblock(struct gfs2_inode *ip, uint64_t block)
+static int rangecheck_jblock(struct lgfs2_inode *ip, uint64_t block)
 {
 	if((block > ip->i_sbd->fssize) || (block <= LGFS2_SB_ADDR(ip->i_sbd))) {
 		log_info( _("Bad block pointer (out of range) found in "
@@ -623,7 +623,7 @@ static int rangecheck_jblock(struct gfs2_inode *ip, uint64_t block)
 static int rangecheck_jmeta(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
                             int *is_valid, int *was_duplicate, void *private)
 {
-	struct gfs2_inode *ip = iptr.ipt_ip;
+	struct lgfs2_inode *ip = iptr.ipt_ip;
 	uint64_t block = iptr_block(iptr);
 	int rc;
 
@@ -648,7 +648,7 @@ static int rangecheck_jmeta(struct iptr iptr, struct gfs2_buffer_head **bh, int 
 	return rc;
 }
 
-static int rangecheck_jdata(struct gfs2_inode *ip, uint64_t metablock,
+static int rangecheck_jdata(struct lgfs2_inode *ip, uint64_t metablock,
 			    uint64_t block, void *private,
 			    struct gfs2_buffer_head *bh, __be64 *ptr)
 {
@@ -737,7 +737,7 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
  */
 int ji_update(struct gfs2_sbd *sdp)
 {
-	struct gfs2_inode *jip, *ip = sdp->md.jiinode;
+	struct lgfs2_inode *jip, *ip = sdp->md.jiinode;
 	char journal_name[JOURNAL_NAME_SIZE];
 	int i, error;
 	char buf[sizeof(struct gfs_jindex)];
@@ -759,7 +759,7 @@ int ji_update(struct gfs2_sbd *sdp)
 		sdp->md.journals = ip->i_entries - 2;
 
 	if (!(sdp->md.journal = calloc(sdp->md.journals,
-				       sizeof(struct gfs2_inode *)))) {
+				       sizeof(struct lgfs2_inode *)))) {
 		log_err(_("Unable to allocate journal index\n"));
 		return -1;
 	}
@@ -808,7 +808,7 @@ static void bad_journalname(const char *filename, int len)
  * This function makes sure the directory entries of the jindex are valid.
  * If they're not '.' or '..' they better have the form journalXXX.
  */
-static int check_jindex_dent(struct gfs2_inode *ip, struct gfs2_dirent *dent,
+static int check_jindex_dent(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			     struct gfs2_dirent *prev_de,
 			     struct gfs2_buffer_head *bh, char *filename,
 			     uint32_t *count, int *lindex, void *priv)
@@ -850,14 +850,14 @@ static struct metawalk_fxns jindex_check_fxns = {
 
 int build_jindex(struct gfs2_sbd *sdp)
 {
-	struct gfs2_inode *jindex;
+	struct lgfs2_inode *jindex;
 
 	jindex = lgfs2_createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
 			 GFS2_DIF_SYSTEM);
 	if (jindex == NULL) {
 		return errno;
 	}
-	sdp->md.journal = malloc(sdp->md.journals * sizeof(struct gfs2_inode *));
+	sdp->md.journal = malloc(sdp->md.journals * sizeof(struct lgfs2_inode *));
 	for (unsigned j = 0; j < sdp->md.journals; j++) {
 		int ret = lgfs2_build_journal(sdp, j, jindex);
 		if (ret)

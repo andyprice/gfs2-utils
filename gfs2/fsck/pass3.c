@@ -24,7 +24,7 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 	const char *filename = "..";
 	int filename_len = 2;
 	int err;
-	struct gfs2_inode *ip, *pip;
+	struct lgfs2_inode *ip, *pip;
 	struct lgfs2_inum no;
 
 	ip = fsck_load_inode(sdp, block);
@@ -160,7 +160,7 @@ int pass3(struct gfs2_sbd *sdp)
 {
 	struct osi_node *tmp, *next = NULL;
 	struct dir_info *di, *tdi;
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 	int q;
 
 	di = dirtree_find(sdp->md.rooti->i_num.in_addr);

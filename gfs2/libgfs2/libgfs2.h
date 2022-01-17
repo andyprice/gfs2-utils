@@ -170,7 +170,7 @@ struct gfs2_bitmap
 };
 
 struct gfs2_sbd;
-struct gfs2_inode;
+struct lgfs2_inode;
 typedef struct _lgfs2_rgrps *lgfs2_rgrps_t;
 
 struct rgrp_tree {
@@ -217,7 +217,7 @@ extern lgfs2_rgrps_t lgfs2_rgrps_init(struct gfs2_sbd *sdp, uint64_t align, uint
 extern void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs);
 extern uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, uint64_t addr, uint32_t len);
 extern unsigned lgfs2_rindex_read_fd(int fd, lgfs2_rgrps_t rgs);
-extern lgfs2_rgrp_t lgfs2_rindex_read_one(struct gfs2_inode *rip, lgfs2_rgrps_t rgs, unsigned i);
+extern lgfs2_rgrp_t lgfs2_rindex_read_one(struct lgfs2_inode *rip, lgfs2_rgrps_t rgs, unsigned i);
 extern uint64_t lgfs2_rgrp_align_addr(const lgfs2_rgrps_t rgs, uint64_t addr);
 extern uint32_t lgfs2_rgrp_align_len(const lgfs2_rgrps_t rgs, uint32_t len);
 extern unsigned lgfs2_rgsize_for_data(uint64_t blksreq, unsigned bsize);
@@ -250,7 +250,7 @@ struct lgfs2_inum {
 	uint64_t in_addr;
 };
 
-struct gfs2_inode {
+struct lgfs2_inode {
 	struct gfs2_buffer_head *i_bh;
 	struct gfs2_sbd *i_sbd;
 	struct rgrp_tree *i_rgd; /* performance hint */
@@ -302,17 +302,17 @@ struct gfs2_inode {
 
 struct master_dir
 {
-	struct gfs2_inode *inum;
+	struct lgfs2_inode *inum;
 	uint64_t next_inum;
-	struct gfs2_inode *statfs;
-	struct gfs2_inode *qinode;
+	struct lgfs2_inode *statfs;
+	struct lgfs2_inode *qinode;
 
-	struct gfs2_inode       *jiinode;
-	struct gfs2_inode       *riinode;
-	struct gfs2_inode       *rooti;
-	struct gfs2_inode       *pinode;
+	struct lgfs2_inode       *jiinode;
+	struct lgfs2_inode       *riinode;
+	struct lgfs2_inode       *rooti;
+	struct lgfs2_inode       *pinode;
 
-	struct gfs2_inode **journal;      /* Array of journals */
+	struct lgfs2_inode **journal;      /* Array of journals */
 	uint32_t journals;                /* Journal count */
 };
 
@@ -374,7 +374,7 @@ struct gfs2_sbd {
 	uint64_t rgrps;
 	struct osi_root rgtree;
 
-	struct gfs2_inode *master_dir;
+	struct lgfs2_inode *master_dir;
 	struct master_dir md;
 
 	unsigned int gfs1:1;
@@ -494,61 +494,61 @@ extern int lgfs2_set_bitmap(lgfs2_rgrp_t rg, uint64_t blkno, int state);
 #define IS_LEAF     (1)
 #define IS_DINODE   (2)
 
-extern void lgfs2_find_metapath(struct gfs2_inode *ip, uint64_t block, struct metapath *mp);
-extern void lgfs2_lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
+extern void lgfs2_find_metapath(struct lgfs2_inode *ip, uint64_t block, struct metapath *mp);
+extern void lgfs2_lookup_block(struct lgfs2_inode *ip, struct gfs2_buffer_head *bh,
 			 unsigned int height, struct metapath *mp,
 			 int create, int *new, uint64_t *block);
-extern struct gfs2_inode *lgfs2_inode_get(struct gfs2_sbd *sdp,
+extern struct lgfs2_inode *lgfs2_inode_get(struct gfs2_sbd *sdp,
 				    struct gfs2_buffer_head *bh);
-extern struct gfs2_inode *lgfs2_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr);
-extern struct gfs2_inode *lgfs2_is_system_inode(struct gfs2_sbd *sdp,
+extern struct lgfs2_inode *lgfs2_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr);
+extern struct lgfs2_inode *lgfs2_is_system_inode(struct gfs2_sbd *sdp,
 					  uint64_t block);
-extern void lgfs2_inode_put(struct gfs2_inode **ip);
-extern uint64_t lgfs2_data_alloc(struct gfs2_inode *ip);
-extern int lgfs2_meta_alloc(struct gfs2_inode *ip, uint64_t *blkno);
+extern void lgfs2_inode_put(struct lgfs2_inode **ip);
+extern uint64_t lgfs2_data_alloc(struct lgfs2_inode *ip);
+extern int lgfs2_meta_alloc(struct lgfs2_inode *ip, uint64_t *blkno);
 extern int lgfs2_dinode_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, uint64_t *blkno);
 extern uint64_t lgfs2_space_for_data(const struct gfs2_sbd *sdp, unsigned bsize, uint64_t bytes);
-extern int lgfs2_file_alloc(lgfs2_rgrp_t rg, uint64_t di_size, struct gfs2_inode *ip, uint32_t flags, unsigned mode);
+extern int lgfs2_file_alloc(lgfs2_rgrp_t rg, uint64_t di_size, struct lgfs2_inode *ip, uint32_t flags, unsigned mode);
 
-extern int lgfs2_readi(struct gfs2_inode *ip, void *buf, uint64_t offset,
+extern int lgfs2_readi(struct lgfs2_inode *ip, void *buf, uint64_t offset,
 		      unsigned int size);
 #define lgfs2_writei(ip, buf, offset, size) \
 	__lgfs2_writei(ip, buf, offset, size, 1)
-extern int __lgfs2_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
+extern int __lgfs2_writei(struct lgfs2_inode *ip, void *buf, uint64_t offset,
 			 unsigned int size, int resize);
 extern int lgfs2_init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, struct lgfs2_inum *inum,
                        unsigned int mode, uint32_t flags, struct lgfs2_inum *parent);
-extern struct gfs2_inode *lgfs2_createi(struct gfs2_inode *dip, const char *filename,
+extern struct lgfs2_inode *lgfs2_createi(struct lgfs2_inode *dip, const char *filename,
 				  unsigned int mode, uint32_t flags);
-extern struct gfs2_inode *lgfs2_gfs_createi(struct gfs2_inode *dip,
+extern struct lgfs2_inode *lgfs2_gfs_createi(struct lgfs2_inode *dip,
 				      const char *filename, unsigned int mode,
 				      uint32_t flags);
-extern void lgfs2_dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
+extern void lgfs2_dirent2_del(struct lgfs2_inode *dip, struct gfs2_buffer_head *bh,
 			struct gfs2_dirent *prev, struct gfs2_dirent *cur);
-extern int lgfs2_dir_search(struct gfs2_inode *dip, const char *filename, int len,
+extern int lgfs2_dir_search(struct lgfs2_inode *dip, const char *filename, int len,
 		      unsigned int *type, struct lgfs2_inum *inum);
-extern int lgfs2_lookupi(struct gfs2_inode *dip, const char *filename, int len,
-			struct gfs2_inode **ipp);
-extern int lgfs2_dir_add(struct gfs2_inode *dip, const char *filename, int len,
+extern int lgfs2_lookupi(struct lgfs2_inode *dip, const char *filename, int len,
+			struct lgfs2_inode **ipp);
+extern int lgfs2_dir_add(struct lgfs2_inode *dip, const char *filename, int len,
 		    struct lgfs2_inum *inum, unsigned int type);
-extern int lgfs2_dirent_del(struct gfs2_inode *dip, const char *filename, int name_len);
-extern void lgfs2_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
+extern int lgfs2_dirent_del(struct lgfs2_inode *dip, const char *filename, int name_len);
+extern void lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 		      uint64_t *dblock, uint32_t *extlen, int prealloc);
-extern int lgfs2_get_leaf_ptr(struct gfs2_inode *dip, uint32_t index, uint64_t *ptr) __attribute__((warn_unused_result));
-extern void lgfs2_dir_split_leaf(struct gfs2_inode *dip, uint32_t start,
+extern int lgfs2_get_leaf_ptr(struct lgfs2_inode *dip, uint32_t index, uint64_t *ptr) __attribute__((warn_unused_result));
+extern void lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start,
 			   uint64_t leaf_no, struct gfs2_buffer_head *obh);
 extern void lgfs2_free_block(struct gfs2_sbd *sdp, uint64_t block);
 extern int lgfs2_freedi(struct gfs2_sbd *sdp, uint64_t block);
-extern int lgfs2_get_leaf(struct gfs2_inode *dip, uint64_t leaf_no,
+extern int lgfs2_get_leaf(struct lgfs2_inode *dip, uint64_t leaf_no,
 			 struct gfs2_buffer_head **bhp);
-extern int lgfs2_dirent_first(struct gfs2_inode *dip,
+extern int lgfs2_dirent_first(struct lgfs2_inode *dip,
 			     struct gfs2_buffer_head *bh,
 			     struct gfs2_dirent **dent);
-extern int lgfs2_dirent_next(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
+extern int lgfs2_dirent_next(struct lgfs2_inode *dip, struct gfs2_buffer_head *bh,
 			    struct gfs2_dirent **dent);
-extern void lgfs2_build_height(struct gfs2_inode *ip, int height);
-extern void lgfs2_unstuff_dinode(struct gfs2_inode *ip);
-extern unsigned int lgfs2_calc_tree_height(struct gfs2_inode *ip, uint64_t size);
+extern void lgfs2_build_height(struct lgfs2_inode *ip, int height);
+extern void lgfs2_unstuff_dinode(struct lgfs2_inode *ip);
+extern unsigned int lgfs2_calc_tree_height(struct lgfs2_inode *ip, uint64_t size);
 extern uint32_t lgfs2_log_header_hash(char *buf);
 extern uint32_t lgfs2_log_header_crc(char *buf, unsigned bsize);
 
@@ -707,17 +707,17 @@ struct gfs_log_descriptor {
 	uint8_t ld_reserved[64];
 };
 
-extern int lgfs2_is_gfs_dir(struct gfs2_inode *ip);
-extern void lgfs2_gfs1_lookup_block(struct gfs2_inode *ip,
+extern int lgfs2_is_gfs_dir(struct lgfs2_inode *ip);
+extern void lgfs2_gfs1_lookup_block(struct lgfs2_inode *ip,
 			      struct gfs2_buffer_head *bh,
 			      unsigned int height, struct metapath *mp,
 			      int create, int *new, uint64_t *block);
-extern void lgfs2_gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
+extern void lgfs2_gfs1_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 			   uint64_t *dblock, uint32_t *extlen, int prealloc);
-extern int lgfs2_gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
+extern int lgfs2_gfs1_writei(struct lgfs2_inode *ip, void *buf, uint64_t offset,
 		       unsigned int size);
-extern struct gfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp, char *buf);
-extern struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr);
+extern struct lgfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp, char *buf);
+extern struct lgfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr);
 extern void lgfs2_gfs_rgrp_in(const lgfs2_rgrp_t rg, void *buf);
 extern void lgfs2_gfs_rgrp_out(const lgfs2_rgrp_t rg, void *buf);
 
@@ -730,13 +730,13 @@ extern int lgfs2_open_mnt_dev(const char *path, int flags, struct mntent **mnt);
 extern int lgfs2_open_mnt_dir(const char *path, int flags, struct mntent **mnt);
 
 /* recovery.c */
-extern void lgfs2_replay_incr_blk(struct gfs2_inode *ip, unsigned int *blk);
-extern int lgfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
+extern void lgfs2_replay_incr_blk(struct lgfs2_inode *ip, unsigned int *blk);
+extern int lgfs2_replay_read_block(struct lgfs2_inode *ip, unsigned int blk,
 				  struct gfs2_buffer_head **bh);
-extern int lgfs2_get_log_header(struct gfs2_inode *ip, unsigned int blk,
+extern int lgfs2_get_log_header(struct lgfs2_inode *ip, unsigned int blk,
                                 struct lgfs2_log_header *head);
-extern int lgfs2_find_jhead(struct gfs2_inode *ip, struct lgfs2_log_header *head);
-extern int lgfs2_clean_journal(struct gfs2_inode *ip, struct lgfs2_log_header *head);
+extern int lgfs2_find_jhead(struct lgfs2_inode *ip, struct lgfs2_log_header *head);
+extern int lgfs2_clean_journal(struct lgfs2_inode *ip, struct lgfs2_log_header *head);
 
 /* rgrp.c */
 extern uint32_t lgfs2_rgblocks2bitblocks(const unsigned int bsize, const uint32_t rgblocks,
@@ -754,24 +754,24 @@ extern void lgfs2_rgrp_free(struct gfs2_sbd *sdp, struct osi_root *rgrp_tree);
 /* structures.c */
 extern int lgfs2_build_master(struct gfs2_sbd *sdp);
 extern int lgfs2_sb_write(const struct gfs2_sbd *sdp, int fd);
-extern int lgfs2_build_journal(struct gfs2_sbd *sdp, int j, struct gfs2_inode *jindex);
-extern int lgfs2_write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned blocks);
-extern int lgfs2_write_journal_data(struct gfs2_inode *ip);
-extern int lgfs2_write_filemeta(struct gfs2_inode *ip);
-extern struct gfs2_inode *lgfs2_build_jindex(struct gfs2_inode *metafs, struct lgfs2_inum *jnls, size_t nmemb);
-extern struct gfs2_inode *lgfs2_build_inum(struct gfs2_sbd *sdp);
-extern struct gfs2_inode *lgfs2_build_statfs(struct gfs2_sbd *sdp);
-extern struct gfs2_inode *lgfs2_build_rindex(struct gfs2_sbd *sdp);
-extern struct gfs2_inode *lgfs2_build_quota(struct gfs2_sbd *sdp);
+extern int lgfs2_build_journal(struct gfs2_sbd *sdp, int j, struct lgfs2_inode *jindex);
+extern int lgfs2_write_journal(struct lgfs2_inode *jnl, unsigned bsize, unsigned blocks);
+extern int lgfs2_write_journal_data(struct lgfs2_inode *ip);
+extern int lgfs2_write_filemeta(struct lgfs2_inode *ip);
+extern struct lgfs2_inode *lgfs2_build_jindex(struct lgfs2_inode *metafs, struct lgfs2_inum *jnls, size_t nmemb);
+extern struct lgfs2_inode *lgfs2_build_inum(struct gfs2_sbd *sdp);
+extern struct lgfs2_inode *lgfs2_build_statfs(struct gfs2_sbd *sdp);
+extern struct lgfs2_inode *lgfs2_build_rindex(struct gfs2_sbd *sdp);
+extern struct lgfs2_inode *lgfs2_build_quota(struct gfs2_sbd *sdp);
 extern int lgfs2_build_root(struct gfs2_sbd *sdp);
 extern int lgfs2_init_inum(struct gfs2_sbd *sdp);
 extern int lgfs2_init_statfs(struct gfs2_sbd *sdp, struct gfs2_statfs_change *res);
 extern int lgfs2_check_meta(const char *buf, int type);
 extern unsigned lgfs2_bm_scan(struct rgrp_tree *rgd, unsigned idx,
 			      uint64_t *buf, uint8_t state);
-extern struct gfs2_inode *lgfs2_build_inum_range(struct gfs2_inode *per_node, unsigned int n);
-extern struct gfs2_inode *lgfs2_build_statfs_change(struct gfs2_inode *per_node, unsigned int j);
-extern struct gfs2_inode *lgfs2_build_quota_change(struct gfs2_inode *per_node, unsigned int j);
+extern struct lgfs2_inode *lgfs2_build_inum_range(struct lgfs2_inode *per_node, unsigned int n);
+extern struct lgfs2_inode *lgfs2_build_statfs_change(struct lgfs2_inode *per_node, unsigned int j);
+extern struct lgfs2_inode *lgfs2_build_quota_change(struct lgfs2_inode *per_node, unsigned int j);
 
 /* super.c */
 extern int lgfs2_check_sb(void *sbp);
@@ -791,8 +791,8 @@ extern void lgfs2_rindex_in(lgfs2_rgrp_t rg, void *buf);
 extern void lgfs2_rindex_out(const lgfs2_rgrp_t rg, void *buf);
 extern void lgfs2_rgrp_in(lgfs2_rgrp_t rg, void *buf);
 extern void lgfs2_rgrp_out(const lgfs2_rgrp_t rg, void *buf);
-extern void lgfs2_dinode_in(struct gfs2_inode *ip, char *buf);
-extern void lgfs2_dinode_out(struct gfs2_inode *ip, char *buf);
+extern void lgfs2_dinode_in(struct lgfs2_inode *ip, char *buf);
+extern void lgfs2_dinode_out(struct lgfs2_inode *ip, char *buf);
 extern void lgfs2_dirent_in(struct lgfs2_dirent *d, void *dep);
 extern void lgfs2_dirent_out(struct lgfs2_dirent *d, void *dep);
 extern void lgfs2_leaf_in(struct lgfs2_leaf *lf, void *lfp);

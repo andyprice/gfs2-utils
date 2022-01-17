@@ -52,7 +52,7 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 	int j, new = 0;
 	unsigned int jblocks;
 	uint64_t b, dblock;
-	struct gfs2_inode *ip;
+	struct lgfs2_inode *ip;
 	struct gfs2_buffer_head *bh;
 	int false_count;
 
