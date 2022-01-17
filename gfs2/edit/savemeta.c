@@ -796,7 +796,7 @@ new_range:
 	free(br);
 }
 
-static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, char *buf)
+static int save_leaf_chain(struct metafd *mfd, struct lgfs2_sbd *sdp, char *buf)
 {
 	struct gfs2_leaf *leaf = (struct gfs2_leaf *)buf;
 
@@ -1035,7 +1035,7 @@ static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
 	free(ibuf);
 }
 
-static char *rgrp_read(struct gfs2_sbd *sdp, uint64_t addr, unsigned blocks)
+static char *rgrp_read(struct lgfs2_sbd *sdp, uint64_t addr, unsigned blocks)
 {
 	size_t len = blocks * sdp->sd_bsize;
 	off_t off = addr * sdp->sd_bsize;
@@ -1055,7 +1055,7 @@ static char *rgrp_read(struct gfs2_sbd *sdp, uint64_t addr, unsigned blocks)
 	return buf;
 }
 
-static void save_rgrp(struct gfs2_sbd *sdp, struct metafd *mfd, struct rgrp_tree *rgd, int withcontents)
+static void save_rgrp(struct lgfs2_sbd *sdp, struct metafd *mfd, struct rgrp_tree *rgd, int withcontents)
 {
 	uint64_t addr = rgd->rt_addr;
 	char *buf;

@@ -26,6 +26,6 @@ extern int delete_eattr_extentry(struct lgfs2_inode *ip, int i,
 				 struct gfs2_ea_header *ea_hdr,
 				 struct gfs2_ea_header *ea_hdr_prev,
 				 void *private);
-extern int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
+extern int remove_dentry_from_dir(struct lgfs2_sbd *sdp, uint64_t dir,
 						   uint64_t dentryblock);
 #endif

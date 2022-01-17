@@ -152,7 +152,7 @@ static void interrupt(int sig)
 	}
 }
 
-static int check_statfs(struct gfs2_sbd *sdp)
+static int check_statfs(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgd;
@@ -233,7 +233,7 @@ static const struct fsck_pass passes[] = {
 	{ .name = NULL, }
 };
 
-static int fsck_pass(const struct fsck_pass *p, struct gfs2_sbd *sdp)
+static int fsck_pass(const struct fsck_pass *p, struct lgfs2_sbd *sdp)
 {
 	int ret;
 	struct timeval timer;
@@ -291,8 +291,8 @@ static void startlog(int argc, char **argv)
 #ifndef UNITTESTS
 int main(int argc, char **argv)
 {
-	struct gfs2_sbd sb;
-	struct gfs2_sbd *sdp = &sb;
+	struct lgfs2_sbd sb;
+	struct lgfs2_sbd *sdp = &sb;
 	int j;
 	int i;
 	int error = 0;

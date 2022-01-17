@@ -15,7 +15,7 @@ lgfs2_rgrps_t tc_rgrps;
 
 static void mockup_rgrps(void)
 {
-	struct gfs2_sbd *sdp;
+	struct lgfs2_sbd *sdp;
 	lgfs2_rgrps_t rgs;
 	uint64_t addr;
 	struct gfs2_rindex ri = {0};
@@ -132,7 +132,7 @@ END_TEST
 START_TEST(test_rgrps_write_final)
 {
 	lgfs2_rgrp_t rg = lgfs2_rgrp_last(tc_rgrps);
-	struct gfs2_sbd *sdp = tc_rgrps->sdp;
+	struct lgfs2_sbd *sdp = tc_rgrps->sdp;
 	struct gfs2_rindex ri;
 	struct gfs2_rgrp rgrp;
 	uint64_t addr;

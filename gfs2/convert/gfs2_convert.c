@@ -95,7 +95,7 @@ struct gfs2_options {
 };
 
 static struct gfs_sb gfs1_sb;
-static struct gfs2_sbd sb2;
+static struct lgfs2_sbd sb2;
 static struct inode_block dirs_to_fix;  /* linked list of directories to fix */
 static struct inode_dir_block cdpns_to_fix; /* linked list of cdpn symlinks */
 static int seconds;
@@ -119,7 +119,7 @@ int print_level = MSG_NOTICE;
 /*                   Fixes all unallocated metadata bitmap states (which are */
 /*                   valid in gfs1 but invalid in gfs2).                     */
 /* ------------------------------------------------------------------------- */
-static void convert_bitmaps(struct gfs2_sbd *sdp, struct rgrp_tree *rg)
+static void convert_bitmaps(struct lgfs2_sbd *sdp, struct rgrp_tree *rg)
 {
 	uint32_t blk;
 	int x, y;
@@ -146,7 +146,7 @@ static void convert_bitmaps(struct gfs2_sbd *sdp, struct rgrp_tree *rg)
 /* convert_rgs - Convert gfs1 resource groups to gfs2.                       */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-static int convert_rgs(struct gfs2_sbd *sbp)
+static int convert_rgs(struct lgfs2_sbd *sbp)
 {
 	struct rgrp_tree *rgd;
 	struct osi_node *n, *next = NULL;
@@ -218,7 +218,7 @@ static unsigned int calc_gfs2_tree_height(struct lgfs2_inode *ip, uint64_t size)
 /* ------------------------------------------------------------------------- */
 /* mp_gfs1_to_gfs2 - convert a gfs1 metapath to a gfs2 metapath.             */
 /* ------------------------------------------------------------------------- */
-static void mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,
+static void mp_gfs1_to_gfs2(struct lgfs2_sbd *sbp, int gfs1_h, int gfs2_h,
 		     struct metapath *gfs1mp, struct metapath *gfs2mp)
 {
 	uint64_t lblock;
@@ -258,7 +258,7 @@ static void mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,
 /*                interested in rearranging the metadata while leaving the   */
 /*                actual data blocks intact.                                 */
 /* ------------------------------------------------------------------------- */
-static void fix_metatree(struct gfs2_sbd *sbp, struct lgfs2_inode *ip,
+static void fix_metatree(struct lgfs2_sbd *sbp, struct lgfs2_inode *ip,
 		  struct blocklist *blk, __be64 *first_nonzero_ptr,
 		  unsigned int size)
 {
@@ -377,7 +377,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct lgfs2_inode *ip,
 /* Adapted from fsck.gfs2 metawalk.c's build_and_check_metalist              */
 /* ------------------------------------------------------------------------- */
 
-static void jdata_mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,
+static void jdata_mp_gfs1_to_gfs2(struct lgfs2_sbd *sbp, int gfs1_h, int gfs2_h,
 			   struct metapath *gfs1mp, struct metapath *gfs2mp,
 			   unsigned int *len, uint64_t dinode_size)
 {
@@ -416,7 +416,7 @@ static void jdata_mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,
 	}
 }
 
-static uint64_t fix_jdatatree(struct gfs2_sbd *sbp, struct lgfs2_inode *ip,
+static uint64_t fix_jdatatree(struct lgfs2_sbd *sbp, struct lgfs2_inode *ip,
 			      struct blocklist *blk, char *srcptr,
 			      unsigned int size)
 {
@@ -485,7 +485,7 @@ static uint64_t fix_jdatatree(struct gfs2_sbd *sbp, struct lgfs2_inode *ip,
 	return block;
 }
 
-static int get_inode_metablocks(struct gfs2_sbd *sbp, struct lgfs2_inode *ip, struct blocklist *blocks)
+static int get_inode_metablocks(struct lgfs2_sbd *sbp, struct lgfs2_inode *ip, struct blocklist *blocks)
 {
 	struct blocklist *blk, *newblk;
 	struct lgfs2_buffer_head *bh, *dibh = ip->i_bh;
@@ -569,7 +569,7 @@ static int get_inode_metablocks(struct gfs2_sbd *sbp, struct lgfs2_inode *ip, st
 	return 0;
 }
 
-static int fix_ind_reg_or_dir(struct gfs2_sbd *sbp, struct lgfs2_inode *ip, uint32_t di_height,
+static int fix_ind_reg_or_dir(struct lgfs2_sbd *sbp, struct lgfs2_inode *ip, uint32_t di_height,
 		       uint32_t gfs2_hgt, struct blocklist *blk, struct blocklist *blocks)
 {
 	unsigned int len, bufsize;
@@ -611,8 +611,8 @@ static int fix_ind_reg_or_dir(struct gfs2_sbd *sbp, struct lgfs2_inode *ip, uint
 	return 0;
 }
 
-static int fix_ind_jdata(struct gfs2_sbd *sbp, struct lgfs2_inode *ip, uint32_t di_height, 
-		  uint32_t gfs2_hgt, uint64_t dinode_size, struct blocklist *blk, 
+static int fix_ind_jdata(struct lgfs2_sbd *sbp, struct lgfs2_inode *ip, uint32_t di_height,
+		  uint32_t gfs2_hgt, uint64_t dinode_size, struct blocklist *blk,
 		  struct blocklist *blocks)
 {
 	/*FIXME: Messages here should be different, to not conflit with messages in get_inode_metablocks */
@@ -681,7 +681,7 @@ static int fix_ind_jdata(struct gfs2_sbd *sbp, struct lgfs2_inode *ip, uint32_t 
 	return 0;
 }
 
-static int adjust_indirect_blocks(struct gfs2_sbd *sbp, struct lgfs2_inode *ip)
+static int adjust_indirect_blocks(struct lgfs2_sbd *sbp, struct lgfs2_inode *ip)
 {
 	uint64_t dinode_size;
 	uint32_t gfs2_hgt, di_height;
@@ -774,7 +774,7 @@ static int has_cdpn(const char *str)
 	return 0;
 }
 
-static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct lgfs2_buffer_head *bh, struct lgfs2_inode *ip)
+static int fix_cdpn_symlink(struct lgfs2_sbd *sbp, struct lgfs2_buffer_head *bh, struct lgfs2_inode *ip)
 {
 	char *linkptr = NULL;
 
@@ -809,7 +809,7 @@ static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct lgfs2_buffer_head *bh, 
  * to fix the header. gfs1 uses gfs_indirect as the header which is 64 bytes
  * bigger than gfs2_meta_header that gfs2 uses.
  */
-static int fix_xattr(struct gfs2_sbd *sbp, struct lgfs2_buffer_head *bh, struct lgfs2_inode *ip)
+static int fix_xattr(struct lgfs2_sbd *sbp, struct lgfs2_buffer_head *bh, struct lgfs2_inode *ip)
 {
 	int len, old_hdr_sz, new_hdr_sz;
 	struct lgfs2_buffer_head *eabh;
@@ -843,7 +843,7 @@ static int fix_xattr(struct gfs2_sbd *sbp, struct lgfs2_buffer_head *bh, struct 
 /*                                                                           */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-static int adjust_inode(struct gfs2_sbd *sbp, struct lgfs2_buffer_head *bh)
+static int adjust_inode(struct lgfs2_sbd *sbp, struct lgfs2_buffer_head *bh)
 {
 	struct lgfs2_inode *inode;
 	struct inode_block *fixdir;
@@ -981,7 +981,7 @@ static int next_rg_meta(struct rgrp_tree *rgd, uint64_t *block, int first)
 	return 0;
 }
 
-static int next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
+static int next_rg_metatype(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
                             uint64_t *block, uint32_t type, int first)
 {
 	struct lgfs2_buffer_head *bh = NULL;
@@ -1006,7 +1006,7 @@ static int next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 /*                                                                           */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_list_t *cdpn_to_fix)
+static int inode_renumber(struct lgfs2_sbd *sbp, uint64_t root_inode_addr, osi_list_t *cdpn_to_fix)
 {
 	struct rgrp_tree *rgd;
 	struct osi_node *n, *next = NULL;
@@ -1099,7 +1099,7 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 /**
  * fetch_inum - fetch an inum entry from disk, given its block
  */
-static int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
+static int fetch_inum(struct lgfs2_sbd *sbp, uint64_t iblock,
 		      struct lgfs2_inum *inum, uint64_t *eablk)
 {
 	struct lgfs2_inode *fix_inode;
@@ -1124,7 +1124,7 @@ static int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
 /*                                                                           */
 /* Returns: 0 on success, -1 on failure, -EISDIR when dentmod marked DT_DIR  */
 /* ------------------------------------------------------------------------- */
-static int process_dirent_info(struct lgfs2_inode *dip, struct gfs2_sbd *sbp,
+static int process_dirent_info(struct lgfs2_inode *dip, struct lgfs2_sbd *sbp,
 			       struct lgfs2_buffer_head *bh, int dir_entries, uint64_t dentmod)
 {
 	int error = 0;
@@ -1244,7 +1244,7 @@ static int process_dirent_info(struct lgfs2_inode *dip, struct gfs2_sbd *sbp,
 /*                                                                           */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct lgfs2_inode *dip, uint64_t dentmod)
+static int fix_one_directory_exhash(struct lgfs2_sbd *sbp, struct lgfs2_inode *dip, uint64_t dentmod)
 {
 	struct lgfs2_buffer_head *bh_leaf;
 	int error;
@@ -1296,7 +1296,7 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct lgfs2_inode *di
 	return 0;
 }/* fix_one_directory_exhash */
 
-static int process_directory(struct gfs2_sbd *sbp, uint64_t dirblock, uint64_t dentmod)
+static int process_directory(struct lgfs2_sbd *sbp, uint64_t dirblock, uint64_t dentmod)
 {
 	struct lgfs2_inode *dip;
 	int error = 0;
@@ -1327,7 +1327,7 @@ static int process_directory(struct gfs2_sbd *sbp, uint64_t dirblock, uint64_t d
 /* fix_directory_info - sync new inode numbers with directory info           */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
+static int fix_directory_info(struct lgfs2_sbd *sbp, osi_list_t *dir_to_fix)
 {
 	osi_list_t *tmp, *fix;
 	struct inode_block *dir_iblk;
@@ -1373,7 +1373,7 @@ static int fix_directory_info(struct gfs2_sbd *sbp, osi_list_t *dir_to_fix)
 /* fix_cdpn_symlinks - convert cdpn symlinks to empty directories            */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
+static int fix_cdpn_symlinks(struct lgfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 {
 	osi_list_t *tmp, *x;
 	int error = 0;
@@ -1432,7 +1432,7 @@ static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 /* read_gfs1_jiindex - read the gfs1 jindex file.                            */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
+static int read_gfs1_jiindex(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip = sdp->md.jiinode;
 	char buf[sizeof(struct gfs_jindex)];
@@ -1491,7 +1491,7 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 	return -1;
 }
 
-static int sanity_check(struct gfs2_sbd *sdp)
+static int sanity_check(struct lgfs2_sbd *sdp)
 {
 	int error = 0;
 	if (!gfs1_sb.sb_quota_di.no_addr) {
@@ -1517,7 +1517,7 @@ static int sanity_check(struct gfs2_sbd *sdp)
  *
  * Returns: 0 on success, -1 on failure.
  */
-static int gfs1_ri_update(struct gfs2_sbd *sdp, int *rgcount, int quiet)
+static int gfs1_ri_update(struct lgfs2_sbd *sdp, int *rgcount, int quiet)
 {
 	struct rgrp_tree *rgd;
 	uint64_t count1 = 0, count2 = 0;
@@ -1560,13 +1560,13 @@ static int gfs1_ri_update(struct gfs2_sbd *sdp, int *rgcount, int quiet)
 /* init - initialization code                                                */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
+static int init(struct lgfs2_sbd *sbp, struct gfs2_options *opts)
 {
 	struct lgfs2_buffer_head *bh;
 	int rgcount;
 	struct lgfs2_inum inum;
 
-	memset(sbp, 0, sizeof(struct gfs2_sbd));
+	memset(sbp, 0, sizeof(struct lgfs2_sbd));
 	if ((sbp->device_fd = open(opts->device, O_RDWR)) < 0) {
 		perror(opts->device);
 		exit(-1);
@@ -1775,7 +1775,7 @@ static void process_parameters(int argc, char **argv, struct gfs2_options *opts)
 /* rgrp_length - Calculate the length of a resource group                    */
 /* @size: The total size of the resource group                               */
 /* ------------------------------------------------------------------------- */
-static uint64_t rgrp_length(uint64_t size, struct gfs2_sbd *sdp)
+static uint64_t rgrp_length(uint64_t size, struct lgfs2_sbd *sdp)
 {
 	uint64_t bitbytes = RGRP_BITMAP_BLKS(sdp->sd_bsize) + 1;
 	uint64_t stuff = RGRP_STUFFED_BLKS(sdp->sd_bsize) + 1;
@@ -1804,7 +1804,7 @@ static uint64_t rgrp_length(uint64_t size, struct gfs2_sbd *sdp)
 /*                                                                           */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-static int journ_space_to_rg(struct gfs2_sbd *sdp)
+static int journ_space_to_rg(struct lgfs2_sbd *sdp)
 {
 	int error = 0;
 	int j;
@@ -1894,7 +1894,7 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 /* ------------------------------------------------------------------------- */
 /* update_inode_file - update the inode file with the new next_inum          */
 /* ------------------------------------------------------------------------- */
-static void update_inode_file(struct gfs2_sbd *sdp)
+static void update_inode_file(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip = sdp->md.inum;
 	__be64 buf;
@@ -1913,7 +1913,7 @@ static void update_inode_file(struct gfs2_sbd *sdp)
 /**
  * write_statfs_file - write the statfs file
  */
-static void write_statfs_file(struct gfs2_sbd *sdp)
+static void write_statfs_file(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip = sdp->md.statfs;
 	struct gfs2_statfs_change sc;
@@ -1933,7 +1933,7 @@ static void write_statfs_file(struct gfs2_sbd *sdp)
 /* ------------------------------------------------------------------------- */
 /* remove_obsolete_gfs1 - remove obsolete gfs1 inodes.                       */
 /* ------------------------------------------------------------------------- */
-static void remove_obsolete_gfs1(struct gfs2_sbd *sbp)
+static void remove_obsolete_gfs1(struct lgfs2_sbd *sbp)
 {
 	struct lgfs2_inum inum;
 
@@ -1959,7 +1959,7 @@ static void remove_obsolete_gfs1(struct gfs2_sbd *sbp)
 /* ------------------------------------------------------------------------- */
 /* lifted from libgfs2/structures.c                                          */
 /* ------------------------------------------------------------------------- */
-static int conv_build_jindex(struct gfs2_sbd *sdp)
+static int conv_build_jindex(struct lgfs2_sbd *sdp)
 {
 	unsigned int j;
 
@@ -1994,7 +1994,7 @@ static int conv_build_jindex(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-static unsigned int total_file_blocks(struct gfs2_sbd *sdp, 
+static unsigned int total_file_blocks(struct lgfs2_sbd *sdp, 
 				      uint64_t filesize, int journaled)
 {
 	unsigned int data_blks = 0, meta_blks = 0;
@@ -2032,7 +2032,7 @@ out:
 /* We check if the GFS2 filesystem files/structures created after the call to 
  * check_fit() in main() will fit in the currently available free blocks
  */
-static int check_fit(struct gfs2_sbd *sdp)
+static int check_fit(struct lgfs2_sbd *sdp)
 {
 	unsigned int blks_need = 0, blks_avail = sdp->blks_total - sdp->blks_alloced;
 
@@ -2086,7 +2086,7 @@ static int check_fit(struct gfs2_sbd *sdp)
 	return blks_avail > blks_need;
 }
 
-static int build_per_node(struct gfs2_sbd *sdp)
+static int build_per_node(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *per_node;
 	unsigned int j;
@@ -2133,7 +2133,7 @@ static int build_per_node(struct gfs2_sbd *sdp)
  * inode height/size of the new quota file to that of the old one and set the 
  * old quota inode height/size to zero, so only the inode block gets freed.
  */
-static void copy_quotas(struct gfs2_sbd *sdp)
+static void copy_quotas(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inum inum;
 	struct lgfs2_inode *oq_ip, *nq_ip;

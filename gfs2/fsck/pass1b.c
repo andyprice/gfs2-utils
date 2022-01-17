@@ -89,7 +89,7 @@ static int findref_data(struct lgfs2_inode *ip, uint64_t metablock,
 	return META_IS_GOOD;
 }
 
-static void clone_data_block(struct gfs2_sbd *sdp, struct duptree *dt,
+static void clone_data_block(struct lgfs2_sbd *sdp, struct duptree *dt,
 			     struct inode_with_dups *id)
 {
 	struct meta_blk_ref metaref = { .block = dt->block, };
@@ -175,7 +175,7 @@ static void revise_dup_handler(uint64_t dup_blk, struct dup_handler *dh)
  * acceptable_ref - Delete dinodes that reference the given block as anything
  *                  _but_ this type.  Try to save references as this type.
  */
-static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
+static void resolve_dup_references(struct lgfs2_sbd *sdp, struct duptree *dt,
 				   osi_list_t *ref_list,
 				   struct dup_handler *dh,
 				   int inval, int acceptable_ref)
@@ -512,7 +512,7 @@ static int set_ip_bitmap(struct lgfs2_inode *ip)
 	return 0;
 }
 
-static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
+static void resolve_last_reference(struct lgfs2_sbd *sdp, struct duptree *dt,
 				   enum dup_ref_type acceptable_ref)
 {
 	struct lgfs2_inode *ip;
@@ -601,7 +601,7 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
  * This function should resolve and delete the duplicate block reference given,
  * iow dt.
  */
-static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
+static int handle_dup_blk(struct lgfs2_sbd *sdp, struct duptree *dt)
 {
 	osi_list_t *tmp;
 	struct dup_handler dh = {0};
@@ -758,7 +758,7 @@ static int check_eattr_indir_refs(struct lgfs2_inode *ip, uint64_t block,
 				  uint64_t parent,
 				  struct lgfs2_buffer_head **bh, void *private)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	int error;
 
 	error = add_duplicate_ref(ip, block, REF_AS_EA, 1, INODE_VALID);
@@ -772,7 +772,7 @@ static int check_eattr_leaf_refs(struct lgfs2_inode *ip, uint64_t block,
 				 uint64_t parent, struct lgfs2_buffer_head **bh,
 				 void *private)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	int error;
 
 	error = add_duplicate_ref(ip, block, REF_AS_EA, 1, INODE_VALID);
@@ -811,7 +811,7 @@ static int check_eattr_extentry_refs(struct lgfs2_inode *ip, int i,
 
 /* Finds all references to duplicate blocks in the metadata */
 /* Finds all references to duplicate blocks in the metadata */
-static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
+static int find_block_ref(struct lgfs2_sbd *sdp, uint64_t inode)
 {
 	struct lgfs2_inode *ip;
 	int error = 0;
@@ -857,7 +857,7 @@ out:
 /* Pass 1b handles finding the previous inode for a duplicate block
  * When found, store the inodes pointing to the duplicate block for
  * use in pass2 */
-int pass1b(struct gfs2_sbd *sdp)
+int pass1b(struct lgfs2_sbd *sdp)
 {
 	struct duptree *dt;
 	uint64_t i;

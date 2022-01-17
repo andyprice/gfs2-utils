@@ -30,7 +30,7 @@ static int inode_is_stuffed(const struct lgfs2_inode *ip)
 	return !ip->i_height;
 }
 
-struct lgfs2_inode *lgfs2_inode_get(struct gfs2_sbd *sdp, struct lgfs2_buffer_head *bh)
+struct lgfs2_inode *lgfs2_inode_get(struct lgfs2_sbd *sdp, struct lgfs2_buffer_head *bh)
 {
 	struct lgfs2_inode *ip;
 
@@ -44,7 +44,7 @@ struct lgfs2_inode *lgfs2_inode_get(struct gfs2_sbd *sdp, struct lgfs2_buffer_he
 	return ip;
 }
 
-struct lgfs2_inode *lgfs2_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
+struct lgfs2_inode *lgfs2_inode_read(struct lgfs2_sbd *sdp, uint64_t di_addr)
 {
 	struct lgfs2_inode *ip;
 	struct lgfs2_buffer_head *bh = lgfs2_bread(sdp, di_addr);
@@ -60,7 +60,7 @@ struct lgfs2_inode *lgfs2_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 	return ip;
 }
 
-struct lgfs2_inode *lgfs2_is_system_inode(struct gfs2_sbd *sdp, uint64_t block)
+struct lgfs2_inode *lgfs2_is_system_inode(struct lgfs2_sbd *sdp, uint64_t block)
 {
 	int j;
 
@@ -91,7 +91,7 @@ void lgfs2_inode_put(struct lgfs2_inode **ip_in)
 {
 	struct lgfs2_inode *ip = *ip_in;
 	uint64_t block = ip->i_num.in_addr;
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 
 	if (ip->i_bh != NULL) {
 		if (ip->i_bh->b_modified) {
@@ -131,7 +131,7 @@ static uint64_t find_free_block(struct rgrp_tree *rgd)
 	return blkno;
 }
 
-static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned state, struct rgrp_tree *rgd, uint64_t blkno, int dinode)
+static int blk_alloc_in_rg(struct lgfs2_sbd *sdp, unsigned state, struct rgrp_tree *rgd, uint64_t blkno, int dinode)
 {
 	if (blkno == 0)
 		return -1;
@@ -161,7 +161,7 @@ static int blk_alloc_in_rg(struct gfs2_sbd *sdp, unsigned state, struct rgrp_tre
  * resource group with blksreq free blocks but only allocate the one block.
  * Returns 0 on success with the allocated block number in *blkno or non-zero otherwise.
  */
-static int block_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, int state, uint64_t *blkno, int dinode)
+static int block_alloc(struct lgfs2_sbd *sdp, const uint64_t blksreq, int state, uint64_t *blkno, int dinode)
 {
 	int ret;
 	int release = 0;
@@ -191,7 +191,7 @@ static int block_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, int state, 
 	return ret;
 }
 
-int lgfs2_dinode_alloc(struct gfs2_sbd *sdp, const uint64_t blksreq, uint64_t *blkno)
+int lgfs2_dinode_alloc(struct lgfs2_sbd *sdp, const uint64_t blksreq, uint64_t *blkno)
 {
 	int ret = block_alloc(sdp, blksreq, GFS2_BLKST_DINODE, blkno, 1);
 	if (ret == 0)
@@ -211,7 +211,7 @@ int lgfs2_meta_alloc(struct lgfs2_inode *ip, uint64_t *blkno)
 	return ret;
 }
 
-static __inline__ void buffer_clear_tail(struct gfs2_sbd *sdp,
+static __inline__ void buffer_clear_tail(struct lgfs2_sbd *sdp,
 					 struct lgfs2_buffer_head *bh, int head)
 {
 	memset(bh->b_data + head, 0, sdp->sd_bsize - head);
@@ -219,7 +219,7 @@ static __inline__ void buffer_clear_tail(struct gfs2_sbd *sdp,
 }
 
 static __inline__ void
-buffer_copy_tail(struct gfs2_sbd *sdp,
+buffer_copy_tail(struct lgfs2_sbd *sdp,
 		 struct lgfs2_buffer_head *to_bh, int to_head,
 		 struct lgfs2_buffer_head *from_bh, int from_head)
 {
@@ -232,7 +232,7 @@ buffer_copy_tail(struct gfs2_sbd *sdp,
 
 void lgfs2_unstuff_dinode(struct lgfs2_inode *ip)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_buffer_head *bh;
 	uint64_t block = 0;
 	int isdir = S_ISDIR(ip->i_mode) || lgfs2_is_gfs_dir(ip);
@@ -278,7 +278,7 @@ void lgfs2_unstuff_dinode(struct lgfs2_inode *ip)
 /**
  * Calculate the total number of blocks required by a file containing 'bytes' bytes of data.
  */
-uint64_t lgfs2_space_for_data(const struct gfs2_sbd *sdp, const unsigned bsize, const uint64_t bytes)
+uint64_t lgfs2_space_for_data(const struct lgfs2_sbd *sdp, const unsigned bsize, const uint64_t bytes)
 {
 	uint64_t blks = (bytes + bsize - 1) / bsize;
 	uint64_t ptrs = blks;
@@ -309,7 +309,7 @@ uint64_t lgfs2_space_for_data(const struct gfs2_sbd *sdp, const unsigned bsize, 
 int lgfs2_file_alloc(lgfs2_rgrp_t rg, uint64_t di_size, struct lgfs2_inode *ip, uint32_t flags, unsigned mode)
 {
 	unsigned extlen;
-	struct gfs2_sbd *sdp = rg->rgrps->sdp;
+	struct lgfs2_sbd *sdp = rg->rgrps->sdp;
 	struct lgfs2_rbm rbm = { .rgd = rg, .offset = 0, .bii = 0 };
 	uint32_t blocks = lgfs2_space_for_data(sdp, sdp->sd_bsize, di_size);
 
@@ -354,7 +354,7 @@ int lgfs2_file_alloc(lgfs2_rgrp_t rg, uint64_t di_size, struct lgfs2_inode *ip, 
 
 unsigned int lgfs2_calc_tree_height(struct lgfs2_inode *ip, uint64_t size)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	uint64_t *arr;
 	unsigned int max, height;
 
@@ -378,7 +378,7 @@ unsigned int lgfs2_calc_tree_height(struct lgfs2_inode *ip, uint64_t size)
 
 void lgfs2_build_height(struct lgfs2_inode *ip, int height)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_buffer_head *bh;
 	uint64_t block = 0, *bp;
 	unsigned int x;
@@ -464,7 +464,7 @@ void lgfs2_lookup_block(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 void lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
                      uint64_t *dblock, uint32_t *extlen, int prealloc)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_buffer_head *bh;
 	struct metapath mp;
 	int create = *new;
@@ -571,7 +571,7 @@ copy2mem(struct lgfs2_buffer_head *bh, void **buf, unsigned int offset,
 
 int lgfs2_readi(struct lgfs2_inode *ip, void *buf, uint64_t offset, unsigned int size)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_buffer_head *bh;
 	uint64_t lblock, dblock;
 	unsigned int o;
@@ -658,7 +658,7 @@ static void copy_from_mem(struct lgfs2_buffer_head *bh, void **buf,
 int __lgfs2_writei(struct lgfs2_inode *ip, void *buf,
 		  uint64_t offset, unsigned int size, int resize)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_buffer_head *bh;
 	uint64_t lblock, dblock;
 	unsigned int o;
@@ -1012,7 +1012,7 @@ void lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf
 
 static void dir_double_exhash(struct lgfs2_inode *dip)
 {
-	struct gfs2_sbd *sdp = dip->i_sbd;
+	struct lgfs2_sbd *sdp = dip->i_sbd;
 	uint64_t *buf;
 	uint64_t *from, *to;
 	uint64_t block;
@@ -1232,7 +1232,7 @@ restart:
 
 static void dir_make_exhash(struct lgfs2_inode *dip)
 {
-	struct gfs2_sbd *sdp = dip->i_sbd;
+	struct lgfs2_sbd *sdp = dip->i_sbd;
 	struct gfs2_dirent *dent;
 	struct lgfs2_buffer_head *bh;
 	struct gfs2_leaf *leaf;
@@ -1332,7 +1332,7 @@ int lgfs2_dir_add(struct lgfs2_inode *dip, const char *filename, int len,
 	return err;
 }
 
-static int __init_dinode(struct gfs2_sbd *sdp, struct lgfs2_buffer_head **bhp, struct lgfs2_inum *inum,
+static int __init_dinode(struct lgfs2_sbd *sdp, struct lgfs2_buffer_head **bhp, struct lgfs2_inum *inum,
                          unsigned int mode, uint32_t flags, struct lgfs2_inum *parent, int gfs1)
 {
 	struct lgfs2_buffer_head *bh;
@@ -1410,7 +1410,7 @@ static int __init_dinode(struct gfs2_sbd *sdp, struct lgfs2_buffer_head **bhp, s
 	return 0;
 }
 
-int lgfs2_init_dinode(struct gfs2_sbd *sdp, struct lgfs2_buffer_head **bhp, struct lgfs2_inum *inum,
+int lgfs2_init_dinode(struct lgfs2_sbd *sdp, struct lgfs2_buffer_head **bhp, struct lgfs2_inum *inum,
                       unsigned int mode, uint32_t flags, struct lgfs2_inum *parent)
 {
 	return __init_dinode(sdp, bhp, inum, mode, flags, parent, 0);
@@ -1438,7 +1438,7 @@ int lgfs2_write_filemeta(struct lgfs2_inode *ip)
 {
 	unsigned height = 0;
 	struct metapath mp;
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	uint64_t dblocks = (ip->i_size + sdp->sd_bsize - 1) / sdp->sd_bsize;
 	uint64_t ptr0 = ip->i_num.in_addr + 1;
 	unsigned ptrs = 1;
@@ -1489,7 +1489,7 @@ static struct lgfs2_inode *__createi(struct lgfs2_inode *dip,
 				    const char *filename, unsigned int mode,
 				    uint32_t flags, int if_gfs1)
 {
-	struct gfs2_sbd *sdp = dip->i_sbd;
+	struct lgfs2_sbd *sdp = dip->i_sbd;
 	uint64_t bn;
 	struct lgfs2_inum inum;
 	struct lgfs2_buffer_head *bh = NULL;
@@ -1873,7 +1873,7 @@ int lgfs2_dirent_del(struct lgfs2_inode *dip, const char *filename, int len)
 int lgfs2_lookupi(struct lgfs2_inode *dip, const char *filename, int len,
                   struct lgfs2_inode **ipp)
 {
-	struct gfs2_sbd *sdp = dip->i_sbd;
+	struct lgfs2_sbd *sdp = dip->i_sbd;
 	int error = 0;
 	struct lgfs2_inum inum;
 
@@ -1895,7 +1895,7 @@ int lgfs2_lookupi(struct lgfs2_inode *dip, const char *filename, int len,
 /**
  * lgfs2_free_block - free up a block given its block number
  */
-void lgfs2_free_block(struct gfs2_sbd *sdp, uint64_t block)
+void lgfs2_free_block(struct lgfs2_sbd *sdp, uint64_t block)
 {
 	struct rgrp_tree *rgd;
 
@@ -1917,7 +1917,7 @@ void lgfs2_free_block(struct gfs2_sbd *sdp, uint64_t block)
  * lgfs2_freedi - unlink a disk inode by block number.
  * Note: currently only works for regular files.
  */
-int lgfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
+int lgfs2_freedi(struct lgfs2_sbd *sdp, uint64_t diblock)
 {
 	struct lgfs2_inode *ip;
 	struct lgfs2_buffer_head *bh, *nbh;

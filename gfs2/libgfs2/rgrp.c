@@ -86,7 +86,7 @@ errbits:
  *
  * Returns: Ths resource group, or NULL if not found
  */
-struct rgrp_tree *lgfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
+struct rgrp_tree *lgfs2_blk2rgrpd(struct lgfs2_sbd *sdp, uint64_t blk)
 {
 	struct rgrp_tree *rgd = (struct rgrp_tree *)sdp->rgtree.osi_node;
 	while (rgd) {
@@ -108,7 +108,7 @@ struct rgrp_tree *lgfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
  */
 int lgfs2_rgrp_bitbuf_alloc(lgfs2_rgrp_t rg)
 {
-	struct gfs2_sbd *sdp = rg->rgrps->sdp;
+	struct lgfs2_sbd *sdp = rg->rgrps->sdp;
 	size_t len = rg->rt_length * sdp->sd_bsize;
 	unsigned long io_align = sdp->sd_bsize;
 	unsigned i;
@@ -187,7 +187,7 @@ void lgfs2_rgrp_crc_set(char *buf)
  * @rgd - resource group structure
  * returns: 0 if no error, otherwise the block number that failed
  */
-uint64_t lgfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
+uint64_t lgfs2_rgrp_read(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
 	unsigned length = rgd->rt_length * sdp->sd_bsize;
 	off_t offset = rgd->rt_addr * sdp->sd_bsize;
@@ -227,7 +227,7 @@ uint64_t lgfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 	return 0;
 }
 
-void lgfs2_rgrp_relse(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
+void lgfs2_rgrp_relse(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
 	if (rgd->bits == NULL)
 		return;
@@ -279,7 +279,7 @@ struct rgrp_tree *lgfs2_rgrp_insert(struct osi_root *rgtree, uint64_t rgblock)
 	return data;
 }
 
-void lgfs2_rgrp_free(struct gfs2_sbd *sdp, struct osi_root *rgrp_tree)
+void lgfs2_rgrp_free(struct lgfs2_sbd *sdp, struct osi_root *rgrp_tree)
 {
 	struct rgrp_tree *rgd;
 	struct osi_node *n;
@@ -404,7 +404,7 @@ uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgts
  * offset: The required stripe offset of the resource groups
  * Returns an initialised lgfs2_rgrps_t or NULL if unsuccessful with errno set
  */
-lgfs2_rgrps_t lgfs2_rgrps_init(struct gfs2_sbd *sdp, uint64_t align, uint64_t offset)
+lgfs2_rgrps_t lgfs2_rgrps_init(struct lgfs2_sbd *sdp, uint64_t align, uint64_t offset)
 {
 	lgfs2_rgrps_t rgs;
 
@@ -606,7 +606,7 @@ unsigned lgfs2_rgsize_for_data(uint64_t blksreq, unsigned bsize)
 }
 
 // Temporary function to aid in API migration
-void lgfs2_attach_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs)
+void lgfs2_attach_rgrps(struct lgfs2_sbd *sdp, lgfs2_rgrps_t rgs)
 {
 	sdp->rgtree.osi_node = rgs->root.osi_node;
 }
@@ -665,7 +665,7 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, ui
  */
 int lgfs2_rgrp_write(int fd, const lgfs2_rgrp_t rg)
 {
-	struct gfs2_sbd *sdp = rg->rgrps->sdp;
+	struct lgfs2_sbd *sdp = rg->rgrps->sdp;
 	unsigned int i;
 	int freebufs = 0;
 	ssize_t ret;
@@ -749,7 +749,7 @@ lgfs2_rgrp_t lgfs2_rgrp_last(lgfs2_rgrps_t rgs)
 int lgfs2_rbm_from_block(struct lgfs2_rbm *rbm, uint64_t block)
 {
 	uint64_t rblock = block - rbm->rgd->rt_data0;
-	struct gfs2_sbd *sdp = rbm->rgd->rgrps->sdp;
+	struct lgfs2_sbd *sdp = rbm->rgd->rgrps->sdp;
 
 	if (rblock > UINT_MAX) {
 		errno = EINVAL;
@@ -880,7 +880,7 @@ static uint32_t lgfs2_free_extlen(const struct lgfs2_rbm *rrbm, uint32_t len)
 	uint8_t *ptr, *start, *end;
 	uint64_t block;
 	struct gfs2_bitmap *bi;
-	struct gfs2_sbd *sdp = rbm.rgd->rgrps->sdp;
+	struct lgfs2_sbd *sdp = rbm.rgd->rgrps->sdp;
 
 	if (n_unaligned &&
 	    lgfs2_unaligned_extlen(&rbm, 4 - n_unaligned, &len))

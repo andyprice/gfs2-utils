@@ -156,7 +156,7 @@ struct mount_point {
 	char *device;
 	char *dir;
 	int fd;
-	struct gfs2_sbd sb;
+	struct lgfs2_sbd sb;
 };
 static struct mount_point *mounts;
 static char dlmwlines[MAX_LINES][96]; /* waiters lines */
@@ -222,7 +222,7 @@ static void UpdateSize(int sig)
 	signal(SIGWINCH, UpdateSize);
 }
 
-static int read_superblock(int fd, struct gfs2_sbd *sdp)
+static int read_superblock(int fd, struct lgfs2_sbd *sdp)
 {
 	ssize_t r;
 	char *buf;
@@ -617,7 +617,7 @@ static const char *show_inode(const char *id, int fd, uint64_t block)
 {
 	struct lgfs2_inode *ip;
 	const char *inode_type = NULL;
-	struct gfs2_sbd sbd = { .device_fd = fd, .sd_bsize = bsize };
+	struct lgfs2_sbd sbd = { .device_fd = fd, .sd_bsize = bsize };
 
 	ip = lgfs2_inode_read(&sbd, block);
 	if (S_ISDIR(ip->i_mode)) {

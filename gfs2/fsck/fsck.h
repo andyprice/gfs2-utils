@@ -108,23 +108,23 @@ enum rgindex_trust_level { /* how far can we trust our RG index? */
 			   must have been converted from gfs2_convert. */
 };
 
-extern struct lgfs2_inode *fsck_load_inode(struct gfs2_sbd *sdp, uint64_t block);
-extern struct lgfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp,
+extern struct lgfs2_inode *fsck_load_inode(struct lgfs2_sbd *sdp, uint64_t block);
+extern struct lgfs2_inode *fsck_inode_get(struct lgfs2_sbd *sdp,
 					 struct rgrp_tree *rgd,
 					 struct lgfs2_buffer_head *bh);
 extern void fsck_inode_put(struct lgfs2_inode **ip);
 
-extern int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
+extern int initialize(struct lgfs2_sbd *sdp, int force_check, int preen,
 		      int *all_clean);
-extern void destroy(struct gfs2_sbd *sdp);
-extern int pass1(struct gfs2_sbd *sdp);
-extern int pass1b(struct gfs2_sbd *sdp);
-extern int pass1c(struct gfs2_sbd *sdp);
-extern int pass2(struct gfs2_sbd *sdp);
-extern int pass3(struct gfs2_sbd *sdp);
-extern int pass4(struct gfs2_sbd *sdp);
-extern int pass5(struct gfs2_sbd *sdp, struct gfs2_bmap *bl);
-extern int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok);
+extern void destroy(struct lgfs2_sbd *sdp);
+extern int pass1(struct lgfs2_sbd *sdp);
+extern int pass1b(struct lgfs2_sbd *sdp);
+extern int pass1c(struct lgfs2_sbd *sdp);
+extern int pass2(struct lgfs2_sbd *sdp);
+extern int pass3(struct lgfs2_sbd *sdp);
+extern int pass4(struct lgfs2_sbd *sdp);
+extern int pass5(struct lgfs2_sbd *sdp, struct gfs2_bmap *bl);
+extern int rindex_repair(struct lgfs2_sbd *sdp, int trust_lvl, int *ok);
 extern int fsck_query(const char *format, ...)
 	__attribute__((format(printf,1,2)));
 extern struct dir_info *dirtree_find(uint64_t block);
@@ -158,7 +158,7 @@ extern int dups_found; /* How many duplicate references have we found? */
 extern int dups_found_first; /* How many duplicates have we found the original
 				reference for? */
 
-static inline int valid_block(struct gfs2_sbd *sdp, uint64_t blkno)
+static inline int valid_block(struct lgfs2_sbd *sdp, uint64_t blkno)
 {
 	return !((blkno > sdp->fssize) || (blkno <= LGFS2_SB_ADDR(sdp)) ||
 	         (lgfs2_get_bitmap(sdp, blkno, NULL) < 0));
@@ -175,7 +175,7 @@ static inline int rgrp_contains_block(struct rgrp_tree *rgd, uint64_t blk)
 
 static inline int valid_block_ip(struct lgfs2_inode *ip, uint64_t blk)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct rgrp_tree *rgd = ip->i_rgd;
 
 	if (blk > sdp->fssize)
@@ -200,6 +200,6 @@ extern struct special_blocks *blockfind(struct special_blocks *blist, uint64_t n
 extern void gfs2_special_set(struct special_blocks *blocklist, uint64_t block);
 extern void gfs2_special_free(struct special_blocks *blist);
 extern int sb_fixed;
-extern int build_per_node(struct gfs2_sbd *sdp);
+extern int build_per_node(struct lgfs2_sbd *sdp);
 
 #endif /* _FSCK_H */

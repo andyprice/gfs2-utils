@@ -149,7 +149,7 @@ static void ast_string_unescape(char *str)
 	str[tail] = '\0';
 }
 
-static uint64_t ast_lookup_path(char *path, struct gfs2_sbd *sbd)
+static uint64_t ast_lookup_path(char *path, struct lgfs2_sbd *sbd)
 {
 	int err = 0;
 	char *c = NULL;
@@ -201,7 +201,7 @@ static const char *block_ids[] = {
 	[ID_END]	= NULL
 };
 
-static uint64_t ast_lookup_id(const char *id, struct gfs2_sbd *sbd)
+static uint64_t ast_lookup_id(const char *id, struct lgfs2_sbd *sbd)
 {
 	uint64_t bn = 0;
 	int i;
@@ -229,7 +229,7 @@ static uint64_t ast_lookup_id(const char *id, struct gfs2_sbd *sbd)
 	return bn;
 }
 
-static uint64_t ast_lookup_rgrp(uint64_t rgnum, struct gfs2_sbd *sbd)
+static uint64_t ast_lookup_rgrp(uint64_t rgnum, struct lgfs2_sbd *sbd)
 {
 	uint64_t i = rgnum;
 	struct osi_node *n;
@@ -242,7 +242,7 @@ static uint64_t ast_lookup_rgrp(uint64_t rgnum, struct gfs2_sbd *sbd)
 }
 
 static uint64_t ast_lookup_subscript(struct ast_node *id, struct ast_node *index,
-                                     struct gfs2_sbd *sbd)
+                                     struct lgfs2_sbd *sbd)
 {
 	uint64_t bn = 0;
 	const char *name = id->ast_str;
@@ -258,7 +258,7 @@ static uint64_t ast_lookup_subscript(struct ast_node *id, struct ast_node *index
  * Look up a block and return its number. The kind of lookup depends on the
  * type of the ast node.
  */
-static uint64_t ast_lookup_block_num(struct ast_node *ast, struct gfs2_sbd *sbd)
+static uint64_t ast_lookup_block_num(struct ast_node *ast, struct lgfs2_sbd *sbd)
 {
 	uint64_t bn = 0;
 	switch (ast->ast_type) {
@@ -285,7 +285,7 @@ static uint64_t ast_lookup_block_num(struct ast_node *ast, struct gfs2_sbd *sbd)
 	return bn;
 }
 
-static uint64_t ast_lookup_block(struct ast_node *node, struct gfs2_sbd *sbd)
+static uint64_t ast_lookup_block(struct ast_node *node, struct lgfs2_sbd *sbd)
 {
 	uint64_t bn = ast_lookup_block_num(node, sbd);
 	if (bn == 0) {
@@ -361,7 +361,7 @@ int lgfs2_lang_result_print(struct lgfs2_lang_result *result)
 	return 0;
 }
 
-static int ast_get_bitstate(uint64_t bn, struct gfs2_sbd *sbd)
+static int ast_get_bitstate(uint64_t bn, struct lgfs2_sbd *sbd)
 {
 	int ret = 0;
 	int state = 0;
@@ -424,7 +424,7 @@ static char *lang_read_block(int fd, unsigned bsize, uint64_t addr)
  * Interpret the get statement.
  */
 static struct lgfs2_lang_result *ast_interp_get(struct lgfs2_lang_state *state,
-                                     struct ast_node *ast, struct gfs2_sbd *sbd)
+                                     struct ast_node *ast, struct lgfs2_sbd *sbd)
 {
 	struct lgfs2_lang_result *result = calloc(1, sizeof(struct lgfs2_lang_result));
 	if (result == NULL) {
@@ -521,7 +521,7 @@ static int lang_write_result(int fd, unsigned bsize, struct lgfs2_lang_result *r
  * Interpret an assignment (set)
  */
 static struct lgfs2_lang_result *ast_interp_set(struct lgfs2_lang_state *state,
-                                    struct ast_node *ast, struct gfs2_sbd *sbd)
+                                    struct ast_node *ast, struct lgfs2_sbd *sbd)
 {
 	struct ast_node *lookup = ast->ast_right;
 	struct ast_node *fieldspec;
@@ -591,7 +591,7 @@ out_err:
 }
 
 static struct lgfs2_lang_result *ast_interpret_node(struct lgfs2_lang_state *state,
-                                        struct ast_node *ast, struct gfs2_sbd *sbd)
+                                        struct ast_node *ast, struct lgfs2_sbd *sbd)
 {
 	struct lgfs2_lang_result *result = NULL;
 
@@ -606,7 +606,7 @@ static struct lgfs2_lang_result *ast_interpret_node(struct lgfs2_lang_state *sta
 }
 
 struct lgfs2_lang_result *lgfs2_lang_result_next(struct lgfs2_lang_state *state,
-                                                           struct gfs2_sbd *sbd)
+                                                           struct lgfs2_sbd *sbd)
 {
 	struct lgfs2_lang_result *result;
 	if (state->ls_interp_curr == NULL) {

@@ -18,7 +18,7 @@
 #include "util.h"
 #include "afterpass1_common.h"
 
-static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
+static int attach_dotdot_to(struct lgfs2_sbd *sdp, uint64_t newdotdot,
 			    uint64_t olddotdot, uint64_t block)
 {
 	const char *filename = "..";
@@ -54,7 +54,7 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 	return 0;
 }
 
-static struct dir_info *mark_and_return_parent(struct gfs2_sbd *sdp,
+static struct dir_info *mark_and_return_parent(struct lgfs2_sbd *sdp,
 					       struct dir_info *di)
 {
 	struct dir_info *pdi;
@@ -156,7 +156,7 @@ out:
  * handle disconnected directories
  * handle lost+found directory errors (missing, not a directory, no space)
  */
-int pass3(struct gfs2_sbd *sdp)
+int pass3(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *tmp, *next = NULL;
 	struct dir_info *di, *tdi;

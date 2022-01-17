@@ -20,7 +20,7 @@
 
 static void add_dotdot(struct lgfs2_inode *ip)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct dir_info *di;
 	struct lgfs2_inum no;
 	int err;
@@ -93,7 +93,7 @@ static void add_dotdot(struct lgfs2_inode *ip)
 void make_sure_lf_exists(struct lgfs2_inode *ip)
 {
 	struct dir_info *di;
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	uint32_t mode;
 	int root_entries;
 
@@ -173,7 +173,7 @@ void make_sure_lf_exists(struct lgfs2_inode *ip)
 int add_inode_to_lf(struct lgfs2_inode *ip){
 	char tmp_name[256];
 	unsigned inode_type;
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_inum no;
 	int err = 0;
 	uint32_t mode;

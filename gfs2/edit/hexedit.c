@@ -873,7 +873,7 @@ static void read_superblock(int fd)
 	struct gfs2_meta_header *mh;
 
 	ioctl(fd, BLKFLSBUF, 0);
-	memset(&sbd, 0, sizeof(struct gfs2_sbd));
+	memset(&sbd, 0, sizeof(struct lgfs2_sbd));
 	sbd.sd_bsize = GFS2_DEFAULT_BSIZE;
 	sbd.device_fd = fd;
 	bh = lgfs2_bread(&sbd, 0x10);

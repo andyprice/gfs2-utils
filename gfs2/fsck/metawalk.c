@@ -29,7 +29,7 @@
    is used to set the latter.  The two must be kept in sync, otherwise
    you'll get bitmap mismatches.  This function checks the status of the
    bitmap whenever the blockmap changes, and fixes it accordingly. */
-int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
+int check_n_fix_bitmap(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
 		       uint64_t blk, int error_on_dinode, int new_state)
 {
 	int old_state;
@@ -224,7 +224,7 @@ struct duptree *dupfind(uint64_t block)
 	return NULL;
 }
 
-struct lgfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp, uint64_t block)
+struct lgfs2_inode *fsck_system_inode(struct lgfs2_sbd *sdp, uint64_t block)
 {
 	int j;
 
@@ -252,7 +252,7 @@ struct lgfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp, uint64_t block)
 
 /* fsck_load_inode - same as gfs2_load_inode() in libgfs2 but system inodes
    get special treatment. */
-struct lgfs2_inode *fsck_load_inode(struct gfs2_sbd *sdp, uint64_t block)
+struct lgfs2_inode *fsck_load_inode(struct lgfs2_sbd *sdp, uint64_t block)
 {
 	struct lgfs2_inode *ip = NULL;
 
@@ -266,7 +266,7 @@ struct lgfs2_inode *fsck_load_inode(struct gfs2_sbd *sdp, uint64_t block)
 
 /* fsck_inode_get - same as inode_get() in libgfs2 but system inodes
    get special treatment. */
-struct lgfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
+struct lgfs2_inode *fsck_inode_get(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
 				  struct lgfs2_buffer_head *bh)
 {
 	struct lgfs2_inode *sysip;
@@ -518,7 +518,7 @@ int check_leaf(struct lgfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	struct lgfs2_buffer_head *lbh = NULL;
 	struct gfs2_leaf *lfp;
 	uint32_t count = 0;
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	const char *msg;
 	int di_depth = ip->i_depth;
 
@@ -663,7 +663,7 @@ static void dir_leaf_reada(struct lgfs2_inode *ip, __be64 *tbl, unsigned hsize)
 {
 	uint64_t *t = alloca(hsize * sizeof(uint64_t));
 	uint64_t leaf_no;
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	unsigned n = 0;
 	unsigned i;
 
@@ -686,7 +686,7 @@ int check_leaf_blks(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 	uint64_t first_ok_leaf, orig_di_blocks;
 	struct lgfs2_buffer_head *lbh;
 	int lindex;
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	int ref_count, orig_ref_count, orig_di_depth, orig_di_height;
 	__be64 *tbl;
 	int chained_leaf, tbl_valid;
@@ -866,7 +866,7 @@ static int check_eattr_entries(struct lgfs2_inode *ip,
 		if (error == 0 && pass->check_eattr_extentry &&
 		   ea_hdr->ea_num_ptrs) {
 			uint32_t tot_ealen = 0;
-			struct gfs2_sbd *sdp = ip->i_sbd;
+			struct lgfs2_sbd *sdp = ip->i_sbd;
 
 			ea_data_ptr = ((__be64 *)((char *)ea_hdr +
 						    sizeof(struct gfs2_ea_header) +
@@ -959,7 +959,7 @@ static int check_indirect_eattr(struct lgfs2_inode *ip, uint64_t indirect,
 	int error = 0, err;
 	__be64 *ea_leaf_ptr, *end;
 	uint64_t block;
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	int first_ea_is_bad = 0;
 	uint64_t di_eattr_save = ip->i_eattr;
 	uint64_t offset = ip->i_sbd->gfs1 ? sizeof(struct gfs_indirect) : sizeof(struct gfs2_meta_header);
@@ -1098,7 +1098,7 @@ static void free_metalist(struct lgfs2_inode *ip, osi_list_t *mlp)
 static void file_ra(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 		    int head_size, int maxptrs, int h)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	uint64_t sblock = 0, block;
 	int extlen = 0;
 	__be64 *p;
@@ -1639,7 +1639,7 @@ int check_linear_dir(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 	return error;
 }
 
-int check_dir(struct gfs2_sbd *sdp, struct lgfs2_inode *ip, struct metawalk_fxns *pass)
+int check_dir(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	int error = 0;
 

@@ -33,8 +33,8 @@ static int test = 0;
 static uint64_t fssize = 0, fsgrowth;
 int print_level = MSG_NOTICE;
 
-extern int create_new_inode(struct gfs2_sbd *sdp);
-extern int rename2system(struct gfs2_sbd *sdp, char *new_dir, char *new_name);
+extern int create_new_inode(struct lgfs2_sbd *sdp);
+extern int rename2system(struct lgfs2_sbd *sdp, char *new_dir, char *new_name);
 
 #ifndef FALLOC_FL_KEEP_SIZE
 #define FALLOC_FL_KEEP_SIZE 0x01
@@ -88,7 +88,7 @@ static void usage(void)
 	}
 }
 
-static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
+static void decode_arguments(int argc, char *argv[], struct lgfs2_sbd *sdp)
 {
 	int opt;
 
@@ -135,7 +135,7 @@ static void decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp)
 	}
 }
 
-static lgfs2_rgrps_t rgrps_init(struct gfs2_sbd *sdp)
+static lgfs2_rgrps_t rgrps_init(struct lgfs2_sbd *sdp)
 {
 	int ret;
 	int error;
@@ -203,7 +203,7 @@ static uint64_t filesystem_size(lgfs2_rgrps_t rgs)
 /**
  * Write the new rg information to disk.
  */
-static unsigned initialize_new_portion(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs)
+static unsigned initialize_new_portion(struct lgfs2_sbd *sdp, lgfs2_rgrps_t rgs)
 {
 	unsigned rgcount = 0;
 	uint64_t rgaddr = fssize;
@@ -322,7 +322,7 @@ trunc:
 /**
  * print_info - Print out various bits of (interesting?) information
  */
-static void print_info(struct gfs2_sbd *sdp, char *device, char *mnt_path)
+static void print_info(struct lgfs2_sbd *sdp, char *device, char *mnt_path)
 {
 	log_notice(_("Mount point: %s\n"), mnt_path);
 	log_notice(_("Device: %s\n"), device);
@@ -353,7 +353,7 @@ static int open_rindex(char *metafs_path, int mode)
 #ifndef UNITTESTS
 int main(int argc, char *argv[])
 {
-	struct gfs2_sbd sbd, *sdp = &sbd;
+	struct lgfs2_sbd sbd, *sdp = &sbd;
 	int rindex_fd;
 	int error = EXIT_SUCCESS;
 	int devflags = (test ? O_RDONLY : O_RDWR) | O_CLOEXEC;
@@ -362,7 +362,7 @@ int main(int argc, char *argv[])
 	textdomain("gfs2-utils");
 	srandom(time(NULL) ^ getpid());
 
-	memset(sdp, 0, sizeof(struct gfs2_sbd));
+	memset(sdp, 0, sizeof(struct lgfs2_sbd));
 	sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
 	sdp->rgsize = -1;
 	sdp->jsize = GFS2_DEFAULT_JSIZE;

@@ -41,7 +41,7 @@ static uint64_t blks_2free = 0;
  * Change the lock protocol so nobody can mount the fs
  *
  */
-static int block_mounters(struct gfs2_sbd *sdp, int block_em)
+static int block_mounters(struct lgfs2_sbd *sdp, int block_em)
 {
 	if (block_em) {
 		/* verify it starts with lock_ */
@@ -109,7 +109,7 @@ static void gfs2_inodetree_free(void)
  *
  * Returns: Nothing
  */
-static void empty_super_block(struct gfs2_sbd *sdp)
+static void empty_super_block(struct lgfs2_sbd *sdp)
 {
 	log_info( _("Freeing buffers.\n"));
 	lgfs2_rgrp_free(sdp, &sdp->rgtree);
@@ -129,7 +129,7 @@ static void empty_super_block(struct gfs2_sbd *sdp)
  *
  * Returns: 0 on success, -1 on failure
  */
-static int set_block_ranges(struct gfs2_sbd *sdp)
+static int set_block_ranges(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgd;
@@ -185,7 +185,7 @@ static int set_block_ranges(struct gfs2_sbd *sdp)
 /**
  * check_rgrp_integrity - verify a rgrp free block count against the bitmap
  */
-static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
+static void check_rgrp_integrity(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
 				 int *fixit, int *this_rg_fixed,
 				 int *this_rg_bad, int *this_rg_cleaned)
 {
@@ -392,7 +392,7 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
  *
  * Returns: 0 on success, 1 if errors were detected
  */
-static void check_rgrps_integrity(struct gfs2_sbd *sdp)
+static void check_rgrps_integrity(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
 	int rgs_good = 0, rgs_bad = 0, rgs_fixed = 0, rgs_cleaned = 0;
@@ -432,7 +432,7 @@ static void check_rgrps_integrity(struct gfs2_sbd *sdp)
 /**
  * rebuild_master - rebuild a destroyed master directory
  */
-static int rebuild_master(struct gfs2_sbd *sdp)
+static int rebuild_master(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inum inum;
 	struct lgfs2_buffer_head *bh = NULL;
@@ -590,7 +590,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
  * allow_rebuild: 0 if rebuilds are not allowed
  *                1 if rebuilds are allowed
  */
-static void lookup_per_node(struct gfs2_sbd *sdp, int allow_rebuild)
+static void lookup_per_node(struct lgfs2_sbd *sdp, int allow_rebuild)
 {
 	if (sdp->md.pinode)
 		return;
@@ -625,7 +625,7 @@ static void lookup_per_node(struct gfs2_sbd *sdp, int allow_rebuild)
 
 #define RA_WINDOW 32
 
-static unsigned gfs2_rgrp_reada(struct gfs2_sbd *sdp, unsigned cur_window,
+static unsigned gfs2_rgrp_reada(struct lgfs2_sbd *sdp, unsigned cur_window,
 				struct osi_node *n)
 {
 	struct rgrp_tree *rgd;
@@ -656,7 +656,7 @@ static unsigned gfs2_rgrp_reada(struct gfs2_sbd *sdp, unsigned cur_window,
  *
  * Returns: 0 on success, -1 on failure.
  */
-static int read_rgrps(struct gfs2_sbd *sdp, uint64_t expected)
+static int read_rgrps(struct lgfs2_sbd *sdp, uint64_t expected)
 {
 	struct rgrp_tree *rgd;
 	uint64_t count = 0;
@@ -697,7 +697,7 @@ static int read_rgrps(struct gfs2_sbd *sdp, uint64_t expected)
 	return -1;
 }
 
-static int fetch_rgrps_level(struct gfs2_sbd *sdp, enum rgindex_trust_level lvl, uint64_t *count, int *ok)
+static int fetch_rgrps_level(struct lgfs2_sbd *sdp, enum rgindex_trust_level lvl, uint64_t *count, int *ok)
 {
 	int ret = 1;
 
@@ -742,7 +742,7 @@ fail:
 /**
  * fetch_rgrps - fetch the resource groups from disk, and check their integrity
  */
-static int fetch_rgrps(struct gfs2_sbd *sdp)
+static int fetch_rgrps(struct lgfs2_sbd *sdp)
 {
 	enum rgindex_trust_level trust_lvl;
 	uint64_t rgcount;
@@ -774,7 +774,7 @@ static int fetch_rgrps(struct gfs2_sbd *sdp)
  *
  * Returns: 0 on success, -1 on failure
  */
-static int init_system_inodes(struct gfs2_sbd *sdp)
+static int init_system_inodes(struct lgfs2_sbd *sdp)
 {
 	__be64 inumbuf = 0;
 	char *buf;
@@ -968,7 +968,7 @@ static int is_journal_copy(struct lgfs2_inode *ip)
  * the per_node directory will have a ".." entry that will lead us to
  * the master dinode if it's been destroyed.
  */
-static void peruse_system_dinode(struct gfs2_sbd *sdp, struct lgfs2_inode *ip)
+static void peruse_system_dinode(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip)
 {
 	struct lgfs2_inode *child_ip;
 	struct lgfs2_inum inum;
@@ -1057,7 +1057,7 @@ out_discard_ip:
  * peruse_user_dinode - process a user dinode trying to find the root directory
  *
  */
-static void peruse_user_dinode(struct gfs2_sbd *sdp, struct lgfs2_inode *ip)
+static void peruse_user_dinode(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip)
 {
 	struct lgfs2_inode *parent_ip;
 	struct lgfs2_inum inum;
@@ -1122,7 +1122,7 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct lgfs2_inode *ip)
  * find_rgs_for_bsize - check a range of blocks for rgrps to determine bsize.
  * Assumes: device is open.
  */
-static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
+static int find_rgs_for_bsize(struct lgfs2_sbd *sdp, uint64_t startblock,
 			      uint32_t *known_bsize)
 {
 	uint64_t blk, max_rg_size, rb_addr;
@@ -1190,7 +1190,7 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
  * peruse_metadata - check a range of blocks for metadata
  * Assumes: device is open.
  */
-static int peruse_metadata(struct gfs2_sbd *sdp, uint64_t startblock)
+static int peruse_metadata(struct lgfs2_sbd *sdp, uint64_t startblock)
 {
 	uint64_t blk, max_rg_size;
 	struct lgfs2_buffer_head *bh;
@@ -1219,7 +1219,7 @@ static int peruse_metadata(struct gfs2_sbd *sdp, uint64_t startblock)
  * Assumes: device is open.
  *          The biggest RG size is 2GB
  */
-static int sb_repair(struct gfs2_sbd *sdp)
+static int sb_repair(struct lgfs2_sbd *sdp)
 {
 	uint64_t half;
 	uint32_t known_bsize = 0;
@@ -1331,7 +1331,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
  *
  * Returns: 0 on success, -1 on failure
  */
-static int fill_super_block(struct gfs2_sbd *sdp)
+static int fill_super_block(struct lgfs2_sbd *sdp)
 {
 	int ret;
 
@@ -1373,7 +1373,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
  *
  * Returns: -1 on error, 0 otherwise
  */
-static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
+static int reconstruct_single_journal(struct lgfs2_sbd *sdp, int jnum,
 				      uint32_t ji_nsegment)
 {
 	uint64_t first = sdp->md.journal[jnum]->i_num.in_addr;
@@ -1411,7 +1411,7 @@ static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
 	return 0;
 }
 
-static int reset_journal_seg_size(struct gfs2_sbd *sdp, unsigned int jsize, unsigned int nsegs)
+static int reset_journal_seg_size(struct lgfs2_sbd *sdp, unsigned int jsize, unsigned int nsegs)
 {
 	unsigned int seg_size = jsize / (nsegs * sdp->sd_bsize);
 	if (!seg_size)
@@ -1429,7 +1429,7 @@ static int reset_journal_seg_size(struct gfs2_sbd *sdp, unsigned int jsize, unsi
 	return 0;
 }
 
-static int correct_journal_seg_size(struct gfs2_sbd *sdp)
+static int correct_journal_seg_size(struct lgfs2_sbd *sdp)
 {
 	int count;
 	struct gfs_jindex *ji_0, *ji_1;
@@ -1482,7 +1482,7 @@ out:
  *
  * Returns: 0 on success, -1 on failure
  */
-static int reconstruct_journals(struct gfs2_sbd *sdp)
+static int reconstruct_journals(struct lgfs2_sbd *sdp)
 {
 	int i, count;
 	struct gfs_jindex *ji;
@@ -1514,7 +1514,7 @@ static int reconstruct_journals(struct gfs2_sbd *sdp)
 /**
  * init_rindex - read in the rindex file
  */
-static int init_rindex(struct gfs2_sbd *sdp)
+static int init_rindex(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip;
 
@@ -1544,7 +1544,7 @@ static int init_rindex(struct gfs2_sbd *sdp)
  * initialize - initialize superblock pointer
  *
  */
-int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
+int initialize(struct lgfs2_sbd *sdp, int force_check, int preen,
 	       int *all_clean)
 {
 	int clean_journals = 0, open_flag;
@@ -1679,7 +1679,7 @@ mount_fail:
 	return FSCK_USAGE;
 }
 
-void destroy(struct gfs2_sbd *sdp)
+void destroy(struct lgfs2_sbd *sdp)
 {
 	if (!opts.no) {
 		if (block_mounters(sdp, 0)) {

@@ -22,7 +22,7 @@
   #endif
 #endif
 
-struct lgfs2_buffer_head *lgfs2_bget(struct gfs2_sbd *sdp, uint64_t num)
+struct lgfs2_buffer_head *lgfs2_bget(struct lgfs2_sbd *sdp, uint64_t num)
 {
 	struct lgfs2_buffer_head *bh;
 
@@ -38,7 +38,7 @@ struct lgfs2_buffer_head *lgfs2_bget(struct gfs2_sbd *sdp, uint64_t num)
 	return bh;
 }
 
-int __lgfs2_breadm(struct gfs2_sbd *sdp, struct lgfs2_buffer_head **bhs, size_t n,
+int __lgfs2_breadm(struct lgfs2_sbd *sdp, struct lgfs2_buffer_head **bhs, size_t n,
                    uint64_t block, int line, const char *caller)
 {
 	size_t v = (n < IOV_MAX) ? n : IOV_MAX;
@@ -71,7 +71,7 @@ int __lgfs2_breadm(struct gfs2_sbd *sdp, struct lgfs2_buffer_head **bhs, size_t 
 	return 0;
 }
 
-struct lgfs2_buffer_head *__lgfs2_bread(struct gfs2_sbd *sdp, uint64_t num, int line,
+struct lgfs2_buffer_head *__lgfs2_bread(struct lgfs2_sbd *sdp, uint64_t num, int line,
 				 const char *caller)
 {
 	struct lgfs2_buffer_head *bh;
@@ -93,7 +93,7 @@ struct lgfs2_buffer_head *__lgfs2_bread(struct gfs2_sbd *sdp, uint64_t num, int 
 
 int lgfs2_bwrite(struct lgfs2_buffer_head *bh)
 {
-	struct gfs2_sbd *sdp = bh->sdp;
+	struct lgfs2_sbd *sdp = bh->sdp;
 
 	if (pwritev(sdp->device_fd, &bh->iov, 1, bh->b_blocknr * sdp->sd_bsize) != bh->iov.iov_len)
 		return -1;

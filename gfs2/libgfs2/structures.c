@@ -16,7 +16,7 @@
 #include "libgfs2.h"
 #include "crc32c.h"
 
-int lgfs2_build_master(struct gfs2_sbd *sdp)
+int lgfs2_build_master(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inum inum;
 	uint64_t bn;
@@ -41,7 +41,7 @@ int lgfs2_build_master(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-int lgfs2_sb_write(const struct gfs2_sbd *sdp, int fd)
+int lgfs2_sb_write(const struct lgfs2_sbd *sdp, int fd)
 {
 	int i, err = -1;
 	struct iovec *iov;
@@ -103,7 +103,7 @@ uint32_t lgfs2_log_header_crc(char *buf, unsigned bsize)
  */
 int lgfs2_write_journal_data(struct lgfs2_inode *ip)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	unsigned blocks = (ip->i_size + sdp->sd_bsize - 1) / sdp->sd_bsize;
 	uint64_t jext0 = ip->i_num.in_addr + ip->i_blocks - blocks;
 	uint64_t seq = ((blocks) * (random() / (RAND_MAX + 1.0)));
@@ -153,7 +153,7 @@ int lgfs2_write_journal_data(struct lgfs2_inode *ip)
 
 static struct lgfs2_buffer_head *lgfs2_get_file_buf(struct lgfs2_inode *ip, uint64_t lbn, int prealloc)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	uint64_t dbn;
 	int new = 1;
 
@@ -227,7 +227,7 @@ int lgfs2_write_journal(struct lgfs2_inode *jnl, unsigned bsize, unsigned int bl
 	return 0;
 }
 
-int lgfs2_build_journal(struct gfs2_sbd *sdp, int j, struct lgfs2_inode *jindex)
+int lgfs2_build_journal(struct lgfs2_sbd *sdp, int j, struct lgfs2_inode *jindex)
 {
 	char name[256];
 	int ret;
@@ -314,7 +314,7 @@ struct lgfs2_inode *lgfs2_build_statfs_change(struct lgfs2_inode *per_node, unsi
 
 struct lgfs2_inode *lgfs2_build_quota_change(struct lgfs2_inode *per_node, unsigned int j)
 {
-	struct gfs2_sbd *sdp = per_node->i_sbd;
+	struct lgfs2_sbd *sdp = per_node->i_sbd;
 	struct gfs2_meta_header mh;
 	char name[256];
 	struct lgfs2_inode *ip;
@@ -349,7 +349,7 @@ struct lgfs2_inode *lgfs2_build_quota_change(struct lgfs2_inode *per_node, unsig
 	return ip;
 }
 
-struct lgfs2_inode *lgfs2_build_inum(struct gfs2_sbd *sdp)
+struct lgfs2_inode *lgfs2_build_inum(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip;
 
@@ -358,7 +358,7 @@ struct lgfs2_inode *lgfs2_build_inum(struct gfs2_sbd *sdp)
 	return ip;
 }
 
-struct lgfs2_inode *lgfs2_build_statfs(struct gfs2_sbd *sdp)
+struct lgfs2_inode *lgfs2_build_statfs(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip;
 
@@ -367,7 +367,7 @@ struct lgfs2_inode *lgfs2_build_statfs(struct gfs2_sbd *sdp)
 	return ip;
 }
 
-struct lgfs2_inode *lgfs2_build_rindex(struct gfs2_sbd *sdp)
+struct lgfs2_inode *lgfs2_build_rindex(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip;
 	struct osi_node *n, *next = NULL;
@@ -401,7 +401,7 @@ struct lgfs2_inode *lgfs2_build_rindex(struct gfs2_sbd *sdp)
 	return ip;
 }
 
-struct lgfs2_inode *lgfs2_build_quota(struct gfs2_sbd *sdp)
+struct lgfs2_inode *lgfs2_build_quota(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip;
 	struct gfs2_quota qu;
@@ -428,7 +428,7 @@ struct lgfs2_inode *lgfs2_build_quota(struct gfs2_sbd *sdp)
 	return ip;
 }
 
-int lgfs2_build_root(struct gfs2_sbd *sdp)
+int lgfs2_build_root(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inum inum;
 	uint64_t bn;
@@ -453,7 +453,7 @@ int lgfs2_build_root(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-int lgfs2_init_inum(struct gfs2_sbd *sdp)
+int lgfs2_init_inum(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip = sdp->md.inum;
 	__be64 buf;
@@ -467,7 +467,7 @@ int lgfs2_init_inum(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-int lgfs2_init_statfs(struct gfs2_sbd *sdp, struct gfs2_statfs_change *res)
+int lgfs2_init_statfs(struct lgfs2_sbd *sdp, struct gfs2_statfs_change *res)
 {
 	struct lgfs2_inode *ip = sdp->md.statfs;
 	struct gfs2_statfs_change sc;

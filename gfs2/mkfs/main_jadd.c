@@ -139,12 +139,12 @@ static void print_usage(const char *prog_name)
 }
 
 /**
- * Decode command line arguments and fill in the struct gfs2_sbd
+ * Decode command line arguments and fill in the struct lgfs2_sbd
  * @argc:
  * @argv:
  * @sdp: the decoded command line arguments
  */
-static int decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp, struct jadd_opts *opts)
+static int decode_arguments(int argc, char *argv[], struct lgfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	int cont = 1;
 	int optchar;
@@ -211,7 +211,7 @@ static int decode_arguments(int argc, char *argv[], struct gfs2_sbd *sdp, struct
 	return 0;
 }
 
-static int verify_arguments(struct gfs2_sbd *sdp, struct jadd_opts *opts)
+static int verify_arguments(struct lgfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	if (!opts->journals) {
 		fprintf(stderr, _("no journals specified\n"));
@@ -345,7 +345,7 @@ close_fd:
 	return close(fd) || error;
 }
 
-static int add_qc(struct gfs2_sbd *sdp, struct jadd_opts *opts)
+static int add_qc(struct lgfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	int fd, error = 0;
 	char new_name[256], buf[sdp->sd_bsize];
@@ -402,7 +402,7 @@ close_fd:
 	return close(fd) || error;
 }
 
-static int gather_info(struct gfs2_sbd *sdp, struct jadd_opts *opts)
+static int gather_info(struct lgfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	struct statfs statbuf;
 
@@ -512,7 +512,7 @@ out_errno:
 	return -1;
 }
 
-static int add_j(struct gfs2_sbd *sdp, struct jadd_opts *opts)
+static int add_j(struct lgfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	int fd, error = 0;
 	char new_name[256], *buf;
@@ -596,7 +596,7 @@ close_fd:
 	return close(fd) || error;
 }
 
-static int check_fit(struct gfs2_sbd *sdp, struct jadd_opts *opts)
+static int check_fit(struct lgfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	/* Compute how much space we'll need for the new journals
 	 * Number of blocks needed per added journal:
@@ -630,7 +630,7 @@ static int check_fit(struct gfs2_sbd *sdp, struct jadd_opts *opts)
 int main(int argc, char *argv[])
 {
 	struct jadd_opts opts = {0};
-	struct gfs2_sbd sbd, *sdp = &sbd;
+	struct lgfs2_sbd sbd, *sdp = &sbd;
 	struct metafs mfs = {0};
 	struct mntent *mnt;
 	unsigned int total, ret = 0;
@@ -639,7 +639,7 @@ int main(int argc, char *argv[])
 	textdomain("gfs2-utils");
 	srandom(time(NULL) ^ getpid());
 
-	memset(sdp, 0, sizeof(struct gfs2_sbd));
+	memset(sdp, 0, sizeof(struct lgfs2_sbd));
 	sdp->jsize = GFS2_DEFAULT_JSIZE;
 	sdp->qcsize = GFS2_DEFAULT_QCSIZE;
 	opts.journals = 1;

@@ -36,7 +36,7 @@ int lgfs2_compute_heightsize(unsigned bsize, uint64_t *heightsize,
 	return 0;
 }
 
-int lgfs2_compute_constants(struct gfs2_sbd *sdp)
+int lgfs2_compute_constants(struct lgfs2_sbd *sdp)
 {
 	sdp->md.next_inum = 1;
 

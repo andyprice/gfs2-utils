@@ -33,7 +33,7 @@ static struct metawalk_fxns delete_eattrs = {
 
 /* Set children's parent inode in dir_info structure - ext2 does not set
  * dotdot inode here, but instead in pass3 - should we? */
-static int set_parent_dir(struct gfs2_sbd *sdp, struct lgfs2_inum child, struct lgfs2_inum parent)
+static int set_parent_dir(struct lgfs2_sbd *sdp, struct lgfs2_inum child, struct lgfs2_inum parent)
 {
 	struct dir_info *di;
 
@@ -63,7 +63,7 @@ static int set_parent_dir(struct gfs2_sbd *sdp, struct lgfs2_inum child, struct 
 }
 
 /* Set's the child's '..' directory inode number in dir_info structure */
-static int set_dotdot_dir(struct gfs2_sbd *sdp, uint64_t childblock, struct lgfs2_inum parent)
+static int set_dotdot_dir(struct lgfs2_sbd *sdp, uint64_t childblock, struct lgfs2_inum parent)
 {
 	struct dir_info *di;
 
@@ -169,7 +169,7 @@ static int bad_formal_ino(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 	struct dir_info *di = NULL;
 	struct lgfs2_inode *child_ip;
 	struct lgfs2_inum childs_dotdot;
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	int error;
 	struct lgfs2_inum inum = {0};
 
@@ -297,7 +297,7 @@ static int wrong_leaf(struct lgfs2_inode *ip, struct lgfs2_inum *entry,
 		      struct lgfs2_dirent *d, struct gfs2_dirent *prev_de,
 		      uint32_t *count, int q)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_buffer_head *dest_lbh;
 	uint64_t planned_leaf, real_leaf;
 	int li, dest_ref, error;
@@ -426,7 +426,7 @@ static int basic_dentry_checks(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			       struct dir_status *ds, int *q,
 			       struct lgfs2_buffer_head *bh, int *isdir)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	uint32_t calculated_hash;
 	struct lgfs2_inode *entry_ip = NULL;
 	int error;
@@ -678,7 +678,7 @@ out:
  * the same, that's an error, and we need to delete the damaged original
  * dentry, since we failed to detect the problem earlier.
  */
-static int check_suspicious_dirref(struct gfs2_sbd *sdp,
+static int check_suspicious_dirref(struct lgfs2_sbd *sdp,
 				   struct lgfs2_inum *entry)
 {
 	struct osi_node *tmp, *next = NULL;
@@ -723,7 +723,7 @@ static int check_dentry(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			struct lgfs2_buffer_head *bh, char *filename,
 			uint32_t *count, int *lindex, void *priv)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	int q = 0;
 	char tmp_name[MAX_FILENAME];
 	struct lgfs2_inum entry;
@@ -1908,7 +1908,7 @@ static int build_quota_change(struct lgfs2_inode *per_node, unsigned int n)
 /* Check system directory inode                                           */
 /* Should work for all system directories: root, master, jindex, per_node */
 static int check_system_dir(struct lgfs2_inode *sysinode, const char *dirname,
-		     int builder(struct gfs2_sbd *sdp))
+		     int builder(struct lgfs2_sbd *sdp))
 {
 	uint64_t iblock = 0;
 	struct dir_status ds = {0};
@@ -2005,7 +2005,7 @@ static int check_system_dir(struct lgfs2_inode *sysinode, const char *dirname,
 /**
  * is_system_dir - determine if a given block is for a system directory.
  */
-static inline int is_system_dir(struct gfs2_sbd *sdp, uint64_t block)
+static inline int is_system_dir(struct lgfs2_sbd *sdp, uint64_t block)
 {
 	if (block == sdp->md.rooti->i_num.in_addr)
 		return 1;
@@ -2018,7 +2018,7 @@ static inline int is_system_dir(struct gfs2_sbd *sdp, uint64_t block)
 	return 0;
 }
 
-static int pass2_check_dir(struct gfs2_sbd *sdp, struct lgfs2_inode *ip)
+static int pass2_check_dir(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip)
 {
 	uint64_t dirblk = ip->i_num.in_addr;
 	struct dir_status ds = {0};
@@ -2106,7 +2106,7 @@ static int pass2_check_dir(struct gfs2_sbd *sdp, struct lgfs2_inode *ip)
  * directory name length
  * entries in range
  */
-int pass2(struct gfs2_sbd *sdp)
+int pass2(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *tmp, *next = NULL;
 	struct lgfs2_inode *ip;

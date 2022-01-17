@@ -177,7 +177,7 @@ static int opts_get(int argc, char *argv[], struct opts *opts)
 	return 0;
 }
 
-static int nuke_rgs(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, unsigned *rgnums, size_t count)
+static int nuke_rgs(struct lgfs2_sbd *sdp, lgfs2_rgrps_t rgs, unsigned *rgnums, size_t count)
 {
 	struct gfs2_rgrp blankrg;
 	lgfs2_rgrp_t rg;
@@ -211,7 +211,7 @@ static int nuke_rgs(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, unsigned *rgnums, s
 	return 0;
 }
 
-static int nuke_ris(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, unsigned *rinums, size_t count)
+static int nuke_ris(struct lgfs2_sbd *sdp, lgfs2_rgrps_t rgs, unsigned *rinums, size_t count)
 {
 	struct gfs2_rindex blankri;
 	lgfs2_rgrp_t rg;
@@ -244,7 +244,7 @@ static int nuke_ris(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, unsigned *rinums, s
 	return 0;
 }
 
-static lgfs2_rgrps_t read_rindex(struct gfs2_sbd *sdp)
+static lgfs2_rgrps_t read_rindex(struct lgfs2_sbd *sdp)
 {
 	lgfs2_rgrps_t rgs;
 	unsigned rgcount;
@@ -276,7 +276,7 @@ static lgfs2_rgrps_t read_rindex(struct gfs2_sbd *sdp)
 	return rgs;
 }
 
-static int fill_super_block(struct gfs2_sbd *sdp)
+static int fill_super_block(struct lgfs2_sbd *sdp)
 {
 	sdp->sd_bsize = GFS2_BASIC_BLOCK;
 
@@ -298,7 +298,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 
 int main(int argc, char **argv)
 {
-	struct gfs2_sbd sbd;
+	struct lgfs2_sbd sbd;
 	lgfs2_rgrps_t rgs;
 	struct opts opts;
 	int ret;

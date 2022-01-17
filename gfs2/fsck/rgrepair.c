@@ -47,7 +47,7 @@ static struct osi_root rgcalc;
  *       which isn't often the case. Normally the rindex needs to be read in
  *       first. If the rindex is damaged, that's not an option.
  */
-static void find_journaled_rgs(struct gfs2_sbd *sdp)
+static void find_journaled_rgs(struct lgfs2_sbd *sdp)
 {
 	int j, new = 0;
 	unsigned int jblocks;
@@ -97,7 +97,7 @@ static int is_false_rg(uint64_t block)
  * This function was revised to return the number of segments, usually 2.
  * The shortest distance is now returned in the highest entry in rg_dist
  */
-static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
+static int find_shortest_rgdist(struct lgfs2_sbd *sdp, uint64_t *dist_array,
 				int *dist_cnt)
 {
 	uint64_t blk, block_last_rg, shortest_dist_btwn_rgs;
@@ -256,7 +256,7 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 /*
  * count_usedspace - count the used bits in a rgrp bitmap buffer
  */
-static uint64_t count_usedspace(struct gfs2_sbd *sdp, int first,
+static uint64_t count_usedspace(struct lgfs2_sbd *sdp, int first,
 				struct lgfs2_buffer_head *bh)
 {
 	int off, x, y, bytes_to_check;
@@ -307,7 +307,7 @@ static uint64_t count_usedspace(struct gfs2_sbd *sdp, int first,
  *
  * This function finds the distance to the next rgrp for these cases.
  */
-static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
+static uint64_t find_next_rgrp_dist(struct lgfs2_sbd *sdp, uint64_t blk,
 				    struct rgrp_tree *prevrgd)
 {
 	struct osi_node *n, *next = NULL;
@@ -419,7 +419,7 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
  * This function is only called if the rgrps are determined to be on uneven
  * boundaries, and also corrupt.  So we have to go out searching for one.
  */
-static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
+static uint64_t hunt_and_peck(struct lgfs2_sbd *sdp, uint64_t blk,
 			      struct rgrp_tree *prevrgd, uint64_t last_bump)
 {
 	uint64_t rgrp_dist = 0, block, twogigs, last_block, last_meg;
@@ -510,7 +510,7 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
  * from gfs1 to gfs2 after a gfs_grow operation.  In that case, the rgrps
  * will not be on predictable boundaries.
  */
-static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
+static int rindex_rebuild(struct lgfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 {
 	struct osi_node *n, *next = NULL;
 	struct lgfs2_buffer_head *bh;
@@ -696,7 +696,7 @@ out:
  *
  * Returns: the number of RGs
  */
-static uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev)
+static uint64_t how_many_rgrps(struct lgfs2_sbd *sdp, struct device *dev)
 {
 	uint64_t nrgrp;
 	uint32_t rgblocks1, rgblocksn, bitblocks1, bitblocksn;
@@ -730,7 +730,7 @@ static uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev)
 /**
  * compute_rgrp_layout - figure out where the RG in a FS are
  */
-static struct osi_root compute_rgrp_layout(struct gfs2_sbd *sdp)
+static struct osi_root compute_rgrp_layout(struct lgfs2_sbd *sdp)
 {
 	struct device *dev;
 	struct rgrp_tree *rl, *rlast = NULL;
@@ -764,7 +764,7 @@ static struct osi_root compute_rgrp_layout(struct gfs2_sbd *sdp)
 	return rgtree;
 }
 
-static int calc_rgrps(struct gfs2_sbd *sdp)
+static int calc_rgrps(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rl;
@@ -804,7 +804,7 @@ static int calc_rgrps(struct gfs2_sbd *sdp)
  * Sets:    sdp->rglist to a linked list of fsck_rgrp structs representing
  *          what we think the rindex should really look like.
  */
-static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
+static int gfs2_rindex_calculate(struct lgfs2_sbd *sdp, int *num_rgs)
 {
 	uint64_t num_rgrps = 0;
 
@@ -845,7 +845,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
  * rewrite_rg_block - rewrite ("fix") a buffer with rg or bitmap data
  * returns: 0 if the rg was repaired, otherwise 1
  */
-static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
+static int rewrite_rg_block(struct lgfs2_sbd *sdp, struct rgrp_tree *rg,
 			    uint64_t errblock)
 {
 	int x = errblock - rg->rt_addr;
@@ -902,7 +902,7 @@ static int rewrite_rg_block(struct gfs2_sbd *sdp, struct rgrp_tree *rg,
  *                        values as our expected values and assume the
  *                        damage is only to the rgrps themselves.
  */
-static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
+static int expect_rindex_sanity(struct lgfs2_sbd *sdp, int *num_rgs)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgd, *exp;
@@ -943,7 +943,7 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
  *             was converted from GFS via gfs2_convert, and its rgrps are
  *             not on nice boundaries thanks to previous gfs_grow ops. Lovely.
  */
-int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
+int rindex_repair(struct lgfs2_sbd *sdp, int trust_lvl, int *ok)
 {
 	struct osi_node *n, *next = NULL, *e, *enext;
 	int error, discrepancies, percent;

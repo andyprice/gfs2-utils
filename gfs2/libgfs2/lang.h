@@ -22,7 +22,7 @@ struct lgfs2_lang_result {
 extern struct lgfs2_lang_state *lgfs2_lang_init(void);
 extern int lgfs2_lang_parsef(struct lgfs2_lang_state *state, FILE *script);
 extern int lgfs2_lang_parses(struct lgfs2_lang_state *state, const char *script);
-extern struct lgfs2_lang_result *lgfs2_lang_result_next(struct lgfs2_lang_state *state, struct gfs2_sbd *sbd);
+extern struct lgfs2_lang_result *lgfs2_lang_result_next(struct lgfs2_lang_state *state, struct lgfs2_sbd *sbd);
 extern int lgfs2_lang_result_print(struct lgfs2_lang_result *result);
 extern void lgfs2_lang_result_free(struct lgfs2_lang_result **result);
 extern void lgfs2_lang_free(struct lgfs2_lang_state **state);

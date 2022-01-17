@@ -33,7 +33,7 @@ struct gfs2_revoke_replay {
 	unsigned int rr_where;
 };
 
-static int revoke_add(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where)
+static int revoke_add(struct lgfs2_sbd *sdp, uint64_t blkno, unsigned int where)
 {
 	osi_list_t *tmp, *head = &sd_revoke_list;
 	struct gfs2_revoke_replay *rr;
@@ -62,7 +62,7 @@ static int revoke_add(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where)
 	return 1;
 }
 
-static int revoke_check(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where)
+static int revoke_check(struct lgfs2_sbd *sdp, uint64_t blkno, unsigned int where)
 {
 	osi_list_t *tmp;
 	struct gfs2_revoke_replay *rr;
@@ -86,7 +86,7 @@ static int revoke_check(struct gfs2_sbd *sdp, uint64_t blkno, unsigned int where
 	return (wrap) ? (a || b) : (a && b);
 }
 
-static void revoke_clean(struct gfs2_sbd *sdp)
+static void revoke_clean(struct lgfs2_sbd *sdp)
 {
 	osi_list_t *head = &sd_revoke_list;
 	struct gfs2_revoke_replay *rr;
@@ -98,7 +98,7 @@ static void revoke_clean(struct gfs2_sbd *sdp)
 	}
 }
 
-static void refresh_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
+static void refresh_rgrp(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
 			 struct lgfs2_buffer_head *bh, uint64_t blkno)
 {
 	int i;
@@ -125,7 +125,7 @@ static int buf_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 				struct gfs2_log_descriptor *ld, __be64 *ptr,
 				int pass)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	unsigned int blks = be32_to_cpu(ld->ld_data1);
 	struct lgfs2_buffer_head *bh_log, *bh_ip;
 	uint64_t blkno;
@@ -186,7 +186,7 @@ static int revoke_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 				   struct gfs2_log_descriptor *ld, __be64 *ptr,
 				   int pass)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	unsigned int blks = be32_to_cpu(ld->ld_length);
 	unsigned int revokes = be32_to_cpu(ld->ld_data1);
 	struct lgfs2_buffer_head *bh;
@@ -236,7 +236,7 @@ static int databuf_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 				    struct gfs2_log_descriptor *ld,
 				    __be64 *ptr, int pass)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	unsigned int blks = be32_to_cpu(ld->ld_data1);
 	struct lgfs2_buffer_head *bh_log, *bh_ip;
 	uint64_t blkno;
@@ -450,7 +450,7 @@ static int check_journal_seq_no(struct lgfs2_inode *ip, int fix)
  * mounted by other nodes in the cluster, which is dangerous and therefore,
  * we should warn the user to run fsck.gfs2 manually when it's safe.
  */
-int preen_is_safe(struct gfs2_sbd *sdp, int preen, int force_check)
+int preen_is_safe(struct lgfs2_sbd *sdp, int preen, int force_check)
 {
 	if (!preen)       /* If preen was not specified */
 		return 1; /* not called by rc.sysinit--we're okay to preen */
@@ -479,7 +479,7 @@ int preen_is_safe(struct gfs2_sbd *sdp, int preen, int force_check)
 static int gfs2_recover_journal(struct lgfs2_inode *ip, int j, int preen,
 				int force_check, int *was_clean)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_log_header head;
 	unsigned int pass;
 	int error;
@@ -675,7 +675,7 @@ static struct metawalk_fxns rangecheck_journal = {
  *
  * Returns: 0 on success, -1 on failure
  */
-int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
+int replay_journals(struct lgfs2_sbd *sdp, int preen, int force_check,
 		    int *clean_journals)
 {
 	int i;
@@ -735,7 +735,7 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
  *
  * Returns: 0 on success, -1 on failure
  */
-int ji_update(struct gfs2_sbd *sdp)
+int ji_update(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *jip, *ip = sdp->md.jiinode;
 	char journal_name[JOURNAL_NAME_SIZE];
@@ -848,7 +848,7 @@ static struct metawalk_fxns jindex_check_fxns = {
 	.check_dentry = check_jindex_dent,
 };
 
-int build_jindex(struct gfs2_sbd *sdp)
+int build_jindex(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *jindex;
 
@@ -872,7 +872,7 @@ int build_jindex(struct gfs2_sbd *sdp)
 /**
  * init_jindex - read in the rindex file
  */
-int init_jindex(struct gfs2_sbd *sdp, int allow_ji_rebuild)
+int init_jindex(struct lgfs2_sbd *sdp, int allow_ji_rebuild)
 {
 	/*******************************************************************
 	 ******************  Fill in journal information  ******************

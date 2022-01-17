@@ -7,7 +7,7 @@ START_TEST(check_sb_in)
 {
 	char buf[sizeof(struct gfs2_sb)];
 	char namechk[GFS2_LOCKNAME_LEN];
-	struct gfs2_sbd sbd;
+	struct lgfs2_sbd sbd;
 	char uuidchk[sizeof(sbd.sd_uuid)];
 
 	memset(buf, 0x5a, sizeof(buf));
@@ -45,7 +45,7 @@ START_TEST(check_sb1_out)
 {
 	char namechk[GFS2_LOCKNAME_LEN];
 	char buf[sizeof(struct gfs_sb)];
-	struct gfs2_sbd sbd;
+	struct lgfs2_sbd sbd;
 	struct gfs_sb *sb;
 
 	memset(namechk, 0x5a, GFS2_LOCKNAME_LEN);
@@ -101,7 +101,7 @@ START_TEST(check_sb2_out)
 {
 	char buf[sizeof(struct gfs2_sb)];
 	char namechk[GFS2_LOCKNAME_LEN];
-	struct gfs2_sbd sbd;
+	struct lgfs2_sbd sbd;
 	struct gfs2_sb *sb;
 	char uuidchk[sizeof(sbd.sd_uuid)];
 

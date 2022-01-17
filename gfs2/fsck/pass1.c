@@ -68,7 +68,7 @@ static int check_extended_leaf_eattr(struct lgfs2_inode *ip, int i,
 				     void *private);
 static int finish_eattr_indir(struct lgfs2_inode *ip, int leaf_pointers,
 			      int leaf_pointer_errors, void *private);
-static int handle_ip(struct gfs2_sbd *sdp, struct lgfs2_inode *ip);
+static int handle_ip(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip);
 static int delete_block(struct lgfs2_inode *ip, uint64_t block,
 			struct lgfs2_buffer_head **bh, const char *btype,
 			void *private);
@@ -230,7 +230,7 @@ static int resuscitate_dentry(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			      struct lgfs2_buffer_head *bh, char *filename,
 			      uint32_t *count, int *lindex, void *priv)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_dirent d;
 	char tmp_name[PATH_MAX];
 	uint64_t block;
@@ -624,7 +624,7 @@ static int undo_eattr_indir_or_leaf(struct lgfs2_inode *ip, uint64_t block,
 				    struct lgfs2_buffer_head **bh,
 				    void *private)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	int q;
 	int error;
 	struct block_count *bc = (struct block_count *) private;
@@ -668,7 +668,7 @@ static int check_eattr_indir(struct lgfs2_inode *ip, uint64_t indirect,
 			     uint64_t parent, struct lgfs2_buffer_head **bh,
 			     void *private)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	int ret = 0;
 	int q;
 	struct block_count *bc = (struct block_count *) private;
@@ -752,7 +752,7 @@ static int check_ealeaf_block(struct lgfs2_inode *ip, uint64_t block, int btype,
 			      struct lgfs2_buffer_head **bh, void *private)
 {
 	struct lgfs2_buffer_head *leaf_bh = NULL;
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	int q;
 	struct block_count *bc = (struct block_count *) private;
 
@@ -821,7 +821,7 @@ static int check_extended_leaf_eattr(struct lgfs2_inode *ip, int i,
 				     void *private)
 {
 	uint64_t el_blk = be64_to_cpu(*data_ptr);
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_buffer_head *bh = NULL;
 	int error = 0;
 
@@ -879,7 +879,7 @@ static int check_eattr_leaf(struct lgfs2_inode *ip, uint64_t block,
 	return check_ealeaf_block(ip, block, GFS2_METATYPE_EA, bh, private);
 }
 
-static int ask_remove_eattr_entry(struct gfs2_sbd *sdp,
+static int ask_remove_eattr_entry(struct lgfs2_sbd *sdp,
 				  struct lgfs2_buffer_head *leaf_bh,
 				  struct gfs2_ea_header *curr,
 				  struct gfs2_ea_header *prev,
@@ -926,7 +926,7 @@ static int check_eattr_entries(struct lgfs2_inode *ip,
 			       struct gfs2_ea_header *ea_hdr_prev,
 			       void *private)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	char ea_name[256];
 	uint32_t offset = (uint32_t)(((unsigned long)ea_hdr) -
 				     ((unsigned long)leaf_bh->b_data));
@@ -1273,7 +1273,7 @@ static void reprocess_inode(struct lgfs2_inode *ip, const char *desc)
 /*
  * handle_ip - process an incore structure representing a dinode.
  */
-static int handle_ip(struct gfs2_sbd *sdp, struct lgfs2_inode *ip)
+static int handle_ip(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip)
 {
 	int error;
 	struct block_count bc = {0};
@@ -1372,7 +1372,7 @@ bad_dinode:
 	return -1;
 }
 
-static void check_i_goal(struct gfs2_sbd *sdp, struct lgfs2_inode *ip)
+static void check_i_goal(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip)
 {
 	if (sdp->gfs1 || ip->i_flags & GFS2_DIF_SYSTEM)
 		return;
@@ -1397,7 +1397,7 @@ static void check_i_goal(struct gfs2_sbd *sdp, struct lgfs2_inode *ip)
  * handle_di - This is now a wrapper function that takes a lgfs2_buffer_head
  *             and calls handle_ip, which takes an in-code dinode structure.
  */
-static int handle_di(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
+static int handle_di(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
 		     struct lgfs2_buffer_head *bh)
 {
 	int error = 0;
@@ -1440,10 +1440,10 @@ static int handle_di(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 /* Should work for all system inodes: root, master, jindex, per_node, etc. */
 /* We have to pass the sysinode as ** because the pointer may change out from
    under the reference by way of the builder() function.  */
-static int check_system_inode(struct gfs2_sbd *sdp,
+static int check_system_inode(struct lgfs2_sbd *sdp,
 			      struct lgfs2_inode **sysinode,
 			      const char *filename,
-			      int builder(struct gfs2_sbd *sdp), int isdir,
+			      int builder(struct lgfs2_sbd *sdp), int isdir,
 			      struct lgfs2_inode *sysdir, int needs_sysbit)
 {
 	uint64_t iblock = 0;
@@ -1560,7 +1560,7 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 	return error ? error : err;
 }
 
-static int build_a_journal(struct gfs2_sbd *sdp)
+static int build_a_journal(struct lgfs2_sbd *sdp)
 {
 	char name[256];
 	int err = 0;
@@ -1577,7 +1577,7 @@ static int build_a_journal(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-int build_per_node(struct gfs2_sbd *sdp)
+int build_per_node(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *per_node;
 	unsigned int j;
@@ -1619,7 +1619,7 @@ int build_per_node(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-static int build_inum(struct gfs2_sbd *sdp)
+static int build_inum(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip = lgfs2_build_inum(sdp);
 	if (ip == NULL)
@@ -1628,7 +1628,7 @@ static int build_inum(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-static int build_statfs(struct gfs2_sbd *sdp)
+static int build_statfs(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip = lgfs2_build_statfs(sdp);
 	if (ip == NULL)
@@ -1637,7 +1637,7 @@ static int build_statfs(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-static int build_rindex(struct gfs2_sbd *sdp)
+static int build_rindex(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip = lgfs2_build_rindex(sdp);
 	if (ip == NULL)
@@ -1646,7 +1646,7 @@ static int build_rindex(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-static int build_quota(struct gfs2_sbd *sdp)
+static int build_quota(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip = lgfs2_build_quota(sdp);
 	if (ip == NULL)
@@ -1655,7 +1655,7 @@ static int build_quota(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-static int check_system_inodes(struct gfs2_sbd *sdp)
+static int check_system_inodes(struct lgfs2_sbd *sdp)
 {
 	int journal_count;
 
@@ -1751,7 +1751,7 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uint64_t *ibuf, unsigned n)
+static int pass1_process_bitmap(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd, uint64_t *ibuf, unsigned n)
 {
 	struct lgfs2_buffer_head *bh;
 	unsigned i;
@@ -1874,7 +1874,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 	return 0;
 }
 
-static int pass1_process_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
+static int pass1_process_rgrp(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
 	unsigned k, n, i;
 	uint64_t *ibuf = malloc(sdp->sd_bsize * GFS2_NBBY * sizeof(uint64_t));
@@ -1942,7 +1942,7 @@ static int link1_create(struct gfs2_bmap *bmap, uint64_t size)
 	return 0;
 }
 
-static struct gfs2_bmap *gfs2_bmap_create(struct gfs2_sbd *sdp, uint64_t size,
+static struct gfs2_bmap *gfs2_bmap_create(struct lgfs2_sbd *sdp, uint64_t size,
 					  uint64_t *addl_mem_needed)
 {
 	struct gfs2_bmap *il;
@@ -1968,7 +1968,7 @@ static void gfs2_blockmap_destroy(struct gfs2_bmap *bmap)
 	bmap->mapsize = 0;
 }
 
-static void *gfs2_bmap_destroy(struct gfs2_sbd *sdp, struct gfs2_bmap *il)
+static void *gfs2_bmap_destroy(struct lgfs2_sbd *sdp, struct gfs2_bmap *il)
 {
 	if (il) {
 		gfs2_blockmap_destroy(il);
@@ -1999,7 +1999,7 @@ static void enomem(uint64_t addl_mem_needed)
  * inodes size
  * dir info
  */
-int pass1(struct gfs2_sbd *sdp)
+int pass1(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rgd;

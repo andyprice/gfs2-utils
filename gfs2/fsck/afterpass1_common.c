@@ -131,7 +131,7 @@ static int remove_dentry(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 
 }
 
-int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
+int remove_dentry_from_dir(struct lgfs2_sbd *sdp, uint64_t dir,
 			   uint64_t dentryblock)
 {
 	struct metawalk_fxns remove_dentry_fxns = {0};
@@ -241,7 +241,7 @@ int delete_eattr_entry(struct lgfs2_inode *ip, struct lgfs2_buffer_head *leaf_bh
 		       struct gfs2_ea_header *ea_hdr,
 		       struct gfs2_ea_header *ea_hdr_prev, void *private)
 {
-	struct gfs2_sbd *sdp = ip->i_sbd;
+	struct lgfs2_sbd *sdp = ip->i_sbd;
 	char ea_name[256];
 	uint32_t avail_size;
 	int max_ptrs;

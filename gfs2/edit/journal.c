@@ -105,7 +105,7 @@ static void check_journal_wrap(uint64_t seq, uint64_t *highest_seq)
 static int fsck_readi(struct lgfs2_inode *ip, void *rbuf, uint64_t roffset,
 	       unsigned int size, uint64_t *abs_block)
 {
-	struct gfs2_sbd *sdp;
+	struct lgfs2_sbd *sdp;
 	struct lgfs2_buffer_head *lbh;
 	uint64_t lblock, dblock;
 	unsigned int o;

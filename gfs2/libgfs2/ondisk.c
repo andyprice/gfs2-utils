@@ -25,7 +25,7 @@ void lgfs2_inum_out(const struct lgfs2_inum *i, void *inp)
 	in->no_addr = cpu_to_be64(i->in_addr);
 }
 
-void lgfs2_sb_in(struct gfs2_sbd *sdp, void *buf)
+void lgfs2_sb_in(struct lgfs2_sbd *sdp, void *buf)
 {
 	struct gfs2_sb *sb = buf;
 	struct gfs_sb *sb1 = buf;
@@ -46,7 +46,7 @@ void lgfs2_sb_in(struct gfs2_sbd *sdp, void *buf)
 	memcpy(sdp->sd_uuid, sb->sb_uuid, sizeof(sdp->sd_uuid));
 }
 
-void lgfs2_sb_out(const struct gfs2_sbd *sdp, void *buf)
+void lgfs2_sb_out(const struct lgfs2_sbd *sdp, void *buf)
 {
 	struct gfs2_sb *sb = buf;
 	struct gfs_sb *sb1 = buf;

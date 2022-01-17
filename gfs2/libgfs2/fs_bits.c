@@ -105,7 +105,7 @@ unsigned long lgfs2_bitfit(const unsigned char *buf, const unsigned int len,
  *
  * Returns: 0 if ok, -1 if out of bounds
  */
-int lgfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno)
+int lgfs2_check_range(struct lgfs2_sbd *sdp, uint64_t blkno)
 {
 	if((blkno > sdp->fssize) || (blkno <= LGFS2_SB_ADDR(sdp)))
 		return -1;
@@ -174,7 +174,7 @@ int lgfs2_set_bitmap(lgfs2_rgrp_t rgd, uint64_t blkno, int state)
  *
  * Returns: state on success, -1 on error
  */
-int lgfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, struct rgrp_tree *rgd)
+int lgfs2_get_bitmap(struct lgfs2_sbd *sdp, uint64_t blkno, struct rgrp_tree *rgd)
 {
 	uint64_t offset;
 	uint32_t i = 0;

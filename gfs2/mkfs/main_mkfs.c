@@ -634,7 +634,7 @@ static int opts_check(struct mkfs_opts *opts)
 	return 0;
 }
 
-static void print_results(struct gfs2_sbd *sb, struct mkfs_opts *opts)
+static void print_results(struct lgfs2_sbd *sb, struct mkfs_opts *opts)
 {
 	char readable_uuid[36+1];
 
@@ -681,7 +681,7 @@ static int warn_of_destruction(const char *path)
 	return 0;
 }
 
-static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
+static int build_per_node(struct lgfs2_sbd *sdp, struct mkfs_opts *opts)
 {
 	struct lgfs2_inode *per_node;
 	unsigned int j;
@@ -739,7 +739,7 @@ static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 	return 0;
 }
 
-static int zero_gap(struct gfs2_sbd *sdp, uint64_t addr, size_t blocks)
+static int zero_gap(struct lgfs2_sbd *sdp, uint64_t addr, size_t blocks)
 {
 	struct iovec *iov;
 	char *zerobuf;
@@ -775,7 +775,7 @@ static int zero_gap(struct gfs2_sbd *sdp, uint64_t addr, size_t blocks)
 	return 0;
 }
 
-static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
+static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct lgfs2_sbd *sdp)
 {
 	lgfs2_rgrps_t rgs;
 	uint64_t al_base = 0;
@@ -825,7 +825,7 @@ static lgfs2_rgrps_t rgs_init(struct mkfs_opts *opts, struct gfs2_sbd *sdp)
 	return rgs;
 }
 
-static int place_rgrp(struct gfs2_sbd *sdp, lgfs2_rgrp_t rg, int debug)
+static int place_rgrp(struct lgfs2_sbd *sdp, lgfs2_rgrp_t rg, int debug)
 {
 	uint64_t prev_end = (GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sdp->sd_bsize) + 1;
 	lgfs2_rgrp_t prev = lgfs2_rgrp_prev(rg);
@@ -891,7 +891,7 @@ static int add_rgrp(lgfs2_rgrps_t rgs, uint64_t *addr, uint32_t len, lgfs2_rgrp_
 	return 0;
 }
 
-static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts, uint64_t *rgaddr)
+static int place_journals(struct lgfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_opts *opts, uint64_t *rgaddr)
 {
 	struct gfs2_progress_bar progress;
 	uint64_t jfsize = lgfs2_space_for_data(sdp, sdp->sd_bsize, opts->jsize << 20);
@@ -965,7 +965,7 @@ static int place_journals(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_o
 	return 0;
 }
 
-static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, uint64_t *rgaddr, struct mkfs_opts *opts)
+static int place_rgrps(struct lgfs2_sbd *sdp, lgfs2_rgrps_t rgs, uint64_t *rgaddr, struct mkfs_opts *opts)
 {
 	struct gfs2_progress_bar progress;
 	uint32_t rgblks = ((opts->rgsize << 20) / sdp->sd_bsize);
@@ -999,7 +999,7 @@ static int place_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, uint64_t *rgaddr
 	return 0;
 }
 
-static int create_jindex(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct lgfs2_inum *jnls)
+static int create_jindex(struct lgfs2_sbd *sdp, struct mkfs_opts *opts, struct lgfs2_inum *jnls)
 {
 	struct lgfs2_inode *jindex;
 
@@ -1047,9 +1047,9 @@ static int default_journal_size(unsigned bsize, uint64_t num_blocks)
 	return 262144;                          /*   1 GB */
 }
 
-static int sbd_init(struct gfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsize)
+static int sbd_init(struct lgfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsize)
 {
-	memset(sdp, 0, sizeof(struct gfs2_sbd));
+	memset(sdp, 0, sizeof(struct lgfs2_sbd));
 	sdp->sd_time = time(NULL);
 	sdp->rgtree.osi_node = NULL;
 	sdp->rgsize = opts->rgsize;
@@ -1197,7 +1197,7 @@ static int open_dev(struct mkfs_dev *dev, int withprobe)
 int main(int argc, char *argv[])
 {
 	struct gfs2_statfs_change sc;
-	struct gfs2_sbd sbd;
+	struct lgfs2_sbd sbd;
 	struct mkfs_opts opts;
 	struct lgfs2_inode *ip;
 	lgfs2_rgrps_t rgs;

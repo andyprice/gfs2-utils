@@ -12,7 +12,7 @@ extern int check_inode_eattr(struct lgfs2_inode *ip,
 			     struct metawalk_fxns *pass);
 extern int check_metatree(struct lgfs2_inode *ip, struct metawalk_fxns *pass);
 extern int check_leaf_blks(struct lgfs2_inode *ip, struct metawalk_fxns *pass);
-extern int check_dir(struct gfs2_sbd *sdp, struct lgfs2_inode *ip,
+extern int check_dir(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip,
 		     struct metawalk_fxns *pass);
 extern int check_linear_dir(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 			    struct metawalk_fxns *pass);
@@ -22,11 +22,11 @@ extern int check_leaf(struct lgfs2_inode *ip, int lindex,
 extern int _fsck_bitmap_set(struct lgfs2_inode *ip, uint64_t bblock,
 			    const char *btype, int mark, int error_on_dinode,
 			    const char *caller, int line);
-extern int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
+extern int check_n_fix_bitmap(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
 			      uint64_t blk, int error_on_dinode,
 			      int new_state);
 extern struct duptree *dupfind(uint64_t block);
-extern struct lgfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp,
+extern struct lgfs2_inode *fsck_system_inode(struct lgfs2_sbd *sdp,
 					    uint64_t block);
 
 #define is_duplicate(dblock) ((dupfind(dblock)) ? 1 : 0)

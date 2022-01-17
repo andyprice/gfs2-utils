@@ -49,7 +49,7 @@ static int fix_link_count(uint32_t counted_links, struct lgfs2_inode *ip)
  *
  * Returns: 1 if caller should do "continue", 0 if not.
  */
-static int handle_unlinked(struct gfs2_sbd *sdp, uint64_t no_addr,
+static int handle_unlinked(struct lgfs2_sbd *sdp, uint64_t no_addr,
 			   uint32_t *counted_links, int *lf_addition)
 {
 	struct lgfs2_inode *ip;
@@ -118,7 +118,7 @@ static int handle_unlinked(struct gfs2_sbd *sdp, uint64_t no_addr,
 	return 0;
 }
 
-static void handle_inconsist(struct gfs2_sbd *sdp, uint64_t no_addr,
+static void handle_inconsist(struct lgfs2_sbd *sdp, uint64_t no_addr,
 			     uint32_t *di_nlink, uint32_t counted_links)
 {
 	log_err(_("Link count inconsistent for inode %"PRIu64" (0x%"PRIx64") has %u but fsck found %u.\n"),
@@ -160,7 +160,7 @@ static int adjust_lf_links(int lf_addition)
 	return 0;
 }
 
-static int scan_inode_list(struct gfs2_sbd *sdp)
+static int scan_inode_list(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *tmp, *next = NULL;
 	struct inode_info *ii;
@@ -195,7 +195,7 @@ static int scan_inode_list(struct gfs2_sbd *sdp)
 	return adjust_lf_links(lf_addition);
 }
 
-static int scan_dir_list(struct gfs2_sbd *sdp)
+static int scan_dir_list(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *tmp, *next = NULL;
 	struct dir_info *di;
@@ -227,7 +227,7 @@ static int scan_dir_list(struct gfs2_sbd *sdp)
 	return adjust_lf_links(lf_addition);
 }
 
-static int scan_nlink1_list(struct gfs2_sbd *sdp)
+static int scan_nlink1_list(struct lgfs2_sbd *sdp)
 {
 	uint64_t blk;
 	uint32_t counted_links;
@@ -262,7 +262,7 @@ static int scan_nlink1_list(struct gfs2_sbd *sdp)
  * handle unreferenced inodes of other types
  * handle bad blocks
  */
-int pass4(struct gfs2_sbd *sdp)
+int pass4(struct lgfs2_sbd *sdp)
 {
 	if (lf_dip)
 		log_debug( _("At beginning of pass4, lost+found entries is %u\n"),

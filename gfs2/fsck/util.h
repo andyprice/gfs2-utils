@@ -29,7 +29,7 @@ extern const char *reftypes[REF_TYPES + 1];
 
 struct fsck_pass {
 	const char *name;
-	int (*f)(struct gfs2_sbd *sdp);
+	int (*f)(struct lgfs2_sbd *sdp);
 };
 
 static inline int block_type(struct gfs2_bmap *bl, uint64_t bblock)
@@ -64,7 +64,7 @@ static inline void link1_destroy(struct gfs2_bmap *bmap)
 	bmap->mapsize = 0;
 }
 
-static inline int bitmap_type(struct gfs2_sbd *sdp, uint64_t bblock)
+static inline int bitmap_type(struct lgfs2_sbd *sdp, uint64_t bblock)
 {
 	struct rgrp_tree *rgd;
 
@@ -124,7 +124,7 @@ extern char generic_interrupt(const char *caller, const char *where,
                        const char *progress, const char *question,
                        const char *answers);
 extern char gfs2_getch(void);
-extern uint64_t find_free_blk(struct gfs2_sbd *sdp);
+extern uint64_t find_free_blk(struct lgfs2_sbd *sdp);
 extern __be64 *get_dir_hash(struct lgfs2_inode *ip);
 extern void delete_all_dups(struct lgfs2_inode *ip);
 extern void print_pass_duration(const char *name, struct timeval *start);

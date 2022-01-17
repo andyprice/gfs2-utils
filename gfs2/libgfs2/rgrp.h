@@ -23,7 +23,7 @@ struct rgs_plan {
 struct _lgfs2_rgrps {
 	struct osi_root root;
 	struct rgs_plan *plan;
-	struct gfs2_sbd *sdp;
+	struct lgfs2_sbd *sdp;
 	unsigned long align;
 	unsigned long align_off;
 };

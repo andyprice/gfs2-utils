@@ -535,7 +535,7 @@ void dirtree_delete(struct dir_info *b)
 	free(b);
 }
 
-uint64_t find_free_blk(struct gfs2_sbd *sdp)
+uint64_t find_free_blk(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
 	struct rgrp_tree *rl = NULL;

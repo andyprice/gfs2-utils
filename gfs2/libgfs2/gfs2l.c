@@ -104,7 +104,7 @@ static int getopts(int argc, char *argv[], struct cmdopts *opts)
 	return 0;
 }
 
-static int openfs(const char *path, struct gfs2_sbd *sdp)
+static int openfs(const char *path, struct lgfs2_sbd *sdp)
 {
 	int fd;
 	int ret;
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
 {
 	int ret;
 	struct cmdopts opts = {NULL, NULL};
-	struct gfs2_sbd sbd;
+	struct lgfs2_sbd sbd;
 	struct lgfs2_lang_result *result;
 	struct lgfs2_lang_state *state;
 
