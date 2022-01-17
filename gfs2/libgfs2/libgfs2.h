@@ -778,10 +778,10 @@ extern struct gfs2_inode *lgfs2_build_statfs_change(struct gfs2_inode *per_node,
 extern struct gfs2_inode *lgfs2_build_quota_change(struct gfs2_inode *per_node, unsigned int j);
 
 /* super.c */
-extern int check_sb(void *sbp);
-extern int read_sb(struct gfs2_sbd *sdp);
-extern int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok);
-extern int write_sb(struct gfs2_sbd *sdp);
+extern int lgfs2_check_sb(void *sbp);
+extern int lgfs2_read_sb(struct gfs2_sbd *sdp);
+extern int lgfs2_rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok);
+extern int lgfs2_write_sb(struct gfs2_sbd *sdp);
 
 /* ondisk.c */
 extern uint32_t gfs2_disk_hash(const char *data, int len);

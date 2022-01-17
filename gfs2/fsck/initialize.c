@@ -721,7 +721,7 @@ static int fetch_rgrps_level(struct gfs2_sbd *sdp, enum rgindex_trust_level lvl,
 	if (rindex_repair(sdp, lvl, ok) != 0)
 		goto fail;
 
-	if (rindex_read(sdp, count, ok) != 0 || !*ok)
+	if (lgfs2_rindex_read(sdp, count, ok) != 0 || !*ok)
 		goto fail;
 
 	ret = read_rgrps(sdp, *count);
@@ -1345,12 +1345,12 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 		log_crit("%s\n", _("Failed to compute file system constants"));
 		return FSCK_ERROR;
 	}
-	ret = read_sb(sdp);
+	ret = lgfs2_read_sb(sdp);
 	if (ret < 0) {
 		if (sb_repair(sdp) != 0)
 			return -1; /* unrepairable, so exit */
 		/* Now that we've tried to repair it, re-read it. */
-		ret = read_sb(sdp);
+		ret = lgfs2_read_sb(sdp);
 		if (ret < 0)
 			return FSCK_ERROR;
 	}

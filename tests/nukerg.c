@@ -284,7 +284,7 @@ static int fill_super_block(struct gfs2_sbd *sdp)
 		fprintf(stderr, "Failed to compute file system constants.\n");
 		return 1;
 	}
-	if (read_sb(sdp) != 0) {
+	if (lgfs2_read_sb(sdp) != 0) {
 		perror("Failed to read superblock\n");
 		return 1;
 	}

@@ -1254,7 +1254,7 @@ static int restore_super(struct metafd *mfd, void *buf, int printonly)
 	int ret;
 
 	lgfs2_sb_in(&sbd, buf);
-	ret = check_sb(buf);
+	ret = lgfs2_check_sb(buf);
 	if (ret < 0) {
 		fprintf(stderr, "Error: Invalid superblock in metadata file.\n");
 		return -1;

@@ -132,7 +132,7 @@ static int openfs(const char *path, struct gfs2_sbd *sdp)
 	}
 	fix_device_geometry(sdp);
 
-	ret = read_sb(sdp);
+	ret = lgfs2_read_sb(sdp);
 	if (ret != 0) {
 		perror("Could not read sb");
 		return 1;
@@ -142,7 +142,7 @@ static int openfs(const char *path, struct gfs2_sbd *sdp)
 	lgfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
 	sdp->fssize = sdp->device.length;
 	if (sdp->md.riinode) {
-		rindex_read(sdp, &count, &ok);
+		lgfs2_rindex_read(sdp, &count, &ok);
 	} else {
 		perror("Failed to look up rindex");
 		return 1;

@@ -398,7 +398,7 @@ int main(int argc, char *argv[])
 			log_crit("%s\n", _("Failed to compute file system constants"));
 			exit(EXIT_FAILURE);
 		}
-		if (read_sb(sdp) < 0) {
+		if (lgfs2_read_sb(sdp) < 0) {
 			fprintf(stderr, _("Error reading superblock.\n"));
 			exit(EXIT_FAILURE);
 		}

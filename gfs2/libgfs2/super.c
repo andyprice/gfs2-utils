@@ -13,7 +13,7 @@
 #include "osi_list.h"
 
 /**
- * check_sb - Check superblock
+ * lgfs2_check_sb - Check superblock
  * @sb: The superblock
  *
  * Checks the version code of the FS is one that we understand how to
@@ -22,7 +22,7 @@
  *
  * Returns: -1 on failure, 1 if this is gfs (gfs1), 2 if this is gfs2
  */
-int check_sb(void *sbp)
+int lgfs2_check_sb(void *sbp)
 {
 	struct gfs2_sb *sb = sbp;
 
@@ -48,7 +48,7 @@ int check_sb(void *sbp)
 
 
 /*
- * read_sb: read the super block from disk
+ * lgfs2_read_sb: read the super block from disk
  * sdp: in-core super block
  *
  * This function reads in the super block from disk and
@@ -58,7 +58,7 @@ int check_sb(void *sbp)
  * Returns: 0 on success, -1 on failure
  * sdp->gfs1 will be set if this is gfs (gfs1)
  */
-int read_sb(struct gfs2_sbd *sdp)
+int lgfs2_read_sb(struct gfs2_sbd *sdp)
 {
 	struct gfs2_buffer_head *bh;
 	uint64_t space = 0;
@@ -67,7 +67,7 @@ int read_sb(struct gfs2_sbd *sdp)
 
 	bh = lgfs2_bread(sdp, GFS2_SB_ADDR >> sdp->sd_fsb2bb_shift);
 
-	ret = check_sb(bh->b_data);
+	ret = lgfs2_check_sb(bh->b_data);
 	if (ret < 0) {
 		lgfs2_brelse(bh);
 		return ret;
@@ -191,14 +191,14 @@ static int good_on_disk(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 }
 
 /**
- * rindex_read - read in the rg index file
+ * lgfs2_rindex_read - read in the rg index file
  * @sdp: the incore superblock pointer
  * @rgcount: return count of the rgs.
  * @ok: return whether rindex is consistent
  *
  * Returns: 0 on success, -1 on failure
  */
-int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok)
+int lgfs2_rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 {
 	unsigned int rg;
 	int error;
