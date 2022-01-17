@@ -118,7 +118,7 @@ START_TEST(test_rbm_find_lastblock)
 		memset(rg->bits[i].bi_data, 0xff, rgs->sdp->sd_bsize);
 
 	/* ...except the final one */
-	err = gfs2_set_bitmap(rg, rg->rt_data0 + rg->rt_data - 1, GFS2_BLKST_FREE);
+	err = lgfs2_set_bitmap(rg, rg->rt_data0 + rg->rt_data - 1, GFS2_BLKST_FREE);
 	ck_assert_int_eq(err, 0);
 
 	err = lgfs2_rbm_find(&rbm, GFS2_BLKST_FREE, &minext);

@@ -1664,7 +1664,7 @@ static void find_change_block_alloc(int *newval)
 		if (rgd) {
 			gfs2_rgrp_read(&sbd, rgd);
 			if (newval) {
-				if (gfs2_set_bitmap(rgd, ablock, *newval))
+				if (lgfs2_set_bitmap(rgd, ablock, *newval))
 					printf("-1 (block invalid or part of an rgrp).\n");
 				else
 					printf("%d\n", *newval);

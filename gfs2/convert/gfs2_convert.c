@@ -968,7 +968,7 @@ static int next_rg_meta(struct rgrp_tree *rgd, uint64_t *block, int first)
 	}
 	for (; i < length; i++){
 		bits = &rgd->bits[i];
-		blk = gfs2_bitfit((uint8_t *)bits->bi_data + bits->bi_offset,
+		blk = lgfs2_bitfit((uint8_t *)bits->bi_data + bits->bi_offset,
 		                   bits->bi_len, blk, GFS2_BLKST_DINODE);
 		if(blk != BFITNOENT){
 			*block = blk + (bits->bi_start * GFS2_NBBY) + rgd->rt_data0;

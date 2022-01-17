@@ -429,7 +429,7 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 
 	/* Skip ahead the previous amount: we might get lucky.
 	   If we're close to the end of the device, take the rest. */
-	if (gfs2_check_range(sdp, blk + last_bump))
+	if (lgfs2_check_range(sdp, blk + last_bump))
 		return sdp->fssize - blk;
 
 	bh = lgfs2_bread(sdp, blk + last_bump);

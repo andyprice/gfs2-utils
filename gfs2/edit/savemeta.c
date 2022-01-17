@@ -804,7 +804,7 @@ static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, char *buf)
 		uint64_t blk = be64_to_cpu(leaf->lf_next);
 		ssize_t r;
 
-		if (gfs2_check_range(sdp, blk) != 0)
+		if (lgfs2_check_range(sdp, blk) != 0)
 			return 0;
 
 		r = pread(sdp->device_fd, buf, sdp->sd_bsize, sdp->sd_bsize * blk);
@@ -1041,7 +1041,7 @@ static char *rgrp_read(struct gfs2_sbd *sdp, uint64_t addr, unsigned blocks)
 	off_t off = addr * sdp->sd_bsize;
 	char *buf;
 
-	if (blocks == 0 || gfs2_check_range(sdp, addr))
+	if (blocks == 0 || lgfs2_check_range(sdp, addr))
 		return NULL;
 
 	buf = calloc(1, len);

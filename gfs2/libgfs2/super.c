@@ -222,7 +222,7 @@ int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 			return -1;
 
 		addr = be64_to_cpu(ri.ri_addr);
-		if (gfs2_check_range(sdp, addr) != 0) {
+		if (lgfs2_check_range(sdp, addr) != 0) {
 			*ok = 0;
 			if (prev_rgd == NULL)
 				continue;

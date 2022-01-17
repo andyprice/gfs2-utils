@@ -479,19 +479,16 @@ extern void fix_device_geometry(struct gfs2_sbd *sdp);
 #define BFITNOENT (0xFFFFFFFF)
 
 /* functions with blk #'s that are buffer relative */
-extern unsigned long gfs2_bitfit(const unsigned char *buffer,
+extern unsigned long lgfs2_bitfit(const unsigned char *buffer,
 				 const unsigned int buflen,
 				 unsigned long goal, unsigned char old_state);
 
 /* functions with blk #'s that are rgrp relative */
-extern uint32_t gfs2_blkalloc_internal(struct rgrp_tree *rgd, uint32_t goal,
-				       unsigned char old_state,
-				       unsigned char new_state, int do_it);
-extern int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno);
+extern int lgfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno);
 
 /* functions with blk #'s that are file system relative */
 extern int lgfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, struct rgrp_tree *rgd);
-extern int gfs2_set_bitmap(lgfs2_rgrp_t rg, uint64_t blkno, int state);
+extern int lgfs2_set_bitmap(lgfs2_rgrp_t rg, uint64_t blkno, int state);
 
 extern uint32_t rgblocks2bitblocks(const unsigned int bsize, const uint32_t rgblocks,
                                     uint32_t *ri_data) __attribute__((nonnull(3)));

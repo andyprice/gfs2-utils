@@ -193,7 +193,7 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 	off_t offset = rgd->rt_addr * sdp->sd_bsize;
 	char *buf;
 
-	if (length == 0 || gfs2_check_range(sdp, rgd->rt_addr))
+	if (length == 0 || lgfs2_check_range(sdp, rgd->rt_addr))
 		return -1;
 
 	buf = calloc(1, length);
@@ -951,7 +951,7 @@ int lgfs2_rbm_find(struct lgfs2_rbm *rbm, uint8_t state, uint32_t *minext)
 		if ((rbm->rgd->rt_free < *minext) && (state == GFS2_BLKST_FREE))
 			goto next_bitmap;
 
-		offset = gfs2_bitfit(buf, bi->bi_len, rbm->offset, state);
+		offset = lgfs2_bitfit(buf, bi->bi_len, rbm->offset, state);
 		if (offset == BFITNOENT)
 			goto next_bitmap;
 
@@ -1009,13 +1009,13 @@ unsigned lgfs2_alloc_extent(const struct lgfs2_rbm *rbm, int state, const unsign
 	const uint64_t block = lgfs2_rbm_to_block(rbm);
 	unsigned len;
 
-	gfs2_set_bitmap(rbm->rgd, block, state);
+	lgfs2_set_bitmap(rbm->rgd, block, state);
 
 	for (len = 1; len < elen; len++) {
 		int ret = lgfs2_rbm_from_block(&pos, block + len);
 		if (ret || lgfs2_testbit(&pos) != GFS2_BLKST_FREE)
 			break;
-		gfs2_set_bitmap(pos.rgd, block + len, GFS2_BLKST_USED);
+		lgfs2_set_bitmap(pos.rgd, block + len, GFS2_BLKST_USED);
 	}
 	return len;
 }

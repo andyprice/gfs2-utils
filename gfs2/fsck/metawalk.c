@@ -77,7 +77,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 	   bitmap state was free (and therefore it no longer is) we have to
 	   subtract to the free space.  If the type changed from dinode to 
 	   data or data to dinode, no change in free space. */
-	gfs2_set_bitmap(rgd, blk, new_state);
+	lgfs2_set_bitmap(rgd, blk, new_state);
 	if (new_state == GFS2_BLKST_FREE) {
 		rgd->rt_free++;
 		rewrite_rgrp = 1;

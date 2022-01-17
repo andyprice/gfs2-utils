@@ -21,7 +21,7 @@
 #define ALIGN(x,a) (((x)+(a)-1)&~((a)-1))
 
 /**
- * gfs2_bit_search
+ * bit_search
  * @ptr: Pointer to bitmap data
  * @mask: Mask to use (normally 0x55555.... but adjusted for search start)
  * @state: The state we are searching for
@@ -38,7 +38,7 @@
  * single test (on 64 bit arches).
  */
 
-static inline uint64_t gfs2_bit_search(const __le64 *ptr,
+static inline uint64_t bit_search(const __le64 *ptr,
 				       unsigned long long mask,
 				       uint8_t state)
 {
@@ -56,7 +56,7 @@ static inline uint64_t gfs2_bit_search(const __le64 *ptr,
 }
 
 /**
- * gfs2_bitfit - Find a free block in the bitmaps
+ * lgfs2_bitfit - Find a free block in the bitmaps
  * @buffer: the buffer that holds the bitmaps
  * @buflen: the length (in bytes) of the buffer
  * @goal: the block to try to allocate
@@ -64,7 +64,7 @@ static inline uint64_t gfs2_bit_search(const __le64 *ptr,
  *
  * Return: the block number that was allocated
  */
-unsigned long gfs2_bitfit(const unsigned char *buf, const unsigned int len,
+unsigned long lgfs2_bitfit(const unsigned char *buf, const unsigned int len,
 			  unsigned long goal, unsigned char state)
 {
 	uint32_t spoint = (goal << 1) & ((8 * sizeof(uint64_t)) - 1);
@@ -79,10 +79,10 @@ unsigned long gfs2_bitfit(const unsigned char *buf, const unsigned int len,
 
 	/* Mask off bits we don't care about at the start of the search */
 	mask <<= spoint;
-	tmp = gfs2_bit_search(ptr, mask, state);
+	tmp = bit_search(ptr, mask, state);
 	ptr++;
 	while(tmp == 0 && ptr < end) {
-		tmp = gfs2_bit_search(ptr, 0x5555555555555555ULL, state);
+		tmp = bit_search(ptr, 0x5555555555555555ULL, state);
 		ptr++;
 	}
 	/* Mask off any bits which are more than len bytes from the start */
@@ -99,13 +99,13 @@ unsigned long gfs2_bitfit(const unsigned char *buf, const unsigned int len,
 }
 
 /*
- * check_range - check if blkno is within FS limits
+ * lgfs2_check_range - check if blkno is within FS limits
  * @sdp: super block
  * @blkno: block number
  *
  * Returns: 0 if ok, -1 if out of bounds
  */
-int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno)
+int lgfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno)
 {
 	if((blkno > sdp->fssize) || (blkno <= LGFS2_SB_ADDR(sdp)))
 		return -1;
@@ -113,7 +113,7 @@ int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno)
 }
 
 /*
- * gfs2_set_bitmap
+ * lgfs2_set_bitmap
  * @sdp: super block
  * @blkno: block number relative to file system
  * @state: one of three possible states
@@ -123,7 +123,7 @@ int gfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno)
  *
  * Returns: 0 on success, -1 on error
  */
-int gfs2_set_bitmap(lgfs2_rgrp_t rgd, uint64_t blkno, int state)
+int lgfs2_set_bitmap(lgfs2_rgrp_t rgd, uint64_t blkno, int state)
 {
 	int           buf;
 	uint32_t        rgrp_block;
@@ -160,7 +160,7 @@ int gfs2_set_bitmap(lgfs2_rgrp_t rgd, uint64_t blkno, int state)
 }
 
 /*
- * gfs2_get_bitmap - get value of FS bitmap
+ * lgfs2_get_bitmap - get value of FS bitmap
  * @sdp: super block
  * @blkno: block number relative to file system
  *

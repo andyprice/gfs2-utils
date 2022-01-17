@@ -266,7 +266,7 @@ static uint64_t ast_lookup_block_num(struct ast_node *ast, struct gfs2_sbd *sbd)
 		bn = ast_lookup_block_num(ast->ast_left, sbd) + ast->ast_num;
 		break;
 	case AST_EX_ADDRESS:
-		if (gfs2_check_range(sbd, ast->ast_num))
+		if (lgfs2_check_range(sbd, ast->ast_num))
 			break;
 		bn = ast->ast_num;
 		break;
