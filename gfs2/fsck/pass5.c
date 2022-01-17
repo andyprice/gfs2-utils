@@ -49,7 +49,7 @@ static int check_block_status(struct gfs2_sbd *sdp,  struct gfs2_bmap *bl,
 			struct gfs2_buffer_head *bh;
 
 			bh = bread(sdp, block);
-			if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_DI) == 0)
+			if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_DI) == 0)
 				count[GFS2_BLKST_DINODE]++;
 			else
 				count[GFS1_BLKST_USEDMETA]++;

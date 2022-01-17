@@ -209,7 +209,7 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 		int mtype = (i ? GFS2_METATYPE_RB : GFS2_METATYPE_RG);
 
 		rgd->bits[i].bi_data = buf + (i * sdp->sd_bsize);
-		if (gfs2_check_meta(rgd->bits[i].bi_data, mtype)) {
+		if (lgfs2_check_meta(rgd->bits[i].bi_data, mtype)) {
 			free(buf);
 			rgd->bits[0].bi_data = NULL;
 			return rgd->rt_addr + i;

@@ -206,7 +206,7 @@ static int revoke_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			return error;
 
 		if (!first) {
-			if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_LB))
+			if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_LB))
 				continue;
 		}
 		while (offset + sizeof(uint64_t) <= sdp->sd_bsize) {
@@ -343,7 +343,7 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 			bmodified(bh);
 			brelse(bh);
 			return error;
-		} else if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_LD)) {
+		} else if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_LD)) {
 			bmodified(bh);
 			brelse(bh);
 			return -EIO;
@@ -597,7 +597,7 @@ out:
 	log_err( _("jid=%u: Failed\n"), j);
 reinit:
 	if (query( _("Do you want to clear the journal instead? (y/n)"))) {
-		error = write_journal(sdp->md.journal[j], sdp->sd_bsize,
+		error = lgfs2_write_journal(sdp->md.journal[j], sdp->sd_bsize,
 				      sdp->md.journal[j]->i_size /
 				      sdp->sd_bsize);
 		log_err(_("jid=%u: journal was cleared.\n"), j);
@@ -633,7 +633,7 @@ static int rangecheck_jmeta(struct iptr iptr, struct gfs2_buffer_head **bh, int 
 	rc = rangecheck_jblock(ip, block);
 	if (rc == META_IS_GOOD) {
 		*bh = bread(ip->i_sbd, block);
-		*is_valid = (gfs2_check_meta((*bh)->b_data, GFS2_METATYPE_IN) == 0);
+		*is_valid = (lgfs2_check_meta((*bh)->b_data, GFS2_METATYPE_IN) == 0);
 		if (!(*is_valid)) {
 			log_err( _("Journal at block %"PRIu64" (0x%"PRIx64") has a bad "
 				   "indirect block pointer %"PRIu64" (0x%"PRIx64") "
@@ -859,7 +859,7 @@ int build_jindex(struct gfs2_sbd *sdp)
 	}
 	sdp->md.journal = malloc(sdp->md.journals * sizeof(struct gfs2_inode *));
 	for (unsigned j = 0; j < sdp->md.journals; j++) {
-		int ret = build_journal(sdp, j, jindex);
+		int ret = lgfs2_build_journal(sdp, j, jindex);
 		if (ret)
 			return ret;
 		inode_put(&sdp->md.journal[j]);

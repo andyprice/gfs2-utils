@@ -535,7 +535,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	/* Try to read in the leaf block. */
 	lbh = bread(sdp, *leaf_no);
 	/* Make sure it's really a valid leaf block. */
-	if (gfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF)) {
+	if (lgfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF)) {
 		msg = _("that is not really a leaf");
 		goto bad_leaf;
 	}
@@ -734,7 +734,7 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 		if (valid_block_ip(ip, leaf_no)) {
 			lbh = bread(sdp, leaf_no);
 			/* Make sure it's really a valid leaf block. */
-			if (gfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF) == 0) {
+			if (lgfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF) == 0) {
 				brelse(lbh);
 				first_ok_leaf = leaf_no;
 				break;
@@ -1259,7 +1259,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 			iptr.ipt_off = head_size;
 			iptr.ipt_bh = osi_list_entry(tmp, struct gfs2_buffer_head, b_altlist);
 
-			if (gfs2_check_meta(iptr_buf(iptr), iblk_type)) {
+			if (lgfs2_check_meta(iptr_buf(iptr), iblk_type)) {
 				if (pass->invalid_meta_is_fatal)
 					return META_ERROR;
 
@@ -1482,7 +1482,7 @@ static unsigned int should_check(struct gfs2_buffer_head *bh, unsigned int heigh
 {
 	int iblk_type = height > 1 ? GFS2_METATYPE_IN : GFS2_METATYPE_DI;
 
-	return gfs2_check_meta(bh->b_data, iblk_type) == 0;
+	return lgfs2_check_meta(bh->b_data, iblk_type) == 0;
 }
 
 /**

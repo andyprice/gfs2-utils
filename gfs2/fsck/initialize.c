@@ -233,7 +233,7 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				if (state == GFS2_BLKST_DINODE) {
 					if (sdp->gfs1) {
 						bh = bread(sdp, diblock);
-						if (!gfs2_check_meta(bh->b_data,
+						if (!lgfs2_check_meta(bh->b_data,
 							GFS2_METATYPE_DI))
 							rg_useddi++;
 						else
@@ -283,7 +283,7 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				log_info(_("Free metadata block %"PRIu64" (0x%"PRIx64") reclaimed.\n"),
 				         diblock, diblock);
 				bh = bread(sdp, diblock);
-				if (!gfs2_check_meta(bh->b_data, GFS2_METATYPE_DI)) {
+				if (!lgfs2_check_meta(bh->b_data, GFS2_METATYPE_DI)) {
 					struct gfs2_inode *ip =
 						fsck_inode_get(sdp, rgd, bh);
 					if (ip->i_blocks > 1) {
@@ -504,7 +504,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			exit(FSCK_ERROR);
 		}
 	} else {
-		sdp->md.inum = build_inum(sdp);
+		sdp->md.inum = lgfs2_build_inum(sdp);
 		if (sdp->md.inum == NULL) {
 			log_crit(_("Error building inum inode: %s\n"), strerror(errno));
 			exit(FSCK_ERROR);
@@ -524,7 +524,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			exit(FSCK_ERROR);
 		}
 	} else {
-		sdp->md.statfs = build_statfs(sdp);
+		sdp->md.statfs = lgfs2_build_statfs(sdp);
 		if (sdp->md.statfs == NULL) {
 			log_crit(_("Error %d building statfs inode\n"), err);
 			exit(FSCK_ERROR);
@@ -544,7 +544,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			exit(FSCK_ERROR);
 		}
 	} else {
-		struct gfs2_inode *rip = build_rindex(sdp);
+		struct gfs2_inode *rip = lgfs2_build_rindex(sdp);
 		if (rip == NULL) {
 			log_crit(_("Error building rindex inode: %s\n"), strerror(errno));
 			exit(FSCK_ERROR);
@@ -562,7 +562,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 			exit(FSCK_ERROR);
 		}
 	} else {
-		struct gfs2_inode *qip = build_quota(sdp);
+		struct gfs2_inode *qip = lgfs2_build_quota(sdp);
 		if (qip == NULL) {
 			log_crit(_("Error building quota inode: %s\n"), strerror(errno));
 			exit(FSCK_ERROR);
@@ -804,7 +804,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 					   "a valid inum file; aborting.\n"));
 				goto fail;
 			}
-			sdp->md.inum = build_inum(sdp);
+			sdp->md.inum = lgfs2_build_inum(sdp);
 			if (sdp->md.inum == NULL) {
 				log_crit(_("Error rebuilding inum inode: %s\n"), strerror(errno));
 				exit(FSCK_ERROR);
@@ -855,7 +855,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 				   "statfs file; aborting.\n"));
 			goto fail;
 		}
-		sdp->md.statfs = build_statfs(sdp);
+		sdp->md.statfs = lgfs2_build_statfs(sdp);
 		if (sdp->md.statfs == NULL) {
 			log_crit(_("Error %d rebuilding statfs inode\n"), err);
 			exit(FSCK_ERROR);
@@ -867,7 +867,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 				   "a valid statfs file; aborting.\n"));
 			goto fail;
 		}
-		do_init_statfs(sdp, NULL);
+		lgfs2_init_statfs(sdp, NULL);
 	}
 	if (sdp->md.statfs->i_size) {
 		buf = malloc(sdp->md.statfs->i_size);
@@ -912,7 +912,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 				   "rebuilt.  Aborting.\n"));
 			goto fail;
 		}
-		sdp->md.qinode = build_quota(sdp);
+		sdp->md.qinode = lgfs2_build_quota(sdp);
 		if (sdp->md.qinode == NULL) {
 			log_crit(_("Error rebuilding quota inode: %s\n"), strerror(errno));
 			exit(FSCK_ERROR);
@@ -1200,7 +1200,7 @@ static int peruse_metadata(struct gfs2_sbd *sdp, uint64_t startblock)
 	/* Max RG size is 2GB. 2G / bsize. */
 	for (blk = startblock; blk < startblock + max_rg_size; blk++) {
 		bh = bread(sdp, blk);
-		if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_DI)) {
+		if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_DI)) {
 			brelse(bh);
 			continue;
 		}
@@ -1531,7 +1531,7 @@ static int init_rindex(struct gfs2_sbd *sdp)
 		log_crit(_("Error: Cannot proceed without a valid rindex.\n"));
 		return -1;
 	}
-	ip = build_rindex(sdp);
+	ip = lgfs2_build_rindex(sdp);
 	if (ip == NULL) {
 		log_crit(_("Error rebuilding rindex: %s\n"), strerror(errno));
 		return -1;

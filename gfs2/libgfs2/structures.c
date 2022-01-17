@@ -16,7 +16,7 @@
 #include "libgfs2.h"
 #include "crc32c.h"
 
-int build_master(struct gfs2_sbd *sdp)
+int lgfs2_build_master(struct gfs2_sbd *sdp)
 {
 	struct lgfs2_inum inum;
 	uint64_t bn;
@@ -151,7 +151,7 @@ int lgfs2_write_journal_data(struct gfs2_inode *ip)
 	return 0;
 }
 
-static struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip, uint64_t lbn, int prealloc)
+static struct gfs2_buffer_head *lgfs2_get_file_buf(struct gfs2_inode *ip, uint64_t lbn, int prealloc)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint64_t dbn;
@@ -175,7 +175,7 @@ static struct gfs2_buffer_head *get_file_buf(struct gfs2_inode *ip, uint64_t lbn
 		return bread(sdp, dbn);
 }
 
-int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
+int lgfs2_write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 {
 	struct gfs2_log_header *lh;
 	uint32_t x;
@@ -189,7 +189,7 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 	build_height(jnl, height);
 
 	for (x = 0; x < blocks; x++) {
-		struct gfs2_buffer_head *bh = get_file_buf(jnl, x, 1);
+		struct gfs2_buffer_head *bh = lgfs2_get_file_buf(jnl, x, 1);
 		if (!bh)
 			return -1;
 		bmodified(bh);
@@ -197,7 +197,7 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 	}
 	crc32c_optimization_init();
 	for (x = 0; x < blocks; x++) {
-		struct gfs2_buffer_head *bh = get_file_buf(jnl, x, 0);
+		struct gfs2_buffer_head *bh = lgfs2_get_file_buf(jnl, x, 0);
 		if (!bh)
 			return -1;
 
@@ -227,7 +227,7 @@ int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
 	return 0;
 }
 
-int build_journal(struct gfs2_sbd *sdp, int j, struct gfs2_inode *jindex)
+int lgfs2_build_journal(struct gfs2_sbd *sdp, int j, struct gfs2_inode *jindex)
 {
 	char name[256];
 	int ret;
@@ -238,8 +238,8 @@ int build_journal(struct gfs2_sbd *sdp, int j, struct gfs2_inode *jindex)
 	if (sdp->md.journal[j] == NULL) {
 		return errno;
 	}
-	ret = write_journal(sdp->md.journal[j], sdp->sd_bsize,
-			    sdp->jsize << 20 >> sdp->sd_bsize_shift);
+	ret = lgfs2_write_journal(sdp->md.journal[j], sdp->sd_bsize,
+	                          sdp->jsize << 20 >> sdp->sd_bsize_shift);
 	return ret;
 }
 
@@ -278,7 +278,7 @@ struct gfs2_inode *lgfs2_build_jindex(struct gfs2_inode *master, struct lgfs2_in
 	return jindex;
 }
 
-struct gfs2_inode *build_inum_range(struct gfs2_inode *per_node, unsigned int j)
+struct gfs2_inode *lgfs2_build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 {
 	char name[256];
 	struct gfs2_inode *ip;
@@ -295,7 +295,7 @@ struct gfs2_inode *build_inum_range(struct gfs2_inode *per_node, unsigned int j)
 	return ip;
 }
 
-struct gfs2_inode *build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
+struct gfs2_inode *lgfs2_build_statfs_change(struct gfs2_inode *per_node, unsigned int j)
 {
 	char name[256];
 	struct gfs2_inode *ip;
@@ -312,7 +312,7 @@ struct gfs2_inode *build_statfs_change(struct gfs2_inode *per_node, unsigned int
 	return ip;
 }
 
-struct gfs2_inode *build_quota_change(struct gfs2_inode *per_node, unsigned int j)
+struct gfs2_inode *lgfs2_build_quota_change(struct gfs2_inode *per_node, unsigned int j)
 {
 	struct gfs2_sbd *sdp = per_node->i_sbd;
 	struct gfs2_meta_header mh;
@@ -337,7 +337,7 @@ struct gfs2_inode *build_quota_change(struct gfs2_inode *per_node, unsigned int 
 	build_height(ip, hgt);
 
 	for (x = 0; x < blocks; x++) {
-		bh = get_file_buf(ip, x, 0);
+		bh = lgfs2_get_file_buf(ip, x, 0);
 		if (!bh)
 			return NULL;
 
@@ -349,7 +349,7 @@ struct gfs2_inode *build_quota_change(struct gfs2_inode *per_node, unsigned int 
 	return ip;
 }
 
-struct gfs2_inode *build_inum(struct gfs2_sbd *sdp)
+struct gfs2_inode *lgfs2_build_inum(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 
@@ -358,7 +358,7 @@ struct gfs2_inode *build_inum(struct gfs2_sbd *sdp)
 	return ip;
 }
 
-struct gfs2_inode *build_statfs(struct gfs2_sbd *sdp)
+struct gfs2_inode *lgfs2_build_statfs(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 
@@ -367,7 +367,7 @@ struct gfs2_inode *build_statfs(struct gfs2_sbd *sdp)
 	return ip;
 }
 
-struct gfs2_inode *build_rindex(struct gfs2_sbd *sdp)
+struct gfs2_inode *lgfs2_build_rindex(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 	struct osi_node *n, *next = NULL;
@@ -401,7 +401,7 @@ struct gfs2_inode *build_rindex(struct gfs2_sbd *sdp)
 	return ip;
 }
 
-struct gfs2_inode *build_quota(struct gfs2_sbd *sdp)
+struct gfs2_inode *lgfs2_build_quota(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip;
 	struct gfs2_quota qu;
@@ -428,7 +428,7 @@ struct gfs2_inode *build_quota(struct gfs2_sbd *sdp)
 	return ip;
 }
 
-int build_root(struct gfs2_sbd *sdp)
+int lgfs2_build_root(struct gfs2_sbd *sdp)
 {
 	struct lgfs2_inum inum;
 	uint64_t bn;
@@ -453,7 +453,7 @@ int build_root(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-int do_init_inum(struct gfs2_sbd *sdp)
+int lgfs2_init_inum(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *ip = sdp->md.inum;
 	__be64 buf;
@@ -467,7 +467,7 @@ int do_init_inum(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-int do_init_statfs(struct gfs2_sbd *sdp, struct gfs2_statfs_change *res)
+int lgfs2_init_statfs(struct gfs2_sbd *sdp, struct gfs2_statfs_change *res)
 {
 	struct gfs2_inode *ip = sdp->md.statfs;
 	struct gfs2_statfs_change sc;
@@ -486,7 +486,7 @@ int do_init_statfs(struct gfs2_sbd *sdp, struct gfs2_statfs_change *res)
 	return 0;
 }
 
-int gfs2_check_meta(const char *buf, int type)
+int lgfs2_check_meta(const char *buf, int type)
 {
 	struct gfs2_meta_header *mh = (struct gfs2_meta_header *)buf;
 	uint32_t check_magic = be32_to_cpu(mh->mh_magic);

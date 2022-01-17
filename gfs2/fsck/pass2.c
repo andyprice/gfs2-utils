@@ -601,7 +601,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		struct gfs2_buffer_head *tbh;
 
 		tbh = bread(sdp, entry->in_addr);
-		if (gfs2_check_meta(tbh->b_data, GFS2_METATYPE_DI)) { /* not dinode */
+		if (lgfs2_check_meta(tbh->b_data, GFS2_METATYPE_DI)) { /* not dinode */
 			log_err(_("Directory entry '%s' pointing to block %"PRIu64
 			          " (0x%"PRIx64") in directory %"PRIu64" (0x%"PRIx64") "
 				   "is not really a GFS1 dinode.\n"), tmp_name,
@@ -1502,7 +1502,7 @@ static int check_hash_tbl_dups(struct gfs2_inode *ip, __be64 *tbl,
 			continue;
 
 		lbh = bread(ip->i_sbd, leafblk);
-		if (gfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF)) { /* Chked later */
+		if (lgfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF)) { /* Chked later */
 			brelse(lbh);
 			continue;
 		}
@@ -1686,7 +1686,7 @@ static int check_hash_tbl(struct gfs2_inode *ip, __be64 *tbl,
 				leafblk, leafblk, proper_len, proper_len);
 			lbh = bread(ip->i_sbd, leafblk);
 			lgfs2_leaf_in(&leaf, lbh->b_data);
-			if (gfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF) ||
+			if (lgfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF) ||
 			    leaf.lf_depth > ip->i_depth)
 				leaf.lf_depth = factor;
 			brelse(lbh);
@@ -1787,7 +1787,7 @@ static int check_data_qc(struct gfs2_inode *ip, uint64_t metablock,
 		return -1;
 
 	bh = bread(ip->i_sbd, block);
-	if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_QC) != 0) {
+	if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_QC) != 0) {
 		log_crit(_("Error: quota_change block at %"PRIu64" (0x%"PRIx64") is "
 			   "the wrong metadata type.\n"),
 		         block, block);
@@ -1875,9 +1875,9 @@ build_it:
 	goto out_good;
 }
 
-static int fsck_build_inum_range(struct gfs2_inode *per_node, unsigned int n)
+static int build_inum_range(struct gfs2_inode *per_node, unsigned int n)
 {
-	struct gfs2_inode *ip = build_inum_range(per_node, n);
+	struct gfs2_inode *ip = lgfs2_build_inum_range(per_node, n);
 
 	if (ip == NULL)
 		return 1;
@@ -1885,9 +1885,9 @@ static int fsck_build_inum_range(struct gfs2_inode *per_node, unsigned int n)
 	return 0;
 }
 
-static int fsck_build_statfs_change(struct gfs2_inode *per_node, unsigned int n)
+static int build_statfs_change(struct gfs2_inode *per_node, unsigned int n)
 {
-	struct gfs2_inode *ip = build_statfs_change(per_node, n);
+	struct gfs2_inode *ip = lgfs2_build_statfs_change(per_node, n);
 
 	if (ip == NULL)
 		return 1;
@@ -1895,9 +1895,9 @@ static int fsck_build_statfs_change(struct gfs2_inode *per_node, unsigned int n)
 	return 0;
 }
 
-static int fsck_build_quota_change(struct gfs2_inode *per_node, unsigned int n)
+static int build_quota_change(struct gfs2_inode *per_node, unsigned int n)
 {
-	struct gfs2_inode *ip = build_quota_change(per_node, n);
+	struct gfs2_inode *ip = lgfs2_build_quota_change(per_node, n);
 
 	if (ip == NULL)
 		return 1;
@@ -1989,14 +1989,14 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		for (j = 0; j < sysinode->i_sbd->md.journals; j++) {
 			sprintf(fn, "inum_range%d", j);
 			error += check_pernode_for(j, sysinode, fn, 16, 0,
-						   NULL, fsck_build_inum_range);
+						   NULL, build_inum_range);
 			sprintf(fn, "statfs_change%d", j);
 			error += check_pernode_for(j, sysinode, fn, 24, 0,
-						   NULL, fsck_build_statfs_change);
+						   NULL, build_statfs_change);
 			sprintf(fn, "quota_change%d", j);
 			error += check_pernode_for(j, sysinode, fn, 1048576, 1,
 						   &quota_change_fxns,
-						   fsck_build_quota_change);
+						   build_quota_change);
 		}
 	}
 	return error;
@@ -2130,13 +2130,13 @@ int pass2(struct gfs2_sbd *sdp)
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 		return FSCK_OK;
 	if (!sdp->gfs1 &&
-	    check_system_dir(sdp->master_dir, "master", build_master)) {
+	    check_system_dir(sdp->master_dir, "master", lgfs2_build_master)) {
 		stack;
 		return FSCK_ERROR;
 	}
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 		return FSCK_OK;
-	if (check_system_dir(sdp->md.rooti, "root", build_root)) {
+	if (check_system_dir(sdp->md.rooti, "root", lgfs2_build_root)) {
 		stack;
 		return FSCK_ERROR;
 	}

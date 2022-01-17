@@ -68,7 +68,7 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 			if (!dblock)
 				break;
 			bh = bread(sdp, dblock);
-			if (!gfs2_check_meta(bh->b_data, GFS2_METATYPE_RG)) {
+			if (!lgfs2_check_meta(bh->b_data, GFS2_METATYPE_RG)) {
 				/* False rgrp found at block dblock */
 				false_count++;
 				gfs2_special_set(&false_rgrps, dblock);
@@ -124,7 +124,7 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 			is_rgrp = 0;
 		else {
 			bh = bread(sdp, blk);
-			is_rgrp = (gfs2_check_meta(bh->b_data, GFS2_METATYPE_RG) == 0);
+			is_rgrp = (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_RG) == 0);
 			brelse(bh);
 		}
 		if (!is_rgrp) {
@@ -141,7 +141,7 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 					is_rgrp = 0;
 				} else {
 					bh = bread(sdp, nblk);
-					is_rgrp = (((gfs2_check_meta(bh->b_data,
+					is_rgrp = (((lgfs2_check_meta(bh->b_data,
 						GFS2_METATYPE_RG) == 0)));
 					brelse(bh);
 				}
@@ -554,7 +554,7 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 	while (blk <= sdp->device.length) {
 		log_debug( _("Block 0x%"PRIx64"\n"), blk);
 		bh = bread(sdp, blk);
-		rg_was_fnd = (!gfs2_check_meta(bh->b_data, GFS2_METATYPE_RG));
+		rg_was_fnd = (!lgfs2_check_meta(bh->b_data, GFS2_METATYPE_RG));
 		brelse(bh);
 		/* Allocate a new RG and index. */
 		calc_rgd = rgrp_insert(&rgcalc, blk);
@@ -584,7 +584,7 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 		for (fwd_block = blk + 1; fwd_block < sdp->device.length; fwd_block++) {
 			int bitmap_was_fnd;
 			bh = bread(sdp, fwd_block);
-			bitmap_was_fnd = !gfs2_check_meta(bh->b_data, GFS2_METATYPE_RB);
+			bitmap_was_fnd = !lgfs2_check_meta(bh->b_data, GFS2_METATYPE_RB);
 			brelse(bh);
 			if (bitmap_was_fnd) /* if a bitmap */
 				calc_rgd->rt_length++;

@@ -814,7 +814,7 @@ static int save_leaf_chain(struct metafd *mfd, struct gfs2_sbd *sdp, char *buf)
 			return 1;
 		}
 		report_progress(blk, 0);
-		if (gfs2_check_meta(buf, GFS2_METATYPE_LF) == 0) {
+		if (lgfs2_check_meta(buf, GFS2_METATYPE_LF) == 0) {
 			int ret = save_buf(mfd, buf, blk, sdp->sd_bsize);
 			if (ret != 0)
 				return ret;

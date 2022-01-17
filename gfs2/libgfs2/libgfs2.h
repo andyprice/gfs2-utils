@@ -556,9 +556,6 @@ extern int gfs2_dirent_next(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 extern void build_height(struct gfs2_inode *ip, int height);
 extern void unstuff_dinode(struct gfs2_inode *ip);
 extern unsigned int calc_tree_height(struct gfs2_inode *ip, uint64_t size);
-extern int write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned blocks);
-extern int lgfs2_write_journal_data(struct gfs2_inode *ip);
-extern int lgfs2_write_filemeta(struct gfs2_inode *ip);
 extern uint32_t lgfs2_log_header_hash(char *buf);
 extern uint32_t lgfs2_log_header_crc(char *buf, unsigned bsize);
 
@@ -769,24 +766,26 @@ static inline unsigned int rgrp_size(struct rgrp_tree *rgrp)
 }
 
 /* structures.c */
-extern int build_master(struct gfs2_sbd *sdp);
+extern int lgfs2_build_master(struct gfs2_sbd *sdp);
 extern int lgfs2_sb_write(const struct gfs2_sbd *sdp, int fd);
-extern int build_journal(struct gfs2_sbd *sdp, int j,
-			 struct gfs2_inode *jindex);
+extern int lgfs2_build_journal(struct gfs2_sbd *sdp, int j, struct gfs2_inode *jindex);
+extern int lgfs2_write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned blocks);
+extern int lgfs2_write_journal_data(struct gfs2_inode *ip);
+extern int lgfs2_write_filemeta(struct gfs2_inode *ip);
 extern struct gfs2_inode *lgfs2_build_jindex(struct gfs2_inode *metafs, struct lgfs2_inum *jnls, size_t nmemb);
-extern struct gfs2_inode *build_inum(struct gfs2_sbd *sdp);
-extern struct gfs2_inode *build_statfs(struct gfs2_sbd *sdp);
-extern struct gfs2_inode *build_rindex(struct gfs2_sbd *sdp);
-extern struct gfs2_inode *build_quota(struct gfs2_sbd *sdp);
-extern int build_root(struct gfs2_sbd *sdp);
-extern int do_init_inum(struct gfs2_sbd *sdp);
-extern int do_init_statfs(struct gfs2_sbd *sdp, struct gfs2_statfs_change *res);
-extern int gfs2_check_meta(const char *buf, int type);
+extern struct gfs2_inode *lgfs2_build_inum(struct gfs2_sbd *sdp);
+extern struct gfs2_inode *lgfs2_build_statfs(struct gfs2_sbd *sdp);
+extern struct gfs2_inode *lgfs2_build_rindex(struct gfs2_sbd *sdp);
+extern struct gfs2_inode *lgfs2_build_quota(struct gfs2_sbd *sdp);
+extern int lgfs2_build_root(struct gfs2_sbd *sdp);
+extern int lgfs2_init_inum(struct gfs2_sbd *sdp);
+extern int lgfs2_init_statfs(struct gfs2_sbd *sdp, struct gfs2_statfs_change *res);
+extern int lgfs2_check_meta(const char *buf, int type);
 extern unsigned lgfs2_bm_scan(struct rgrp_tree *rgd, unsigned idx,
 			      uint64_t *buf, uint8_t state);
-extern struct gfs2_inode *build_inum_range(struct gfs2_inode *per_node, unsigned int n);
-extern struct gfs2_inode *build_statfs_change(struct gfs2_inode *per_node, unsigned int j);
-extern struct gfs2_inode *build_quota_change(struct gfs2_inode *per_node, unsigned int j);
+extern struct gfs2_inode *lgfs2_build_inum_range(struct gfs2_inode *per_node, unsigned int n);
+extern struct gfs2_inode *lgfs2_build_statfs_change(struct gfs2_inode *per_node, unsigned int j);
+extern struct gfs2_inode *lgfs2_build_quota_change(struct gfs2_inode *per_node, unsigned int j);
 
 /* super.c */
 extern int check_sb(void *sbp);

@@ -817,7 +817,7 @@ static int fix_xattr(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, struct g
 
 	/* Read in the i_eattr block */
 	eabh = bread(sbp, ip->i_eattr);
-        if (!gfs2_check_meta(eabh->b_data, GFS_METATYPE_IN)) {/* if it is an indirect block */
+        if (!lgfs2_check_meta(eabh->b_data, GFS_METATYPE_IN)) {/* if it is an indirect block */
 		len = sbp->sd_bsize - sizeof(struct gfs_indirect);
 		buf = malloc(len);
 		if (!buf) {
@@ -993,7 +993,7 @@ static int next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 			return -1;
 		bh = bread(sdp, *block);
 		first = 0;
-	} while(gfs2_check_meta(bh->b_data, type));
+	} while(lgfs2_check_meta(bh->b_data, type));
 	brelse(bh);
 	return 0;
 }
@@ -1052,7 +1052,7 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 				sbp->sd_root_dir.in_formal_ino = sbp->md.next_inum;
 			}
 			bh = bread(sbp, block);
-			if (!gfs2_check_meta(bh->b_data, GFS_METATYPE_DI)) {/* if it is an dinode */
+			if (!lgfs2_check_meta(bh->b_data, GFS_METATYPE_DI)) {/* if it is an dinode */
 				/* Skip the rindex and jindex inodes for now. */
 				if (block != rindex_addr && block != jindex_addr) {
 					error = adjust_inode(sbp, bh);
@@ -1982,8 +1982,8 @@ static int conv_build_jindex(struct gfs2_sbd *sdp)
 		sprintf(name, "journal%u", j);
 		sdp->md.journal[j] = createi(sdp->md.jiinode, name, S_IFREG |
 					     0600, GFS2_DIF_SYSTEM);
-		write_journal(sdp->md.journal[j], sdp->sd_bsize,
-			      sdp->jsize << 20 >> sdp->sd_bsize_shift);
+		lgfs2_write_journal(sdp->md.journal[j], sdp->sd_bsize,
+		                    sdp->jsize << 20 >> sdp->sd_bsize_shift);
 		inode_put(&sdp->md.journal[j]);
 		printf(_("done.\n"));
 		fflush(stdout);
@@ -2100,7 +2100,7 @@ static int build_per_node(struct gfs2_sbd *sdp)
 	for (j = 0; j < sdp->md.journals; j++) {
 		struct gfs2_inode *ip;
 
-		ip = build_inum_range(per_node, j);
+		ip = lgfs2_build_inum_range(per_node, j);
 		if (ip == NULL) {
 			log_crit(_("Error building '%s': %s\n"), "inum_range",
 			         strerror(errno));
@@ -2108,7 +2108,7 @@ static int build_per_node(struct gfs2_sbd *sdp)
 		}
 		inode_put(&ip);
 
-		ip = build_statfs_change(per_node, j);
+		ip = lgfs2_build_statfs_change(per_node, j);
 		if (ip == NULL) {
 			log_crit(_("Error building '%s': %s\n"), "statfs_change",
 			         strerror(errno));
@@ -2116,7 +2116,7 @@ static int build_per_node(struct gfs2_sbd *sdp)
 		}
 		inode_put(&ip);
 
-		ip = build_quota_change(per_node, j);
+		ip = lgfs2_build_quota_change(per_node, j);
 		if (ip == NULL) {
 			log_crit(_("Error building '%s': %s\n"), "quota_change",
 			         strerror(errno));
@@ -2314,7 +2314,7 @@ int main(int argc, char **argv)
 			log_notice(_("Reduced journal size to %u MB to accommodate "
 				   "GFS2 file system structures.\n"), sb2.jsize);
 		/* Build the master subdirectory. */
-		build_master(&sb2); /* Does not do inode_put */
+		lgfs2_build_master(&sb2); /* Does not do inode_put */
 		sb2.sd_meta_dir = sb2.master_dir->i_num;
 		/* Build empty journal index file. */
 		error = conv_build_jindex(&sb2);
@@ -2331,23 +2331,23 @@ int main(int argc, char **argv)
 			exit(-1);
 		}
 		/* Create the empty inode number file */
-		sb2.md.inum = build_inum(&sb2); /* Does not do inode_put */
+		sb2.md.inum = lgfs2_build_inum(&sb2); /* Does not do inode_put */
 		if (sb2.md.inum == NULL) {
 			log_crit(_("Error building inum inode: %s\n"),
 			         strerror(error));
 			exit(-1);
 		}
 		/* Create the statfs file */
-		sb2.md.statfs = build_statfs(&sb2); /* Does not do inode_put */
+		sb2.md.statfs = lgfs2_build_statfs(&sb2); /* Does not do inode_put */
 		if (sb2.md.statfs == NULL) {
 			log_crit(_("Error building statfs inode: %s\n"),
 			         strerror(error));
 			exit(-1);
 		}
-		do_init_statfs(&sb2, NULL);
+		lgfs2_init_statfs(&sb2, NULL);
 
 		/* Create the resource group index file */
-		ip = build_rindex(&sb2);
+		ip = lgfs2_build_rindex(&sb2);
 		if (ip == NULL) {
 			log_crit(_("Error building rindex inode: %s\n"),
 			         strerror(errno));
@@ -2355,7 +2355,7 @@ int main(int argc, char **argv)
 		}
 		inode_put(&ip);
 		/* Create the quota file */
-		ip = build_quota(&sb2);
+		ip = lgfs2_build_quota(&sb2);
 		if (ip == NULL) {
 			log_crit(_("Error building quota inode: %s\n"),
 			         strerror(error));

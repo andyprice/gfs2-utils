@@ -278,7 +278,7 @@ static int p1check_leaf(struct gfs2_inode *ip, uint64_t block, void *private)
 	int q;
 
 	/* Note if we've gotten this far, the block has already passed the
-	   check in metawalk: gfs2_check_meta(lbh, GFS2_METATYPE_LF).
+	   check in metawalk: lgfs2_check_meta(lbh, GFS2_METATYPE_LF).
 	   So we know it's a leaf block. */
 	bc->indir_count++;
 	q = block_type(bl, block);
@@ -347,7 +347,7 @@ static int pass1_check_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, 
 	}
 	nbh = bread(ip->i_sbd, block);
 
-	*is_valid = (gfs2_check_meta(nbh->b_data, iblk_type) == 0);
+	*is_valid = (lgfs2_check_meta(nbh->b_data, iblk_type) == 0);
 
 	if (!(*is_valid)) {
 		log_err(_("Inode %"PRIu64" (0x%"PRIx64") has a bad indirect block "
@@ -475,7 +475,7 @@ static int blockmap_set_as_data(struct gfs2_inode *ip, uint64_t block)
 	/* The bitmap says it's a dinode, but a block reference begs to differ.
 	   So which is it? */
 	bh = bread(ip->i_sbd, block);
-	if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_DI) != 0)
+	if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_DI) != 0)
 		goto out;
 
 	/* The meta header agrees it's a dinode. But it might be data in
@@ -687,7 +687,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 	   handling sort it out.  If it isn't, clear it but don't
 	   count it as a duplicate. */
 	*bh = bread(sdp, indirect);
-	if (gfs2_check_meta((*bh)->b_data, GFS2_METATYPE_IN)) {
+	if (lgfs2_check_meta((*bh)->b_data, GFS2_METATYPE_IN)) {
 		bc->ea_count++;
 		if (q != GFS2_BLKST_FREE) { /* Duplicate? */
 			add_duplicate_ref(ip, indirect, REF_AS_EA, 0,
@@ -761,7 +761,7 @@ static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 	   really is an EA.  If it is, let duplicate handling sort it out.
 	   If it isn't, clear it but don't count it as a duplicate. */
 	leaf_bh = bread(sdp, block);
-	if (gfs2_check_meta(leaf_bh->b_data, btype)) {
+	if (lgfs2_check_meta(leaf_bh->b_data, btype)) {
 		bc->ea_count++;
 		if (q != GFS2_BLKST_FREE) { /* Duplicate? */
 			add_duplicate_ref(ip, block, REF_AS_EA, 0,
@@ -1457,7 +1457,7 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 		iblock = (*sysinode)->i_num.in_addr;
 		log_info(_("System inode for '%s' is located at block %"PRIu64" (0x%"PRIx64")\n"),
 		         filename, iblock, iblock);
-		if (gfs2_check_meta((*sysinode)->i_bh->b_data, GFS2_METATYPE_DI)) {
+		if (lgfs2_check_meta((*sysinode)->i_bh->b_data, GFS2_METATYPE_DI)) {
 			log_err(_("Found invalid system dinode at block %"PRIu64" (0x%"PRIx64")\n"),
 			        iblock, iblock);
 			gfs2_blockmap_set(bl, iblock, GFS2_BLKST_FREE);
@@ -1569,7 +1569,7 @@ static int build_a_journal(struct gfs2_sbd *sdp)
 	sprintf(name, "journal%u", sdp->md.journals);
 	gfs2_dirent_del(sdp->md.jiinode, name, strlen(name));
 	/* Now rebuild it */
-	err = build_journal(sdp, sdp->md.journals, sdp->md.jiinode);
+	err = lgfs2_build_journal(sdp, sdp->md.journals, sdp->md.jiinode);
 	if (err) {
 		log_crit(_("Error %d building journal\n"), err);
 		exit(FSCK_ERROR);
@@ -1591,7 +1591,7 @@ int build_per_node(struct gfs2_sbd *sdp)
 	for (j = 0; j < sdp->md.journals; j++) {
 		struct gfs2_inode *ip;
 
-		ip = build_inum_range(per_node, j);
+		ip = lgfs2_build_inum_range(per_node, j);
 		if (ip == NULL) {
 			log_err(_("Error building '%s': %s\n"), "inum_range",
 			        strerror(errno));
@@ -1599,7 +1599,7 @@ int build_per_node(struct gfs2_sbd *sdp)
 		}
 		inode_put(&ip);
 
-		ip = build_statfs_change(per_node, j);
+		ip = lgfs2_build_statfs_change(per_node, j);
 		if (ip == NULL) {
 			log_err(_("Error building '%s': %s\n"), "statfs_change",
 			        strerror(errno));
@@ -1607,7 +1607,7 @@ int build_per_node(struct gfs2_sbd *sdp)
 		}
 		inode_put(&ip);
 
-		ip = build_quota_change(per_node, j);
+		ip = lgfs2_build_quota_change(per_node, j);
 		if (ip == NULL) {
 			log_err(_("Error building '%s': %s\n"), "quota_change",
 			        strerror(errno));
@@ -1619,36 +1619,36 @@ int build_per_node(struct gfs2_sbd *sdp)
 	return 0;
 }
 
-static int fsck_build_inum(struct gfs2_sbd *sdp)
+static int build_inum(struct gfs2_sbd *sdp)
 {
-	struct gfs2_inode *ip = build_inum(sdp);
+	struct gfs2_inode *ip = lgfs2_build_inum(sdp);
 	if (ip == NULL)
 		return -1;
 	inode_put(&ip);
 	return 0;
 }
 
-static int fsck_build_statfs(struct gfs2_sbd *sdp)
+static int build_statfs(struct gfs2_sbd *sdp)
 {
-	struct gfs2_inode *ip = build_statfs(sdp);
+	struct gfs2_inode *ip = lgfs2_build_statfs(sdp);
 	if (ip == NULL)
 		return -1;
 	inode_put(&ip);
 	return 0;
 }
 
-static int fsck_build_rindex(struct gfs2_sbd *sdp)
+static int build_rindex(struct gfs2_sbd *sdp)
 {
-	struct gfs2_inode *ip = build_rindex(sdp);
+	struct gfs2_inode *ip = lgfs2_build_rindex(sdp);
 	if (ip == NULL)
 		return -1;
 	inode_put(&ip);
 	return 0;
 }
 
-static int fsck_build_quota(struct gfs2_sbd *sdp)
+static int build_quota(struct gfs2_sbd *sdp)
 {
-	struct gfs2_inode *ip = build_quota(sdp);
+	struct gfs2_inode *ip = lgfs2_build_quota(sdp);
 	if (ip == NULL)
 		return -1;
 	inode_put(&ip);
@@ -1669,7 +1669,7 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 		fsck_blockmap_set(sdp->master_dir, sdp->master_dir->i_num.in_addr,
 				  "master", GFS2_BLKST_DINODE);
 		if (check_system_inode(sdp, &sdp->master_dir, "master",
-				       build_master, 1, NULL, 1)) {
+				       lgfs2_build_master, 1, NULL, 1)) {
 			stack;
 			return -1;
 		}
@@ -1678,18 +1678,18 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 	   for master, since it has no parent. */
 	fsck_blockmap_set(sdp->md.rooti, sdp->md.rooti->i_num.in_addr,
 			  "root", GFS2_BLKST_DINODE);
-	if (check_system_inode(sdp, &sdp->md.rooti, "root", build_root, 1,
+	if (check_system_inode(sdp, &sdp->md.rooti, "root", lgfs2_build_root, 1,
 			       NULL, 0)) {
 		stack;
 		return -1;
 	}
 	if (!sdp->gfs1 &&
-	    check_system_inode(sdp, &sdp->md.inum, "inum", fsck_build_inum, 0,
+	    check_system_inode(sdp, &sdp->md.inum, "inum", build_inum, 0,
 			       sdp->master_dir, 1)) {
 		stack;
 		return -1;
 	}
-	if (check_system_inode(sdp, &sdp->md.statfs, "statfs", fsck_build_statfs, 0,
+	if (check_system_inode(sdp, &sdp->md.statfs, "statfs", build_statfs, 0,
 			       sdp->master_dir, !sdp->gfs1)) {
 		stack;
 		return -1;
@@ -1700,12 +1700,12 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 		stack;
 		return -1;
 	}
-	if (check_system_inode(sdp, &sdp->md.riinode, "rindex", fsck_build_rindex,
+	if (check_system_inode(sdp, &sdp->md.riinode, "rindex", build_rindex,
 			       0, sdp->master_dir, !sdp->gfs1)) {
 		stack;
 		return -1;
 	}
-	if (check_system_inode(sdp, &sdp->md.qinode, "quota", fsck_build_quota,
+	if (check_system_inode(sdp, &sdp->md.qinode, "quota", build_quota,
 			       0, sdp->master_dir, !sdp->gfs1)) {
 		stack;
 		return -1;
@@ -1716,7 +1716,7 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 		stack;
 		return -1;
 	}
-	/* We have to play a trick on build_journal:  We swap md.journals
+	/* We have to play a trick on lgfs2_build_journal:  We swap md.journals
 	   in order to keep a count of which journal we need to build. */
 	journal_count = sdp->md.journals;
 	/* gfs1's journals aren't dinode, they're just a bunch of blocks. */
@@ -1800,7 +1800,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 		bh = bread(sdp, block);
 
 		is_inode = 0;
-		if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_DI) == 0)
+		if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_DI) == 0)
 			is_inode = 1;
 
 		check_magic = ((struct gfs2_meta_header *)

@@ -695,7 +695,7 @@ static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 	for (j = 0; j < sdp->md.journals; j++) {
 		struct gfs2_inode *ip;
 
-		ip = build_inum_range(per_node, j);
+		ip = lgfs2_build_inum_range(per_node, j);
 		if (ip == NULL) {
 			fprintf(stderr, _("Error building '%s': %s\n"), "inum_range",
 			        strerror(errno));
@@ -707,7 +707,7 @@ static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 		}
 		inode_put(&ip);
 
-		ip = build_statfs_change(per_node, j);
+		ip = lgfs2_build_statfs_change(per_node, j);
 		if (ip == NULL) {
 			fprintf(stderr, _("Error building '%s': %s\n"), "statfs_change",
 			        strerror(errno));
@@ -719,7 +719,7 @@ static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 		}
 		inode_put(&ip);
 
-		ip = build_quota_change(per_node, j);
+		ip = lgfs2_build_quota_change(per_node, j);
 		if (ip == NULL) {
 			fprintf(stderr, _("Error building '%s': %s\n"), "quota_change",
 			        strerror(errno));
@@ -1278,7 +1278,7 @@ int main(int argc, char *argv[])
 	}
 	lgfs2_attach_rgrps(&sbd, rgs); // Temporary
 
-	error = build_master(&sbd);
+	error = lgfs2_build_master(&sbd);
 	if (error) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "master", strerror(errno));
 		exit(EXIT_FAILURE);
@@ -1298,7 +1298,7 @@ int main(int argc, char *argv[])
 	if (error != 0)
 		exit(1);
 
-	sbd.md.inum = build_inum(&sbd);
+	sbd.md.inum = lgfs2_build_inum(&sbd);
 	if (sbd.md.inum == NULL) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "inum", strerror(errno));
 		exit(EXIT_FAILURE);
@@ -1307,7 +1307,7 @@ int main(int argc, char *argv[])
 		printf("\nInum Inode:\n");
 		dinode_print(sbd.md.inum->i_bh->b_data);
 	}
-	sbd.md.statfs = build_statfs(&sbd);
+	sbd.md.statfs = lgfs2_build_statfs(&sbd);
 	if (sbd.md.statfs == NULL) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "statfs", strerror(errno));
 		exit(EXIT_FAILURE);
@@ -1316,7 +1316,7 @@ int main(int argc, char *argv[])
 		printf("\nStatFS Inode:\n");
 		dinode_print(sbd.md.statfs->i_bh->b_data);
 	}
-	ip = build_rindex(&sbd);
+	ip = lgfs2_build_rindex(&sbd);
 	if (ip == NULL) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "rindex", strerror(errno));
 		exit(EXIT_FAILURE);
@@ -1330,7 +1330,7 @@ int main(int argc, char *argv[])
 		printf("%s", _("Creating quota file: "));
 		fflush(stdout);
 	}
-	ip = build_quota(&sbd);
+	ip = lgfs2_build_quota(&sbd);
 	if (ip == NULL) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "quota", strerror(errno));
 		exit(EXIT_FAILURE);
@@ -1343,7 +1343,7 @@ int main(int argc, char *argv[])
 	if (!opts.quiet)
 		printf("%s", _("Done\n"));
 
-	build_root(&sbd);
+	lgfs2_build_root(&sbd);
 	if (opts.debug) {
 		printf("\nRoot directory:\n");
 		dinode_print(sbd.md.rooti->i_bh->b_data);
@@ -1355,11 +1355,11 @@ int main(int argc, char *argv[])
 	sbd.sd_lockproto[GFS2_LOCKNAME_LEN - 1] = '\0';
 	sbd.sd_locktable[GFS2_LOCKNAME_LEN - 1] = '\0';
 
-	do_init_inum(&sbd);
+	lgfs2_init_inum(&sbd);
 	if (opts.debug)
 		printf("\nNext Inum: %"PRIu64"\n", sbd.md.next_inum);
 
-	do_init_statfs(&sbd, &sc);
+	lgfs2_init_statfs(&sbd, &sc);
 	if (opts.debug) {
 		printf("\nStatfs:\n");
 		statfs_change_print(&sc);

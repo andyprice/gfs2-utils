@@ -854,7 +854,7 @@ void dirent2_del(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 	uint16_t cur_rec_len, prev_rec_len;
 
 	bmodified(bh);
-	if (gfs2_check_meta(bh->b_data, GFS2_METATYPE_LF) == 0) {
+	if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_LF) == 0) {
 		struct gfs2_leaf *lf = (struct gfs2_leaf *)bh->b_data;
 		uint16_t entries;
 
@@ -1078,7 +1078,7 @@ int gfs2_get_leaf(struct gfs2_inode *dip, uint64_t leaf_no,
 	int error = 0;
 
 	*bhp = bread(dip->i_sbd, leaf_no);
-	error = gfs2_check_meta((*bhp)->b_data, GFS2_METATYPE_LF);
+	error = lgfs2_check_meta((*bhp)->b_data, GFS2_METATYPE_LF);
 	if(error)
 		brelse(*bhp);
 	return error;
@@ -1130,7 +1130,7 @@ static int get_next_leaf(struct gfs2_inode *dip,struct gfs2_buffer_head *bh_in,
 	if (*bh_out == NULL)
 		return -ENOENT;
 	/* Check for a leaf pointing to a non-leaf */
-	if (gfs2_check_meta((*bh_out)->b_data, GFS2_METATYPE_LF)) {
+	if (lgfs2_check_meta((*bh_out)->b_data, GFS2_METATYPE_LF)) {
 		brelse(*bh_out);
 		*bh_out = NULL;
 		return -ENOENT;
