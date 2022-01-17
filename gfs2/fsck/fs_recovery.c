@@ -167,7 +167,7 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			error = -EIO;
 		} else {
 			lgfs2_bmodified(bh_ip);
-			rgd = gfs2_blk2rgrpd(sdp, blkno);
+			rgd = lgfs2_blk2rgrpd(sdp, blkno);
 			if (rgd && blkno < rgd->rt_data0)
 				refresh_rgrp(sdp, rgd, bh_ip, blkno);
 		}

@@ -1532,7 +1532,7 @@ static int gfs1_ri_update(struct gfs2_sbd *sdp, int *rgcount, int quiet)
 		next = osi_next(n);
 		rgd = (struct rgrp_tree *)n;
 		/* Read resource group header */
-		errblock = gfs2_rgrp_read(sdp, rgd);
+		errblock = lgfs2_rgrp_read(sdp, rgd);
 		if (errblock)
 			return errblock;
 		count2++;
@@ -1552,7 +1552,7 @@ static int gfs1_ri_update(struct gfs2_sbd *sdp, int *rgcount, int quiet)
 	return 0;
 
  fail:
-	gfs2_rgrp_free(sdp, &sdp->rgtree);
+	lgfs2_rgrp_free(sdp, &sdp->rgtree);
 	return -1;
 }
 
@@ -1848,7 +1848,7 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 		         ji_addr, rgdhigh->rt_addr);
 		ri_addr = ji_addr;
 		/* Allocate a new rgd entry which includes rg and ri. */
-		rgd = rgrp_insert(&sdp->rgtree, ri_addr);
+		rgd = lgfs2_rgrp_insert(&sdp->rgtree, ri_addr);
 		/* convert the gfs1 rgrp into a new gfs2 rgrp */
 		size = ji_nsegs * be32_to_cpu(gfs1_sb.sb_seg_size);
 		rgd->rt_flags = 0;
@@ -1866,7 +1866,7 @@ static int journ_space_to_rg(struct gfs2_sbd *sdp)
 		rgd->rt_free = rgd->rt_data;
 		rgd->rt_bitbytes = rgd->rt_data / GFS2_NBBY;
 
-		if (gfs2_compute_bitstructs(sdp->sd_bsize, rgd)) {
+		if (lgfs2_compute_bitstructs(sdp->sd_bsize, rgd)) {
 			log_crit(_("gfs2_convert: Error converting bitmaps.\n"));
 			exit(-1);
 		}
@@ -2382,7 +2382,7 @@ int main(int argc, char **argv)
 		fsync(sb2.device_fd); /* write the buffers to disk */
 
 		/* Now free all the in memory */
-		gfs2_rgrp_free(&sb2, &sb2.rgtree);
+		lgfs2_rgrp_free(&sb2, &sb2.rgtree);
 		log_notice(_("Committing changes to disk.\n"));
 		fflush(stdout);
 		/* Set filesystem type in superblock to gfs2.  We do this at the */

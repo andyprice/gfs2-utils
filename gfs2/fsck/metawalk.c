@@ -44,7 +44,7 @@ int check_n_fix_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 	if (prevrgd && rgrp_contains_block(prevrgd, blk)) {
 		rgd = prevrgd;
 	} else if (rgd == NULL || !rgrp_contains_block(rgd, blk)) {
-		rgd = gfs2_blk2rgrpd(sdp, blk);
+		rgd = lgfs2_blk2rgrpd(sdp, blk);
 		prevrgd = rgd;
 	}
 	old_state = lgfs2_get_bitmap(sdp, blk, rgd);

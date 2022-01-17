@@ -68,7 +68,7 @@ static int check_block_status(struct gfs2_sbd *sdp,  struct gfs2_bmap *bl,
 			        block, block);
 			if (query(_("Do you want to reclaim the block? "
 				   "(y/n) "))) {
-				lgfs2_rgrp_t rg = gfs2_blk2rgrpd(sdp, block);
+				lgfs2_rgrp_t rg = lgfs2_blk2rgrpd(sdp, block);
 				if (lgfs2_set_bitmap(rg, block, GFS2_BLKST_FREE))
 					log_err(_("Unlinked block %"PRIu64" (0x%"PRIx64") bitmap not fixed.\n"),
 					        block, block);
@@ -93,7 +93,7 @@ static int check_block_status(struct gfs2_sbd *sdp,  struct gfs2_bmap *bl,
 
 			if (query(_("Fix bitmap for block %"PRIu64" (0x%"PRIx64")? (y/n) "),
 			          block, block)) {
-				lgfs2_rgrp_t rg = gfs2_blk2rgrpd(sdp, block);
+				lgfs2_rgrp_t rg = lgfs2_blk2rgrpd(sdp, block);
 				if (lgfs2_set_bitmap(rg, block, q))
 					log_err( _("Repair failed.\n"));
 				else

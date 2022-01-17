@@ -350,9 +350,9 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 		int type;
 		struct rgrp_tree *rgd;
 
-		rgd = gfs2_blk2rgrpd(&sbd, block);
+		rgd = lgfs2_blk2rgrpd(&sbd, block);
 		if (rgd) {
-			gfs2_rgrp_read(&sbd, rgd);
+			lgfs2_rgrp_read(&sbd, rgd);
 			if ((be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RG) ||
 			    (be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RB))
 				type = 4;
@@ -428,7 +428,7 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 			}
 		}
 		if (rgd)
-			gfs2_rgrp_relse(&sbd, rgd);
+			lgfs2_rgrp_relse(&sbd, rgd);
  	}
 	if (block == sbd.sd_root_dir.in_addr)
 		print_gfs2("--------------- Root directory ------------------");
@@ -693,7 +693,7 @@ static void rgcount(void)
 	printf("%"PRId64" RGs in this file system.\n",
 	       sbd.md.riinode->i_size / sizeof(struct gfs2_rindex));
 	lgfs2_inode_put(&sbd.md.riinode);
-	gfs2_rgrp_free(&sbd, &sbd.rgtree);
+	lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 	exit(EXIT_SUCCESS);
 }
 
@@ -1154,7 +1154,7 @@ static uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int p
 		else
 			printf("%"PRIu64"\n", blk);
 	}
-	gfs2_rgrp_free(&sbd, &sbd.rgtree);
+	lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 	if (print)
 		exit(0);
 	return blk;
@@ -1216,13 +1216,13 @@ static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int pri
 	if (!rgd) {
 		if (print)
 			printf("0\n");
-		gfs2_rgrp_free(&sbd, &sbd.rgtree);
+		lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 		if (print)
 			exit(-1);
 	}
 	for (; !found && next; next = osi_next(next)){
 		rgd = (struct rgrp_tree *)next;
-		errblk = gfs2_rgrp_read(&sbd, rgd);
+		errblk = lgfs2_rgrp_read(&sbd, rgd);
 		if (errblk)
 			continue;
 
@@ -1230,7 +1230,7 @@ static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int pri
 		if (found)
 			break;
 
-		gfs2_rgrp_relse(&sbd, rgd);
+		lgfs2_rgrp_relse(&sbd, rgd);
 	}
 
 	if (!found)
@@ -1241,7 +1241,7 @@ static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int pri
 		else
 			printf("%"PRIu64"\n", blk);
 	}
-	gfs2_rgrp_free(&sbd, &sbd.rgtree);
+	lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 	if (print)
 		exit(0);
 	return blk;
@@ -1275,7 +1275,7 @@ static uint64_t find_metablockoftype(const char *strtype, int print)
 			"specified: must be one of:\n");
 		fprintf(stderr, "sb rg rb di in lf jd lh ld"
 			" ea ed lb 13 qc\n");
-		gfs2_rgrp_free(&sbd, &sbd.rgtree);
+		lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 		exit(-1);
 	}
 	return blk;
@@ -1589,7 +1589,7 @@ static void find_print_block_type(void)
 	type = get_block_type(lbh->b_data);
 	print_block_type(tblock, type);
 	lgfs2_brelse(lbh);
-	gfs2_rgrp_free(&sbd, &sbd.rgtree);
+	lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 	exit(0);
 }
 
@@ -1606,7 +1606,7 @@ static void find_print_block_rg(int bitmap)
 	if (rblock == LGFS2_SB_ADDR(&sbd))
 		printf("0 (the superblock is not in the bitmap)\n");
 	else {
-		rgd = gfs2_blk2rgrpd(&sbd, rblock);
+		rgd = lgfs2_blk2rgrpd(&sbd, rblock);
 		if (rgd) {
 			rgblock = rgd->rt_addr;
 			if (bitmap) {
@@ -1632,7 +1632,7 @@ static void find_print_block_rg(int bitmap)
 			printf("-1 (block invalid or part of an rgrp).\n");
 		}
 	}
-	gfs2_rgrp_free(&sbd, &sbd.rgtree);
+	lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 	exit(0);
 }
 
@@ -1653,16 +1653,16 @@ static void find_change_block_alloc(int *newval)
 		       *newval);
 		for (i = GFS2_BLKST_FREE; i <= GFS2_BLKST_DINODE; i++)
 			printf("%d - %s\n", i, allocdesc[sbd.gfs1][i]);
-		gfs2_rgrp_free(&sbd, &sbd.rgtree);
+		lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 		exit(-1);
 	}
 	ablock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
 	if (ablock == LGFS2_SB_ADDR(&sbd))
 		printf("3 (the superblock is not in the bitmap)\n");
 	else {
-		rgd = gfs2_blk2rgrpd(&sbd, ablock);
+		rgd = lgfs2_blk2rgrpd(&sbd, ablock);
 		if (rgd) {
-			gfs2_rgrp_read(&sbd, rgd);
+			lgfs2_rgrp_read(&sbd, rgd);
 			if (newval) {
 				if (lgfs2_set_bitmap(rgd, ablock, *newval))
 					printf("-1 (block invalid or part of an rgrp).\n");
@@ -1677,14 +1677,14 @@ static void find_change_block_alloc(int *newval)
 				}
 				printf("%d (%s)\n", type, allocdesc[sbd.gfs1][type]);
 			}
-			gfs2_rgrp_relse(&sbd, rgd);
+			lgfs2_rgrp_relse(&sbd, rgd);
 		} else {
-			gfs2_rgrp_free(&sbd, &sbd.rgtree);
+			lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 			printf("-1 (block invalid or part of an rgrp).\n");
 			exit(-1);
 		}
 	}
-	gfs2_rgrp_free(&sbd, &sbd.rgtree);
+	lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 	if (newval)
 		fsync(sbd.device_fd);
 	exit(0);
@@ -2184,8 +2184,8 @@ static void rg_repair(void)
 	/* Walk through the resource groups saving everything within */
 	for (n = osi_first(&sbd.rgtree); n; n = osi_next(n)) {
 		rgd = (struct rgrp_tree *)n;
-		if (gfs2_rgrp_read(&sbd, rgd) == 0) { /* was read in okay */
-			gfs2_rgrp_relse(&sbd, rgd);
+		if (lgfs2_rgrp_read(&sbd, rgd) == 0) { /* was read in okay */
+			lgfs2_rgrp_relse(&sbd, rgd);
 			continue; /* ignore it */
 		}
 		/* If we get here, it's because we have an rgrp in the rindex
@@ -2374,7 +2374,7 @@ static void process_parameters(int argc, char *argv[], int pass)
 				printf("Error: field not specified.\n");
 				printf("Format is: %s -p <block> field "
 				       "<field> [newvalue]\n", argv[0]);
-				gfs2_rgrp_free(&sbd, &sbd.rgtree);
+				lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 				exit(EXIT_FAILURE);
 			}
 			process_field(argv[i], argv[i + 1]);
@@ -2407,7 +2407,7 @@ static void process_parameters(int argc, char *argv[], int pass)
 				printf("Error: rg # not specified.\n");
 				printf("Format is: %s rgflags rgnum"
 				       "[newvalue]\n", argv[0]);
-				gfs2_rgrp_free(&sbd, &sbd.rgtree);
+				lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 				exit(EXIT_FAILURE);
 			}
 			if (argv[i][0]=='0' && argv[i][1]=='x')
@@ -2424,7 +2424,7 @@ static void process_parameters(int argc, char *argv[], int pass)
 					new_flags = atoi(argv[i]);
 			}
 			set_rgrp_flags(rg, new_flags, set, FALSE);
-			gfs2_rgrp_free(&sbd, &sbd.rgtree);
+			lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 			exit(EXIT_SUCCESS);
 		} else if (!strcmp(argv[i], "rg")) {
 			int rg;
@@ -2433,7 +2433,7 @@ static void process_parameters(int argc, char *argv[], int pass)
 			if (i >= argc - 1) {
 				printf("Error: rg # not specified.\n");
 				printf("Format is: %s rg rgnum\n", argv[0]);
-				gfs2_rgrp_free(&sbd, &sbd.rgtree);
+				lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 				exit(EXIT_FAILURE);
 			}
 			rg = atoi(argv[i]);
@@ -2442,7 +2442,7 @@ static void process_parameters(int argc, char *argv[], int pass)
 				push_block(temp_blk);
 			} else {
 				set_rgrp_flags(rg, 0, FALSE, TRUE);
-				gfs2_rgrp_free(&sbd, &sbd.rgtree);
+				lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 				exit(EXIT_SUCCESS);
 			}
 		} else if (!strcmp(argv[i], "rgbitmaps")) {
@@ -2455,15 +2455,15 @@ static void process_parameters(int argc, char *argv[], int pass)
 				printf("Error: rg # not specified.\n");
 				printf("Format is: %s rgbitmaps rgnum\n",
 				       argv[0]);
-				gfs2_rgrp_free(&sbd, &sbd.rgtree);
+				lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 				exit(EXIT_FAILURE);
 			}
 			rg = atoi(argv[i]);
 			rgblk = get_rg_addr(rg);
-			rgd = gfs2_blk2rgrpd(&sbd, rgblk);
+			rgd = lgfs2_blk2rgrpd(&sbd, rgblk);
 			if (rgd == NULL) {
 				printf("Error: rg # is invalid.\n");
-				gfs2_rgrp_free(&sbd, &sbd.rgtree);
+				lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 				exit(EXIT_FAILURE);
 			}
 			for (bmap = 0; bmap < rgd->rt_length; bmap++)
@@ -2574,7 +2574,7 @@ int main(int argc, char *argv[])
 	close(fd);
 	if (indirect)
 		free(indirect);
-	gfs2_rgrp_free(&sbd, &sbd.rgtree);
+	lgfs2_rgrp_free(&sbd, &sbd.rgtree);
  	exit(EXIT_SUCCESS);
 }
 #endif /* UNITTESTS */

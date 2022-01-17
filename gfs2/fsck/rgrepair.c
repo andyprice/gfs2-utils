@@ -557,7 +557,7 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 		rg_was_fnd = (!lgfs2_check_meta(bh->b_data, GFS2_METATYPE_RG));
 		lgfs2_brelse(bh);
 		/* Allocate a new RG and index. */
-		calc_rgd = rgrp_insert(&rgcalc, blk);
+		calc_rgd = lgfs2_rgrp_insert(&rgcalc, blk);
 		if (!calc_rgd) {
 			log_crit( _("Can't allocate memory for rgrp repair.\n"));
 			goto out;
@@ -597,7 +597,7 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 		if (prev_rgd) {
 			uint32_t rgblocks;
 
-			prev_rgd->rt_length = rgblocks2bitblocks(sdp->sd_bsize, block_bump, &rgblocks);
+			prev_rgd->rt_length = lgfs2_rgblocks2bitblocks(sdp->sd_bsize, block_bump, &rgblocks);
 			prev_rgd->rt_data = rgblocks;
 			prev_rgd->rt_data0 = prev_rgd->rt_addr +
 				prev_rgd->rt_length;
@@ -657,7 +657,7 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 	if (prev_rgd && !prev_rgd->rt_data) {
 		uint32_t rgblocks;
 
-		prev_rgd->rt_length = rgblocks2bitblocks(sdp->sd_bsize, block_bump, &rgblocks);
+		prev_rgd->rt_length = lgfs2_rgblocks2bitblocks(sdp->sd_bsize, block_bump, &rgblocks);
 		prev_rgd->rt_data0 = prev_rgd->rt_addr + prev_rgd->rt_length;
 		prev_rgd->rt_data = rgblocks;
 		prev_rgd->rt_data -= prev_rgd->rt_data % GFS2_NBBY;
@@ -705,9 +705,9 @@ static uint64_t how_many_rgrps(struct gfs2_sbd *sdp, struct device *dev)
 		nrgrp = DIV_RU(dev->length, (sdp->rgsize << 20) / sdp->sd_bsize);
 
 		/* check to see if the rg length overflows max # bitblks */
-		bitblocksn = rgblocks2bitblocks(sdp->sd_bsize, dev->length / nrgrp, &rgblocksn);
+		bitblocksn = lgfs2_rgblocks2bitblocks(sdp->sd_bsize, dev->length / nrgrp, &rgblocksn);
 		/* calculate size of the first rgrp */
-		bitblocks1 = rgblocks2bitblocks(sdp->sd_bsize, dev->length - (nrgrp - 1) * (dev->length / nrgrp),
+		bitblocks1 = lgfs2_rgblocks2bitblocks(sdp->sd_bsize, dev->length - (nrgrp - 1) * (dev->length / nrgrp),
 		                                &rgblocks1);
 		if (bitblocks1 <= 2149 && bitblocksn <= 2149)
 			break;
@@ -749,11 +749,11 @@ static struct osi_root compute_rgrp_layout(struct gfs2_sbd *sdp)
 	for (; rgrp < nrgrp; rgrp++) {
 		if (rgrp) {
 			rgaddr = rlast->rt_addr + rlast->rt_skip;
-			rl = rgrp_insert(&rgtree, rgaddr);
+			rl = lgfs2_rgrp_insert(&rgtree, rgaddr);
 			rl->rt_skip = rglength;
 		} else {
 			rgaddr = LGFS2_SB_ADDR(sdp) + 1;
-			rl = rgrp_insert(&rgtree, rgaddr);
+			rl = lgfs2_rgrp_insert(&rgtree, rgaddr);
 			rl->rt_skip = dev->length -
 				(nrgrp - 1) * (dev->length / nrgrp);
 		}
@@ -774,7 +774,7 @@ static int calc_rgrps(struct gfs2_sbd *sdp)
 		next = osi_next(n);
 		rl = (struct rgrp_tree *)n;
 
-		bitblocks = rgblocks2bitblocks(sdp->sd_bsize, rl->rt_skip, &rgblocks);
+		bitblocks = lgfs2_rgblocks2bitblocks(sdp->sd_bsize, rl->rt_skip, &rgblocks);
 
 		rl->rt_length = bitblocks;
 		rl->rt_data0 = rl->rt_addr + bitblocks;
@@ -782,7 +782,7 @@ static int calc_rgrps(struct gfs2_sbd *sdp)
 		rl->rt_bitbytes = rgblocks / GFS2_NBBY;
 		rl->rt_free = rgblocks;
 
-		if (gfs2_compute_bitstructs(sdp->sd_bsize, rl))
+		if (lgfs2_compute_bitstructs(sdp->sd_bsize, rl))
 			return -1;
 
 		sdp->blks_total += rgblocks;
@@ -911,7 +911,7 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
 		rgd = (struct rgrp_tree *)n;
-		exp = rgrp_insert(&rgcalc, rgd->rt_addr);
+		exp = lgfs2_rgrp_insert(&rgcalc, rgd->rt_addr);
 		if (exp == NULL) {
 			fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
 			exit(-1);
@@ -926,7 +926,7 @@ static int expect_rindex_sanity(struct gfs2_sbd *sdp, int *num_rgs)
 		exp->rt_dinodes = rgd->rt_dinodes;
 		exp->rt_skip = rgd->rt_skip;
 		exp->bits = NULL;
-		gfs2_compute_bitstructs(sdp->sd_bsize, exp);
+		lgfs2_compute_bitstructs(sdp->sd_bsize, exp);
 	}
 	sdp->rgrps = *num_rgs;
 	return 0;
@@ -955,7 +955,7 @@ int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 	if (trust_lvl == YE_OF_LITTLE_FAITH) { /* if rindex seems sane */
 		/* Don't free previous incarnations in memory, if any.
 		 * We need them to copy in the next function:
-		 * gfs2_rgrp_free(&sdp->rglist); */
+		 * lgfs2_rgrp_free(&sdp->rglist); */
 		if (!(*ok)) {
 			log_err(_("The rindex file does not meet our "
 				  "expectations.\n"));
@@ -963,37 +963,37 @@ int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		}
 		error = expect_rindex_sanity(sdp, &calc_rg_count);
 		if (error) {
-			gfs2_rgrp_free(sdp, &rgcalc);
+			lgfs2_rgrp_free(sdp, &rgcalc);
 			return error;
 		}
 	} else if (trust_lvl == OPEN_MINDED) { /* If we can't trust RG index */
 		/* Free previous incarnations in memory, if any. */
-		gfs2_rgrp_free(sdp, &sdp->rgtree);
+		lgfs2_rgrp_free(sdp, &sdp->rgtree);
 
 		/* Calculate our own RG index for comparison */
 		error = gfs2_rindex_calculate(sdp, &calc_rg_count);
 		if (error) { /* If calculated RGs don't match the fs */
-			gfs2_rgrp_free(sdp, &rgcalc);
+			lgfs2_rgrp_free(sdp, &rgcalc);
 			return -1;
 		}
 	} else if (trust_lvl == DISTRUST) { /* If we can't trust RG index */
 		/* Free previous incarnations in memory, if any. */
-		gfs2_rgrp_free(sdp, &sdp->rgtree);
+		lgfs2_rgrp_free(sdp, &sdp->rgtree);
 
 		error = rindex_rebuild(sdp, &calc_rg_count, 0);
 		if (error) {
 			log_crit( _("Error rebuilding rgrp list.\n"));
-			gfs2_rgrp_free(sdp, &rgcalc);
+			lgfs2_rgrp_free(sdp, &rgcalc);
 			return -1;
 		}
 	} else if (trust_lvl == INDIGNATION) { /* If we can't trust anything */
 		/* Free previous incarnations in memory, if any. */
-		gfs2_rgrp_free(sdp, &sdp->rgtree);
+		lgfs2_rgrp_free(sdp, &sdp->rgtree);
 
 		error = rindex_rebuild(sdp, &calc_rg_count, 1);
 		if (error) {
 			log_crit( _("Error rebuilding rgrp list.\n"));
-			gfs2_rgrp_free(sdp, &rgcalc);
+			lgfs2_rgrp_free(sdp, &rgcalc);
 			return -1;
 		}
 	}
@@ -1004,8 +1004,8 @@ int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		log_warn( _("WARNING: rindex file has an invalid size.\n"));
 		if (!query( _("Truncate the rindex size? (y/n)"))) {
 			log_err(_("The rindex was not repaired.\n"));
-			gfs2_rgrp_free(sdp, &rgcalc);
-			gfs2_rgrp_free(sdp, &sdp->rgtree);
+			lgfs2_rgrp_free(sdp, &rgcalc);
+			lgfs2_rgrp_free(sdp, &sdp->rgtree);
 			return -1;
 		}
 		sdp->md.riinode->i_size /= sizeof(struct gfs2_rindex);
@@ -1028,8 +1028,8 @@ int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		   then try again with a little more DISTRUST. */
 		if ((trust_lvl < DISTRUST) ||
 		    !query( _("Attempt to use what rgrps we can? (y/n)"))) {
-			gfs2_rgrp_free(sdp, &rgcalc);
-			gfs2_rgrp_free(sdp, &sdp->rgtree);
+			lgfs2_rgrp_free(sdp, &rgcalc);
+			lgfs2_rgrp_free(sdp, &sdp->rgtree);
 			log_err(_("The rindex was not repaired.\n"));
 			return -1;
 		}
@@ -1094,8 +1094,8 @@ int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 			log_warn( _("%d out of %d rgrps (%d percent) did not "
 				    "match what was expected.\n"),
 				  discrepancies, rg, percent);
-			gfs2_rgrp_free(sdp, &rgcalc);
-			gfs2_rgrp_free(sdp, &sdp->rgtree);
+			lgfs2_rgrp_free(sdp, &rgcalc);
+			lgfs2_rgrp_free(sdp, &sdp->rgtree);
 			return -1;
 		}
 	}
@@ -1124,7 +1124,7 @@ int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		    expected->rt_addr < actual->rt_addr) {
 			log_err(_("Entry missing from rindex: 0x%"PRIx64"\n"),
 			        expected->rt_addr);
-			actual = rgrp_insert(&sdp->rgtree, expected->rt_addr);
+			actual = lgfs2_rgrp_insert(&sdp->rgtree, expected->rt_addr);
 			if (!actual) {
 				log_err(_("Out of memory!\n"));
 				break;
@@ -1152,7 +1152,7 @@ int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 				actual->rt_data = expected->rt_data;
 				actual->rt_bitbytes = expected->rt_bitbytes;
 				/* If our rindex was hosed, ri_length is bad */
-				/* Therefore, gfs2_compute_bitstructs might  */
+				/* Therefore, lgfs2_compute_bitstructs might  */
 				/* have malloced the wrong length for bitmap */
 				/* buffers.  So we have to redo it.          */
 				if (actual->bits) {
@@ -1162,7 +1162,7 @@ int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 			}
 			else
 				log_err( _("rindex not fixed.\n"));
-			gfs2_compute_bitstructs(sdp->sd_bsize, actual);
+			lgfs2_compute_bitstructs(sdp->sd_bsize, actual);
 			rindex_modified = 0;
 		}
 		e = enext;
@@ -1186,21 +1186,21 @@ int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		i = 0;
 		do {
 			rgd = (struct rgrp_tree *)n;
-			errblock = gfs2_rgrp_read(sdp, rgd);
+			errblock = lgfs2_rgrp_read(sdp, rgd);
 			if (errblock) {
 				if (errblock == prev_err)
 					break;
 				prev_err = errblock;
 				rewrite_rg_block(sdp, rgd, errblock);
 			} else {
-				gfs2_rgrp_relse(sdp, rgd);
+				lgfs2_rgrp_relse(sdp, rgd);
 				break;
 			}
 			i++;
 		} while (i < rgd->rt_length);
 	}
-	gfs2_rgrp_free(sdp, &rgcalc);
-	gfs2_rgrp_free(sdp, &sdp->rgtree);
+	lgfs2_rgrp_free(sdp, &rgcalc);
+	lgfs2_rgrp_free(sdp, &sdp->rgtree);
 	/* We shouldn't need to worry about getting the user's permission to
 	   make changes here. If b_modified is true, they already gave their
 	   permission. */

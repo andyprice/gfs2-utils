@@ -183,7 +183,7 @@ static inline int valid_block_ip(struct gfs2_inode *ip, uint64_t blk)
 	if (blk <= LGFS2_SB_ADDR(sdp))
 		return 0;
 	if (rgd == NULL || !rgrp_contains_block(rgd, blk)) {
-		rgd = gfs2_blk2rgrpd(sdp, blk);
+		rgd = lgfs2_blk2rgrpd(sdp, blk);
 		if (rgd == NULL)
 			return 0;
 	}

@@ -183,7 +183,7 @@ int lgfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, struct rgrp_tree *rgd
 	struct gfs2_bitmap *bi;
 
 	if (rgd == NULL) {
-		rgd = gfs2_blk2rgrpd(sdp, blkno);
+		rgd = lgfs2_blk2rgrpd(sdp, blkno);
 		if(rgd == NULL)
 			return -1;
 	}

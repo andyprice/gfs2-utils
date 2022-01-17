@@ -430,7 +430,7 @@ static int undo_reference(struct gfs2_inode *ip, uint64_t block, int meta,
 		}
 	}
 	if (!meta) {
-		rgd = gfs2_blk2rgrpd(ip->i_sbd, block);
+		rgd = lgfs2_blk2rgrpd(ip->i_sbd, block);
 		old_bitmap_state = lgfs2_get_bitmap(ip->i_sbd, block, rgd);
 		if (old_bitmap_state == GFS2_BLKST_DINODE)
 			return -1;

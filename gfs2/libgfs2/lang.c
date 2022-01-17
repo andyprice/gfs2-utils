@@ -365,13 +365,13 @@ static int ast_get_bitstate(uint64_t bn, struct gfs2_sbd *sbd)
 {
 	int ret = 0;
 	int state = 0;
-	struct rgrp_tree *rgd = gfs2_blk2rgrpd(sbd, bn);
+	struct rgrp_tree *rgd = lgfs2_blk2rgrpd(sbd, bn);
 	if (rgd == NULL) {
 		fprintf(stderr, "Could not find resource group for block %"PRIu64"\n", bn);
 		return -1;
 	}
 
-	ret = gfs2_rgrp_read(sbd, rgd);
+	ret = lgfs2_rgrp_read(sbd, rgd);
 	if (ret != 0) {
 		fprintf(stderr, "Failed to read resource group for block %"PRIu64": %d\n", bn, ret);
 		return -1;
@@ -383,7 +383,7 @@ static int ast_get_bitstate(uint64_t bn, struct gfs2_sbd *sbd)
 		return -1;
 	}
 
-	gfs2_rgrp_relse(sbd, rgd);
+	lgfs2_rgrp_relse(sbd, rgd);
 	return state;
 }
 

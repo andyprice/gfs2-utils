@@ -30,12 +30,12 @@ static void compute_bitmaps(lgfs2_rgrp_t rg, const unsigned bsize)
 }
 
 /**
- * gfs2_compute_bitstructs - Compute the bitmap sizes
+ * lgfs2_compute_bitstructs - Compute the bitmap sizes
  * bsize: Block size
  * rgd: The resource group descriptor
  * Returns: 0 on success, -1 on error
  */
-int gfs2_compute_bitstructs(const uint32_t bsize, struct rgrp_tree *rgd)
+int lgfs2_compute_bitstructs(const uint32_t bsize, struct rgrp_tree *rgd)
 {
 	uint32_t length = rgd->rt_length;
 	uint32_t bytes_left;
@@ -86,7 +86,7 @@ errbits:
  *
  * Returns: Ths resource group, or NULL if not found
  */
-struct rgrp_tree *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
+struct rgrp_tree *lgfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk)
 {
 	struct rgrp_tree *rgd = (struct rgrp_tree *)sdp->rgtree.osi_node;
 	while (rgd) {
@@ -183,11 +183,11 @@ void lgfs2_rgrp_crc_set(char *buf)
 }
 
 /**
- * gfs2_rgrp_read - read in the resource group information from disk.
+ * lgfs2_rgrp_read - read in the resource group information from disk.
  * @rgd - resource group structure
  * returns: 0 if no error, otherwise the block number that failed
  */
-uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
+uint64_t lgfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
 	unsigned length = rgd->rt_length * sdp->sd_bsize;
 	off_t offset = rgd->rt_addr * sdp->sd_bsize;
@@ -227,7 +227,7 @@ uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 	return 0;
 }
 
-void gfs2_rgrp_relse(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
+void lgfs2_rgrp_relse(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
 	if (rgd->bits == NULL)
 		return;
@@ -250,7 +250,7 @@ void gfs2_rgrp_relse(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 		rgd->bits[i].bi_data = NULL;
 }
 
-struct rgrp_tree *rgrp_insert(struct osi_root *rgtree, uint64_t rgblock)
+struct rgrp_tree *lgfs2_rgrp_insert(struct osi_root *rgtree, uint64_t rgblock)
 {
 	struct osi_node **newn = &rgtree->osi_node, *parent = NULL;
 	struct rgrp_tree *data;
@@ -279,7 +279,7 @@ struct rgrp_tree *rgrp_insert(struct osi_root *rgtree, uint64_t rgblock)
 	return data;
 }
 
-void gfs2_rgrp_free(struct gfs2_sbd *sdp, struct osi_root *rgrp_tree)
+void lgfs2_rgrp_free(struct gfs2_sbd *sdp, struct osi_root *rgrp_tree)
 {
 	struct rgrp_tree *rgd;
 	struct osi_node *n;
@@ -289,7 +289,7 @@ void gfs2_rgrp_free(struct gfs2_sbd *sdp, struct osi_root *rgrp_tree)
 	while ((n = osi_first(rgrp_tree))) {
 		rgd = (struct rgrp_tree *)n;
 
-		gfs2_rgrp_relse(sdp, rgd);
+		lgfs2_rgrp_relse(sdp, rgd);
 		free(rgd->bits);
 		rgd->bits = NULL;
 		osi_erase(&rgd->node, rgrp_tree);
@@ -523,7 +523,7 @@ void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs)
  * needed for bitmaps. Also calculate the adjusted number of free data blocks
  * in the resource group and store it in *ri_data.
  */
-uint32_t rgblocks2bitblocks(const unsigned int bsize, const uint32_t rgblocks, uint32_t *ri_data)
+uint32_t lgfs2_rgblocks2bitblocks(const unsigned int bsize, const uint32_t rgblocks, uint32_t *ri_data)
 {
 	uint32_t mappable = 0;
 	uint32_t bitblocks = 0;
@@ -579,7 +579,7 @@ uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *ri, uint6
 	if (addr + len > rgs->sdp->device.length)
 		return 0;
 
-	ri_length = rgblocks2bitblocks(rgs->sdp->sd_bsize, len, &ri_data);
+	ri_length = lgfs2_rgblocks2bitblocks(rgs->sdp->sd_bsize, len, &ri_data);
 	ri->ri_addr = cpu_to_be64(addr);
 	ri->ri_length = cpu_to_be32(ri_length);
 	ri->ri_data = cpu_to_be32(ri_data);

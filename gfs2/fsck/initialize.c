@@ -112,7 +112,7 @@ static void gfs2_inodetree_free(void)
 static void empty_super_block(struct gfs2_sbd *sdp)
 {
 	log_info( _("Freeing buffers.\n"));
-	gfs2_rgrp_free(sdp, &sdp->rgtree);
+	lgfs2_rgrp_free(sdp, &sdp->rgtree);
 
 	gfs2_inodetree_free();
 	gfs2_dirtree_free();
@@ -675,7 +675,7 @@ static int read_rgrps(struct gfs2_sbd *sdp, uint64_t expected)
 		if (ra_window < RA_WINDOW/2)
 			ra_window = gfs2_rgrp_reada(sdp, ra_window, n);
 		/* Read resource group header */
-		errblock = gfs2_rgrp_read(sdp, rgd);
+		errblock = lgfs2_rgrp_read(sdp, rgd);
 		if (errblock)
 			return errblock;
 		ra_window--;
@@ -693,7 +693,7 @@ static int read_rgrps(struct gfs2_sbd *sdp, uint64_t expected)
 
  fail:
 	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
-	gfs2_rgrp_free(sdp, &sdp->rgtree);
+	lgfs2_rgrp_free(sdp, &sdp->rgtree);
 	return -1;
 }
 

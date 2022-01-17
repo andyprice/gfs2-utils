@@ -68,7 +68,7 @@ static inline int bitmap_type(struct gfs2_sbd *sdp, uint64_t bblock)
 {
 	struct rgrp_tree *rgd;
 
-	rgd = gfs2_blk2rgrpd(sdp, bblock);
+	rgd = lgfs2_blk2rgrpd(sdp, bblock);
 	return lgfs2_get_bitmap(sdp, bblock, rgd);
 }
 

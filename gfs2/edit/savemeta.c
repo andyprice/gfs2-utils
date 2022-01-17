@@ -1207,7 +1207,7 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	close(sbd.device_fd);
 	destroy_per_node_lookup();
 	free(indirect);
-	gfs2_rgrp_free(&sbd, &sbd.rgtree);
+	lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 	exit(0);
 }
 

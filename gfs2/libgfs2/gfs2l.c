@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
 		lgfs2_lang_result_free(&result);
 	}
 
-	gfs2_rgrp_free(&sbd, &sbd.rgtree);
+	lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 	lgfs2_inode_put(&sbd.md.riinode);
 	lgfs2_inode_put(&sbd.master_dir);
 	lgfs2_lang_free(&state);

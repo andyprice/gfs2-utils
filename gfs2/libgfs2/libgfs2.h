@@ -490,9 +490,6 @@ extern int lgfs2_check_range(struct gfs2_sbd *sdp, uint64_t blkno);
 extern int lgfs2_get_bitmap(struct gfs2_sbd *sdp, uint64_t blkno, struct rgrp_tree *rgd);
 extern int lgfs2_set_bitmap(lgfs2_rgrp_t rg, uint64_t blkno, int state);
 
-extern uint32_t rgblocks2bitblocks(const unsigned int bsize, const uint32_t rgblocks,
-                                    uint32_t *ri_data) __attribute__((nonnull(3)));
-
 /* fs_ops.c */
 #define IS_LEAF     (1)
 #define IS_DINODE   (2)
@@ -746,20 +743,17 @@ extern int lgfs2_find_jhead(struct gfs2_inode *ip, struct lgfs2_log_header *head
 extern int lgfs2_clean_journal(struct gfs2_inode *ip, struct lgfs2_log_header *head);
 
 /* rgrp.c */
-extern int gfs2_compute_bitstructs(const uint32_t bsize, struct rgrp_tree *rgd);
-extern struct rgrp_tree *gfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk);
+extern uint32_t lgfs2_rgblocks2bitblocks(const unsigned int bsize, const uint32_t rgblocks,
+                                    uint32_t *ri_data) __attribute__((nonnull(3)));
+extern int lgfs2_compute_bitstructs(const uint32_t bsize, struct rgrp_tree *rgd);
+extern struct rgrp_tree *lgfs2_blk2rgrpd(struct gfs2_sbd *sdp, uint64_t blk);
 extern int lgfs2_rgrp_crc_check(char *buf);
 extern void lgfs2_rgrp_crc_set(char *buf);
-extern uint64_t gfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd);
-extern void gfs2_rgrp_relse(struct gfs2_sbd *sdp, struct rgrp_tree *rgd);
-extern struct rgrp_tree *rgrp_insert(struct osi_root *rgtree,
+extern uint64_t lgfs2_rgrp_read(struct gfs2_sbd *sdp, struct rgrp_tree *rgd);
+extern void lgfs2_rgrp_relse(struct gfs2_sbd *sdp, struct rgrp_tree *rgd);
+extern struct rgrp_tree *lgfs2_rgrp_insert(struct osi_root *rgtree,
 				     uint64_t rgblock);
-extern void gfs2_rgrp_free(struct gfs2_sbd *sdp, struct osi_root *rgrp_tree);
-/* figure out the size of the given resource group, in blocks */
-static inline unsigned int rgrp_size(struct rgrp_tree *rgrp)
-{
-	return rgrp->rt_data + rgrp->rt_length;
-}
+extern void lgfs2_rgrp_free(struct gfs2_sbd *sdp, struct osi_root *rgrp_tree);
 
 /* structures.c */
 extern int lgfs2_build_master(struct gfs2_sbd *sdp);

@@ -546,7 +546,7 @@ void dump_journal(const char *journal, uint64_t tblk)
 	if (tblk) {
 		uint64_t wp;
 
-		rgd = gfs2_blk2rgrpd(&sbd, tblk);
+		rgd = lgfs2_blk2rgrpd(&sbd, tblk);
 		if (!rgd) {
 			print_gfs2("Can't locate the rgrp for block 0x%"PRIx64,
 				   tblk);

@@ -228,7 +228,7 @@ int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 				continue;
 			addr = prev_rgd->rt_data0 + prev_rgd->rt_data;
 		}
-		rgd = rgrp_insert(&sdp->rgtree, addr);
+		rgd = lgfs2_rgrp_insert(&sdp->rgtree, addr);
 		rgd->rt_length = be32_to_cpu(ri.ri_length);
 		rgd->rt_data0 = be64_to_cpu(ri.ri_data0);
 		rgd->rt_data = be32_to_cpu(ri.ri_data);
@@ -248,7 +248,7 @@ int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 			prev_length = rgd->rt_addr - prev_rgd->rt_addr;
 		}
 
-		if(gfs2_compute_bitstructs(sdp->sd_bsize, rgd))
+		if(lgfs2_compute_bitstructs(sdp->sd_bsize, rgd))
 			*ok = 0;
 
 		(*rgcount)++;
