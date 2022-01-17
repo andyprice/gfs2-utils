@@ -82,7 +82,7 @@ static const inline char *block_type_string(int q)
 
 static inline int is_dir(struct gfs2_inode *ip, int gfs1)
 {
-	if (gfs1 && is_gfs_dir(ip))
+	if (gfs1 && lgfs2_is_gfs_dir(ip))
 		return 1;
 	if (S_ISDIR(ip->i_mode))
 		return 1;

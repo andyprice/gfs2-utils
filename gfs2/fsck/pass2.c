@@ -1000,7 +1000,7 @@ static int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
 	        dip->i_num.in_addr, dip->i_num.in_addr,
 		start_lindex, (unsigned long)pad_size / sizeof(uint64_t));
 	if (dip->i_sbd->gfs1)
-		count = gfs1_writei(dip, padbuf, start_lindex *
+		count = lgfs2_gfs1_writei(dip, padbuf, start_lindex *
 				    sizeof(uint64_t), pad_size);
 	else
 		count = lgfs2_writei(dip, padbuf, start_lindex *

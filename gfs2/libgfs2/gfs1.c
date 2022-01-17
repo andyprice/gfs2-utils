@@ -31,14 +31,14 @@ gfs1_metapointer(char *buf, unsigned int height, struct metapath *mp)
 	return ((__be64 *)(buf + head_size)) + mp->mp_list[height];
 }
 
-int is_gfs_dir(struct gfs2_inode *ip)
+int lgfs2_is_gfs_dir(struct gfs2_inode *ip)
 {
 	if (ip->i_di_type == GFS_FILE_DIR)
 		return 1;
 	return 0;
 }
 
-void gfs1_lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
+void lgfs2_gfs1_lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		  unsigned int height, struct metapath *mp,
 		  int create, int *new, uint64_t *block)
 {
@@ -67,7 +67,7 @@ void gfs1_lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	*new = 1;
 }
 
-void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
+void lgfs2_gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 		    uint64_t *dblock, uint32_t *extlen, int prealloc)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -109,7 +109,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 	bh = ip->i_bh;
 
 	for (x = 0; x < end_of_metadata; x++) {
-		gfs1_lookup_block(ip, bh, x, &mp, create, new, dblock);
+		lgfs2_gfs1_lookup_block(ip, bh, x, &mp, create, new, dblock);
 		if (bh != ip->i_bh)
 			lgfs2_brelse(bh);
 		if (!*dblock)
@@ -133,7 +133,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 	}
 
 	if (!prealloc)
-		gfs1_lookup_block(ip, bh, end_of_metadata, &mp, create, new,
+		lgfs2_gfs1_lookup_block(ip, bh, end_of_metadata, &mp, create, new,
 				  dblock);
 
 	if (extlen && *dblock) {
@@ -147,7 +147,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			nptrs = (end_of_metadata) ? sdp->sd_inptrs : sdp->sd_diptrs;
 
 			while (++mp.mp_list[end_of_metadata] < nptrs) {
-				gfs1_lookup_block(ip, bh, end_of_metadata, &mp,
+				lgfs2_gfs1_lookup_block(ip, bh, end_of_metadata, &mp,
 						  0, &tmp_new,
 						  &tmp_dblock);
 
@@ -163,7 +163,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 		lgfs2_brelse(bh);
 }
 
-int gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
+int lgfs2_gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
 		unsigned int size)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -203,7 +203,7 @@ int gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
 
 		if (!extlen){
 			new = 1;
-			gfs1_block_map(ip, lblock, &new, &dblock, &extlen, 0);
+			lgfs2_gfs1_block_map(ip, lblock, &new, &dblock, &extlen, 0);
 			if (!dblock)
 				return -1;
 		}

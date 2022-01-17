@@ -235,7 +235,7 @@ void lgfs2_unstuff_dinode(struct gfs2_inode *ip)
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	struct gfs2_buffer_head *bh;
 	uint64_t block = 0;
-	int isdir = S_ISDIR(ip->i_mode) || is_gfs_dir(ip);
+	int isdir = S_ISDIR(ip->i_mode) || lgfs2_is_gfs_dir(ip);
 
 	if (ip->i_size) {
 		if (lgfs2_meta_alloc(ip, &block))
@@ -612,7 +612,7 @@ int lgfs2_readi(struct gfs2_inode *ip, void *buf, uint64_t offset, unsigned int 
 
 		if (!extlen) {
 			if (sdp->gfs1)
-				gfs1_block_map(ip, lblock, &not_new, &dblock,
+				lgfs2_gfs1_block_map(ip, lblock, &not_new, &dblock,
 					       &extlen, 0);
 			else
 				lgfs2_block_map(ip, lblock, &not_new, &dblock,
@@ -935,7 +935,7 @@ void lgfs2_dir_split_leaf(struct gfs2_inode *dip, uint32_t start, uint64_t leaf_
 		lp[x] = cpu_to_be64(bn);
 
 	if (dip->i_sbd->gfs1)
-		count = gfs1_writei(dip, (char *)lp, start * sizeof(uint64_t),
+		count = lgfs2_gfs1_writei(dip, (char *)lp, start * sizeof(uint64_t),
 				    half_len * sizeof(uint64_t));
 	else
 		count = lgfs2_writei(dip, (char *)lp, start * sizeof(uint64_t),
@@ -1043,7 +1043,7 @@ static void dir_double_exhash(struct gfs2_inode *dip)
 		}
 
 		if (sdp->gfs1)
-			count = gfs1_writei(dip, (char *)buf +
+			count = lgfs2_gfs1_writei(dip, (char *)buf +
 					    sdp->sd_hash_bsize,
 					    block * sdp->sd_bsize, sdp->sd_bsize);
 		else
@@ -1763,7 +1763,7 @@ int lgfs2_dir_search(struct gfs2_inode *dip, const char *filename, int len,
 {
 	int error;
 
-	if(!S_ISDIR(dip->i_mode) && !is_gfs_dir(dip))
+	if(!S_ISDIR(dip->i_mode) && !lgfs2_is_gfs_dir(dip))
 		return -1;
 
 	if (dip->i_flags & GFS2_DIF_EXHASH)
@@ -1851,7 +1851,7 @@ int lgfs2_dirent_del(struct gfs2_inode *dip, const char *filename, int len)
 {
 	int error;
 
-	if(!S_ISDIR(dip->i_mode) && !is_gfs_dir(dip))
+	if(!S_ISDIR(dip->i_mode) && !lgfs2_is_gfs_dir(dip))
 		return -1;
 
 	if (dip->i_flags & GFS2_DIF_EXHASH)

@@ -710,14 +710,14 @@ struct gfs_log_descriptor {
 	uint8_t ld_reserved[64];
 };
 
-extern int is_gfs_dir(struct gfs2_inode *ip);
-extern void gfs1_lookup_block(struct gfs2_inode *ip,
+extern int lgfs2_is_gfs_dir(struct gfs2_inode *ip);
+extern void lgfs2_gfs1_lookup_block(struct gfs2_inode *ip,
 			      struct gfs2_buffer_head *bh,
 			      unsigned int height, struct metapath *mp,
 			      int create, int *new, uint64_t *block);
-extern void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
+extern void lgfs2_gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 			   uint64_t *dblock, uint32_t *extlen, int prealloc);
-extern int gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
+extern int lgfs2_gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
 		       unsigned int size);
 extern struct gfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp, char *buf);
 extern struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr);

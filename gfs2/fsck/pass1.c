@@ -152,7 +152,7 @@ static int pass1_repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no,
 	          " (0x%"PRIx64") at index: 0x%x for 0x%x pointers.\n"),
 	        ip->i_num.in_addr, ip->i_num.in_addr, lindex, ref_count);
 	if (ip->i_sbd->gfs1)
-		gfs1_writei(ip, padbuf, lindex * sizeof(uint64_t), pad_size);
+		lgfs2_gfs1_writei(ip, padbuf, lindex * sizeof(uint64_t), pad_size);
 	else
 		lgfs2_writei(ip, padbuf, lindex * sizeof(uint64_t), pad_size);
 	free(padbuf);
