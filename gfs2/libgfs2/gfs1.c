@@ -95,15 +95,15 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 
 	bsize = (fs_is_jdata(ip)) ? sdp->sd_jbsize : sdp->sd_bsize;
 
-	height = calc_tree_height(ip, (lblock + 1) * bsize);
+	height = lgfs2_calc_tree_height(ip, (lblock + 1) * bsize);
 	if (ip->i_height < height) {
 		if (!create)
 			return;
 
-		build_height(ip, height);
+		lgfs2_build_height(ip, height);
 	}
 
-	find_metapath(ip, lblock, &mp);
+	lgfs2_find_metapath(ip, lblock, &mp);
 	end_of_metadata = ip->i_height - 1;
 
 	bh = ip->i_bh;
@@ -181,7 +181,7 @@ int gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
 
 	if (!ip->i_height && /* stuffed */
 	    ((start + size) > (sdp->sd_bsize - sizeof(struct gfs_dinode))))
-		unstuff_dinode(ip);
+		lgfs2_unstuff_dinode(ip);
 
 	if (journaled) {
 		lblock = offset / sdp->sd_jbsize;

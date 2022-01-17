@@ -163,12 +163,12 @@ static uint64_t ast_lookup_path(char *path, struct gfs2_sbd *sbd)
 	while (ip != NULL) {
 		if (segment == NULL) { // No more segments
 			bn = ip->i_num.in_addr;
-			inode_put(&ip);
+			lgfs2_inode_put(&ip);
 			return bn;
 		}
 		ast_string_unescape(segment);
-		err = gfs2_lookupi(ip, segment, strlen(segment), &iptmp);
-		inode_put(&ip);
+		err = lgfs2_lookupi(ip, segment, strlen(segment), &iptmp);
+		lgfs2_inode_put(&ip);
 		if (err != 0) {
 			errno = -err;
 			break;

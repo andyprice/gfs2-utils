@@ -64,7 +64,7 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 		jblocks = ip->i_size / sdp->sd_bsize;
 		false_count = 0;
 		for (b = 0; b < jblocks; b++) {
-			block_map(ip, b, &new, &dblock, NULL, 0);
+			lgfs2_block_map(ip, b, &new, &dblock, NULL, 0);
 			if (!dblock)
 				break;
 			bh = lgfs2_bread(sdp, dblock);
@@ -234,7 +234,7 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 		struct gfs2_rindex ri;
 
 		/* read in the second RG index entry for this subd. */
-		gfs2_readi(sdp->md.riinode, &ri, sizeof(ri), sizeof(ri));
+		lgfs2_readi(sdp->md.riinode, &ri, sizeof(ri), sizeof(ri));
 
 		if (be64_to_cpu(ri.ri_addr) > LGFS2_SB_ADDR(sdp) + 1) { /* sanity check */
 			log_warn( _("rgrp 2 is damaged: getting dist from index: "));
@@ -681,8 +681,8 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 	error = 0;
 out:
 	for (j = 0; j < sdp->md.journals; j++)
-		inode_put(&sdp->md.journal[j]);
-	inode_put(&sdp->md.jiinode);
+		lgfs2_inode_put(&sdp->md.journal[j]);
+	lgfs2_inode_put(&sdp->md.jiinode);
 	free(sdp->md.journal);
 	return error;
 }
@@ -1143,7 +1143,7 @@ int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		if (rindex_modified) {
 			if (query( _("Fix the index? (y/n)"))) {
 				lgfs2_rindex_out(expected, (char *)&buf);
-				gfs2_writei(sdp->md.riinode, (char *)&buf,
+				lgfs2_writei(sdp->md.riinode, (char *)&buf,
 					    rg * sizeof(struct gfs2_rindex),
 					    sizeof(struct gfs2_rindex));
 				actual->rt_addr = expected->rt_addr;

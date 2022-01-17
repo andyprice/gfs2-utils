@@ -578,7 +578,7 @@ __be64 *get_dir_hash(struct gfs2_inode *ip)
 	if (tbl == NULL)
 		return NULL;
 
-	ret = gfs2_readi(ip, tbl, 0, hsize);
+	ret = lgfs2_readi(ip, tbl, 0, hsize);
 	if (ret != hsize) {
 		free(tbl);
 		return NULL;

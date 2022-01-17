@@ -278,7 +278,7 @@ static int init_per_node_lookup(void)
 	}
 
 	do_dinode_extended(per_node_di->i_bh->b_data);
-	inode_put(&per_node_di);
+	lgfs2_inode_put(&per_node_di);
 
 	for (i = 0; i < indirect_blocks; i++) {
 		int d;
@@ -956,10 +956,10 @@ static void get_journal_inode_blocks(void)
 				fprintf(stderr, "Error reading journal inode: %s\n", strerror(errno));
 				return;
 			}
-			amt = gfs2_readi(j_inode, (void *)&jbuf,
+			amt = lgfs2_readi(j_inode, (void *)&jbuf,
 					 journal * sizeof(struct gfs_jindex),
 					 sizeof(struct gfs_jindex));
-			inode_put(&j_inode);
+			lgfs2_inode_put(&j_inode);
 			if (!amt)
 				break;
 			ji = (struct gfs_jindex *)jbuf;

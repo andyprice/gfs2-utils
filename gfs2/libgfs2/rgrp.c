@@ -483,7 +483,7 @@ lgfs2_rgrp_t lgfs2_rindex_read_one(struct gfs2_inode *rip, lgfs2_rgrps_t rgs, un
 	if (rip == NULL || rgs == NULL)
 		return NULL;
 
-	ret = gfs2_readi(rip, &ri, off, sizeof(struct gfs2_rindex));
+	ret = lgfs2_readi(rip, &ri, off, sizeof(struct gfs2_rindex));
 	if (ret != sizeof(struct gfs2_rindex))
 		return NULL;
 

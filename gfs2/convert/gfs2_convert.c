@@ -183,7 +183,7 @@ static int convert_rgs(struct gfs2_sbd *sbp)
 /* ------------------------------------------------------------------------- */
 /* calc_gfs2_tree_height - calculate new dinode height as if this is gfs2    */
 /*                                                                           */
-/* This is similar to calc_tree_height in libgfs2 but at the point this      */
+/* This is similar to lgfs2_calc_tree_height in libgfs2 but at the point this      */
 /* function is called, I have the wrong (gfs1 not gfs2) constants in place.  */
 /* ------------------------------------------------------------------------- */
 static unsigned int calc_gfs2_tree_height(struct gfs2_inode *ip, uint64_t size)
@@ -254,7 +254,7 @@ static void mp_gfs1_to_gfs2(struct gfs2_sbd *sbp, int gfs1_h, int gfs2_h,
 
 /* ------------------------------------------------------------------------- */
 /* fix_metatree - Fix up the metatree to match the gfs2 metapath info        */
-/*                Similar to gfs2_writei in libgfs2 but we're only           */
+/*                Similar to lgfs2_writei in libgfs2 but we're only           */
 /*                interested in rearranging the metadata while leaving the   */
 /*                actual data blocks intact.                                 */
 /* ------------------------------------------------------------------------- */
@@ -273,7 +273,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 	mh.mh_type = cpu_to_be32(GFS2_METATYPE_IN);
 	mh.mh_format = cpu_to_be32(GFS2_FORMAT_IN);
 	if (!ip->i_height)
-		unstuff_dinode(ip);
+		lgfs2_unstuff_dinode(ip);
 
 	ptramt = blk->mp.mp_list[blk->height] * sizeof(uint64_t);
 	amount = size;
@@ -283,7 +283,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 		/* First, build up the metatree */
 		for (h = 0; h < blk->height; h++) {
 			new = 0;
-			lookup_block(ip, bh, h, &blk->mp, 1, &new, &block);
+			lgfs2_lookup_block(ip, bh, h, &blk->mp, 1, &new, &block);
 			if (bh != ip->i_bh)
 				lgfs2_brelse(bh);
 			if (!block)
@@ -431,7 +431,7 @@ static uint64_t fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 	mh.mh_format = cpu_to_be32(GFS2_FORMAT_IN);
 
 	if (!ip->i_height)
-		unstuff_dinode(ip);
+		lgfs2_unstuff_dinode(ip);
 
 	ptramt = blk->mp.mp_list[blk->height];
 	amount = size;
@@ -441,7 +441,7 @@ static uint64_t fix_jdatatree(struct gfs2_sbd *sbp, struct gfs2_inode *ip,
 		/* First, build up the metatree */
 		for (h = 0; h < blk->height; h++) {
 			new = 0;
-			lookup_block(ip, bh, h, &blk->mp, 1, &new, &block);
+			lgfs2_lookup_block(ip, bh, h, &blk->mp, 1, &new, &block);
 			if (bh != ip->i_bh)
 				lgfs2_brelse(bh);
 			if (!block)
@@ -563,7 +563,7 @@ static int get_inode_metablocks(struct gfs2_sbd *sbp, struct gfs2_inode *ip, str
 			/* Free the block so we can reuse it. This allows us to
 			   convert a "full" file system. */
 			ip->i_blocks--;
-			gfs2_free_block(sbp, block);
+			lgfs2_free_block(sbp, block);
 		}
 	}
 	return 0;
@@ -665,7 +665,7 @@ static int fix_ind_jdata(struct gfs2_sbd *sbp, struct gfs2_inode *ip, uint32_t d
 		/* Free the block so we can reuse it. This allows us to
 		   convert a "full" file system */
 		ip->i_blocks--;
-		gfs2_free_block(sbp, block);
+		lgfs2_free_block(sbp, block);
 
 		len = bufsize;
 		jdata_mp_gfs1_to_gfs2(sbp, di_height, gfs2_hgt, &newblk->mp, &gfs2mp,
@@ -941,11 +941,11 @@ static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
 	}
 
 	lgfs2_bmodified(inode->i_bh);
-	inode_put(&inode); /* does gfs2_dinode_out if modified */
+	lgfs2_inode_put(&inode); /* does gfs2_dinode_out if modified */
 	sbp->md.next_inum++; /* update inode count */
 	return 0;
 err_freei:
-	inode_put(&inode);
+	lgfs2_inode_put(&inode);
 	return -1;
 } /* adjust_inode */
 
@@ -1112,7 +1112,7 @@ static int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
 	if (eablk)
 		*eablk = fix_inode->i_eattr;
 
-	inode_put(&fix_inode);
+	lgfs2_inode_put(&fix_inode);
 	return 0;
 }/* fetch_inum */
 
@@ -1131,7 +1131,7 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 	struct gfs2_dirent *dent;
 	int de; /* directory entry index */
 	
-	error = gfs2_dirent_first(dip, bh, &dent);
+	error = lgfs2_dirent_first(dip, bh, &dent);
 	if (error != IS_LEAF && error != IS_DINODE) {
 		log_crit(_("Error retrieving directory.\n"));
 		return -1;
@@ -1226,7 +1226,7 @@ static int process_dirent_info(struct gfs2_inode *dip, struct gfs2_sbd *sbp,
 		}
 
 	skip_next:
-		error = gfs2_dirent_next(dip, bh, &dent);
+		error = lgfs2_dirent_next(dip, bh, &dent);
 		if (error) {
 			if (error == -ENOENT) /* beyond the end of this bh */
 				error = 0;
@@ -1257,7 +1257,7 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip
 		struct gfs2_leaf *leaf;
 		__be64 buf;
 
-		error = gfs2_readi(dip, (char *)&buf, leaf_num * sizeof(uint64_t),
+		error = lgfs2_readi(dip, (char *)&buf, leaf_num * sizeof(uint64_t),
 						   sizeof(uint64_t));
 		if (!error) /* end of file */
 			return 0; /* success */
@@ -1276,7 +1276,7 @@ static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct gfs2_inode *dip
 
 		prev_leaf_block = leaf_block;
 		/* read the leaf buffer in */
-		error = gfs2_get_leaf(dip, leaf_block, &bh_leaf);
+		error = lgfs2_get_leaf(dip, leaf_block, &bh_leaf);
 		if (error) {
 			log_crit(_("Error reading leaf %"PRIu64"\n"), leaf_block);
 			break;
@@ -1308,19 +1308,19 @@ static int process_directory(struct gfs2_sbd *sbp, uint64_t dirblock, uint64_t d
 	if (dip->i_flags & GFS2_DIF_EXHASH) {
 		if (fix_one_directory_exhash(sbp, dip, dentmod)) {
 			log_crit(_("Error fixing exhash directory.\n"));
-			inode_put(&dip);
+			lgfs2_inode_put(&dip);
 			return -1;
 		}
 	} else {
 		error = process_dirent_info(dip, sbp, dip->i_bh, dip->i_entries, dentmod);
 		if (error && error != -EISDIR) {
 			log_crit(_("Error fixing linear directory.\n"));
-			inode_put(&dip);
+			lgfs2_inode_put(&dip);
 			return -1;
 		}
 	}
 	lgfs2_bmodified(dip->i_bh);
-	inode_put(&dip);
+	lgfs2_inode_put(&dip);
 	return 0;
 }
 /* ------------------------------------------------------------------------- */
@@ -1404,7 +1404,7 @@ static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 		}
 
 		/* initialize the symlink inode to be a directory */
-		error = init_dinode(sbp, &bh, &fix, S_IFDIR | 0755, 0, &dir);
+		error = lgfs2_init_dinode(sbp, &bh, &fix, S_IFDIR | 0755, 0, &dir);
 		if (error != 0)
 			return -1;
 
@@ -1412,7 +1412,7 @@ static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 		if (fix_inode == NULL)
 			return -1;
 		fix_inode->i_eattr = eablk; /*fix extended attribute */
-		inode_put(&fix_inode);
+		lgfs2_inode_put(&fix_inode);
 		lgfs2_bmodified(bh);
 		lgfs2_brelse(bh);
 
@@ -1455,7 +1455,7 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 		return -1;
 	}
 	/* ugly hack
-	 * Faking the gfs1_jindex inode as a directory to gfs2_readi
+	 * Faking the gfs1_jindex inode as a directory to lgfs2_readi
 	 * so it skips the metaheader struct in the data blocks
 	 * in the inode. gfs2_jindex inode doesn't have metaheaders
 	 * in the data blocks */
@@ -1465,7 +1465,7 @@ static int read_gfs1_jiindex(struct gfs2_sbd *sdp)
 	for (j = 0; ; j++) {
 		uint32_t nseg;
 
-		error = gfs2_readi(ip, buf, j * sizeof(struct gfs_jindex),
+		error = lgfs2_readi(ip, buf, j * sizeof(struct gfs_jindex),
 						   sizeof(struct gfs_jindex));
 		if(!error)
 			break;
@@ -1674,8 +1674,8 @@ static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 	}
 	printf("\n");
 	fflush(stdout);
-	inode_put(&sbp->md.riinode);
-	inode_put(&sbp->md.jiinode);
+	lgfs2_inode_put(&sbp->md.riinode);
+	lgfs2_inode_put(&sbp->md.jiinode);
 	log_debug(_("%d rgs found.\n"), rgcount);
 	return 0;
 }/* fill_super_block */
@@ -1901,7 +1901,7 @@ static void update_inode_file(struct gfs2_sbd *sdp)
 	int count;
 
 	buf = cpu_to_be64(sdp->md.next_inum);
-	count = gfs2_writei(ip, &buf, 0, sizeof(uint64_t));
+	count = lgfs2_writei(ip, &buf, 0, sizeof(uint64_t));
 	if (count != sizeof(uint64_t)) {
 		fprintf(stderr, "update_inode_file\n");
 		exit(1);
@@ -1923,7 +1923,7 @@ static void write_statfs_file(struct gfs2_sbd *sdp)
 	sc.sc_free = cpu_to_be64(sdp->blks_total - sdp->blks_alloced);
 	sc.sc_dinodes = cpu_to_be64(sdp->dinodes_alloced);
 
-	count = gfs2_writei(ip, &sc, 0, sizeof(sc));
+	count = lgfs2_writei(ip, &sc, 0, sizeof(sc));
 	if (count != sizeof(sc)) {
 		fprintf(stderr, "Failed to write statfs file\n");
 		exit(1);
@@ -1941,19 +1941,19 @@ static void remove_obsolete_gfs1(struct gfs2_sbd *sbp)
 	fflush(stdout);
 	/* Delete the old gfs1 Journal index: */
 	lgfs2_inum_in(&inum, &gfs1_sb.sb_jindex_di);
-	gfs2_freedi(sbp, inum.in_addr);
+	lgfs2_freedi(sbp, inum.in_addr);
 
 	/* Delete the old gfs1 rgindex: */
 	lgfs2_inum_in(&inum, &gfs1_sb.sb_rindex_di);
-	gfs2_freedi(sbp, inum.in_addr);
+	lgfs2_freedi(sbp, inum.in_addr);
 
 	/* Delete the old gfs1 Quota file: */
 	lgfs2_inum_in(&inum, &gfs1_sb.sb_quota_di);
-	gfs2_freedi(sbp, inum.in_addr);
+	lgfs2_freedi(sbp, inum.in_addr);
 
 	/* Delete the old gfs1 License file: */
 	lgfs2_inum_in(&inum, &gfs1_sb.sb_license_di);
-	gfs2_freedi(sbp, inum.in_addr);
+	lgfs2_freedi(sbp, inum.in_addr);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1963,7 +1963,7 @@ static int conv_build_jindex(struct gfs2_sbd *sdp)
 {
 	unsigned int j;
 
-	sdp->md.jiinode = createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
+	sdp->md.jiinode = lgfs2_createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
 				  GFS2_DIF_SYSTEM);
 	if (sdp->md.jiinode == NULL) {
 		return errno;
@@ -1980,17 +1980,17 @@ static int conv_build_jindex(struct gfs2_sbd *sdp)
 		printf(_("Writing journal #%d..."), j + 1);
 		fflush(stdout);
 		sprintf(name, "journal%u", j);
-		sdp->md.journal[j] = createi(sdp->md.jiinode, name, S_IFREG |
+		sdp->md.journal[j] = lgfs2_createi(sdp->md.jiinode, name, S_IFREG |
 					     0600, GFS2_DIF_SYSTEM);
 		lgfs2_write_journal(sdp->md.journal[j], sdp->sd_bsize,
 		                    sdp->jsize << 20 >> sdp->sd_bsize_shift);
-		inode_put(&sdp->md.journal[j]);
+		lgfs2_inode_put(&sdp->md.journal[j]);
 		printf(_("done.\n"));
 		fflush(stdout);
 	}
 
 	free(sdp->md.journal);
-	inode_put(&sdp->md.jiinode);
+	lgfs2_inode_put(&sdp->md.jiinode);
 	return 0;
 }
 
@@ -2091,7 +2091,7 @@ static int build_per_node(struct gfs2_sbd *sdp)
 	struct gfs2_inode *per_node;
 	unsigned int j;
 
-	per_node = createi(sdp->master_dir, "per_node", S_IFDIR | 0700,
+	per_node = lgfs2_createi(sdp->master_dir, "per_node", S_IFDIR | 0700,
 			   GFS2_DIF_SYSTEM);
 	if (per_node == NULL) {
 		log_crit(_("Error building '%s': %s\n"), "per_node", strerror(errno));
@@ -2106,7 +2106,7 @@ static int build_per_node(struct gfs2_sbd *sdp)
 			         strerror(errno));
 			return 1;
 		}
-		inode_put(&ip);
+		lgfs2_inode_put(&ip);
 
 		ip = lgfs2_build_statfs_change(per_node, j);
 		if (ip == NULL) {
@@ -2114,7 +2114,7 @@ static int build_per_node(struct gfs2_sbd *sdp)
 			         strerror(errno));
 			return 1;
 		}
-		inode_put(&ip);
+		lgfs2_inode_put(&ip);
 
 		ip = lgfs2_build_quota_change(per_node, j);
 		if (ip == NULL) {
@@ -2122,9 +2122,9 @@ static int build_per_node(struct gfs2_sbd *sdp)
 			         strerror(errno));
 			return 1;
 		}
-		inode_put(&ip);
+		lgfs2_inode_put(&ip);
 	}
-	inode_put(&per_node);
+	lgfs2_inode_put(&per_node);
 	return 0;
 }
 
@@ -2139,7 +2139,7 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 	struct gfs2_inode *oq_ip, *nq_ip;
 	int err;
 
-	err = gfs2_lookupi(sdp->master_dir, "quota", 5, &nq_ip);
+	err = lgfs2_lookupi(sdp->master_dir, "quota", 5, &nq_ip);
 	if (err) {
 		fprintf(stderr, _("Couldn't lookup new quota file: %d\n"), err);
 		exit(1);
@@ -2163,10 +2163,10 @@ static void copy_quotas(struct gfs2_sbd *sdp)
 	oq_ip->i_size = 0;
 
 	lgfs2_bmodified(nq_ip->i_bh);
-	inode_put(&nq_ip);
+	lgfs2_inode_put(&nq_ip);
 
 	lgfs2_bmodified(oq_ip->i_bh);
-	inode_put(&oq_ip);
+	lgfs2_inode_put(&oq_ip);
 }
 
 static int gfs2_query(struct gfs2_options *opts, const char *dev)
@@ -2314,7 +2314,7 @@ int main(int argc, char **argv)
 			log_notice(_("Reduced journal size to %u MB to accommodate "
 				   "GFS2 file system structures.\n"), sb2.jsize);
 		/* Build the master subdirectory. */
-		lgfs2_build_master(&sb2); /* Does not do inode_put */
+		lgfs2_build_master(&sb2); /* Does not do lgfs2_inode_put */
 		sb2.sd_meta_dir = sb2.master_dir->i_num;
 		/* Build empty journal index file. */
 		error = conv_build_jindex(&sb2);
@@ -2331,14 +2331,14 @@ int main(int argc, char **argv)
 			exit(-1);
 		}
 		/* Create the empty inode number file */
-		sb2.md.inum = lgfs2_build_inum(&sb2); /* Does not do inode_put */
+		sb2.md.inum = lgfs2_build_inum(&sb2); /* Does not do lgfs2_inode_put */
 		if (sb2.md.inum == NULL) {
 			log_crit(_("Error building inum inode: %s\n"),
 			         strerror(error));
 			exit(-1);
 		}
 		/* Create the statfs file */
-		sb2.md.statfs = lgfs2_build_statfs(&sb2); /* Does not do inode_put */
+		sb2.md.statfs = lgfs2_build_statfs(&sb2); /* Does not do lgfs2_inode_put */
 		if (sb2.md.statfs == NULL) {
 			log_crit(_("Error building statfs inode: %s\n"),
 			         strerror(error));
@@ -2353,7 +2353,7 @@ int main(int argc, char **argv)
 			         strerror(errno));
 			exit(-1);
 		}
-		inode_put(&ip);
+		lgfs2_inode_put(&ip);
 		/* Create the quota file */
 		ip = lgfs2_build_quota(&sb2);
 		if (ip == NULL) {
@@ -2361,7 +2361,7 @@ int main(int argc, char **argv)
 			         strerror(error));
 			exit(-1);
 		}
-		inode_put(&ip);
+		lgfs2_inode_put(&ip);
 
 		/* Copy out the master dinode */
 		if (sb2.master_dir->i_bh->b_modified)
@@ -2375,9 +2375,9 @@ int main(int argc, char **argv)
 
 		write_statfs_file(&sb2);
 
-		inode_put(&sb2.master_dir);
-		inode_put(&sb2.md.inum);
-		inode_put(&sb2.md.statfs);
+		lgfs2_inode_put(&sb2.master_dir);
+		lgfs2_inode_put(&sb2.md.inum);
+		lgfs2_inode_put(&sb2.md.statfs);
 
 		fsync(sb2.device_fd); /* write the buffers to disk */
 

@@ -167,7 +167,7 @@ static int check_statfs(struct gfs2_sbd *sdp)
 		return 0;
 	}
 	/* Read the current statfs values */
-	count = gfs2_readi(sdp->md.statfs, &sc, 0, sdp->md.statfs->i_size);
+	count = lgfs2_readi(sdp->md.statfs, &sc, 0, sdp->md.statfs->i_size);
 	if (count != sizeof(struct gfs2_statfs_change)) {
 		log_err(_("Failed to read statfs values (%d of %"PRIu64" read)\n"),
 		        count, sdp->md.statfs->i_size);
@@ -328,22 +328,22 @@ int main(int argc, char **argv)
 
 	/* Free up our system inodes */
 	if (!sdp->gfs1)
-		inode_put(&sdp->md.inum);
-	inode_put(&sdp->md.statfs);
+		lgfs2_inode_put(&sdp->md.inum);
+	lgfs2_inode_put(&sdp->md.statfs);
 	for (j = 0; j < sdp->md.journals; j++)
-		inode_put(&sdp->md.journal[j]);
+		lgfs2_inode_put(&sdp->md.journal[j]);
 	free(sdp->md.journal);
 	sdp->md.journal = NULL;
-	inode_put(&sdp->md.jiinode);
-	inode_put(&sdp->md.riinode);
-	inode_put(&sdp->md.qinode);
+	lgfs2_inode_put(&sdp->md.jiinode);
+	lgfs2_inode_put(&sdp->md.riinode);
+	lgfs2_inode_put(&sdp->md.qinode);
 	if (!sdp->gfs1)
-		inode_put(&sdp->md.pinode);
-	inode_put(&sdp->md.rooti);
+		lgfs2_inode_put(&sdp->md.pinode);
+	lgfs2_inode_put(&sdp->md.rooti);
 	if (!sdp->gfs1)
-		inode_put(&sdp->master_dir);
+		lgfs2_inode_put(&sdp->master_dir);
 	if (lf_dip)
-		inode_put(&lf_dip);
+		lgfs2_inode_put(&lf_dip);
 
 	if (!opts.no && errors_corrected)
 		log_notice( _("Writing changes to disk\n"));

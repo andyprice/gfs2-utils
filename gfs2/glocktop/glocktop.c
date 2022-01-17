@@ -630,15 +630,15 @@ static const char *show_inode(const char *id, int fd, uint64_t block)
 		subdepth++;
 		/* Backtrack the directory to its source */
 		while (1) {
-			error = gfs2_lookupi(ip, "..", 2, &parent);
+			error = lgfs2_lookupi(ip, "..", 2, &parent);
 			if (error)
 				break;
 			/* Stop at the root inode */
 			if (ip->i_num.in_addr == parent->i_num.in_addr) {
-				inode_put(&parent);
+				lgfs2_inode_put(&parent);
 				break;
 			}
-			inode_put(&ip);
+			lgfs2_inode_put(&ip);
 			ip = parent;
 			dirarray[subdepth++] = parent->i_num.in_addr;
 		}
@@ -657,7 +657,7 @@ static const char *show_inode(const char *id, int fd, uint64_t block)
 		inode_type = "socket ";
 	} else
 		inode_type = "file? ";
-	inode_put(&ip);
+	lgfs2_inode_put(&ip);
 	return inode_type;
 }
 

@@ -692,7 +692,7 @@ static void rgcount(void)
 {
 	printf("%"PRId64" RGs in this file system.\n",
 	       sbd.md.riinode->i_size / sizeof(struct gfs2_rindex));
-	inode_put(&sbd.md.riinode);
+	lgfs2_inode_put(&sbd.md.riinode);
 	gfs2_rgrp_free(&sbd, &sbd.rgtree);
 	exit(EXIT_SUCCESS);
 }
@@ -715,7 +715,7 @@ static uint64_t find_rgrp_block(struct gfs2_inode *dif, int rg)
 			sizeof(struct gfs2_meta_header);
 		gfs1_adj += sizeof(struct gfs2_meta_header);
 	}
-	amt = gfs2_readi(dif, &ri, foffset + gfs1_adj, sizeof(ri));
+	amt = lgfs2_readi(dif, &ri, foffset + gfs1_adj, sizeof(ri));
 	if (!amt) /* end of file */
 		return 0;
 	return be64_to_cpu(ri.ri_addr);
@@ -741,7 +741,7 @@ static uint64_t get_rg_addr(int rgnum)
 	else
 		fprintf(stderr, "Error: File system only has %"PRId64" RGs.\n",
 			riinode->i_size / sizeof(struct gfs2_rindex));
-	inode_put(&riinode);
+	lgfs2_inode_put(&riinode);
 	return rgblk;
 }
 
@@ -925,7 +925,7 @@ static void read_superblock(int fd)
 		if (sbd.master_dir == NULL) {
 			sbd.md.riinode = NULL;
 		} else {
-			gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
+			lgfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
 		}
 	}
 	lgfs2_brelse(bh);

@@ -206,7 +206,7 @@ static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	   formal inode number still doesn't match. If that directory
 	   has a '..' pointing back, just fix up the no_formal_ino. */
 	child_ip = lgfs2_inode_read(sdp, entry.in_addr);
-	error = dir_search(child_ip, "..", 2, NULL, &childs_dotdot);
+	error = lgfs2_dir_search(child_ip, "..", 2, NULL, &childs_dotdot);
 	if (!error && childs_dotdot.in_addr == ip->i_num.in_addr) {
 		log_err( _("The entry points to another directory with intact "
 			   "linkage.\n"));
@@ -223,12 +223,12 @@ static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		}
 	} else {
 		if (query( _("Remove the corrupt directory entry? (y/n) "))) {
-			inode_put(&child_ip);
+			lgfs2_inode_put(&child_ip);
 			return 1;
 		}
 		log_err( _("Corrupt directory entry not removed.\n"));
 	}
-	inode_put(&child_ip);
+	lgfs2_inode_put(&child_ip);
 	return 0;
 }
 
@@ -337,7 +337,7 @@ static int wrong_leaf(struct gfs2_inode *ip, struct lgfs2_inum *entry,
 	free(tbl);
 
 	/* check if it's already on the correct leaf block */
-	error = dir_search(ip, tmp_name, d->dr_name_len, NULL, &d->dr_inum);
+	error = lgfs2_dir_search(ip, tmp_name, d->dr_name_len, NULL, &d->dr_inum);
 	if (!error) {
 		log_err(_("The misplaced directory entry already appears on "
 			  "the correct leaf block.\n"));
@@ -347,7 +347,7 @@ static int wrong_leaf(struct gfs2_inode *ip, struct lgfs2_inum *entry,
 	}
 
 	di_depth = ip->i_depth;
-	if (dir_add(ip, tmp_name, d->dr_name_len, &d->dr_inum, d->dr_type) == 0) {
+	if (lgfs2_dir_add(ip, tmp_name, d->dr_name_len, &d->dr_inum, d->dr_type) == 0) {
 		log_err(_("The misplaced directory entry was moved to a "
 			  "valid leaf block.\n"));
 		if (ip->i_depth > di_depth) {
@@ -400,7 +400,7 @@ static int wrong_leaf(struct gfs2_inode *ip, struct lgfs2_inum *entry,
 		   The reason is: *count is the count of dentries on the leaf,
 		   and we moved the dentry to a previous leaf within the same
 		   directory dinode. So the directory counts still get
-		   incremented, but not leaf entries. When we called dir_add
+		   incremented, but not leaf entries. When we called lgfs2_dir_add
 		   above, it should have fixed that prev leaf's lf_entries. */
 		ds->entry_count++;
 		return 1;
@@ -656,7 +656,7 @@ static int dirref_find(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	}
 	decr_link_count(entry->in_addr, ip->i_num.in_addr, ip->i_sbd->gfs1,
 	                _("bad original reference"));
-	dirent2_del(ip, bh, prev, dent);
+	lgfs2_dirent2_del(ip, bh, prev, dent);
 	log_err(_("The corrupt directory entry '%s' was deleted.\n"), fn);
 out:
 	return -1; /* force check_dir to stop; don't waste time. */
@@ -914,7 +914,7 @@ dentry_is_valid:
 	return 0;
 
 nuke_dentry:
-	dirent2_del(ip, bh, prev_de, dent);
+	lgfs2_dirent2_del(ip, bh, prev_de, dent);
 	log_err( _("Bad directory entry '%s' cleared.\n"), tmp_name);
 	return 1;
 }
@@ -1003,7 +1003,7 @@ static int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
 		count = gfs1_writei(dip, padbuf, start_lindex *
 				    sizeof(uint64_t), pad_size);
 	else
-		count = gfs2_writei(dip, padbuf, start_lindex *
+		count = lgfs2_writei(dip, padbuf, start_lindex *
 				    sizeof(uint64_t), pad_size);
 	free(padbuf);
 	if (count != pad_size) {
@@ -1123,7 +1123,7 @@ static int lost_leaf(struct gfs2_inode *ip, __be64 *tbl, uint64_t leafno,
 					  "\"%s\".\n"), tmp_name);
 			} else {
 
-				error = dir_add(lf_dip, filename,
+				error = lgfs2_dir_add(lf_dip, filename,
 						de.dr_name_len, &de.dr_inum,
 						de.dr_type);
 				if (error && error != -EEXIST) {
@@ -1194,7 +1194,7 @@ static int basic_check_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	error = basic_dentry_checks(ip, dent, &entry, tmp_name, count, de,
 				    ds, &q, bh, &isdir);
 	if (error) {
-		dirent2_del(ip, bh, prev_de, dent);
+		lgfs2_dirent2_del(ip, bh, prev_de, dent);
 		log_err( _("Bad directory entry '%s' cleared.\n"), tmp_name);
 		return 1;
 	} else {
@@ -1336,7 +1336,7 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 	if ((dentry.dr_rec_len == ip->i_sbd->sd_bsize - sizeof(struct gfs2_leaf)) &&
 	    (dentry.dr_inum.in_formal_ino == 0)) {
 		lgfs2_brelse(lbh);
-		gfs2_free_block(ip->i_sbd, leafblk);
+		lgfs2_free_block(ip->i_sbd, leafblk);
 		log_err(_("Out of place leaf block %"PRIu64" (0x%"PRIx64") had no "
 			"entries, so it was deleted.\n"),
 		        leafblk, leafblk);
@@ -1401,8 +1401,8 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 			  "0x%x.\n"), factor, len, proper_start);
 		changes++;
 		new_leaf_blk = find_free_blk(ip->i_sbd);
-		dir_split_leaf(ip, lindex, leafblk, lbh);
-		/* re-read the leaf to pick up dir_split_leaf's changes */
+		lgfs2_dir_split_leaf(ip, lindex, leafblk, lbh);
+		/* re-read the leaf to pick up lgfs2_dir_split_leaf's changes */
 		lgfs2_leaf_in(&leaf, lbh->b_data);
 		*proper_len = 1 << (ip->i_depth - leaf.lf_depth);
 		log_err(_("Leaf block %"PRIu64" (0x%"PRIx64") was split from length %d to %d\n"),
@@ -1654,7 +1654,7 @@ static int check_hash_tbl(struct gfs2_inode *ip, __be64 *tbl,
 			continue;
 
 		/* Make sure they call on proper leaf-split boundaries. This
-		   is the calculation used by the kernel, and dir_split_leaf */
+		   is the calculation used by the kernel, and lgfs2_dir_split_leaf */
 		proper_start = (lindex & ~(proper_len - 1));
 		if (lindex != proper_start) {
 			log_debug(_("lindex 0x%x is not a proper starting "
@@ -1823,7 +1823,7 @@ static int check_pernode_for(int x, struct gfs2_inode *pernode, const char *fn,
 	int error, valid_size = 1;
 
 	log_debug(_("Checking system file %s\n"), fn);
-	error = gfs2_lookupi(pernode, fn, strlen(fn), &ip);
+	error = lgfs2_lookupi(pernode, fn, strlen(fn), &ip);
 	if (error) {
 		log_err(_("System file %s is missing.\n"), fn);
 		if (!query( _("Rebuild the system file? (y/n) ")))
@@ -1853,7 +1853,7 @@ static int check_pernode_for(int x, struct gfs2_inode *pernode, const char *fn,
 			goto out_good;
 		check_metatree(ip, &pass2_fxns_delete);
 		fsck_inode_put(&ip);
-		gfs2_dirent_del(pernode, fn, strlen(fn));
+		lgfs2_dirent_del(pernode, fn, strlen(fn));
 		goto build_it;
 	}
 out_good:
@@ -1865,7 +1865,7 @@ build_it:
 		log_err(_("Error building %s\n"), fn);
 		return -1;
 	}
-	error = gfs2_lookupi(pernode, fn, strlen(fn), &ip);
+	error = lgfs2_lookupi(pernode, fn, strlen(fn), &ip);
 	if (error) {
 		log_err(_("Error rebuilding %s.\n"), fn);
 		return -1;
@@ -1881,7 +1881,7 @@ static int build_inum_range(struct gfs2_inode *per_node, unsigned int n)
 
 	if (ip == NULL)
 		return 1;
-	inode_put(&ip);
+	lgfs2_inode_put(&ip);
 	return 0;
 }
 
@@ -1891,7 +1891,7 @@ static int build_statfs_change(struct gfs2_inode *per_node, unsigned int n)
 
 	if (ip == NULL)
 		return 1;
-	inode_put(&ip);
+	lgfs2_inode_put(&ip);
 	return 0;
 }
 
@@ -1901,7 +1901,7 @@ static int build_quota_change(struct gfs2_inode *per_node, unsigned int n)
 
 	if (ip == NULL)
 		return 1;
-	inode_put(&ip);
+	lgfs2_inode_put(&ip);
 	return 0;
 }
 
@@ -1953,7 +1953,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		if (query( _("Is it okay to add '.' entry? (y/n) "))) {
 			struct lgfs2_inum no = sysinode->i_num;
 			log_warn( _("Adding '.' entry\n"));
-			error = dir_add(sysinode, ".", 1, &no,
+			error = lgfs2_dir_add(sysinode, ".", 1, &no,
 			                (sysinode->i_sbd->gfs1 ? GFS_FILE_DIR : DT_DIR));
 			if (error) {
 				log_err(_("Error adding directory %s: %s\n"), "'.'",
@@ -2066,7 +2066,7 @@ static int pass2_check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 
 		if (query( _("Is it okay to add '.' entry? (y/n) "))) {
 			struct lgfs2_inum no = ip->i_num;
-			error = dir_add(ip, ".", 1, &no,
+			error = lgfs2_dir_add(ip, ".", 1, &no,
 					(sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 			if (error) {
 				log_err(_("Error adding directory %s: %s\n"), "'.'",

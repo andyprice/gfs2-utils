@@ -213,7 +213,7 @@ int rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 		struct gfs2_rindex ri;
 		uint64_t addr;
 
-		error = gfs2_readi(sdp->md.riinode, &ri,
+		error = lgfs2_readi(sdp->md.riinode, &ri,
 		                   rg * sizeof(struct gfs2_rindex),
 		                   sizeof(struct gfs2_rindex));
 		if (!error)

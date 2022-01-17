@@ -433,7 +433,7 @@ static int print_gfs_jindex(struct gfs2_inode *dij)
 	eol(0);
 	lines_per_row[dmode] = 4;
 	for (print_entry_ndx=0; ; print_entry_ndx++) {
-		error = gfs2_readi(dij, (void *)&jbuf,
+		error = lgfs2_readi(dij, (void *)&jbuf,
 				   print_entry_ndx*sizeof(struct gfs_jindex),
 				   sizeof(struct gfs_jindex));
 		ji = (struct gfs_jindex *)jbuf;
@@ -484,7 +484,7 @@ static int print_gfs2_jindex(void)
 				print_gfs2("dirty.");
 		}
 		eol(0);
-		inode_put(&ip);
+		lgfs2_inode_put(&ip);
 	}
 	return 0;
 }
@@ -508,7 +508,7 @@ static int parse_rindex(struct gfs2_inode *dip, int print_rindex)
 
 		roff = print_entry_ndx * sizeof(struct gfs2_rindex);
 
-		error = gfs2_readi(dip, &ri, roff, sizeof(struct gfs2_rindex));
+		error = lgfs2_readi(dip, &ri, roff, sizeof(struct gfs2_rindex));
 		if (!error) /* end of file */
 			break;
 		lgfs2_rindex_in(&rg, &ri);
@@ -556,7 +556,7 @@ static int print_inum(struct gfs2_inode *dii)
 	__be64 inum;
 	int rc;
 	
-	rc = gfs2_readi(dii, (void *)&inum, 0, sizeof(inum));
+	rc = lgfs2_readi(dii, (void *)&inum, 0, sizeof(inum));
 	if (!rc) {
 		print_gfs2("The inum file is empty.");
 		eol(0);
@@ -578,7 +578,7 @@ static int print_statfs(struct gfs2_inode *dis)
 	struct gfs2_statfs_change sc;
 	int rc;
 
-	rc = gfs2_readi(dis, (void *)&sc, 0, sizeof(sc));
+	rc = lgfs2_readi(dis, (void *)&sc, 0, sizeof(sc));
 	if (!rc) {
 		print_gfs2("The statfs file is empty.");
 		eol(0);
@@ -605,7 +605,7 @@ static int print_quota(struct gfs2_inode *diq)
 	print_gfs2("quota entries found: %"PRIu64".", diq->i_size / sizeof(q));
 	eol(0);
 	for (i=0; ; i++) {
-		error = gfs2_readi(diq, &q, i * sizeof(q), sizeof(q));
+		error = lgfs2_readi(diq, &q, i * sizeof(q), sizeof(q));
 		if (!error)
 			break;
 		if (error != sizeof(q)) {
@@ -633,7 +633,7 @@ int display_extended(void)
 		if (tmp_inode == NULL)
 			return -1;
 		parse_rindex(tmp_inode, TRUE);
-		inode_put(&tmp_inode);
+		lgfs2_inode_put(&tmp_inode);
 		lgfs2_brelse(tmp_bh);
 	} else if (block_is_journals(block)) {
 		if (sbd.gfs1)
@@ -655,7 +655,7 @@ int display_extended(void)
 		if (tmp_inode == NULL)
 			return -1;
 		parse_rindex(tmp_inode, FALSE);
-		inode_put(&tmp_inode);
+		lgfs2_inode_put(&tmp_inode);
 		lgfs2_brelse(tmp_bh);
 	} else if (block_is_jindex(block)) {
 		tmp_bh = lgfs2_bread(&sbd, block);
@@ -663,7 +663,7 @@ int display_extended(void)
 		if (tmp_inode == NULL)
 			return -1;
 		print_gfs_jindex(tmp_inode);
-		inode_put(&tmp_inode);
+		lgfs2_inode_put(&tmp_inode);
 		lgfs2_brelse(tmp_bh);
 	}
 	else if (block_is_inum_file(block)) {
@@ -672,7 +672,7 @@ int display_extended(void)
 		if (tmp_inode == NULL)
 			return -1;
 		print_inum(tmp_inode);
-		inode_put(&tmp_inode);
+		lgfs2_inode_put(&tmp_inode);
 		lgfs2_brelse(tmp_bh);
 	}
 	else if (block_is_statfs_file(block)) {
@@ -681,7 +681,7 @@ int display_extended(void)
 		if (tmp_inode == NULL)
 			return -1;
 		print_statfs(tmp_inode);
-		inode_put(&tmp_inode);
+		lgfs2_inode_put(&tmp_inode);
 		lgfs2_brelse(tmp_bh);
 	}
 	else if (block_is_quota_file(block)) {
@@ -690,7 +690,7 @@ int display_extended(void)
 		if (tmp_inode == NULL)
 			return -1;
 		print_quota(tmp_inode);
-		inode_put(&tmp_inode);
+		lgfs2_inode_put(&tmp_inode);
 		lgfs2_brelse(tmp_bh);
 	}
 	return 0;

@@ -77,12 +77,12 @@ static void add_dotdot(struct gfs2_inode *ip)
 				    "in directory tree.\n"),
 			          ip->i_num.in_addr);
 	}
-	if (gfs2_dirent_del(ip, "..", 2))
+	if (lgfs2_dirent_del(ip, "..", 2))
 		log_warn( _("add_inode_to_lf:  Unable to remove "
 			    "\"..\" directory entry.\n"));
 
 	no = lf_dip->i_num;
-	err = dir_add(ip, "..", 2, &no, (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
+	err = lgfs2_dir_add(ip, "..", 2, &no, (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 	if (err) {
 		log_crit(_("Error adding .. directory: %s\n"),
 			 strerror(errno));
@@ -103,16 +103,16 @@ void make_sure_lf_exists(struct gfs2_inode *ip)
 	root_entries = sdp->md.rooti->i_entries;
 	log_info( _("Locating/Creating lost+found directory\n"));
 
-	/* if this is gfs1, we have to trick createi into using
+	/* if this is gfs1, we have to trick lgfs2_createi into using
 	   no_formal_ino = no_addr, so we set next_inum to the
 	   free block we're about to allocate. */
 	if (sdp->gfs1)
 		sdp->md.next_inum = find_free_blk(sdp);
 	mode = (sdp->gfs1 ? DT2IF(GFS_FILE_DIR) : S_IFDIR) | 0700;
 	if (sdp->gfs1)
-		lf_dip = gfs_createi(sdp->md.rooti, "lost+found", mode, 0);
+		lf_dip = lgfs2_gfs_createi(sdp->md.rooti, "lost+found", mode, 0);
 	else
-		lf_dip = createi(sdp->md.rooti, "lost+found",
+		lf_dip = lgfs2_createi(sdp->md.rooti, "lost+found",
 				 S_IFDIR | 0700, 0);
 	if (lf_dip == NULL) {
 		log_crit(_("Error creating lost+found: %s\n"),
@@ -120,7 +120,7 @@ void make_sure_lf_exists(struct gfs2_inode *ip)
 		exit(FSCK_ERROR);
 	}
 
-	/* createi will have incremented the di_nlink link count for the root
+	/* lgfs2_createi will have incremented the di_nlink link count for the root
 	   directory.  We must set the nlink value in the hash table to keep
 	   them in sync so that pass4 can detect and fix any descrepancies. */
 	set_di_nlink(sdp->md.rooti);
@@ -226,7 +226,7 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	}
 
 	no = ip->i_num;
-	err = dir_add(lf_dip, tmp_name, strlen(tmp_name), &no, inode_type);
+	err = lgfs2_dir_add(lf_dip, tmp_name, strlen(tmp_name), &no, inode_type);
 	if (err) {
 		log_crit(_("Error adding directory %s: %s\n"),
 			 tmp_name, strerror(errno));

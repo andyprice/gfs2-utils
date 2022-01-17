@@ -60,14 +60,14 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 		jiinode = lgfs2_inode_get(&sbd, jindex_bh);
 		if (jiinode == NULL)
 			return 0;
-		amtread = gfs2_readi(jiinode, &jidx,
+		amtread = lgfs2_readi(jiinode, &jidx,
 				   journal_num * sizeof(struct gfs_jindex),
 				   sizeof(struct gfs_jindex));
 		if (amtread) {
 			jblock = be64_to_cpu(jidx.ji_addr);
 			*j_size = (uint64_t)be32_to_cpu(jidx.ji_nsegment) * 0x10;
 		}
-		inode_put(&jiinode);
+		lgfs2_inode_put(&jiinode);
 	} else {
 		struct gfs2_dinode *jdi;
 
@@ -99,7 +99,7 @@ static void check_journal_wrap(uint64_t seq, uint64_t *highest_seq)
 }
 
 /**
- * fsck_readi - same as libgfs2's gfs2_readi, but sets absolute block #
+ * fsck_readi - same as libgfs2's lgfs2_readi, but sets absolute block #
  *              of the first bit of data read.
  */
 static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
@@ -144,7 +144,7 @@ static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
 		if (amount > sdp->sd_bsize - o)
 			amount = sdp->sd_bsize - o;
 		if (!extlen)
-			block_map(ip, lblock, &not_new, &dblock, &extlen,
+			lgfs2_block_map(ip, lblock, &not_new, &dblock, &extlen,
 				  FALSE);
 		if (dblock) {
 			lbh = lgfs2_bread(sdp, dblock);
@@ -643,7 +643,7 @@ void dump_journal(const char *journal, uint64_t tblk)
 		}
 	}
 	if (j_inode != NULL)
-		inode_put(&j_inode);
+		lgfs2_inode_put(&j_inode);
 	lgfs2_brelse(j_bh);
 	blockhist = -1; /* So we don't print anything else */
 	free(jbuf);

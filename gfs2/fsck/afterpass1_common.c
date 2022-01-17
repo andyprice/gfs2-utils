@@ -123,7 +123,7 @@ static int remove_dentry(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	lgfs2_dirent_in(&d, dent);
 
 	if (d.dr_inum.in_addr == *dentryblock)
-		dirent2_del(ip, bh, prev_de, dent);
+		lgfs2_dirent2_del(ip, bh, prev_de, dent);
 	else
 		(*count)++;
 

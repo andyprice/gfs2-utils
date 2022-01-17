@@ -427,7 +427,7 @@ static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 		highest_seq++;
 		prev_seq = highest_seq;
 		log_warn(_("Renumbering it as 0x%"PRIx64"\n"), highest_seq);
-		block_map(ip, blk, &new, &dblock, NULL, 0);
+		lgfs2_block_map(ip, blk, &new, &dblock, NULL, 0);
 		bh = lgfs2_bread(ip->i_sbd, dblock);
 		((struct gfs2_log_header *)bh->b_data)->lh_sequence = cpu_to_be64(highest_seq);
 		lgfs2_bmodified(bh);
@@ -692,7 +692,7 @@ int replay_journals(struct gfs2_sbd *sdp, int preen, int force_check,
 			if (error)
 				/* Don't use fsck_inode_put here because it's a
 				   system file and we need to dismantle it. */
-				inode_put(&sdp->md.journal[i]);
+				lgfs2_inode_put(&sdp->md.journal[i]);
 			error = 0; /* bad journal is non-fatal */
 		}
 		if (!sdp->md.journal[i]) {
@@ -768,7 +768,7 @@ int ji_update(struct gfs2_sbd *sdp)
 		if (sdp->gfs1) {
 			struct gfs_jindex *ji;
 
-			error = gfs2_readi(ip,
+			error = lgfs2_readi(ip,
 					   buf, i * sizeof(struct gfs_jindex),
 					   sizeof(struct gfs_jindex));
 			if (!error)
@@ -786,7 +786,7 @@ int ji_update(struct gfs2_sbd *sdp)
 			/* FIXME check snprintf return code */
 			snprintf(journal_name, JOURNAL_NAME_SIZE,
 				 "journal%u", i);
-			gfs2_lookupi(sdp->md.jiinode, journal_name,
+			lgfs2_lookupi(sdp->md.jiinode, journal_name,
 				     strlen(journal_name), &jip);
 			sdp->md.journal[i] = jip;
 		}
@@ -852,7 +852,7 @@ int build_jindex(struct gfs2_sbd *sdp)
 {
 	struct gfs2_inode *jindex;
 
-	jindex = createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
+	jindex = lgfs2_createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
 			 GFS2_DIF_SYSTEM);
 	if (jindex == NULL) {
 		return errno;
@@ -862,10 +862,10 @@ int build_jindex(struct gfs2_sbd *sdp)
 		int ret = lgfs2_build_journal(sdp, j, jindex);
 		if (ret)
 			return ret;
-		inode_put(&sdp->md.journal[j]);
+		lgfs2_inode_put(&sdp->md.journal[j]);
 	}
 	free(sdp->md.journal);
-	inode_put(&jindex);
+	lgfs2_inode_put(&jindex);
 	return 0;
 }
 
@@ -884,7 +884,7 @@ int init_jindex(struct gfs2_sbd *sdp, int allow_ji_rebuild)
 	if (sdp->gfs1)
 		sdp->md.jiinode = lgfs2_inode_read(sdp, sdp->sd_jindex_di.in_addr);
 	else
-		gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
+		lgfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
 
 	if (!sdp->md.jiinode) {
 		int err;
@@ -906,7 +906,7 @@ int init_jindex(struct gfs2_sbd *sdp, int allow_ji_rebuild)
 			log_crit(_("Error %d rebuilding jindex\n"), err);
 			return err;
 		}
-		gfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
+		lgfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
 	}
 
 	/* check for irrelevant entries in jindex. Can't use check_dir because
@@ -929,8 +929,8 @@ int init_jindex(struct gfs2_sbd *sdp, int allow_ji_rebuild)
 					   "valid jindex file.\n"));
 				return -1;
 			}
-			inode_put(&sdp->md.jiinode);
-			gfs2_dirent_del(sdp->master_dir, "jindex", 6);
+			lgfs2_inode_put(&sdp->md.jiinode);
+			lgfs2_dirent_del(sdp->master_dir, "jindex", 6);
 			log_err(_("Corrupt journal index was removed.\n"));
 			error = build_jindex(sdp);
 			if (error) {
@@ -938,7 +938,7 @@ int init_jindex(struct gfs2_sbd *sdp, int allow_ji_rebuild)
 					  "index: Cannot continue.\n"));
 				return error;
 			}
-			gfs2_lookupi(sdp->master_dir, "jindex", 6,
+			lgfs2_lookupi(sdp->master_dir, "jindex", 6,
 				     &sdp->md.jiinode);
 		}
 	}

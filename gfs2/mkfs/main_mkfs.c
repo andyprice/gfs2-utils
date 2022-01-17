@@ -686,7 +686,7 @@ static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 	struct gfs2_inode *per_node;
 	unsigned int j;
 
-	per_node = createi(sdp->master_dir, "per_node", S_IFDIR | 0700,
+	per_node = lgfs2_createi(sdp->master_dir, "per_node", S_IFDIR | 0700,
 			   GFS2_DIF_SYSTEM);
 	if (per_node == NULL) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "per_node", strerror(errno));
@@ -705,7 +705,7 @@ static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 			printf("\nInum Range %u:\n", j);
 			dinode_print(ip->i_bh->b_data);
 		}
-		inode_put(&ip);
+		lgfs2_inode_put(&ip);
 
 		ip = lgfs2_build_statfs_change(per_node, j);
 		if (ip == NULL) {
@@ -717,7 +717,7 @@ static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 			printf("\nStatFS Change %u:\n", j);
 			dinode_print(ip->i_bh->b_data);
 		}
-		inode_put(&ip);
+		lgfs2_inode_put(&ip);
 
 		ip = lgfs2_build_quota_change(per_node, j);
 		if (ip == NULL) {
@@ -729,13 +729,13 @@ static int build_per_node(struct gfs2_sbd *sdp, struct mkfs_opts *opts)
 			printf("\nQuota Change %u:\n", j);
 			dinode_print(ip->i_bh->b_data);
 		}
-		inode_put(&ip);
+		lgfs2_inode_put(&ip);
 	}
 	if (opts->debug) {
 		printf("\nper_node:\n");
 		dinode_print(per_node->i_bh->b_data);
 	}
-	inode_put(&per_node);
+	lgfs2_inode_put(&per_node);
 	return 0;
 }
 
@@ -1012,7 +1012,7 @@ static int create_jindex(struct gfs2_sbd *sdp, struct mkfs_opts *opts, struct lg
 		printf("Jindex:\n");
 		dinode_print(jindex->i_bh->b_data);
 	}
-	inode_put(&jindex);
+	lgfs2_inode_put(&jindex);
 	return 0;
 }
 
@@ -1325,7 +1325,7 @@ int main(int argc, char *argv[])
 		printf("\nResource Index:\n");
 		dinode_print(ip->i_bh->b_data);
 	}
-	inode_put(&ip);
+	lgfs2_inode_put(&ip);
 	if (!opts.quiet) {
 		printf("%s", _("Creating quota file: "));
 		fflush(stdout);
@@ -1339,7 +1339,7 @@ int main(int argc, char *argv[])
 		printf("\nQuota:\n");
 		dinode_print(ip->i_bh->b_data);
 	}
-	inode_put(&ip);
+	lgfs2_inode_put(&ip);
 	if (!opts.quiet)
 		printf("%s", _("Done\n"));
 
@@ -1364,10 +1364,10 @@ int main(int argc, char *argv[])
 		printf("\nStatfs:\n");
 		statfs_change_print(&sc);
 	}
-	inode_put(&sbd.md.rooti);
-	inode_put(&sbd.master_dir);
-	inode_put(&sbd.md.inum);
-	inode_put(&sbd.md.statfs);
+	lgfs2_inode_put(&sbd.md.rooti);
+	lgfs2_inode_put(&sbd.master_dir);
+	lgfs2_inode_put(&sbd.md.inum);
+	lgfs2_inode_put(&sbd.md.statfs);
 
 	lgfs2_rgrps_free(&rgs);
 

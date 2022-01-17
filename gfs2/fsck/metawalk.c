@@ -231,7 +231,7 @@ struct gfs2_inode *fsck_system_inode(struct gfs2_sbd *sdp, uint64_t block)
 	if (lf_dip && lf_dip->i_num.in_addr == block)
 		return lf_dip;
 	if (!sdp->gfs1)
-		return is_system_inode(sdp, block);
+		return lgfs2_is_system_inode(sdp, block);
 
 	if (sdp->md.statfs && block == sdp->md.statfs->i_num.in_addr)
 		return sdp->md.statfs;
@@ -287,7 +287,7 @@ struct gfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 	return ip;
 }
 
-/* fsck_inode_put - same as inode_put() in libgfs2 but system inodes
+/* fsck_inode_put - same as lgfs2_inode_put() in libgfs2 but system inodes
    get special treatment. */
 void fsck_inode_put(struct gfs2_inode **ip_in)
 {
@@ -296,7 +296,7 @@ void fsck_inode_put(struct gfs2_inode **ip_in)
 
 	sysip = fsck_system_inode(ip->i_sbd, ip->i_num.in_addr);
 	if (!sysip)
-		inode_put(ip_in);
+		lgfs2_inode_put(ip_in);
 }
 
 /**

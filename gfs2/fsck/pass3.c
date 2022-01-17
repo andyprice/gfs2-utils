@@ -36,12 +36,12 @@ static int attach_dotdot_to(struct gfs2_sbd *sdp, uint64_t newdotdot,
 	 * '..' entry for this directory in
 	 * this case? */
 
-	if (gfs2_dirent_del(ip, filename, filename_len))
+	if (lgfs2_dirent_del(ip, filename, filename_len))
 		log_warn( _("Unable to remove \"..\" directory entry.\n"));
 	else
 		decr_link_count(olddotdot, block, sdp->gfs1, _("old \"..\""));
 	no = pip->i_num;
-	err = dir_add(ip, filename, filename_len, &no,
+	err = lgfs2_dir_add(ip, filename, filename_len, &no,
 		      (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 	if (err) {
 		log_err(_("Error adding directory %s: %s\n"),

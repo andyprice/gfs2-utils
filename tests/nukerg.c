@@ -232,7 +232,7 @@ static int nuke_ris(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs, unsigned *rinums, s
 			printf("Nuking rindex entry %u.\n", i);
 
 			off = i * sizeof(struct gfs2_rindex);
-			bytes = gfs2_writei(sdp->md.riinode, &blankri, off,
+			bytes = lgfs2_writei(sdp->md.riinode, &blankri, off,
 						sizeof(struct gfs2_rindex));
 			if (bytes != sizeof(struct gfs2_rindex)) {
 				fprintf(stderr, "Write failed (%d bytes): %s",
@@ -250,7 +250,7 @@ static lgfs2_rgrps_t read_rindex(struct gfs2_sbd *sdp)
 	unsigned rgcount;
 	unsigned i;
 
-	gfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
+	lgfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
 	if (sdp->md.riinode == NULL) {
 		perror("Failed to look up rindex");
 		return NULL;
@@ -336,8 +336,8 @@ int main(int argc, char **argv)
 	if (opts.got_rinums && nuke_ris(&sbd, rgs, opts.rinums, opts.rinum_count) != 0)
 		exit(1);
 
-	inode_put(&sbd.md.riinode);
-	inode_put(&sbd.master_dir);
+	lgfs2_inode_put(&sbd.md.riinode);
+	lgfs2_inode_put(&sbd.master_dir);
 	lgfs2_rgrps_free(&rgs);
 	fsync(sbd.device_fd);
 	close(sbd.device_fd);

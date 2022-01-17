@@ -154,7 +154,7 @@ static int pass1_repair_leaf(struct gfs2_inode *ip, uint64_t *leaf_no,
 	if (ip->i_sbd->gfs1)
 		gfs1_writei(ip, padbuf, lindex * sizeof(uint64_t), pad_size);
 	else
-		gfs2_writei(ip, padbuf, lindex * sizeof(uint64_t), pad_size);
+		lgfs2_writei(ip, padbuf, lindex * sizeof(uint64_t), pad_size);
 	free(padbuf);
 	log_err(_("Directory Inode %"PRIu64" (0x%"PRIx64") patched.\n"),
 	        ip->i_num.in_addr, ip->i_num.in_addr);
@@ -1463,7 +1463,7 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 			gfs2_blockmap_set(bl, iblock, GFS2_BLKST_FREE);
 			check_n_fix_bitmap(sdp, (*sysinode)->i_rgd, iblock, 0,
 					   GFS2_BLKST_FREE);
-			inode_put(sysinode);
+			lgfs2_inode_put(sysinode);
 		}
 	}
 	if (*sysinode) {
@@ -1490,8 +1490,8 @@ static int check_system_inode(struct gfs2_sbd *sdp,
 				   "flag. It should be rebuilt.\n"), filename);
 			if (sysdir && query(_("Delete the corrupt %s system "
 					      "inode? (y/n) "), filename)) {
-				inode_put(sysinode);
-				gfs2_dirent_del(sysdir, filename,
+				lgfs2_inode_put(sysinode);
+				lgfs2_dirent_del(sysdir, filename,
 						strlen(filename));
 				/* Set the blockmap (but not bitmap) back to
 				   'free' so that it gets checked like any
@@ -1567,7 +1567,7 @@ static int build_a_journal(struct gfs2_sbd *sdp)
 
 	/* First, try to delete the journal if it's in jindex */
 	sprintf(name, "journal%u", sdp->md.journals);
-	gfs2_dirent_del(sdp->md.jiinode, name, strlen(name));
+	lgfs2_dirent_del(sdp->md.jiinode, name, strlen(name));
 	/* Now rebuild it */
 	err = lgfs2_build_journal(sdp, sdp->md.journals, sdp->md.jiinode);
 	if (err) {
@@ -1582,7 +1582,7 @@ int build_per_node(struct gfs2_sbd *sdp)
 	struct gfs2_inode *per_node;
 	unsigned int j;
 
-	per_node = createi(sdp->master_dir, "per_node", S_IFDIR | 0700,
+	per_node = lgfs2_createi(sdp->master_dir, "per_node", S_IFDIR | 0700,
 			   GFS2_DIF_SYSTEM);
 	if (per_node == NULL) {
 		log_err(_("Error building '%s': %s\n"), "per_node", strerror(errno));
@@ -1597,7 +1597,7 @@ int build_per_node(struct gfs2_sbd *sdp)
 			        strerror(errno));
 			return 1;
 		}
-		inode_put(&ip);
+		lgfs2_inode_put(&ip);
 
 		ip = lgfs2_build_statfs_change(per_node, j);
 		if (ip == NULL) {
@@ -1605,7 +1605,7 @@ int build_per_node(struct gfs2_sbd *sdp)
 			        strerror(errno));
 			return 1;
 		}
-		inode_put(&ip);
+		lgfs2_inode_put(&ip);
 
 		ip = lgfs2_build_quota_change(per_node, j);
 		if (ip == NULL) {
@@ -1613,9 +1613,9 @@ int build_per_node(struct gfs2_sbd *sdp)
 			        strerror(errno));
 			return 1;
 		}
-		inode_put(&ip);
+		lgfs2_inode_put(&ip);
 	}
-	inode_put(&per_node);
+	lgfs2_inode_put(&per_node);
 	return 0;
 }
 
@@ -1624,7 +1624,7 @@ static int build_inum(struct gfs2_sbd *sdp)
 	struct gfs2_inode *ip = lgfs2_build_inum(sdp);
 	if (ip == NULL)
 		return -1;
-	inode_put(&ip);
+	lgfs2_inode_put(&ip);
 	return 0;
 }
 
@@ -1633,7 +1633,7 @@ static int build_statfs(struct gfs2_sbd *sdp)
 	struct gfs2_inode *ip = lgfs2_build_statfs(sdp);
 	if (ip == NULL)
 		return -1;
-	inode_put(&ip);
+	lgfs2_inode_put(&ip);
 	return 0;
 }
 
@@ -1642,7 +1642,7 @@ static int build_rindex(struct gfs2_sbd *sdp)
 	struct gfs2_inode *ip = lgfs2_build_rindex(sdp);
 	if (ip == NULL)
 		return -1;
-	inode_put(&ip);
+	lgfs2_inode_put(&ip);
 	return 0;
 }
 
@@ -1651,7 +1651,7 @@ static int build_quota(struct gfs2_sbd *sdp)
 	struct gfs2_inode *ip = lgfs2_build_quota(sdp);
 	if (ip == NULL)
 		return -1;
-	inode_put(&ip);
+	lgfs2_inode_put(&ip);
 	return 0;
 }
 
