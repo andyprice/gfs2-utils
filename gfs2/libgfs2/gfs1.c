@@ -60,9 +60,9 @@ void gfs1_lookup_block(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 	}
 
 	*ptr = cpu_to_be64(*block);
-	bmodified(bh);
+	lgfs2_bmodified(bh);
 	ip->i_blocks++;
-	bmodified(ip->i_bh);
+	lgfs2_bmodified(ip->i_bh);
 
 	*new = 1;
 }
@@ -111,7 +111,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 	for (x = 0; x < end_of_metadata; x++) {
 		gfs1_lookup_block(ip, bh, x, &mp, create, new, dblock);
 		if (bh != ip->i_bh)
-			brelse(bh);
+			lgfs2_brelse(bh);
 		if (!*dblock)
 			return;
 
@@ -121,14 +121,14 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 				.mh_type = cpu_to_be32(GFS2_METATYPE_IN),
 				.mh_format = cpu_to_be32(GFS2_FORMAT_IN)
 			};
-			bh = bget(sdp, *dblock);
+			bh = lgfs2_bget(sdp, *dblock);
 			memcpy(bh->b_data, &mh, sizeof(mh));
-			bmodified(bh);
+			lgfs2_bmodified(bh);
 		} else {
 			if (*dblock == ip->i_num.in_addr)
 				bh = ip->i_bh;
 			else
-				bh = bread(sdp, *dblock);
+				bh = lgfs2_bread(sdp, *dblock);
 		}
 	}
 
@@ -160,7 +160,7 @@ void gfs1_block_map(struct gfs2_inode *ip, uint64_t lblock, int *new,
 	}
 
 	if (bh != ip->i_bh)
-		brelse(bh);
+		lgfs2_brelse(bh);
 }
 
 int gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
@@ -211,7 +211,7 @@ int gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
 		if (dblock == ip->i_num.in_addr)
 			bh = ip->i_bh;
 		else
-			bh = bread(sdp, dblock);
+			bh = lgfs2_bread(sdp, dblock);
 
 		if (journaled && dblock != ip->i_num.in_addr ) {
 			struct gfs2_meta_header mh = {
@@ -223,9 +223,9 @@ int gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
 		}
 
 		memcpy(bh->b_data + offset, (char *)buf + copied, amount);
-		bmodified(bh);
+		lgfs2_bmodified(bh);
 		if (bh != ip->i_bh)
-			brelse(bh);
+			lgfs2_brelse(bh);
 
 		copied += amount;
 		lblock++;
@@ -236,12 +236,12 @@ int gfs1_writei(struct gfs2_inode *ip, void *buf, uint64_t offset,
 	}
 
 	if (ip->i_size < start + copied) {
-		bmodified(ip->i_bh);
+		lgfs2_bmodified(ip->i_bh);
 		ip->i_size = start + copied;
 	}
 	ip->i_mtime = ip->i_ctime = time(NULL);
 	lgfs2_dinode_out(ip, ip->i_bh->b_data);
-	bmodified(ip->i_bh);
+	lgfs2_bmodified(ip->i_bh);
 	return copied;
 }
 
@@ -294,11 +294,11 @@ struct gfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 	struct gfs2_buffer_head *bh;
 	struct gfs2_inode *ip;
 
-	bh = bget(sdp, di_addr);
+	bh = lgfs2_bget(sdp, di_addr);
 	if (bh == NULL)
 		return NULL;
 	if (pread(sdp->device_fd, bh->b_data, sdp->sd_bsize, di_addr * sdp->sd_bsize) != sdp->sd_bsize) {
-		brelse(bh);
+		lgfs2_brelse(bh);
 		return NULL;
 	}
 	ip = __gfs_inode_get(sdp, bh->b_data);

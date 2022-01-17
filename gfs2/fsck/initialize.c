@@ -232,13 +232,13 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 				}
 				if (state == GFS2_BLKST_DINODE) {
 					if (sdp->gfs1) {
-						bh = bread(sdp, diblock);
+						bh = lgfs2_bread(sdp, diblock);
 						if (!lgfs2_check_meta(bh->b_data,
 							GFS2_METATYPE_DI))
 							rg_useddi++;
 						else
 							rg_usedmeta++;
-						brelse(bh);
+						lgfs2_brelse(bh);
 					}
 					diblock++;
 					continue;
@@ -282,7 +282,7 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 					rgd->rt_freemeta--;
 				log_info(_("Free metadata block %"PRIu64" (0x%"PRIx64") reclaimed.\n"),
 				         diblock, diblock);
-				bh = bread(sdp, diblock);
+				bh = lgfs2_bread(sdp, diblock);
 				if (!lgfs2_check_meta(bh->b_data, GFS2_METATYPE_DI)) {
 					struct gfs2_inode *ip =
 						fsck_inode_get(sdp, rgd, bh);
@@ -296,7 +296,7 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 					}
 					fsck_inode_put(&ip);
 				}
-				brelse(bh);
+				lgfs2_brelse(bh);
 				diblock++;
 			}
 		}
@@ -511,7 +511,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		}
 		/* Write the inode but don't free it, to avoid doing an extra lookup */
 		lgfs2_dinode_out(sdp->md.inum, sdp->md.inum->i_bh->b_data);
-		bwrite(sdp->md.inum->i_bh);
+		lgfs2_bwrite(sdp->md.inum->i_bh);
 	}
 
 	if (fix_md.statfs) {
@@ -531,7 +531,7 @@ static int rebuild_master(struct gfs2_sbd *sdp)
 		}
 		/* Write the inode but don't free it, to avoid doing an extra lookup */
 		lgfs2_dinode_out(sdp->md.statfs, sdp->md.statfs->i_bh->b_data);
-		bwrite(sdp->md.statfs->i_bh);
+		lgfs2_bwrite(sdp->md.statfs->i_bh);
 	}
 
 	if (fix_md.riinode) {
@@ -810,7 +810,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 				exit(FSCK_ERROR);
 			}
 			lgfs2_dinode_out(sdp->md.inum, sdp->md.inum->i_bh->b_data);
-			if (bwrite(sdp->md.inum->i_bh) != 0) {
+			if (lgfs2_bwrite(sdp->md.inum->i_bh) != 0) {
 				log_crit(_("System inum inode was not rebuilt. Aborting.\n"));
 				goto fail;
 			}
@@ -861,7 +861,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 			exit(FSCK_ERROR);
 		}
 		lgfs2_dinode_out(sdp->md.statfs, sdp->md.statfs->i_bh->b_data);
-		if (bwrite(sdp->md.statfs->i_bh) != 0) {
+		if (lgfs2_bwrite(sdp->md.statfs->i_bh) != 0) {
 			log_err( _("Rebuild of statfs system file failed."));
 			log_err( _("fsck.gfs2 cannot continue without "
 				   "a valid statfs file; aborting.\n"));
@@ -918,7 +918,7 @@ static int init_system_inodes(struct gfs2_sbd *sdp)
 			exit(FSCK_ERROR);
 		}
 		lgfs2_dinode_out(sdp->md.qinode, sdp->md.qinode->i_bh->b_data);
-		if (bwrite(sdp->md.qinode->i_bh) != 0) {
+		if (lgfs2_bwrite(sdp->md.qinode->i_bh) != 0) {
 			log_crit(_("Unable to rebuild system quota file "
 				   "inode.  Aborting.\n"));
 			goto fail;
@@ -1087,10 +1087,10 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 			log_err(_("Damaged root dinode not fixed.\n"));
 			return;
 		}
-		root_bh = bread(sdp, ip->i_num.in_addr);
+		root_bh = lgfs2_bread(sdp, ip->i_num.in_addr);
 		memcpy(root_bh->b_data, ip->i_bh->b_data, sdp->sd_bsize);
-		bmodified(root_bh);
-		brelse(root_bh);
+		lgfs2_bmodified(root_bh);
+		lgfs2_brelse(root_bh);
 		log_warn(_("Root directory copied from the journal.\n"));
 		return;
 	}
@@ -1135,7 +1135,7 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
 	/* Max RG size is 2GB. Max block size is 4K. 2G / 4K blks = 524288,
 	   So this is traversing 2GB in 4K block increments. */
 	for (blk = startblock; blk < startblock + max_rg_size; blk++) {
-		bh = bread(sdp, blk);
+		bh = lgfs2_bread(sdp, blk);
 		found_rg = 0;
 		for (bsize = 0; bsize < GFS2_DEFAULT_BSIZE; bsize += GFS2_BASIC_BLOCK) {
 			struct gfs2_meta_header *mhp;
@@ -1160,11 +1160,11 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
 				   (GFS2_DEFAULT_BSIZE / bsize2)) +
 				(bsize / bsize2) + 1;
 			sdp->sd_bsize = bsize2; /* temporarily */
-			rb_bh = bread(sdp, rb_addr);
+			rb_bh = lgfs2_bread(sdp, rb_addr);
 			mh = (struct gfs2_meta_header *)rb_bh->b_data;
 			is_rb = (be32_to_cpu(mh->mh_magic) == GFS2_MAGIC &&
 			         be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RB);
-			brelse(rb_bh);
+			lgfs2_brelse(rb_bh);
 			if (is_rb) {
 				log_debug(_("boff:%d bsize2:%d rg:0x%"PRIx64", "
 					    "rb:0x%"PRIx64"\n"), bsize, bsize2,
@@ -1173,7 +1173,7 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
 				break;
 			}
 		}
-		brelse(bh);
+		lgfs2_brelse(bh);
 		if (!(*known_bsize)) {
 			sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
 			continue;
@@ -1199,9 +1199,9 @@ static int peruse_metadata(struct gfs2_sbd *sdp, uint64_t startblock)
 	max_rg_size = 2147483648ull / sdp->sd_bsize;
 	/* Max RG size is 2GB. 2G / bsize. */
 	for (blk = startblock; blk < startblock + max_rg_size; blk++) {
-		bh = bread(sdp, blk);
+		bh = lgfs2_bread(sdp, blk);
 		if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_DI)) {
-			brelse(bh);
+			lgfs2_brelse(bh);
 			continue;
 		}
 		ip = lgfs2_inode_get(sdp, bh);
@@ -1292,7 +1292,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 			error = init_dinode(sdp, &bh, &inum, S_IFDIR | 0755, 0, &inum);
 			if (error != 0)
 				return -1;
-			brelse(bh);
+			lgfs2_brelse(bh);
 		}
 	}
 	/* Step 3 - Rebuild the lock protocol and file system table name */
@@ -1389,7 +1389,7 @@ static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
 		struct gfs_log_header *lh;
 		char *p;
 
-		bh = bget(sdp, first); /* Zeroes the block */
+		bh = lgfs2_bget(sdp, first); /* Zeroes the block */
 		lh = (struct gfs_log_header *)bh->b_data;
 
 		lh->lh_header.mh_magic = cpu_to_be32(GFS2_MAGIC);
@@ -1402,8 +1402,8 @@ static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
 
 		p = bh->b_data + GFS2_BASIC_BLOCK - sizeof(struct gfs_log_header);
 		memcpy(p, bh->b_data, sizeof(struct gfs_log_header));
-		bmodified(bh);
-		brelse(bh);
+		lgfs2_bmodified(bh);
+		lgfs2_brelse(bh);
 
 		if (++sequence == ji_nsegment)
 			sequence = 0;

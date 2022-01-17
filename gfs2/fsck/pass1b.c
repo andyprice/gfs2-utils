@@ -114,17 +114,17 @@ static void clone_data_block(struct gfs2_sbd *sdp, struct duptree *dt,
 		log_err(_("Unable to clone data block.\n"));
 	} else {
 		if (metaref.metablock != id->block_no)
-			bh = bread(sdp, metaref.metablock);
+			bh = lgfs2_bread(sdp, metaref.metablock);
 		else
 			bh = ip->i_bh;
 		ptr = (__be64 *)bh->b_data + metaref.off;
 		clone_data(ip, 0, dt->block, &clone, bh, ptr);
 		if (metaref.metablock != id->block_no)
-			brelse(bh);
+			lgfs2_brelse(bh);
 		else
-			bmodified(ip->i_bh);
+			lgfs2_bmodified(ip->i_bh);
 	}
-	fsck_inode_put(&ip); /* out, brelse, free */
+	fsck_inode_put(&ip); /* out, lgfs2_brelse, free */
 }
 
 /* revise_dup_handler - get current information about a duplicate reference
@@ -311,7 +311,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 				if (ip->i_blocks > 0)
 					ip->i_blocks--;
 				ip->i_flags &= ~GFS2_DIF_EA_INDIRECT;
-				bmodified(ip->i_bh);
+				lgfs2_bmodified(ip->i_bh);
 				dup_listent_delete(dt, id);
 				(dh->ref_inode_count)--;
 			} else {
@@ -365,7 +365,7 @@ static void resolve_dup_references(struct gfs2_sbd *sdp, struct duptree *dt,
 		   still being referenced by a valid dinode. */
 		if (this_ref != REF_AS_EA)
 			delete_all_dups(ip);
-		fsck_inode_put(&ip); /* out, brelse, free */
+		fsck_inode_put(&ip); /* out, lgfs2_brelse, free */
 	}
 	return;
 }
@@ -378,7 +378,7 @@ static int clone_check_meta(struct iptr iptr, struct gfs2_buffer_head **bh, int 
 
 	*was_duplicate = 0;
 	*is_valid = 1;
-	*bh = bread(ip->i_sbd, block);
+	*bh = lgfs2_bread(ip->i_sbd, block);
 	return 0;
 }
 
@@ -412,16 +412,16 @@ static int clone_data(struct gfs2_inode *ip, uint64_t metablock,
 	if (query( _("Okay to clone the duplicated reference? (y/n) "))) {
 		error = lgfs2_meta_alloc(ip, &cloneblock);
 		if (!error) {
-			clone_bh = bread(ip->i_sbd, clonet->dup_block);
+			clone_bh = lgfs2_bread(ip->i_sbd, clonet->dup_block);
 			if (clone_bh) {
 				fsck_bitmap_set(ip, cloneblock, _("data"),
 						GFS2_BLKST_USED);
 				clone_bh->b_blocknr = cloneblock;
-				bmodified(clone_bh);
-				brelse(clone_bh);
+				lgfs2_bmodified(clone_bh);
+				lgfs2_brelse(clone_bh);
 				/* Now fix the reference: */
 				*ptr = cpu_to_be64(cloneblock);
-				bmodified(bh);
+				lgfs2_bmodified(bh);
 				log_err(_("Duplicate reference to block %"PRIu64
 				          " (0x%"PRIx64") was cloned to block %"PRIu64
 					  " (0x%"PRIx64").\n"),
@@ -437,7 +437,7 @@ static int clone_data(struct gfs2_inode *ip, uint64_t metablock,
 			return 0;
 		}
 		*ptr = 0;
-		bmodified(bh);
+		lgfs2_bmodified(bh);
 		log_err(_("Duplicate reference to block %"PRIu64" (0x%"PRIx64") was zeroed.\n"),
 		        block, block);
 	} else {
@@ -579,7 +579,7 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 				ip->i_eattr = 0;
 				ip->i_flags &= ~GFS2_DIF_EA_INDIRECT;
 				ip->i_blocks--;
-				bmodified(ip->i_bh);
+				lgfs2_bmodified(ip->i_bh);
 				fsck_bitmap_set(ip, dt->block,
 						_("reference-repaired EA"),
 						GFS2_BLKST_FREE);
@@ -591,7 +591,7 @@ static void resolve_last_reference(struct gfs2_sbd *sdp, struct duptree *dt,
 			}
 		}
 	}
-	fsck_inode_put(&ip); /* out, brelse, free */
+	fsck_inode_put(&ip); /* out, lgfs2_brelse, free */
 	log_debug(_("Done with duplicate reference to block 0x%"PRIx64"\n"), dt->block);
 	dup_delete(dt);
 }
@@ -630,10 +630,10 @@ static int handle_dup_blk(struct gfs2_sbd *sdp, struct duptree *dt)
 	   references to it as metadata.  Dinodes with such references are
 	   clearly corrupt and need to be deleted.
 	   And if we're left with a single reference, problem solved. */
-	bh = bread(sdp, dt->block);
+	bh = lgfs2_bread(sdp, dt->block);
 	cmagic = ((struct gfs2_meta_header *)(bh->b_data))->mh_magic;
 	ctype = ((struct gfs2_meta_header *)(bh->b_data))->mh_type;
-	brelse(bh);
+	lgfs2_brelse(bh);
 
 	/* If this is a dinode, any references to it (except in directory
 	   entries) are invalid and should be deleted. */
@@ -763,7 +763,7 @@ static int check_eattr_indir_refs(struct gfs2_inode *ip, uint64_t block,
 
 	error = add_duplicate_ref(ip, block, REF_AS_EA, 1, INODE_VALID);
 	if (!error)
-		*bh = bread(sdp, block);
+		*bh = lgfs2_bread(sdp, block);
 
 	return error;
 }
@@ -777,7 +777,7 @@ static int check_eattr_leaf_refs(struct gfs2_inode *ip, uint64_t block,
 
 	error = add_duplicate_ref(ip, block, REF_AS_EA, 1, INODE_VALID);
 	if (!error)
-		*bh = bread(sdp, block);
+		*bh = lgfs2_bread(sdp, block);
 	return error;
 }
 
@@ -826,7 +826,7 @@ static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
 		.check_eattr_extentry = check_eattr_extentry_refs,
 	};
 
-	ip = fsck_load_inode(sdp, inode); /* bread, inode_get */
+	ip = fsck_load_inode(sdp, inode); /* lgfs2_bread, inode_get */
 
 	/* double-check the meta header just to be sure it's metadata */
 	if (ip->i_magic != GFS2_MAGIC ||
@@ -850,7 +850,7 @@ static int find_block_ref(struct gfs2_sbd *sdp, uint64_t inode)
 		error = check_inode_eattr(ip, &find_refs);
 
 out:
-	fsck_inode_put(&ip); /* out, brelse, free */
+	fsck_inode_put(&ip); /* out, lgfs2_brelse, free */
 	return error;
 }
 

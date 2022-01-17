@@ -346,7 +346,7 @@ static int dirent_repair(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 		d->dr_rec_len = GFS2_DIRENT_SIZE(d->dr_name_len);
 	}
 	lgfs2_dirent_out(d, dent);
-	bmodified(bh);
+	lgfs2_bmodified(bh);
 	return 0;
 }
 
@@ -365,7 +365,7 @@ static void dirblk_truncate(struct gfs2_inode *ip, struct gfs2_dirent *fixb,
 	lgfs2_dirent_in(&d, fixb);
 	d.dr_rec_len = bh_end - (char *)fixb;
 	lgfs2_dirent_out(&d, fixb);
-	bmodified(bh);
+	lgfs2_bmodified(bh);
 }
 
 /*
@@ -473,7 +473,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 				d.dr_inum.in_addr = d.dr_inum.in_formal_ino;
 				d.dr_inum.in_formal_ino = 0;
 				lgfs2_dirent_out(&d, dent);
-				bmodified(bh);
+				lgfs2_bmodified(bh);
 				/* Mark dirent buffer as modified */
 				first = 0;
 			} else {
@@ -509,7 +509,7 @@ static int check_entries(struct gfs2_inode *ip, struct gfs2_buffer_head *bh,
 /**
  * check_leaf - check a leaf block for errors
  * Reads in the leaf block
- * Leaves the buffer around for further analysis (caller must brelse)
+ * Leaves the buffer around for further analysis (caller must lgfs2_brelse)
  */
 int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	       uint64_t *leaf_no, struct lgfs2_leaf *leaf, int *ref_count)
@@ -533,7 +533,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	}
 
 	/* Try to read in the leaf block. */
-	lbh = bread(sdp, *leaf_no);
+	lbh = lgfs2_bread(sdp, *leaf_no);
 	/* Make sure it's really a valid leaf block. */
 	if (lgfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF)) {
 		msg = _("that is not really a leaf");
@@ -548,7 +548,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 			log_info(_("Previous reference to leaf %"PRIu64" (0x%"PRIx64") "
 				   "has already checked it; skipping.\n"),
 			         *leaf_no, *leaf_no);
-			brelse(lbh);
+			lgfs2_brelse(lbh);
 			return error;
 		}
 	}
@@ -563,7 +563,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 			     "\n"), *leaf_no);
 		leaf->lf_dirent_format = GFS2_FORMAT_DE;
 		lgfs2_leaf_out(leaf, lbh->b_data);
-		bmodified(lbh);
+		lgfs2_bmodified(lbh);
 		log_debug( _("Fixing lf_dirent_format.\n"));
 	}
 
@@ -594,8 +594,8 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 
 		/* release and re-read the leaf in case check_entries
 		   changed it. */
-		brelse(lbh);
-		lbh = bread(sdp, *leaf_no);
+		lgfs2_brelse(lbh);
+		lbh = lgfs2_bread(sdp, *leaf_no);
 		lgfs2_leaf_in(leaf, lbh->b_data);
 		if (count != leaf->lf_entries) {
 			log_err(_("Leaf %"PRIu64" (0x%"PRIx64") entry count in "
@@ -606,7 +606,7 @@ int check_leaf(struct gfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 			if (query( _("Update leaf entry count? (y/n) "))) {
 				leaf->lf_entries = count;
 				lgfs2_leaf_out(leaf, lbh->b_data);
-				bmodified(lbh);
+				lgfs2_bmodified(lbh);
 				log_warn( _("Leaf entry count updated\n"));
 			} else
 				log_err( _("Leaf entry count left in "
@@ -621,14 +621,14 @@ out:
 			  *ref_count, (*ref_count) << (ip->i_depth - di_depth));
 		(*ref_count) <<= (ip->i_depth - di_depth);
 	}
-	brelse(lbh);
+	lgfs2_brelse(lbh);
 	if (error < 0)
 		return error;
 	return 0;
 
 bad_leaf:
 	if (lbh)
-		brelse(lbh);
+		lgfs2_brelse(lbh);
 	if (pass->repair_leaf) {
 		/* The leaf we read in is bad so we need to repair it. */
 		fix = pass->repair_leaf(ip, leaf_no, lindex, *ref_count, msg);
@@ -732,14 +732,14 @@ int check_leaf_blks(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 	for (lindex = 0; lindex < hsize; lindex++) {
 		leaf_no = be64_to_cpu(tbl[lindex]);
 		if (valid_block_ip(ip, leaf_no)) {
-			lbh = bread(sdp, leaf_no);
+			lbh = lgfs2_bread(sdp, leaf_no);
 			/* Make sure it's really a valid leaf block. */
 			if (lgfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF) == 0) {
-				brelse(lbh);
+				lgfs2_brelse(lbh);
 				first_ok_leaf = leaf_no;
 				break;
 			}
-			brelse(lbh);
+			lgfs2_brelse(lbh);
 		}
 	}
 	if (first_ok_leaf == -1) { /* no valid leaf found */
@@ -932,12 +932,12 @@ static int check_leaf_eattr(struct gfs2_inode *ip, uint64_t block,
 		}
 		if (error > 0) {
 			if (bh)
-				brelse(bh);
+				lgfs2_brelse(bh);
 			return 1;
 		}
 		if (bh) {
 			error = check_eattr_entries(ip, bh, pass);
-			brelse(bh);
+			lgfs2_brelse(bh);
 		}
 		return error;
 	}
@@ -1007,7 +1007,7 @@ static int check_indirect_eattr(struct gfs2_inode *ip, uint64_t indirect,
 			   one. So we want: GGGG when we finish. To do that,
 			   we set di_eattr to 0 temporarily. */
 			ip->i_eattr = 0;
-			bmodified(ip->i_bh);
+			lgfs2_bmodified(ip->i_bh);
 		}
 		ea_leaf_ptr++;
 	}
@@ -1061,7 +1061,7 @@ int check_inode_eattr(struct gfs2_inode *ip, struct metawalk_fxns *pass)
 				stack;
 		}
 		if (indirect_buf)
-			brelse(indirect_buf);
+			lgfs2_brelse(indirect_buf);
 		return error;
 	}
 	error = check_leaf_eattr(ip, ip->i_eattr, ip->i_num.in_addr, pass);
@@ -1090,7 +1090,7 @@ static void free_metalist(struct gfs2_inode *ip, osi_list_t *mlp)
 			if (nbh == ip->i_bh)
 				osi_list_del_init(&nbh->b_altlist);
 			else
-				brelse(nbh);
+				lgfs2_brelse(nbh);
 		}
 	}
 }
@@ -1283,7 +1283,7 @@ static int build_and_check_metalist(struct gfs2_inode *ip, osi_list_t *mlp,
 				if (error == META_SKIP_ONE)
 					continue;
 				if (!nbh)
-					nbh = bread(ip->i_sbd, iptr_block(iptr));
+					nbh = lgfs2_bread(ip->i_sbd, iptr_block(iptr));
 				osi_list_add_prev(&nbh->b_altlist, cur_list);
 			} /* for all data on the indirect block */
 		} /* for blocks at that height */
@@ -1607,7 +1607,7 @@ undo_metalist:
 			if (bh == ip->i_bh)
 				osi_list_del(&bh->b_altlist);
 			else
-				brelse(bh);
+				lgfs2_brelse(bh);
 		}
 	}
 	/* There may be leftover duplicate records, so we need to delete them.

@@ -32,7 +32,7 @@ int gfs2_replay_read_block(struct gfs2_inode *ip, unsigned int blk,
 	if (!dblock)
 		return -EIO;
 
-	*bh = bread(ip->i_sbd, dblock);
+	*bh = lgfs2_bread(ip->i_sbd, dblock);
 	return 0;
 }
 
@@ -88,7 +88,7 @@ int lgfs2_get_log_header(struct gfs2_inode *ip, unsigned int blk,
 	tmp->lh_hash = saved_hash;
 	crc = lgfs2_log_header_crc(bh->b_data, ip->i_sbd->sd_bsize);
 	log_header_in(&lh, bh->b_data);
-	brelse(bh);
+	lgfs2_brelse(bh);
 	lh_crc = lh.lh_crc;
 	if (error || lh.lh_blkno != blk || lh.lh_hash != hash)
 		return 1;
@@ -245,7 +245,7 @@ int lgfs2_clean_journal(struct gfs2_inode *ip, struct lgfs2_log_header *head)
 	if (!dblock)
 		return -EIO;
 
-	bh = bread(ip->i_sbd, dblock);
+	bh = lgfs2_bread(ip->i_sbd, dblock);
 	memset(bh->b_data, 0, ip->i_sbd->sd_bsize);
 
 	lh = (struct gfs2_log_header *)bh->b_data;
@@ -258,8 +258,8 @@ int lgfs2_clean_journal(struct gfs2_inode *ip, struct lgfs2_log_header *head)
 	lh->lh_blkno = cpu_to_be32(lblock);
 	hash = lgfs2_log_header_hash(bh->b_data);
 	lh->lh_hash = cpu_to_be32(hash);
-	bmodified(bh);
-	brelse(bh);
+	lgfs2_bmodified(bh);
+	lgfs2_brelse(bh);
 
 	return 0;
 }

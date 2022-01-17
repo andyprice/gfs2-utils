@@ -67,13 +67,13 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 			block_map(ip, b, &new, &dblock, NULL, 0);
 			if (!dblock)
 				break;
-			bh = bread(sdp, dblock);
+			bh = lgfs2_bread(sdp, dblock);
 			if (!lgfs2_check_meta(bh->b_data, GFS2_METATYPE_RG)) {
 				/* False rgrp found at block dblock */
 				false_count++;
 				gfs2_special_set(&false_rgrps, dblock);
 			}
-			brelse(bh);
+			lgfs2_brelse(bh);
 		}
 		log_debug("\n%d false positives identified.\n", false_count);
 	}
@@ -123,9 +123,9 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 		else if (is_false_rg(blk))
 			is_rgrp = 0;
 		else {
-			bh = bread(sdp, blk);
+			bh = lgfs2_bread(sdp, blk);
 			is_rgrp = (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_RG) == 0);
-			brelse(bh);
+			lgfs2_brelse(bh);
 		}
 		if (!is_rgrp) {
 			if (rgs_sampled >= 6) {
@@ -140,10 +140,10 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 				if (is_false_rg(nblk)) {
 					is_rgrp = 0;
 				} else {
-					bh = bread(sdp, nblk);
+					bh = lgfs2_bread(sdp, nblk);
 					is_rgrp = (((lgfs2_check_meta(bh->b_data,
 						GFS2_METATYPE_RG) == 0)));
-					brelse(bh);
+					lgfs2_brelse(bh);
 				}
 				if (is_rgrp) {
 					log_info(_("Next rgrp is intact, so "
@@ -353,12 +353,12 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 			break;
 		if (block >= prevrgd->rt_addr + twogigs)
 			break;
-		bh = bread(sdp, block);
+		bh = lgfs2_bread(sdp, block);
 		mh = (struct gfs2_meta_header *)bh->b_data;
 		if ((be32_to_cpu(mh->mh_magic) != GFS2_MAGIC) ||
 		    (first && be32_to_cpu(mh->mh_type) != GFS2_METATYPE_RG) ||
 		    (!first && be32_to_cpu(mh->mh_type) != GFS2_METATYPE_RB)) {
-			brelse(bh);
+			lgfs2_brelse(bh);
 			break;
 		}
 		if (first) {
@@ -371,7 +371,7 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 		first = 0;
 		block++;
 		length++;
-		brelse(bh);
+		lgfs2_brelse(bh);
 		/* Check if this distance points to an rgrp:
 		   We have to look for blocks that resemble rgrps and bitmaps.
 		   If they do, we need to count blocks used and free and see
@@ -386,7 +386,7 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 		for (b = 0; b <= length + GFS2_NBBY; b++) {
 			if (next_block + b >= sdp->device.length)
 				break;
-			bh = bread(sdp, next_block + b);
+			bh = lgfs2_bread(sdp, next_block + b);
 			mh = (struct gfs2_meta_header *)bh->b_data;
 			if (be32_to_cpu(mh->mh_magic) == GFS2_MAGIC) {
 				if (be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RG)
@@ -399,7 +399,7 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 					rgrp_dist--;
 				}
 			}
-			brelse(bh);
+			lgfs2_brelse(bh);
 			if (found)
 				break;
 			rgrp_dist++;
@@ -432,16 +432,16 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 	if (gfs2_check_range(sdp, blk + last_bump))
 		return sdp->fssize - blk;
 
-	bh = bread(sdp, blk + last_bump);
+	bh = lgfs2_bread(sdp, blk + last_bump);
 	mh = (struct gfs2_meta_header *)bh->b_data;
 	if (be32_to_cpu(mh->mh_magic) == GFS2_MAGIC &&
 	    be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RG) {
 		log_info(_("rgrp found at 0x%"PRIx64", length=%"PRIu64"\n"),
 		         blk + last_bump, last_bump);
-		brelse(bh);
+		lgfs2_brelse(bh);
 		return last_bump;
 	}
-	brelse(bh);
+	lgfs2_brelse(bh);
 
 	rgrp_dist = AWAY_FROM_BITMAPS; /* Get away from any bitmaps
 					  associated with the previous rgrp */
@@ -462,11 +462,11 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 	for (b = AWAY_FROM_BITMAPS; b < last_block; b++) {
 		uint32_t magic, type;
 
-		bh = bread(sdp, block + b);
+		bh = lgfs2_bread(sdp, block + b);
 		mh = (struct gfs2_meta_header *)bh->b_data;
 		magic = be32_to_cpu(mh->mh_magic);
 		type = be32_to_cpu(mh->mh_type);
-		brelse(bh);
+		lgfs2_brelse(bh);
 		if (magic == GFS2_MAGIC) {
 			if (type == GFS2_METATYPE_RG)
 				break;
@@ -553,9 +553,9 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 	blk = LGFS2_SB_ADDR(sdp) + 1;
 	while (blk <= sdp->device.length) {
 		log_debug( _("Block 0x%"PRIx64"\n"), blk);
-		bh = bread(sdp, blk);
+		bh = lgfs2_bread(sdp, blk);
 		rg_was_fnd = (!lgfs2_check_meta(bh->b_data, GFS2_METATYPE_RG));
-		brelse(bh);
+		lgfs2_brelse(bh);
 		/* Allocate a new RG and index. */
 		calc_rgd = rgrp_insert(&rgcalc, blk);
 		if (!calc_rgd) {
@@ -583,9 +583,9 @@ static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 		/* ------------------------------------------------ */
 		for (fwd_block = blk + 1; fwd_block < sdp->device.length; fwd_block++) {
 			int bitmap_was_fnd;
-			bh = bread(sdp, fwd_block);
+			bh = lgfs2_bread(sdp, fwd_block);
 			bitmap_was_fnd = !lgfs2_check_meta(bh->b_data, GFS2_METATYPE_RB);
-			brelse(bh);
+			lgfs2_brelse(bh);
 			if (bitmap_was_fnd) /* if a bitmap */
 				calc_rgd->rt_length++;
 			else
@@ -1010,7 +1010,7 @@ int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 		}
 		sdp->md.riinode->i_size /= sizeof(struct gfs2_rindex);
 		sdp->md.riinode->i_size *= sizeof(struct gfs2_rindex);
-		bmodified(sdp->md.riinode->i_bh);
+		lgfs2_bmodified(sdp->md.riinode->i_bh);
 		log_err(_("Changing rindex size to %"PRIu64".\n"), sdp->md.riinode->i_size);
 	}
 	log_warn(_("L%d: number of rgs expected     = %"PRIu64".\n"), trust_lvl + 1,
@@ -1207,7 +1207,7 @@ int rindex_repair(struct gfs2_sbd *sdp, int trust_lvl, int *ok)
 	if (sdp->md.riinode->i_bh->b_modified) {
 		log_debug("Syncing rindex inode changes to disk.\n");
 		lgfs2_dinode_out(sdp->md.riinode, sdp->md.riinode->i_bh->b_data);
-		bwrite(sdp->md.riinode->i_bh);
+		lgfs2_bwrite(sdp->md.riinode->i_bh);
 	}
 	return 0;
 }

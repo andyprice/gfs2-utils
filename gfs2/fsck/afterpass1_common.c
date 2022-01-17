@@ -207,10 +207,10 @@ static int del_eattr_generic(struct gfs2_inode *ip, uint64_t block,
 		ret = delete_block_if_notdup(ip, block, NULL, eatype,
 					     NULL, private);
 		if (!ret) {
-			*bh = bread(ip->i_sbd, block);
+			*bh = lgfs2_bread(ip->i_sbd, block);
 			if (!was_free)
 				ip->i_blocks--;
-			bmodified(ip->i_bh);
+			lgfs2_bmodified(ip->i_bh);
 		}
 	}
 	/* Even if it's a duplicate reference, we want to eliminate the
@@ -218,7 +218,7 @@ static int del_eattr_generic(struct gfs2_inode *ip, uint64_t block,
 	if (ip->i_eattr) {
 		if (block == ip->i_eattr)
 			ip->i_eattr = 0;
-		bmodified(ip->i_bh);
+		lgfs2_bmodified(ip->i_bh);
 	}
 	return ret;
 }
@@ -294,7 +294,7 @@ int delete_eattr_extentry(struct gfs2_inode *ip, int i, __be64 *ea_data_ptr,
 			ea_hdr->ea_num_ptrs = i;
 			ea_hdr->ea_data_len = cpu_to_be32(tot_ealen);
 			*ea_data_ptr = 0;
-			bmodified(leaf_bh);
+			lgfs2_bmodified(leaf_bh);
 			/* Endianness doesn't matter in this case because it's
 			   a single byte. */
 			fsck_bitmap_set(ip, ip->i_eattr,

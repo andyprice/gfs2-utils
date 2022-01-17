@@ -759,7 +759,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 	uint64_t rgblk;
 
 	rgblk = get_rg_addr(rgnum);
-	rbh = bread(&sbd, rgblk);
+	rbh = lgfs2_bread(&sbd, rgblk);
 	rg = (void *)rbh->b_data;
 
 	if (modify) {
@@ -768,7 +768,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 		printf("RG #%d (block %"PRIu64" / 0x%"PRIx64") rg_flags changed from 0x%08x to 0x%08x\n",
 		       rgnum, rgblk, rgblk, flags, new_flags);
 		rg->rg_flags = cpu_to_be32(new_flags);
-		bmodified(rbh);
+		lgfs2_bmodified(rbh);
 	} else {
 		if (full) {
 			print_gfs2("RG #%d", rgnum);
@@ -783,7 +783,7 @@ static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 			printf("RG #%d (block %"PRIu64" / 0x%"PRIx64") rg_flags = 0x%08x\n",
 			       rgnum, rgblk, rgblk, be32_to_cpu(rg->rg_flags));
 	}
-	brelse(rbh);
+	lgfs2_brelse(rbh);
 	if (modify)
 		fsync(sbd.device_fd);
 }
@@ -876,7 +876,7 @@ static void read_superblock(int fd)
 	memset(&sbd, 0, sizeof(struct gfs2_sbd));
 	sbd.sd_bsize = GFS2_DEFAULT_BSIZE;
 	sbd.device_fd = fd;
-	bh = bread(&sbd, 0x10);
+	bh = lgfs2_bread(&sbd, 0x10);
 	sbd.jsize = GFS2_DEFAULT_JSIZE;
 	sbd.rgsize = GFS2_DEFAULT_RGSIZE;
 	sbd.qcsize = GFS2_DEFAULT_QCSIZE;
@@ -928,7 +928,7 @@ static void read_superblock(int fd)
 			gfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
 		}
 	}
-	brelse(bh);
+	lgfs2_brelse(bh);
 	bh = NULL;
 }
 
@@ -952,7 +952,7 @@ static int read_master_dir(void)
 {
 	ioctl(sbd.device_fd, BLKFLSBUF, 0);
 
-	bh = bread(&sbd, sbd.sd_meta_dir.in_addr);
+	bh = lgfs2_bread(&sbd, sbd.sd_meta_dir.in_addr);
 	if (bh == NULL)
 		return 1;
 	di = (struct gfs2_dinode *)bh->b_data;
@@ -984,10 +984,10 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 	}
 	if (bh == NULL || bh->b_blocknr != blk) { /* If we changed blocks from the last read */
 		if (bh != NULL)
-			brelse(bh);
+			lgfs2_brelse(bh);
 		dev_offset = blk * sbd.sd_bsize;
 		ioctl(sbd.device_fd, BLKFLSBUF, 0);
-		if (!(bh = bread(&sbd, blk))) {
+		if (!(bh = lgfs2_bread(&sbd, blk))) {
 			fprintf(stderr, "read error: %s from %s:%d: "
 				"offset %"PRIu64" (0x%"PRIx64")\n",
 				strerror(errno), __FUNCTION__, __LINE__,
@@ -1134,17 +1134,17 @@ static uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int p
 
 	last_fs_block = lseek(sbd.device_fd, 0, SEEK_END) / sbd.sd_bsize;
 	for (blk = startblk + 1; blk < last_fs_block; blk++) {
-		lbh = bread(&sbd, blk);
+		lbh = lgfs2_bread(&sbd, blk);
 		/* Can't use get_block_type here (returns false "none") */
 		if (lbh->b_data[0] == 0x01 && lbh->b_data[1] == 0x16 &&
 		    lbh->b_data[2] == 0x19 && lbh->b_data[3] == 0x70 &&
 		    lbh->b_data[4] == 0x00 && lbh->b_data[5] == 0x00 &&
 		    lbh->b_data[6] == 0x00 && lbh->b_data[7] == metatype) {
 			found = 1;
-			brelse(lbh);
+			lgfs2_brelse(lbh);
 			break;
 		}
-		brelse(lbh);
+		lgfs2_brelse(lbh);
 	}
 	if (!found)
 		blk = 0;
@@ -1172,9 +1172,9 @@ static int find_rg_metatype(struct rgrp_tree *rgd, uint64_t *blk, uint64_t start
 
 		for (j = 0; j < m; j++) {
 			*blk = ibuf[j];
-			bhp = bread(&sbd, *blk);
+			bhp = lgfs2_bread(&sbd, *blk);
 			found = (*blk > startblk) && !lgfs2_check_meta(bhp->b_data, mtype);
-			brelse(bhp);
+			lgfs2_brelse(bhp);
 			if (found) {
 				free(ibuf);
 				return 0;
@@ -1585,10 +1585,10 @@ static void find_print_block_type(void)
 	const struct lgfs2_metadata *type;
 
 	tblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
-	lbh = bread(&sbd, tblock);
+	lbh = lgfs2_bread(&sbd, tblock);
 	type = get_block_type(lbh->b_data);
 	print_block_type(tblock, type);
-	brelse(lbh);
+	lgfs2_brelse(lbh);
 	gfs2_rgrp_free(&sbd, &sbd.rgtree);
 	exit(0);
 }
@@ -1701,7 +1701,7 @@ static void process_field(const char *field, const char *nstr)
 	const struct lgfs2_metafield *mfield;
 
 	fblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
-	rbh = bread(&sbd, fblock);
+	rbh = lgfs2_bread(&sbd, fblock);
 	mtype = get_block_type(rbh->b_data);
 	if (mtype == NULL) {
 		fprintf(stderr, "Metadata type of block %"PRIx64" not recognised\n",
@@ -1732,7 +1732,7 @@ static void process_field(const char *field, const char *nstr)
 			        strerror(errno));
 			exit(1);
 		}
-		bmodified(rbh);
+		lgfs2_bmodified(rbh);
 	}
 
 	if (!termlines) {
@@ -1741,7 +1741,7 @@ static void process_field(const char *field, const char *nstr)
 		printf("%s\n", str);
 	}
 
-	brelse(rbh);
+	lgfs2_brelse(rbh);
 	fsync(sbd.device_fd);
 	exit(0);
 }
@@ -2131,7 +2131,7 @@ static int count_dinode_blks(struct rgrp_tree *rgd, int bitmap,
 		off = sizeof(struct gfs2_rgrp);
 
 	for (b = 0; b < rgd->bits[bitmap].bi_len << GFS2_BIT_SIZE; b++) {
-		tbh = bread(&sbd, rgd->rt_data0 +
+		tbh = lgfs2_bread(&sbd, rgd->rt_data0 +
 			    rgd->bits[bitmap].bi_start + b);
 		byte = rbh->b_data + off + (b / GFS2_NBBY);
 		bit = (b % GFS2_NBBY) * GFS2_BIT_SIZE;
@@ -2144,9 +2144,9 @@ static int count_dinode_blks(struct rgrp_tree *rgd, int bitmap,
 		cur_state = (*byte >> bit) & GFS2_BIT_MASK;
 		*byte ^= cur_state << bit;
 		*byte |= new_state << bit;
-		brelse(tbh);
+		lgfs2_brelse(tbh);
 	}
-	bmodified(rbh);
+	lgfs2_bmodified(rbh);
 	return dinodes;
 }
 
@@ -2204,7 +2204,7 @@ static void rg_repair(void)
 			struct gfs2_meta_header *mh;
 
 			printf("Bitmap #%d:", b);
-			rbh = bread(&sbd, rgd->rt_addr + b);
+			rbh = lgfs2_bread(&sbd, rgd->rt_addr + b);
 			if (lgfs2_check_meta(rbh->b_data, mtype)) { /* wrong type */
 				printf("Damaged. Repairing...");
 				/* Fix the meta header */
@@ -2218,7 +2218,7 @@ static void rg_repair(void)
 				else
 					mh->mh_format =
 						cpu_to_be32(GFS2_FORMAT_RG);
-				bmodified(rbh);
+				lgfs2_bmodified(rbh);
 				/* Count the dinode blocks */
 				dinodes_found = count_dinode_blks(rgd, b, rbh);
 			} else { /* bitmap info is okay: tally it. */
@@ -2231,7 +2231,7 @@ static void rg_repair(void)
 				rgd->rt_dinodes = dinodes_total;
 				rgd->rt_free = 0;
 			}
-			brelse(rbh);
+			lgfs2_brelse(rbh);
 		}
 		rgs_fixed++;
 	}

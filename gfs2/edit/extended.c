@@ -628,13 +628,13 @@ int display_extended(void)
 	dsplines = termlines - line - 1;
 	/* Display any indirect pointers that we have. */
 	if (block_is_rindex(block)) {
-		tmp_bh = bread(&sbd, block);
+		tmp_bh = lgfs2_bread(&sbd, block);
 		tmp_inode = lgfs2_inode_get(&sbd, tmp_bh);
 		if (tmp_inode == NULL)
 			return -1;
 		parse_rindex(tmp_inode, TRUE);
 		inode_put(&tmp_inode);
-		brelse(tmp_bh);
+		lgfs2_brelse(tmp_bh);
 	} else if (block_is_journals(block)) {
 		if (sbd.gfs1)
 			block = sbd.sd_jindex_di.in_addr;
@@ -648,50 +648,50 @@ int display_extended(void)
 		return -1;
 	else if (block_is_rgtree(block)) {
 		if (sbd.gfs1)
-			tmp_bh = bread(&sbd, sbd.sd_rindex_di.in_addr);
+			tmp_bh = lgfs2_bread(&sbd, sbd.sd_rindex_di.in_addr);
 		else
-			tmp_bh = bread(&sbd, masterblock("rindex"));
+			tmp_bh = lgfs2_bread(&sbd, masterblock("rindex"));
 		tmp_inode = lgfs2_inode_get(&sbd, tmp_bh);
 		if (tmp_inode == NULL)
 			return -1;
 		parse_rindex(tmp_inode, FALSE);
 		inode_put(&tmp_inode);
-		brelse(tmp_bh);
+		lgfs2_brelse(tmp_bh);
 	} else if (block_is_jindex(block)) {
-		tmp_bh = bread(&sbd, block);
+		tmp_bh = lgfs2_bread(&sbd, block);
 		tmp_inode = lgfs2_inode_get(&sbd, tmp_bh);
 		if (tmp_inode == NULL)
 			return -1;
 		print_gfs_jindex(tmp_inode);
 		inode_put(&tmp_inode);
-		brelse(tmp_bh);
+		lgfs2_brelse(tmp_bh);
 	}
 	else if (block_is_inum_file(block)) {
-		tmp_bh = bread(&sbd, block);
+		tmp_bh = lgfs2_bread(&sbd, block);
 		tmp_inode = lgfs2_inode_get(&sbd, tmp_bh);
 		if (tmp_inode == NULL)
 			return -1;
 		print_inum(tmp_inode);
 		inode_put(&tmp_inode);
-		brelse(tmp_bh);
+		lgfs2_brelse(tmp_bh);
 	}
 	else if (block_is_statfs_file(block)) {
-		tmp_bh = bread(&sbd, block);
+		tmp_bh = lgfs2_bread(&sbd, block);
 		tmp_inode = lgfs2_inode_get(&sbd, tmp_bh);
 		if (tmp_inode == NULL)
 			return -1;
 		print_statfs(tmp_inode);
 		inode_put(&tmp_inode);
-		brelse(tmp_bh);
+		lgfs2_brelse(tmp_bh);
 	}
 	else if (block_is_quota_file(block)) {
-		tmp_bh = bread(&sbd, block);
+		tmp_bh = lgfs2_bread(&sbd, block);
 		tmp_inode = lgfs2_inode_get(&sbd, tmp_bh);
 		if (tmp_inode == NULL)
 			return -1;
 		print_quota(tmp_inode);
 		inode_put(&tmp_inode);
-		brelse(tmp_bh);
+		lgfs2_brelse(tmp_bh);
 	}
 	return 0;
 }

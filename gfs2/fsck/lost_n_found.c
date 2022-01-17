@@ -45,7 +45,7 @@ static void add_dotdot(struct gfs2_inode *ip)
 			  set_di_nlink(dip); /* keep inode tree in sync */
 			  log_debug(_("Decrementing its links to %d\n"),
 				    dip->i_nlink);
-			  bmodified(dip->i_bh);
+			  lgfs2_bmodified(dip->i_bh);
 			} else if (!dip->i_nlink) {
 			  log_debug(_("Its link count is zero.\n"));
 			} else {
@@ -53,7 +53,7 @@ static void add_dotdot(struct gfs2_inode *ip)
 			            dip->i_nlink);
 			  dip->i_nlink = 0;
 			  set_di_nlink(dip); /* keep inode tree in sync */
-			  bmodified(dip->i_bh);
+			  lgfs2_bmodified(dip->i_bh);
 			}
 		} else {
 			log_debug(_("Directory (0x%"PRIx64")'s link to parent "
@@ -243,6 +243,6 @@ int add_inode_to_lf(struct gfs2_inode *ip){
 	log_notice(_("Added inode #%"PRIu64" (0x%"PRIx64") to lost+found\n"),
 	           ip->i_num.in_addr, ip->i_num.in_addr);
 	lgfs2_dinode_out(lf_dip, lf_dip->i_bh->b_data);
-	bwrite(lf_dip->i_bh);
+	lgfs2_bwrite(lf_dip->i_bh);
 	return 0;
 }

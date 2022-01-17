@@ -458,18 +458,18 @@ extern int lgfs2_field_str(char *str, const size_t size, const char *blk, const 
 extern int lgfs2_field_assign(char *blk, const struct lgfs2_metafield *field, const void *val);
 
 /* buf.c */
-extern struct gfs2_buffer_head *bget(struct gfs2_sbd *sdp, uint64_t num);
-extern struct gfs2_buffer_head *__bread(struct gfs2_sbd *sdp, uint64_t num,
+extern struct gfs2_buffer_head *lgfs2_bget(struct gfs2_sbd *sdp, uint64_t num);
+extern struct gfs2_buffer_head *__lgfs2_bread(struct gfs2_sbd *sdp, uint64_t num,
 					int line, const char *caller);
-extern int __breadm(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhs, size_t n, uint64_t block, int line, const char *caller);
-extern int bwrite(struct gfs2_buffer_head *bh);
-extern int brelse(struct gfs2_buffer_head *bh);
+extern int __lgfs2_breadm(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhs, size_t n, uint64_t block, int line, const char *caller);
+extern int lgfs2_bwrite(struct gfs2_buffer_head *bh);
+extern int lgfs2_brelse(struct gfs2_buffer_head *bh);
 extern uint32_t lgfs2_get_block_type(const char *buf);
 
-#define bmodified(bh) do { bh->b_modified = 1; } while(0)
+#define lgfs2_bmodified(bh) do { bh->b_modified = 1; } while(0)
 
-#define bread(bl, num) __bread(bl, num, __LINE__, __FUNCTION__)
-#define breadm(bl, bhs, n, block) __breadm(bl, bhs, n, block, __LINE__, __FUNCTION__)
+#define lgfs2_bread(bl, num) __lgfs2_bread(bl, num, __LINE__, __FUNCTION__)
+#define lgfs2_breadm(bl, bhs, n, block) __lgfs2_breadm(bl, bhs, n, block, __LINE__, __FUNCTION__)
 
 /* device_geometry.c */
 extern int lgfs2_get_dev_info(int fd, struct lgfs2_dev_info *i);

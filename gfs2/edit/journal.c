@@ -47,7 +47,7 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 	else
 		jindex_block = masterblock("jindex");
 	/* read in the block */
-	jindex_bh = bread(&sbd, jindex_block);
+	jindex_bh = lgfs2_bread(&sbd, jindex_block);
 	di = (struct gfs2_dinode *)jindex_bh->b_data;
 
 	if (!sbd.gfs1)
@@ -74,12 +74,12 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 		if (journal_num > indirect->ii[0].dirents - 2)
 			return 0;
 		jblock = indirect->ii[0].dirent[journal_num + 2].inum.in_addr;
-		j_bh = bread(&sbd, jblock);
+		j_bh = lgfs2_bread(&sbd, jblock);
 		jdi = (struct gfs2_dinode *)j_bh->b_data;
 		*j_size = be64_to_cpu(jdi->di_size);
-		brelse(j_bh);
+		lgfs2_brelse(j_bh);
 	}
-	brelse(jindex_bh);
+	lgfs2_brelse(jindex_bh);
 	return jblock;
 }
 
@@ -147,7 +147,7 @@ static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
 			block_map(ip, lblock, &not_new, &dblock, &extlen,
 				  FALSE);
 		if (dblock) {
-			lbh = bread(sdp, dblock);
+			lbh = lgfs2_bread(sdp, dblock);
 			if (*abs_block == 0)
 				*abs_block = lbh->b_blocknr;
 			dblock++;
@@ -156,7 +156,7 @@ static int fsck_readi(struct gfs2_inode *ip, void *rbuf, uint64_t roffset,
 			lbh = NULL;
 		if (lbh) {
 			memcpy(rbuf, lbh->b_data + o, amount);
-			brelse(lbh);
+			lgfs2_brelse(lbh);
 		} else {
 			memset(rbuf, 0, amount);
 		}
@@ -220,12 +220,12 @@ static int print_ld_blks(const __be64 *b, const char *end, int start_line,
 			bcount++;
 			if (prnt) {
 				if (is_meta_ld) {
-					j_bmap_bh = bread(&sbd, abs_block +
+					j_bmap_bh = lgfs2_bread(&sbd, abs_block +
 							  bcount);
 					sprintf(str, "0x%"PRIx64" %2s",
 						be64_to_cpu(*b),
 						mtypes[lgfs2_get_block_type(j_bmap_bh->b_data)]);
-					brelse(j_bmap_bh);
+					lgfs2_brelse(j_bmap_bh);
 				} else {
 					sprintf(str, "0x%"PRIx64, be64_to_cpu(*b));
 				}
@@ -258,11 +258,11 @@ static int print_ld_blks(const __be64 *b, const char *end, int start_line,
 							* GFS2_NBBY;
 					bmap = o / sbd.sd_blocks_per_bitmap;
 					save_ptr = rgd->bits[bmap].bi_data;
-					j_bmap_bh = bread(&sbd, abs_block +
+					j_bmap_bh = lgfs2_bread(&sbd, abs_block +
 							  bcount);
 					rgd->bits[bmap].bi_data = j_bmap_bh->b_data;
 					type = lgfs2_get_bitmap(&sbd, tblk, rgd);
-					brelse(j_bmap_bh);
+					lgfs2_brelse(j_bmap_bh);
 					if (type < 0) {
 						perror("Error printing log descriptor blocks");
 						exit(1);
@@ -328,9 +328,9 @@ static uint64_t find_wrap_pt(struct gfs2_inode *ji, char *jbuf, uint64_t jblock,
 		if (sbd.gfs1) {
 			struct gfs2_buffer_head *j_bh;
 
-			j_bh = bread(&sbd, jblock + jb);
+			j_bh = lgfs2_bread(&sbd, jblock + jb);
 			found = is_wrap_pt(j_bh->b_data, &highest_seq);
-			brelse(j_bh);
+			lgfs2_brelse(j_bh);
 		} else {
 			int copied;
 			uint64_t abs_block;
@@ -415,7 +415,7 @@ static int meta_has_ref(uint64_t abs_block, int tblk)
 	__be64 *b;
 	struct gfs2_dinode *dinode;
 
-	mbh = bread(&sbd, abs_block);
+	mbh = lgfs2_bread(&sbd, abs_block);
 	mtype = get_block_type(mbh->b_data);
 	if (mtype != NULL) {
 		structlen = mtype->size;
@@ -431,7 +431,7 @@ static int meta_has_ref(uint64_t abs_block, int tblk)
 			has_ref = 1;
 		b++;
 	}
-	brelse(mbh);
+	lgfs2_brelse(mbh);
 	return has_ref;
 }
 
@@ -449,11 +449,11 @@ static uint64_t get_ldref(uint64_t abs_ld, int offset_from_ld)
 	uint64_t refblk;
 	__be64 *b;
 
-	jbh = bread(&sbd, abs_ld);
+	jbh = lgfs2_bread(&sbd, abs_ld);
 	b = (__be64 *)(jbh->b_data + sizeof(struct gfs2_log_descriptor));
 	b += offset_from_ld - 1;
 	refblk = be64_to_cpu(*b);
-	brelse(jbh);
+	lgfs2_brelse(jbh);
 	return refblk;
 }
 
@@ -530,7 +530,7 @@ void dump_journal(const char *journal, uint64_t tblk)
 		return;
 
 	if (!sbd.gfs1) {
-		j_bh = bread(&sbd, jblock);
+		j_bh = lgfs2_bread(&sbd, jblock);
 		j_inode = lgfs2_inode_get(&sbd, j_bh);
 		if (j_inode == NULL) {
 			fprintf(stderr, "Out of memory\n");
@@ -582,9 +582,9 @@ void dump_journal(const char *journal, uint64_t tblk)
 
 		if (sbd.gfs1) {
 			if (j_bh)
-				brelse(j_bh);
+				lgfs2_brelse(j_bh);
 			abs_block = jblock + ((jb + wrappt) % j_size);
-			j_bh = bread(&sbd, abs_block);
+			j_bh = lgfs2_bread(&sbd, abs_block);
 			buf = j_bh->b_data;
 		} else {
 			int error = fsck_readi(j_inode, (void *)jbuf,
@@ -644,7 +644,7 @@ void dump_journal(const char *journal, uint64_t tblk)
 	}
 	if (j_inode != NULL)
 		inode_put(&j_inode);
-	brelse(j_bh);
+	lgfs2_brelse(j_bh);
 	blockhist = -1; /* So we don't print anything else */
 	free(jbuf);
 	if (!termlines)

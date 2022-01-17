@@ -65,18 +65,18 @@ int read_sb(struct gfs2_sbd *sdp)
 	unsigned int x;
 	int ret;
 
-	bh = bread(sdp, GFS2_SB_ADDR >> sdp->sd_fsb2bb_shift);
+	bh = lgfs2_bread(sdp, GFS2_SB_ADDR >> sdp->sd_fsb2bb_shift);
 
 	ret = check_sb(bh->b_data);
 	if (ret < 0) {
-		brelse(bh);
+		lgfs2_brelse(bh);
 		return ret;
 	}
 	if (ret == 1)
 		sdp->gfs1 = 1;
 
 	lgfs2_sb_in(sdp, bh->b_data);
-	brelse(bh);
+	lgfs2_brelse(bh);
 	sdp->sd_fsb2bb_shift = sdp->sd_bsize_shift - GFS2_BASIC_BLOCK_SHIFT;
 	if (sdp->sd_bsize < 512 || sdp->sd_bsize != (sdp->sd_bsize & -sdp->sd_bsize)) {
 		return -1;
@@ -184,9 +184,9 @@ static int good_on_disk(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 	struct gfs2_buffer_head *bh;
 	int is_rgrp;
 
-	bh = bread(sdp, rgd->rt_addr);
+	bh = lgfs2_bread(sdp, rgd->rt_addr);
 	is_rgrp = (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_RG) == 0);
-	brelse(bh);
+	lgfs2_brelse(bh);
 	return is_rgrp;
 }
 

@@ -22,7 +22,7 @@
   #endif
 #endif
 
-struct gfs2_buffer_head *bget(struct gfs2_sbd *sdp, uint64_t num)
+struct gfs2_buffer_head *lgfs2_bget(struct gfs2_sbd *sdp, uint64_t num)
 {
 	struct gfs2_buffer_head *bh;
 
@@ -38,8 +38,8 @@ struct gfs2_buffer_head *bget(struct gfs2_sbd *sdp, uint64_t num)
 	return bh;
 }
 
-int __breadm(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhs, size_t n,
-	     uint64_t block, int line, const char *caller)
+int __lgfs2_breadm(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhs, size_t n,
+                   uint64_t block, int line, const char *caller)
 {
 	size_t v = (n < IOV_MAX) ? n : IOV_MAX;
 	struct iovec *iov = alloca(v * sizeof(struct iovec));
@@ -52,7 +52,7 @@ int __breadm(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhs, size_t n,
 		ssize_t size = 0;
 
 		for (j = 0; (i + j < n) && (j < IOV_MAX); j++) {
-			bhs[i + j] = bget(sdp, block + i + j);
+			bhs[i + j] = lgfs2_bget(sdp, block + i + j);
 			if (bhs[i + j] == NULL)
 				return -1;
 			iov[j] = bhs[i + j]->iov;
@@ -71,13 +71,13 @@ int __breadm(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhs, size_t n,
 	return 0;
 }
 
-struct gfs2_buffer_head *__bread(struct gfs2_sbd *sdp, uint64_t num, int line,
+struct gfs2_buffer_head *__lgfs2_bread(struct gfs2_sbd *sdp, uint64_t num, int line,
 				 const char *caller)
 {
 	struct gfs2_buffer_head *bh;
 	ssize_t ret;
 
-	bh = bget(sdp, num);
+	bh = lgfs2_bget(sdp, num);
 	if (bh == NULL)
 		return NULL;
 
@@ -91,7 +91,7 @@ struct gfs2_buffer_head *__bread(struct gfs2_sbd *sdp, uint64_t num, int line,
 	return bh;
 }
 
-int bwrite(struct gfs2_buffer_head *bh)
+int lgfs2_bwrite(struct gfs2_buffer_head *bh)
 {
 	struct gfs2_sbd *sdp = bh->sdp;
 
@@ -101,14 +101,14 @@ int bwrite(struct gfs2_buffer_head *bh)
 	return 0;
 }
 
-int brelse(struct gfs2_buffer_head *bh)
+int lgfs2_brelse(struct gfs2_buffer_head *bh)
 {
 	int error = 0;
 
 	if (bh->b_blocknr == -1)
 		printf("Double free!\n");
 	if (bh->b_modified)
-		error = bwrite(bh);
+		error = lgfs2_bwrite(bh);
 	bh->b_blocknr = -1;
 	if (bh->b_altlist.next && !osi_list_empty(&bh->b_altlist))
 		osi_list_del(&bh->b_altlist);

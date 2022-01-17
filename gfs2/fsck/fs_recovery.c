@@ -153,7 +153,7 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 
 		log_info(_("Journal replay writing metadata block #%"PRIu64" (0x%"PRIx64") for journal+0x%x\n"),
 		         blkno, blkno, start);
-		bh_ip = bget(sdp, blkno);
+		bh_ip = lgfs2_bget(sdp, blkno);
 		if (!bh_ip) {
 			log_err(_("Out of memory when replaying journals.\n"));
 			return FSCK_ERROR;
@@ -166,14 +166,14 @@ static int buf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			        blkno, blkno, start);
 			error = -EIO;
 		} else {
-			bmodified(bh_ip);
+			lgfs2_bmodified(bh_ip);
 			rgd = gfs2_blk2rgrpd(sdp, blkno);
 			if (rgd && blkno < rgd->rt_data0)
 				refresh_rgrp(sdp, rgd, bh_ip, blkno);
 		}
 
-		brelse(bh_log);
-		brelse(bh_ip);
+		lgfs2_brelse(bh_log);
+		lgfs2_brelse(bh_ip);
 		if (error)
 			break;
 
@@ -224,8 +224,8 @@ static int revoke_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			offset += sizeof(uint64_t);
 		}
 
-		bmodified(bh);
-		brelse(bh);
+		lgfs2_bmodified(bh);
+		lgfs2_brelse(bh);
 		offset = sizeof(struct gfs2_meta_header);
 		first = 0;
 	}
@@ -264,7 +264,7 @@ static int databuf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 
 		log_info(_("Journal replay writing data block #%"PRIu64" (0x%"PRIx64") for journal+0x%x\n"),
 		         blkno, blkno, start);
-		bh_ip = bget(sdp, blkno);
+		bh_ip = lgfs2_bget(sdp, blkno);
 		if (!bh_ip) {
 			log_err(_("Out of memory when replaying journals.\n"));
 			return FSCK_ERROR;
@@ -277,9 +277,9 @@ static int databuf_lo_scan_elements(struct gfs2_inode *ip, unsigned int start,
 			*eptr = cpu_to_be32(GFS2_MAGIC);
 		}
 
-		brelse(bh_log);
-		bmodified(bh_ip);
-		brelse(bh_ip);
+		lgfs2_brelse(bh_log);
+		lgfs2_bmodified(bh_ip);
+		lgfs2_brelse(bh_ip);
 
 		sd_replayed_jblocks++;
 	}
@@ -318,8 +318,8 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 			return error;
 		mhp = (struct gfs2_meta_header *)bh->b_data;
 		if (be32_to_cpu(mhp->mh_magic) != GFS2_MAGIC) {
-			bmodified(bh);
-			brelse(bh);
+			lgfs2_bmodified(bh);
+			lgfs2_brelse(bh);
 			return -EIO;
 		}
 		ld = (struct gfs2_log_descriptor *)bh->b_data;
@@ -331,8 +331,8 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 			error = lgfs2_get_log_header(ip, start, &lh);
 			if (!error) {
 				gfs2_replay_incr_blk(ip, &start);
-				bmodified(bh);
-				brelse(bh);
+				lgfs2_bmodified(bh);
+				lgfs2_brelse(bh);
 				continue;
 			}
 			if (error == 1) {
@@ -340,39 +340,39 @@ static int foreach_descriptor(struct gfs2_inode *ip, unsigned int start,
 					  "journal+0x%x.\n"), start);
 				error = -EIO;
 			}
-			bmodified(bh);
-			brelse(bh);
+			lgfs2_bmodified(bh);
+			lgfs2_brelse(bh);
 			return error;
 		} else if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_LD)) {
-			bmodified(bh);
-			brelse(bh);
+			lgfs2_bmodified(bh);
+			lgfs2_brelse(bh);
 			return -EIO;
 		}
 		ptr = (__be64 *)(bh->b_data + offset);
 		error = databuf_lo_scan_elements(ip, start, ld, ptr, pass);
 		if (error) {
-			bmodified(bh);
-			brelse(bh);
+			lgfs2_bmodified(bh);
+			lgfs2_brelse(bh);
 			return error;
 		}
 		error = buf_lo_scan_elements(ip, start, ld, ptr, pass);
 		if (error) {
-			bmodified(bh);
-			brelse(bh);
+			lgfs2_bmodified(bh);
+			lgfs2_brelse(bh);
 			return error;
 		}
 		error = revoke_lo_scan_elements(ip, start, ld, ptr, pass);
 		if (error) {
-			bmodified(bh);
-			brelse(bh);
+			lgfs2_bmodified(bh);
+			lgfs2_brelse(bh);
 			return error;
 		}
 
 		while (length--)
 			gfs2_replay_incr_blk(ip, &start);
 
-		bmodified(bh);
-		brelse(bh);
+		lgfs2_bmodified(bh);
+		lgfs2_brelse(bh);
 	}
 
 	return 0;
@@ -428,10 +428,10 @@ static int check_journal_seq_no(struct gfs2_inode *ip, int fix)
 		prev_seq = highest_seq;
 		log_warn(_("Renumbering it as 0x%"PRIx64"\n"), highest_seq);
 		block_map(ip, blk, &new, &dblock, NULL, 0);
-		bh = bread(ip->i_sbd, dblock);
+		bh = lgfs2_bread(ip->i_sbd, dblock);
 		((struct gfs2_log_header *)bh->b_data)->lh_sequence = cpu_to_be64(highest_seq);
-		bmodified(bh);
-		brelse(bh);
+		lgfs2_bmodified(bh);
+		lgfs2_brelse(bh);
 	}
 	if (seq_errors && fix) {
 		log_err(_("%d sequence errors fixed.\n"), seq_errors);
@@ -632,7 +632,7 @@ static int rangecheck_jmeta(struct iptr iptr, struct gfs2_buffer_head **bh, int 
 	*is_valid = 0;
 	rc = rangecheck_jblock(ip, block);
 	if (rc == META_IS_GOOD) {
-		*bh = bread(ip->i_sbd, block);
+		*bh = lgfs2_bread(ip->i_sbd, block);
 		*is_valid = (lgfs2_check_meta((*bh)->b_data, GFS2_METATYPE_IN) == 0);
 		if (!(*is_valid)) {
 			log_err( _("Journal at block %"PRIu64" (0x%"PRIx64") has a bad "
@@ -640,7 +640,7 @@ static int rangecheck_jmeta(struct iptr iptr, struct gfs2_buffer_head **bh, int 
 				   "(points to something that is not an "
 				   "indirect block).\n"),
 			        ip->i_num.in_addr, ip->i_num.in_addr, block, block);
-			brelse(*bh);
+			lgfs2_brelse(*bh);
 			*bh = NULL;
 			return META_SKIP_FURTHER;
 		}

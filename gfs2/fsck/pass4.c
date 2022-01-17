@@ -33,7 +33,7 @@ static int fix_link_count(uint32_t counted_links, struct gfs2_inode *ip)
 	if (ip->i_nlink == counted_links)
 		return 0;
 	ip->i_nlink = counted_links;
-	bmodified(ip->i_bh);
+	lgfs2_bmodified(ip->i_bh);
 
 	log_debug(_("Changing inode %"PRIu64" (0x%"PRIx64") to have %u links\n"),
 	          ip->i_num.in_addr, ip->i_num.in_addr, counted_links);
@@ -128,10 +128,10 @@ static void handle_inconsist(struct gfs2_sbd *sdp, uint64_t no_addr,
 	          no_addr, no_addr)) {
 		struct gfs2_inode *ip;
 
-		ip = fsck_load_inode(sdp, no_addr); /* bread, inode_get */
+		ip = fsck_load_inode(sdp, no_addr); /* lgfs2_bread, inode_get */
 		fix_link_count(counted_links, ip);
 		*di_nlink = counted_links;
-		fsck_inode_put(&ip); /* out, brelse, free */
+		fsck_inode_put(&ip); /* out, lgfs2_brelse, free */
 		log_warn(_("Link count updated to %d for inode %"PRIu64" (0x%"PRIx64")\n"),
 		         *di_nlink, no_addr, no_addr);
 	} else {

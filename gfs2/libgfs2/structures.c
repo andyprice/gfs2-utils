@@ -166,13 +166,13 @@ static struct gfs2_buffer_head *lgfs2_get_file_buf(struct gfs2_inode *ip, uint64
 
 	if (!prealloc && new &&
 	    ip->i_size < (lbn + 1) << sdp->sd_bsize_shift) {
-		bmodified(ip->i_bh);
+		lgfs2_bmodified(ip->i_bh);
 		ip->i_size = (lbn + 1) << sdp->sd_bsize_shift;
 	}
 	if (dbn == ip->i_num.in_addr)
 		return ip->i_bh;
 	else
-		return bread(sdp, dbn);
+		return lgfs2_bread(sdp, dbn);
 }
 
 int lgfs2_write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blocks)
@@ -192,8 +192,8 @@ int lgfs2_write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blo
 		struct gfs2_buffer_head *bh = lgfs2_get_file_buf(jnl, x, 1);
 		if (!bh)
 			return -1;
-		bmodified(bh);
-		brelse(bh);
+		lgfs2_bmodified(bh);
+		lgfs2_brelse(bh);
 	}
 	crc32c_optimization_init();
 	for (x = 0; x < blocks; x++) {
@@ -217,8 +217,8 @@ int lgfs2_write_journal(struct gfs2_inode *jnl, unsigned bsize, unsigned int blo
 
 		hash = lgfs2_log_header_crc(bh->b_data, bsize);
 		lh->lh_crc = cpu_to_be32(hash);
-		bmodified(bh);
-		brelse(bh);
+		lgfs2_bmodified(bh);
+		lgfs2_brelse(bh);
 
 		if (++seq == blocks)
 			seq = 0;
@@ -291,7 +291,7 @@ struct gfs2_inode *lgfs2_build_inum_range(struct gfs2_inode *per_node, unsigned 
 
 	ip->i_size = sizeof(struct gfs2_inum_range);
 	lgfs2_dinode_out(ip, ip->i_bh->b_data);
-	bmodified(ip->i_bh);
+	lgfs2_bmodified(ip->i_bh);
 	return ip;
 }
 
@@ -308,7 +308,7 @@ struct gfs2_inode *lgfs2_build_statfs_change(struct gfs2_inode *per_node, unsign
 
 	ip->i_size = sizeof(struct gfs2_statfs_change);
 	lgfs2_dinode_out(ip, ip->i_bh->b_data);
-	bmodified(ip->i_bh);
+	lgfs2_bmodified(ip->i_bh);
 	return ip;
 }
 
@@ -343,8 +343,8 @@ struct gfs2_inode *lgfs2_build_quota_change(struct gfs2_inode *per_node, unsigne
 
 		memset(bh->b_data, 0, sdp->sd_bsize);
 		memcpy(bh->b_data, &mh, sizeof(mh));
-		bmodified(bh);
-		brelse(bh);
+		lgfs2_bmodified(bh);
+		lgfs2_brelse(bh);
 	}
 	return ip;
 }
@@ -381,7 +381,7 @@ struct gfs2_inode *lgfs2_build_rindex(struct gfs2_sbd *sdp)
 		return NULL;
 
 	ip->i_payload_format = GFS2_FORMAT_RI;
-	bmodified(ip->i_bh);
+	lgfs2_bmodified(ip->i_bh);
 
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
@@ -413,7 +413,7 @@ struct gfs2_inode *lgfs2_build_quota(struct gfs2_sbd *sdp)
 		return NULL;
 
 	ip->i_payload_format = GFS2_FORMAT_QU;
-	bmodified(ip->i_bh);
+	lgfs2_bmodified(ip->i_bh);
 
 	memset(&qu, 0, sizeof(struct gfs2_quota));
 	qu.qu_value = cpu_to_be64(1);

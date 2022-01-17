@@ -345,7 +345,7 @@ static int pass1_check_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, 
 			 block_type_string(q));
 		*was_duplicate = 1;
 	}
-	nbh = bread(ip->i_sbd, block);
+	nbh = lgfs2_bread(ip->i_sbd, block);
 
 	*is_valid = (lgfs2_check_meta(nbh->b_data, iblk_type) == 0);
 
@@ -356,11 +356,11 @@ static int pass1_check_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, 
 			 ip->i_num.in_addr, ip->i_num.in_addr, block, block, blktypedesc);
 		if (query(_("Zero the indirect block pointer? (y/n) "))){
 			*iptr_ptr(iptr) = 0;
-			bmodified(iptr.ipt_bh);
+			lgfs2_bmodified(iptr.ipt_bh);
 			*is_valid = 1;
 			return META_SKIP_ONE;
 		} else {
-			brelse(nbh);
+			lgfs2_brelse(nbh);
 			return META_SKIP_FURTHER;
 		}
 	}
@@ -369,7 +369,7 @@ static int pass1_check_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, 
 	if (*was_duplicate) {
 		add_duplicate_ref(ip, block, REF_AS_META, 0,
 				  *is_valid ? INODE_VALID : INODE_INVALID);
-		brelse(nbh);
+		lgfs2_brelse(nbh);
 	} else {
 		*bh = nbh;
 		fsck_blockmap_set(ip, block, _("indirect"), ip->i_sbd->gfs1 ?
@@ -474,7 +474,7 @@ static int blockmap_set_as_data(struct gfs2_inode *ip, uint64_t block)
 	error = 0;
 	/* The bitmap says it's a dinode, but a block reference begs to differ.
 	   So which is it? */
-	bh = bread(ip->i_sbd, block);
+	bh = lgfs2_bread(ip->i_sbd, block);
 	if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_DI) != 0)
 		goto out;
 
@@ -491,7 +491,7 @@ static int blockmap_set_as_data(struct gfs2_inode *ip, uint64_t block)
 out:
 	if (!error)
 		fsck_blockmap_set(ip, block, "data",  GFS2_BLKST_USED);
-	brelse(bh);
+	lgfs2_brelse(bh);
 	return error;
 }
 
@@ -546,10 +546,10 @@ static int pass1_check_data(struct gfs2_inode *ip, uint64_t metablock,
 					  INODE_VALID);
 			return 1;
 		case GFS2_BLKST_USED: /* tough decision: May be data or meta */
-			bh = bread(ip->i_sbd, block);
+			bh = lgfs2_bread(ip->i_sbd, block);
 			mh = (struct gfs2_meta_header *)bh->b_data;
 			mh_type = be32_to_cpu(mh->mh_type);
-			brelse(bh);
+			lgfs2_brelse(bh);
 			if (be32_to_cpu(mh->mh_magic) == GFS2_MAGIC &&
 			    mh_type >= GFS2_METATYPE_RG &&
 			    mh_type <= GFS2_METATYPE_QC &&
@@ -611,7 +611,7 @@ static int ask_remove_inode_eattr(struct gfs2_inode *ip,
 		bc->ea_count = 0;
 		ip->i_blocks = 1 + bc->indir_count + bc->data_count;
 		ip->i_flags &= ~GFS2_DIF_EA_INDIRECT;
-		bmodified(ip->i_bh);
+		lgfs2_bmodified(ip->i_bh);
 		log_err( _("Extended attributes were removed.\n"));
 	} else {
 		log_err( _("Extended attributes were not removed.\n"));
@@ -645,7 +645,7 @@ static int undo_eattr_indir_or_leaf(struct gfs2_inode *ip, uint64_t block,
 	if (q != (sdp->gfs1 ? GFS2_BLKST_DINODE : GFS2_BLKST_USED))
 		return 1;
 
-	*bh = bread(sdp, block);
+	*bh = lgfs2_bread(sdp, block);
 	return 0;
 }
 
@@ -686,7 +686,7 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t indirect,
 	   check if it really is an EA.  If it is, let duplicate
 	   handling sort it out.  If it isn't, clear it but don't
 	   count it as a duplicate. */
-	*bh = bread(sdp, indirect);
+	*bh = lgfs2_bread(sdp, indirect);
 	if (lgfs2_check_meta((*bh)->b_data, GFS2_METATYPE_IN)) {
 		bc->ea_count++;
 		if (q != GFS2_BLKST_FREE) { /* Duplicate? */
@@ -736,7 +736,7 @@ static int finish_eattr_indir(struct gfs2_inode *ip, int leaf_pointers,
 	        ip->i_num.in_addr, ip->i_num.in_addr);
 	if (query( _("Okay to fix the block count for the inode? (y/n) "))) {
 		ip->i_blocks = 1 + bc->indir_count + bc->data_count + bc->ea_count;
-		bmodified(ip->i_bh);
+		lgfs2_bmodified(ip->i_bh);
 		log_err(_("Block count fixed: 1+%"PRIu64"+%"PRIu64"+%"PRIu64" = %"PRIu64".\n"),
 		        bc->indir_count, bc->data_count, bc->ea_count, ip->i_blocks);
 		return 1;
@@ -760,7 +760,7 @@ static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 	/* Special duplicate processing:  If we have an EA block, check if it
 	   really is an EA.  If it is, let duplicate handling sort it out.
 	   If it isn't, clear it but don't count it as a duplicate. */
-	leaf_bh = bread(sdp, block);
+	leaf_bh = lgfs2_bread(sdp, block);
 	if (lgfs2_check_meta(leaf_bh->b_data, btype)) {
 		bc->ea_count++;
 		if (q != GFS2_BLKST_FREE) { /* Duplicate? */
@@ -776,7 +776,7 @@ static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 		}
 		complain_eas(ip, block, _("Extended Attribute leaf block has "
 					  "incorrect type"));
-		brelse(leaf_bh);
+		lgfs2_brelse(leaf_bh);
 		return 1;
 	}
 	if (q != GFS2_BLKST_FREE) { /* Duplicate? */
@@ -784,7 +784,7 @@ static int check_ealeaf_block(struct gfs2_inode *ip, uint64_t block, int btype,
 					  "duplicate found"));
 		add_duplicate_ref(ip, block, REF_AS_DATA, 0, INODE_VALID);
 		bc->ea_count++;
-		brelse(leaf_bh);
+		lgfs2_brelse(leaf_bh);
 		/* Return 0 here because if all that's wrong is a duplicate
 		   block reference, we want pass1b to figure it out. We don't
 		   want to delete all the extended attributes as if they are
@@ -838,7 +838,7 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, int i,
 					   private);
 	}
 	if (bh)
-		brelse(bh);
+		lgfs2_brelse(bh);
 	if (error) {
 		log_err(_("Bad extended attribute found at block %"PRIu64" (0x%"PRIx64")"),
 		        be64_to_cpu(*data_ptr), be64_to_cpu(*data_ptr));
@@ -846,7 +846,7 @@ static int check_extended_leaf_eattr(struct gfs2_inode *ip, int i,
 			ea_hdr->ea_num_ptrs = i;
 			ea_hdr->ea_data_len = cpu_to_be32(tot_ealen);
 			*data_ptr = 0;
-			bmodified(leaf_bh);
+			lgfs2_bmodified(leaf_bh);
 			/* Endianness doesn't matter in this case because it's
 			   a single byte. */
 			fsck_blockmap_set(ip, ip->i_eattr,
@@ -908,7 +908,7 @@ static int ask_remove_eattr_entry(struct gfs2_sbd *sdp,
 	}
 	log_err(_("Bad Extended Attribute at block %"PRIu64" (0x%"PRIx64") removed.\n"),
 	        leaf_bh->b_blocknr, leaf_bh->b_blocknr);
-	bmodified(leaf_bh);
+	lgfs2_bmodified(leaf_bh);
 	return 1;
 }
 
@@ -1161,7 +1161,7 @@ static int alloc_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
 	   after the bitmap has been set but before the blockmap has. */
 	*is_valid = 1;
 	*was_duplicate = 0;
-	*bh = bread(ip->i_sbd, block);
+	*bh = lgfs2_bread(ip->i_sbd, block);
 	q = bitmap_type(ip->i_sbd, block);
 	if (q == GFS2_BLKST_FREE) {
 		log_debug(_("%s reference to new metadata block %"PRIu64" (0x%"PRIx64") is now marked as indirect.\n"),
@@ -1358,7 +1358,7 @@ static int handle_ip(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		         ip->i_blocks, bc.indir_count, bc.data_count, bc.ea_count);
 		if (query( _("Fix ondisk block count? (y/n) "))) {
 			ip->i_blocks = 1 + bc.indir_count + bc.data_count + bc.ea_count;
-			bmodified(ip->i_bh);
+			lgfs2_bmodified(ip->i_bh);
 			log_err(_("Block count for #%"PRIu64" (0x%"PRIx64") fixed\n"),
 			        ip->i_num.in_addr, ip->i_num.in_addr);
 		} else
@@ -1385,7 +1385,7 @@ static void check_i_goal(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		if (query(_("Fix goal block in inode #%"PRIu64" (0x%"PRIx64")? (y/n) "),
 		          ip->i_num.in_addr, ip->i_num.in_addr)) {
 			ip->i_goal_meta = ip->i_num.in_addr;
-			bmodified(ip->i_bh);
+			lgfs2_bmodified(ip->i_bh);
 		} else
 			log_err(_("Allocation goal block in inode #%"PRIu64
 			          " (0x%"PRIx64") not fixed\n"),
@@ -1413,7 +1413,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 		if (query(_("Fix address in inode at block #%"PRIu64" (0x%"PRIx64")? (y/n) "),
 		          block, block)) {
 			ip->i_num.in_addr = ip->i_num.in_formal_ino = block;
-			bmodified(ip->i_bh);
+			lgfs2_bmodified(ip->i_bh);
 		} else
 			log_err(_("Address in inode at block #%"PRIu64" (0x%"PRIx64" not fixed\n"),
 			        block, block);
@@ -1425,7 +1425,7 @@ static int handle_di(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 		if (query(_("Fix formal inode number in inode #%"PRIu64" (0x%"PRIx64")? (y/n) "),
 		          block, block)) {
 			ip->i_num.in_formal_ino = block;
-			bmodified(ip->i_bh);
+			lgfs2_bmodified(ip->i_bh);
 		} else
 			log_err(_("Inode number in inode at block %"PRIu64" (0x%"PRIx64") not fixed\n"),
 			        block, block);
@@ -1797,7 +1797,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 			continue;
 		}
 
-		bh = bread(sdp, block);
+		bh = lgfs2_bread(sdp, block);
 
 		is_inode = 0;
 		if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_DI) == 0)
@@ -1814,7 +1814,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 					    "previously processed GFS1 "
 					    "non-dinode metadata.\n"),
 				          block);
-				brelse(bh);
+				lgfs2_brelse(bh);
 				continue;
 			}
 			log_err(_("Found a duplicate inode block at %"PRIu64" (0x%"PRIx64") "
@@ -1829,7 +1829,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 					   "assume the bitmap is just "
 					   "wrong.\n"));
 			fsck_inode_put(&ip);
-			brelse(bh);
+			lgfs2_brelse(bh);
 			continue;
 		}
 
@@ -1848,7 +1848,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 						     "%" PRIu64" (0x%"
 						     PRIx64 ")\n"),
 						   block, block);
-					brelse(bh);
+					lgfs2_brelse(bh);
 					continue;
 				}
 			}
@@ -1857,7 +1857,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 			check_n_fix_bitmap(sdp, rgd, block, 0, GFS2_BLKST_FREE);
 		} else if (handle_di(sdp, rgd, bh) < 0) {
 			stack;
-			brelse(bh);
+			lgfs2_brelse(bh);
 			gfs2_special_free(&gfs1_rindex_blks);
 			return FSCK_ERROR;
 		}
@@ -1868,7 +1868,7 @@ static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uin
 		   as indirect blocks will be handled when the inode
 		   itself is processed, and if it's not, it should be
 		   caught in pass5. */
-		brelse(bh);
+		lgfs2_brelse(bh);
 	}
 
 	return 0;

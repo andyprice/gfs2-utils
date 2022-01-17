@@ -99,14 +99,14 @@ static int check_eattr_indir(struct gfs2_inode *ip, uint64_t block,
 			     uint64_t parent, struct gfs2_buffer_head **bh,
 			     void *private)
 {
-	*bh = bread(ip->i_sbd, block);
+	*bh = lgfs2_bread(ip->i_sbd, block);
 	return 0;
 }
 static int check_eattr_leaf(struct gfs2_inode *ip, uint64_t block,
 			    uint64_t parent, struct gfs2_buffer_head **bh,
 			    void *private)
 {
-	*bh = bread(ip->i_sbd, block);
+	*bh = lgfs2_bread(ip->i_sbd, block);
 	return 0;
 }
 
@@ -215,7 +215,7 @@ static int bad_formal_ino(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 			entry.in_formal_ino = inum.in_formal_ino;
 			d->dr_inum.in_formal_ino = entry.in_formal_ino;
 			lgfs2_dirent_out(d, dent);
-			bmodified(bh);
+			lgfs2_bmodified(bh);
 			incr_link_count(entry, ip, _("fixed reference"));
 			set_parent_dir(sdp, entry, ip->i_num);
 		} else {
@@ -280,7 +280,7 @@ static int check_leaf_depth(struct gfs2_inode *ip, uint64_t leaf_no,
 	}
 
 	leaf->lf_depth = cpu_to_be16(correct_depth);
-	bmodified(lbh);
+	lgfs2_bmodified(lbh);
 	log_err( _("The leaf block depth was fixed.\n"));
 	return 1;
 }
@@ -331,9 +331,9 @@ static int wrong_leaf(struct gfs2_inode *ip, struct lgfs2_inum *entry,
 		else if (dest_ref)
 			break;
 	}
-	dest_lbh = bread(sdp, planned_leaf);
+	dest_lbh = lgfs2_bread(sdp, planned_leaf);
 	check_leaf_depth(ip, planned_leaf, dest_ref, dest_lbh);
-	brelse(dest_lbh);
+	lgfs2_brelse(dest_lbh);
 	free(tbl);
 
 	/* check if it's already on the correct leaf block */
@@ -487,7 +487,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		}
 		d->dr_hash = calculated_hash;
 		lgfs2_dirent_out(d, dent);
-		bmodified(bh);
+		lgfs2_bmodified(bh);
 		log_err( _("Directory entry hash for %s fixed.\n"),
 			 tmp_name);
 	}
@@ -600,16 +600,16 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 	if (ii == NULL && di == NULL && sdp->gfs1) {
 		struct gfs2_buffer_head *tbh;
 
-		tbh = bread(sdp, entry->in_addr);
+		tbh = lgfs2_bread(sdp, entry->in_addr);
 		if (lgfs2_check_meta(tbh->b_data, GFS2_METATYPE_DI)) { /* not dinode */
 			log_err(_("Directory entry '%s' pointing to block %"PRIu64
 			          " (0x%"PRIx64") in directory %"PRIu64" (0x%"PRIx64") "
 				   "is not really a GFS1 dinode.\n"), tmp_name,
 			        entry->in_addr, entry->in_addr, ip->i_num.in_addr, ip->i_num.in_addr);
-			brelse(tbh);
+			lgfs2_brelse(tbh);
 			return 1;
 		}
-		brelse(tbh);
+		lgfs2_brelse(tbh);
 	}
 	return 0;
 }
@@ -972,8 +972,8 @@ static int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
 		num_copies, num_copies,
 		before_or_after, start_lindex, start_lindex);
 	dip->i_blocks++;
-	bmodified(dip->i_bh);
-	nbh = bget(dip->i_sbd, *bn);
+	lgfs2_bmodified(dip->i_bh);
+	nbh = lgfs2_bget(dip->i_sbd, *bn);
 	memset(nbh->b_data, 0, dip->i_sbd->sd_bsize);
 	leaf = (struct gfs2_leaf *)nbh->b_data;
 	leaf->lf_header.mh_magic = cpu_to_be32(GFS2_MAGIC);
@@ -985,8 +985,8 @@ static int write_new_leaf(struct gfs2_inode *dip, int start_lindex,
 	dent = (struct gfs2_dirent *)(nbh->b_data + sizeof(struct gfs2_leaf));
 	dent->de_rec_len = cpu_to_be16(dip->i_sbd->sd_bsize -
 				       sizeof(struct gfs2_leaf));
-	bmodified(nbh);
-	brelse(nbh);
+	lgfs2_bmodified(nbh);
+	lgfs2_brelse(nbh);
 
 	/* pad the hash table with the new leaf block */
 	cpyptr = padbuf;
@@ -1155,7 +1155,7 @@ static int lost_leaf(struct gfs2_inode *ip, __be64 *tbl, uint64_t leafno,
 	/* Free the lost leaf. */
 	fsck_bitmap_set(ip, leafno, _("lost leaf"), GFS2_BLKST_FREE);
 	ip->i_blocks--;
-	bmodified(ip->i_bh);
+	lgfs2_bmodified(ip->i_bh);
 	/* Now we have to deal with the bad hash table entries pointing to the
 	   misplaced leaf block. But we can't just fill the gap with a single
 	   leaf. We have to write on nice power-of-two boundaries, and we have
@@ -1316,7 +1316,7 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 		log_debug("Leaf repaired while fixing the hash table.\n");
 		error = 0;
 	}
-	lbh = bread(ip->i_sbd, leafblk);
+	lbh = lgfs2_bread(ip->i_sbd, leafblk);
 	/* If the leaf's depth is out of range for this dinode, it's obviously
 	   attached to the wrong dinode. Move the dirents to lost+found. */
 	if (leaf.lf_depth > ip->i_depth) {
@@ -1324,7 +1324,7 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 			  "dinode's depth (%d)\n"),
 			leaf.lf_depth, ip->i_depth);
 		error = lost_leaf(ip, tbl, leafblk, len, lindex, lbh);
-		brelse(lbh);
+		lgfs2_brelse(lbh);
 		return error;
 	}
 
@@ -1335,7 +1335,7 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 	/* If this is an empty leaf, we can just delete it and pad. */
 	if ((dentry.dr_rec_len == ip->i_sbd->sd_bsize - sizeof(struct gfs2_leaf)) &&
 	    (dentry.dr_inum.in_formal_ino == 0)) {
-		brelse(lbh);
+		lgfs2_brelse(lbh);
 		gfs2_free_block(ip->i_sbd, leafblk);
 		log_err(_("Out of place leaf block %"PRIu64" (0x%"PRIx64") had no "
 			"entries, so it was deleted.\n"),
@@ -1359,7 +1359,7 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 			  "(%d - %d)\n"),
 			hash_index, lindex, lindex + *proper_len);
 		error = lost_leaf(ip, tbl, leafblk, len, lindex, lbh);
-		brelse(lbh);
+		lgfs2_brelse(lbh);
 		return error;
 	}
 
@@ -1371,7 +1371,7 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 			  "(%x).\n"), lindex, lindex,
 			leaf_proper_start, leaf_proper_start);
 		pad_with_leafblks(ip, tbl, lindex, leaf_proper_start - lindex);
-		brelse(lbh);
+		lgfs2_brelse(lbh);
 		return 1; /* reprocess the starting lindex */
 	}
 	/* If the proper start according to the leaf's hash index is later
@@ -1386,7 +1386,7 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 			  "0x%x in the hash table.\n"), leaf_proper_start,
 			proper_start);
 		error = lost_leaf(ip, tbl, leafblk, len, lindex, lbh);
-		brelse(lbh);
+		lgfs2_brelse(lbh);
 		return error;
 	}
 
@@ -1426,7 +1426,7 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 		if (*proper_len < (len >> 1)) {
 			log_err(_("One leaf split is not enough. The hash "
 				  "table will need to be reprocessed.\n"));
-			brelse(lbh);
+			lgfs2_brelse(lbh);
 			return changes;
 		}
 		lindex += (*proper_len); /* skip the new leaf from the split */
@@ -1438,7 +1438,7 @@ static int fix_hashtable(struct gfs2_inode *ip, __be64 *tbl, unsigned hsize,
 			len, leafblk, leaf.lf_depth,
 			*proper_len);
 	}
-	brelse(lbh);
+	lgfs2_brelse(lbh);
 	/* At this point, lindex should be at the proper end of the pointers.
 	   Now we need to replace any extra duplicate pointers to the old
 	   (original) leafblk (that ran off the end) with new leaf blocks. */
@@ -1501,9 +1501,9 @@ static int check_hash_tbl_dups(struct gfs2_inode *ip, __be64 *tbl,
 		if (!valid_block_ip(ip, leaf_no)) /* Checked later */
 			continue;
 
-		lbh = bread(ip->i_sbd, leafblk);
+		lbh = lgfs2_bread(ip->i_sbd, leafblk);
 		if (lgfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF)) { /* Chked later */
-			brelse(lbh);
+			lgfs2_brelse(lbh);
 			continue;
 		}
 
@@ -1511,7 +1511,7 @@ static int check_hash_tbl_dups(struct gfs2_inode *ip, __be64 *tbl,
 		de = (struct gfs2_dirent *)(lbh->b_data + sizeof(struct gfs2_leaf));
 		lgfs2_dirent_in(&dentry, de);
 		hash_index = hash_table_index(dentry.dr_hash, ip);
-		brelse(lbh);
+		lgfs2_brelse(lbh);
 		/* check the duplicate ref first */
 		if (hash_index < l ||  hash_index > l + len2) {
 			log_err(_("This leaf block has hash index %d, which "
@@ -1526,7 +1526,7 @@ static int check_hash_tbl_dups(struct gfs2_inode *ip, __be64 *tbl,
 			   pass1 would have counted them and adjusted the
 			   count to include them. So we must subtract them. */
 			ip->i_blocks--;
-			bmodified(ip->i_bh);
+			lgfs2_bmodified(ip->i_bh);
 			pad_with_leafblks(ip, tbl, l, len2);
 		} else {
 			log_debug(_("Hash index 0x%x is the proper reference to leaf 0x%"PRIx64".\n"),
@@ -1545,7 +1545,7 @@ static int check_hash_tbl_dups(struct gfs2_inode *ip, __be64 *tbl,
 				return 0;
 			}
 			ip->i_blocks--;
-			bmodified(ip->i_bh);
+			lgfs2_bmodified(ip->i_bh);
 			pad_with_leafblks(ip, tbl, lindex, len);
 			/* At this point we know both copies are bad, so we
 			   return to start fresh */
@@ -1684,12 +1684,12 @@ static int check_hash_tbl(struct gfs2_inode *ip, __be64 *tbl,
 				  "for leaf %"PRIu64" (0x%"PRIx64"). Valid boundary "
 				  "assumed to be %d (0x%x).\n"), len, len,
 				leafblk, leafblk, proper_len, proper_len);
-			lbh = bread(ip->i_sbd, leafblk);
+			lbh = lgfs2_bread(ip->i_sbd, leafblk);
 			lgfs2_leaf_in(&leaf, lbh->b_data);
 			if (lgfs2_check_meta(lbh->b_data, GFS2_METATYPE_LF) ||
 			    leaf.lf_depth > ip->i_depth)
 				leaf.lf_depth = factor;
-			brelse(lbh);
+			lgfs2_brelse(lbh);
 			changes = fix_hashtable(ip, tbl, hsize, leafblk,
 						lindex, lindex, len,
 						&proper_len, leaf.lf_depth);
@@ -1723,9 +1723,9 @@ static int check_hash_tbl(struct gfs2_inode *ip, __be64 *tbl,
 			changes++;
 			/* Now we have to determine if the hash table is
 			   corrupt, or if the leaf has the wrong depth. */
-			lbh = bread(ip->i_sbd, leafblk);
+			lbh = lgfs2_bread(ip->i_sbd, leafblk);
 			lgfs2_leaf_in(&leaf, lbh->b_data);
-			brelse(lbh);
+			lgfs2_brelse(lbh);
 			/* Calculate the expected pointer count based on the
 			   leaf depth. */
 			proper_len = 1 << (ip->i_depth - leaf.lf_depth);
@@ -1771,7 +1771,7 @@ static int check_metalist_qc(struct iptr iptr, struct gfs2_buffer_head **bh, int
 
 	*was_duplicate = 0;
 	*is_valid = 1;
-	*bh = bread(ip->i_sbd, block);
+	*bh = lgfs2_bread(ip->i_sbd, block);
 	return META_IS_GOOD;
 }
 
@@ -1786,15 +1786,15 @@ static int check_data_qc(struct gfs2_inode *ip, uint64_t metablock,
 	if (!valid_block_ip(ip, block))
 		return -1;
 
-	bh = bread(ip->i_sbd, block);
+	bh = lgfs2_bread(ip->i_sbd, block);
 	if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_QC) != 0) {
 		log_crit(_("Error: quota_change block at %"PRIu64" (0x%"PRIx64") is "
 			   "the wrong metadata type.\n"),
 		         block, block);
-		brelse(bh);
+		lgfs2_brelse(bh);
 		return -1;
 	}
-	brelse(bh);
+	lgfs2_brelse(bh);
 	return 0;
 }
 
@@ -1973,7 +1973,7 @@ static int check_system_dir(struct gfs2_inode *sysinode, const char *dirname,
 		if (query( _("Fix entries for %s inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
 			  dirname, sysinode->i_num.in_addr, sysinode->i_num.in_addr)) {
 			sysinode->i_entries = ds.entry_count;
-			bmodified(sysinode->i_bh);
+			lgfs2_bmodified(sysinode->i_bh);
 			log_warn( _("Entries updated\n"));
 		} else {
 			log_err(_("Entries for inode %"PRIu64" (0x%"PRIx64") left out of sync\n"),
@@ -2087,7 +2087,7 @@ static int pass2_check_dir(struct gfs2_sbd *sdp, struct gfs2_inode *ip)
 		        ip->i_entries, ds.entry_count, ip->i_num.in_addr, ip->i_num.in_addr);
 		if (query(_("Fix the entry count? (y/n) "))) {
 			ip->i_entries = ds.entry_count;
-			bmodified(ip->i_bh);
+			lgfs2_bmodified(ip->i_bh);
 		} else {
 			log_err(_("The entry count was not fixed.\n"));
 		}
