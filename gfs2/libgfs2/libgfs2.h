@@ -156,7 +156,7 @@ struct lgfs2_dev_info {
 	uint64_t size;
 };
 
-struct device {
+struct lgfs2_device {
 	uint64_t length;
 };
 
@@ -361,7 +361,7 @@ struct lgfs2_sbd {
 	int64_t sd_time;
 
 	struct lgfs2_dev_info dinfo;
-	struct device device;
+	struct lgfs2_device device;
 
 	int device_fd;
 	int path_fd;

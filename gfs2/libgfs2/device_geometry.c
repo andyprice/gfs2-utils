@@ -94,7 +94,7 @@ size_check:
 
 void lgfs2_fix_device_geometry(struct lgfs2_sbd *sdp)
 {
-	struct device *device = &sdp->device;
+	struct lgfs2_device *device = &sdp->device;
 
 	device->length = sdp->dinfo.size / sdp->sd_bsize;
 }

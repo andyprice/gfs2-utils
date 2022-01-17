@@ -696,7 +696,7 @@ out:
  *
  * Returns: the number of RGs
  */
-static uint64_t how_many_rgrps(struct lgfs2_sbd *sdp, struct device *dev)
+static uint64_t how_many_rgrps(struct lgfs2_sbd *sdp, struct lgfs2_device *dev)
 {
 	uint64_t nrgrp;
 	uint32_t rgblocks1, rgblocksn, bitblocks1, bitblocksn;
@@ -732,7 +732,7 @@ static uint64_t how_many_rgrps(struct lgfs2_sbd *sdp, struct device *dev)
  */
 static struct osi_root compute_rgrp_layout(struct lgfs2_sbd *sdp)
 {
-	struct device *dev;
+	struct lgfs2_device *dev;
 	struct rgrp_tree *rl, *rlast = NULL;
 	unsigned int rgrp = 0, nrgrp, rglength;
 	struct osi_root rgtree = {NULL};
