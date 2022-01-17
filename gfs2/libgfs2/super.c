@@ -60,7 +60,7 @@ int lgfs2_check_sb(void *sbp)
  */
 int lgfs2_read_sb(struct gfs2_sbd *sdp)
 {
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	uint64_t space = 0;
 	unsigned int x;
 	int ret;
@@ -181,7 +181,7 @@ static int rgd_seems_ok(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
  */
 static int good_on_disk(struct gfs2_sbd *sdp, struct rgrp_tree *rgd)
 {
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	int is_rgrp;
 
 	bh = lgfs2_bread(sdp, rgd->rt_addr);

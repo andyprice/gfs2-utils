@@ -35,7 +35,7 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 	int journal_num;
 	uint64_t jindex_block, jblock = 0;
 	int amtread;
-	struct gfs2_buffer_head *jindex_bh, *j_bh;
+	struct lgfs2_buffer_head *jindex_bh, *j_bh;
 
 	journal_num = atoi(journal + 7);
 	if (journal_num < 0)
@@ -106,7 +106,7 @@ static int fsck_readi(struct lgfs2_inode *ip, void *rbuf, uint64_t roffset,
 	       unsigned int size, uint64_t *abs_block)
 {
 	struct gfs2_sbd *sdp;
-	struct gfs2_buffer_head *lbh;
+	struct lgfs2_buffer_head *lbh;
 	uint64_t lblock, dblock;
 	unsigned int o;
 	uint32_t extlen = 0;
@@ -202,7 +202,7 @@ static int print_ld_blks(const __be64 *b, const char *end, int start_line,
 {
 	int bcount = 0, found_tblk = 0, found_bblk = 0;
 	static char str[256];
-	struct gfs2_buffer_head *j_bmap_bh;
+	struct lgfs2_buffer_head *j_bmap_bh;
 
 	if (tblk_off)
 		*tblk_off = 0;
@@ -326,7 +326,7 @@ static uint64_t find_wrap_pt(struct lgfs2_inode *ji, char *jbuf, uint64_t jblock
 		int found = 0;
 
 		if (sbd.gfs1) {
-			struct gfs2_buffer_head *j_bh;
+			struct lgfs2_buffer_head *j_bh;
 
 			j_bh = lgfs2_bread(&sbd, jblock + jb);
 			found = is_wrap_pt(j_bh->b_data, &highest_seq);
@@ -410,7 +410,7 @@ static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 static int meta_has_ref(uint64_t abs_block, int tblk)
 {
 	const struct lgfs2_metadata *mtype;
-	struct gfs2_buffer_head *mbh;
+	struct lgfs2_buffer_head *mbh;
 	int structlen = 0, has_ref = 0;
 	__be64 *b;
 	struct gfs2_dinode *dinode;
@@ -445,7 +445,7 @@ static int meta_has_ref(uint64_t abs_block, int tblk)
  */
 static uint64_t get_ldref(uint64_t abs_ld, int offset_from_ld)
 {
-	struct gfs2_buffer_head *jbh;
+	struct lgfs2_buffer_head *jbh;
 	uint64_t refblk;
 	__be64 *b;
 
@@ -502,7 +502,7 @@ static void display_log_header(void *buf, uint64_t *highest_seq, uint64_t abs_bl
 void dump_journal(const char *journal, uint64_t tblk)
 {
 	const struct lgfs2_metadata *mtype;
-	struct gfs2_buffer_head *j_bh = NULL;
+	struct lgfs2_buffer_head *j_bh = NULL;
 	uint64_t jblock, j_size, jb, abs_block, saveblk, wrappt = 0;
 	int start_line, journal_num;
 	struct lgfs2_inode *j_inode = NULL;

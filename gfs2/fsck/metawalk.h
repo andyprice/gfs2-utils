@@ -14,7 +14,7 @@ extern int check_metatree(struct lgfs2_inode *ip, struct metawalk_fxns *pass);
 extern int check_leaf_blks(struct lgfs2_inode *ip, struct metawalk_fxns *pass);
 extern int check_dir(struct gfs2_sbd *sdp, struct lgfs2_inode *ip,
 		     struct metawalk_fxns *pass);
-extern int check_linear_dir(struct lgfs2_inode *ip, struct gfs2_buffer_head *bh,
+extern int check_linear_dir(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 			    struct metawalk_fxns *pass);
 extern int check_leaf(struct lgfs2_inode *ip, int lindex,
 		      struct metawalk_fxns *pass, uint64_t *leaf_no,
@@ -44,7 +44,7 @@ enum meta_check_rc {
 
 struct iptr {
 	struct lgfs2_inode *ipt_ip;
-	struct gfs2_buffer_head *ipt_bh;
+	struct lgfs2_buffer_head *ipt_bh;
 	unsigned ipt_off;
 };
 
@@ -73,7 +73,7 @@ struct metawalk_fxns {
 	int invalid_meta_is_fatal;
 	int readahead;
 	int (*check_leaf_depth) (struct lgfs2_inode *ip, uint64_t leaf_no,
-				 int ref_count, struct gfs2_buffer_head *lbh);
+				 int ref_count, struct lgfs2_buffer_head *lbh);
 	int (*check_leaf) (struct lgfs2_inode *ip, uint64_t block,
 			   void *private);
 	/* parameters to the check_metalist sub-functions:
@@ -91,31 +91,31 @@ struct metawalk_fxns {
 	            1 - skip further processing
 	*/
 	int (*check_metalist) (struct iptr iptr,
-			       struct gfs2_buffer_head **bh, int h,
+			       struct lgfs2_buffer_head **bh, int h,
 			       int *is_valid, int *was_duplicate,
 			       void *private);
 	int (*check_data) (struct lgfs2_inode *ip, uint64_t metablock,
 			   uint64_t block, void *private,
-			   struct gfs2_buffer_head *bh, __be64 *ptr);
+			   struct lgfs2_buffer_head *bh, __be64 *ptr);
 	int (*check_eattr_indir) (struct lgfs2_inode *ip, uint64_t block,
 				  uint64_t parent,
-				  struct gfs2_buffer_head **bh, void *private);
+				  struct lgfs2_buffer_head **bh, void *private);
 	int (*check_eattr_leaf) (struct lgfs2_inode *ip, uint64_t block,
-				 uint64_t parent, struct gfs2_buffer_head **bh,
+				 uint64_t parent, struct lgfs2_buffer_head **bh,
 				 void *private);
 	int (*check_dentry) (struct lgfs2_inode *ip, struct gfs2_dirent *de,
 			     struct gfs2_dirent *prev,
-			     struct gfs2_buffer_head *bh,
+			     struct lgfs2_buffer_head *bh,
 			     char *filename, uint32_t *count,
 			     int *lindex, void *private);
 	int (*check_eattr_entry) (struct lgfs2_inode *ip,
-				  struct gfs2_buffer_head *leaf_bh,
+				  struct lgfs2_buffer_head *leaf_bh,
 				  struct gfs2_ea_header *ea_hdr,
 				  struct gfs2_ea_header *ea_hdr_prev,
 				  void *private);
 	int (*check_eattr_extentry) (struct lgfs2_inode *ip, int i,
 				     __be64 *ea_data_ptr,
-				     struct gfs2_buffer_head *leaf_bh,
+				     struct lgfs2_buffer_head *leaf_bh,
 				     uint32_t tot_ealen,
 				     struct gfs2_ea_header *ea_hdr,
 				     struct gfs2_ea_header *ea_hdr_prev,
@@ -132,7 +132,7 @@ struct metawalk_fxns {
 	int (*undo_check_data) (struct lgfs2_inode *ip, uint64_t block,
 				void *private);
 	int (*delete_block) (struct lgfs2_inode *ip, uint64_t block,
-			     struct gfs2_buffer_head **bh, const char *btype,
+			     struct lgfs2_buffer_head **bh, const char *btype,
 			     void *private);
 };
 

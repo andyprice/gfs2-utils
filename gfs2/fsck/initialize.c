@@ -193,7 +193,7 @@ static void check_rgrp_integrity(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
 	int rgb, x, y, off, bytes_to_check, total_bytes_to_check, asked = 0;
 	unsigned int state;
 	uint64_t diblock;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 
 	rg_free = rg_reclaimed = rg_unlinked = rg_usedmeta = rg_useddi = 0;
 	total_bytes_to_check = rgd->rt_bitbytes;
@@ -435,7 +435,7 @@ static void check_rgrps_integrity(struct gfs2_sbd *sdp)
 static int rebuild_master(struct gfs2_sbd *sdp)
 {
 	struct lgfs2_inum inum;
-	struct gfs2_buffer_head *bh = NULL;
+	struct lgfs2_buffer_head *bh = NULL;
 	int err = 0;
 
 	log_err(_("The system master directory seems to be destroyed.\n"));
@@ -1069,7 +1069,7 @@ static void peruse_user_dinode(struct gfs2_sbd *sdp, struct lgfs2_inode *ip)
 		return;             /* it can't lead us to the root anyway */
 
 	if (ip->i_num.in_formal_ino == 1) {
-		struct gfs2_buffer_head *root_bh;
+		struct lgfs2_buffer_head *root_bh;
 
 		if (ip->i_num.in_addr == ip->i_bh->b_blocknr) {
 			log_warn(_("Found the root directory at: 0x%"PRIx64".\n"),
@@ -1126,7 +1126,7 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
 			      uint32_t *known_bsize)
 {
 	uint64_t blk, max_rg_size, rb_addr;
-	struct gfs2_buffer_head *bh, *rb_bh;
+	struct lgfs2_buffer_head *bh, *rb_bh;
 	uint32_t bsize, bsize2;
 	int found_rg;
 
@@ -1193,7 +1193,7 @@ static int find_rgs_for_bsize(struct gfs2_sbd *sdp, uint64_t startblock,
 static int peruse_metadata(struct gfs2_sbd *sdp, uint64_t startblock)
 {
 	uint64_t blk, max_rg_size;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	struct lgfs2_inode *ip;
 
 	max_rg_size = 2147483648ull / sdp->sd_bsize;
@@ -1273,7 +1273,7 @@ static int sb_repair(struct gfs2_sbd *sdp)
 		sdp->sd_root_dir.in_addr = possible_root;
 		sdp->md.rooti = lgfs2_inode_read(sdp, possible_root);
 		if (!sdp->md.rooti || sdp->md.rooti->i_magic != GFS2_MAGIC) {
-			struct gfs2_buffer_head *bh = NULL;
+			struct lgfs2_buffer_head *bh = NULL;
 			struct lgfs2_inum inum;
 
 			log_err(_("The root dinode block is destroyed.\n"));
@@ -1377,7 +1377,7 @@ static int reconstruct_single_journal(struct gfs2_sbd *sdp, int jnum,
 				      uint32_t ji_nsegment)
 {
 	uint64_t first = sdp->md.journal[jnum]->i_num.in_addr;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	uint64_t sequence;
 
 	srandom(time(NULL));

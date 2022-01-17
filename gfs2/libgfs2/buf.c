@@ -22,23 +22,23 @@
   #endif
 #endif
 
-struct gfs2_buffer_head *lgfs2_bget(struct gfs2_sbd *sdp, uint64_t num)
+struct lgfs2_buffer_head *lgfs2_bget(struct gfs2_sbd *sdp, uint64_t num)
 {
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 
-	bh = calloc(1, sizeof(struct gfs2_buffer_head) + sdp->sd_bsize);
+	bh = calloc(1, sizeof(struct lgfs2_buffer_head) + sdp->sd_bsize);
 	if (bh == NULL)
 		return NULL;
 
 	bh->b_blocknr = num;
 	bh->sdp = sdp;
-	bh->iov.iov_base = (char *)bh + sizeof(struct gfs2_buffer_head);
+	bh->iov.iov_base = (char *)bh + sizeof(struct lgfs2_buffer_head);
 	bh->iov.iov_len = sdp->sd_bsize;
 
 	return bh;
 }
 
-int __lgfs2_breadm(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhs, size_t n,
+int __lgfs2_breadm(struct gfs2_sbd *sdp, struct lgfs2_buffer_head **bhs, size_t n,
                    uint64_t block, int line, const char *caller)
 {
 	size_t v = (n < IOV_MAX) ? n : IOV_MAX;
@@ -71,10 +71,10 @@ int __lgfs2_breadm(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhs, size_t n
 	return 0;
 }
 
-struct gfs2_buffer_head *__lgfs2_bread(struct gfs2_sbd *sdp, uint64_t num, int line,
+struct lgfs2_buffer_head *__lgfs2_bread(struct gfs2_sbd *sdp, uint64_t num, int line,
 				 const char *caller)
 {
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	ssize_t ret;
 
 	bh = lgfs2_bget(sdp, num);
@@ -91,7 +91,7 @@ struct gfs2_buffer_head *__lgfs2_bread(struct gfs2_sbd *sdp, uint64_t num, int l
 	return bh;
 }
 
-int lgfs2_bwrite(struct gfs2_buffer_head *bh)
+int lgfs2_bwrite(struct lgfs2_buffer_head *bh)
 {
 	struct gfs2_sbd *sdp = bh->sdp;
 
@@ -101,7 +101,7 @@ int lgfs2_bwrite(struct gfs2_buffer_head *bh)
 	return 0;
 }
 
-int lgfs2_brelse(struct gfs2_buffer_head *bh)
+int lgfs2_brelse(struct lgfs2_buffer_head *bh)
 {
 	int error = 0;
 

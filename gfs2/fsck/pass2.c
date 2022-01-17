@@ -96,14 +96,14 @@ static int set_dotdot_dir(struct gfs2_sbd *sdp, uint64_t childblock, struct lgfs
 }
 
 static int check_eattr_indir(struct lgfs2_inode *ip, uint64_t block,
-			     uint64_t parent, struct gfs2_buffer_head **bh,
+			     uint64_t parent, struct lgfs2_buffer_head **bh,
 			     void *private)
 {
 	*bh = lgfs2_bread(ip->i_sbd, block);
 	return 0;
 }
 static int check_eattr_leaf(struct lgfs2_inode *ip, uint64_t block,
-			    uint64_t parent, struct gfs2_buffer_head **bh,
+			    uint64_t parent, struct lgfs2_buffer_head **bh,
 			    void *private)
 {
 	*bh = lgfs2_bread(ip->i_sbd, block);
@@ -163,7 +163,7 @@ static struct metawalk_fxns pass2_fxns_delete = {
 static int bad_formal_ino(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			  struct lgfs2_inum entry, const char *tmp_name,
 			  int q, struct lgfs2_dirent *d,
-			  struct gfs2_buffer_head *bh)
+			  struct lgfs2_buffer_head *bh)
 {
 	struct inode_info *ii;
 	struct dir_info *di = NULL;
@@ -238,7 +238,7 @@ static int hash_table_index(uint32_t hash, struct lgfs2_inode *ip)
 }
 
 static int hash_table_max(int lindex, struct lgfs2_inode *ip,
-		   struct gfs2_buffer_head *bh)
+		   struct lgfs2_buffer_head *bh)
 {
 	struct gfs2_leaf *leaf = (struct gfs2_leaf *)bh->b_data;
 	return (1 << (ip->i_depth - be16_to_cpu(leaf->lf_depth))) +
@@ -246,7 +246,7 @@ static int hash_table_max(int lindex, struct lgfs2_inode *ip,
 }
 
 static int check_leaf_depth(struct lgfs2_inode *ip, uint64_t leaf_no,
-			    int ref_count, struct gfs2_buffer_head *lbh)
+			    int ref_count, struct lgfs2_buffer_head *lbh)
 {
 	struct gfs2_leaf *leaf = (struct gfs2_leaf *)lbh->b_data;
 	int cur_depth = be16_to_cpu(leaf->lf_depth);
@@ -292,13 +292,13 @@ static int check_leaf_depth(struct lgfs2_inode *ip, uint64_t leaf_no,
  */
 static int wrong_leaf(struct lgfs2_inode *ip, struct lgfs2_inum *entry,
 		      const char *tmp_name, int *lindex, int lindex_max,
-		      int hash_index, struct gfs2_buffer_head *bh,
+		      int hash_index, struct lgfs2_buffer_head *bh,
 		      struct dir_status *ds, struct gfs2_dirent *dent,
 		      struct lgfs2_dirent *d, struct gfs2_dirent *prev_de,
 		      uint32_t *count, int q)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_buffer_head *dest_lbh;
+	struct lgfs2_buffer_head *dest_lbh;
 	uint64_t planned_leaf, real_leaf;
 	int li, dest_ref, error;
 	__be64 *tbl;
@@ -424,7 +424,7 @@ static int basic_dentry_checks(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			       struct lgfs2_inum *entry, const char *tmp_name,
 			       uint32_t *count, struct lgfs2_dirent *d,
 			       struct dir_status *ds, int *q,
-			       struct gfs2_buffer_head *bh, int *isdir)
+			       struct lgfs2_buffer_head *bh, int *isdir)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint32_t calculated_hash;
@@ -598,7 +598,7 @@ static int basic_dentry_checks(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 	 * eattr or indirect block, but marked "dinode" in the bitmap because
 	 * gfs1 marked all gfs1 metadata that way. */
 	if (ii == NULL && di == NULL && sdp->gfs1) {
-		struct gfs2_buffer_head *tbh;
+		struct lgfs2_buffer_head *tbh;
 
 		tbh = lgfs2_bread(sdp, entry->in_addr);
 		if (lgfs2_check_meta(tbh->b_data, GFS2_METATYPE_DI)) { /* not dinode */
@@ -615,7 +615,7 @@ static int basic_dentry_checks(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 }
 
 static int dirref_find(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
-		       struct gfs2_dirent *prev, struct gfs2_buffer_head *bh,
+		       struct gfs2_dirent *prev, struct lgfs2_buffer_head *bh,
 		       char *filename, uint32_t *count, int *lindex,
 		       void *private)
 {
@@ -720,7 +720,7 @@ static int check_suspicious_dirref(struct gfs2_sbd *sdp,
  * FIXMEs internally first */
 static int check_dentry(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			struct gfs2_dirent *prev_de,
-			struct gfs2_buffer_head *bh, char *filename,
+			struct lgfs2_buffer_head *bh, char *filename,
 			uint32_t *count, int *lindex, void *priv)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -931,7 +931,7 @@ static int write_new_leaf(struct lgfs2_inode *dip, int start_lindex,
 			  int num_copies, const char *before_or_after,
 			  uint64_t *bn)
 {
-	struct gfs2_buffer_head *nbh;
+	struct lgfs2_buffer_head *nbh;
 	struct gfs2_leaf *leaf;
 	struct gfs2_dirent *dent;
 	int count, i;
@@ -1071,7 +1071,7 @@ static void pad_with_leafblks(struct lgfs2_inode *ip, __be64 *tbl,
  * we need to pad the gap we leave.
  */
 static int lost_leaf(struct lgfs2_inode *ip, __be64 *tbl, uint64_t leafno,
-		     int ref_count, int lindex, struct gfs2_buffer_head *bh)
+		     int ref_count, int lindex, struct lgfs2_buffer_head *bh)
 {
 	char *filename;
 	char *bh_end = bh->b_data + ip->i_sbd->sd_bsize;
@@ -1166,7 +1166,7 @@ static int lost_leaf(struct lgfs2_inode *ip, __be64 *tbl, uint64_t leafno,
 
 static int basic_check_dentry(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			      struct gfs2_dirent *prev_de,
-			      struct gfs2_buffer_head *bh, char *filename,
+			      struct lgfs2_buffer_head *bh, char *filename,
 			      uint32_t *count, int *lindex, void *priv)
 {
 	int q = 0;
@@ -1291,7 +1291,7 @@ static int fix_hashtable(struct lgfs2_inode *ip, __be64 *tbl, unsigned hsize,
 			 uint64_t leafblk, int lindex, uint32_t proper_start,
 			 int len, int *proper_len, int factor)
 {
-	struct gfs2_buffer_head *lbh;
+	struct lgfs2_buffer_head *lbh;
 	struct lgfs2_dirent dentry;
 	struct lgfs2_leaf leaf;
 	struct gfs2_dirent *de;
@@ -1467,7 +1467,7 @@ static int check_hash_tbl_dups(struct lgfs2_inode *ip, __be64 *tbl,
 {
 	int l, len2;
 	uint64_t leafblk, leaf_no;
-	struct gfs2_buffer_head *lbh;
+	struct lgfs2_buffer_head *lbh;
 	struct gfs2_leaf leaf;
 	struct lgfs2_dirent dentry;
 	struct gfs2_dirent *de;
@@ -1586,7 +1586,7 @@ static int check_hash_tbl(struct lgfs2_inode *ip, __be64 *tbl,
 	int lindex, len, proper_len, i, changes = 0;
 	uint64_t leafblk;
 	struct lgfs2_leaf leaf;
-	struct gfs2_buffer_head *lbh;
+	struct lgfs2_buffer_head *lbh;
 	int factor;
 	uint32_t proper_start;
 	int anomaly;
@@ -1763,7 +1763,7 @@ static struct metawalk_fxns pass2_fxns = {
 	.repair_leaf = pass2_repair_leaf,
 };
 
-static int check_metalist_qc(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+static int check_metalist_qc(struct iptr iptr, struct lgfs2_buffer_head **bh, int h,
                              int *is_valid, int *was_duplicate, void *private)
 {
 	struct lgfs2_inode *ip = iptr.ipt_ip;
@@ -1777,9 +1777,9 @@ static int check_metalist_qc(struct iptr iptr, struct gfs2_buffer_head **bh, int
 
 static int check_data_qc(struct lgfs2_inode *ip, uint64_t metablock,
 			 uint64_t block, void *private,
-			 struct gfs2_buffer_head *bbh, __be64 *ptr)
+			 struct lgfs2_buffer_head *bbh, __be64 *ptr)
 {
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 
 	/* At this point, basic data block checks have already been done,
 	   so we only need to make sure they're QC blocks. */

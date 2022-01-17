@@ -23,7 +23,7 @@ void lgfs2_replay_incr_blk(struct lgfs2_inode *ip, unsigned int *blk)
 }
 
 int lgfs2_replay_read_block(struct lgfs2_inode *ip, unsigned int blk,
-			   struct gfs2_buffer_head **bh)
+			   struct lgfs2_buffer_head **bh)
 {
 	int new = 0;
 	uint64_t dblock;
@@ -68,7 +68,7 @@ static void log_header_in(struct lgfs2_log_header *lh, char *buf)
 int lgfs2_get_log_header(struct lgfs2_inode *ip, unsigned int blk,
                          struct lgfs2_log_header *head)
 {
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	struct lgfs2_log_header lh;
 	struct gfs2_log_header *tmp;
 	__be32 saved_hash;
@@ -235,7 +235,7 @@ int lgfs2_clean_journal(struct lgfs2_inode *ip, struct lgfs2_log_header *head)
 	unsigned int lblock;
 	struct gfs2_log_header *lh;
 	uint32_t hash;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	int new = 0;
 	uint64_t dblock;
 

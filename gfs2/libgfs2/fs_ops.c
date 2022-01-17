@@ -30,7 +30,7 @@ static int inode_is_stuffed(const struct lgfs2_inode *ip)
 	return !ip->i_height;
 }
 
-struct lgfs2_inode *lgfs2_inode_get(struct gfs2_sbd *sdp, struct gfs2_buffer_head *bh)
+struct lgfs2_inode *lgfs2_inode_get(struct gfs2_sbd *sdp, struct lgfs2_buffer_head *bh)
 {
 	struct lgfs2_inode *ip;
 
@@ -47,7 +47,7 @@ struct lgfs2_inode *lgfs2_inode_get(struct gfs2_sbd *sdp, struct gfs2_buffer_hea
 struct lgfs2_inode *lgfs2_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 {
 	struct lgfs2_inode *ip;
-	struct gfs2_buffer_head *bh = lgfs2_bread(sdp, di_addr);
+	struct lgfs2_buffer_head *bh = lgfs2_bread(sdp, di_addr);
 	if (bh == NULL) {
 		return NULL;
 	}
@@ -212,7 +212,7 @@ int lgfs2_meta_alloc(struct lgfs2_inode *ip, uint64_t *blkno)
 }
 
 static __inline__ void buffer_clear_tail(struct gfs2_sbd *sdp,
-					 struct gfs2_buffer_head *bh, int head)
+					 struct lgfs2_buffer_head *bh, int head)
 {
 	memset(bh->b_data + head, 0, sdp->sd_bsize - head);
 	lgfs2_bmodified(bh);
@@ -220,8 +220,8 @@ static __inline__ void buffer_clear_tail(struct gfs2_sbd *sdp,
 
 static __inline__ void
 buffer_copy_tail(struct gfs2_sbd *sdp,
-		 struct gfs2_buffer_head *to_bh, int to_head,
-		 struct gfs2_buffer_head *from_bh, int from_head)
+		 struct lgfs2_buffer_head *to_bh, int to_head,
+		 struct lgfs2_buffer_head *from_bh, int from_head)
 {
 	memcpy(to_bh->b_data + to_head, from_bh->b_data + from_head,
 	       sdp->sd_bsize - from_head);
@@ -233,7 +233,7 @@ buffer_copy_tail(struct gfs2_sbd *sdp,
 void lgfs2_unstuff_dinode(struct lgfs2_inode *ip)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	uint64_t block = 0;
 	int isdir = S_ISDIR(ip->i_mode) || lgfs2_is_gfs_dir(ip);
 
@@ -379,7 +379,7 @@ unsigned int lgfs2_calc_tree_height(struct lgfs2_inode *ip, uint64_t size)
 void lgfs2_build_height(struct lgfs2_inode *ip, int height)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	uint64_t block = 0, *bp;
 	unsigned int x;
 	int new_block;
@@ -435,7 +435,7 @@ void lgfs2_find_metapath(struct lgfs2_inode *ip, uint64_t block, struct metapath
 	}
 }
 
-void lgfs2_lookup_block(struct lgfs2_inode *ip, struct gfs2_buffer_head *bh,
+void lgfs2_lookup_block(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
                         unsigned int height, struct metapath *mp,
                         int create, int *new, uint64_t *block)
 {
@@ -465,7 +465,7 @@ void lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
                      uint64_t *dblock, uint32_t *extlen, int prealloc)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	struct metapath mp;
 	int create = *new;
 	unsigned int bsize;
@@ -556,7 +556,7 @@ void lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 }
 
 static void
-copy2mem(struct gfs2_buffer_head *bh, void **buf, unsigned int offset,
+copy2mem(struct lgfs2_buffer_head *bh, void **buf, unsigned int offset,
 	 unsigned int size)
 {
 	char **p = (char **)buf;
@@ -572,7 +572,7 @@ copy2mem(struct gfs2_buffer_head *bh, void **buf, unsigned int offset,
 int lgfs2_readi(struct lgfs2_inode *ip, void *buf, uint64_t offset, unsigned int size)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	uint64_t lblock, dblock;
 	unsigned int o;
 	uint32_t extlen = 0;
@@ -645,7 +645,7 @@ int lgfs2_readi(struct lgfs2_inode *ip, void *buf, uint64_t offset, unsigned int
 	return copied;
 }
 
-static void copy_from_mem(struct gfs2_buffer_head *bh, void **buf,
+static void copy_from_mem(struct lgfs2_buffer_head *bh, void **buf,
 			  unsigned int offset, unsigned int size)
 {
 	char **p = (char **)buf;
@@ -659,7 +659,7 @@ int __lgfs2_writei(struct lgfs2_inode *ip, void *buf,
 		  uint64_t offset, unsigned int size, int resize)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	uint64_t lblock, dblock;
 	unsigned int o;
 	uint32_t extlen = 0;
@@ -737,7 +737,7 @@ int __lgfs2_writei(struct lgfs2_inode *ip, void *buf,
 	return copied;
 }
 
-int lgfs2_dirent_first(struct lgfs2_inode *dip, struct gfs2_buffer_head *bh,
+int lgfs2_dirent_first(struct lgfs2_inode *dip, struct lgfs2_buffer_head *bh,
 					  struct gfs2_dirent **dent)
 {
 	struct gfs2_meta_header *h = (struct gfs2_meta_header *)bh->b_data;
@@ -751,7 +751,7 @@ int lgfs2_dirent_first(struct lgfs2_inode *dip, struct gfs2_buffer_head *bh,
 	}
 }
 
-int lgfs2_dirent_next(struct lgfs2_inode *dip, struct gfs2_buffer_head *bh,
+int lgfs2_dirent_next(struct lgfs2_inode *dip, struct lgfs2_buffer_head *bh,
 					 struct gfs2_dirent **dent)
 {
 	char *bh_end;
@@ -773,7 +773,7 @@ int lgfs2_dirent_next(struct lgfs2_inode *dip, struct gfs2_buffer_head *bh,
  * Returns 0 on success, with *dent_out pointing to the new dirent,
  * or -1 on failure, with errno set
  */
-static int dirent_alloc(struct lgfs2_inode *dip, struct gfs2_buffer_head *bh,
+static int dirent_alloc(struct lgfs2_inode *dip, struct lgfs2_buffer_head *bh,
 			int name_len, struct gfs2_dirent **dent_out)
 {
 	struct gfs2_dirent *dent, *new;
@@ -847,7 +847,7 @@ static int dirent_alloc(struct lgfs2_inode *dip, struct gfs2_buffer_head *bh,
 	return -1;
 }
 
-void lgfs2_dirent2_del(struct lgfs2_inode *dip, struct gfs2_buffer_head *bh,
+void lgfs2_dirent2_del(struct lgfs2_inode *dip, struct lgfs2_buffer_head *bh,
                        struct gfs2_dirent *prev, struct gfs2_dirent *cur)
 {
 	uint16_t cur_rec_len, prev_rec_len;
@@ -890,9 +890,9 @@ int lgfs2_get_leaf_ptr(struct lgfs2_inode *dip, const uint32_t lindex, uint64_t 
 }
 
 void lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf_no,
-		    struct gfs2_buffer_head *obh)
+		    struct lgfs2_buffer_head *obh)
 {
-	struct gfs2_buffer_head *nbh;
+	struct lgfs2_buffer_head *nbh;
 	struct gfs2_leaf *nleaf, *oleaf;
 	struct gfs2_dirent *dent, *prev = NULL, *next = NULL, *new;
 	uint32_t len, half_len, divider;
@@ -1072,7 +1072,7 @@ static void dir_double_exhash(struct lgfs2_inode *dip)
  */
 
 int lgfs2_get_leaf(struct lgfs2_inode *dip, uint64_t leaf_no,
-				  struct gfs2_buffer_head **bhp)
+				  struct lgfs2_buffer_head **bhp)
 {
 	int error = 0;
 
@@ -1092,7 +1092,7 @@ int lgfs2_get_leaf(struct lgfs2_inode *dip, uint64_t leaf_no,
  * Returns: 0 on success, error code otherwise
  */
 
-static int get_first_leaf(struct lgfs2_inode *dip, uint32_t lindex, struct gfs2_buffer_head **bh_out)
+static int get_first_leaf(struct lgfs2_inode *dip, uint32_t lindex, struct lgfs2_buffer_head **bh_out)
 {
 	uint64_t leaf_no;
 
@@ -1113,8 +1113,8 @@ static int get_first_leaf(struct lgfs2_inode *dip, uint32_t lindex, struct gfs2_
  * Returns: 0 on success, error code otherwise
  */
 
-static int get_next_leaf(struct lgfs2_inode *dip,struct gfs2_buffer_head *bh_in,
-						 struct gfs2_buffer_head **bh_out)
+static int get_next_leaf(struct lgfs2_inode *dip,struct lgfs2_buffer_head *bh_in,
+						 struct lgfs2_buffer_head **bh_out)
 {
 	struct gfs2_leaf *leaf;
 
@@ -1140,7 +1140,7 @@ static int get_next_leaf(struct lgfs2_inode *dip,struct gfs2_buffer_head *bh_in,
 static int dir_e_add(struct lgfs2_inode *dip, const char *filename, int len,
 		      struct lgfs2_inum *inum, unsigned int type)
 {
-	struct gfs2_buffer_head *bh, *nbh;
+	struct lgfs2_buffer_head *bh, *nbh;
 	struct gfs2_leaf *leaf, *nleaf;
 	struct gfs2_dirent *dent;
 	uint32_t lindex, llen;
@@ -1234,7 +1234,7 @@ static void dir_make_exhash(struct lgfs2_inode *dip)
 {
 	struct gfs2_sbd *sdp = dip->i_sbd;
 	struct gfs2_dirent *dent;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	struct gfs2_leaf *leaf;
 	uint16_t rec_len;
 	int y;
@@ -1332,10 +1332,10 @@ int lgfs2_dir_add(struct lgfs2_inode *dip, const char *filename, int len,
 	return err;
 }
 
-static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, struct lgfs2_inum *inum,
+static int __init_dinode(struct gfs2_sbd *sdp, struct lgfs2_buffer_head **bhp, struct lgfs2_inum *inum,
                          unsigned int mode, uint32_t flags, struct lgfs2_inum *parent, int gfs1)
 {
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	struct gfs2_dinode *di;
 	int is_dir;
 
@@ -1410,7 +1410,7 @@ static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, st
 	return 0;
 }
 
-int lgfs2_init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, struct lgfs2_inum *inum,
+int lgfs2_init_dinode(struct gfs2_sbd *sdp, struct lgfs2_buffer_head **bhp, struct lgfs2_inum *inum,
                       unsigned int mode, uint32_t flags, struct lgfs2_inum *parent)
 {
 	return __init_dinode(sdp, bhp, inum, mode, flags, parent, 0);
@@ -1447,7 +1447,7 @@ int lgfs2_write_filemeta(struct lgfs2_inode *ip)
 		.mh_type = cpu_to_be32(GFS2_METATYPE_IN),
 		.mh_format = cpu_to_be32(GFS2_FORMAT_IN)
 	};
-	struct gfs2_buffer_head *bh = lgfs2_bget(sdp, ip->i_num.in_addr);
+	struct lgfs2_buffer_head *bh = lgfs2_bget(sdp, ip->i_num.in_addr);
 	if (bh == NULL)
 		return 1;
 
@@ -1492,7 +1492,7 @@ static struct lgfs2_inode *__createi(struct lgfs2_inode *dip,
 	struct gfs2_sbd *sdp = dip->i_sbd;
 	uint64_t bn;
 	struct lgfs2_inum inum;
-	struct gfs2_buffer_head *bh = NULL;
+	struct lgfs2_buffer_head *bh = NULL;
 	struct lgfs2_inode *ip;
 	int err = 0;
 	int is_dir;
@@ -1578,7 +1578,7 @@ static int gfs2_filecmp(const char *file1, const char *file2, int len_of_file2)
  *
  * Returns:
  */
-static int leaf_search(struct lgfs2_inode *dip, struct gfs2_buffer_head *bh, 
+static int leaf_search(struct lgfs2_inode *dip, struct lgfs2_buffer_head *bh,
 		       const char *filename, int len,
 		       struct gfs2_dirent **dent_out,
 		       struct gfs2_dirent **dent_prev)
@@ -1637,9 +1637,9 @@ static int leaf_search(struct lgfs2_inode *dip, struct gfs2_buffer_head *bh,
 
 static int linked_leaf_search(struct lgfs2_inode *dip, const char *filename,
 			      int len, struct gfs2_dirent **dent_out,
-			      struct gfs2_buffer_head **bh_out)
+			      struct lgfs2_buffer_head **bh_out)
 {
-	struct gfs2_buffer_head *bh = NULL, *bh_next;
+	struct lgfs2_buffer_head *bh = NULL, *bh_next;
 	uint32_t hsize, lindex;
 	uint32_t hash;
 	int error = 0;
@@ -1701,7 +1701,7 @@ static int linked_leaf_search(struct lgfs2_inode *dip, const char *filename,
 static int dir_e_search(struct lgfs2_inode *dip, const char *filename,
 			int len, unsigned int *type, struct lgfs2_inum *inum)
 {
-	struct gfs2_buffer_head *bh = NULL;
+	struct lgfs2_buffer_head *bh = NULL;
 	struct gfs2_dirent *dent;
 	int error;
 
@@ -1780,7 +1780,7 @@ static int dir_e_del(struct lgfs2_inode *dip, const char *filename, int len)
 	int error;
 	int found = 0;
 	uint64_t leaf_no;
-	struct gfs2_buffer_head *bh = NULL;
+	struct lgfs2_buffer_head *bh = NULL;
 	struct gfs2_dirent *cur, *prev;
 
 	lindex = (1 << (dip->i_depth))-1;
@@ -1920,7 +1920,7 @@ void lgfs2_free_block(struct gfs2_sbd *sdp, uint64_t block)
 int lgfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 {
 	struct lgfs2_inode *ip;
-	struct gfs2_buffer_head *bh, *nbh;
+	struct lgfs2_buffer_head *bh, *nbh;
 	int h, head_size;
 	uint64_t block;
 	struct rgrp_tree *rgd;
@@ -1948,7 +1948,7 @@ int lgfs2_freedi(struct gfs2_sbd *sdp, uint64_t diblock)
 			     sizeof(struct gfs2_dinode));
 
 		for (tmp = cur_list->next; tmp != cur_list; tmp = tmp->next){
-			bh = osi_list_entry(tmp, struct gfs2_buffer_head,
+			bh = osi_list_entry(tmp, struct lgfs2_buffer_head,
 					    b_altlist);
 
 			for (ptr = (__be64 *)(bh->b_data + head_size);

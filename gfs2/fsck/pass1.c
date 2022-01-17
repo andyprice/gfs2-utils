@@ -39,29 +39,29 @@ struct block_count {
 };
 
 static int p1check_leaf(struct lgfs2_inode *ip, uint64_t block, void *private);
-static int pass1_check_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+static int pass1_check_metalist(struct iptr iptr, struct lgfs2_buffer_head **bh, int h,
                                 int *is_valid, int *was_duplicate, void *private);
 static int undo_check_metalist(struct lgfs2_inode *ip, uint64_t block,
 			       int h, void *private);
 static int pass1_check_data(struct lgfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
-		      struct gfs2_buffer_head *bh, __be64 *ptr);
+		      struct lgfs2_buffer_head *bh, __be64 *ptr);
 static int undo_check_data(struct lgfs2_inode *ip, uint64_t block,
 			   void *private);
 static int check_eattr_indir(struct lgfs2_inode *ip, uint64_t indirect,
-			     uint64_t parent, struct gfs2_buffer_head **bh,
+			     uint64_t parent, struct lgfs2_buffer_head **bh,
 			     void *private);
 static int check_eattr_leaf(struct lgfs2_inode *ip, uint64_t block,
-			    uint64_t parent, struct gfs2_buffer_head **bh,
+			    uint64_t parent, struct lgfs2_buffer_head **bh,
 			    void *private);
 static int check_eattr_entries(struct lgfs2_inode *ip,
-			       struct gfs2_buffer_head *leaf_bh,
+			       struct lgfs2_buffer_head *leaf_bh,
 			       struct gfs2_ea_header *ea_hdr,
 			       struct gfs2_ea_header *ea_hdr_prev,
 			       void *private);
 static int check_extended_leaf_eattr(struct lgfs2_inode *ip, int i,
 				     __be64 *data_ptr,
-				     struct gfs2_buffer_head *leaf_bh,
+				     struct lgfs2_buffer_head *leaf_bh,
 				     uint32_t tot_ealen,
 				     struct gfs2_ea_header *ea_hdr,
 				     struct gfs2_ea_header *ea_hdr_prev,
@@ -70,7 +70,7 @@ static int finish_eattr_indir(struct lgfs2_inode *ip, int leaf_pointers,
 			      int leaf_pointer_errors, void *private);
 static int handle_ip(struct gfs2_sbd *sdp, struct lgfs2_inode *ip);
 static int delete_block(struct lgfs2_inode *ip, uint64_t block,
-			struct gfs2_buffer_head **bh, const char *btype,
+			struct lgfs2_buffer_head **bh, const char *btype,
 			void *private);
 
 static int gfs2_blockmap_set(struct gfs2_bmap *bmap, uint64_t bblock, int mark)
@@ -115,7 +115,7 @@ static int _fsck_blockmap_set(struct lgfs2_inode *ip, uint64_t bblock,
  * delete_block - delete a block associated with an inode
  */
 static int delete_block(struct lgfs2_inode *ip, uint64_t block,
-			struct gfs2_buffer_head **bh, const char *btype,
+			struct lgfs2_buffer_head **bh, const char *btype,
 			void *private)
 {
 	if (valid_block_ip(ip, block)) {
@@ -189,7 +189,7 @@ static struct metawalk_fxns pass1_fxns = {
  * marked "in use" by the bitmap.  You don't want root's indirect blocks
  * deleted, do you? Or worse, reused for lost+found.
  */
-static int resuscitate_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+static int resuscitate_metalist(struct iptr iptr, struct lgfs2_buffer_head **bh, int h,
                                 int *is_valid, int *was_duplicate, void *private)
 {
 	struct block_count *bc = (struct block_count *)private;
@@ -227,7 +227,7 @@ static int resuscitate_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, 
  */
 static int resuscitate_dentry(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			      struct gfs2_dirent *prev_de,
-			      struct gfs2_buffer_head *bh, char *filename,
+			      struct lgfs2_buffer_head *bh, char *filename,
 			      uint32_t *count, int *lindex, void *priv)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -301,13 +301,13 @@ static int p1check_leaf(struct lgfs2_inode *ip, uint64_t block, void *private)
 	return 0;
 }
 
-static int pass1_check_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+static int pass1_check_metalist(struct iptr iptr, struct lgfs2_buffer_head **bh, int h,
                                 int *is_valid, int *was_duplicate, void *private)
 {
 	struct block_count *bc = (struct block_count *)private;
 	struct lgfs2_inode *ip = iptr.ipt_ip;
 	uint64_t block = iptr_block(iptr);
-	struct gfs2_buffer_head *nbh;
+	struct lgfs2_buffer_head *nbh;
 	const char *blktypedesc;
 	int iblk_type;
 	int q;
@@ -464,7 +464,7 @@ static int undo_check_data(struct lgfs2_inode *ip, uint64_t block,
 static int blockmap_set_as_data(struct lgfs2_inode *ip, uint64_t block)
 {
 	int error;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	struct gfs2_dinode *di;
 
 	error = fsck_blkmap_set_noino(ip, block, "data", GFS2_BLKST_USED);
@@ -497,7 +497,7 @@ out:
 
 static int pass1_check_data(struct lgfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
-		      struct gfs2_buffer_head *bbh, __be64 *ptr)
+		      struct lgfs2_buffer_head *bbh, __be64 *ptr)
 {
 	int q;
 	struct block_count *bc = (struct block_count *) private;
@@ -520,7 +520,7 @@ static int pass1_check_data(struct lgfs2_inode *ip, uint64_t metablock,
 	bc->data_count++; /* keep the count sane anyway */
 	q = block_type(bl, block);
 	if (q != GFS2_BLKST_FREE) {
-		struct gfs2_buffer_head *bh;
+		struct lgfs2_buffer_head *bh;
 		struct gfs2_meta_header *mh;
 		uint32_t mh_type;
 
@@ -621,7 +621,7 @@ static int ask_remove_inode_eattr(struct lgfs2_inode *ip,
 
 static int undo_eattr_indir_or_leaf(struct lgfs2_inode *ip, uint64_t block,
 				    uint64_t parent,
-				    struct gfs2_buffer_head **bh,
+				    struct lgfs2_buffer_head **bh,
 				    void *private)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -665,7 +665,7 @@ static void complain_eas(struct lgfs2_inode *ip, uint64_t block,
 }
 
 static int check_eattr_indir(struct lgfs2_inode *ip, uint64_t indirect,
-			     uint64_t parent, struct gfs2_buffer_head **bh,
+			     uint64_t parent, struct lgfs2_buffer_head **bh,
 			     void *private)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
@@ -749,9 +749,9 @@ static int finish_eattr_indir(struct lgfs2_inode *ip, int leaf_pointers,
  *      checks an extended attribute (not directory) leaf block
  */
 static int check_ealeaf_block(struct lgfs2_inode *ip, uint64_t block, int btype,
-			      struct gfs2_buffer_head **bh, void *private)
+			      struct lgfs2_buffer_head **bh, void *private)
 {
-	struct gfs2_buffer_head *leaf_bh = NULL;
+	struct lgfs2_buffer_head *leaf_bh = NULL;
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	int q;
 	struct block_count *bc = (struct block_count *) private;
@@ -814,7 +814,7 @@ static int check_ealeaf_block(struct lgfs2_inode *ip, uint64_t block, int btype,
  */
 static int check_extended_leaf_eattr(struct lgfs2_inode *ip, int i,
 				     __be64 *data_ptr,
-				     struct gfs2_buffer_head *leaf_bh,
+				     struct lgfs2_buffer_head *leaf_bh,
 				     uint32_t tot_ealen,
 				     struct gfs2_ea_header *ea_hdr,
 				     struct gfs2_ea_header *ea_hdr_prev,
@@ -822,7 +822,7 @@ static int check_extended_leaf_eattr(struct lgfs2_inode *ip, int i,
 {
 	uint64_t el_blk = be64_to_cpu(*data_ptr);
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_buffer_head *bh = NULL;
+	struct lgfs2_buffer_head *bh = NULL;
 	int error = 0;
 
 	if (!valid_block_ip(ip, el_blk)) {
@@ -864,7 +864,7 @@ static int check_extended_leaf_eattr(struct lgfs2_inode *ip, int i,
 }
 
 static int check_eattr_leaf(struct lgfs2_inode *ip, uint64_t block,
-			    uint64_t parent, struct gfs2_buffer_head **bh,
+			    uint64_t parent, struct lgfs2_buffer_head **bh,
 			    void *private)
 {
 	if (!valid_block_ip(ip, block)) {
@@ -880,7 +880,7 @@ static int check_eattr_leaf(struct lgfs2_inode *ip, uint64_t block,
 }
 
 static int ask_remove_eattr_entry(struct gfs2_sbd *sdp,
-				  struct gfs2_buffer_head *leaf_bh,
+				  struct lgfs2_buffer_head *leaf_bh,
 				  struct gfs2_ea_header *curr,
 				  struct gfs2_ea_header *prev,
 				  int fix_curr, int fix_curr_len)
@@ -921,7 +921,7 @@ static int eatype_max(unsigned fs_format)
 }
 
 static int check_eattr_entries(struct lgfs2_inode *ip,
-			       struct gfs2_buffer_head *leaf_bh,
+			       struct lgfs2_buffer_head *leaf_bh,
 			       struct gfs2_ea_header *ea_hdr,
 			       struct gfs2_ea_header *ea_hdr_prev,
 			       void *private)
@@ -1007,7 +1007,7 @@ static const char *btypes[5] = {
 	"extended attribute" };
 
 static int rangecheck_block(struct lgfs2_inode *ip, uint64_t block,
-			    struct gfs2_buffer_head **bh, enum b_types btype,
+			    struct lgfs2_buffer_head **bh, enum b_types btype,
 			    void *private)
 {
 	long *bad_pointers = (long *)private;
@@ -1042,7 +1042,7 @@ static int rangecheck_block(struct lgfs2_inode *ip, uint64_t block,
 	return META_IS_GOOD;
 }
 
-static int rangecheck_metadata(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+static int rangecheck_metadata(struct iptr iptr, struct lgfs2_buffer_head **bh, int h,
                                int *is_valid, int *was_duplicate, void *private)
 {
 	struct lgfs2_inode *ip = iptr.ipt_ip;
@@ -1061,20 +1061,20 @@ static int rangecheck_leaf(struct lgfs2_inode *ip, uint64_t block,
 
 static int rangecheck_data(struct lgfs2_inode *ip, uint64_t metablock,
 			   uint64_t block, void *private,
-			   struct gfs2_buffer_head *bh, __be64 *ptr)
+			   struct lgfs2_buffer_head *bh, __be64 *ptr)
 {
 	return rangecheck_block(ip, block, NULL, BTYPE_DATA, private);
 }
 
 static int rangecheck_eattr_indir(struct lgfs2_inode *ip, uint64_t block,
 				  uint64_t parent,
-				  struct gfs2_buffer_head **bh, void *private)
+				  struct lgfs2_buffer_head **bh, void *private)
 {
 	return rangecheck_block(ip, block, NULL, BTYPE_IEATTR, private);
 }
 
 static int rangecheck_eattr_leaf(struct lgfs2_inode *ip, uint64_t block,
-				 uint64_t parent, struct gfs2_buffer_head **bh,
+				 uint64_t parent, struct lgfs2_buffer_head **bh,
 				 void *private)
 {
 	return rangecheck_block(ip, block, NULL, BTYPE_EATTR, private);
@@ -1148,7 +1148,7 @@ static int set_ip_blockmap(struct lgfs2_inode *ip)
 	return 0;
 }
 
-static int alloc_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+static int alloc_metalist(struct iptr iptr, struct lgfs2_buffer_head **bh, int h,
                           int *is_valid, int *was_duplicate, void *private)
 {
 	const char *desc = (const char *)private;
@@ -1174,7 +1174,7 @@ static int alloc_metalist(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
 
 static int alloc_data(struct lgfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
-		      struct gfs2_buffer_head *bh, __be64 *ptr)
+		      struct lgfs2_buffer_head *bh, __be64 *ptr)
 {
 	int q;
 	const char *desc = (const char *)private;
@@ -1394,11 +1394,11 @@ static void check_i_goal(struct gfs2_sbd *sdp, struct lgfs2_inode *ip)
 }
 
 /*
- * handle_di - This is now a wrapper function that takes a gfs2_buffer_head
+ * handle_di - This is now a wrapper function that takes a lgfs2_buffer_head
  *             and calls handle_ip, which takes an in-code dinode structure.
  */
 static int handle_di(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
-		     struct gfs2_buffer_head *bh)
+		     struct lgfs2_buffer_head *bh)
 {
 	int error = 0;
 	uint64_t block = bh->b_blocknr;
@@ -1753,7 +1753,7 @@ static int check_system_inodes(struct gfs2_sbd *sdp)
 
 static int pass1_process_bitmap(struct gfs2_sbd *sdp, struct rgrp_tree *rgd, uint64_t *ibuf, unsigned n)
 {
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	unsigned i;
 	uint64_t block;
 	struct lgfs2_inode *ip;

@@ -623,7 +623,7 @@ static int print_quota(struct lgfs2_inode *diq)
 int display_extended(void)
 {
 	struct lgfs2_inode *tmp_inode;
-	struct gfs2_buffer_head *tmp_bh;
+	struct lgfs2_buffer_head *tmp_bh;
 
 	dsplines = termlines - line - 1;
 	/* Display any indirect pointers that we have. */

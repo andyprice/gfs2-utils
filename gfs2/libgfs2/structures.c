@@ -20,7 +20,7 @@ int lgfs2_build_master(struct gfs2_sbd *sdp)
 {
 	struct lgfs2_inum inum;
 	uint64_t bn;
-	struct gfs2_buffer_head *bh = NULL;
+	struct lgfs2_buffer_head *bh = NULL;
 	int err = lgfs2_dinode_alloc(sdp, 1, &bn);
 
 	if (err != 0)
@@ -151,7 +151,7 @@ int lgfs2_write_journal_data(struct lgfs2_inode *ip)
 	return 0;
 }
 
-static struct gfs2_buffer_head *lgfs2_get_file_buf(struct lgfs2_inode *ip, uint64_t lbn, int prealloc)
+static struct lgfs2_buffer_head *lgfs2_get_file_buf(struct lgfs2_inode *ip, uint64_t lbn, int prealloc)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	uint64_t dbn;
@@ -189,7 +189,7 @@ int lgfs2_write_journal(struct lgfs2_inode *jnl, unsigned bsize, unsigned int bl
 	lgfs2_build_height(jnl, height);
 
 	for (x = 0; x < blocks; x++) {
-		struct gfs2_buffer_head *bh = lgfs2_get_file_buf(jnl, x, 1);
+		struct lgfs2_buffer_head *bh = lgfs2_get_file_buf(jnl, x, 1);
 		if (!bh)
 			return -1;
 		lgfs2_bmodified(bh);
@@ -197,7 +197,7 @@ int lgfs2_write_journal(struct lgfs2_inode *jnl, unsigned bsize, unsigned int bl
 	}
 	crc32c_optimization_init();
 	for (x = 0; x < blocks; x++) {
-		struct gfs2_buffer_head *bh = lgfs2_get_file_buf(jnl, x, 0);
+		struct lgfs2_buffer_head *bh = lgfs2_get_file_buf(jnl, x, 0);
 		if (!bh)
 			return -1;
 
@@ -321,7 +321,7 @@ struct lgfs2_inode *lgfs2_build_quota_change(struct lgfs2_inode *per_node, unsig
 	unsigned int blocks = sdp->qcsize << (20 - sdp->sd_bsize_shift);
 	unsigned int x;
 	unsigned int hgt;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 
 	memset(&mh, 0, sizeof(struct gfs2_meta_header));
 	mh.mh_magic = cpu_to_be32(GFS2_MAGIC);
@@ -432,7 +432,7 @@ int lgfs2_build_root(struct gfs2_sbd *sdp)
 {
 	struct lgfs2_inum inum;
 	uint64_t bn;
-	struct gfs2_buffer_head *bh = NULL;
+	struct lgfs2_buffer_head *bh = NULL;
 	int err = lgfs2_dinode_alloc(sdp, 1, &bn);
 
 	if (err != 0)

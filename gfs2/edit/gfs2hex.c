@@ -186,7 +186,7 @@ void do_dinode_extended(char *buf)
 			p = be64_to_cpu(*(__be64 *)(buf + x));
 
 			if (p != last || ((y + 1) * sizeof(uint64_t) == be64_to_cpu(dip->di_size))) {
-				struct gfs2_buffer_head *tmp_bh;
+				struct lgfs2_buffer_head *tmp_bh;
 				int skip = 0, direntcount = 0;
 				unsigned int bufoffset;
 

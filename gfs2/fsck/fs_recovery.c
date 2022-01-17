@@ -99,7 +99,7 @@ static void revoke_clean(struct gfs2_sbd *sdp)
 }
 
 static void refresh_rgrp(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
-			 struct gfs2_buffer_head *bh, uint64_t blkno)
+			 struct lgfs2_buffer_head *bh, uint64_t blkno)
 {
 	int i;
 
@@ -127,7 +127,7 @@ static int buf_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	unsigned int blks = be32_to_cpu(ld->ld_data1);
-	struct gfs2_buffer_head *bh_log, *bh_ip;
+	struct lgfs2_buffer_head *bh_log, *bh_ip;
 	uint64_t blkno;
 	int error = 0;
 	struct rgrp_tree *rgd;
@@ -189,7 +189,7 @@ static int revoke_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	unsigned int blks = be32_to_cpu(ld->ld_length);
 	unsigned int revokes = be32_to_cpu(ld->ld_data1);
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	unsigned int offset;
 	uint64_t blkno;
 	int first = 1;
@@ -238,7 +238,7 @@ static int databuf_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
 	unsigned int blks = be32_to_cpu(ld->ld_data1);
-	struct gfs2_buffer_head *bh_log, *bh_ip;
+	struct lgfs2_buffer_head *bh_log, *bh_ip;
 	uint64_t blkno;
 	uint64_t esc;
 	int error = 0;
@@ -301,7 +301,7 @@ static int databuf_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 static int foreach_descriptor(struct lgfs2_inode *ip, unsigned int start,
 		       unsigned int end, int pass)
 {
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	struct gfs2_log_descriptor *ld;
 	int error = 0;
 	uint32_t length;
@@ -394,7 +394,7 @@ static int check_journal_seq_no(struct lgfs2_inode *ip, int fix)
 	uint64_t highest_seq = 0, lowest_seq = 0, prev_seq = 0;
 	int new = 0;
 	uint64_t dblock;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	int seq_errors = 0;
 
 	memset(&lh, 0, sizeof(lh));
@@ -620,7 +620,7 @@ static int rangecheck_jblock(struct lgfs2_inode *ip, uint64_t block)
 	return META_IS_GOOD;
 }
 
-static int rangecheck_jmeta(struct iptr iptr, struct gfs2_buffer_head **bh, int h,
+static int rangecheck_jmeta(struct iptr iptr, struct lgfs2_buffer_head **bh, int h,
                             int *is_valid, int *was_duplicate, void *private)
 {
 	struct lgfs2_inode *ip = iptr.ipt_ip;
@@ -650,7 +650,7 @@ static int rangecheck_jmeta(struct iptr iptr, struct gfs2_buffer_head **bh, int 
 
 static int rangecheck_jdata(struct lgfs2_inode *ip, uint64_t metablock,
 			    uint64_t block, void *private,
-			    struct gfs2_buffer_head *bh, __be64 *ptr)
+			    struct lgfs2_buffer_head *bh, __be64 *ptr)
 {
 	return rangecheck_jblock(ip, block);
 }
@@ -810,7 +810,7 @@ static void bad_journalname(const char *filename, int len)
  */
 static int check_jindex_dent(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			     struct gfs2_dirent *prev_de,
-			     struct gfs2_buffer_head *bh, char *filename,
+			     struct lgfs2_buffer_head *bh, char *filename,
 			     uint32_t *count, int *lindex, void *priv)
 {
 	struct lgfs2_dirent d;

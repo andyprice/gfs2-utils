@@ -46,7 +46,7 @@ static int check_block_status(struct gfs2_sbd *sdp,  struct gfs2_bmap *bl,
 		 * we must determine whether it's really a dinode or other
 		 * metadata by reading it in. */
 		if (sdp->gfs1 && q == GFS2_BLKST_DINODE) {
-			struct gfs2_buffer_head *bh;
+			struct lgfs2_buffer_head *bh;
 
 			bh = lgfs2_bread(sdp, block);
 			if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_DI) == 0)

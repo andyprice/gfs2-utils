@@ -33,7 +33,7 @@ const char *allocdesc[2][5] = {
 	{"Free ", "Data ", "Unlnk", "Meta ", "Resrv"},
 	{"Free ", "Data ", "FreeM", "Meta ", "Resrv"},};
 
-static struct gfs2_buffer_head *bh;
+static struct lgfs2_buffer_head *bh;
 static int pgnum;
 static long int gziplevel = 9;
 static int termcols;
@@ -754,7 +754,7 @@ static uint64_t get_rg_addr(int rgnum)
 /* ------------------------------------------------------------------------ */
 static void set_rgrp_flags(int rgnum, uint32_t new_flags, int modify, int full)
 {
-	struct gfs2_buffer_head *rbh;
+	struct lgfs2_buffer_head *rbh;
 	struct gfs2_rgrp *rg;
 	uint64_t rgblk;
 
@@ -1130,7 +1130,7 @@ static uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int p
 {
 	uint64_t blk, last_fs_block;
 	int found = 0;
-	struct gfs2_buffer_head *lbh;
+	struct lgfs2_buffer_head *lbh;
 
 	last_fs_block = lseek(sbd.device_fd, 0, SEEK_END) / sbd.sd_bsize;
 	for (blk = startblk + 1; blk < last_fs_block; blk++) {
@@ -1164,7 +1164,7 @@ static int find_rg_metatype(struct rgrp_tree *rgd, uint64_t *blk, uint64_t start
 {
 	int found;
 	unsigned i, j, m;
-	struct gfs2_buffer_head *bhp = NULL;
+	struct lgfs2_buffer_head *bhp = NULL;
 	uint64_t *ibuf = malloc(sbd.sd_bsize * GFS2_NBBY * sizeof(uint64_t));
 
 	for (i = 0; i < rgd->rt_length; i++) {
@@ -1581,7 +1581,7 @@ static void print_block_type(uint64_t tblock, const struct lgfs2_metadata *type)
 static void find_print_block_type(void)
 {
 	uint64_t tblock;
-	struct gfs2_buffer_head *lbh;
+	struct lgfs2_buffer_head *lbh;
 	const struct lgfs2_metadata *type;
 
 	tblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
@@ -1696,7 +1696,7 @@ static void find_change_block_alloc(int *newval)
 static void process_field(const char *field, const char *nstr)
 {
 	uint64_t fblock;
-	struct gfs2_buffer_head *rbh;
+	struct lgfs2_buffer_head *rbh;
 	const struct lgfs2_metadata *mtype;
 	const struct lgfs2_metafield *mfield;
 
@@ -2117,9 +2117,9 @@ static void getgziplevel(char *argv[], int *i)
 }
 
 static int count_dinode_blks(struct rgrp_tree *rgd, int bitmap,
-			     struct gfs2_buffer_head *rbh)
+			     struct lgfs2_buffer_head *rbh)
 {
-	struct gfs2_buffer_head *tbh;
+	struct lgfs2_buffer_head *tbh;
 	uint64_t b;
 	int dinodes = 0;
 	char *byte, cur_state, new_state;
@@ -2150,7 +2150,7 @@ static int count_dinode_blks(struct rgrp_tree *rgd, int bitmap,
 	return dinodes;
 }
 
-static int count_dinode_bits(struct gfs2_buffer_head *rbh)
+static int count_dinode_bits(struct lgfs2_buffer_head *rbh)
 {
 	uint64_t blk;
 	struct gfs2_meta_header *mh = (struct gfs2_meta_header *)rbh->b_data;
@@ -2174,7 +2174,7 @@ static int count_dinode_bits(struct gfs2_buffer_head *rbh)
 
 static void rg_repair(void)
 {
-	struct gfs2_buffer_head *rbh;
+	struct lgfs2_buffer_head *rbh;
 	struct rgrp_tree *rgd;
 	struct osi_node *n;
 	int b;

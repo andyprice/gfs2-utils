@@ -53,7 +53,7 @@ static void find_journaled_rgs(struct gfs2_sbd *sdp)
 	unsigned int jblocks;
 	uint64_t b, dblock;
 	struct lgfs2_inode *ip;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	int false_count;
 
 	osi_list_init(&false_rgrps.list);
@@ -101,7 +101,7 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
 				int *dist_cnt)
 {
 	uint64_t blk, block_last_rg, shortest_dist_btwn_rgs;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	int rgs_sampled = 0;
 	uint64_t initial_first_rg_dist;
 	int gsegment = 0;
@@ -257,7 +257,7 @@ static int find_shortest_rgdist(struct gfs2_sbd *sdp, uint64_t *dist_array,
  * count_usedspace - count the used bits in a rgrp bitmap buffer
  */
 static uint64_t count_usedspace(struct gfs2_sbd *sdp, int first,
-				struct gfs2_buffer_head *bh)
+				struct lgfs2_buffer_head *bh)
 {
 	int off, x, y, bytes_to_check;
 	uint32_t rg_used = 0;
@@ -313,7 +313,7 @@ static uint64_t find_next_rgrp_dist(struct gfs2_sbd *sdp, uint64_t blk,
 	struct osi_node *n, *next = NULL;
 	uint64_t rgrp_dist = 0, used_blocks, block, next_block, twogigs;
 	struct rgrp_tree *rgd = NULL, *next_rgd;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	int first, length, b, found;
 	uint64_t mega_in_blocks;
 	uint32_t free_blocks;
@@ -423,7 +423,7 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 			      struct rgrp_tree *prevrgd, uint64_t last_bump)
 {
 	uint64_t rgrp_dist = 0, block, twogigs, last_block, last_meg;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	struct gfs2_meta_header *mh;
 	int b, mega_in_blocks;
 
@@ -513,7 +513,7 @@ static uint64_t hunt_and_peck(struct gfs2_sbd *sdp, uint64_t blk,
 static int rindex_rebuild(struct gfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 {
 	struct osi_node *n, *next = NULL;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	uint64_t rg_dist[MAX_RGSEGMENTS] = {0, };
 	int rg_dcnt[MAX_RGSEGMENTS] = {0, };
 	uint64_t blk;

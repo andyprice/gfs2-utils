@@ -234,7 +234,7 @@ extern lgfs2_rgrp_t lgfs2_rgrp_prev(lgfs2_rgrp_t rg);
 // Temporary function to aid API migration
 extern void lgfs2_attach_rgrps(struct gfs2_sbd *sdp, lgfs2_rgrps_t rgs);
 
-struct gfs2_buffer_head {
+struct lgfs2_buffer_head {
 	osi_list_t b_altlist; /* alternate list */
 	uint64_t b_blocknr;
 	union {
@@ -251,7 +251,7 @@ struct lgfs2_inum {
 };
 
 struct lgfs2_inode {
-	struct gfs2_buffer_head *i_bh;
+	struct lgfs2_buffer_head *i_bh;
 	struct gfs2_sbd *i_sbd;
 	struct rgrp_tree *i_rgd; /* performance hint */
 	int bh_owned; /* Is this bh owned, iow, should we release it later? */
@@ -458,12 +458,12 @@ extern int lgfs2_field_str(char *str, const size_t size, const char *blk, const 
 extern int lgfs2_field_assign(char *blk, const struct lgfs2_metafield *field, const void *val);
 
 /* buf.c */
-extern struct gfs2_buffer_head *lgfs2_bget(struct gfs2_sbd *sdp, uint64_t num);
-extern struct gfs2_buffer_head *__lgfs2_bread(struct gfs2_sbd *sdp, uint64_t num,
+extern struct lgfs2_buffer_head *lgfs2_bget(struct gfs2_sbd *sdp, uint64_t num);
+extern struct lgfs2_buffer_head *__lgfs2_bread(struct gfs2_sbd *sdp, uint64_t num,
 					int line, const char *caller);
-extern int __lgfs2_breadm(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhs, size_t n, uint64_t block, int line, const char *caller);
-extern int lgfs2_bwrite(struct gfs2_buffer_head *bh);
-extern int lgfs2_brelse(struct gfs2_buffer_head *bh);
+extern int __lgfs2_breadm(struct gfs2_sbd *sdp, struct lgfs2_buffer_head **bhs, size_t n, uint64_t block, int line, const char *caller);
+extern int lgfs2_bwrite(struct lgfs2_buffer_head *bh);
+extern int lgfs2_brelse(struct lgfs2_buffer_head *bh);
 extern uint32_t lgfs2_get_block_type(const char *buf);
 
 #define lgfs2_bmodified(bh) do { bh->b_modified = 1; } while(0)
@@ -495,11 +495,11 @@ extern int lgfs2_set_bitmap(lgfs2_rgrp_t rg, uint64_t blkno, int state);
 #define IS_DINODE   (2)
 
 extern void lgfs2_find_metapath(struct lgfs2_inode *ip, uint64_t block, struct metapath *mp);
-extern void lgfs2_lookup_block(struct lgfs2_inode *ip, struct gfs2_buffer_head *bh,
+extern void lgfs2_lookup_block(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 			 unsigned int height, struct metapath *mp,
 			 int create, int *new, uint64_t *block);
 extern struct lgfs2_inode *lgfs2_inode_get(struct gfs2_sbd *sdp,
-				    struct gfs2_buffer_head *bh);
+				    struct lgfs2_buffer_head *bh);
 extern struct lgfs2_inode *lgfs2_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr);
 extern struct lgfs2_inode *lgfs2_is_system_inode(struct gfs2_sbd *sdp,
 					  uint64_t block);
@@ -516,14 +516,14 @@ extern int lgfs2_readi(struct lgfs2_inode *ip, void *buf, uint64_t offset,
 	__lgfs2_writei(ip, buf, offset, size, 1)
 extern int __lgfs2_writei(struct lgfs2_inode *ip, void *buf, uint64_t offset,
 			 unsigned int size, int resize);
-extern int lgfs2_init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, struct lgfs2_inum *inum,
+extern int lgfs2_init_dinode(struct gfs2_sbd *sdp, struct lgfs2_buffer_head **bhp, struct lgfs2_inum *inum,
                        unsigned int mode, uint32_t flags, struct lgfs2_inum *parent);
 extern struct lgfs2_inode *lgfs2_createi(struct lgfs2_inode *dip, const char *filename,
 				  unsigned int mode, uint32_t flags);
 extern struct lgfs2_inode *lgfs2_gfs_createi(struct lgfs2_inode *dip,
 				      const char *filename, unsigned int mode,
 				      uint32_t flags);
-extern void lgfs2_dirent2_del(struct lgfs2_inode *dip, struct gfs2_buffer_head *bh,
+extern void lgfs2_dirent2_del(struct lgfs2_inode *dip, struct lgfs2_buffer_head *bh,
 			struct gfs2_dirent *prev, struct gfs2_dirent *cur);
 extern int lgfs2_dir_search(struct lgfs2_inode *dip, const char *filename, int len,
 		      unsigned int *type, struct lgfs2_inum *inum);
@@ -536,15 +536,15 @@ extern void lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 		      uint64_t *dblock, uint32_t *extlen, int prealloc);
 extern int lgfs2_get_leaf_ptr(struct lgfs2_inode *dip, uint32_t index, uint64_t *ptr) __attribute__((warn_unused_result));
 extern void lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start,
-			   uint64_t leaf_no, struct gfs2_buffer_head *obh);
+			   uint64_t leaf_no, struct lgfs2_buffer_head *obh);
 extern void lgfs2_free_block(struct gfs2_sbd *sdp, uint64_t block);
 extern int lgfs2_freedi(struct gfs2_sbd *sdp, uint64_t block);
 extern int lgfs2_get_leaf(struct lgfs2_inode *dip, uint64_t leaf_no,
-			 struct gfs2_buffer_head **bhp);
+			 struct lgfs2_buffer_head **bhp);
 extern int lgfs2_dirent_first(struct lgfs2_inode *dip,
-			     struct gfs2_buffer_head *bh,
+			     struct lgfs2_buffer_head *bh,
 			     struct gfs2_dirent **dent);
-extern int lgfs2_dirent_next(struct lgfs2_inode *dip, struct gfs2_buffer_head *bh,
+extern int lgfs2_dirent_next(struct lgfs2_inode *dip, struct lgfs2_buffer_head *bh,
 			    struct gfs2_dirent **dent);
 extern void lgfs2_build_height(struct lgfs2_inode *ip, int height);
 extern void lgfs2_unstuff_dinode(struct lgfs2_inode *ip);
@@ -709,7 +709,7 @@ struct gfs_log_descriptor {
 
 extern int lgfs2_is_gfs_dir(struct lgfs2_inode *ip);
 extern void lgfs2_gfs1_lookup_block(struct lgfs2_inode *ip,
-			      struct gfs2_buffer_head *bh,
+			      struct lgfs2_buffer_head *bh,
 			      unsigned int height, struct metapath *mp,
 			      int create, int *new, uint64_t *block);
 extern void lgfs2_gfs1_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
@@ -732,7 +732,7 @@ extern int lgfs2_open_mnt_dir(const char *path, int flags, struct mntent **mnt);
 /* recovery.c */
 extern void lgfs2_replay_incr_blk(struct lgfs2_inode *ip, unsigned int *blk);
 extern int lgfs2_replay_read_block(struct lgfs2_inode *ip, unsigned int blk,
-				  struct gfs2_buffer_head **bh);
+				  struct lgfs2_buffer_head **bh);
 extern int lgfs2_get_log_header(struct lgfs2_inode *ip, unsigned int blk,
                                 struct lgfs2_log_header *head);
 extern int lgfs2_find_jhead(struct lgfs2_inode *ip, struct lgfs2_log_header *head);

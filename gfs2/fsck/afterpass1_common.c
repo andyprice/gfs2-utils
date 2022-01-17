@@ -74,7 +74,7 @@ more_refs:
  * If all duplicate references have been removed, delete the block.
  */
 static int delete_block_if_notdup(struct lgfs2_inode *ip, uint64_t block,
-				  struct gfs2_buffer_head **bh,
+				  struct lgfs2_buffer_head **bh,
 				  const char *btype, int *was_duplicate,
 				  void *private)
 {
@@ -111,7 +111,7 @@ static int delete_block_if_notdup(struct lgfs2_inode *ip, uint64_t block,
 
 static int remove_dentry(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			 struct gfs2_dirent *prev_de,
-			 struct gfs2_buffer_head *bh,
+			 struct lgfs2_buffer_head *bh,
 			 char *filename, uint32_t *count, int *lindex,
 			 void *private)
 {
@@ -166,7 +166,7 @@ int remove_dentry_from_dir(struct gfs2_sbd *sdp, uint64_t dir,
 	return error;
 }
 
-int delete_metadata(struct iptr iptr, struct gfs2_buffer_head **bh, int h, int *is_valid,
+int delete_metadata(struct iptr iptr, struct lgfs2_buffer_head **bh, int h, int *is_valid,
 		    int *was_duplicate, void *private)
 {
 	struct lgfs2_inode *ip = iptr.ipt_ip;
@@ -185,7 +185,7 @@ int delete_leaf(struct lgfs2_inode *ip, uint64_t block, void *private)
 }
 
 int delete_data(struct lgfs2_inode *ip, uint64_t metablock,
-		uint64_t block, void *private, struct gfs2_buffer_head *bh,
+		uint64_t block, void *private, struct lgfs2_buffer_head *bh,
 		__be64 *ptr)
 {
 	return delete_block_if_notdup(ip, block, NULL, _("data"), NULL,
@@ -193,7 +193,7 @@ int delete_data(struct lgfs2_inode *ip, uint64_t metablock,
 }
 
 static int del_eattr_generic(struct lgfs2_inode *ip, uint64_t block,
-			     uint64_t parent, struct gfs2_buffer_head **bh,
+			     uint64_t parent, struct lgfs2_buffer_head **bh,
 			     void *private, const char *eatype)
 {
 	int ret = 0;
@@ -224,20 +224,20 @@ static int del_eattr_generic(struct lgfs2_inode *ip, uint64_t block,
 }
 
 int delete_eattr_indir(struct lgfs2_inode *ip, uint64_t block, uint64_t parent,
-		       struct gfs2_buffer_head **bh, void *private)
+		       struct lgfs2_buffer_head **bh, void *private)
 {
 	return del_eattr_generic(ip, block, parent, bh, private,
 				 _("extended attribute"));
 }
 
 int delete_eattr_leaf(struct lgfs2_inode *ip, uint64_t block, uint64_t parent,
-		      struct gfs2_buffer_head **bh, void *private)
+		      struct lgfs2_buffer_head **bh, void *private)
 {
 	return del_eattr_generic(ip, block, parent, bh, private,
 				 _("indirect extended attribute"));
 }
 
-int delete_eattr_entry(struct lgfs2_inode *ip, struct gfs2_buffer_head *leaf_bh,
+int delete_eattr_entry(struct lgfs2_inode *ip, struct lgfs2_buffer_head *leaf_bh,
 		       struct gfs2_ea_header *ea_hdr,
 		       struct gfs2_ea_header *ea_hdr_prev, void *private)
 {
@@ -278,7 +278,7 @@ int delete_eattr_entry(struct lgfs2_inode *ip, struct gfs2_buffer_head *leaf_bh,
 }
 
 int delete_eattr_extentry(struct lgfs2_inode *ip, int i, __be64 *ea_data_ptr,
-			  struct gfs2_buffer_head *leaf_bh, uint32_t tot_ealen,
+			  struct lgfs2_buffer_head *leaf_bh, uint32_t tot_ealen,
 			  struct gfs2_ea_header *ea_hdr,
 			  struct gfs2_ea_header *ea_hdr_prev, void *private)
 {

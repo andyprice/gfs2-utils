@@ -38,7 +38,7 @@ int lgfs2_is_gfs_dir(struct lgfs2_inode *ip)
 	return 0;
 }
 
-void lgfs2_gfs1_lookup_block(struct lgfs2_inode *ip, struct gfs2_buffer_head *bh,
+void lgfs2_gfs1_lookup_block(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 		  unsigned int height, struct metapath *mp,
 		  int create, int *new, uint64_t *block)
 {
@@ -71,7 +71,7 @@ void lgfs2_gfs1_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 		    uint64_t *dblock, uint32_t *extlen, int prealloc)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	struct metapath mp;
 	int create = *new;
 	unsigned int bsize;
@@ -167,7 +167,7 @@ int lgfs2_gfs1_writei(struct lgfs2_inode *ip, void *buf, uint64_t offset,
 		unsigned int size)
 {
 	struct gfs2_sbd *sdp = ip->i_sbd;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	uint64_t lblock, dblock;
 	uint32_t extlen = 0;
 	unsigned int amount;
@@ -291,7 +291,7 @@ struct lgfs2_inode *lgfs2_gfs_inode_get(struct gfs2_sbd *sdp, char *buf)
 
 struct lgfs2_inode *lgfs2_gfs_inode_read(struct gfs2_sbd *sdp, uint64_t di_addr)
 {
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	struct lgfs2_inode *ip;
 
 	bh = lgfs2_bget(sdp, di_addr);

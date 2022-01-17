@@ -263,7 +263,7 @@ static void fix_metatree(struct gfs2_sbd *sbp, struct lgfs2_inode *ip,
 		  unsigned int size)
 {
 	uint64_t block;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	unsigned int amount, ptramt;
 	int hdrsize, h, copied = 0, new;
 	struct gfs2_meta_header mh = {0};
@@ -421,7 +421,7 @@ static uint64_t fix_jdatatree(struct gfs2_sbd *sbp, struct lgfs2_inode *ip,
 			      unsigned int size)
 {
 	uint64_t block;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	unsigned int amount, ptramt;
 	int h, copied = 0, new = 0;
 	struct gfs2_meta_header mh = {0};
@@ -488,7 +488,7 @@ static uint64_t fix_jdatatree(struct gfs2_sbd *sbp, struct lgfs2_inode *ip,
 static int get_inode_metablocks(struct gfs2_sbd *sbp, struct lgfs2_inode *ip, struct blocklist *blocks)
 {
 	struct blocklist *blk, *newblk;
-	struct gfs2_buffer_head *bh, *dibh = ip->i_bh;
+	struct lgfs2_buffer_head *bh, *dibh = ip->i_bh;
 	osi_list_t *tmp;
 	uint64_t block;
 	__be64 *ptr1;
@@ -622,7 +622,7 @@ static int fix_ind_jdata(struct gfs2_sbd *sbp, struct lgfs2_inode *ip, uint32_t 
 	__be64 *ptr1;
 	int ptrnum, h;
 	struct metapath gfs2mp;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 
 	bufsize = sbp->sd_bsize - sizeof(struct gfs2_meta_header);
 	/*
@@ -774,7 +774,7 @@ static int has_cdpn(const char *str)
 	return 0;
 }
 
-static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, struct lgfs2_inode *ip)
+static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct lgfs2_buffer_head *bh, struct lgfs2_inode *ip)
 {
 	char *linkptr = NULL;
 
@@ -809,10 +809,10 @@ static int fix_cdpn_symlink(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, s
  * to fix the header. gfs1 uses gfs_indirect as the header which is 64 bytes
  * bigger than gfs2_meta_header that gfs2 uses.
  */
-static int fix_xattr(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, struct lgfs2_inode *ip)
+static int fix_xattr(struct gfs2_sbd *sbp, struct lgfs2_buffer_head *bh, struct lgfs2_inode *ip)
 {
 	int len, old_hdr_sz, new_hdr_sz;
-	struct gfs2_buffer_head *eabh;
+	struct lgfs2_buffer_head *eabh;
 	char *buf;
 
 	/* Read in the i_eattr block */
@@ -843,7 +843,7 @@ static int fix_xattr(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh, struct l
 /*                                                                           */
 /* Returns: 0 on success, -1 on failure                                      */
 /* ------------------------------------------------------------------------- */
-static int adjust_inode(struct gfs2_sbd *sbp, struct gfs2_buffer_head *bh)
+static int adjust_inode(struct gfs2_sbd *sbp, struct lgfs2_buffer_head *bh)
 {
 	struct lgfs2_inode *inode;
 	struct inode_block *fixdir;
@@ -984,7 +984,7 @@ static int next_rg_meta(struct rgrp_tree *rgd, uint64_t *block, int first)
 static int next_rg_metatype(struct gfs2_sbd *sdp, struct rgrp_tree *rgd,
                             uint64_t *block, uint32_t type, int first)
 {
-	struct gfs2_buffer_head *bh = NULL;
+	struct lgfs2_buffer_head *bh = NULL;
 
 	do{
 		if (bh)
@@ -1011,7 +1011,7 @@ static int inode_renumber(struct gfs2_sbd *sbp, uint64_t root_inode_addr, osi_li
 	struct rgrp_tree *rgd;
 	struct osi_node *n, *next = NULL;
 	uint64_t block = 0;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	int first;
 	int error = 0;
 	int rgs_processed = 0;
@@ -1125,7 +1125,7 @@ static int fetch_inum(struct gfs2_sbd *sbp, uint64_t iblock,
 /* Returns: 0 on success, -1 on failure, -EISDIR when dentmod marked DT_DIR  */
 /* ------------------------------------------------------------------------- */
 static int process_dirent_info(struct lgfs2_inode *dip, struct gfs2_sbd *sbp,
-			       struct gfs2_buffer_head *bh, int dir_entries, uint64_t dentmod)
+			       struct lgfs2_buffer_head *bh, int dir_entries, uint64_t dentmod)
 {
 	int error = 0;
 	struct gfs2_dirent *dent;
@@ -1246,7 +1246,7 @@ static int process_dirent_info(struct lgfs2_inode *dip, struct gfs2_sbd *sbp,
 /* ------------------------------------------------------------------------- */
 static int fix_one_directory_exhash(struct gfs2_sbd *sbp, struct lgfs2_inode *dip, uint64_t dentmod)
 {
-	struct gfs2_buffer_head *bh_leaf;
+	struct lgfs2_buffer_head *bh_leaf;
 	int error;
 	uint64_t leaf_block, prev_leaf_block;
 	uint32_t leaf_num;
@@ -1382,7 +1382,7 @@ static int fix_cdpn_symlinks(struct gfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 	osi_list_foreach_safe(tmp, cdpn_to_fix, x) {
 		struct lgfs2_inum fix, dir;
 		struct inode_dir_block *l_fix;
-		struct gfs2_buffer_head *bh = NULL;
+		struct lgfs2_buffer_head *bh = NULL;
 		struct lgfs2_inode *fix_inode;
 		uint64_t eablk;
 
@@ -1562,7 +1562,7 @@ static int gfs1_ri_update(struct gfs2_sbd *sdp, int *rgcount, int quiet)
 /* ------------------------------------------------------------------------- */
 static int init(struct gfs2_sbd *sbp, struct gfs2_options *opts)
 {
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	int rgcount;
 	struct lgfs2_inum inum;
 
@@ -2203,7 +2203,7 @@ static int gfs2_query(struct gfs2_options *opts, const char *dev)
 int main(int argc, char **argv)
 {
 	int error;
-	struct gfs2_buffer_head *bh;
+	struct lgfs2_buffer_head *bh;
 	struct gfs2_options opts;
 
 	/* Set i18n support to gfs2_convert */

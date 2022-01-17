@@ -111,7 +111,7 @@ enum rgindex_trust_level { /* how far can we trust our RG index? */
 extern struct lgfs2_inode *fsck_load_inode(struct gfs2_sbd *sdp, uint64_t block);
 extern struct lgfs2_inode *fsck_inode_get(struct gfs2_sbd *sdp,
 					 struct rgrp_tree *rgd,
-					 struct gfs2_buffer_head *bh);
+					 struct lgfs2_buffer_head *bh);
 extern void fsck_inode_put(struct lgfs2_inode **ip);
 
 extern int initialize(struct gfs2_sbd *sdp, int force_check, int preen,
