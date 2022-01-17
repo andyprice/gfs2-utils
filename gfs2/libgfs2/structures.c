@@ -81,7 +81,7 @@ uint32_t lgfs2_log_header_hash(char *buf)
 	/* lh_hash only CRCs the fields in the old lh, which ends where lh_crc is now */
 	const off_t v1_end = offsetof(struct gfs2_log_header, lh_hash) + 4;
 
-	return gfs2_disk_hash(buf, v1_end);
+	return lgfs2_disk_hash(buf, v1_end);
 }
 
 uint32_t lgfs2_log_header_crc(char *buf, unsigned bsize)

@@ -783,11 +783,10 @@ extern int lgfs2_read_sb(struct gfs2_sbd *sdp);
 extern int lgfs2_rindex_read(struct gfs2_sbd *sdp, uint64_t *rgcount, int *ok);
 extern int lgfs2_write_sb(struct gfs2_sbd *sdp);
 
+/* gfs2_disk_hash.c */
+extern uint32_t lgfs2_disk_hash(const char *data, int len);
+
 /* ondisk.c */
-extern uint32_t gfs2_disk_hash(const char *data, int len);
-
-/* Translation functions */
-
 extern void lgfs2_inum_in(struct lgfs2_inum *i, void *inp);
 extern void lgfs2_inum_out(const struct lgfs2_inum *i, void *inp);
 extern void lgfs2_sb_in(struct gfs2_sbd *sdp, void *buf);

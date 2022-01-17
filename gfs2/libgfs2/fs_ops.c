@@ -1148,7 +1148,7 @@ static int dir_e_add(struct gfs2_inode *dip, const char *filename, int len,
 	uint64_t leaf_no, bn;
 	int err = 0;
 
-	hash = gfs2_disk_hash(filename, len);
+	hash = lgfs2_disk_hash(filename, len);
 restart:
 	/* Have to kludge because (hash >> 32) gives hash for some reason. */
 	if (dip->i_depth)
@@ -1313,7 +1313,7 @@ static int dir_l_add(struct gfs2_inode *dip, const char *filename, int len,
 	}
 
 	lgfs2_inum_out(inum, &dent->de_inum);
-	de_hash = gfs2_disk_hash(filename, len);
+	de_hash = lgfs2_disk_hash(filename, len);
 	dent->de_hash = cpu_to_be32(de_hash);
 	dent->de_type = cpu_to_be16(type);
 	memcpy((char *)(dent + 1), filename, len);
@@ -1376,7 +1376,7 @@ static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, st
 		uint32_t hash;
 		uint16_t len;
 
-		hash = gfs2_disk_hash(".", 1);
+		hash = lgfs2_disk_hash(".", 1);
 		len = GFS2_DIRENT_SIZE(1);
 		de.de_inum = di->di_num;
 		de.de_hash = cpu_to_be32(hash);
@@ -1387,7 +1387,7 @@ static int __init_dinode(struct gfs2_sbd *sdp, struct gfs2_buffer_head **bhp, st
 		p[sizeof(de)] = '.';
 		p += len;
 
-		hash = gfs2_disk_hash("..", 2);
+		hash = lgfs2_disk_hash("..", 2);
 		len = sdp->sd_bsize - (p - bh->b_data);
 		de.de_inum.no_formal_ino = cpu_to_be64(parent->in_formal_ino);
 		de.de_inum.no_addr = cpu_to_be64(parent->in_addr);
@@ -1598,7 +1598,7 @@ static int leaf_search(struct gfs2_inode *dip, struct gfs2_buffer_head *bh,
 	else
 		return -1;
 
-	hash = gfs2_disk_hash(filename, len);
+	hash = lgfs2_disk_hash(filename, len);
 
 	do{
 		if (!dent->de_inum.no_formal_ino){
@@ -1650,7 +1650,7 @@ static int linked_leaf_search(struct gfs2_inode *dip, const char *filename,
 
 	/*  Figure out the address of the leaf node.  */
 
-	hash = gfs2_disk_hash(filename, len);
+	hash = lgfs2_disk_hash(filename, len);
 	lindex = hash >> (32 - dip->i_depth);
 
 	error = get_first_leaf(dip, lindex, &bh_next);

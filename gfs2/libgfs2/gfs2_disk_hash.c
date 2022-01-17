@@ -40,7 +40,7 @@ static const uint32_t crc_32_tab[] =
 };
 
 /**
- * gfs2_disk_hash - hash an array of data
+ * lgfs2_disk_hash - hash an array of data
  * @data: the data to be hashed
  * @len: the length of data to be hashed
  *
@@ -59,7 +59,7 @@ static const uint32_t crc_32_tab[] =
  * Returns: the hash
  */
 
-uint32_t gfs2_disk_hash(const char *data, int len)
+uint32_t lgfs2_disk_hash(const char *data, int len)
 {
 	uint32_t hash = 0xFFFFFFFF;
 
@@ -70,5 +70,4 @@ uint32_t gfs2_disk_hash(const char *data, int len)
 
 	return hash;
 }
-
 

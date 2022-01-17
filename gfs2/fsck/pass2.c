@@ -470,7 +470,7 @@ static int basic_dentry_checks(struct gfs2_inode *ip, struct gfs2_dirent *dent,
 		return 1;
 	}
 
-	calculated_hash = gfs2_disk_hash(tmp_name, d->dr_name_len);
+	calculated_hash = lgfs2_disk_hash(tmp_name, d->dr_name_len);
 	if (d->dr_hash != calculated_hash){
 	        log_err( _("Dir entry with bad hash or name length\n"
 			   "\tHash found         = %u (0x%x)\n"

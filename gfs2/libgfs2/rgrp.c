@@ -163,7 +163,7 @@ int lgfs2_rgrp_crc_check(char *buf)
 		return 0;
 
 	rg->rg_crc = 0;
-	if (be32_to_cpu(crc) != gfs2_disk_hash(buf, sizeof(struct gfs2_rgrp)))
+	if (be32_to_cpu(crc) != lgfs2_disk_hash(buf, sizeof(struct gfs2_rgrp)))
 		ret = 1;
 	rg->rg_crc = crc;
 	return ret;
@@ -178,7 +178,7 @@ void lgfs2_rgrp_crc_set(char *buf)
 	uint32_t crc;
 
 	rg->rg_crc = 0;
-	crc = gfs2_disk_hash(buf, sizeof(struct gfs2_rgrp));
+	crc = lgfs2_disk_hash(buf, sizeof(struct gfs2_rgrp));
 	rg->rg_crc = cpu_to_be32(crc);
 }
 
