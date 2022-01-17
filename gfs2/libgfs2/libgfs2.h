@@ -300,7 +300,7 @@ struct lgfs2_inode {
 	};
 };
 
-struct master_dir
+struct lgfs2_meta_dir
 {
 	struct lgfs2_inode *inum;
 	uint64_t next_inum;
@@ -375,7 +375,7 @@ struct lgfs2_sbd {
 	struct osi_root rgtree;
 
 	struct lgfs2_inode *master_dir;
-	struct master_dir md;
+	struct lgfs2_meta_dir md;
 
 	unsigned int gfs1:1;
 };

@@ -32,7 +32,7 @@
 
 static int was_mounted_ro = 0;
 static uint64_t possible_root = HIGHEST_BLOCK;
-static struct master_dir fix_md;
+static struct lgfs2_meta_dir fix_md;
 static uint64_t blks_2free = 0;
 
 /**
