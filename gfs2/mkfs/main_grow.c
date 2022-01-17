@@ -406,7 +406,7 @@ int main(int argc, char *argv[])
 			fprintf(stderr, _("cannot grow gfs1 filesystem\n"));
 			exit(EXIT_FAILURE);
 		}
-		fix_device_geometry(sdp);
+		lgfs2_fix_device_geometry(sdp);
 		mfs.context = copy_context_opt(mnt);
 		if (mount_gfs2_meta(&mfs, mnt->mnt_dir, (print_level > MSG_NOTICE))) {
 			perror(_("Failed to mount GFS2 meta file system"));

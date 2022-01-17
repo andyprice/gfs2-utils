@@ -909,7 +909,7 @@ static void read_superblock(int fd)
 	else {
 		block = starting_blk = 0;
 	}
-	fix_device_geometry(&sbd);
+	lgfs2_fix_device_geometry(&sbd);
 	if(sbd.gfs1) {
 		sbd.sd_inptrs = (sbd.sd_bsize - sizeof(struct gfs_indirect)) /
 			sizeof(uint64_t);

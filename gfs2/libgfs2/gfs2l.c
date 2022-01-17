@@ -130,7 +130,7 @@ static int openfs(const char *path, struct gfs2_sbd *sdp)
 		perror("Failed to gather device info");
 		return 1;
 	}
-	fix_device_geometry(sdp);
+	lgfs2_fix_device_geometry(sdp);
 
 	ret = lgfs2_read_sb(sdp);
 	if (ret != 0) {

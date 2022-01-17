@@ -818,7 +818,7 @@ static int gfs2_rindex_calculate(struct gfs2_sbd *sdp, int *num_rgs)
 	*num_rgs = sdp->md.riinode->i_size / sizeof(struct gfs2_rindex);
 
 	rgcalc.osi_node = NULL;
-	fix_device_geometry(sdp);
+	lgfs2_fix_device_geometry(sdp);
 
 	/* Try all possible rgrp sizes: 2048, 1024, 512, 256, 128, 64, 32 */
 	for (sdp->rgsize = GFS2_DEFAULT_RGSIZE; sdp->rgsize >= 32;

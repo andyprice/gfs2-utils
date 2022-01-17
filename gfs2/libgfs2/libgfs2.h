@@ -473,7 +473,7 @@ extern uint32_t lgfs2_get_block_type(const char *buf);
 
 /* device_geometry.c */
 extern int lgfs2_get_dev_info(int fd, struct lgfs2_dev_info *i);
-extern void fix_device_geometry(struct gfs2_sbd *sdp);
+extern void lgfs2_fix_device_geometry(struct gfs2_sbd *sdp);
 
 /* fs_bits.c */
 #define BFITNOENT (0xFFFFFFFF)
