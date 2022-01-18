@@ -52,7 +52,7 @@ int lgfs2_compute_bitstructs(const uint32_t bsize, struct rgrp_tree *rgd)
 		return -1;
 
 	if(rgd->bits == NULL) {
-		rgd->bits = calloc(length, sizeof(struct gfs2_bitmap));
+		rgd->bits = calloc(length, sizeof(struct lgfs2_bitmap));
 		if(rgd->bits == NULL)
 			return -1;
 		ownbits = 1;
@@ -635,11 +635,11 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, ui
 		link = &lastrg->node.osi_right;
 	}
 
-	rg = calloc(1, sizeof(*rg) + (be32_to_cpu(entry->ri_length) * sizeof(struct gfs2_bitmap)));
+	rg = calloc(1, sizeof(*rg) + (be32_to_cpu(entry->ri_length) * sizeof(struct lgfs2_bitmap)));
 	if (rg == NULL)
 		return NULL;
 
-	rg->bits = (struct gfs2_bitmap *)(rg + 1);
+	rg->bits = (struct lgfs2_bitmap *)(rg + 1);
 
 	osi_link_node(&rg->node, parent, link);
 	osi_insert_color(&rg->node, &rgs->root);
@@ -807,7 +807,7 @@ static int lgfs2_rbm_incr(struct lgfs2_rbm *rbm)
  */
 static inline uint8_t lgfs2_testbit(const struct lgfs2_rbm *rbm)
 {
-	struct gfs2_bitmap *bi = rbm_bi(rbm);
+	struct lgfs2_bitmap *bi = rbm_bi(rbm);
 	const uint8_t *buffer = (uint8_t *)bi->bi_data + bi->bi_offset;
 	const uint8_t *byte;
 	unsigned int bit;
@@ -879,7 +879,7 @@ static uint32_t lgfs2_free_extlen(const struct lgfs2_rbm *rrbm, uint32_t len)
 	uint32_t chunk_size;
 	uint8_t *ptr, *start, *end;
 	uint64_t block;
-	struct gfs2_bitmap *bi;
+	struct lgfs2_bitmap *bi;
 	struct lgfs2_sbd *sdp = rbm.rgd->rgrps->sdp;
 
 	if (n_unaligned &&
@@ -943,7 +943,7 @@ int lgfs2_rbm_find(struct lgfs2_rbm *rbm, uint8_t state, uint32_t *minext)
 		iters++;
 
 	for (n = 0; n < iters; n++) {
-		struct gfs2_bitmap *bi = rbm_bi(rbm);
+		struct lgfs2_bitmap *bi = rbm_bi(rbm);
 		uint8_t *buf = (uint8_t *)bi->bi_data + bi->bi_offset;
 		uint64_t block;
 		int ret;

@@ -117,7 +117,7 @@ static void update_rgrp(struct lgfs2_sbd *sdp, struct rgrp_tree *rgp,
 			struct gfs2_bmap *bl, uint32_t *count)
 {
 	uint32_t i;
-	struct gfs2_bitmap *bits;
+	struct lgfs2_bitmap *bits;
 	uint64_t rg_block = 0;
 	int update = 0;
 

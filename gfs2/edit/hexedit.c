@@ -1610,7 +1610,7 @@ static void find_print_block_rg(int bitmap)
 		if (rgd) {
 			rgblock = rgd->rt_addr;
 			if (bitmap) {
-				struct gfs2_bitmap *bits = NULL;
+				struct lgfs2_bitmap *bits = NULL;
 
 				for (i = 0; i < rgd->rt_length; i++) {
 					bits = &(rgd->bits[i]);

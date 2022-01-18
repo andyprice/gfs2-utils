@@ -34,7 +34,7 @@ struct lgfs2_rbm {
 	unsigned bii;       /* Bitmap index */
 };
 
-static inline struct gfs2_bitmap *rbm_bi(const struct lgfs2_rbm *rbm)
+static inline struct lgfs2_bitmap *rbm_bi(const struct lgfs2_rbm *rbm)
 {
 	return rbm->rgd->bits + rbm->bii;
 }

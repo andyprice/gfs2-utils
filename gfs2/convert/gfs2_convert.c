@@ -126,7 +126,7 @@ static void convert_bitmaps(struct lgfs2_sbd *sdp, struct rgrp_tree *rg)
 	unsigned char state;
 
 	for (blk = 0; blk < rg->rt_length; blk++) {
-		struct gfs2_bitmap *bi;
+		struct lgfs2_bitmap *bi;
 		x = (blk) ? sizeof(struct gfs2_meta_header) :
 			sizeof(struct gfs2_rgrp);
 
@@ -951,7 +951,7 @@ err_freei:
 
 static int next_rg_meta(struct rgrp_tree *rgd, uint64_t *block, int first)
 {
-	struct gfs2_bitmap *bits = NULL;
+	struct lgfs2_bitmap *bits = NULL;
 	uint32_t length = rgd->rt_length;
 	uint32_t blk = (first)? 0: (uint32_t)((*block + 1) - rgd->rt_data0);
 	int i;
@@ -1070,7 +1070,7 @@ static int inode_renumber(struct lgfs2_sbd *sbp, uint64_t root_inode_addr, osi_l
 				byte_bit = (block - rgd->rt_data0) % GFS2_NBBY;
 				/* Now figure out which bitmap block the byte is on */
 				for (blk = 0; blk < rgd->rt_length; blk++) {
-					struct gfs2_bitmap *bi = &rgd->bits[blk];
+					struct lgfs2_bitmap *bi = &rgd->bits[blk];
 					/* figure out offset of first bitmap byte for this map: */
 					buf_offset = (blk) ? sizeof(struct gfs2_meta_header) :
 						sizeof(struct gfs2_rgrp);

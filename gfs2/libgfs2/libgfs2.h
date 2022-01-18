@@ -160,7 +160,7 @@ struct lgfs2_device {
 	uint64_t length;
 };
 
-struct gfs2_bitmap
+struct lgfs2_bitmap
 {
 	char *bi_data;
 	uint32_t bi_offset;  /* The offset in the buffer of the first byte */
@@ -175,7 +175,7 @@ typedef struct _lgfs2_rgrps *lgfs2_rgrps_t;
 
 struct rgrp_tree {
 	struct osi_node node;
-	struct gfs2_bitmap *bits;
+	struct lgfs2_bitmap *bits;
 	lgfs2_rgrps_t rgrps;
 
 	/* Native-endian counterparts of the on-disk rindex struct */

@@ -499,7 +499,7 @@ int lgfs2_check_meta(const char *buf, int type)
 
 unsigned lgfs2_bm_scan(struct rgrp_tree *rgd, unsigned idx, uint64_t *buf, uint8_t state)
 {
-	struct gfs2_bitmap *bi = &rgd->bits[idx];
+	struct lgfs2_bitmap *bi = &rgd->bits[idx];
 	unsigned n = 0;
 	uint32_t blk = 0;
 

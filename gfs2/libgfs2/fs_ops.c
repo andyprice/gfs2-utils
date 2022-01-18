@@ -119,7 +119,7 @@ static uint64_t find_free_block(struct rgrp_tree *rgd)
 
 	for (bm = 0; bm < rgd->rt_length; bm++) {
 		unsigned long blk = 0;
-		struct gfs2_bitmap *bits = &rgd->bits[bm];
+		struct lgfs2_bitmap *bits = &rgd->bits[bm];
 
 		blk = lgfs2_bitfit((uint8_t *)bits->bi_data + bits->bi_offset,
 		                  bits->bi_len, blk, GFS2_BLKST_FREE);

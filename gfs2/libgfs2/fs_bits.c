@@ -127,7 +127,7 @@ int lgfs2_set_bitmap(lgfs2_rgrp_t rgd, uint64_t blkno, int state)
 {
 	int           buf;
 	uint32_t        rgrp_block;
-	struct gfs2_bitmap *bits = NULL;
+	struct lgfs2_bitmap *bits = NULL;
 	unsigned char *byte, cur_state;
 	unsigned int bit;
 
@@ -180,7 +180,7 @@ int lgfs2_get_bitmap(struct lgfs2_sbd *sdp, uint64_t blkno, struct rgrp_tree *rg
 	uint32_t i = 0;
 	char *byte;
 	unsigned int bit;
-	struct gfs2_bitmap *bi;
+	struct lgfs2_bitmap *bi;
 
 	if (rgd == NULL) {
 		rgd = lgfs2_blk2rgrpd(sdp, blkno);
