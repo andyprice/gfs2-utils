@@ -874,12 +874,12 @@ static void read_superblock(int fd)
 
 	ioctl(fd, BLKFLSBUF, 0);
 	memset(&sbd, 0, sizeof(struct lgfs2_sbd));
-	sbd.sd_bsize = GFS2_DEFAULT_BSIZE;
+	sbd.sd_bsize = LGFS2_DEFAULT_BSIZE;
 	sbd.device_fd = fd;
 	bh = lgfs2_bread(&sbd, 0x10);
-	sbd.jsize = GFS2_DEFAULT_JSIZE;
-	sbd.rgsize = GFS2_DEFAULT_RGSIZE;
-	sbd.qcsize = GFS2_DEFAULT_QCSIZE;
+	sbd.jsize = LGFS2_DEFAULT_JSIZE;
+	sbd.rgsize = LGFS2_DEFAULT_RGSIZE;
+	sbd.qcsize = LGFS2_DEFAULT_QCSIZE;
 	sbd.sd_time = time(NULL);
 	sbd.rgtree.osi_node = NULL;
 	lgfs2_sb_in(&sbd, bh->b_data);
@@ -894,7 +894,7 @@ static void read_superblock(int fd)
 	else
 		sbd.gfs1 = FALSE;
 	if (!sbd.sd_bsize)
-		sbd.sd_bsize = GFS2_DEFAULT_BSIZE;
+		sbd.sd_bsize = LGFS2_DEFAULT_BSIZE;
 	if (lgfs2_get_dev_info(fd, &sbd.dinfo)) {
 		perror(device);
 		exit(-1);
@@ -905,7 +905,7 @@ static void read_superblock(int fd)
 	}
 	if (sbd.gfs1 || (be32_to_cpu(mh->mh_magic) == GFS2_MAGIC &&
 	                 be32_to_cpu(mh->mh_type) == GFS2_METATYPE_SB))
-		block = 0x10 * (GFS2_DEFAULT_BSIZE / sbd.sd_bsize);
+		block = 0x10 * (LGFS2_DEFAULT_BSIZE / sbd.sd_bsize);
 	else {
 		block = starting_blk = 0;
 	}

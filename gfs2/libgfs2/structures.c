@@ -506,7 +506,7 @@ unsigned lgfs2_bm_scan(struct rgrp_tree *rgd, unsigned idx, uint64_t *buf, uint8
 	while(blk < (bi->bi_len * GFS2_NBBY)) {
 		blk = lgfs2_bitfit((uint8_t *)bi->bi_data + bi->bi_offset,
 				  bi->bi_len, blk, state);
-		if (blk == BFITNOENT)
+		if (blk == LGFS2_BFITNOENT)
 			break;
 		buf[n++] = blk + (bi->bi_start * GFS2_NBBY) + rgd->rt_data0;
 		blk++;

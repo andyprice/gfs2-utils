@@ -150,10 +150,10 @@ static void opts_init(struct mkfs_opts *opts)
 	memset(opts, 0, sizeof(*opts));
 	opts->discard = 1;
 	opts->journals = 1;
-	opts->bsize = GFS2_DEFAULT_BSIZE;
-	opts->jsize = GFS2_DEFAULT_JSIZE;
-	opts->qcsize = GFS2_DEFAULT_QCSIZE;
-	opts->rgsize = GFS2_DEFAULT_RGSIZE;
+	opts->bsize = LGFS2_DEFAULT_BSIZE;
+	opts->jsize = LGFS2_DEFAULT_JSIZE;
+	opts->qcsize = LGFS2_DEFAULT_QCSIZE;
+	opts->rgsize = LGFS2_DEFAULT_RGSIZE;
 	opts->lockproto = "lock_dlm";
 	opts->locktable = "";
 	opts->confirm = 1;
@@ -561,10 +561,10 @@ static int choose_blocksize(struct mkfs_opts *opts, unsigned *pbsize)
 	}
 	if (!opts->got_bsize && got_topol) {
 		if (dev->optimal_io_size <= getpagesize() &&
-		    dev->optimal_io_size >= GFS2_DEFAULT_BSIZE)
+		    dev->optimal_io_size >= LGFS2_DEFAULT_BSIZE)
 			bsize = dev->optimal_io_size;
 		else if (dev->physical_sector_size <= getpagesize() &&
-		         dev->physical_sector_size >= GFS2_DEFAULT_BSIZE)
+		         dev->physical_sector_size >= LGFS2_DEFAULT_BSIZE)
 			bsize = dev->physical_sector_size;
 	}
 	/* Block sizes must be a power of two from 512 to 65536 */
@@ -602,7 +602,7 @@ static int opts_check(struct mkfs_opts *opts)
 	if (test_locking(opts) != 0)
 		return -1;
 
-	if (GFS2_MIN_RGSIZE > opts->rgsize || opts->rgsize > GFS2_MAX_RGSIZE) {
+	if (LGFS2_MIN_RGSIZE > opts->rgsize || opts->rgsize > LGFS2_MAX_RGSIZE) {
 		/* Translators: gfs2 file systems are split into equal sized chunks called
 		   resource groups. We're checking that the user gave a valid size for them. */
 		fprintf(stderr, _("Bad resource group size\n"));
@@ -617,7 +617,7 @@ static int opts_check(struct mkfs_opts *opts)
 		fprintf(stderr, _("Number of journals cannot be negative: %d\n"), opts->journals);
 		return -1;
 	}
-	if (opts->jsize < GFS2_MIN_JSIZE || opts->jsize > GFS2_MAX_JSIZE) {
+	if (opts->jsize < LGFS2_MIN_JSIZE || opts->jsize > LGFS2_MAX_JSIZE) {
 		fprintf(stderr, _("Bad journal size\n"));
 		return -1;
 	}
@@ -1028,7 +1028,7 @@ static int create_jindex(struct lgfs2_sbd *sdp, struct mkfs_opts *opts, struct l
  */
 static int default_journal_size(unsigned bsize, uint64_t num_blocks)
 {
-	int min_blocks = (GFS2_MIN_JSIZE << 20) / bsize;
+	int min_blocks = (LGFS2_MIN_JSIZE << 20) / bsize;
 
 	if (num_blocks < 2 * min_blocks)
 		return -1;
@@ -1091,15 +1091,15 @@ static int sbd_init(struct lgfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsiz
 			return -1;
 		}
 		jsize_mb = (default_jsize * sdp->sd_bsize) >> 20;
-		if (jsize_mb < GFS2_MIN_JSIZE)
-			opts->jsize = GFS2_MIN_JSIZE;
+		if (jsize_mb < LGFS2_MIN_JSIZE)
+			opts->jsize = LGFS2_MIN_JSIZE;
 		else
 			opts->jsize = jsize_mb;
 	} else if ((((opts->jsize * opts->journals) << 20) / sdp->sd_bsize) > (sdp->device.length / 2)) {
 		unsigned max_jsize = (sdp->device.length / 2 * sdp->sd_bsize / opts->journals) >> 20;
 
 		fprintf(stderr, _("gfs2 will not fit on this device.\n"));
-		if (max_jsize >= GFS2_MIN_JSIZE)
+		if (max_jsize >= LGFS2_MIN_JSIZE)
 			fprintf(stderr, _("Maximum size for %u journals on this device is %uMB.\n"),
 			        opts->journals, max_jsize);
 		return -1;

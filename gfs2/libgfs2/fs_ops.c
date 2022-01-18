@@ -123,7 +123,7 @@ static uint64_t find_free_block(struct rgrp_tree *rgd)
 
 		blk = lgfs2_bitfit((uint8_t *)bits->bi_data + bits->bi_offset,
 		                  bits->bi_len, blk, GFS2_BLKST_FREE);
-		if (blk != BFITNOENT) {
+		if (blk != LGFS2_BFITNOENT) {
 			blkno = blk + (bits->bi_start * GFS2_NBBY) + rgd->rt_data0;
 			break;
 		}
@@ -744,10 +744,10 @@ int lgfs2_dirent_first(struct lgfs2_inode *dip, struct lgfs2_buffer_head *bh,
 
 	if (be32_to_cpu(h->mh_type) == GFS2_METATYPE_LF) {
 		*dent = (struct gfs2_dirent *)(bh->b_data + sizeof(struct gfs2_leaf));
-		return IS_LEAF;
+		return LGFS2_IS_LEAF;
 	} else {
 		*dent = (struct gfs2_dirent *)(bh->b_data + sizeof(struct gfs2_dinode));
-		return IS_DINODE;
+		return LGFS2_IS_DINODE;
 	}
 }
 
@@ -783,7 +783,7 @@ static int dirent_alloc(struct lgfs2_inode *dip, struct lgfs2_buffer_head *bh,
 
 	type = lgfs2_dirent_first(dip, bh, &dent);
 
-	if (type == IS_LEAF) {
+	if (type == LGFS2_IS_LEAF) {
 		struct gfs2_leaf *leaf = (struct gfs2_leaf *)bh->b_data;
 		entries = be16_to_cpu(leaf->lf_entries);
 		offset = sizeof(struct gfs2_leaf);
@@ -1590,10 +1590,10 @@ static int leaf_search(struct lgfs2_inode *dip, struct lgfs2_buffer_head *bh,
 
 	type = lgfs2_dirent_first(dip, bh, &dent);
 
-	if (type == IS_LEAF){
+	if (type == LGFS2_IS_LEAF){
 		struct gfs2_leaf *leaf = (struct gfs2_leaf *)bh->b_data;
 		entries = be16_to_cpu(leaf->lf_entries);
-	} else if (type == IS_DINODE)
+	} else if (type == LGFS2_IS_DINODE)
 		entries = dip->i_entries;
 	else
 		return -1;

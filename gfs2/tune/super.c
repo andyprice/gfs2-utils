@@ -19,12 +19,12 @@ int read_super(struct tunegfs2 *tfs)
 	void *block;
 	int n;
        	tfs->sb_start = GFS2_SB_ADDR << GFS2_BASIC_BLOCK_SHIFT;
-	block = malloc(sizeof(char) * GFS2_DEFAULT_BSIZE);
+	block = malloc(sizeof(char) * LGFS2_DEFAULT_BSIZE);
 	if (!block) {
 		perror("read_super: malloc");
 		return EX_UNAVAILABLE;
 	}
-	n = pread(tfs->fd, block, GFS2_DEFAULT_BSIZE, tfs->sb_start);
+	n = pread(tfs->fd, block, LGFS2_DEFAULT_BSIZE, tfs->sb_start);
 	if (n < 0) {
 		perror("read_super: pread");
 		free(block);
@@ -71,7 +71,7 @@ int print_super(const struct tunegfs2 *tfs)
 int write_super(const struct tunegfs2 *tfs)
 {
 	int n;
-	n = pwrite(tfs->fd, tfs->sb, GFS2_DEFAULT_BSIZE, tfs->sb_start);
+	n = pwrite(tfs->fd, tfs->sb, LGFS2_DEFAULT_BSIZE, tfs->sb_start);
 	if (n < 0) {
 		perror("write_super: pwrite");
 		return EX_IOERR;

@@ -970,7 +970,7 @@ static int next_rg_meta(struct rgrp_tree *rgd, uint64_t *block, int first)
 		bits = &rgd->bits[i];
 		blk = lgfs2_bitfit((uint8_t *)bits->bi_data + bits->bi_offset,
 		                   bits->bi_len, blk, GFS2_BLKST_DINODE);
-		if(blk != BFITNOENT){
+		if(blk != LGFS2_BFITNOENT){
 			*block = blk + (bits->bi_start * GFS2_NBBY) + rgd->rt_data0;
 			break;
 		}
@@ -1132,7 +1132,7 @@ static int process_dirent_info(struct lgfs2_inode *dip, struct lgfs2_sbd *sbp,
 	int de; /* directory entry index */
 	
 	error = lgfs2_dirent_first(dip, bh, &dent);
-	if (error != IS_LEAF && error != IS_DINODE) {
+	if (error != LGFS2_IS_LEAF && error != LGFS2_IS_DINODE) {
 		log_crit(_("Error retrieving directory.\n"));
 		return -1;
 	}
@@ -1576,14 +1576,14 @@ static int init(struct lgfs2_sbd *sbp, struct gfs2_options *opts)
 	/* ---------------------------------------------- */
 	/* Initialize lists and read in the superblock.   */
 	/* ---------------------------------------------- */
-	sbp->jsize = GFS2_DEFAULT_JSIZE;
-	sbp->rgsize = GFS2_DEFAULT_RGSIZE;
-	sbp->qcsize = GFS2_DEFAULT_QCSIZE;
+	sbp->jsize = LGFS2_DEFAULT_JSIZE;
+	sbp->rgsize = LGFS2_DEFAULT_RGSIZE;
+	sbp->qcsize = LGFS2_DEFAULT_QCSIZE;
 	sbp->sd_time = time(NULL);
 	sbp->blks_total = 0;   /* total blocks         - total them up later */
 	sbp->blks_alloced = 0; /* blocks allocated     - total them up later */
 	sbp->dinodes_alloced = 0; /* dinodes allocated - total them up later */
-	sbp->sd_bsize = GFS2_DEFAULT_BSIZE;
+	sbp->sd_bsize = LGFS2_DEFAULT_BSIZE;
 	sbp->rgtree.osi_node = NULL;
 	if (lgfs2_compute_constants(sbp)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));

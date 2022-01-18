@@ -91,7 +91,7 @@ unsigned long lgfs2_bitfit(const unsigned char *buf, const unsigned int len,
 			(64 - 8 * (len & (sizeof(uint64_t) - 1))));
 	/* Didn't find anything, so return */
 	if (tmp == 0)
-		return BFITNOENT;
+		return LGFS2_BFITNOENT;
 	ptr--;
 	bit = ffsll(tmp);
 	bit /= 2;	/* two bits per entry in the bitmap */

@@ -363,10 +363,10 @@ int main(int argc, char *argv[])
 	srandom(time(NULL) ^ getpid());
 
 	memset(sdp, 0, sizeof(struct lgfs2_sbd));
-	sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
+	sdp->sd_bsize = LGFS2_DEFAULT_BSIZE;
 	sdp->rgsize = -1;
-	sdp->jsize = GFS2_DEFAULT_JSIZE;
-	sdp->qcsize = GFS2_DEFAULT_QCSIZE;
+	sdp->jsize = LGFS2_DEFAULT_JSIZE;
+	sdp->qcsize = LGFS2_DEFAULT_QCSIZE;
 	sdp->md.journals = 1;
 	decode_arguments(argc, argv, sdp);
 
@@ -392,7 +392,7 @@ int main(int argc, char *argv[])
 			perror(mnt->mnt_fsname);
 			exit(EXIT_FAILURE);
 		}
-		sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
+		sdp->sd_bsize = LGFS2_DEFAULT_BSIZE;
 		sdp->sd_bsize = sdp->sd_bsize;
 		if (lgfs2_compute_constants(sdp)) {
 			log_crit("%s\n", _("Failed to compute file system constants"));
@@ -454,7 +454,7 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 		fsgrowth = (sdp->device.length - fssize);
-		rgcount = lgfs2_rgrps_plan(rgs, fsgrowth, ((GFS2_MAX_RGSIZE << 20) / sdp->sd_bsize));
+		rgcount = lgfs2_rgrps_plan(rgs, fsgrowth, ((LGFS2_MAX_RGSIZE << 20) / sdp->sd_bsize));
 		if (rgcount == 0) {
 			log_err( _("The calculated resource group size is too small.\n"));
 			log_err( _("%s has not grown.\n"), argv[optind]);

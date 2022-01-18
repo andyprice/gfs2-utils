@@ -712,9 +712,9 @@ static uint64_t how_many_rgrps(struct lgfs2_sbd *sdp, struct lgfs2_device *dev)
 		if (bitblocks1 <= 2149 && bitblocksn <= 2149)
 			break;
 
-		sdp->rgsize -= GFS2_DEFAULT_RGSIZE; /* smaller rgs */
+		sdp->rgsize -= LGFS2_DEFAULT_RGSIZE; /* smaller rgs */
 
-		if (sdp->rgsize < GFS2_DEFAULT_RGSIZE) {
+		if (sdp->rgsize < LGFS2_DEFAULT_RGSIZE) {
 			log_err(_("Cannot use the entire device with block size %u bytes.\n"),
 			        sdp->sd_bsize);
 			return 0;
@@ -821,7 +821,7 @@ static int gfs2_rindex_calculate(struct lgfs2_sbd *sdp, int *num_rgs)
 	lgfs2_fix_device_geometry(sdp);
 
 	/* Try all possible rgrp sizes: 2048, 1024, 512, 256, 128, 64, 32 */
-	for (sdp->rgsize = GFS2_DEFAULT_RGSIZE; sdp->rgsize >= 32;
+	for (sdp->rgsize = LGFS2_DEFAULT_RGSIZE; sdp->rgsize >= 32;
 	     sdp->rgsize /= 2) {
 		num_rgrps = how_many_rgrps(sdp, &sdp->device);
 		if (num_rgrps == *num_rgs) {

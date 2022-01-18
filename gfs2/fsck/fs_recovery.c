@@ -683,7 +683,7 @@ int replay_journals(struct lgfs2_sbd *sdp, int preen, int force_check,
 
 	*clean_journals = 0;
 
-	sdp->jsize = GFS2_DEFAULT_JSIZE;
+	sdp->jsize = LGFS2_DEFAULT_JSIZE;
 
 	for(i = 0; i < sdp->md.journals; i++) {
 		if (sdp->md.journal[i]) {
@@ -704,7 +704,7 @@ int replay_journals(struct lgfs2_sbd *sdp, int preen, int force_check,
 		if (!error) {
 			uint64_t jsize = sdp->md.journal[i]->i_size / (1024 * 1024);
 
-			if (sdp->jsize == GFS2_DEFAULT_JSIZE && jsize &&
+			if (sdp->jsize == LGFS2_DEFAULT_JSIZE && jsize &&
 			    jsize != sdp->jsize)
 				sdp->jsize = jsize;
 			error = gfs2_recover_journal(sdp->md.journal[i], i,

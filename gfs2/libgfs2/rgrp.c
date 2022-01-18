@@ -344,8 +344,8 @@ uint32_t lgfs2_rgrp_align_len(const lgfs2_rgrps_t rgs, uint32_t len)
  */
 uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgtsize)
 {
-	uint32_t maxlen = (GFS2_MAX_RGSIZE << 20) / rgs->sdp->sd_bsize;
-	uint32_t minlen = (GFS2_MIN_RGSIZE << 20) / rgs->sdp->sd_bsize;
+	uint32_t maxlen = (LGFS2_MAX_RGSIZE << 20) / rgs->sdp->sd_bsize;
+	uint32_t minlen = (LGFS2_MIN_RGSIZE << 20) / rgs->sdp->sd_bsize;
 	struct rg_spec *spec = rgs->plan->rg_specs;
 
 	/* Apps should already have checked that the rg size is <=
@@ -952,7 +952,7 @@ int lgfs2_rbm_find(struct lgfs2_rbm *rbm, uint8_t state, uint32_t *minext)
 			goto next_bitmap;
 
 		offset = lgfs2_bitfit(buf, bi->bi_len, rbm->offset, state);
-		if (offset == BFITNOENT)
+		if (offset == LGFS2_BFITNOENT)
 			goto next_bitmap;
 
 		rbm->offset = offset;

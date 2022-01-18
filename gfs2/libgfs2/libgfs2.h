@@ -417,19 +417,16 @@ struct lgfs2_metapath {
 };
 
 
-#define GFS2_DEFAULT_BSIZE          (4096)
-#define GFS2_DEFAULT_JSIZE          (128)
-#define GFS2_MAX_JSIZE              (1024)
-#define GFS2_MIN_JSIZE              (8)
-#define GFS2_DEFAULT_RGSIZE         (256)
-#define GFS2_DEFAULT_UTSIZE         (1)
-#define GFS2_DEFAULT_QCSIZE         (1)
-#define GFS2_DEFAULT_LOCKPROTO      "lock_dlm"
-#define GFS2_MIN_GROW_SIZE          (10)
-#define GFS2_EXCESSIVE_RGS          (10000)
+#define LGFS2_DEFAULT_BSIZE          (4096)
+#define LGFS2_DEFAULT_JSIZE          (128)
+#define LGFS2_MAX_JSIZE              (1024)
+#define LGFS2_MIN_JSIZE              (8)
+#define LGFS2_DEFAULT_RGSIZE         (256)
+#define LGFS2_DEFAULT_QCSIZE         (1)
+#define LGFS2_DEFAULT_LOCKPROTO      "lock_dlm"
 
-#define GFS2_MIN_RGSIZE             (32)
-#define GFS2_MAX_RGSIZE             (2048)
+#define LGFS2_MIN_RGSIZE             (32)
+#define LGFS2_MAX_RGSIZE             (2048)
 
 #define LGFS2_FS_FORMAT_MIN (1801)
 #define LGFS2_FS_FORMAT_MAX (1802)
@@ -476,7 +473,7 @@ extern int lgfs2_get_dev_info(int fd, struct lgfs2_dev_info *i);
 extern void lgfs2_fix_device_geometry(struct lgfs2_sbd *sdp);
 
 /* fs_bits.c */
-#define BFITNOENT (0xFFFFFFFF)
+#define LGFS2_BFITNOENT (0xFFFFFFFF)
 
 /* functions with blk #'s that are buffer relative */
 extern unsigned long lgfs2_bitfit(const unsigned char *buffer,
@@ -491,8 +488,8 @@ extern int lgfs2_get_bitmap(struct lgfs2_sbd *sdp, uint64_t blkno, struct rgrp_t
 extern int lgfs2_set_bitmap(lgfs2_rgrp_t rg, uint64_t blkno, int state);
 
 /* fs_ops.c */
-#define IS_LEAF     (1)
-#define IS_DINODE   (2)
+#define LGFS2_IS_LEAF   (1)
+#define LGFS2_IS_DINODE (2)
 
 extern void lgfs2_find_metapath(struct lgfs2_inode *ip, uint64_t block, struct lgfs2_metapath *mp);
 extern void lgfs2_lookup_block(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,

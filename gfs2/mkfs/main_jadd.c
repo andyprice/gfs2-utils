@@ -640,8 +640,8 @@ int main(int argc, char *argv[])
 	srandom(time(NULL) ^ getpid());
 
 	memset(sdp, 0, sizeof(struct lgfs2_sbd));
-	sdp->jsize = GFS2_DEFAULT_JSIZE;
-	sdp->qcsize = GFS2_DEFAULT_QCSIZE;
+	sdp->jsize = LGFS2_DEFAULT_JSIZE;
+	sdp->qcsize = LGFS2_DEFAULT_QCSIZE;
 	opts.journals = 1;
 
 	ret = decode_arguments(argc, argv, sdp, &opts);

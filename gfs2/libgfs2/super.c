@@ -132,7 +132,7 @@ int lgfs2_read_sb(struct lgfs2_sbd *sdp)
 	sdp->fssize = lseek(sdp->device_fd, 0, SEEK_END) / sdp->sd_bsize;
 	sdp->sd_blocks_per_bitmap = (sdp->sd_bsize - sizeof(struct gfs2_meta_header))
 	                             * GFS2_NBBY;
-	sdp->qcsize = GFS2_DEFAULT_QCSIZE;
+	sdp->qcsize = LGFS2_DEFAULT_QCSIZE;
 
 	return 0;
 }
@@ -157,7 +157,7 @@ static int rgd_seems_ok(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd)
 	/* A max rgrp, 2GB, divided into blocksize, divided by blocks/byte
 	   represented in the bitmap, NBBY. Rough approximation only, due to
 	   metadata headers. I'm doing the math this way to avoid overflow. */
-	most_bitmaps_possible = (GFS2_MAX_RGSIZE * 1024 * 256) / sdp->sd_bsize;
+	most_bitmaps_possible = (LGFS2_MAX_RGSIZE * 1024 * 256) / sdp->sd_bsize;
 	if (rgd->rt_length > most_bitmaps_possible)
 		return 0;
 

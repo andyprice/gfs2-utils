@@ -1130,14 +1130,14 @@ static int find_rgs_for_bsize(struct lgfs2_sbd *sdp, uint64_t startblock,
 	uint32_t bsize, bsize2;
 	int found_rg;
 
-	sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
+	sdp->sd_bsize = LGFS2_DEFAULT_BSIZE;
 	max_rg_size = 524288;
 	/* Max RG size is 2GB. Max block size is 4K. 2G / 4K blks = 524288,
 	   So this is traversing 2GB in 4K block increments. */
 	for (blk = startblock; blk < startblock + max_rg_size; blk++) {
 		bh = lgfs2_bread(sdp, blk);
 		found_rg = 0;
-		for (bsize = 0; bsize < GFS2_DEFAULT_BSIZE; bsize += GFS2_BASIC_BLOCK) {
+		for (bsize = 0; bsize < LGFS2_DEFAULT_BSIZE; bsize += GFS2_BASIC_BLOCK) {
 			struct gfs2_meta_header *mhp;
 
 			mhp = (struct gfs2_meta_header *)(bh->b_data + bsize);
@@ -1151,13 +1151,13 @@ static int find_rgs_for_bsize(struct lgfs2_sbd *sdp, uint64_t startblock,
 		if (!found_rg)
 			continue;
 		/* Try all the block sizes in 512 byte multiples */
-		for (bsize2 = GFS2_BASIC_BLOCK; bsize2 <= GFS2_DEFAULT_BSIZE;
+		for (bsize2 = GFS2_BASIC_BLOCK; bsize2 <= LGFS2_DEFAULT_BSIZE;
 		     bsize2 += GFS2_BASIC_BLOCK) {
 			struct gfs2_meta_header *mh;
 			int is_rb;
 
 			rb_addr = (bh->b_blocknr *
-				   (GFS2_DEFAULT_BSIZE / bsize2)) +
+				   (LGFS2_DEFAULT_BSIZE / bsize2)) +
 				(bsize / bsize2) + 1;
 			sdp->sd_bsize = bsize2; /* temporarily */
 			rb_bh = lgfs2_bread(sdp, rb_addr);
@@ -1175,7 +1175,7 @@ static int find_rgs_for_bsize(struct lgfs2_sbd *sdp, uint64_t startblock,
 		}
 		lgfs2_brelse(bh);
 		if (!(*known_bsize)) {
-			sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
+			sdp->sd_bsize = LGFS2_DEFAULT_BSIZE;
 			continue;
 		}
 
@@ -1227,11 +1227,11 @@ static int sb_repair(struct lgfs2_sbd *sdp)
 
 	memset(&fix_md, 0, sizeof(fix_md));
 	/* Step 1 - First we need to determine the correct block size. */
-	sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
+	sdp->sd_bsize = LGFS2_DEFAULT_BSIZE;
 	log_warn(_("Gathering information to repair the gfs2 superblock.  "
 		   "This may take some time.\n"));
 	error = find_rgs_for_bsize(sdp, (GFS2_SB_ADDR * GFS2_BASIC_BLOCK) /
-				   GFS2_DEFAULT_BSIZE, &known_bsize);
+				   LGFS2_DEFAULT_BSIZE, &known_bsize);
 	if (error)
 		return error;
 	if (!known_bsize) {
@@ -1253,7 +1253,7 @@ static int sb_repair(struct lgfs2_sbd *sdp)
 	}
 	/* Step 2 - look for the sytem dinodes */
 	error = peruse_metadata(sdp, (GFS2_SB_ADDR * GFS2_BASIC_BLOCK) /
-				GFS2_DEFAULT_BSIZE);
+				LGFS2_DEFAULT_BSIZE);
 	if (error)
 		return error;
 	if (!sdp->sd_meta_dir.in_addr) {
@@ -1340,7 +1340,7 @@ static int fill_super_block(struct lgfs2_sbd *sdp)
 	log_info( _("Initializing lists...\n"));
 	sdp->rgtree.osi_node = NULL;
 
-	sdp->sd_bsize = GFS2_DEFAULT_BSIZE;
+	sdp->sd_bsize = LGFS2_DEFAULT_BSIZE;
 	if (lgfs2_compute_constants(sdp)) {
 		log_crit("%s\n", _("Failed to compute file system constants"));
 		return FSCK_ERROR;
@@ -1434,7 +1434,7 @@ static int correct_journal_seg_size(struct lgfs2_sbd *sdp)
 	int count;
 	struct gfs_jindex *ji_0, *ji_1;
 	char buf[sizeof(struct gfs_jindex)];
-	unsigned int jsize = GFS2_DEFAULT_JSIZE * 1024 * 1024;
+	unsigned int jsize = LGFS2_DEFAULT_JSIZE * 1024 * 1024;
 
 	count = lgfs2_readi(sdp->md.jiinode, buf, 0, sizeof(struct gfs_jindex));
 	if (count != sizeof(struct gfs_jindex)) {
