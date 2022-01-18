@@ -107,7 +107,7 @@ void lgfs2_inode_put(struct lgfs2_inode **ip_in)
 	*ip_in = NULL; /* make sure the memory isn't accessed again */
 }
 
-static uint64_t find_free_block(struct rgrp_tree *rgd)
+static uint64_t find_free_block(struct lgfs2_rgrp_tree *rgd)
 {
 	unsigned bm;
 	uint64_t blkno = 0;
@@ -131,7 +131,7 @@ static uint64_t find_free_block(struct rgrp_tree *rgd)
 	return blkno;
 }
 
-static int blk_alloc_in_rg(struct lgfs2_sbd *sdp, unsigned state, struct rgrp_tree *rgd, uint64_t blkno, int dinode)
+static int blk_alloc_in_rg(struct lgfs2_sbd *sdp, unsigned state, struct lgfs2_rgrp_tree *rgd, uint64_t blkno, int dinode)
 {
 	if (blkno == 0)
 		return -1;
@@ -165,12 +165,12 @@ static int block_alloc(struct lgfs2_sbd *sdp, const uint64_t blksreq, int state,
 {
 	int ret;
 	int release = 0;
-	struct rgrp_tree *rgt = NULL;
+	struct lgfs2_rgrp_tree *rgt = NULL;
 	struct osi_node *n = NULL;
 	uint64_t bn = 0;
 
 	for (n = osi_first(&sdp->rgtree); n; n = osi_next(n)) {
-		rgt = (struct rgrp_tree *)n;
+		rgt = (struct lgfs2_rgrp_tree *)n;
 		if (rgt->rt_free >= blksreq)
 			break;
 	}
@@ -1897,7 +1897,7 @@ int lgfs2_lookupi(struct lgfs2_inode *dip, const char *filename, int len,
  */
 void lgfs2_free_block(struct lgfs2_sbd *sdp, uint64_t block)
 {
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 
 	/* Adjust the free space count for the freed block */
 	rgd = lgfs2_blk2rgrpd(sdp, block); /* find the rg for indir block */
@@ -1923,7 +1923,7 @@ int lgfs2_freedi(struct lgfs2_sbd *sdp, uint64_t diblock)
 	struct lgfs2_buffer_head *bh, *nbh;
 	int h, head_size;
 	uint64_t block;
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 	uint32_t height;
 	__be64 *ptr;
 	osi_list_t metalist[GFS2_MAX_META_HEIGHT];

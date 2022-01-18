@@ -494,7 +494,7 @@ static int parse_rindex(struct lgfs2_inode *dip, int print_rindex)
 	int error, start_line;
 	struct gfs2_rindex ri;
 	char highlighted_addr[32];
-	struct rgrp_tree rg = {0};
+	struct lgfs2_rgrp_tree rg = {0};
 
 	start_line = line;
 	print_gfs2("RG index entries found: %"PRIu64".",

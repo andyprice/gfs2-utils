@@ -110,7 +110,7 @@ enum rgindex_trust_level { /* how far can we trust our RG index? */
 
 extern struct lgfs2_inode *fsck_load_inode(struct lgfs2_sbd *sdp, uint64_t block);
 extern struct lgfs2_inode *fsck_inode_get(struct lgfs2_sbd *sdp,
-					 struct rgrp_tree *rgd,
+					 struct lgfs2_rgrp_tree *rgd,
 					 struct lgfs2_buffer_head *bh);
 extern void fsck_inode_put(struct lgfs2_inode **ip);
 
@@ -164,7 +164,7 @@ static inline int valid_block(struct lgfs2_sbd *sdp, uint64_t blkno)
 	         (lgfs2_get_bitmap(sdp, blkno, NULL) < 0));
 }
 
-static inline int rgrp_contains_block(struct rgrp_tree *rgd, uint64_t blk)
+static inline int rgrp_contains_block(struct lgfs2_rgrp_tree *rgd, uint64_t blk)
 {
 	if (blk < rgd->rt_addr)
 		return 0;
@@ -176,7 +176,7 @@ static inline int rgrp_contains_block(struct rgrp_tree *rgd, uint64_t blk)
 static inline int valid_block_ip(struct lgfs2_inode *ip, uint64_t blk)
 {
 	struct lgfs2_sbd *sdp = ip->i_sbd;
-	struct rgrp_tree *rgd = ip->i_rgd;
+	struct lgfs2_rgrp_tree *rgd = ip->i_rgd;
 
 	if (blk > sdp->fssize)
 		return 0;

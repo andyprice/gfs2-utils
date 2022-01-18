@@ -538,7 +538,7 @@ void dirtree_delete(struct dir_info *b)
 uint64_t find_free_blk(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
-	struct rgrp_tree *rl = NULL;
+	struct lgfs2_rgrp_tree *rl = NULL;
 	struct gfs2_rgrp *rg;
 	unsigned int block, bn = 0, x = 0, y = 0;
 	unsigned int state;
@@ -546,7 +546,7 @@ uint64_t find_free_blk(struct lgfs2_sbd *sdp)
 	memset(&rg, 0, sizeof(rg));
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
-		rl = (struct rgrp_tree *)n;
+		rl = (struct lgfs2_rgrp_tree *)n;
 		if (rl->rt_free)
 			break;
 	}

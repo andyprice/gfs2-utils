@@ -173,7 +173,7 @@ struct lgfs2_sbd;
 struct lgfs2_inode;
 typedef struct _lgfs2_rgrps *lgfs2_rgrps_t;
 
-struct rgrp_tree {
+struct lgfs2_rgrp_tree {
 	struct osi_node node;
 	struct lgfs2_bitmap *bits;
 	lgfs2_rgrps_t rgrps;
@@ -211,7 +211,7 @@ struct rgrp_tree {
 	};
 };
 
-typedef struct rgrp_tree *lgfs2_rgrp_t;
+typedef struct lgfs2_rgrp_tree *lgfs2_rgrp_t;
 
 extern lgfs2_rgrps_t lgfs2_rgrps_init(struct lgfs2_sbd *sdp, uint64_t align, uint64_t offset);
 extern void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs);
@@ -253,7 +253,7 @@ struct lgfs2_inum {
 struct lgfs2_inode {
 	struct lgfs2_buffer_head *i_bh;
 	struct lgfs2_sbd *i_sbd;
-	struct rgrp_tree *i_rgd; /* performance hint */
+	struct lgfs2_rgrp_tree *i_rgd; /* performance hint */
 	int bh_owned; /* Is this bh owned, iow, should we release it later? */
 
 	/* Native-endian versions of the dinode fields */
@@ -484,7 +484,7 @@ extern unsigned long lgfs2_bitfit(const unsigned char *buffer,
 extern int lgfs2_check_range(struct lgfs2_sbd *sdp, uint64_t blkno);
 
 /* functions with blk #'s that are file system relative */
-extern int lgfs2_get_bitmap(struct lgfs2_sbd *sdp, uint64_t blkno, struct rgrp_tree *rgd);
+extern int lgfs2_get_bitmap(struct lgfs2_sbd *sdp, uint64_t blkno, struct lgfs2_rgrp_tree *rgd);
 extern int lgfs2_set_bitmap(lgfs2_rgrp_t rg, uint64_t blkno, int state);
 
 /* fs_ops.c */
@@ -738,13 +738,13 @@ extern int lgfs2_clean_journal(struct lgfs2_inode *ip, struct lgfs2_log_header *
 /* rgrp.c */
 extern uint32_t lgfs2_rgblocks2bitblocks(const unsigned int bsize, const uint32_t rgblocks,
                                     uint32_t *ri_data) __attribute__((nonnull(3)));
-extern int lgfs2_compute_bitstructs(const uint32_t bsize, struct rgrp_tree *rgd);
-extern struct rgrp_tree *lgfs2_blk2rgrpd(struct lgfs2_sbd *sdp, uint64_t blk);
+extern int lgfs2_compute_bitstructs(const uint32_t bsize, struct lgfs2_rgrp_tree *rgd);
+extern struct lgfs2_rgrp_tree *lgfs2_blk2rgrpd(struct lgfs2_sbd *sdp, uint64_t blk);
 extern int lgfs2_rgrp_crc_check(char *buf);
 extern void lgfs2_rgrp_crc_set(char *buf);
-extern uint64_t lgfs2_rgrp_read(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd);
-extern void lgfs2_rgrp_relse(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd);
-extern struct rgrp_tree *lgfs2_rgrp_insert(struct osi_root *rgtree,
+extern uint64_t lgfs2_rgrp_read(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd);
+extern void lgfs2_rgrp_relse(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd);
+extern struct lgfs2_rgrp_tree *lgfs2_rgrp_insert(struct osi_root *rgtree,
 				     uint64_t rgblock);
 extern void lgfs2_rgrp_free(struct lgfs2_sbd *sdp, struct osi_root *rgrp_tree);
 
@@ -764,7 +764,7 @@ extern int lgfs2_build_root(struct lgfs2_sbd *sdp);
 extern int lgfs2_init_inum(struct lgfs2_sbd *sdp);
 extern int lgfs2_init_statfs(struct lgfs2_sbd *sdp, struct gfs2_statfs_change *res);
 extern int lgfs2_check_meta(const char *buf, int type);
-extern unsigned lgfs2_bm_scan(struct rgrp_tree *rgd, unsigned idx,
+extern unsigned lgfs2_bm_scan(struct lgfs2_rgrp_tree *rgd, unsigned idx,
 			      uint64_t *buf, uint8_t state);
 extern struct lgfs2_inode *lgfs2_build_inum_range(struct lgfs2_inode *per_node, unsigned int n);
 extern struct lgfs2_inode *lgfs2_build_statfs_change(struct lgfs2_inode *per_node, unsigned int j);

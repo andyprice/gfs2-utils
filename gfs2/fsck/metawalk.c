@@ -29,7 +29,7 @@
    is used to set the latter.  The two must be kept in sync, otherwise
    you'll get bitmap mismatches.  This function checks the status of the
    bitmap whenever the blockmap changes, and fixes it accordingly. */
-int check_n_fix_bitmap(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
+int check_n_fix_bitmap(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
 		       uint64_t blk, int error_on_dinode, int new_state)
 {
 	int old_state;
@@ -39,7 +39,7 @@ int check_n_fix_bitmap(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
 		{"free", "data", "unlinked", "inode", "reserved"},
 		/* gfs1 descriptions: */
 		{"free", "data", "free meta", "metadata", "reserved"}};
-	static struct rgrp_tree *prevrgd = NULL;
+	static struct lgfs2_rgrp_tree *prevrgd = NULL;
 
 	if (prevrgd && rgrp_contains_block(prevrgd, blk)) {
 		rgd = prevrgd;
@@ -266,7 +266,7 @@ struct lgfs2_inode *fsck_load_inode(struct lgfs2_sbd *sdp, uint64_t block)
 
 /* fsck_inode_get - same as inode_get() in libgfs2 but system inodes
    get special treatment. */
-struct lgfs2_inode *fsck_inode_get(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
+struct lgfs2_inode *fsck_inode_get(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
 				  struct lgfs2_buffer_head *bh)
 {
 	struct lgfs2_inode *sysip;

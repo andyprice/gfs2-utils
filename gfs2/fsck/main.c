@@ -155,7 +155,7 @@ static void interrupt(int sig)
 static int check_statfs(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 	struct gfs2_statfs_change sc;
 	uint64_t sc_total;
 	uint64_t sc_free;
@@ -184,7 +184,7 @@ static int check_statfs(struct lgfs2_sbd *sdp)
 
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
-		rgd = (struct rgrp_tree *)n;
+		rgd = (struct lgfs2_rgrp_tree *)n;
 		sdp->blks_total += rgd->rt_data;
 		sdp->blks_alloced += (rgd->rt_data - rgd->rt_free);
 		sdp->dinodes_alloced += rgd->rt_dinodes;

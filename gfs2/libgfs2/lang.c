@@ -236,7 +236,7 @@ static uint64_t ast_lookup_rgrp(uint64_t rgnum, struct lgfs2_sbd *sbd)
 
 	for (n = osi_first(&sbd->rgtree); n != NULL && i > 0; n = osi_next(n), i--);
 	if (n != NULL && i == 0)
-		return ((struct rgrp_tree *)n)->rt_addr;
+		return ((struct lgfs2_rgrp_tree *)n)->rt_addr;
 	fprintf(stderr, "Resource group number out of range: %"PRIu64"\n", rgnum);
 	return 0;
 }
@@ -365,7 +365,7 @@ static int ast_get_bitstate(uint64_t bn, struct lgfs2_sbd *sbd)
 {
 	int ret = 0;
 	int state = 0;
-	struct rgrp_tree *rgd = lgfs2_blk2rgrpd(sbd, bn);
+	struct lgfs2_rgrp_tree *rgd = lgfs2_blk2rgrpd(sbd, bn);
 	if (rgd == NULL) {
 		fprintf(stderr, "Could not find resource group for block %"PRIu64"\n", bn);
 		return -1;

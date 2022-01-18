@@ -113,7 +113,7 @@ static int check_block_status(struct lgfs2_sbd *sdp,  struct gfs2_bmap *bl,
 	return 0;
 }
 
-static void update_rgrp(struct lgfs2_sbd *sdp, struct rgrp_tree *rgp,
+static void update_rgrp(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgp,
 			struct gfs2_bmap *bl, uint32_t *count)
 {
 	uint32_t i;
@@ -197,7 +197,7 @@ static void update_rgrp(struct lgfs2_sbd *sdp, struct rgrp_tree *rgp,
 int pass5(struct lgfs2_sbd *sdp, struct gfs2_bmap *bl)
 {
 	struct osi_node *n, *next = NULL;
-	struct rgrp_tree *rgp = NULL;
+	struct lgfs2_rgrp_tree *rgp = NULL;
 	uint32_t count[5]; /* we need 5 because of GFS1 usedmeta */
 	uint64_t rg_count = 0;
 
@@ -208,7 +208,7 @@ int pass5(struct lgfs2_sbd *sdp, struct gfs2_bmap *bl)
 			return FSCK_OK;
 		log_info(_("Verifying resource group %"PRIu64"\n"), rg_count);
 		memset(count, 0, sizeof(count));
-		rgp = (struct rgrp_tree *)n;
+		rgp = (struct lgfs2_rgrp_tree *)n;
 
 		rg_count++;
 		/* Compare the bitmaps and report the differences */

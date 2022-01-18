@@ -989,7 +989,7 @@ static void save_allocated_range(struct metafd *mfd, struct block_range *br)
 	free(br->buf);
 }
 
-static void save_allocated(struct rgrp_tree *rgd, struct metafd *mfd)
+static void save_allocated(struct lgfs2_rgrp_tree *rgd, struct metafd *mfd)
 {
 	uint64_t blk = 0;
 	unsigned i, j, m;
@@ -1055,7 +1055,7 @@ static char *rgrp_read(struct lgfs2_sbd *sdp, uint64_t addr, unsigned blocks)
 	return buf;
 }
 
-static void save_rgrp(struct lgfs2_sbd *sdp, struct metafd *mfd, struct rgrp_tree *rgd, int withcontents)
+static void save_rgrp(struct lgfs2_sbd *sdp, struct metafd *mfd, struct lgfs2_rgrp_tree *rgd, int withcontents)
 {
 	uint64_t addr = rgd->rt_addr;
 	char *buf;
@@ -1188,9 +1188,9 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	}
 	/* Walk through the resource groups saving everything within */
 	for (n = osi_first(&sbd.rgtree); n; n = osi_next(n)) {
-		struct rgrp_tree *rgd;
+		struct lgfs2_rgrp_tree *rgd;
 
-		rgd = (struct rgrp_tree *)n;
+		rgd = (struct lgfs2_rgrp_tree *)n;
 		save_rgrp(&sbd, &mfd, rgd, (saveoption != 2));
 	}
 	/* Clean up */

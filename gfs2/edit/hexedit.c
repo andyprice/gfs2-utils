@@ -348,7 +348,7 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 		return ret_type;
 	if (termlines && dmode == HEX_MODE) {
 		int type;
-		struct rgrp_tree *rgd;
+		struct lgfs2_rgrp_tree *rgd;
 
 		rgd = lgfs2_blk2rgrpd(&sbd, block);
 		if (rgd) {
@@ -942,7 +942,7 @@ static int read_rindex(void)
 		lgfs2_rindex_read(&sbd, &count, &ok);
 
 	if (!OSI_EMPTY_ROOT(&sbd.rgtree)) {
-		struct rgrp_tree *rg = (struct rgrp_tree *)osi_last(&sbd.rgtree);
+		struct lgfs2_rgrp_tree *rg = (struct lgfs2_rgrp_tree *)osi_last(&sbd.rgtree);
 		sbd.fssize = rg->rt_data0 + rg->rt_data;
 	}
 	return 0;
@@ -1160,7 +1160,7 @@ static uint64_t find_metablockoftype_slow(uint64_t startblk, int metatype, int p
 	return blk;
 }
 
-static int find_rg_metatype(struct rgrp_tree *rgd, uint64_t *blk, uint64_t startblk, int mtype)
+static int find_rg_metatype(struct lgfs2_rgrp_tree *rgd, uint64_t *blk, uint64_t startblk, int mtype)
 {
 	int found;
 	unsigned i, j, m;
@@ -1197,12 +1197,12 @@ static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int pri
 	struct osi_node *next = NULL;
 	uint64_t blk, errblk;
 	int first = 1, found = 0;
-	struct rgrp_tree *rgd = NULL;
+	struct lgfs2_rgrp_tree *rgd = NULL;
 
 	blk = 0;
 	/* Skip the rgs prior to the block we've been given */
 	for (next = osi_first(&sbd.rgtree); next; next = osi_next(next)) {
-		rgd = (struct rgrp_tree *)next;
+		rgd = (struct lgfs2_rgrp_tree *)next;
 		if (first && startblk <= rgd->rt_data0) {
 			startblk = rgd->rt_data0;
 			break;
@@ -1221,7 +1221,7 @@ static uint64_t find_metablockoftype_rg(uint64_t startblk, int metatype, int pri
 			exit(-1);
 	}
 	for (; !found && next; next = osi_next(next)){
-		rgd = (struct rgrp_tree *)next;
+		rgd = (struct lgfs2_rgrp_tree *)next;
 		errblk = lgfs2_rgrp_read(&sbd, rgd);
 		if (errblk)
 			continue;
@@ -1600,7 +1600,7 @@ static void find_print_block_rg(int bitmap)
 {
 	uint64_t rblock, rgblock;
 	int i;
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 
 	rblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
 	if (rblock == LGFS2_SB_ADDR(&sbd))
@@ -1643,7 +1643,7 @@ static void find_change_block_alloc(int *newval)
 {
 	uint64_t ablock;
 	int type;
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 
 	if (newval &&
 	    (*newval < GFS2_BLKST_FREE || *newval > GFS2_BLKST_DINODE)) {
@@ -2116,7 +2116,7 @@ static void getgziplevel(char *argv[], int *i)
 	(*i)++;
 }
 
-static int count_dinode_blks(struct rgrp_tree *rgd, int bitmap,
+static int count_dinode_blks(struct lgfs2_rgrp_tree *rgd, int bitmap,
 			     struct lgfs2_buffer_head *rbh)
 {
 	struct lgfs2_buffer_head *tbh;
@@ -2175,7 +2175,7 @@ static int count_dinode_bits(struct lgfs2_buffer_head *rbh)
 static void rg_repair(void)
 {
 	struct lgfs2_buffer_head *rbh;
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 	struct osi_node *n;
 	int b;
 	int rgs_fixed = 0;
@@ -2183,7 +2183,7 @@ static void rg_repair(void)
 
 	/* Walk through the resource groups saving everything within */
 	for (n = osi_first(&sbd.rgtree); n; n = osi_next(n)) {
-		rgd = (struct rgrp_tree *)n;
+		rgd = (struct lgfs2_rgrp_tree *)n;
 		if (lgfs2_rgrp_read(&sbd, rgd) == 0) { /* was read in okay */
 			lgfs2_rgrp_relse(&sbd, rgd);
 			continue; /* ignore it */
@@ -2448,7 +2448,7 @@ static void process_parameters(int argc, char *argv[], int pass)
 		} else if (!strcmp(argv[i], "rgbitmaps")) {
 			int rg, bmap;
 			uint64_t rgblk;
-			struct rgrp_tree *rgd;
+			struct lgfs2_rgrp_tree *rgd;
 
 			i++;
 			if (i >= argc - 1) {

@@ -397,7 +397,7 @@ static int undo_reference(struct lgfs2_inode *ip, uint64_t block, int meta,
 	struct duptree *dt;
 	struct inode_with_dups *id;
 	int old_bitmap_state = 0;
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 
 	if (!valid_block_ip(ip, block)) { /* blk outside of FS */
 		fsck_blockmap_set(ip, ip->i_num.in_addr, _("bad block referencing"), GFS2_BLKST_FREE);
@@ -1397,7 +1397,7 @@ static void check_i_goal(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip)
  * handle_di - This is now a wrapper function that takes a lgfs2_buffer_head
  *             and calls handle_ip, which takes an in-code dinode structure.
  */
-static int handle_di(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
+static int handle_di(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
 		     struct lgfs2_buffer_head *bh)
 {
 	int error = 0;
@@ -1751,7 +1751,7 @@ static int check_system_inodes(struct lgfs2_sbd *sdp)
 	return 0;
 }
 
-static int pass1_process_bitmap(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd, uint64_t *ibuf, unsigned n)
+static int pass1_process_bitmap(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd, uint64_t *ibuf, unsigned n)
 {
 	struct lgfs2_buffer_head *bh;
 	unsigned i;
@@ -1874,7 +1874,7 @@ static int pass1_process_bitmap(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd, ui
 	return 0;
 }
 
-static int pass1_process_rgrp(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd)
+static int pass1_process_rgrp(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd)
 {
 	unsigned k, n, i;
 	uint64_t *ibuf = malloc(sdp->sd_bsize * GFS2_NBBY * sizeof(uint64_t));
@@ -2002,7 +2002,7 @@ static void enomem(uint64_t addl_mem_needed)
 int pass1(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 	uint64_t i;
 	uint64_t rg_count = 0;
 	struct timeval timer;
@@ -2054,7 +2054,7 @@ int pass1(struct lgfs2_sbd *sdp)
 		}
 		next = osi_next(n);
 		log_debug("Checking metadata in resource group #%"PRIu64"\n", rg_count);
-		rgd = (struct rgrp_tree *)n;
+		rgd = (struct lgfs2_rgrp_tree *)n;
 		for (i = 0; i < rgd->rt_length; i++) {
 			log_debug("rgrp block %"PRIu64" (0x%"PRIx64") is now marked as 'rgrp data'\n",
 				   rgd->rt_addr + i, rgd->rt_addr + i);

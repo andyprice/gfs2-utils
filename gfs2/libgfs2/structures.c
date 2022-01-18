@@ -371,7 +371,7 @@ struct lgfs2_inode *lgfs2_build_rindex(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip;
 	struct osi_node *n, *next = NULL;
-	struct rgrp_tree *rl;
+	struct lgfs2_rgrp_tree *rl;
 	char buf[sizeof(struct gfs2_rindex)];
 	int count;
 
@@ -385,7 +385,7 @@ struct lgfs2_inode *lgfs2_build_rindex(struct lgfs2_sbd *sdp)
 
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
-		rl = (struct rgrp_tree *)n;
+		rl = (struct lgfs2_rgrp_tree *)n;
 
 		lgfs2_rindex_out(rl, buf);
 
@@ -497,7 +497,7 @@ int lgfs2_check_meta(const char *buf, int type)
 	return 0;
 }
 
-unsigned lgfs2_bm_scan(struct rgrp_tree *rgd, unsigned idx, uint64_t *buf, uint8_t state)
+unsigned lgfs2_bm_scan(struct lgfs2_rgrp_tree *rgd, unsigned idx, uint64_t *buf, uint8_t state)
 {
 	struct lgfs2_bitmap *bi = &rgd->bits[idx];
 	unsigned n = 0;

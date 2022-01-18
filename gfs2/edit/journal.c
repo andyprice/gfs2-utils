@@ -174,7 +174,7 @@ static int fsck_readi(struct lgfs2_inode *ip, void *rbuf, uint64_t roffset,
  * references to a given traced block, or its rgrp bitmap block.
  */
 static int ld_is_pertinent(const __be64 *b, const char *end, uint64_t tblk,
-			   struct rgrp_tree *rgd, uint64_t bitblk)
+			   struct lgfs2_rgrp_tree *rgd, uint64_t bitblk)
 {
 	const __be64 *blk = b;
 
@@ -197,7 +197,7 @@ static int ld_is_pertinent(const __be64 *b, const char *end, uint64_t tblk,
  */
 static int print_ld_blks(const __be64 *b, const char *end, int start_line,
 			 uint64_t tblk, uint64_t *tblk_off, uint64_t bitblk,
-			 struct rgrp_tree *rgd, uint64_t abs_block, int prnt,
+			 struct lgfs2_rgrp_tree *rgd, uint64_t abs_block, int prnt,
 			 uint64_t *bblk_off, int is_meta_ld)
 {
 	int bcount = 0, found_tblk = 0, found_bblk = 0;
@@ -352,7 +352,7 @@ static uint64_t find_wrap_pt(struct lgfs2_inode *ji, char *jbuf, uint64_t jblock
 static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 		      uint64_t jb, char *buf, int tblk,
 		      uint64_t *tblk_off, uint64_t bitblk,
-		      struct rgrp_tree *rgd, int *prnt, uint64_t *bblk_off)
+		      struct lgfs2_rgrp_tree *rgd, int *prnt, uint64_t *bblk_off)
 {
 	__be64 *b;
 	struct gfs2_log_descriptor *ld = (void *)buf;
@@ -511,7 +511,7 @@ void dump_journal(const char *journal, uint64_t tblk)
 	uint64_t highest_seq = 0;
 	char *jbuf = NULL;
 	char *buf = NULL;
-	struct rgrp_tree *rgd = NULL;
+	struct lgfs2_rgrp_tree *rgd = NULL;
 	uint64_t abs_ld = 0;
 
 	mtype = lgfs2_find_mtype(GFS2_METATYPE_LH, sbd.gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2);

@@ -132,7 +132,7 @@ static void empty_super_block(struct lgfs2_sbd *sdp)
 static int set_block_ranges(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 	uint64_t rmax = 0;
 	uint64_t rmin = 0;
 	ssize_t count;
@@ -142,7 +142,7 @@ static int set_block_ranges(struct lgfs2_sbd *sdp)
 
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
-		rgd = (struct rgrp_tree *)n;
+		rgd = (struct lgfs2_rgrp_tree *)n;
 		if (rgd->rt_data0 + rgd->rt_data &&
 		    rgd->rt_data0 + rgd->rt_data - 1 > rmax)
 			rmax = rgd->rt_data0 + rgd->rt_data - 1;
@@ -185,7 +185,7 @@ static int set_block_ranges(struct lgfs2_sbd *sdp)
 /**
  * check_rgrp_integrity - verify a rgrp free block count against the bitmap
  */
-static void check_rgrp_integrity(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
+static void check_rgrp_integrity(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
 				 int *fixit, int *this_rg_fixed,
 				 int *this_rg_bad, int *this_rg_cleaned)
 {
@@ -397,13 +397,13 @@ static void check_rgrps_integrity(struct lgfs2_sbd *sdp)
 	struct osi_node *n, *next = NULL;
 	int rgs_good = 0, rgs_bad = 0, rgs_fixed = 0, rgs_cleaned = 0;
 	int was_bad = 0, was_fixed = 0, was_cleaned = 0;
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 	int reclaim_unlinked = 0;
 
 	log_info( _("Checking the integrity of all resource groups.\n"));
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
-		rgd = (struct rgrp_tree *)n;
+		rgd = (struct lgfs2_rgrp_tree *)n;
 		if (fsck_abort)
 			return;
 		check_rgrp_integrity(sdp, rgd, &reclaim_unlinked,
@@ -628,7 +628,7 @@ static void lookup_per_node(struct lgfs2_sbd *sdp, int allow_rebuild)
 static unsigned gfs2_rgrp_reada(struct lgfs2_sbd *sdp, unsigned cur_window,
 				struct osi_node *n)
 {
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 	unsigned i;
 	off_t start, len;
 
@@ -637,7 +637,7 @@ static unsigned gfs2_rgrp_reada(struct lgfs2_sbd *sdp, unsigned cur_window,
 			return i;
 		if (i < cur_window)
 			continue;
-		rgd = (struct rgrp_tree *)n;
+		rgd = (struct lgfs2_rgrp_tree *)n;
 		start = rgd->rt_addr * sdp->sd_bsize;
 		len = rgd->rt_length * sdp->sd_bsize;
 		posix_fadvise(sdp->device_fd, start, len, POSIX_FADV_WILLNEED);
@@ -658,7 +658,7 @@ static unsigned gfs2_rgrp_reada(struct lgfs2_sbd *sdp, unsigned cur_window,
  */
 static int read_rgrps(struct lgfs2_sbd *sdp, uint64_t expected)
 {
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 	uint64_t count = 0;
 	uint64_t errblock = 0;
 	uint64_t rmax = 0;
@@ -670,7 +670,7 @@ static int read_rgrps(struct lgfs2_sbd *sdp, uint64_t expected)
 
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
-		rgd = (struct rgrp_tree *)n;
+		rgd = (struct lgfs2_rgrp_tree *)n;
 		/* Readahead resource group headers */
 		if (ra_window < RA_WINDOW/2)
 			ra_window = gfs2_rgrp_reada(sdp, ra_window, n);

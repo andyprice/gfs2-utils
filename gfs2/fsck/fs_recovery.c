@@ -98,7 +98,7 @@ static void revoke_clean(struct lgfs2_sbd *sdp)
 	}
 }
 
-static void refresh_rgrp(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
+static void refresh_rgrp(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
 			 struct lgfs2_buffer_head *bh, uint64_t blkno)
 {
 	int i;
@@ -130,7 +130,7 @@ static int buf_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 	struct lgfs2_buffer_head *bh_log, *bh_ip;
 	uint64_t blkno;
 	int error = 0;
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 
 	if (pass != 1 || be32_to_cpu(ld->ld_type) != GFS2_LOG_DESC_METADATA)
 		return 0;

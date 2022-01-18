@@ -119,7 +119,7 @@ int print_level = MSG_NOTICE;
 /*                   Fixes all unallocated metadata bitmap states (which are */
 /*                   valid in gfs1 but invalid in gfs2).                     */
 /* ------------------------------------------------------------------------- */
-static void convert_bitmaps(struct lgfs2_sbd *sdp, struct rgrp_tree *rg)
+static void convert_bitmaps(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rg)
 {
 	uint32_t blk;
 	int x, y;
@@ -148,7 +148,7 @@ static void convert_bitmaps(struct lgfs2_sbd *sdp, struct rgrp_tree *rg)
 /* ------------------------------------------------------------------------- */
 static int convert_rgs(struct lgfs2_sbd *sbp)
 {
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 	struct osi_node *n, *next = NULL;
 	int rgs = 0;
 
@@ -157,7 +157,7 @@ static int convert_rgs(struct lgfs2_sbd *sbp)
 	/* --------------------------------- */
 	for (n = osi_first(&sbp->rgtree); n; n = next) {
 		next = osi_next(n);
-		rgd = (struct rgrp_tree *)n;
+		rgd = (struct lgfs2_rgrp_tree *)n;
 
 		rgd->rt_free = rgd->rt_free + rgd->rt_freemeta;
 		/* Zero it out so we don't add it again in case something breaks */
@@ -949,7 +949,7 @@ err_freei:
 	return -1;
 } /* adjust_inode */
 
-static int next_rg_meta(struct rgrp_tree *rgd, uint64_t *block, int first)
+static int next_rg_meta(struct lgfs2_rgrp_tree *rgd, uint64_t *block, int first)
 {
 	struct lgfs2_bitmap *bits = NULL;
 	uint32_t length = rgd->rt_length;
@@ -981,7 +981,7 @@ static int next_rg_meta(struct rgrp_tree *rgd, uint64_t *block, int first)
 	return 0;
 }
 
-static int next_rg_metatype(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
+static int next_rg_metatype(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
                             uint64_t *block, uint32_t type, int first)
 {
 	struct lgfs2_buffer_head *bh = NULL;
@@ -1008,7 +1008,7 @@ static int next_rg_metatype(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
 /* ------------------------------------------------------------------------- */
 static int inode_renumber(struct lgfs2_sbd *sbp, uint64_t root_inode_addr, osi_list_t *cdpn_to_fix)
 {
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 	struct osi_node *n, *next = NULL;
 	uint64_t block = 0;
 	struct lgfs2_buffer_head *bh;
@@ -1026,7 +1026,7 @@ static int inode_renumber(struct lgfs2_sbd *sbp, uint64_t root_inode_addr, osi_l
 	/* ---------------------------------------------------------------- */
 	for (n = osi_first(&sbp->rgtree); n; n = next) {
 		next = osi_next(n);
-		rgd = (struct rgrp_tree *)n;
+		rgd = (struct lgfs2_rgrp_tree *)n;
 		rgs_processed++;
 		first = 1;
 		while (1) {    /* for all inodes in the resource group */
@@ -1519,7 +1519,7 @@ static int sanity_check(struct lgfs2_sbd *sdp)
  */
 static int gfs1_ri_update(struct lgfs2_sbd *sdp, int *rgcount, int quiet)
 {
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 	uint64_t count1 = 0, count2 = 0;
 	uint64_t errblock = 0;
 	uint64_t rmax = 0;
@@ -1530,7 +1530,7 @@ static int gfs1_ri_update(struct lgfs2_sbd *sdp, int *rgcount, int quiet)
 		goto fail;
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
-		rgd = (struct rgrp_tree *)n;
+		rgd = (struct lgfs2_rgrp_tree *)n;
 		/* Read resource group header */
 		errblock = lgfs2_rgrp_read(sdp, rgd);
 		if (errblock)
@@ -1808,7 +1808,7 @@ static int journ_space_to_rg(struct lgfs2_sbd *sdp)
 {
 	int error = 0;
 	int j;
-	struct rgrp_tree *rgd, *rgdhigh;
+	struct lgfs2_rgrp_tree *rgd, *rgdhigh;
 	struct osi_node *n, *next = NULL;
 	struct gfs2_meta_header mh = {0};
 	uint64_t ri_addr;
@@ -1834,7 +1834,7 @@ static int journ_space_to_rg(struct lgfs2_sbd *sdp)
 		rgdhigh = NULL;
 		for (n = osi_first(&sdp->rgtree); n; n = next) {
 			next = osi_next(n);
-			rgd = (struct rgrp_tree *)n;
+			rgd = (struct lgfs2_rgrp_tree *)n;
 			if (rgd->rt_addr < ji_addr &&
 				((rgdhigh == NULL) ||
 				 (rgd->rt_addr > rgdhigh->rt_addr)))

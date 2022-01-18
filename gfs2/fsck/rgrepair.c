@@ -308,11 +308,11 @@ static uint64_t count_usedspace(struct lgfs2_sbd *sdp, int first,
  * This function finds the distance to the next rgrp for these cases.
  */
 static uint64_t find_next_rgrp_dist(struct lgfs2_sbd *sdp, uint64_t blk,
-				    struct rgrp_tree *prevrgd)
+				    struct lgfs2_rgrp_tree *prevrgd)
 {
 	struct osi_node *n, *next = NULL;
 	uint64_t rgrp_dist = 0, used_blocks, block, next_block, twogigs;
-	struct rgrp_tree *rgd = NULL, *next_rgd;
+	struct lgfs2_rgrp_tree *rgd = NULL, *next_rgd;
 	struct lgfs2_buffer_head *bh;
 	int first, length, b, found;
 	uint64_t mega_in_blocks;
@@ -320,13 +320,13 @@ static uint64_t find_next_rgrp_dist(struct lgfs2_sbd *sdp, uint64_t blk,
 
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
-		rgd = (struct rgrp_tree *)n;
+		rgd = (struct lgfs2_rgrp_tree *)n;
 		if (rgd->rt_addr == blk)
 			break;
 	}
 	if (rgd && n && osi_next(n) && rgd->rt_addr == blk) {
 		n = osi_next(n);
-		next_rgd = (struct rgrp_tree *)n;
+		next_rgd = (struct lgfs2_rgrp_tree *)n;
 		rgrp_dist = next_rgd->rt_addr - rgd->rt_addr;
 		return rgrp_dist;
 	}
@@ -420,7 +420,7 @@ static uint64_t find_next_rgrp_dist(struct lgfs2_sbd *sdp, uint64_t blk,
  * boundaries, and also corrupt.  So we have to go out searching for one.
  */
 static uint64_t hunt_and_peck(struct lgfs2_sbd *sdp, uint64_t blk,
-			      struct rgrp_tree *prevrgd, uint64_t last_bump)
+			      struct lgfs2_rgrp_tree *prevrgd, uint64_t last_bump)
 {
 	uint64_t rgrp_dist = 0, block, twogigs, last_block, last_meg;
 	struct lgfs2_buffer_head *bh;
@@ -518,7 +518,7 @@ static int rindex_rebuild(struct lgfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 	int rg_dcnt[MAX_RGSEGMENTS] = {0, };
 	uint64_t blk;
 	uint64_t fwd_block, block_bump;
-	struct rgrp_tree *calc_rgd, *prev_rgd;
+	struct lgfs2_rgrp_tree *calc_rgd, *prev_rgd;
 	int number_of_rgs, rgi, segment_rgs;
 	int rg_was_fnd = 0, corrupt_rgs = 0;
 	int error = -1, j, i;
@@ -671,7 +671,7 @@ static int rindex_rebuild(struct lgfs2_sbd *sdp, int *num_rgs, int gfs_grow)
         log_debug( _("rindex rebuilt as follows:\n"));
 	for (n = osi_first(&rgcalc), rgi = 0; n; n = next, rgi++) {
 		next = osi_next(n);
-		calc_rgd = (struct rgrp_tree *)n;
+		calc_rgd = (struct lgfs2_rgrp_tree *)n;
                 log_debug("%d: 0x%"PRIx64"/%"PRIx32"/0x%"PRIx64"/0x%"PRIx32"/0x%"PRIx32"\n",
 		          rgi + 1, calc_rgd->rt_addr, calc_rgd->rt_length,
 			  calc_rgd->rt_data0, calc_rgd->rt_data,
@@ -733,7 +733,7 @@ static uint64_t how_many_rgrps(struct lgfs2_sbd *sdp, struct lgfs2_device *dev)
 static struct osi_root compute_rgrp_layout(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_device *dev;
-	struct rgrp_tree *rl, *rlast = NULL;
+	struct lgfs2_rgrp_tree *rl, *rlast = NULL;
 	unsigned int rgrp = 0, nrgrp, rglength;
 	struct osi_root rgtree = {NULL};
 	uint64_t rgaddr;
@@ -767,12 +767,12 @@ static struct osi_root compute_rgrp_layout(struct lgfs2_sbd *sdp)
 static int calc_rgrps(struct lgfs2_sbd *sdp)
 {
 	struct osi_node *n, *next = NULL;
-	struct rgrp_tree *rl;
+	struct lgfs2_rgrp_tree *rl;
 	uint32_t rgblocks, bitblocks;
 
 	for (n = osi_first(&rgcalc); n; n = next) {
 		next = osi_next(n);
-		rl = (struct rgrp_tree *)n;
+		rl = (struct lgfs2_rgrp_tree *)n;
 
 		bitblocks = lgfs2_rgblocks2bitblocks(sdp->sd_bsize, rl->rt_skip, &rgblocks);
 
@@ -845,7 +845,7 @@ static int gfs2_rindex_calculate(struct lgfs2_sbd *sdp, int *num_rgs)
  * rewrite_rg_block - rewrite ("fix") a buffer with rg or bitmap data
  * returns: 0 if the rg was repaired, otherwise 1
  */
-static int rewrite_rg_block(struct lgfs2_sbd *sdp, struct rgrp_tree *rg,
+static int rewrite_rg_block(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rg,
 			    uint64_t errblock)
 {
 	int x = errblock - rg->rt_addr;
@@ -905,12 +905,12 @@ static int rewrite_rg_block(struct lgfs2_sbd *sdp, struct rgrp_tree *rg,
 static int expect_rindex_sanity(struct lgfs2_sbd *sdp, int *num_rgs)
 {
 	struct osi_node *n, *next = NULL;
-	struct rgrp_tree *rgd, *exp;
+	struct lgfs2_rgrp_tree *rgd, *exp;
 
 	*num_rgs = sdp->md.riinode->i_size / sizeof(struct gfs2_rindex) ;
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
-		rgd = (struct rgrp_tree *)n;
+		rgd = (struct lgfs2_rgrp_tree *)n;
 		exp = lgfs2_rgrp_insert(&rgcalc, rgd->rt_addr);
 		if (exp == NULL) {
 			fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
@@ -1054,13 +1054,13 @@ int rindex_repair(struct lgfs2_sbd *sdp, int trust_lvl, int *ok)
 	discrepancies = 0;
 	for (rg = 0, n = osi_first(&sdp->rgtree), e = osi_first(&rgcalc);
 	     n && e && !fsck_abort && rg < calc_rg_count; rg++) {
-		struct rgrp_tree *expected, *actual;
+		struct lgfs2_rgrp_tree *expected, *actual;
 
 		next = osi_next(n);
 		enext = osi_next(e);
 
-		expected = (struct rgrp_tree *)e;
-		actual = (struct rgrp_tree *)n;
+		expected = (struct lgfs2_rgrp_tree *)e;
+		actual = (struct lgfs2_rgrp_tree *)n;
 		if (actual->rt_addr < expected->rt_addr) {
 			n = next;
 			discrepancies++;
@@ -1108,13 +1108,13 @@ int rindex_repair(struct lgfs2_sbd *sdp, int trust_lvl, int *ok)
 	/* ------------------------------------------------------------- */
 	for (rg = 0, n = osi_first(&sdp->rgtree), e = osi_first(&rgcalc);
 	     e && !fsck_abort && rg < calc_rg_count; rg++) {
-		struct rgrp_tree *expected, *actual;
+		struct lgfs2_rgrp_tree *expected, *actual;
 
 		if (n)
 			next = osi_next(n);
 		enext = osi_next(e);
-		expected = (struct rgrp_tree *)e;
-		actual = (struct rgrp_tree *)n;
+		expected = (struct lgfs2_rgrp_tree *)e;
+		actual = (struct lgfs2_rgrp_tree *)n;
 
 		/* If the next "actual" rgrp in memory is too far away,
 		   fill in a new one with the expected value. -or-
@@ -1176,7 +1176,7 @@ int rindex_repair(struct lgfs2_sbd *sdp, int trust_lvl, int *ok)
 	/* ------------------------------------------------------------- */
 	for (rg = 0, n = osi_first(&sdp->rgtree); n && !fsck_abort &&
 		     rg < calc_rg_count; n = next, rg++) {
-		struct rgrp_tree *rgd;
+		struct lgfs2_rgrp_tree *rgd;
 		uint64_t prev_err = 0, errblock;
 		int i;
 
@@ -1185,7 +1185,7 @@ int rindex_repair(struct lgfs2_sbd *sdp, int trust_lvl, int *ok)
 		/* we encounter that has errors, repair it and try again.    */
 		i = 0;
 		do {
-			rgd = (struct rgrp_tree *)n;
+			rgd = (struct lgfs2_rgrp_tree *)n;
 			errblock = lgfs2_rgrp_read(sdp, rgd);
 			if (errblock) {
 				if (errblock == prev_err)

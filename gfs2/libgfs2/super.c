@@ -146,7 +146,7 @@ int lgfs2_read_sb(struct lgfs2_sbd *sdp)
  *
  * Returns: 1 if the rgd seems relatively sane
  */
-static int rgd_seems_ok(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd)
+static int rgd_seems_ok(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd)
 {
 	uint32_t most_bitmaps_possible;
 
@@ -179,7 +179,7 @@ static int rgd_seems_ok(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd)
  * If not, we count it as not sane, and therefore, the whole rindex is not to
  * be trusted by fsck.gfs2.
  */
-static int good_on_disk(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd)
+static int good_on_disk(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd)
 {
 	struct lgfs2_buffer_head *bh;
 	int is_rgrp;
@@ -202,7 +202,7 @@ int lgfs2_rindex_read(struct lgfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 {
 	unsigned int rg;
 	int error;
-	struct rgrp_tree *rgd = NULL, *prev_rgd = NULL;
+	struct lgfs2_rgrp_tree *rgd = NULL, *prev_rgd = NULL;
 	uint64_t prev_length = 0;
 
 	*ok = 1;

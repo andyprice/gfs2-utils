@@ -66,7 +66,7 @@ static inline void link1_destroy(struct gfs2_bmap *bmap)
 
 static inline int bitmap_type(struct lgfs2_sbd *sdp, uint64_t bblock)
 {
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 
 	rgd = lgfs2_blk2rgrpd(sdp, bblock);
 	return lgfs2_get_bitmap(sdp, bblock, rgd);

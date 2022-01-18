@@ -22,7 +22,7 @@ extern int check_leaf(struct lgfs2_inode *ip, int lindex,
 extern int _fsck_bitmap_set(struct lgfs2_inode *ip, uint64_t bblock,
 			    const char *btype, int mark, int error_on_dinode,
 			    const char *caller, int line);
-extern int check_n_fix_bitmap(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd,
+extern int check_n_fix_bitmap(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
 			      uint64_t blk, int error_on_dinode,
 			      int new_state);
 extern struct duptree *dupfind(uint64_t block);

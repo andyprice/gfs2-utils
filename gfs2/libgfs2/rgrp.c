@@ -35,7 +35,7 @@ static void compute_bitmaps(lgfs2_rgrp_t rg, const unsigned bsize)
  * rgd: The resource group descriptor
  * Returns: 0 on success, -1 on error
  */
-int lgfs2_compute_bitstructs(const uint32_t bsize, struct rgrp_tree *rgd)
+int lgfs2_compute_bitstructs(const uint32_t bsize, struct lgfs2_rgrp_tree *rgd)
 {
 	uint32_t length = rgd->rt_length;
 	uint32_t bytes_left;
@@ -86,14 +86,14 @@ errbits:
  *
  * Returns: Ths resource group, or NULL if not found
  */
-struct rgrp_tree *lgfs2_blk2rgrpd(struct lgfs2_sbd *sdp, uint64_t blk)
+struct lgfs2_rgrp_tree *lgfs2_blk2rgrpd(struct lgfs2_sbd *sdp, uint64_t blk)
 {
-	struct rgrp_tree *rgd = (struct rgrp_tree *)sdp->rgtree.osi_node;
+	struct lgfs2_rgrp_tree *rgd = (struct lgfs2_rgrp_tree *)sdp->rgtree.osi_node;
 	while (rgd) {
 		if (blk < rgd->rt_addr)
-			rgd = (struct rgrp_tree *)rgd->node.osi_left;
+			rgd = (struct lgfs2_rgrp_tree *)rgd->node.osi_left;
 		else if (blk >= rgd->rt_data0 + rgd->rt_data)
-			rgd = (struct rgrp_tree *)rgd->node.osi_right;
+			rgd = (struct lgfs2_rgrp_tree *)rgd->node.osi_right;
 		else
 			return rgd;
 	}
@@ -187,7 +187,7 @@ void lgfs2_rgrp_crc_set(char *buf)
  * @rgd - resource group structure
  * returns: 0 if no error, otherwise the block number that failed
  */
-uint64_t lgfs2_rgrp_read(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd)
+uint64_t lgfs2_rgrp_read(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd)
 {
 	unsigned length = rgd->rt_length * sdp->sd_bsize;
 	off_t offset = rgd->rt_addr * sdp->sd_bsize;
@@ -227,7 +227,7 @@ uint64_t lgfs2_rgrp_read(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd)
 	return 0;
 }
 
-void lgfs2_rgrp_relse(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd)
+void lgfs2_rgrp_relse(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd)
 {
 	if (rgd->bits == NULL)
 		return;
@@ -250,14 +250,14 @@ void lgfs2_rgrp_relse(struct lgfs2_sbd *sdp, struct rgrp_tree *rgd)
 		rgd->bits[i].bi_data = NULL;
 }
 
-struct rgrp_tree *lgfs2_rgrp_insert(struct osi_root *rgtree, uint64_t rgblock)
+struct lgfs2_rgrp_tree *lgfs2_rgrp_insert(struct osi_root *rgtree, uint64_t rgblock)
 {
 	struct osi_node **newn = &rgtree->osi_node, *parent = NULL;
-	struct rgrp_tree *data;
+	struct lgfs2_rgrp_tree *data;
 
 	/* Figure out where to put new node */
 	while (*newn) {
-		struct rgrp_tree *cur = (struct rgrp_tree *)*newn;
+		struct lgfs2_rgrp_tree *cur = (struct lgfs2_rgrp_tree *)*newn;
 
 		parent = *newn;
 		if (rgblock < cur->rt_addr)
@@ -268,7 +268,7 @@ struct rgrp_tree *lgfs2_rgrp_insert(struct osi_root *rgtree, uint64_t rgblock)
 			return cur;
 	}
 
-	data = calloc(1, sizeof(struct rgrp_tree));
+	data = calloc(1, sizeof(struct lgfs2_rgrp_tree));
 	if (!data)
 		return NULL;
 	/* Add new node and rebalance tree. */
@@ -281,13 +281,13 @@ struct rgrp_tree *lgfs2_rgrp_insert(struct osi_root *rgtree, uint64_t rgblock)
 
 void lgfs2_rgrp_free(struct lgfs2_sbd *sdp, struct osi_root *rgrp_tree)
 {
-	struct rgrp_tree *rgd;
+	struct lgfs2_rgrp_tree *rgd;
 	struct osi_node *n;
 
 	if (OSI_EMPTY_ROOT(rgrp_tree))
 		return;
 	while ((n = osi_first(rgrp_tree))) {
-		rgd = (struct rgrp_tree *)n;
+		rgd = (struct lgfs2_rgrp_tree *)n;
 
 		lgfs2_rgrp_relse(sdp, rgd);
 		free(rgd->bits);
@@ -504,7 +504,7 @@ void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs)
 	lgfs2_rgrp_t rg;
 	struct osi_root *tree = &(*rgs)->root;
 
-	while ((rg = (struct rgrp_tree *)osi_first(tree))) {
+	while ((rg = (struct lgfs2_rgrp_tree *)osi_first(tree))) {
 		int i;
 		free(rg->bits[0].bi_data);
 		for (i = 0; i < rg->rt_length; i++) {
