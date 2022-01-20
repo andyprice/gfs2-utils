@@ -31,47 +31,13 @@
 
 static struct special_blocks gfs1_rindex_blks;
 static struct gfs2_bmap *bl = NULL;
+static struct metawalk_fxns pass1_fxns;
 
 struct block_count {
 	uint64_t indir_count;
 	uint64_t data_count;
 	uint64_t ea_count;
 };
-
-static int p1check_leaf(struct lgfs2_inode *ip, uint64_t block, void *private);
-static int pass1_check_metalist(struct iptr iptr, struct lgfs2_buffer_head **bh, int h,
-                                int *is_valid, int *was_duplicate, void *private);
-static int undo_check_metalist(struct lgfs2_inode *ip, uint64_t block,
-			       int h, void *private);
-static int pass1_check_data(struct lgfs2_inode *ip, uint64_t metablock,
-		      uint64_t block, void *private,
-		      struct lgfs2_buffer_head *bh, __be64 *ptr);
-static int undo_check_data(struct lgfs2_inode *ip, uint64_t block,
-			   void *private);
-static int check_eattr_indir(struct lgfs2_inode *ip, uint64_t indirect,
-			     uint64_t parent, struct lgfs2_buffer_head **bh,
-			     void *private);
-static int check_eattr_leaf(struct lgfs2_inode *ip, uint64_t block,
-			    uint64_t parent, struct lgfs2_buffer_head **bh,
-			    void *private);
-static int check_eattr_entries(struct lgfs2_inode *ip,
-			       struct lgfs2_buffer_head *leaf_bh,
-			       struct gfs2_ea_header *ea_hdr,
-			       struct gfs2_ea_header *ea_hdr_prev,
-			       void *private);
-static int check_extended_leaf_eattr(struct lgfs2_inode *ip, int i,
-				     __be64 *data_ptr,
-				     struct lgfs2_buffer_head *leaf_bh,
-				     uint32_t tot_ealen,
-				     struct gfs2_ea_header *ea_hdr,
-				     struct gfs2_ea_header *ea_hdr_prev,
-				     void *private);
-static int finish_eattr_indir(struct lgfs2_inode *ip, int leaf_pointers,
-			      int leaf_pointer_errors, void *private);
-static int handle_ip(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip);
-static int delete_block(struct lgfs2_inode *ip, uint64_t block,
-			struct lgfs2_buffer_head **bh, const char *btype,
-			void *private);
 
 static int gfs2_blockmap_set(struct gfs2_bmap *bmap, uint64_t bblock, int mark)
 {
@@ -112,9 +78,9 @@ static int _fsck_blockmap_set(struct lgfs2_inode *ip, uint64_t bblock,
 	_fsck_blockmap_set(ip, b, bt, m, 1, __FUNCTION__, __LINE__)
 
 /**
- * delete_block - delete a block associated with an inode
+ * p1_delete_block - delete a block associated with an inode
  */
-static int delete_block(struct lgfs2_inode *ip, uint64_t block,
+static int p1_delete_block(struct lgfs2_inode *ip, uint64_t block,
 			struct lgfs2_buffer_head **bh, const char *btype,
 			void *private)
 {
@@ -127,7 +93,7 @@ static int delete_block(struct lgfs2_inode *ip, uint64_t block,
 
 /* This is a pass1-specific leaf repair. Since we are not allowed to do
  * block allocations, we do what we can. */
-static int pass1_repair_leaf(struct lgfs2_inode *ip, uint64_t *leaf_no,
+static int p1_repair_leaf(struct lgfs2_inode *ip, uint64_t *leaf_no,
 			     int lindex, int ref_count, const char *msg)
 {
 	uint64_t *cpyptr;
@@ -163,23 +129,6 @@ out:
 	*leaf_no = 0;
 	return 0;
 }
-
-static struct metawalk_fxns pass1_fxns = {
-	.private = NULL,
-	.check_leaf = p1check_leaf,
-	.check_metalist = pass1_check_metalist,
-	.check_data = pass1_check_data,
-	.check_eattr_indir = check_eattr_indir,
-	.check_eattr_leaf = check_eattr_leaf,
-	.check_dentry = NULL,
-	.check_eattr_entry = check_eattr_entries,
-	.check_eattr_extentry = check_extended_leaf_eattr,
-	.big_file_msg = big_file_comfort,
-	.repair_leaf = pass1_repair_leaf,
-	.undo_check_meta = undo_check_metalist,
-	.undo_check_data = undo_check_data,
-	.delete_block = delete_block,
-};
 
 /*
  * resuscitate_metalist - make sure a system directory entry's metadata blocks
@@ -269,10 +218,10 @@ static struct metawalk_fxns sysdir_fxns = {
 	.private = NULL,
 	.check_metalist = resuscitate_metalist,
 	.check_dentry = resuscitate_dentry,
-	.delete_block = delete_block,
+	.delete_block = p1_delete_block,
 };
 
-static int p1check_leaf(struct lgfs2_inode *ip, uint64_t block, void *private)
+static int p1_check_leaf(struct lgfs2_inode *ip, uint64_t block, void *private)
 {
 	struct block_count *bc = (struct block_count *) private;
 	int q;
@@ -301,7 +250,7 @@ static int p1check_leaf(struct lgfs2_inode *ip, uint64_t block, void *private)
 	return 0;
 }
 
-static int pass1_check_metalist(struct iptr iptr, struct lgfs2_buffer_head **bh, int h,
+static int p1_check_metalist(struct iptr iptr, struct lgfs2_buffer_head **bh, int h,
                                 int *is_valid, int *was_duplicate, void *private)
 {
 	struct block_count *bc = (struct block_count *)private;
@@ -441,13 +390,13 @@ static int undo_reference(struct lgfs2_inode *ip, uint64_t block, int meta,
 	return 0;
 }
 
-static int undo_check_metalist(struct lgfs2_inode *ip, uint64_t block,
+static int p1_undo_check_metalist(struct lgfs2_inode *ip, uint64_t block,
 			       int h, void *private)
 {
 	return undo_reference(ip, block, 1, private);
 }
 
-static int undo_check_data(struct lgfs2_inode *ip, uint64_t block,
+static int p1_undo_check_data(struct lgfs2_inode *ip, uint64_t block,
 			   void *private)
 {
 	return undo_reference(ip, block, 0, private);
@@ -495,7 +444,7 @@ out:
 	return error;
 }
 
-static int pass1_check_data(struct lgfs2_inode *ip, uint64_t metablock,
+static int p1_check_data(struct lgfs2_inode *ip, uint64_t metablock,
 		      uint64_t block, void *private,
 		      struct lgfs2_buffer_head *bbh, __be64 *ptr)
 {
@@ -664,7 +613,7 @@ static void complain_eas(struct lgfs2_inode *ip, uint64_t block,
 	log_err(_(" at block #%"PRIu64" (0x%"PRIx64").\n"), block, block);
 }
 
-static int check_eattr_indir(struct lgfs2_inode *ip, uint64_t indirect,
+static int p1_check_eattr_indir(struct lgfs2_inode *ip, uint64_t indirect,
 			     uint64_t parent, struct lgfs2_buffer_head **bh,
 			     void *private)
 {
@@ -721,7 +670,7 @@ static int check_eattr_indir(struct lgfs2_inode *ip, uint64_t indirect,
 	return ret;
 }
 
-static int finish_eattr_indir(struct lgfs2_inode *ip, int leaf_pointers,
+static int p1_finish_eattr_indir(struct lgfs2_inode *ip, int leaf_pointers,
 			      int leaf_pointer_errors, void *private)
 {
 	struct block_count *bc = (struct block_count *) private;
@@ -802,7 +751,7 @@ static int check_ealeaf_block(struct lgfs2_inode *ip, uint64_t block, int btype,
 }
 
 /**
- * check_extended_leaf_eattr
+ * p1_check_extended_leaf_eattr
  * @ip
  * @el_blk: block number of the extended leaf
  *
@@ -812,7 +761,7 @@ static int check_ealeaf_block(struct lgfs2_inode *ip, uint64_t block, int btype,
  *
  * Returns: 0 if correct[able], -1 if removal is needed
  */
-static int check_extended_leaf_eattr(struct lgfs2_inode *ip, int i,
+static int p1_check_extended_leaf_eattr(struct lgfs2_inode *ip, int i,
 				     __be64 *data_ptr,
 				     struct lgfs2_buffer_head *leaf_bh,
 				     uint32_t tot_ealen,
@@ -863,7 +812,7 @@ static int check_extended_leaf_eattr(struct lgfs2_inode *ip, int i,
 	return error;
 }
 
-static int check_eattr_leaf(struct lgfs2_inode *ip, uint64_t block,
+static int p1_check_eattr_leaf(struct lgfs2_inode *ip, uint64_t block,
 			    uint64_t parent, struct lgfs2_buffer_head **bh,
 			    void *private)
 {
@@ -920,7 +869,7 @@ static int eatype_max(unsigned fs_format)
 	return max;
 }
 
-static int check_eattr_entries(struct lgfs2_inode *ip,
+static int p1_check_eattr_entries(struct lgfs2_inode *ip,
 			       struct lgfs2_buffer_head *leaf_bh,
 			       struct gfs2_ea_header *ea_hdr,
 			       struct gfs2_ea_header *ea_hdr_prev,
@@ -1088,15 +1037,15 @@ static struct metawalk_fxns rangecheck_fxns = {
         .check_leaf = rangecheck_leaf,
         .check_eattr_indir = rangecheck_eattr_indir,
         .check_eattr_leaf = rangecheck_eattr_leaf,
-	.delete_block = delete_block,
+	.delete_block = p1_delete_block,
 };
 
 static struct metawalk_fxns eattr_undo_fxns = {
 	.private = NULL,
 	.check_eattr_indir = undo_eattr_indir_or_leaf,
 	.check_eattr_leaf = undo_eattr_indir_or_leaf,
-	.finish_eattr_indir = finish_eattr_indir,
-	.delete_block = delete_block,
+	.finish_eattr_indir = p1_finish_eattr_indir,
+	.delete_block = p1_delete_block,
 };
 /* set_ip_blockmap - set the blockmap for a dinode
  *
@@ -1217,7 +1166,7 @@ static struct metawalk_fxns alloc_fxns = {
 	.check_eattr_entry = NULL,
 	.check_eattr_extentry = NULL,
 	.finish_eattr_indir = NULL,
-	.delete_block = delete_block,
+	.delete_block = p1_delete_block,
 };
 
 /*
@@ -2084,3 +2033,20 @@ out:
 		gfs2_bmap_destroy(sdp, bl);
 	return ret;
 }
+
+static struct metawalk_fxns pass1_fxns = {
+	.private = NULL,
+	.check_leaf = p1_check_leaf,
+	.check_metalist = p1_check_metalist,
+	.check_data = p1_check_data,
+	.check_eattr_indir = p1_check_eattr_indir,
+	.check_eattr_leaf = p1_check_eattr_leaf,
+	.check_dentry = NULL,
+	.check_eattr_entry = p1_check_eattr_entries,
+	.check_eattr_extentry = p1_check_extended_leaf_eattr,
+	.big_file_msg = big_file_comfort,
+	.repair_leaf = p1_repair_leaf,
+	.undo_check_meta = p1_undo_check_metalist,
+	.undo_check_data = p1_undo_check_data,
+	.delete_block = p1_delete_block,
+};
