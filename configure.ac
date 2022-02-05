@@ -132,6 +132,12 @@ AC_ARG_WITH([udevdir],
             [], [with_udevdir=\${prefix}/lib/udev])
 AC_SUBST([udevdir], [$with_udevdir])
 
+AC_ARG_WITH([testvol],
+            AS_HELP_STRING([--with-testvol=FILE],
+			   [path to testvol (min 20GB sparse file) [default=${abs_top_builddir}/tests/testvol]]),
+            [], [with_testvol=\${abs_top_builddir}/tests/testvol])
+AC_SUBST([testvol], [$with_testvol])
+
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h libintl.h limits.h locale.h mntent.h stddef.h sys/file.h sys/ioctl.h sys/mount.h sys/time.h sys/vfs.h syslog.h termios.h])
 AC_CHECK_HEADER([linux/fs.h], [], [AC_MSG_ERROR([Unable to find linux/fs.h])])

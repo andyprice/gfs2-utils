@@ -1,4 +1,4 @@
-GFS_TGT="$abs_builddir/testvol"
+GFS_TGT="@testvol@"
 GFS_TGT_SZ=20
 GFS_MKFS="mkfs.gfs2 -O -D"
 
