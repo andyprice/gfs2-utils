@@ -53,6 +53,10 @@ if ! ${MAKE-make} --version /cannot/make/this >/dev/null 2>&1; then
 fi
 
 AC_PROG_CC
+AC_PROG_CC_C99
+if test "x$ac_cv_prog_cc_c99" = "xno"; then
+	AC_MSG_ERROR(["C99 support is required"])
+fi
 AM_PROG_CC_C_O
 AC_PROG_LN_S
 AC_PROG_INSTALL
