@@ -6,3 +6,12 @@ gfs_max_blocks()
 {
 	printf $((GFS_TGT_SZ*1073741824/$1))
 }
+
+gfs_tgt_cleanup()
+{
+	if $1; then
+		rm -f $GFS_TGT
+	fi
+}
+
+trap 'gfs_tgt_cleanup $at_arg_always_clean_testvol' EXIT

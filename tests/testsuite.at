@@ -47,6 +47,9 @@ AT_CHECK([test x"$ENABLE_UNIT_TESTS" = "xyes" || exit 77])])
 # Test suite begins here
 AT_INIT([])
 AT_COLOR_TESTS
+AT_ARG_OPTION([always-clean-testvol],
+              [AS_HELP_STRING([--always-clean-testvol],
+                              [Remove the test file whether tests succeed or not])])
 
 m4_include([mkfs.at])
 m4_include([fsck.at])
