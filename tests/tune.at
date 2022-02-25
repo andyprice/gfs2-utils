@@ -3,6 +3,7 @@ AT_BANNER([tunegfs2 tests])
 
 AT_SETUP([Format version])
 AT_KEYWORDS(tunegfs2 tune)
+GFS_TGT_REGEN
 AT_CHECK([$GFS_MKFS -p lock_nolock -o format=1802 $GFS_TGT], 0, [ignore], [ignore])
 # Exit code 65 == EX_DATAERR (sysexits.h)
 AT_CHECK([tunegfs2 -r 0 $GFS_TGT], 65, [ignore], [ignore])
@@ -26,6 +27,7 @@ AT_CLEANUP
 
 AT_SETUP([Expected output])
 AT_KEYWORDS(tunegfs2 tune)
+GFS_TGT_REGEN
 AT_CHECK([echo -n "File system volume name: cluster:fsname
 File system UUID: e90815fc-087b-460c-b8a5-8edc8a2ed691
 File system magic number: 0x1161970

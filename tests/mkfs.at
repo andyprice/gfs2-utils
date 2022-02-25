@@ -27,12 +27,14 @@ AT_CLEANUP
 
 AT_SETUP([Quota change file size validation])
 AT_KEYWORDS(mkfs.gfs2 mkfs)
+GFS_TGT_REGEN
 AT_CHECK([$GFS_MKFS -p lock_nolock -c 0 $GFS_TGT], 255, [ignore], [ignore])
 AT_CHECK([$GFS_MKFS -p lock_nolock -c 65 $GFS_TGT], 255, [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([Format version validation])
 AT_KEYWORDS(mkfs.gfs2 mkfs)
+GFS_TGT_REGEN
 AT_CHECK([$GFS_MKFS -p lock_nolock -o format=-1 $GFS_TGT], 255, [ignore], [ignore])
 AT_CHECK([$GFS_MKFS -p lock_nolock -o format=0 $GFS_TGT], 255, [ignore], [ignore])
 AT_CHECK([$GFS_MKFS -p lock_nolock -o format=1800 $GFS_TGT], 255, [ignore], [ignore])
@@ -123,6 +125,7 @@ AT_CLEANUP
 
 AT_SETUP([Device i/o limits handling])
 AT_KEYWORDS(mkfs.gfs2 mkfs)
+GFS_TGT_REGEN
 AT_CHECK([$GFS_MKFS -p lock_nolock -o test_topology=0:0:0:0:0 $GFS_TGT], 0, [ignore], [ignore])
 AT_CHECK([$GFS_MKFS -p lock_nolock -o test_topology=0:512:512:512:512 $GFS_TGT], 0, [ignore], [ignore])
 AT_CHECK([gfs2_edit -p sb field sb_bsize $GFS_TGT | tr -d '\n' ], 0, [4096], [ignore])
@@ -134,6 +137,7 @@ AT_CLEANUP
 
 AT_SETUP([Resource group alignment])
 AT_KEYWORDS(mkfs.gfs2 mkfs)
+GFS_TGT_REGEN
 AT_CHECK([$GFS_MKFS -p lock_nolock -o test_topology=0:512:65536:393216:512 $GFS_TGT], 0, [ignore], [ignore])
 # Check rgrp alignment to minimum_io_size: 65536 / 4096 == 16
 AT_CHECK([gfs2_edit -p rindex $GFS_TGT | grep ri_addr | awk '{print $2, $2 % 16; if ($2 % 16 != 0) { exit 1 }}'], 0, [ignore], [ignore])
@@ -143,6 +147,7 @@ AT_CLEANUP
 
 AT_SETUP([Values of rg_skip])
 AT_KEYWORDS(mkfs.gfs2 mkfs)
+GFS_TGT_REGEN
 AT_CHECK([$GFS_MKFS -p lock_nolock -r 2048 $GFS_TGT], 0, [ignore], [ignore])
 AT_CHECK(GFS_RUN_OR_SKIP([rgskipcheck.sh $GFS_TGT]), 0, [ignore], [ignore])
 AT_CHECK([$GFS_MKFS -p lock_nolock -r 1024 $GFS_TGT], 0, [ignore], [ignore])
@@ -159,6 +164,7 @@ AT_CLEANUP
 
 AT_SETUP([Values of rg_data0, rg_data, rg_bitbytes])
 AT_KEYWORDS(mkfs.gfs2 mkfs)
+GFS_TGT_REGEN
 AT_CHECK([$GFS_MKFS -p lock_nolock -r 2048 $GFS_TGT], 0, [ignore], [ignore])
 AT_CHECK(GFS_RUN_OR_SKIP([rgrifieldscheck.sh $GFS_TGT]), 0, [ignore], [ignore])
 AT_CHECK([$GFS_MKFS -p lock_nolock -r 1024 $GFS_TGT], 0, [ignore], [ignore])
