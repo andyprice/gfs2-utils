@@ -1168,7 +1168,7 @@ static int open_dev(struct mkfs_dev *dev, int withprobe)
 	}
 
 	/* Freshen up the cache */
-	posix_fadvise(dev->fd, 0, 0, POSIX_FADV_DONTNEED);
+	(void)posix_fadvise(dev->fd, 0, 0, POSIX_FADV_DONTNEED);
 
 	error = fstat(dev->fd, &dev->stat);
 	if (error < 0) {

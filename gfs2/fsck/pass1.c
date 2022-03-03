@@ -1719,7 +1719,7 @@ static int pass1_process_bitmap(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *r
 		block = ibuf[i];
 
 		if (r++ == rawin) {
-			posix_fadvise(sdp->device_fd, block * sdp->sd_bsize, ralen, POSIX_FADV_WILLNEED);
+			(void)posix_fadvise(sdp->device_fd, block * sdp->sd_bsize, ralen, POSIX_FADV_WILLNEED);
 			r = 0;
 		}
 

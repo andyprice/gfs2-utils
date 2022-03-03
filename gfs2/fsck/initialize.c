@@ -640,7 +640,7 @@ static unsigned gfs2_rgrp_reada(struct lgfs2_sbd *sdp, unsigned cur_window,
 		rgd = (struct lgfs2_rgrp_tree *)n;
 		start = rgd->rt_addr * sdp->sd_bsize;
 		len = rgd->rt_length * sdp->sd_bsize;
-		posix_fadvise(sdp->device_fd, start, len, POSIX_FADV_WILLNEED);
+		(void)posix_fadvise(sdp->device_fd, start, len, POSIX_FADV_WILLNEED);
 	}
 
 	return i;
@@ -666,7 +666,7 @@ static int read_rgrps(struct lgfs2_sbd *sdp, uint64_t expected)
 	unsigned ra_window = 0;
 
 	/* Turn off generic readhead */
-	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_RANDOM);
+	(void)posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_RANDOM);
 
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
@@ -688,11 +688,11 @@ static int read_rgrps(struct lgfs2_sbd *sdp, uint64_t expected)
 	if (count != expected)
 		goto fail;
 
-	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
+	(void)posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 	return 0;
 
  fail:
-	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
+	(void)posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 	lgfs2_rgrp_free(sdp, &sdp->rgtree);
 	return -1;
 }

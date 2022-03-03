@@ -674,7 +674,7 @@ static void dir_leaf_reada(struct lgfs2_inode *ip, __be64 *tbl, unsigned hsize)
 	}
 	qsort(t, n, sizeof(uint64_t), u64cmp);
 	for (i = 0; i < n; i++)
-		posix_fadvise(sdp->device_fd, t[i], sdp->sd_bsize, POSIX_FADV_WILLNEED);
+		(void)posix_fadvise(sdp->device_fd, t[i], sdp->sd_bsize, POSIX_FADV_WILLNEED);
 }
 
 /* Checks exhash directory entries */
@@ -702,7 +702,7 @@ int check_leaf_blks(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 	orig_di_blocks = ip->i_blocks;
 
 	/* Turn off system readahead */
-	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_RANDOM);
+	(void)posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_RANDOM);
 
 	/* Readahead */
 	dir_leaf_reada(ip, tbl, hsize);
@@ -711,7 +711,7 @@ int check_leaf_blks(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 		error = pass->check_hash_tbl(ip, tbl, hsize, pass->private);
 		if (error < 0) {
 			free(tbl);
-			posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
+			(void)posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 			return error;
 		}
 		/* If hash table changes were made, read it in again. */
@@ -746,7 +746,7 @@ int check_leaf_blks(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 		log_err(_("Directory #%"PRIu64" (0x%"PRIx64") has no valid leaf blocks\n"),
 		        ip->i_num.in_addr, ip->i_num.in_addr);
 		free(tbl);
-		posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
+		(void)posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 		return 1;
 	}
 	lindex = 0;
@@ -790,7 +790,7 @@ int check_leaf_blks(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 			struct lgfs2_leaf leaf;
 			if (fsck_abort) {
 				free(tbl);
-				posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
+				(void)posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 				return 0;
 			}
 			error = check_leaf(ip, lindex, pass, &leaf_no, &leaf,
@@ -832,7 +832,7 @@ int check_leaf_blks(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 		lindex += ref_count;
 	} /* for every leaf block */
 	free(tbl);
-	posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
+	(void)posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 	return 0;
 }
 
@@ -1111,7 +1111,7 @@ static void file_ra(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 			block = be64_to_cpu(*p);
 			extlen = block - sblock;
 			if (extlen > 1 && extlen <= maxptrs) {
-				posix_fadvise(sdp->device_fd,
+				(void)posix_fadvise(sdp->device_fd,
 					      sblock * sdp->sd_bsize,
 					      (extlen + 1) * sdp->sd_bsize,
 					      POSIX_FADV_WILLNEED);
@@ -1137,7 +1137,7 @@ static void file_ra(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 		if (extlen && sblock) {
 			if (extlen > 1)
 				extlen--;
-			posix_fadvise(sdp->device_fd, sblock * sdp->sd_bsize,
+			(void)posix_fadvise(sdp->device_fd, sblock * sdp->sd_bsize,
 				      extlen * sdp->sd_bsize,
 				      POSIX_FADV_WILLNEED);
 			extlen = 0;
@@ -1145,7 +1145,7 @@ static void file_ra(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 		}
 	}
 	if (extlen)
-		posix_fadvise(sdp->device_fd, sblock * sdp->sd_bsize,
+		(void)posix_fadvise(sdp->device_fd, sblock * sdp->sd_bsize,
 			      extlen * sdp->sd_bsize, POSIX_FADV_WILLNEED);
 }
 
