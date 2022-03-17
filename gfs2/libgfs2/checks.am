@@ -10,7 +10,7 @@ check_libgfs2_SOURCES = \
 	ondisk.c check_ondisk.c \
 	buf.c \
 	device_geometry.c \
-	fs_ops.c \
+	fs_ops.c check_fs_ops.c \
 	structures.c \
 	fs_bits.c \
 	gfs1.c \
