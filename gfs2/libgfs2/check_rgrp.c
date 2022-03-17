@@ -141,7 +141,7 @@ START_TEST(test_rgrps_write_final)
 	lgfs2_rindex_out(rg, &ri);
 	addr = be64_to_cpu(ri.ri_addr);
 
-	buf = malloc(4096);
+	buf = calloc(1, 4096);
 	ck_assert(buf != NULL);
 	memset(buf, 0xff, sizeof(rgrp));
 	ck_assert(pwrite(sdp->device_fd, buf, 4096, addr * 4096) == 4096);
