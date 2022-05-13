@@ -38,6 +38,7 @@ fsck_gfs2_CPPFLAGS = \
 
 fsck_gfs2_LDADD = \
 	$(top_builddir)/gfs2/libgfs2/libgfs2.la \
+	$(LTLIBINTL) \
 	$(uuid_LIBS)
 
 if HAVE_CHECK

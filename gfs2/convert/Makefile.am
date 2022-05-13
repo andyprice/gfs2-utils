@@ -9,6 +9,7 @@ gfs2_convert_CPPFLAGS = \
 
 gfs2_convert_LDADD = \
 	$(top_builddir)/gfs2/libgfs2/libgfs2.la \
+	$(LTLIBINTL) \
 	$(uuid_LIBS)
 
 if HAVE_CHECK

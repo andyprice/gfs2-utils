@@ -15,6 +15,7 @@ tunegfs2_CFLAGS = \
 	$(uuid_CFLAGS)
 tunegfs2_LDADD = \
 	$(top_builddir)/gfs2/libgfs2/libgfs2.la \
+	$(LTLIBINTL) \
 	$(uuid_LIBS)
 
 if HAVE_CHECK
