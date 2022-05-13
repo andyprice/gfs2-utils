@@ -667,7 +667,7 @@ static int warn_of_destruction(const char *path)
 		return -1;
 	}
 	if (S_ISLNK(lnkstat.st_mode)) {
-		abspath = canonicalize_file_name(path);
+		abspath = realpath(path, NULL);
 		if (abspath == NULL) {
 			perror(_("Could not find the absolute path of the device"));
 			return -1;
