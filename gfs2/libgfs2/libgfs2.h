@@ -17,7 +17,9 @@
 #include "osi_list.h"
 #include "osi_tree.h"
 
-__BEGIN_DECLS
+#ifdef  __cplusplus
+extern "C" {
+#endif
 
 #if __BYTE_ORDER == __BIG_ENDIAN
 
@@ -795,6 +797,8 @@ extern void lgfs2_dirent_out(struct lgfs2_dirent *d, void *dep);
 extern void lgfs2_leaf_in(struct lgfs2_leaf *lf, void *lfp);
 extern void lgfs2_leaf_out(struct lgfs2_leaf *lf, void *lfp);
 
-__END_DECLS
+#ifdef  __cplusplus
+}
+#endif
 
 #endif /* __LIBGFS2_DOT_H__ */
