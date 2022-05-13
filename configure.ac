@@ -1,7 +1,7 @@
 
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ([2.63])
+AC_PREREQ([2.69])
 AC_INIT([gfs2-utils], [3.4.1.1.dev], [cluster-devel@redhat.com])
 AM_INIT_AUTOMAKE([-Wno-portability])
 AM_SILENT_RULES([yes])
@@ -13,13 +13,13 @@ AC_CONFIG_SRCDIR([gfs2/libgfs2/libgfs2.h])
 AC_CONFIG_HEADERS([make/clusterautoconfig.h])
 
 AC_CANONICAL_HOST
-AC_PROG_LIBTOOL
+LT_INIT
 
 AC_LANG([C])
 
 #i18n support
 AM_GNU_GETTEXT([external])
-AM_GNU_GETTEXT_VERSION([0.18])
+AM_GNU_GETTEXT_VERSION([0.19])
 
 # Sanitize path
 
@@ -61,7 +61,7 @@ AM_PROG_CC_C_O
 AC_PROG_LN_S
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
-AC_PROG_LEX
+AC_PROG_LEX([noyywrap])
 test "$LEX" != "flex" && AC_MSG_ERROR([flex not found])
 AC_CHECK_PROG([YACC], [bison], [bison -y])
 test x"$YACC" = x && AC_MSG_ERROR([bison not found])
@@ -91,13 +91,13 @@ check_lib_no_libs() {
 
 # local options
 AC_ARG_ENABLE([debug],
-	AC_HELP_STRING([--enable-debug],[enable debug build [default=no]]),
+	AS_HELP_STRING([--enable-debug],[enable debug build [default=no]]),
 	[], [enable_debug="no"])
 AC_ARG_ENABLE([gcov],
-	AC_HELP_STRING([--enable-gcov],[enable coverage instrumentation [default=no]]),
+	AS_HELP_STRING([--enable-gcov],[enable coverage instrumentation [default=no]]),
 	[], [enable_gcov="no"])
 AC_ARG_ENABLE([gprof],
-	AC_HELP_STRING([--enable-gprof],[enable profiling instrumentation [default=no]]),
+	AS_HELP_STRING([--enable-gprof],[enable profiling instrumentation [default=no]]),
 	[], [enable_gprof="no"])
 
 AC_CHECK_FUNCS([on_exit])
