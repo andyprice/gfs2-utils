@@ -100,6 +100,7 @@ AC_ARG_ENABLE([gprof],
 	AC_HELP_STRING([--enable-gprof],[enable profiling instrumentation [default=no]]),
 	[], [enable_gprof="no"])
 
+AC_CHECK_FUNCS([on_exit])
 
 # We use the Check framework for unit tests
 PKG_CHECK_MODULES([check], [check >= 0.10.0],

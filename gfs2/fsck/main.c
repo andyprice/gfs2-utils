@@ -258,10 +258,21 @@ static int fsck_pass(const struct fsck_pass *p, struct lgfs2_sbd *sdp)
 	return 0;
 }
 
+/*
+ * on_exit() is non-standard but useful for reporting the exit status if it's
+ * available.
+ */
+#ifdef HAVE_ON_EXIT
 static void exitlog(int status, void *unused)
 {
 	syslog(LOG_INFO, "exit: %d", status);
 }
+#else
+static void exitlog(void)
+{
+	syslog(LOG_INFO, "exit.");
+}
+#endif
 
 static void startlog(int argc, char **argv)
 {
@@ -304,7 +315,11 @@ int main(int argc, char **argv)
 
 	openlog("fsck.gfs2", LOG_CONS|LOG_PID, LOG_USER);
 	startlog(argc - 1, &argv[1]);
+#ifdef HAVE_ON_EXIT
 	on_exit(exitlog, NULL);
+#else
+	atexit(exitlog);
+#endif
 
 	memset(sdp, 0, sizeof(*sdp));
 
