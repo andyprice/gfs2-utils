@@ -55,6 +55,7 @@ static void print_usage(const char *prog_name)
 	    "-q", NULL,          _("Don't print anything"),
 	    "-r", _("<size>"),   _("Size of resource groups, in megabytes"),
 	    "-t", _("<name>"),   _("Name of the lock table"),
+	    "-U", _("<UUID>"),   _("The UUID of the file system"),
 	    "-V", NULL,          _("Display program version information, then exit"),
 	    NULL, NULL, NULL /* Must be kept at the end */
 	};
@@ -122,6 +123,7 @@ struct mkfs_opts {
 	uint32_t journals;
 	const char *lockproto;
 	const char *locktable;
+	const char *uuid;
 	struct mkfs_dev dev;
 	unsigned discard:1;
 
@@ -137,6 +139,7 @@ struct mkfs_opts {
 	unsigned got_locktable:1;
 	unsigned got_device:1;
 	unsigned got_topol:1;
+	unsigned got_uuid:1;
 
 	unsigned override:1;
 	unsigned quiet:1;
@@ -321,7 +324,7 @@ static void opts_get(int argc, char *argv[], struct mkfs_opts *opts)
 {
 	int c;
 	while (1) {
-		c = getopt(argc, argv, "-b:c:DhJ:j:KOo:p:qr:t:V");
+		c = getopt(argc, argv, "-b:c:DhJ:j:KOo:p:qr:t:U:V");
 		if (c == -1)
 			break;
 
@@ -372,6 +375,10 @@ static void opts_get(int argc, char *argv[], struct mkfs_opts *opts)
 			break;
 		case 'o':
 			opt_parse_extended(optarg, opts);
+			break;
+		case 'U':
+			opts->uuid = optarg;
+			opts->got_uuid = 1;
 			break;
 		case 'V':
 			printf("mkfs.gfs2 %s (built %s %s)\n", VERSION,
@@ -1030,6 +1037,28 @@ static void open_dev(struct mkfs_dev *dev, int withprobe)
 		exit(1);
 }
 
+static void sb_init(struct gfs2_sb *sb, unsigned bsize, struct mkfs_opts *opts)
+{
+	memset(sb, 0, sizeof(struct gfs2_sb));
+	sb->sb_header.mh_magic = GFS2_MAGIC;
+	sb->sb_header.mh_type = GFS2_METATYPE_SB;
+	sb->sb_header.mh_format = GFS2_FORMAT_SB;
+	sb->sb_fs_format = GFS2_FORMAT_FS;
+	sb->sb_multihost_format = GFS2_FORMAT_MULTI;
+	sb->sb_bsize = bsize;
+	sb->sb_bsize_shift = ffs(bsize) - 1;
+#ifdef GFS2_HAS_UUID
+	if (opts->got_uuid) {
+		int err = uuid_parse(opts->uuid, sb->sb_uuid);
+		if (err != 0) {
+			fprintf(stderr, _("Failed to parse UUID option."));
+			exit(1);
+		}
+	} else
+		uuid_generate(sb->sb_uuid);
+#endif
+}
+
 int main(int argc, char *argv[])
 {
 	struct gfs2_sbd sbd;
@@ -1056,7 +1085,7 @@ int main(int argc, char *argv[])
 	}
 
 	sbd_init(&sbd, &opts, bsize);
-	lgfs2_sb_init(&sb, bsize);
+	sb_init(&sb, bsize, &opts);
 	if (opts.debug) {
 		printf(_("File system options:\n"));
 		printf("  bsize = %u\n", sbd.bsize);
