@@ -52,6 +52,7 @@ static void print_usage(const char *prog_name)
 	    "-q", NULL,          _("Don't print anything"),
 	    "-r", _("<size>"),   _("Size of resource groups, in megabytes"),
 	    "-t", _("<name>"),   _("Name of the lock table"),
+	    "-U", _("<UUID>"),   _("The UUID of the file system"),
 	    "-V", NULL,          _("Display program version information, then exit"),
 	    NULL, NULL, NULL /* Must be kept at the end */
 	};
@@ -121,6 +122,7 @@ struct mkfs_opts {
 	int journals;
 	const char *lockproto;
 	const char *locktable;
+	const char *uuid;
 	struct mkfs_dev dev;
 	unsigned discard:1;
 
@@ -137,6 +139,7 @@ struct mkfs_opts {
 	unsigned got_device:1;
 	unsigned got_topol:1;
 	unsigned got_format:1;
+	unsigned got_uuid:1;
 
 	unsigned override:1;
 	unsigned quiet:1;
@@ -352,7 +355,7 @@ static int opts_get(int argc, char *argv[], struct mkfs_opts *opts)
 	int ret;
 	int c;
 	while (1) {
-		c = getopt(argc, argv, "-b:c:DhJ:j:KOo:p:qr:t:V");
+		c = getopt(argc, argv, "-b:c:DhJ:j:KOo:p:qr:t:U:V");
 		if (c == -1)
 			break;
 
@@ -404,6 +407,10 @@ static int opts_get(int argc, char *argv[], struct mkfs_opts *opts)
 			ret = opt_parse_extended(optarg, opts);
 			if (ret != 0)
 				return ret;
+			break;
+		case 'U':
+			opts->uuid = optarg;
+			opts->got_uuid = 1;
 			break;
 		case 'V':
 			printf("mkfs.gfs2 %s (built %s %s)\n", VERSION,
@@ -1062,7 +1069,15 @@ static int sbd_init(struct lgfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsiz
 	sdp->sd_multihost_format = GFS2_FORMAT_MULTI;
 	sdp->sd_bsize = bsize;
 	sdp->sd_bsize_shift = ffs(bsize) - 1;
-	uuid_generate(sdp->sd_uuid);
+
+	if (opts->got_uuid) {
+		int err = uuid_parse(opts->uuid, sdp->sd_uuid);
+		if (err != 0) {
+			fprintf(stderr, _("Failed to parse UUID option."));
+			return -1;
+		}
+	} else
+		uuid_generate(sdp->sd_uuid);
 
 	if (lgfs2_compute_constants(sdp)) {
 		perror(_("Failed to compute file system constants"));

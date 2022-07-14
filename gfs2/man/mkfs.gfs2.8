@@ -123,6 +123,12 @@ unique file system name used to distinguish this gfs2 file system.  Valid
 \fIclustername\fRs and \fIlockspace\fRs may only contain alphanumeric
 characters, hyphens (-) and underscores (_).
 .TP
+\fB-U\fP \fIUUID\fR
+Specify the filesystem UUID. The argument must be string of hexadecimal digits
+separated by hyphens, of the form "1b4e28ba-2fa1-11d2-883f-b9a761bde3fb". If
+this option is omitted, the filesystem's UUID is randomly generated. Note that
+no attempt is made to prevent UUID clashes between filesystems.
+.TP
 \fB-V\fP
 Print program version information, then exit.
 .TP
