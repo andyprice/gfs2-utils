@@ -32,7 +32,7 @@ struct fsck_pass {
 	int (*f)(struct fsck_cx *cx);
 };
 
-static inline int block_type(struct gfs2_bmap *bl, uint64_t bblock)
+static inline int block_type(struct bmap *bl, uint64_t bblock)
 {
 	static unsigned char *byte;
 	static uint64_t b;
@@ -44,7 +44,7 @@ static inline int block_type(struct gfs2_bmap *bl, uint64_t bblock)
 	return btype;
 }
 
-static inline int link1_type(struct gfs2_bmap *bl, uint64_t bblock)
+static inline int link1_type(struct bmap *bl, uint64_t bblock)
 {
 	static unsigned char *byte;
 	static uint64_t b;
@@ -56,7 +56,7 @@ static inline int link1_type(struct gfs2_bmap *bl, uint64_t bblock)
 	return btype;
 }
 
-static inline void link1_destroy(struct gfs2_bmap *bmap)
+static inline void link1_destroy(struct bmap *bmap)
 {
 	if (bmap->map)
 		free(bmap->map);
@@ -123,7 +123,7 @@ extern enum dup_ref_type get_ref_type(struct inode_with_dups *id);
 extern char generic_interrupt(const char *caller, const char *where,
                        const char *progress, const char *question,
                        const char *answers);
-extern char gfs2_getch(void);
+extern char fsck_getch(void);
 extern uint64_t find_free_blk(struct lgfs2_sbd *sdp);
 extern __be64 *get_dir_hash(struct lgfs2_inode *ip);
 extern void delete_all_dups(struct lgfs2_inode *ip);

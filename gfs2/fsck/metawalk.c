@@ -25,7 +25,7 @@
 
 /* There are two bitmaps: (1) The "blockmap" that fsck uses to keep track of
    what block type has been discovered, and (2) The rgrp bitmap.  Function
-   gfs2_blockmap_set is used to set the former and gfs2_set_bitmap
+   blockmap_set is used to set the former and gfs2_set_bitmap
    is used to set the latter.  The two must be kept in sync, otherwise
    you'll get bitmap mismatches.  This function checks the status of the
    bitmap whenever the blockmap changes, and fixes it accordingly. */

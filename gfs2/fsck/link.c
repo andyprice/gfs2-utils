@@ -15,10 +15,10 @@
 #include "link.h"
 #include "util.h"
 
-struct gfs2_bmap nlink1map = { 0 }; /* map of dinodes with nlink == 1 */
-struct gfs2_bmap clink1map = { 0 }; /* map of dinodes w/counted links == 1 */
+struct bmap nlink1map = { 0 }; /* map of dinodes with nlink == 1 */
+struct bmap clink1map = { 0 }; /* map of dinodes w/counted links == 1 */
 
-int link1_set(struct gfs2_bmap *bmap, uint64_t bblock, int mark)
+int link1_set(struct bmap *bmap, uint64_t bblock, int mark)
 {
 	static unsigned char *byte;
 	static uint64_t b;

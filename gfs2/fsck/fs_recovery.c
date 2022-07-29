@@ -27,7 +27,7 @@ static unsigned int sd_found_revokes = 0;
 static osi_list_t sd_revoke_list;
 static unsigned int sd_replay_tail;
 
-struct gfs2_revoke_replay {
+struct revoke_replay {
 	osi_list_t rr_list;
 	uint64_t rr_blkno;
 	unsigned int rr_where;
@@ -36,11 +36,11 @@ struct gfs2_revoke_replay {
 static int revoke_add(struct lgfs2_sbd *sdp, uint64_t blkno, unsigned int where)
 {
 	osi_list_t *tmp, *head = &sd_revoke_list;
-	struct gfs2_revoke_replay *rr;
+	struct revoke_replay *rr;
 	int found = 0;
 
 	osi_list_foreach(tmp, head) {
-		rr = osi_list_entry(tmp, struct gfs2_revoke_replay, rr_list);
+		rr = osi_list_entry(tmp, struct revoke_replay, rr_list);
 		if (rr->rr_blkno == blkno) {
 			found = 1;
 			break;
@@ -52,7 +52,7 @@ static int revoke_add(struct lgfs2_sbd *sdp, uint64_t blkno, unsigned int where)
 		return 0;
 	}
 
-	rr = malloc(sizeof(struct gfs2_revoke_replay));
+	rr = malloc(sizeof(struct revoke_replay));
 	if (!rr)
 		return -ENOMEM;
 
@@ -65,12 +65,12 @@ static int revoke_add(struct lgfs2_sbd *sdp, uint64_t blkno, unsigned int where)
 static int revoke_check(struct lgfs2_sbd *sdp, uint64_t blkno, unsigned int where)
 {
 	osi_list_t *tmp;
-	struct gfs2_revoke_replay *rr;
+	struct revoke_replay *rr;
 	int wrap, a, b;
 	int found = 0;
 
 	osi_list_foreach(tmp, &sd_revoke_list) {
-		rr = osi_list_entry(tmp, struct gfs2_revoke_replay, rr_list);
+		rr = osi_list_entry(tmp, struct revoke_replay, rr_list);
 		if (rr->rr_blkno == blkno) {
 			found = 1;
 			break;
@@ -89,10 +89,10 @@ static int revoke_check(struct lgfs2_sbd *sdp, uint64_t blkno, unsigned int wher
 static void revoke_clean(struct lgfs2_sbd *sdp)
 {
 	osi_list_t *head = &sd_revoke_list;
-	struct gfs2_revoke_replay *rr;
+	struct revoke_replay *rr;
 
 	while (!osi_list_empty(head)) {
-		rr = osi_list_entry(head->next, struct gfs2_revoke_replay, rr_list);
+		rr = osi_list_entry(head->next, struct revoke_replay, rr_list);
 		osi_list_del(&rr->rr_list);
 		free(rr);
 	}
@@ -476,7 +476,7 @@ int preen_is_safe(struct lgfs2_sbd *sdp, int preen, int force_check)
  * Returns: errno
  */
 
-static int gfs2_recover_journal(struct lgfs2_inode *ip, int j, int preen,
+static int recover_journal(struct lgfs2_inode *ip, int j, int preen,
 				int force_check, int *was_clean)
 {
 	struct lgfs2_sbd *sdp = ip->i_sbd;
@@ -711,7 +711,7 @@ int replay_journals(struct fsck_cx *cx, int preen, int force_check,
 			if (sdp->jsize == LGFS2_DEFAULT_JSIZE && jsize &&
 			    jsize != sdp->jsize)
 				sdp->jsize = jsize;
-			error = gfs2_recover_journal(sdp->md.journal[i], i,
+			error = recover_journal(sdp->md.journal[i], i,
 						     preen, force_check,
 						     &clean);
 			if (!clean)

@@ -67,7 +67,7 @@ static int block_mounters(struct lgfs2_sbd *sdp, int block_em)
 	return 0;
 }
 
-static void gfs2_dup_free(void)
+static void dup_free(void)
 {
 	struct osi_node *n;
 	struct duptree *dt;
@@ -78,7 +78,7 @@ static void gfs2_dup_free(void)
 	}
 }
 
-static void gfs2_dirtree_free(void)
+static void dirtree_free(void)
 {
 	struct osi_node *n;
 	struct dir_info *dt;
@@ -89,7 +89,7 @@ static void gfs2_dirtree_free(void)
 	}
 }
 
-static void gfs2_inodetree_free(void)
+static void inodetree_free(void)
 {
 	struct osi_node *n;
 	struct inode_info *dt;
@@ -114,9 +114,9 @@ static void empty_super_block(struct lgfs2_sbd *sdp)
 	log_info( _("Freeing buffers.\n"));
 	lgfs2_rgrp_free(sdp, &sdp->rgtree);
 
-	gfs2_inodetree_free();
-	gfs2_dirtree_free();
-	gfs2_dup_free();
+	inodetree_free();
+	dirtree_free();
+	dup_free();
 }
 
 
@@ -625,7 +625,7 @@ static void lookup_per_node(struct lgfs2_sbd *sdp, int allow_rebuild)
 
 #define RA_WINDOW 32
 
-static unsigned gfs2_rgrp_reada(struct lgfs2_sbd *sdp, unsigned cur_window,
+static unsigned rgrp_reada(struct lgfs2_sbd *sdp, unsigned cur_window,
 				struct osi_node *n)
 {
 	struct lgfs2_rgrp_tree *rgd;
@@ -673,7 +673,7 @@ static int read_rgrps(struct lgfs2_sbd *sdp, uint64_t expected)
 		rgd = (struct lgfs2_rgrp_tree *)n;
 		/* Readahead resource group headers */
 		if (ra_window < RA_WINDOW/2)
-			ra_window = gfs2_rgrp_reada(sdp, ra_window, n);
+			ra_window = rgrp_reada(sdp, ra_window, n);
 		/* Read resource group header */
 		errblock = lgfs2_rgrp_read(sdp, rgd);
 		if (errblock)

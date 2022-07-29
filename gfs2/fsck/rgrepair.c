@@ -71,7 +71,7 @@ static void find_journaled_rgs(struct lgfs2_sbd *sdp)
 			if (!lgfs2_check_meta(bh->b_data, GFS2_METATYPE_RG)) {
 				/* False rgrp found at block dblock */
 				false_count++;
-				gfs2_special_set(&false_rgrps, dblock);
+				special_set(&false_rgrps, dblock);
 			}
 			lgfs2_brelse(bh);
 		}
@@ -249,7 +249,7 @@ static int find_shortest_rgdist(struct lgfs2_sbd *sdp, uint64_t *dist_array,
 		log_debug(_("Adjusted first rgrp distance: 0x%"PRIx64"\n"), *dist_array);
 	} /* if first RG distance is within tolerance */
 
-	gfs2_special_free(&false_rgrps);
+	special_free(&false_rgrps);
 	return gsegment;
 }
 
@@ -805,7 +805,7 @@ static int calc_rgrps(struct lgfs2_sbd *sdp)
  * Sets:    sdp->rglist to a linked list of fsck_rgrp structs representing
  *          what we think the rindex should really look like.
  */
-static int gfs2_rindex_calculate(struct lgfs2_sbd *sdp, int *num_rgs)
+static int rindex_calculate(struct lgfs2_sbd *sdp, int *num_rgs)
 {
 	uint64_t num_rgrps = 0;
 
@@ -973,7 +973,7 @@ int rindex_repair(struct fsck_cx *cx, int trust_lvl, int *ok)
 		lgfs2_rgrp_free(sdp, &sdp->rgtree);
 
 		/* Calculate our own RG index for comparison */
-		error = gfs2_rindex_calculate(sdp, &calc_rg_count);
+		error = rindex_calculate(sdp, &calc_rg_count);
 		if (error) { /* If calculated RGs don't match the fs */
 			lgfs2_rgrp_free(sdp, &rgcalc);
 			return -1;

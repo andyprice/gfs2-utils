@@ -27,7 +27,7 @@
 
 #define BAD_POINTER_TOLERANCE 10 /* How many bad pointers is too many? */
 
-struct gfs2_bmap {
+struct bmap {
 	uint64_t size;
 	uint64_t mapsize;
 	unsigned char *map;
@@ -126,7 +126,7 @@ extern int pass1c(struct fsck_cx *cx);
 extern int pass2(struct fsck_cx *cx);
 extern int pass3(struct fsck_cx *cx);
 extern int pass4(struct fsck_cx *cx);
-extern int pass5(struct fsck_cx *cx, struct gfs2_bmap *bl);
+extern int pass5(struct fsck_cx *cx, struct bmap *bl);
 extern int rindex_repair(struct fsck_cx *cx, int trust_lvl, int *ok);
 extern int fsck_query(const char *format, ...)
 	__attribute__((format(printf,1,2)));
@@ -138,14 +138,14 @@ extern void dirtree_delete(struct dir_info *b);
  * of pass1 and put somewhere else... */
 struct dir_info *dirtree_insert(struct lgfs2_inum inum);
 
-struct gfs2_options {
+struct fsck_options {
 	char *device;
 	unsigned int yes:1;
 	unsigned int no:1;
 	unsigned int query:1;
 };
 
-extern struct gfs2_options opts;
+extern struct fsck_options opts;
 extern struct lgfs2_inode *lf_dip; /* Lost and found directory inode */
 extern int lf_was_created;
 extern uint64_t last_fs_block, last_reported_block;
@@ -200,8 +200,8 @@ struct special_blocks {
 };
 
 extern struct special_blocks *blockfind(struct special_blocks *blist, uint64_t num);
-extern void gfs2_special_set(struct special_blocks *blocklist, uint64_t block);
-extern void gfs2_special_free(struct special_blocks *blist);
+extern void special_set(struct special_blocks *blocklist, uint64_t block);
+extern void special_free(struct special_blocks *blist);
 extern int sb_fixed;
 extern int build_per_node(struct lgfs2_sbd *sdp);
 

@@ -30,7 +30,7 @@
 #include "fs_recovery.h"
 
 static struct special_blocks gfs1_rindex_blks;
-static struct gfs2_bmap *bl = NULL;
+static struct bmap *bl = NULL;
 static struct metawalk_fxns pass1_fxns;
 
 struct block_count {
@@ -39,7 +39,7 @@ struct block_count {
 	uint64_t ea_count;
 };
 
-static int gfs2_blockmap_set(struct gfs2_bmap *bmap, uint64_t bblock, int mark)
+static int blockmap_set(struct bmap *bmap, uint64_t bblock, int mark)
 {
 	static unsigned char *byte;
 	static uint64_t b;
@@ -69,7 +69,7 @@ static int _fsck_blockmap_set(struct lgfs2_inode *ip, uint64_t bblock,
 	if (error)
 		return error;
 
-	return gfs2_blockmap_set(bl, bblock, mark);
+	return blockmap_set(bl, bblock, mark);
 }
 
 #define fsck_blockmap_set(ip, b, bt, m) \
@@ -536,7 +536,7 @@ static int p1_check_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t me
 	if (ip->i_sbd->gfs1 && ip == ip->i_sbd->md.riinode) {
 		log_info(_("Block %"PRIu64" (0x%"PRIx64") is a GFS1 rindex block\n"),
 		         block, block);
-		gfs2_special_set(&gfs1_rindex_blks, block);
+		special_set(&gfs1_rindex_blks, block);
 		fsck_blockmap_set(ip, block, "rgrp", GFS2_BLKST_DINODE);
 	} else if (ip->i_sbd->gfs1 && ip->i_flags & GFS2_DIF_JDATA) {
 		log_info(_("Block %"PRIu64" (0x%"PRIx64") is a GFS1 journaled data block\n"),
@@ -1115,7 +1115,7 @@ static int alloc_metalist(struct fsck_cx *cx, struct iptr iptr, struct lgfs2_buf
 	if (q == GFS2_BLKST_FREE) {
 		log_debug(_("%s reference to new metadata block %"PRIu64" (0x%"PRIx64") is now marked as indirect.\n"),
 		          desc, block, block);
-		gfs2_blockmap_set(bl, block, ip->i_sbd->gfs1 ?
+		blockmap_set(bl, block, ip->i_sbd->gfs1 ?
 				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	}
 	return META_IS_GOOD;
@@ -1135,7 +1135,7 @@ static int alloc_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t metab
 	if (q == GFS2_BLKST_FREE) {
 		log_debug(_("%s reference to new data block %"PRIu64" (0x%"PRIx64") is now marked as data.\n"),
 		          desc, block, block);
-		gfs2_blockmap_set(bl, block, GFS2_BLKST_USED);
+		blockmap_set(bl, block, GFS2_BLKST_USED);
 	}
 	return 0;
 }
@@ -1184,7 +1184,7 @@ static int pass1_check_metatree(struct fsck_cx *cx, struct lgfs2_inode *ip,
 
 	error = check_metatree(cx, ip, pass);
 	if (error)
-		gfs2_blockmap_set(bl, ip->i_num.in_addr, GFS2_BLKST_FREE);
+		blockmap_set(bl, ip->i_num.in_addr, GFS2_BLKST_FREE);
 	return error;
 }
 
@@ -1409,7 +1409,7 @@ static int check_system_inode(struct fsck_cx *cx,
 		if (lgfs2_check_meta((*sysinode)->i_bh->b_data, GFS2_METATYPE_DI)) {
 			log_err(_("Found invalid system dinode at block %"PRIu64" (0x%"PRIx64")\n"),
 			        iblock, iblock);
-			gfs2_blockmap_set(bl, iblock, GFS2_BLKST_FREE);
+			blockmap_set(bl, iblock, GFS2_BLKST_FREE);
 			check_n_fix_bitmap(cx->sdp, (*sysinode)->i_rgd, iblock, 0,
 					   GFS2_BLKST_FREE);
 			lgfs2_inode_put(sysinode);
@@ -1445,7 +1445,7 @@ static int check_system_inode(struct fsck_cx *cx,
 				/* Set the blockmap (but not bitmap) back to
 				   'free' so that it gets checked like any
 				   normal dinode. */
-				gfs2_blockmap_set(bl, iblock, GFS2_BLKST_FREE);
+				blockmap_set(bl, iblock, GFS2_BLKST_FREE);
 				log_err( _("Removed system inode \"%s\".\n"),
 					 filename);
 			}
@@ -1731,7 +1731,7 @@ static int pass1_process_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 		display_progress(block);
 
 		if (fsck_abort) { /* if asked to abort */
-			gfs2_special_free(&gfs1_rindex_blks);
+			special_free(&gfs1_rindex_blks);
 			return FSCK_OK;
 		}
 		if (skip_this_pass) {
@@ -1806,7 +1806,7 @@ static int pass1_process_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 		} else if (handle_di(cx, rgd, bh) < 0) {
 			stack;
 			lgfs2_brelse(bh);
-			gfs2_special_free(&gfs1_rindex_blks);
+			special_free(&gfs1_rindex_blks);
 			return FSCK_ERROR;
 		}
 		/* Ignore everything else - they should be hit by the
@@ -1852,7 +1852,7 @@ static int pass1_process_rgrp(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd)
 
 		n = lgfs2_bm_scan(rgd, k, ibuf, GFS2_BLKST_UNLINKED);
 		for (i = 0; i < n; i++) {
-			gfs2_blockmap_set(bl, ibuf[i], GFS2_BLKST_UNLINKED);
+			blockmap_set(bl, ibuf[i], GFS2_BLKST_UNLINKED);
 			if (fsck_abort)
 				goto out;
 		}
@@ -1863,7 +1863,7 @@ out:
 	return ret;
 }
 
-static int gfs2_blockmap_create(struct gfs2_bmap *bmap, uint64_t size)
+static int blockmap_create(struct bmap *bmap, uint64_t size)
 {
 	bmap->size = size;
 
@@ -1877,7 +1877,7 @@ static int gfs2_blockmap_create(struct gfs2_bmap *bmap, uint64_t size)
 }
 
 
-static int link1_create(struct gfs2_bmap *bmap, uint64_t size)
+static int link1_create(struct bmap *bmap, uint64_t size)
 {
 	bmap->size = size;
 
@@ -1890,17 +1890,17 @@ static int link1_create(struct gfs2_bmap *bmap, uint64_t size)
 	return 0;
 }
 
-static struct gfs2_bmap *gfs2_bmap_create(struct lgfs2_sbd *sdp, uint64_t size,
+static struct bmap *bmap_create(struct lgfs2_sbd *sdp, uint64_t size,
 					  uint64_t *addl_mem_needed)
 {
-	struct gfs2_bmap *il;
+	struct bmap *il;
 
 	*addl_mem_needed = 0L;
 	il = calloc(1, sizeof(*il));
 	if (!il)
 		return NULL;
 
-	if (gfs2_blockmap_create(il, size)) {
+	if (blockmap_create(il, size)) {
 		*addl_mem_needed = il->mapsize;
 		free(il);
 		il = NULL;
@@ -1908,7 +1908,7 @@ static struct gfs2_bmap *gfs2_bmap_create(struct lgfs2_sbd *sdp, uint64_t size,
 	return il;
 }
 
-static void gfs2_blockmap_destroy(struct gfs2_bmap *bmap)
+static void blockmap_destroy(struct bmap *bmap)
 {
 	if (bmap->map)
 		free(bmap->map);
@@ -1916,10 +1916,10 @@ static void gfs2_blockmap_destroy(struct gfs2_bmap *bmap)
 	bmap->mapsize = 0;
 }
 
-static void *gfs2_bmap_destroy(struct lgfs2_sbd *sdp, struct gfs2_bmap *il)
+static void *bmap_destroy(struct lgfs2_sbd *sdp, struct bmap *il)
 {
 	if (il) {
-		gfs2_blockmap_destroy(il);
+		blockmap_destroy(il);
 		free(il);
 		il = NULL;
 	}
@@ -1958,7 +1958,7 @@ int pass1(struct fsck_cx *cx)
 	int ret = FSCK_OK;
 	uint64_t addl_mem_needed;
 
-	bl = gfs2_bmap_create(sdp, last_fs_block+1, &addl_mem_needed);
+	bl = bmap_create(sdp, last_fs_block+1, &addl_mem_needed);
 	if (!bl) {
 		enomem(addl_mem_needed);
 		return FSCK_ERROR;
@@ -1966,14 +1966,14 @@ int pass1(struct fsck_cx *cx)
 	addl_mem_needed = link1_create(&nlink1map, last_fs_block+1);
 	if (addl_mem_needed) {
 		enomem(addl_mem_needed);
-		gfs2_bmap_destroy(sdp, bl);
+		bmap_destroy(sdp, bl);
 		return FSCK_ERROR;
 	}
 	addl_mem_needed = link1_create(&clink1map, last_fs_block+1);
 	if (addl_mem_needed) {
 		enomem(addl_mem_needed);
 		link1_destroy(&nlink1map);
-		gfs2_bmap_destroy(sdp, bl);
+		bmap_destroy(sdp, bl);
 		return FSCK_ERROR;
 	}
 	osi_list_init(&gfs1_rindex_blks.list);
@@ -2007,9 +2007,9 @@ int pass1(struct fsck_cx *cx)
 		for (i = 0; i < rgd->rt_length; i++) {
 			log_debug("rgrp block %"PRIu64" (0x%"PRIx64") is now marked as 'rgrp data'\n",
 				   rgd->rt_addr + i, rgd->rt_addr + i);
-			if (gfs2_blockmap_set(bl, rgd->rt_addr + i, GFS2_BLKST_USED)) {
+			if (blockmap_set(bl, rgd->rt_addr + i, GFS2_BLKST_USED)) {
 				stack;
-				gfs2_special_free(&gfs1_rindex_blks);
+				special_free(&gfs1_rindex_blks);
 				ret = FSCK_ERROR;
 				goto out;
 			}
@@ -2028,9 +2028,9 @@ int pass1(struct fsck_cx *cx)
 	pass5(cx, bl);
 	print_pass_duration("reconcile_bitmaps", &timer);
 out:
-	gfs2_special_free(&gfs1_rindex_blks);
+	special_free(&gfs1_rindex_blks);
 	if (bl)
-		gfs2_bmap_destroy(sdp, bl);
+		bmap_destroy(sdp, bl);
 	return ret;
 }
 

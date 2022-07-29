@@ -14,7 +14,7 @@
 
 #define GFS1_BLKST_USEDMETA 4
 
-static int check_block_status(struct lgfs2_sbd *sdp,  struct gfs2_bmap *bl,
+static int check_block_status(struct lgfs2_sbd *sdp,  struct bmap *bl,
 			      char *buffer, unsigned int buflen,
 			      uint64_t *rg_block, uint64_t rg_data,
 			      uint32_t *count)
@@ -114,7 +114,7 @@ static int check_block_status(struct lgfs2_sbd *sdp,  struct gfs2_bmap *bl,
 }
 
 static void update_rgrp(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgp,
-			struct gfs2_bmap *bl, uint32_t *count)
+			struct bmap *bl, uint32_t *count)
 {
 	uint32_t i;
 	struct lgfs2_bitmap *bits;
@@ -194,7 +194,7 @@ static void update_rgrp(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgp,
  * fix free block maps
  * fix used inode maps
  */
-int pass5(struct fsck_cx *cx, struct gfs2_bmap *bl)
+int pass5(struct fsck_cx *cx, struct bmap *bl)
 {
 	struct lgfs2_sbd *sdp = cx->sdp;
 	struct osi_node *n, *next = NULL;

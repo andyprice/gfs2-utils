@@ -83,7 +83,7 @@ void display_progress(uint64_t block)
 	}
 }
 
-char gfs2_getch(void)
+char fsck_getch(void)
 {
 	struct termios termattr, savetermattr;
 	char ch;
@@ -145,7 +145,7 @@ char generic_interrupt(const char *caller, const char *where,
 
 		/* Make sure query is printed out */
 		fflush(NULL);
-		response = gfs2_getch();
+		response = fsck_getch();
 		printf("\n");
 		fflush(NULL);
 		if (strchr(answers, response))
@@ -183,7 +183,7 @@ int fsck_query(const char *format, ...)
 
 		/* Make sure query is printed out */
 		fflush(NULL);
-		response = gfs2_getch();
+		response = fsck_getch();
 
 		printf("\n");
 		fflush(NULL);
@@ -217,14 +217,14 @@ int fsck_query(const char *format, ...)
 }
 
 /*
- * gfs2_dup_set - Flag a block as a duplicate
+ * dup_set - Flag a block as a duplicate
  * We keep the references in a red/black tree.  We can't keep track of every
  * single inode in the file system, so the first time this function is called
  * will actually be for the second reference to the duplicated block.
  * This will return the number of references to the block.
  *
  * create - will be set if the call is supposed to create the reference. */
-static struct duptree *gfs2_dup_set(uint64_t dblock, int create)
+static struct duptree *dup_set(uint64_t dblock, int create)
 {
 	struct osi_node **newn = &dup_blocks.osi_node, *parent = NULL;
 	struct duptree *dt;
@@ -334,7 +334,7 @@ int add_duplicate_ref(struct lgfs2_inode *ip, uint64_t block,
 	/* If this is not the first reference (i.e. all calls from pass1) we
 	   need to create the duplicate reference. If this is pass1b, we want
 	   to ignore references that aren't found. */
-	dt = gfs2_dup_set(block, !first);
+	dt = dup_set(block, !first);
 	if (!dt)        /* If this isn't a duplicate */
 		return META_IS_GOOD;
 
