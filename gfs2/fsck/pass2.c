@@ -173,7 +173,7 @@ static int bad_formal_ino(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs
 	int error;
 	struct lgfs2_inum inum = {0};
 
-	ii = inodetree_find(entry.in_addr);
+	ii = inodetree_find(cx, entry.in_addr);
 	if (ii)
 		inum = ii->num;
 	else {
@@ -569,7 +569,7 @@ static int basic_dentry_checks(struct fsck_cx *cx, struct lgfs2_inode *ip, struc
 	}
 	/* We need to verify the formal inode number matches. If it doesn't,
 	   it needs to be deleted. */
-	ii = inodetree_find(entry->in_addr);
+	ii = inodetree_find(cx, entry->in_addr);
 	if (ii)
 		inum = ii->num;
 	else {

@@ -112,6 +112,7 @@ struct fsck_cx {
 	struct lgfs2_sbd *sdp;
 	struct osi_root dup_blocks;
 	struct osi_root dirtree;
+	struct osi_root inodetree;
 };
 
 extern struct lgfs2_inode *fsck_load_inode(struct lgfs2_sbd *sdp, uint64_t block);
@@ -156,7 +157,6 @@ extern int skip_this_pass, fsck_abort;
 extern int errors_found, errors_corrected;
 extern uint64_t last_data_block;
 extern uint64_t first_data_block;
-extern struct osi_root inodetree;
 extern int dups_found; /* How many duplicate references have we found? */
 extern int dups_found_first; /* How many duplicates have we found the original
 				reference for? */

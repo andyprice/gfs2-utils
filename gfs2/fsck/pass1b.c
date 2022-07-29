@@ -332,9 +332,9 @@ static void resolve_dup_references(struct fsck_cx *cx, struct duptree *dt,
 						_("duplicate referencing bad"),
 						GFS2_BLKST_FREE);
 				/* Remove the inode from the inode tree */
-				ii = inodetree_find(ip->i_num.in_addr);
+				ii = inodetree_find(cx, ip->i_num.in_addr);
 				if (ii)
-					inodetree_delete(ii);
+					inodetree_delete(cx, ii);
 				di = dirtree_find(cx, ip->i_num.in_addr);
 				if (di)
 					dirtree_delete(cx, di);

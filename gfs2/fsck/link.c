@@ -58,10 +58,10 @@ int set_di_nlink(struct fsck_cx *cx, struct lgfs2_inode *ip)
 	/*log_debug( _("Setting link count to %u for %" PRIu64
 	  " (0x%" PRIx64 ")\n"), count, inode_no, inode_no);*/
 	/* If the list has entries, look for one that matches inode_no */
-	ii = inodetree_find(ip->i_num.in_addr);
+	ii = inodetree_find(cx, ip->i_num.in_addr);
 	if (!ii) {
 		struct lgfs2_inum no = ip->i_num;
-		ii = inodetree_insert(no);
+		ii = inodetree_insert(cx, no);
 	}
 	if (ii)
 		ii->di_nlink = ip->i_nlink;
@@ -93,7 +93,7 @@ int incr_link_count(struct fsck_cx *cx, struct lgfs2_inum no, struct lgfs2_inode
 		whyincr(no.in_addr, why, referenced_from, di->counted_links);
 		return INCR_LINK_GOOD;
 	}
-	ii = inodetree_find(no.in_addr);
+	ii = inodetree_find(cx, no.in_addr);
 	/* If the list has entries, look for one that matches inode_no */
 	if (ii) {
 		if (ii->num.in_formal_ino != no.in_formal_ino)
@@ -122,7 +122,7 @@ int incr_link_count(struct fsck_cx *cx, struct lgfs2_inum no, struct lgfs2_inode
 	/* If no match was found, it must be a hard link. In theory, it can't
 	   be a duplicate because those were resolved in pass1b. Add a new
 	   inodetree entry and set its counted links to 2 */
-	ii = inodetree_insert(no);
+	ii = inodetree_insert(cx, no);
 	if (!ii) {
 		log_debug(_("Ref: 0x%"PRIx64" Error incrementing link for 0x%"PRIx64"\n"),
 		          referenced_from, no.in_addr);
@@ -166,7 +166,7 @@ int decr_link_count(struct fsck_cx *cx, uint64_t inode_no, uint64_t referenced_f
 		return 0;
 	}
 
-	ii = inodetree_find(inode_no);
+	ii = inodetree_find(cx, inode_no);
 	/* If the list has entries, look for one that matches
 	 * inode_no */
 	if (ii) {

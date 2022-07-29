@@ -34,7 +34,6 @@ int skip_this_pass = 0, fsck_abort = 0;
 int errors_found = 0, errors_corrected = 0;
 uint64_t last_data_block;
 uint64_t first_data_block;
-struct osi_root inodetree;
 int dups_found = 0, dups_found_first = 0;
 int sb_fixed = 0;
 int print_level = MSG_NOTICE;

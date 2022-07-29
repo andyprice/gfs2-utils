@@ -89,14 +89,14 @@ static void dirtree_free(struct fsck_cx *cx)
 	}
 }
 
-static void inodetree_free(void)
+static void inodetree_free(struct fsck_cx *cx)
 {
 	struct osi_node *n;
 	struct inode_info *dt;
 
-	while ((n = osi_first(&inodetree))) {
+	while ((n = osi_first(&cx->inodetree))) {
 		dt = (struct inode_info *)n;
-		inodetree_delete(dt);
+		inodetree_delete(cx, dt);
 	}
 }
 
@@ -114,7 +114,7 @@ static void empty_super_block(struct fsck_cx *cx)
 	log_info( _("Freeing buffers.\n"));
 	lgfs2_rgrp_free(cx->sdp, &cx->sdp->rgtree);
 
-	inodetree_free();
+	inodetree_free(cx);
 	dirtree_free(cx);
 	dup_free(cx);
 }

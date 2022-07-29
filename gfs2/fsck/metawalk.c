@@ -97,9 +97,9 @@ int check_n_fix_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 			dirtree_delete(cx, dt);
 			treat_as_inode = 1;
 		}
-		ii = inodetree_find(blk);
+		ii = inodetree_find(cx, blk);
 		if (ii) {
-			inodetree_delete(ii);
+			inodetree_delete(cx, ii);
 			treat_as_inode = 1;
 		} else if (!sdp->gfs1) {
 			treat_as_inode = 1;
@@ -134,7 +134,7 @@ int check_n_fix_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 				if (dt)
 					treat_as_inode = 1;
 				else {
-					ii = inodetree_find(blk);
+					ii = inodetree_find(cx, blk);
 					if (ii)
 						treat_as_inode = 1;
 				}

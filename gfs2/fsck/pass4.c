@@ -170,7 +170,7 @@ static int scan_inode_list(struct fsck_cx *cx)
 
 	/* FIXME: should probably factor this out into a generic
 	 * scanning fxn */
-	for (tmp = osi_first(&inodetree); tmp; tmp = next) {
+	for (tmp = osi_first(&cx->inodetree); tmp; tmp = next) {
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return 0;
 		next = osi_next(tmp);

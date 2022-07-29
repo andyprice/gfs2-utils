@@ -12,9 +12,9 @@
 #include "fsck.h"
 #define _(String) gettext(String)
 
-struct inode_info *inodetree_find(uint64_t block)
+struct inode_info *inodetree_find(struct fsck_cx *cx, uint64_t block)
 {
-	struct osi_node *node = inodetree.osi_node;
+	struct osi_node *node = cx->inodetree.osi_node;
 
 	while (node) {
 		struct inode_info *data = (struct inode_info *)node;
@@ -29,9 +29,9 @@ struct inode_info *inodetree_find(uint64_t block)
 	return NULL;
 }
 
-struct inode_info *inodetree_insert(struct lgfs2_inum no)
+struct inode_info *inodetree_insert(struct fsck_cx *cx, struct lgfs2_inum no)
 {
-	struct osi_node **newn = &inodetree.osi_node, *parent = NULL;
+	struct osi_node **newn = &cx->inodetree.osi_node, *parent = NULL;
 	struct inode_info *data;
 
 	/* Figure out where to put new node */
@@ -55,13 +55,13 @@ struct inode_info *inodetree_insert(struct lgfs2_inum no)
 	/* Add new node and rebalance tree. */
 	data->num = no;
 	osi_link_node(&data->node, parent, newn);
-	osi_insert_color(&data->node, &inodetree);
+	osi_insert_color(&data->node, &cx->inodetree);
 
 	return data;
 }
 
-void inodetree_delete(struct inode_info *b)
+void inodetree_delete(struct fsck_cx *cx, struct inode_info *b)
 {
-	osi_erase(&b->node, &inodetree);
+	osi_erase(&b->node, &cx->inodetree);
 	free(b);
 }
