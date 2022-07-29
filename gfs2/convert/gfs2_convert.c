@@ -1563,7 +1563,7 @@ static int gfs1_ri_update(struct lgfs2_sbd *sdp, int *rgcount, int quiet)
 static int init(struct lgfs2_sbd *sbp, struct gfs2_options *opts)
 {
 	struct lgfs2_buffer_head *bh;
-	int rgcount;
+	int rgcount = 0;
 	struct lgfs2_inum inum;
 
 	memset(sbp, 0, sizeof(struct lgfs2_sbd));
