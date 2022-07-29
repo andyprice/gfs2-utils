@@ -18,7 +18,7 @@
 #include "util.h"
 #include "afterpass1_common.h"
 
-static int attach_dotdot_to(struct lgfs2_sbd *sdp, uint64_t newdotdot,
+static int attach_dotdot_to(struct fsck_cx *cx, uint64_t newdotdot,
 			    uint64_t olddotdot, uint64_t block)
 {
 	const char *filename = "..";
@@ -27,8 +27,8 @@ static int attach_dotdot_to(struct lgfs2_sbd *sdp, uint64_t newdotdot,
 	struct lgfs2_inode *ip, *pip;
 	struct lgfs2_inum no;
 
-	ip = fsck_load_inode(sdp, block);
-	pip = fsck_load_inode(sdp, newdotdot);
+	ip = fsck_load_inode(cx->sdp, block);
+	pip = fsck_load_inode(cx->sdp, newdotdot);
 	/* FIXME: Need to add some interactive
 	 * options here and come up with a
 	 * good default for non-interactive */
@@ -39,16 +39,16 @@ static int attach_dotdot_to(struct lgfs2_sbd *sdp, uint64_t newdotdot,
 	if (lgfs2_dirent_del(ip, filename, filename_len))
 		log_warn( _("Unable to remove \"..\" directory entry.\n"));
 	else
-		decr_link_count(olddotdot, block, sdp->gfs1, _("old \"..\""));
+		decr_link_count(cx, olddotdot, block, cx->sdp->gfs1, _("old \"..\""));
 	no = pip->i_num;
 	err = lgfs2_dir_add(ip, filename, filename_len, &no,
-		      (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
+		      (cx->sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
 	if (err) {
 		log_err(_("Error adding directory %s: %s\n"),
 		        filename, strerror(errno));
 		exit(FSCK_ERROR);
 	}
-	incr_link_count(no, ip, _("new \"..\""));
+	incr_link_count(cx, no, ip, _("new \"..\""));
 	fsck_inode_put(&ip);
 	fsck_inode_put(&pip);
 	return 0;
@@ -83,9 +83,9 @@ static struct dir_info *mark_and_return_parent(struct fsck_cx *cx, struct dir_in
 	log_notice(_("'..' has %"PRIu64" (0x%"PRIx64"), treewalk has %"PRIu64" (0x%"PRIx64")\n"),
 	           di->dotdot_parent.in_addr, di->dotdot_parent.in_addr, di->treewalk_parent, di->treewalk_parent);
 	q_dotdot = bitmap_type(sdp, di->dotdot_parent.in_addr);
-	dt_dotdot = dirtree_find(di->dotdot_parent.in_addr);
+	dt_dotdot = dirtree_find(cx, di->dotdot_parent.in_addr);
 	q_treewalk = bitmap_type(sdp, di->treewalk_parent);
-	dt_treewalk = dirtree_find(di->treewalk_parent);
+	dt_treewalk = dirtree_find(cx, di->treewalk_parent);
 	/* if the dotdot entry isn't a directory, but the
 	 * treewalk is, treewalk is correct - if the treewalk
 	 * entry isn't a directory, but the dotdot is, dotdot
@@ -101,7 +101,7 @@ static struct dir_info *mark_and_return_parent(struct fsck_cx *cx, struct dir_in
 		} else {
 			log_warn(_("Treewalk parent is correct, fixing dotdot -> %"PRIu64" (0x%"PRIx64")\n"),
 			         di->treewalk_parent, di->treewalk_parent);
-			attach_dotdot_to(sdp, di->treewalk_parent,
+			attach_dotdot_to(cx, di->treewalk_parent,
 					 di->dotdot_parent.in_addr,
 					 di->dinode.in_addr);
 			di->dotdot_parent.in_addr = di->treewalk_parent;
@@ -111,7 +111,7 @@ static struct dir_info *mark_and_return_parent(struct fsck_cx *cx, struct dir_in
 	if (dt_treewalk) {
 		log_err( _("Both .. and treewalk parents are directories, "
 			   "going with treewalk...\n"));
-		attach_dotdot_to(sdp, di->treewalk_parent,
+		attach_dotdot_to(cx, di->treewalk_parent,
 				 di->dotdot_parent.in_addr,
 				 di->dinode.in_addr);
 		di->dotdot_parent.in_addr = di->treewalk_parent;
@@ -145,7 +145,7 @@ static struct dir_info *mark_and_return_parent(struct fsck_cx *cx, struct dir_in
 	return NULL;
 
 out:
-	pdi = dirtree_find(di->dotdot_parent.in_addr);
+	pdi = dirtree_find(cx, di->dotdot_parent.in_addr);
 
 	return pdi;
 }
@@ -164,38 +164,38 @@ int pass3(struct fsck_cx *cx)
 	struct lgfs2_inode *ip;
 	int q;
 
-	di = dirtree_find(sdp->md.rooti->i_num.in_addr);
+	di = dirtree_find(cx, sdp->md.rooti->i_num.in_addr);
 	if (di) {
 		log_info( _("Marking root inode connected\n"));
 		di->checked = 1;
 	}
 	if (sdp->gfs1) {
-		di = dirtree_find(sdp->md.statfs->i_num.in_addr);
+		di = dirtree_find(cx, sdp->md.statfs->i_num.in_addr);
 		if (di) {
 			log_info( _("Marking GFS1 statfs file inode "
 				    "connected\n"));
 			di->checked = 1;
 		}
-		di = dirtree_find(sdp->md.jiinode->i_num.in_addr);
+		di = dirtree_find(cx, sdp->md.jiinode->i_num.in_addr);
 		if (di) {
 			log_info( _("Marking GFS1 jindex file inode "
 				    "connected\n"));
 			di->checked = 1;
 		}
-		di = dirtree_find(sdp->md.riinode->i_num.in_addr);
+		di = dirtree_find(cx, sdp->md.riinode->i_num.in_addr);
 		if (di) {
 			log_info( _("Marking GFS1 rindex file inode "
 				    "connected\n"));
 			di->checked = 1;
 		}
-		di = dirtree_find(sdp->md.qinode->i_num.in_addr);
+		di = dirtree_find(cx, sdp->md.qinode->i_num.in_addr);
 		if (di) {
 			log_info( _("Marking GFS1 quota file inode "
 				    "connected\n"));
 			di->checked = 1;
 		}
 	} else {
-		di = dirtree_find(sdp->master_dir->i_num.in_addr);
+		di = dirtree_find(cx, sdp->master_dir->i_num.in_addr);
 		if (di) {
 			log_info( _("Marking master directory inode "
 				    "connected\n"));
@@ -208,7 +208,7 @@ int pass3(struct fsck_cx *cx)
 	 * find a parent, put in lost+found.
 	 */
 	log_info( _("Checking directory linkage.\n"));
-	for (tmp = osi_first(&dirtree); tmp; tmp = next) {
+	for (tmp = osi_first(&cx->dirtree); tmp; tmp = next) {
 		next = osi_next(tmp);
 		di = (struct dir_info *)tmp;
 		while (!di->checked) {
@@ -238,7 +238,7 @@ int pass3(struct fsck_cx *cx)
 					           "now marked as free\n"),
 					         di->dinode.in_addr,
 					         di->dinode.in_addr);
-					check_n_fix_bitmap(sdp, ip->i_rgd,
+					check_n_fix_bitmap(cx, ip->i_rgd,
 							   di->dinode.in_addr,
 							   0, GFS2_BLKST_FREE);
 					fsck_inode_put(&ip);
@@ -259,7 +259,7 @@ int pass3(struct fsck_cx *cx)
 				log_warn( _("inode %"PRIu64" (0x%"PRIx64") is now "
 					    "marked as free\n"),
 				         di->dinode.in_addr, di->dinode.in_addr);
-				check_n_fix_bitmap(sdp, ip->i_rgd,
+				check_n_fix_bitmap(cx, ip->i_rgd,
 						   di->dinode.in_addr, 0,
 						   GFS2_BLKST_FREE);
 				log_err( _("The block was cleared\n"));
@@ -275,7 +275,7 @@ int pass3(struct fsck_cx *cx)
 					   "size.\n"));
 				if (query( _("Remove zero-size unlinked "
 					    "directory? (y/n) "))) {
-					fsck_bitmap_set(ip, di->dinode.in_addr,
+					fsck_bitmap_set(cx, ip, di->dinode.in_addr,
 						_("zero-sized unlinked inode"),
 							GFS2_BLKST_FREE);
 					fsck_inode_put(&ip);
@@ -287,7 +287,7 @@ int pass3(struct fsck_cx *cx)
 			}
 			if (query( _("Add unlinked directory to "
 				    "lost+found? (y/n) "))) {
-				if (add_inode_to_lf(ip)) {
+				if (add_inode_to_lf(cx, ip)) {
 					fsck_inode_put(&ip);
 					stack;
 					return FSCK_ERROR;

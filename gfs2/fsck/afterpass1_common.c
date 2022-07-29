@@ -103,7 +103,7 @@ static int delete_block_if_notdup(struct fsck_cx *cx, struct lgfs2_inode *ip, ui
 		          "because it's referenced by another inode.\n"),
 		        ip->i_num.in_addr, ip->i_num.in_addr, block, block);
 	} else {
-		check_n_fix_bitmap(ip->i_sbd, ip->i_rgd, block, 0,
+		check_n_fix_bitmap(cx, ip->i_rgd, block, 0,
 				   GFS2_BLKST_FREE);
 	}
 	return META_IS_GOOD;
@@ -297,7 +297,7 @@ int delete_eattr_extentry(struct fsck_cx *cx, struct lgfs2_inode *ip, int i, __b
 			lgfs2_bmodified(leaf_bh);
 			/* Endianness doesn't matter in this case because it's
 			   a single byte. */
-			fsck_bitmap_set(ip, ip->i_eattr,
+			fsck_bitmap_set(cx, ip, ip->i_eattr,
 					_("extended attribute"),
 					ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
 					GFS2_BLKST_USED);

@@ -78,14 +78,14 @@ static void dup_free(struct fsck_cx *cx)
 	}
 }
 
-static void dirtree_free(void)
+static void dirtree_free(struct fsck_cx *cx)
 {
 	struct osi_node *n;
 	struct dir_info *dt;
 
-	while ((n = osi_first(&dirtree))) {
+	while ((n = osi_first(&cx->dirtree))) {
 		dt = (struct dir_info *)n;
-		dirtree_delete(dt);
+		dirtree_delete(cx, dt);
 	}
 }
 
@@ -115,7 +115,7 @@ static void empty_super_block(struct fsck_cx *cx)
 	lgfs2_rgrp_free(cx->sdp, &cx->sdp->rgtree);
 
 	inodetree_free();
-	dirtree_free();
+	dirtree_free(cx);
 	dup_free(cx);
 }
 

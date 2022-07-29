@@ -18,7 +18,7 @@
 #include "metawalk.h"
 #include "util.h"
 
-static void add_dotdot(struct lgfs2_inode *ip)
+static void add_dotdot(struct fsck_cx *cx, struct lgfs2_inode *ip)
 {
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct dir_info *di;
@@ -30,7 +30,7 @@ static void add_dotdot(struct lgfs2_inode *ip)
 
 	/* If there's a pre-existing .. directory entry, we have to
 	   back out the links. */
-	di = dirtree_find(ip->i_num.in_addr);
+	di = dirtree_find(cx, ip->i_num.in_addr);
 	if (di && valid_block(sdp, di->dotdot_parent.in_addr)) {
 		struct lgfs2_inode *dip;
 
@@ -38,11 +38,11 @@ static void add_dotdot(struct lgfs2_inode *ip)
 		          ip->i_num.in_addr, di->dotdot_parent.in_addr);
 		dip = fsck_load_inode(sdp, di->dotdot_parent.in_addr);
 		if (dip->i_num.in_formal_ino == di->dotdot_parent.in_formal_ino) {
-			decr_link_count(di->dotdot_parent.in_addr, ip->i_num.in_addr, sdp->gfs1,
+			decr_link_count(cx, di->dotdot_parent.in_addr, ip->i_num.in_addr, sdp->gfs1,
 					_(".. unlinked, moving to lost+found"));
 			if (dip->i_nlink > 0) {
 			  dip->i_nlink--;
-			  set_di_nlink(dip); /* keep inode tree in sync */
+			  set_di_nlink(cx, dip); /* keep inode tree in sync */
 			  log_debug(_("Decrementing its links to %d\n"),
 				    dip->i_nlink);
 			  lgfs2_bmodified(dip->i_bh);
@@ -52,7 +52,7 @@ static void add_dotdot(struct lgfs2_inode *ip)
 			  log_debug(_("Its link count is %d!  Changing it to 0.\n"),
 			            dip->i_nlink);
 			  dip->i_nlink = 0;
-			  set_di_nlink(dip); /* keep inode tree in sync */
+			  set_di_nlink(cx, dip); /* keep inode tree in sync */
 			  lgfs2_bmodified(dip->i_bh);
 			}
 		} else {
@@ -90,7 +90,7 @@ static void add_dotdot(struct lgfs2_inode *ip)
 	}
 }
 
-void make_sure_lf_exists(struct lgfs2_inode *ip)
+void make_sure_lf_exists(struct fsck_cx *cx, struct lgfs2_inode *ip)
 {
 	struct dir_info *di;
 	struct lgfs2_sbd *sdp = ip->i_sbd;
@@ -123,7 +123,7 @@ void make_sure_lf_exists(struct lgfs2_inode *ip)
 	/* lgfs2_createi will have incremented the di_nlink link count for the root
 	   directory.  We must set the nlink value in the hash table to keep
 	   them in sync so that pass4 can detect and fix any descrepancies. */
-	set_di_nlink(sdp->md.rooti);
+	set_di_nlink(cx, sdp->md.rooti);
 
 	if (sdp->md.rooti->i_entries > root_entries) {
 		struct lgfs2_inum no = lf_dip->i_num;
@@ -133,27 +133,27 @@ void make_sure_lf_exists(struct lgfs2_inode *ip)
 		/* FIXME: i'd feel better about this if fs_mkdir returned
 		   whether it created a new directory or just found an old one,
 		   and we used that instead of the bitmap_type to run this */
-		dirtree_insert(no);
+		dirtree_insert(cx, no);
 		/* Set the bitmap AFTER the dirtree insert so that function
 		   check_n_fix_bitmap will realize it's a dinode and adjust
 		   the rgrp counts properly. */
-		fsck_bitmap_set(ip, lf_dip->i_num.in_addr, _("lost+found dinode"), GFS2_BLKST_DINODE);
+		fsck_bitmap_set(cx, ip, lf_dip->i_num.in_addr, _("lost+found dinode"), GFS2_BLKST_DINODE);
 		/* root inode links to lost+found */
 		no.in_addr = sdp->md.rooti->i_num.in_addr;
 		no.in_formal_ino = sdp->md.rooti->i_num.in_formal_ino;
-		incr_link_count(no, lf_dip, _("root"));
+		incr_link_count(cx, no, lf_dip, _("root"));
 		/* lost+found link for '.' from itself */
 		no.in_addr = lf_dip->i_num.in_addr;
 		no.in_formal_ino = lf_dip->i_num.in_formal_ino;
-		incr_link_count(no, lf_dip, "\".\"");
+		incr_link_count(cx, no, lf_dip, "\".\"");
 		/* lost+found link for '..' back to root */
-		incr_link_count(no, sdp->md.rooti, "\"..\"");
+		incr_link_count(cx, no, sdp->md.rooti, "\"..\"");
 		if (sdp->gfs1)
 			lf_dip->i_di_type = GFS_FILE_DIR;
 	}
 	log_info(_("lost+found directory is dinode %"PRIu64" (0x%"PRIx64")\n"),
 	         lf_dip->i_num.in_addr, lf_dip->i_num.in_addr);
-	di = dirtree_find(lf_dip->i_num.in_addr);
+	di = dirtree_find(cx, lf_dip->i_num.in_addr);
 	if (di) {
 		log_info( _("Marking lost+found inode connected\n"));
 		di->checked = 1;
@@ -170,7 +170,8 @@ void make_sure_lf_exists(struct lgfs2_inode *ip)
  *
  * Returns: 0 on success, -1 on failure.
  */
-int add_inode_to_lf(struct lgfs2_inode *ip){
+int add_inode_to_lf(struct fsck_cx *cx, struct lgfs2_inode *ip)
+{
 	char tmp_name[256];
 	unsigned inode_type;
 	struct lgfs2_sbd *sdp = ip->i_sbd;
@@ -178,7 +179,7 @@ int add_inode_to_lf(struct lgfs2_inode *ip){
 	int err = 0;
 	uint32_t mode;
 
-	make_sure_lf_exists(ip);
+	make_sure_lf_exists(cx, ip);
 	if (ip->i_num.in_addr == lf_dip->i_num.in_addr) {
 		log_err( _("Trying to add lost+found to itself...skipping"));
 		return 0;
@@ -191,7 +192,7 @@ int add_inode_to_lf(struct lgfs2_inode *ip){
 
 	switch (mode) {
 	case S_IFDIR:
-		add_dotdot(ip);
+		add_dotdot(cx, ip);
 		sprintf(tmp_name, "lost_dir_%"PRIu64, ip->i_num.in_addr);
 		inode_type = (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR);
 		break;
@@ -234,11 +235,11 @@ int add_inode_to_lf(struct lgfs2_inode *ip){
 	}
 
 	/* This inode is linked from lost+found */
-	incr_link_count(no, lf_dip, _("from lost+found"));
+	incr_link_count(cx, no, lf_dip, _("from lost+found"));
 	/* If it's a directory, lost+found is back-linked to it via .. */
 	if (mode == S_IFDIR) {
 		no = lf_dip->i_num;
-		incr_link_count(no, ip, _("to lost+found"));
+		incr_link_count(cx, no, ip, _("to lost+found"));
 	}
 	log_notice(_("Added inode #%"PRIu64" (0x%"PRIx64") to lost+found\n"),
 	           ip->i_num.in_addr, ip->i_num.in_addr);

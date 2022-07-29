@@ -424,9 +424,9 @@ int add_duplicate_ref(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block
 	return META_IS_GOOD;
 }
 
-struct dir_info *dirtree_insert(struct lgfs2_inum inum)
+struct dir_info *dirtree_insert(struct fsck_cx *cx, struct lgfs2_inum inum)
 {
-	struct osi_node **newn = &dirtree.osi_node, *parent = NULL;
+	struct osi_node **newn = &cx->dirtree.osi_node, *parent = NULL;
 	struct dir_info *data;
 
 	/* Figure out where to put new node */
@@ -451,14 +451,14 @@ struct dir_info *dirtree_insert(struct lgfs2_inum inum)
 	data->dinode.in_addr = inum.in_addr;
 	data->dinode.in_formal_ino = inum.in_formal_ino;
 	osi_link_node(&data->node, parent, newn);
-	osi_insert_color(&data->node, &dirtree);
+	osi_insert_color(&data->node, &cx->dirtree);
 
 	return data;
 }
 
-struct dir_info *dirtree_find(uint64_t block)
+struct dir_info *dirtree_find(struct fsck_cx *cx, uint64_t block)
 {
-	struct osi_node *node = dirtree.osi_node;
+	struct osi_node *node = cx->dirtree.osi_node;
 
 	while (node) {
 		struct dir_info *data = (struct dir_info *)node;
@@ -529,9 +529,9 @@ void dup_delete(struct fsck_cx *cx, struct duptree *dt)
 	free(dt);
 }
 
-void dirtree_delete(struct dir_info *b)
+void dirtree_delete(struct fsck_cx *cx, struct dir_info *b)
 {
-	osi_erase(&b->node, &dirtree);
+	osi_erase(&b->node, &cx->dirtree);
 	free(b);
 }
 

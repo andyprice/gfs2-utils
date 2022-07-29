@@ -328,16 +328,16 @@ static void resolve_dup_references(struct fsck_cx *cx, struct duptree *dt,
 				   and dirtree entries exist. That way, the
 				   bitmap_set will do proper accounting for
 				   the rgrp dinode count. */
-				fsck_bitmap_set(ip, ip->i_num.in_addr,
+				fsck_bitmap_set(cx, ip, ip->i_num.in_addr,
 						_("duplicate referencing bad"),
 						GFS2_BLKST_FREE);
 				/* Remove the inode from the inode tree */
 				ii = inodetree_find(ip->i_num.in_addr);
 				if (ii)
 					inodetree_delete(ii);
-				di = dirtree_find(ip->i_num.in_addr);
+				di = dirtree_find(cx, ip->i_num.in_addr);
 				if (di)
-					dirtree_delete(di);
+					dirtree_delete(cx, di);
 				link1_set(&nlink1map, ip->i_num.in_addr,
 					  0);
 				/* We delete the dup_handler inode count and
@@ -414,7 +414,7 @@ static int clone_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t metab
 		if (!error) {
 			clone_bh = lgfs2_bread(ip->i_sbd, clonet->dup_block);
 			if (clone_bh) {
-				fsck_bitmap_set(ip, cloneblock, _("data"),
+				fsck_bitmap_set(cx, ip, cloneblock, _("data"),
 						GFS2_BLKST_USED);
 				clone_bh->b_blocknr = cloneblock;
 				lgfs2_bmodified(clone_bh);
@@ -472,7 +472,7 @@ static void clone_dup_ref_in_inode(struct fsck_cx *cx, struct lgfs2_inode *ip, s
 	}
 }
 
-static int set_ip_bitmap(struct lgfs2_inode *ip)
+static int set_ip_bitmap(struct fsck_cx *cx, struct lgfs2_inode *ip)
 {
 	uint64_t block = ip->i_bh->b_blocknr;
 	uint32_t mode;
@@ -508,7 +508,7 @@ static int set_ip_bitmap(struct lgfs2_inode *ip)
 	default:
 		return -EINVAL;
 	}
-	fsck_bitmap_set(ip, block, ty, GFS2_BLKST_DINODE);
+	fsck_bitmap_set(cx, ip, block, ty, GFS2_BLKST_DINODE);
 	return 0;
 }
 
@@ -545,24 +545,24 @@ static void resolve_last_reference(struct fsck_cx *cx, struct duptree *dt,
 			     "already marked free.\n"),
 		          id->block_no, id->block_no);
 	} else if (id->reftypecount[REF_IS_INODE]) {
-		set_ip_bitmap(ip);
+		set_ip_bitmap(cx, ip);
 	} else if (id->reftypecount[REF_AS_DATA]) {
-		fsck_bitmap_set(ip, dt->block,  _("reference-repaired data"),
+		fsck_bitmap_set(cx, ip, dt->block,  _("reference-repaired data"),
 				GFS2_BLKST_USED);
 	} else if (id->reftypecount[REF_AS_META]) {
 		if (is_dir(ip, sdp->gfs1))
-			fsck_bitmap_set(ip, dt->block,
+			fsck_bitmap_set(cx, ip, dt->block,
 					_("reference-repaired leaf"),
 					sdp->gfs1 ? GFS2_BLKST_DINODE :
 					GFS2_BLKST_USED);
 		else
-			fsck_bitmap_set(ip, dt->block,
+			fsck_bitmap_set(cx, ip, dt->block,
 					_("reference-repaired indirect"),
 					sdp->gfs1 ? GFS2_BLKST_DINODE :
 					GFS2_BLKST_USED);
 	} else {
 		if (acceptable_ref == REF_AS_EA)
-			fsck_bitmap_set(ip, dt->block,
+			fsck_bitmap_set(cx, ip, dt->block,
 					_("reference-repaired extended "
 					  "attribute"),
 					sdp->gfs1 ? GFS2_BLKST_DINODE :
@@ -581,7 +581,7 @@ static void resolve_last_reference(struct fsck_cx *cx, struct duptree *dt,
 				ip->i_flags &= ~GFS2_DIF_EA_INDIRECT;
 				ip->i_blocks--;
 				lgfs2_bmodified(ip->i_bh);
-				fsck_bitmap_set(ip, dt->block,
+				fsck_bitmap_set(cx, ip, dt->block,
 						_("reference-repaired EA"),
 						GFS2_BLKST_FREE);
 				log_err(_("The bad extended attribute was "
@@ -724,7 +724,7 @@ static int handle_dup_blk(struct fsck_cx *cx, struct duptree *dt)
 			           dup_blk, dup_blk);
 			if (dh.dt)
 				dup_delete(cx, dh.dt);
-			check_n_fix_bitmap(cx->sdp, NULL, dup_blk, 0,
+			check_n_fix_bitmap(cx, NULL, dup_blk, 0,
 					   GFS2_BLKST_FREE);
 		}
 	}

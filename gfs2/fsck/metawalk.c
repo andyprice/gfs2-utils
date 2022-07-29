@@ -29,9 +29,10 @@
    is used to set the latter.  The two must be kept in sync, otherwise
    you'll get bitmap mismatches.  This function checks the status of the
    bitmap whenever the blockmap changes, and fixes it accordingly. */
-int check_n_fix_bitmap(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
+int check_n_fix_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 		       uint64_t blk, int error_on_dinode, int new_state)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	int old_state;
 	int treat_as_inode = 0;
 	int rewrite_rgrp = 0;
@@ -91,9 +92,9 @@ int check_n_fix_bitmap(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
 		struct dir_info *dt;
 		struct inode_info *ii;
 
-		dt = dirtree_find(blk);
+		dt = dirtree_find(cx, blk);
 		if (dt) {
-			dirtree_delete(dt);
+			dirtree_delete(cx, dt);
 			treat_as_inode = 1;
 		}
 		ii = inodetree_find(blk);
@@ -129,7 +130,7 @@ int check_n_fix_bitmap(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
 				struct dir_info *dt;
 				struct inode_info *ii;
 
-				dt = dirtree_find(blk);
+				dt = dirtree_find(cx, blk);
 				if (dt)
 					treat_as_inode = 1;
 				else {
@@ -159,7 +160,7 @@ int check_n_fix_bitmap(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
 /*
  * _fsck_bitmap_set - Mark a block in the bitmap, and adjust free space.
  */
-int _fsck_bitmap_set(struct lgfs2_inode *ip, uint64_t bblock,
+int _fsck_bitmap_set(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t bblock,
 		     const char *btype, int mark,
 		     int error_on_dinode, const char *caller, int fline)
 {
@@ -200,7 +201,7 @@ int _fsck_bitmap_set(struct lgfs2_inode *ip, uint64_t bblock,
 		prev_mark = mark;
 		prev_caller = caller;
 	}
-	error = check_n_fix_bitmap(ip->i_sbd, ip->i_rgd, bblock,
+	error = check_n_fix_bitmap(cx, ip->i_rgd, bblock,
 				   error_on_dinode, mark);
 	if (error < 0)
 		log_err(_("This block is not represented in the bitmap.\n"));
@@ -1616,7 +1617,7 @@ undo_metalist:
 	   to undo. */
 	delete_all_dups(cx, ip);
 	/* Set the dinode as "bad" so it gets deleted */
-	fsck_bitmap_set(ip, ip->i_num.in_addr, "corrupt", GFS2_BLKST_FREE);
+	fsck_bitmap_set(cx, ip, ip->i_num.in_addr, "corrupt", GFS2_BLKST_FREE);
 	log_err(_("The corrupt inode was invalidated.\n"));
 out:
 	free_metalist(ip, metalist);

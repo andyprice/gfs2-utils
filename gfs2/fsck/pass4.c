@@ -66,7 +66,7 @@ static int handle_unlinked(struct fsck_cx *cx, uint64_t no_addr,
 			ip = fsck_load_inode(sdp, no_addr);
 			check_inode_eattr(cx, ip, &pass4_fxns_delete);
 			check_metatree(cx, ip, &pass4_fxns_delete);
-			fsck_bitmap_set(ip, no_addr, _("bad unlinked"),
+			fsck_bitmap_set(cx, ip, no_addr, _("bad unlinked"),
 					GFS2_BLKST_FREE);
 			fsck_inode_put(&ip);
 			return 1;
@@ -81,7 +81,7 @@ static int handle_unlinked(struct fsck_cx *cx, uint64_t no_addr,
 		if (query(_("Delete unlinked inode? (y/n) "))) {
 			check_inode_eattr(cx, ip, &pass4_fxns_delete);
 			check_metatree(cx, ip, &pass4_fxns_delete);
-			fsck_bitmap_set(ip, no_addr, _("invalid unlinked"),
+			fsck_bitmap_set(cx, ip, no_addr, _("invalid unlinked"),
 					GFS2_BLKST_FREE);
 			fsck_inode_put(&ip);
 			log_err( _("The inode was deleted\n"));
@@ -98,14 +98,14 @@ static int handle_unlinked(struct fsck_cx *cx, uint64_t no_addr,
 	if (!ip->i_size && !ip->i_eattr){
 		log_err( _("Unlinked inode has zero size\n"));
 		if (query(_("Clear zero-size unlinked inode? (y/n) "))) {
-			fsck_bitmap_set(ip, no_addr, _("unlinked zero-length"),
+			fsck_bitmap_set(cx, ip, no_addr, _("unlinked zero-length"),
 					GFS2_BLKST_FREE);
 			fsck_inode_put(&ip);
 			return 1;
 		}
 	}
 	if (query( _("Add unlinked inode to lost+found? (y/n)"))) {
-		if (add_inode_to_lf(ip)) {
+		if (add_inode_to_lf(cx, ip)) {
 			stack;
 			fsck_inode_put(&ip);
 			return -1;
@@ -141,7 +141,7 @@ static void handle_inconsist(struct lgfs2_sbd *sdp, uint64_t no_addr,
 	}
 }
 
-static int adjust_lf_links(int lf_addition)
+static int adjust_lf_links(struct fsck_cx *cx, int lf_addition)
 {
 	struct dir_info *lf_di;
 
@@ -151,7 +151,7 @@ static int adjust_lf_links(int lf_addition)
 	if (!lf_addition)
 		return 0;
 
-	if (!(lf_di = dirtree_find(lf_dip->i_num.in_addr))) {
+	if (!(lf_di = dirtree_find(cx, lf_dip->i_num.in_addr))) {
 		log_crit(_("Unable to find lost+found inode in "
 			   "inode_hash!!\n"));
 		return -1;
@@ -194,7 +194,7 @@ static int scan_inode_list(struct fsck_cx *cx)
 		          ii->num.in_addr, ii->num.in_addr, ii->di_nlink);
 	} /* osi_list_foreach(tmp, list) */
 
-	return adjust_lf_links(lf_addition);
+	return adjust_lf_links(cx, lf_addition);
 }
 
 static int scan_dir_list(struct fsck_cx *cx)
@@ -206,7 +206,7 @@ static int scan_dir_list(struct fsck_cx *cx)
 
 	/* FIXME: should probably factor this out into a generic
 	 * scanning fxn */
-	for (tmp = osi_first(&dirtree); tmp; tmp = next) {
+	for (tmp = osi_first(&cx->dirtree); tmp; tmp = next) {
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 			return 0;
 		next = osi_next(tmp);
@@ -227,7 +227,7 @@ static int scan_dir_list(struct fsck_cx *cx)
 		          di->dinode.in_addr, di->dinode.in_addr, di->di_nlink);
 	} /* osi_list_foreach(tmp, list) */
 
-	return adjust_lf_links(lf_addition);
+	return adjust_lf_links(cx, lf_addition);
 }
 
 static int scan_nlink1_list(struct fsck_cx *cx)
@@ -252,7 +252,7 @@ static int scan_nlink1_list(struct fsck_cx *cx)
 				continue;
 		}
 	}
-	return adjust_lf_links(lf_addition);
+	return adjust_lf_links(cx, lf_addition);
 }
 
 /**

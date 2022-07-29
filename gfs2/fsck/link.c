@@ -35,13 +35,13 @@ int link1_set(struct bmap *bmap, uint64_t bblock, int mark)
 	return 0;
 }
 
-int set_di_nlink(struct lgfs2_inode *ip)
+int set_di_nlink(struct fsck_cx *cx, struct lgfs2_inode *ip)
 {
 	struct inode_info *ii;
 	struct dir_info *di;
 
 	if (is_dir(ip, ip->i_sbd->gfs1)) {
-		di = dirtree_find(ip->i_num.in_addr);
+		di = dirtree_find(cx, ip->i_num.in_addr);
 		if (di == NULL) {
 			log_err(_("Error: directory %"PRIu64" (0x%"PRIx64") is not "
 				  "in the dir_tree (set).\n"),
@@ -77,14 +77,14 @@ int set_di_nlink(struct lgfs2_inode *ip)
 		    "for (0x%"PRIx64") via %s\n"),                        \
 		  referenced_from, counted_links, no_addr, why);
 
-int incr_link_count(struct lgfs2_inum no, struct lgfs2_inode *ip, const char *why)
+int incr_link_count(struct fsck_cx *cx, struct lgfs2_inum no, struct lgfs2_inode *ip, const char *why)
 {
 	struct inode_info *ii = NULL;
 	uint64_t referenced_from = ip ? ip->i_num.in_addr : 0;
 	struct dir_info *di;
 	struct lgfs2_inode *link_ip;
 
-	di = dirtree_find(no.in_addr);
+	di = dirtree_find(cx, no.in_addr);
 	if (di) {
 		if (di->dinode.in_formal_ino != no.in_formal_ino)
 			return INCR_LINK_INO_MISMATCH;
@@ -148,13 +148,13 @@ int incr_link_count(struct lgfs2_inum no, struct lgfs2_inode *ip, const char *wh
 	            "for (0x%"PRIx64") via %s\n"),                        \
 		  referenced_from, counted_links, no_addr, why);
 
-int decr_link_count(uint64_t inode_no, uint64_t referenced_from, int gfs1,
+int decr_link_count(struct fsck_cx *cx, uint64_t inode_no, uint64_t referenced_from, int gfs1,
 		    const char *why)
 {
 	struct inode_info *ii = NULL;
 	struct dir_info *di;
 
-	di = dirtree_find(inode_no);
+	di = dirtree_find(cx, inode_no);
 	if (di) {
 		if (!di->counted_links) {
 			log_debug(_("Dir 0x%"PRIx64"'s link to 0x%"PRIx64" via %s is zero!\n"),

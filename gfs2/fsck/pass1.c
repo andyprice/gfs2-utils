@@ -60,11 +60,11 @@ static int blockmap_set(struct bmap *bmap, uint64_t bblock, int mark)
  * _fsck_blockmap_set - Mark a block in the 4-bit blockmap and the 2-bit
  *                      bitmap, and adjust free space accordingly.
  */
-static int _fsck_blockmap_set(struct lgfs2_inode *ip, uint64_t bblock,
+static int _fsck_blockmap_set(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t bblock,
 			      const char *btype, int mark, int error_on_dinode,
 			      const char *caller, int fline)
 {
-	int error = _fsck_bitmap_set(ip, bblock, btype, mark, error_on_dinode,
+	int error = _fsck_bitmap_set(cx, ip, bblock, btype, mark, error_on_dinode,
 				     caller, fline);
 	if (error)
 		return error;
@@ -72,10 +72,10 @@ static int _fsck_blockmap_set(struct lgfs2_inode *ip, uint64_t bblock,
 	return blockmap_set(bl, bblock, mark);
 }
 
-#define fsck_blockmap_set(ip, b, bt, m) \
-	_fsck_blockmap_set(ip, b, bt, m, 0, __FUNCTION__, __LINE__)
-#define fsck_blkmap_set_noino(ip, b, bt, m) \
-	_fsck_blockmap_set(ip, b, bt, m, 1, __FUNCTION__, __LINE__)
+#define fsck_blockmap_set(cx, ip, b, bt, m) \
+	_fsck_blockmap_set(cx, ip, b, bt, m, 0, __FUNCTION__, __LINE__)
+#define fsck_blkmap_set_noino(cx, ip, b, bt, m) \
+	_fsck_blockmap_set(cx, ip, b, bt, m, 1, __FUNCTION__, __LINE__)
 
 /**
  * p1_delete_block - delete a block associated with an inode
@@ -85,7 +85,7 @@ static int p1_delete_block(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t 
 			void *private)
 {
 	if (valid_block_ip(ip, block)) {
-		fsck_blockmap_set(ip, block, btype, GFS2_BLKST_FREE);
+		fsck_blockmap_set(cx, ip, block, btype, GFS2_BLKST_FREE);
 		return 0;
 	}
 	return -1;
@@ -149,7 +149,7 @@ static int resuscitate_metalist(struct fsck_cx *cx, struct iptr iptr, struct lgf
 	*was_duplicate = 0;
 	*bh = NULL;
 	if (!valid_block_ip(ip, block)){ /* blk outside of FS */
-		fsck_blockmap_set(ip, ip->i_num.in_addr, _("itself"), GFS2_BLKST_UNLINKED);
+		fsck_blockmap_set(cx, ip, ip->i_num.in_addr, _("itself"), GFS2_BLKST_UNLINKED);
 		log_err(_("Bad indirect block pointer (invalid or out of "
 		          "range) found in system inode %"PRIu64" (0x%"PRIx64").\n"),
 		        ip->i_num.in_addr, ip->i_num.in_addr);
@@ -157,11 +157,11 @@ static int resuscitate_metalist(struct fsck_cx *cx, struct iptr iptr, struct lgf
 		return META_IS_GOOD;
 	}
 	if (fsck_system_inode(ip->i_sbd, block))
-		fsck_blockmap_set(ip, block, _("system file"),
+		fsck_blockmap_set(cx, ip, block, _("system file"),
 				  ip->i_sbd->gfs1 ?
 				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	else
-		check_n_fix_bitmap(ip->i_sbd, ip->i_rgd, block, 0,
+		check_n_fix_bitmap(cx, ip->i_rgd, block, 0,
 				   ip->i_sbd->gfs1 ?
 				   GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	bc->indir_count++;
@@ -203,10 +203,10 @@ static int resuscitate_dentry(struct fsck_cx *cx, struct lgfs2_inode *ip, struct
 	   since it's in a system directory we need to make sure it's
 	   represented in the rgrp bitmap. */
 	if (fsck_system_inode(sdp, block))
-		fsck_blockmap_set(ip, block, _("system file"),
+		fsck_blockmap_set(cx, ip, block, _("system file"),
 				  GFS2_BLKST_DINODE);
 	else
-		check_n_fix_bitmap(sdp, ip->i_rgd, block, 0,
+		check_n_fix_bitmap(cx, ip->i_rgd, block, 0,
 				   GFS2_BLKST_DINODE);
 	/* Return the number of leaf entries so metawalk doesn't flag this
 	   leaf as having none. */
@@ -244,7 +244,7 @@ static int p1_check_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t bl
 			   it was already checked, so don't check again. */
 			return EEXIST; /* non-fatal */
 	}
-	fsck_blockmap_set(ip, block, _("directory leaf"),
+	fsck_blockmap_set(cx, ip, block, _("directory leaf"),
 			  ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
 			  GFS2_BLKST_USED);
 	return 0;
@@ -270,7 +270,7 @@ static int p1_check_metalist(struct fsck_cx *cx, struct iptr iptr, struct lgfs2_
 		   "unrecoverable" errors.  The inode itself should be
 		   set "free" and removed from the inodetree by
 		   undo_check_metalist. */
-		fsck_blockmap_set(ip, ip->i_num.in_addr,
+		fsck_blockmap_set(cx, ip, ip->i_num.in_addr,
 				  _("bad block referencing"), GFS2_BLKST_UNLINKED);
 		log_debug(_("Bad indirect block (invalid/out of range) "
 		            "found in inode %"PRIu64" (0x%"PRIx64").\n"),
@@ -321,7 +321,7 @@ static int p1_check_metalist(struct fsck_cx *cx, struct iptr iptr, struct lgfs2_
 		lgfs2_brelse(nbh);
 	} else {
 		*bh = nbh;
-		fsck_blockmap_set(ip, block, _("indirect"), ip->i_sbd->gfs1 ?
+		fsck_blockmap_set(cx, ip, block, _("indirect"), ip->i_sbd->gfs1 ?
 				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	}
 
@@ -349,7 +349,7 @@ static int undo_reference(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t b
 	struct lgfs2_rgrp_tree *rgd;
 
 	if (!valid_block_ip(ip, block)) { /* blk outside of FS */
-		fsck_blockmap_set(ip, ip->i_num.in_addr, _("bad block referencing"), GFS2_BLKST_FREE);
+		fsck_blockmap_set(cx, ip, ip->i_num.in_addr, _("bad block referencing"), GFS2_BLKST_FREE);
 		return 1;
 	}
 
@@ -384,7 +384,7 @@ static int undo_reference(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t b
 		if (old_bitmap_state == GFS2_BLKST_DINODE)
 			return -1;
 	}
-	fsck_blockmap_set(ip, block,
+	fsck_blockmap_set(cx, ip, block,
 			  meta ? _("bad indirect") : _("referenced data"),
 			  GFS2_BLKST_FREE);
 	return 0;
@@ -410,13 +410,13 @@ static int p1_undo_check_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64
  * Note that previous checks were done for duplicate references, so this
  * is checking for dinodes that we haven't processed yet.
  */
-static int blockmap_set_as_data(struct lgfs2_inode *ip, uint64_t block)
+static int blockmap_set_as_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block)
 {
 	int error;
 	struct lgfs2_buffer_head *bh;
 	struct gfs2_dinode *di;
 
-	error = fsck_blkmap_set_noino(ip, block, "data", GFS2_BLKST_USED);
+	error = fsck_blkmap_set_noino(cx, ip, block, "data", GFS2_BLKST_USED);
 	if (!error)
 		return 0;
 
@@ -439,7 +439,7 @@ static int blockmap_set_as_data(struct lgfs2_inode *ip, uint64_t block)
 	error = -1;
 out:
 	if (!error)
-		fsck_blockmap_set(ip, block, "data",  GFS2_BLKST_USED);
+		fsck_blockmap_set(cx, ip, block, "data",  GFS2_BLKST_USED);
 	lgfs2_brelse(bh);
 	return error;
 }
@@ -463,7 +463,7 @@ static int p1_check_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t me
 		/* Mark the owner of this block with the bad_block
 		 * designator so we know to check it for out of range
 		 * blocks later */
-		fsck_blockmap_set(ip, ip->i_num.in_addr, _("bad (out of range) data"), GFS2_BLKST_UNLINKED);
+		fsck_blockmap_set(cx, ip, ip->i_num.in_addr, _("bad (out of range) data"), GFS2_BLKST_UNLINKED);
 		return -1;
 	}
 	bc->data_count++; /* keep the count sane anyway */
@@ -537,13 +537,13 @@ static int p1_check_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t me
 		log_info(_("Block %"PRIu64" (0x%"PRIx64") is a GFS1 rindex block\n"),
 		         block, block);
 		special_set(&gfs1_rindex_blks, block);
-		fsck_blockmap_set(ip, block, "rgrp", GFS2_BLKST_DINODE);
+		fsck_blockmap_set(cx, ip, block, "rgrp", GFS2_BLKST_DINODE);
 	} else if (ip->i_sbd->gfs1 && ip->i_flags & GFS2_DIF_JDATA) {
 		log_info(_("Block %"PRIu64" (0x%"PRIx64") is a GFS1 journaled data block\n"),
 		         block, block);
-		fsck_blockmap_set(ip, block, "jdata", GFS2_BLKST_DINODE);
+		fsck_blockmap_set(cx, ip, block, "jdata", GFS2_BLKST_DINODE);
 	} else
-		return blockmap_set_as_data(ip, block);
+		return blockmap_set_as_data(cx, ip, block);
 	return 0;
 }
 
@@ -662,7 +662,7 @@ static int p1_check_eattr_indir(struct fsck_cx *cx, struct lgfs2_inode *ip, uint
 		bc->ea_count++;
 		ret = 0; /* For the same reason stated above. */
 	} else {
-		fsck_blockmap_set(ip, indirect,
+		fsck_blockmap_set(cx, ip, indirect,
 				  _("indirect Extended Attribute"), sdp->gfs1 ?
 				  GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 		bc->ea_count++;
@@ -743,7 +743,7 @@ static int check_ealeaf_block(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64
 	/* Point of confusion: We've got to set the ea block itself to
 	   GFS2_BLKST_USED here.  Elsewhere we mark the inode with
 	   gfs2_eattr_block meaning it contains an eattr. */
-	fsck_blockmap_set(ip, block, _("Extended Attribute"),
+	fsck_blockmap_set(cx, ip, block, _("Extended Attribute"),
 			  sdp->gfs1 ? GFS2_BLKST_DINODE : GFS2_BLKST_USED);
 	bc->ea_count++;
 	*bh = leaf_bh;
@@ -779,7 +779,7 @@ static int p1_check_extended_leaf_eattr(struct fsck_cx *cx, struct lgfs2_inode *
 		          "%"PRIu64" (0x%"PRIx64") has an extended leaf block #%"PRIu64" "
 		          "(0x%"PRIx64") that is invalid or out of range.\n"),
 		        ip->i_num.in_addr, ip->i_num.in_addr, ip->i_eattr, ip->i_eattr, el_blk, el_blk);
-		fsck_blockmap_set(ip, ip->i_eattr, _("bad (out of range) Extended Attribute "),
+		fsck_blockmap_set(cx, ip, ip->i_eattr, _("bad (out of range) Extended Attribute "),
 		                  GFS2_BLKST_UNLINKED);
 		error = 1;
 	} else {
@@ -798,7 +798,7 @@ static int p1_check_extended_leaf_eattr(struct fsck_cx *cx, struct lgfs2_inode *
 			lgfs2_bmodified(leaf_bh);
 			/* Endianness doesn't matter in this case because it's
 			   a single byte. */
-			fsck_blockmap_set(ip, ip->i_eattr,
+			fsck_blockmap_set(cx, ip, ip->i_eattr,
 					  _("extended attribute"),
 					  sdp->gfs1 ? GFS2_BLKST_DINODE :
 					  GFS2_BLKST_USED);
@@ -821,7 +821,7 @@ static int p1_check_eattr_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, uint6
 		           "block #%"PRIu64" (0x%"PRIx64") is invalid or out of "
 		           "range.\n"),
 		         ip->i_num.in_addr, ip->i_num.in_addr, block, block);
-		fsck_blockmap_set(ip, ip->i_eattr, _("bad (out of range) extended attribute leaf"),
+		fsck_blockmap_set(cx, ip, ip->i_eattr, _("bad (out of range) extended attribute leaf"),
 		                  GFS2_BLKST_UNLINKED);
 		return 1;
 	}
@@ -1051,7 +1051,7 @@ static struct metawalk_fxns eattr_undo_fxns = {
  *
  * returns: 0 if no error, -EINVAL if dinode has a bad mode, -EPERM on error
  */
-static int set_ip_blockmap(struct lgfs2_inode *ip)
+static int set_ip_blockmap(struct fsck_cx *cx, struct lgfs2_inode *ip)
 {
 	uint64_t block = ip->i_bh->b_blocknr;
 	struct lgfs2_inum no;
@@ -1089,8 +1089,8 @@ static int set_ip_blockmap(struct lgfs2_inode *ip)
 		return -EINVAL;
 	}
 	no = ip->i_num;
-	if (fsck_blockmap_set(ip, block, ty, GFS2_BLKST_DINODE) ||
-	    (mode == S_IFDIR && !dirtree_insert(no))) {
+	if (fsck_blockmap_set(cx, ip, block, ty, GFS2_BLKST_DINODE) ||
+	    (mode == S_IFDIR && !dirtree_insert(cx, no))) {
 		stack;
 		return -EPERM;
 	}
@@ -1149,7 +1149,7 @@ static int alloc_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block
 	   after the bitmap has been set but before the blockmap has. */
 	q = bitmap_type(ip->i_sbd, block);
 	if (q == GFS2_BLKST_FREE)
-		fsck_blockmap_set(ip, block, "newly allocated leaf",
+		fsck_blockmap_set(cx, ip, block, "newly allocated leaf",
 				  ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
 				  GFS2_BLKST_USED);
 	return 0;
@@ -1240,11 +1240,11 @@ static int handle_ip(struct fsck_cx *cx, struct lgfs2_inode *ip)
 	if (bad_pointers > BAD_POINTER_TOLERANCE) {
 		log_err(_("Error: inode %"PRIu64" (0x%"PRIx64") has more than %d bad pointers.\n"),
 		        ip->i_num.in_addr, ip->i_num.in_addr, BAD_POINTER_TOLERANCE);
-		fsck_blockmap_set(ip, ip->i_num.in_addr, _("badly corrupt"), GFS2_BLKST_FREE);
+		fsck_blockmap_set(cx, ip, ip->i_num.in_addr, _("badly corrupt"), GFS2_BLKST_FREE);
 		return 0;
 	}
 
-	error = set_ip_blockmap(ip);
+	error = set_ip_blockmap(cx, ip);
 	if (error == -EINVAL) {
 		/* We found a dinode that has an invalid mode. At this point
 		   set_ip_blockmap returned an error, which means it never
@@ -1252,12 +1252,12 @@ static int handle_ip(struct fsck_cx *cx, struct lgfs2_inode *ip)
 		   processed its metadata with pass1_fxns, none of its
 		   metadata will be flagged as metadata or data blocks yet.
 		   Therefore, we don't need to invalidate anything. */
-		fsck_blockmap_set(ip, ip->i_num.in_addr, _("invalid mode"), GFS2_BLKST_FREE);
+		fsck_blockmap_set(cx, ip, ip->i_num.in_addr, _("invalid mode"), GFS2_BLKST_FREE);
 		return 0;
 	} else if (error)
 		goto bad_dinode;
 
-	if (set_di_nlink(ip))
+	if (set_di_nlink(cx, ip))
 		goto bad_dinode;
 
 	if (lf_dip)
@@ -1410,7 +1410,7 @@ static int check_system_inode(struct fsck_cx *cx,
 			log_err(_("Found invalid system dinode at block %"PRIu64" (0x%"PRIx64")\n"),
 			        iblock, iblock);
 			blockmap_set(bl, iblock, GFS2_BLKST_FREE);
-			check_n_fix_bitmap(cx->sdp, (*sysinode)->i_rgd, iblock, 0,
+			check_n_fix_bitmap(cx, (*sysinode)->i_rgd, iblock, 0,
 					   GFS2_BLKST_FREE);
 			lgfs2_inode_put(sysinode);
 		}
@@ -1424,12 +1424,12 @@ static int check_system_inode(struct fsck_cx *cx,
 		if (ds.q == GFS2_BLKST_FREE) {
 			log_info( _("The inode exists but the block is not "
 				    "marked 'in use'; fixing it.\n"));
-			fsck_blockmap_set(*sysinode, (*sysinode)->i_num.in_addr,
+			fsck_blockmap_set(cx, *sysinode, (*sysinode)->i_num.in_addr,
 					  filename, GFS2_BLKST_DINODE);
 			ds.q = GFS2_BLKST_DINODE;
 			if (isdir) {
 				struct lgfs2_inum no = (*sysinode)->i_num;
-				dirtree_insert(no);
+				dirtree_insert(cx, no);
 			}
 		}
 		/* Make sure it's marked as a system file/directory */
@@ -1474,12 +1474,12 @@ static int check_system_inode(struct fsck_cx *cx,
 			}
 			if (*sysinode == cx->sdp->md.jiinode)
 				ji_update(cx->sdp);
-			fsck_blockmap_set(*sysinode, (*sysinode)->i_num.in_addr,
+			fsck_blockmap_set(cx, *sysinode, (*sysinode)->i_num.in_addr,
 					  filename, GFS2_BLKST_DINODE);
 			ds.q = GFS2_BLKST_DINODE;
 			if (isdir) {
 				struct lgfs2_inum no = (*sysinode)->i_num;
-				dirtree_insert(no);
+				dirtree_insert(cx, no);
 			}
 		} else {
 			log_err( _("Cannot continue without valid %s inode\n"),
@@ -1613,7 +1613,7 @@ static int check_system_inodes(struct fsck_cx *cx)
 	   All other system dinodes in master will be taken care of by function
 	   resuscitate_metalist.  But master won't since it has no parent.*/
 	if (!sdp->gfs1) {
-		fsck_blockmap_set(sdp->master_dir, sdp->master_dir->i_num.in_addr,
+		fsck_blockmap_set(cx, sdp->master_dir, sdp->master_dir->i_num.in_addr,
 				  "master", GFS2_BLKST_DINODE);
 		if (check_system_inode(cx, &sdp->master_dir, "master",
 				       lgfs2_build_master, 1, NULL, 1)) {
@@ -1623,7 +1623,7 @@ static int check_system_inodes(struct fsck_cx *cx)
 	}
 	/* Mark the root dinode as a "dinode" in the block map as we did
 	   for master, since it has no parent. */
-	fsck_blockmap_set(sdp->md.rooti, sdp->md.rooti->i_num.in_addr,
+	fsck_blockmap_set(cx, sdp->md.rooti, sdp->md.rooti->i_num.in_addr,
 			  "root", GFS2_BLKST_DINODE);
 	if (check_system_inode(cx, &sdp->md.rooti, "root", lgfs2_build_root, 1,
 			       NULL, 0)) {
@@ -1673,13 +1673,13 @@ static int check_system_inodes(struct fsck_cx *cx)
 		   therefore not linked to anything else. We need to adjust
 		   the link counts so pass4 doesn't get confused. */
 		no = sdp->md.statfs->i_num;
-		incr_link_count(no, NULL, _("gfs1 statfs inode"));
+		incr_link_count(cx, no, NULL, _("gfs1 statfs inode"));
 		no = sdp->md.jiinode->i_num;
-		incr_link_count(no, NULL, _("gfs1 jindex inode"));
+		incr_link_count(cx, no, NULL, _("gfs1 jindex inode"));
 		no = sdp->md.riinode->i_num;
-		incr_link_count(no, NULL, _("gfs1 rindex inode"));
+		incr_link_count(cx, no, NULL, _("gfs1 rindex inode"));
 		no = sdp->md.qinode->i_num;
-		incr_link_count(no, NULL, _("gfs1 quota inode"));
+		incr_link_count(cx, no, NULL, _("gfs1 quota inode"));
 		return 0;
 	}
 	for (sdp->md.journals = 0; sdp->md.journals < journal_count;
@@ -1802,7 +1802,7 @@ static int pass1_process_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 			}
 			log_err(_("Found invalid inode at block %"PRIu64" (0x%"PRIx64")\n"),
 			        block, block);
-			check_n_fix_bitmap(sdp, rgd, block, 0, GFS2_BLKST_FREE);
+			check_n_fix_bitmap(cx, rgd, block, 0, GFS2_BLKST_FREE);
 		} else if (handle_di(cx, rgd, bh) < 0) {
 			stack;
 			lgfs2_brelse(bh);

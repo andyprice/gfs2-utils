@@ -19,10 +19,10 @@ extern int check_linear_dir(struct fsck_cx *cx, struct lgfs2_inode *ip, struct l
 extern int check_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, int lindex,
 		      struct metawalk_fxns *pass, uint64_t *leaf_no,
 		      struct lgfs2_leaf *leaf, int *ref_count);
-extern int _fsck_bitmap_set(struct lgfs2_inode *ip, uint64_t bblock,
+extern int _fsck_bitmap_set(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t bblock,
 			    const char *btype, int mark, int error_on_dinode,
 			    const char *caller, int line);
-extern int check_n_fix_bitmap(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
+extern int check_n_fix_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 			      uint64_t blk, int error_on_dinode,
 			      int new_state);
 extern struct duptree *dupfind(struct fsck_cx *cx, uint64_t block);
@@ -31,10 +31,10 @@ extern struct lgfs2_inode *fsck_system_inode(struct lgfs2_sbd *sdp,
 
 #define is_duplicate(dblock) ((dupfind(dblock)) ? 1 : 0)
 
-#define fsck_bitmap_set(ip, b, bt, m) \
-	_fsck_bitmap_set(ip, b, bt, m, 0, __FUNCTION__, __LINE__)
-#define fsck_bitmap_set_noino(ip, b, bt, m) \
-	_fsck_bitmap_set(ip, b, bt, m, 1, __FUNCTION__, __LINE__)
+#define fsck_bitmap_set(cx, ip, b, bt, m) \
+	_fsck_bitmap_set(cx, ip, b, bt, m, 0, __FUNCTION__, __LINE__)
+#define fsck_bitmap_set_noino(cx, ip, b, bt, m) \
+	_fsck_bitmap_set(cx, ip, b, bt, m, 1, __FUNCTION__, __LINE__)
 enum meta_check_rc {
 	META_ERROR = -1,
 	META_IS_GOOD = 0,
