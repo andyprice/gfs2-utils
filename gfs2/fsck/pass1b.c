@@ -134,7 +134,7 @@ static void clone_data_block(struct fsck_cx *cx, struct duptree *dt,
  * constantly being changed. This function revises the duplicate handler so
  * that it accurately matches what's in the duplicate tree regarding this block
  */
-static void revise_dup_handler(uint64_t dup_blk, struct dup_handler *dh)
+static void revise_dup_handler(struct fsck_cx *cx, uint64_t dup_blk, struct dup_handler *dh)
 {
 	osi_list_t *tmp;
 	struct duptree *dt;
@@ -144,7 +144,7 @@ static void revise_dup_handler(uint64_t dup_blk, struct dup_handler *dh)
 	dh->ref_count = 0;
 	dh->dt = NULL;
 
-	dt = dupfind(dup_blk);
+	dt = dupfind(cx, dup_blk);
 	if (!dt)
 		return;
 
@@ -267,7 +267,7 @@ static void resolve_dup_references(struct fsck_cx *cx, struct duptree *dt,
 			   this_ref == REF_AS_DATA) {
 			clone_data_block(cx, dt, id);
 			dup_listent_delete(dt, id);
-			revise_dup_handler(dt->block, dh);
+			revise_dup_handler(cx, dt->block, dh);
 			continue;
 		} else if (!(query(_("Okay to delete %s inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
 				    (inval ? _("invalidated") : ""),
@@ -364,7 +364,7 @@ static void resolve_dup_references(struct fsck_cx *cx, struct duptree *dt,
 		   the blocks will be mistakenly freed, when, in fact, they're
 		   still being referenced by a valid dinode. */
 		if (this_ref != REF_AS_EA)
-			delete_all_dups(ip);
+			delete_all_dups(cx, ip);
 		fsck_inode_put(&ip); /* out, lgfs2_brelse, free */
 	}
 	return;
@@ -594,7 +594,7 @@ static void resolve_last_reference(struct fsck_cx *cx, struct duptree *dt,
 	}
 	fsck_inode_put(&ip); /* out, lgfs2_brelse, free */
 	log_debug(_("Done with duplicate reference to block 0x%"PRIx64"\n"), dt->block);
-	dup_delete(dt);
+	dup_delete(cx, dt);
 }
 
 /* handle_dup_blk - handle a duplicate block reference.
@@ -612,7 +612,7 @@ static int handle_dup_blk(struct fsck_cx *cx, struct duptree *dt)
 	uint64_t dup_blk;
 
 	dup_blk = dt->block;
-	revise_dup_handler(dup_blk, &dh);
+	revise_dup_handler(cx, dup_blk, &dh);
 
 	/* Log the duplicate references */
 	log_notice(_("Block %"PRIu64" (0x%"PRIx64") has %d inodes referencing it"
@@ -677,7 +677,7 @@ static int handle_dup_blk(struct fsck_cx *cx, struct duptree *dt)
 		          dt->block, dt->block);
 		resolve_dup_references(cx, dt, &dt->ref_invinode_list,
 				       &dh, 1, REF_TYPES);
-		revise_dup_handler(dup_blk, &dh);
+		revise_dup_handler(cx, dup_blk, &dh);
 	}
 	/* Step 2 - eliminate reference from inodes that reference it as the
 	 *          wrong type.  For example, a data file referencing it as
@@ -691,7 +691,7 @@ static int handle_dup_blk(struct fsck_cx *cx, struct duptree *dt)
 		          dt->block, dt->block);
 		resolve_dup_references(cx, dt, &dt->ref_inode_list, &dh, 0,
 				       acceptable_ref);
-		revise_dup_handler(dup_blk, &dh);
+		revise_dup_handler(cx, dup_blk, &dh);
 	}
 	/* Step 3 - We have multiple dinodes referencing it as the correct
 	 *          type.  Just blast one of them.
@@ -704,7 +704,7 @@ static int handle_dup_blk(struct fsck_cx *cx, struct duptree *dt)
 		          dt->block, dt->block);
 		resolve_dup_references(cx, dt, &dt->ref_inode_list, &dh, 0,
 				       REF_TYPES);
-		revise_dup_handler(dup_blk, &dh);
+		revise_dup_handler(cx, dup_blk, &dh);
 	}
 	/* If there's still a last remaining reference, and it's a valid
 	   reference, use it to determine the correct block type for our
@@ -723,7 +723,7 @@ static int handle_dup_blk(struct fsck_cx *cx, struct duptree *dt)
 				      "references; Marking as 'free'.\n"),
 			           dup_blk, dup_blk);
 			if (dh.dt)
-				dup_delete(dh.dt);
+				dup_delete(cx, dh.dt);
 			check_n_fix_bitmap(cx->sdp, NULL, dup_blk, 0,
 					   GFS2_BLKST_FREE);
 		}
@@ -734,7 +734,7 @@ static int handle_dup_blk(struct fsck_cx *cx, struct duptree *dt)
 static int check_leaf_refs(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
 			   void *private)
 {
-	return add_duplicate_ref(ip, block, REF_AS_META, 1, INODE_VALID);
+	return add_duplicate_ref(cx, ip, block, REF_AS_META, 1, INODE_VALID);
 }
 
 static int check_metalist_refs(struct fsck_cx *cx, struct iptr iptr, struct lgfs2_buffer_head **bh, int h,
@@ -745,14 +745,14 @@ static int check_metalist_refs(struct fsck_cx *cx, struct iptr iptr, struct lgfs
 
 	*was_duplicate = 0;
 	*is_valid = 1;
-	return add_duplicate_ref(ip, block, REF_AS_META, 1, INODE_VALID);
+	return add_duplicate_ref(cx, ip, block, REF_AS_META, 1, INODE_VALID);
 }
 
 static int check_data_refs(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t metablock,
 			   uint64_t block, void *private,
 			   struct lgfs2_buffer_head *bh, __be64 *ptr)
 {
-	return add_duplicate_ref(ip, block, REF_AS_DATA, 1, INODE_VALID);
+	return add_duplicate_ref(cx, ip, block, REF_AS_DATA, 1, INODE_VALID);
 }
 
 static int check_eattr_indir_refs(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
@@ -762,7 +762,7 @@ static int check_eattr_indir_refs(struct fsck_cx *cx, struct lgfs2_inode *ip, ui
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	int error;
 
-	error = add_duplicate_ref(ip, block, REF_AS_EA, 1, INODE_VALID);
+	error = add_duplicate_ref(cx, ip, block, REF_AS_EA, 1, INODE_VALID);
 	if (!error)
 		*bh = lgfs2_bread(sdp, block);
 
@@ -776,7 +776,7 @@ static int check_eattr_leaf_refs(struct fsck_cx *cx, struct lgfs2_inode *ip, uin
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	int error;
 
-	error = add_duplicate_ref(ip, block, REF_AS_EA, 1, INODE_VALID);
+	error = add_duplicate_ref(cx, ip, block, REF_AS_EA, 1, INODE_VALID);
 	if (!error)
 		*bh = lgfs2_bread(sdp, block);
 	return error;
@@ -807,7 +807,7 @@ static int check_eattr_extentry_refs(struct fsck_cx *cx, struct lgfs2_inode *ip,
 	   the blockmap. In this case, we should be okay because the only
 	   error possible is a malloc that fails, in which case we don't
 	   want to delete the eattr anyway. */
-	return add_duplicate_ref(ip, block, REF_AS_EA, 1, INODE_VALID);
+	return add_duplicate_ref(cx, ip, block, REF_AS_EA, 1, INODE_VALID);
 }
 
 /* Finds all references to duplicate blocks in the metadata */
@@ -839,7 +839,7 @@ static int find_block_ref(struct fsck_cx *cx, uint64_t inode)
 		goto out;
 	}
 	/* Check to see if this inode was referenced by another by mistake */
-	add_duplicate_ref(ip, inode, REF_IS_INODE, 1, INODE_VALID);
+	add_duplicate_ref(cx, ip, inode, REF_IS_INODE, 1, INODE_VALID);
 
 	/* Check this dinode's metadata for references to known duplicates */
 	error = check_metatree(cx, ip, &find_refs);
@@ -870,7 +870,7 @@ int pass1b(struct fsck_cx *cx)
 	log_info( _("Looking for duplicate blocks...\n"));
 
 	/* If there were no dups in the bitmap, we don't need to do anymore */
-	if (dup_blocks.osi_node == NULL) {
+	if (cx->dup_blocks.osi_node == NULL) {
 		log_info( _("No duplicate blocks found\n"));
 		return FSCK_OK;
 	}
@@ -913,7 +913,7 @@ int pass1b(struct fsck_cx *cx)
 	log_info( _("Handling duplicate blocks\n"));
 out:
 	/* Resolve all duplicates by clearing out the dup tree */
-        while ((n = osi_first(&dup_blocks))) {
+        while ((n = osi_first(&cx->dup_blocks))) {
                 dt = (struct duptree *)n;
 		if (!skip_this_pass && !rc) /* no error & not asked to skip the rest */
 			handle_dup_blk(cx, dt);

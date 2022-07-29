@@ -237,7 +237,7 @@ static int p1_check_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t bl
 		          "%"PRIu64" (0x%"PRIx64") - was marked %d (%s)\n"),
 		        block, block, ip->i_num.in_addr, ip->i_num.in_addr, q,
 		        block_type_string(q));
-		add_duplicate_ref(ip, block, REF_AS_META, 0, INODE_VALID);
+		add_duplicate_ref(cx, ip, block, REF_AS_META, 0, INODE_VALID);
 		if (q == (ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
 			  GFS2_BLKST_USED))
 			/* If the previous reference also saw this as a leaf,
@@ -316,7 +316,7 @@ static int p1_check_metalist(struct fsck_cx *cx, struct iptr iptr, struct lgfs2_
 
 	bc->indir_count++;
 	if (*was_duplicate) {
-		add_duplicate_ref(ip, block, REF_AS_META, 0,
+		add_duplicate_ref(cx, ip, block, REF_AS_META, 0,
 				  *is_valid ? INODE_VALID : INODE_INVALID);
 		lgfs2_brelse(nbh);
 	} else {
@@ -339,7 +339,7 @@ static int p1_check_metalist(struct fsck_cx *cx, struct iptr iptr, struct lgfs2_
  *          1 - We can't process the block as metadata.
  */
 
-static int undo_reference(struct lgfs2_inode *ip, uint64_t block, int meta,
+static int undo_reference(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block, int meta,
 			  void *private)
 {
 	struct block_count *bc = (struct block_count *)private;
@@ -355,7 +355,7 @@ static int undo_reference(struct lgfs2_inode *ip, uint64_t block, int meta,
 
 	if (meta)
 		bc->indir_count--;
-	dt = dupfind(block);
+	dt = dupfind(cx, block);
 	if (dt) {
 		/* remove all duplicate reference structures from this inode */
 		do {
@@ -373,7 +373,7 @@ static int undo_reference(struct lgfs2_inode *ip, uint64_t block, int meta,
 			if (dt->refs == 1) {
 				log_err(_("This was the only duplicate "
 					  "reference so far; removing it.\n"));
-				dup_delete(dt);
+				dup_delete(cx, dt);
 			}
 			return 1;
 		}
@@ -393,13 +393,13 @@ static int undo_reference(struct lgfs2_inode *ip, uint64_t block, int meta,
 static int p1_undo_check_metalist(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
 			       int h, void *private)
 {
-	return undo_reference(ip, block, 1, private);
+	return undo_reference(cx, ip, block, 1, private);
 }
 
 static int p1_undo_check_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
 			   void *private)
 {
-	return undo_reference(ip, block, 0, private);
+	return undo_reference(cx, ip, block, 0, private);
 }
 
 /* blockmap_set_as_data - set block as 'data' in the blockmap, if not dinode
@@ -491,7 +491,7 @@ static int p1_check_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t me
 			   when check_metatree tries to delete the inode, we
 			   can't have the "undo" functions freeing the block
 			   out from other the original referencing inode. */
-			add_duplicate_ref(ip, block, REF_AS_DATA, 0,
+			add_duplicate_ref(cx, ip, block, REF_AS_DATA, 0,
 					  INODE_VALID);
 			return 1;
 		case GFS2_BLKST_USED: /* tough decision: May be data or meta */
@@ -512,13 +512,13 @@ static int p1_check_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t me
 				   the inode, we can't have the "undo"
 				   functions freeing the block out from other
 				   the original referencing inode. */
-				add_duplicate_ref(ip, block, REF_AS_DATA, 0,
+				add_duplicate_ref(cx, ip, block, REF_AS_DATA, 0,
 						  INODE_VALID);
 				return 1;
 			}
 			log_info( _("Seems to be a normal duplicate; I'll "
 				    "sort it out in pass1b.\n"));
-			add_duplicate_ref(ip, block, REF_AS_DATA, 0,
+			add_duplicate_ref(cx, ip, block, REF_AS_DATA, 0,
 					  INODE_VALID);
 			/* This inode references the block as data. So if this
 			   all is validated, we want to keep this count. */
@@ -526,7 +526,7 @@ static int p1_check_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t me
 		case GFS2_BLKST_UNLINKED:
 			log_info( _("The block was invalid as metadata but might be "
 				    "okay as data.  I'll sort it out in pass1b.\n"));
-			add_duplicate_ref(ip, block, REF_AS_DATA, 0, INODE_VALID);
+			add_duplicate_ref(cx, ip, block, REF_AS_DATA, 0, INODE_VALID);
 			return 0;
 		}
 	}
@@ -547,7 +547,7 @@ static int p1_check_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t me
 	return 0;
 }
 
-static int ask_remove_inode_eattr(struct lgfs2_inode *ip,
+static int ask_remove_inode_eattr(struct fsck_cx *cx, struct lgfs2_inode *ip,
 				  struct block_count *bc)
 {
 	if (ip->i_eattr == 0)
@@ -555,7 +555,7 @@ static int ask_remove_inode_eattr(struct lgfs2_inode *ip,
 	log_err(_("Inode %"PRIu64" (0x%"PRIx64") has unrecoverable Extended Attribute errors.\n"),
 	        ip->i_num.in_addr, ip->i_num.in_addr);
 	if (query( _("Clear all Extended Attributes from the inode? (y/n) "))){
-		undo_reference(ip, ip->i_eattr, 0, bc);
+		undo_reference(cx, ip, ip->i_eattr, 0, bc);
 		ip->i_eattr = 0;
 		bc->ea_count = 0;
 		ip->i_blocks = 1 + bc->indir_count + bc->data_count;
@@ -585,7 +585,7 @@ static int undo_eattr_indir_or_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, 
 	   set it to free, which would cause the test below to fail. */
 	q = block_type(bl, block);
 
-	error = undo_reference(ip, block, 0, private);
+	error = undo_reference(cx, ip, block, 0, private);
 	if (error)
 		return error;
 
@@ -639,7 +639,7 @@ static int p1_check_eattr_indir(struct fsck_cx *cx, struct lgfs2_inode *ip, uint
 	if (lgfs2_check_meta((*bh)->b_data, GFS2_METATYPE_IN)) {
 		bc->ea_count++;
 		if (q != GFS2_BLKST_FREE) { /* Duplicate? */
-			add_duplicate_ref(ip, indirect, REF_AS_EA, 0,
+			add_duplicate_ref(cx, ip, indirect, REF_AS_EA, 0,
 					  INODE_VALID);
 			complain_eas(ip, indirect,
 				     _("Bad indirect Extended Attribute "
@@ -656,7 +656,7 @@ static int p1_check_eattr_indir(struct fsck_cx *cx, struct lgfs2_inode *ip, uint
 		return 1;
 	}
 	if (q != GFS2_BLKST_FREE) { /* Duplicate? */
-		add_duplicate_ref(ip, indirect, REF_AS_EA, 0, INODE_VALID);
+		add_duplicate_ref(cx, ip, indirect, REF_AS_EA, 0, INODE_VALID);
 		complain_eas(ip, indirect,
 			     _("Duplicate Extended Attribute indirect block"));
 		bc->ea_count++;
@@ -676,7 +676,7 @@ static int p1_finish_eattr_indir(struct fsck_cx *cx, struct lgfs2_inode *ip, int
 	struct block_count *bc = (struct block_count *) private;
 
 	if (leaf_pointer_errors == leaf_pointers) /* All eas were bad */
-		return ask_remove_inode_eattr(ip, bc);
+		return ask_remove_inode_eattr(cx, ip, bc);
 	log_debug(_("Marking inode #%"PRIu64" (0x%"PRIx64") with extended attribute block\n"),
 		   ip->i_num.in_addr, ip->i_num.in_addr);
 	if (!leaf_pointer_errors)
@@ -697,7 +697,7 @@ static int p1_finish_eattr_indir(struct fsck_cx *cx, struct lgfs2_inode *ip, int
 /* check_ealeaf_block
  *      checks an extended attribute (not directory) leaf block
  */
-static int check_ealeaf_block(struct lgfs2_inode *ip, uint64_t block, int btype,
+static int check_ealeaf_block(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block, int btype,
 			      struct lgfs2_buffer_head **bh, void *private)
 {
 	struct lgfs2_buffer_head *leaf_bh = NULL;
@@ -713,7 +713,7 @@ static int check_ealeaf_block(struct lgfs2_inode *ip, uint64_t block, int btype,
 	if (lgfs2_check_meta(leaf_bh->b_data, btype)) {
 		bc->ea_count++;
 		if (q != GFS2_BLKST_FREE) { /* Duplicate? */
-			add_duplicate_ref(ip, block, REF_AS_EA, 0,
+			add_duplicate_ref(cx, ip, block, REF_AS_EA, 0,
 					  INODE_VALID);
 			complain_eas(ip, block, _("Extended attribute leaf "
 						  "duplicate found"));
@@ -731,7 +731,7 @@ static int check_ealeaf_block(struct lgfs2_inode *ip, uint64_t block, int btype,
 	if (q != GFS2_BLKST_FREE) { /* Duplicate? */
 		complain_eas(ip, block, _("Extended Attribute leaf "
 					  "duplicate found"));
-		add_duplicate_ref(ip, block, REF_AS_DATA, 0, INODE_VALID);
+		add_duplicate_ref(cx, ip, block, REF_AS_DATA, 0, INODE_VALID);
 		bc->ea_count++;
 		lgfs2_brelse(leaf_bh);
 		/* Return 0 here because if all that's wrong is a duplicate
@@ -783,7 +783,7 @@ static int p1_check_extended_leaf_eattr(struct fsck_cx *cx, struct lgfs2_inode *
 		                  GFS2_BLKST_UNLINKED);
 		error = 1;
 	} else {
-		error = check_ealeaf_block(ip, el_blk, GFS2_METATYPE_ED, &bh,
+		error = check_ealeaf_block(cx, ip, el_blk, GFS2_METATYPE_ED, &bh,
 					   private);
 	}
 	if (bh)
@@ -825,7 +825,7 @@ static int p1_check_eattr_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, uint6
 		                  GFS2_BLKST_UNLINKED);
 		return 1;
 	}
-	return check_ealeaf_block(ip, block, GFS2_METATYPE_EA, bh, private);
+	return check_ealeaf_block(cx, ip, block, GFS2_METATYPE_EA, bh, private);
 }
 
 static int ask_remove_eattr_entry(struct lgfs2_sbd *sdp,
@@ -1292,7 +1292,7 @@ static int handle_ip(struct fsck_cx *cx, struct lgfs2_inode *ip)
 			        ip->i_num.in_addr, ip->i_num.in_addr);
 			eattr_undo_fxns.private = &bc;
 			check_inode_eattr(cx, ip, &eattr_undo_fxns);
-			ask_remove_inode_eattr(ip, &bc);
+			ask_remove_inode_eattr(cx, ip, &bc);
 			return 1;
 		}
 	}
@@ -1770,7 +1770,7 @@ static int pass1_process_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 			         block, block, block_type_string(q));
 			ip = fsck_inode_get(sdp, rgd, bh);
 			if (is_inode && ip->i_num.in_addr == block)
-				add_duplicate_ref(ip, block, REF_IS_INODE, 0,
+				add_duplicate_ref(cx, ip, block, REF_IS_INODE, 0,
 						  INODE_VALID);
 			else
 				log_info(_("dinum.no_addr is wrong, so I "

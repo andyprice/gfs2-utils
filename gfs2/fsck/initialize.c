@@ -67,14 +67,14 @@ static int block_mounters(struct lgfs2_sbd *sdp, int block_em)
 	return 0;
 }
 
-static void dup_free(void)
+static void dup_free(struct fsck_cx *cx)
 {
 	struct osi_node *n;
 	struct duptree *dt;
 
-	while ((n = osi_first(&dup_blocks))) {
+	while ((n = osi_first(&cx->dup_blocks))) {
 		dt = (struct duptree *)n;
-		dup_delete(dt);
+		dup_delete(cx, dt);
 	}
 }
 
@@ -109,14 +109,14 @@ static void inodetree_free(void)
  *
  * Returns: Nothing
  */
-static void empty_super_block(struct lgfs2_sbd *sdp)
+static void empty_super_block(struct fsck_cx *cx)
 {
 	log_info( _("Freeing buffers.\n"));
-	lgfs2_rgrp_free(sdp, &sdp->rgtree);
+	lgfs2_rgrp_free(cx->sdp, &cx->sdp->rgtree);
 
 	inodetree_free();
 	dirtree_free();
-	dup_free();
+	dup_free(cx);
 }
 
 
@@ -774,8 +774,9 @@ static int fetch_rgrps(struct fsck_cx *cx)
  *
  * Returns: 0 on success, -1 on failure
  */
-static int init_system_inodes(struct lgfs2_sbd *sdp)
+static int init_system_inodes(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	__be64 inumbuf = 0;
 	char *buf;
 	int err;
@@ -941,7 +942,7 @@ static int init_system_inodes(struct lgfs2_sbd *sdp)
 
 	return 0;
  fail:
-	empty_super_block(sdp);
+	empty_super_block(cx);
 
 	return -1;
 }
@@ -1668,7 +1669,7 @@ int initialize(struct fsck_cx *cx, int force_check, int preen,
 			return FSCK_OK;
 	}
 
-	if (init_system_inodes(sdp))
+	if (init_system_inodes(cx))
 		return FSCK_ERROR;
 
 	return FSCK_OK;
@@ -1680,8 +1681,10 @@ mount_fail:
 	return FSCK_USAGE;
 }
 
-void destroy(struct lgfs2_sbd *sdp)
+void destroy(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
+
 	if (!opts.no) {
 		if (block_mounters(sdp, 0)) {
 			log_warn( _("Unable to unblock other mounters - manual intervention required\n"));
@@ -1690,7 +1693,7 @@ void destroy(struct lgfs2_sbd *sdp)
 		log_info( _("Syncing the device.\n"));
 		fsync(sdp->device_fd);
 	}
-	empty_super_block(sdp);
+	empty_super_block(cx);
 	close(sdp->device_fd);
 	if (was_mounted_ro && errors_corrected) {
 		sdp->device_fd = open("/proc/sys/vm/drop_caches", O_WRONLY);

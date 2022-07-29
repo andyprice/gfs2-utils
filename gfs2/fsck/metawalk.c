@@ -207,9 +207,9 @@ int _fsck_bitmap_set(struct lgfs2_inode *ip, uint64_t bblock,
 	return error;
 }
 
-struct duptree *dupfind(uint64_t block)
+struct duptree *dupfind(struct fsck_cx *cx, uint64_t block)
 {
-	struct osi_node *node = dup_blocks.osi_node;
+	struct osi_node *node = cx->dup_blocks.osi_node;
 
 	while (node) {
 		struct duptree *dt = (struct duptree *)node;
@@ -1614,7 +1614,7 @@ undo_metalist:
 	   For example, if a metadata block was found to be a duplicate, we
 	   may not have added it to the metalist, which means it's not there
 	   to undo. */
-	delete_all_dups(ip);
+	delete_all_dups(cx, ip);
 	/* Set the dinode as "bad" so it gets deleted */
 	fsck_bitmap_set(ip, ip->i_num.in_addr, "corrupt", GFS2_BLKST_FREE);
 	log_err(_("The corrupt inode was invalidated.\n"));

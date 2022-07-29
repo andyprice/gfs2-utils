@@ -224,9 +224,9 @@ int fsck_query(const char *format, ...)
  * This will return the number of references to the block.
  *
  * create - will be set if the call is supposed to create the reference. */
-static struct duptree *dup_set(uint64_t dblock, int create)
+static struct duptree *dup_set(struct fsck_cx *cx, uint64_t dblock, int create)
 {
-	struct osi_node **newn = &dup_blocks.osi_node, *parent = NULL;
+	struct osi_node **newn = &cx->dup_blocks.osi_node, *parent = NULL;
 	struct duptree *dt;
 
 	/* Figure out where to put new node */
@@ -258,7 +258,7 @@ static struct duptree *dup_set(uint64_t dblock, int create)
 	osi_list_init(&dt->ref_inode_list);
 	osi_list_init(&dt->ref_invinode_list);
 	osi_link_node(&dt->node, parent, newn);
-	osi_insert_color(&dt->node, &dup_blocks);
+	osi_insert_color(&dt->node, &cx->dup_blocks);
 
 	return dt;
 }
@@ -323,7 +323,7 @@ int count_dup_meta_refs(struct duptree *dt)
  *         called from pass1, which is the second reference, which determined
  *         it was a duplicate..
  */
-int add_duplicate_ref(struct lgfs2_inode *ip, uint64_t block,
+int add_duplicate_ref(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
 		      enum dup_ref_type reftype, int first, int inode_valid)
 {
 	struct inode_with_dups *id;
@@ -334,7 +334,7 @@ int add_duplicate_ref(struct lgfs2_inode *ip, uint64_t block,
 	/* If this is not the first reference (i.e. all calls from pass1) we
 	   need to create the duplicate reference. If this is pass1b, we want
 	   to ignore references that aren't found. */
-	dt = dup_set(block, !first);
+	dt = dup_set(cx, block, !first);
 	if (!dt)        /* If this isn't a duplicate */
 		return META_IS_GOOD;
 
@@ -510,7 +510,7 @@ void dup_listent_delete(struct duptree *dt, struct inode_with_dups *id)
 	free(id);
 }
 
-void dup_delete(struct duptree *dt)
+void dup_delete(struct fsck_cx *cx, struct duptree *dt)
 {
 	struct inode_with_dups *id;
 	osi_list_t *tmp;
@@ -525,7 +525,7 @@ void dup_delete(struct duptree *dt)
 		id = osi_list_entry(tmp, struct inode_with_dups, list);
 		dup_listent_delete(dt, id);
 	}
-	osi_erase(&dt->node, &dup_blocks);
+	osi_erase(&dt->node, &cx->dup_blocks);
 	free(dt);
 }
 
@@ -587,7 +587,7 @@ __be64 *get_dir_hash(struct lgfs2_inode *ip)
 	return tbl;
 }
 
-void delete_all_dups(struct lgfs2_inode *ip)
+void delete_all_dups(struct fsck_cx *cx, struct lgfs2_inode *ip)
 {
 	struct osi_node *n, *next;
 	struct duptree *dt;
@@ -595,7 +595,7 @@ void delete_all_dups(struct lgfs2_inode *ip)
 	struct inode_with_dups *id;
 	int found;
 
-	for (n = osi_first(&dup_blocks); n; n = next) {
+	for (n = osi_first(&cx->dup_blocks); n; n = next) {
 		next = osi_next(n);
 		dt = (struct duptree *)n;
 
@@ -623,7 +623,7 @@ void delete_all_dups(struct lgfs2_inode *ip)
 			log_debug(_("This was the last reference: 0x%"PRIx64" is "
 				    "no longer a duplicate.\n"),
 			          dt->block);
-			dup_delete(dt);
+			dup_delete(cx, dt);
 		} else {
 			log_debug(_("%d references remain to 0x%"PRIx64"\n"),
 				  dt->refs, dt->block);

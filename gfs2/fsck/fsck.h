@@ -110,6 +110,7 @@ enum rgindex_trust_level { /* how far can we trust our RG index? */
 
 struct fsck_cx {
 	struct lgfs2_sbd *sdp;
+	struct osi_root dup_blocks;
 };
 
 extern struct lgfs2_inode *fsck_load_inode(struct lgfs2_sbd *sdp, uint64_t block);
@@ -119,7 +120,7 @@ extern struct lgfs2_inode *fsck_inode_get(struct lgfs2_sbd *sdp,
 extern void fsck_inode_put(struct lgfs2_inode **ip);
 
 extern int initialize(struct fsck_cx *cx, int force_check, int preen, int *all_clean);
-extern void destroy(struct lgfs2_sbd *sdp);
+extern void destroy(struct fsck_cx *cx);
 extern int pass1(struct fsck_cx *cx);
 extern int pass1b(struct fsck_cx *cx);
 extern int pass1c(struct fsck_cx *cx);
@@ -131,7 +132,7 @@ extern int rindex_repair(struct fsck_cx *cx, int trust_lvl, int *ok);
 extern int fsck_query(const char *format, ...)
 	__attribute__((format(printf,1,2)));
 extern struct dir_info *dirtree_find(uint64_t block);
-extern void dup_delete(struct duptree *dt);
+extern void dup_delete(struct fsck_cx *cx, struct duptree *dt);
 extern void dirtree_delete(struct dir_info *b);
 
 /* FIXME: Hack to get this going for pass2 - this should be pulled out
@@ -154,7 +155,6 @@ extern int skip_this_pass, fsck_abort;
 extern int errors_found, errors_corrected;
 extern uint64_t last_data_block;
 extern uint64_t first_data_block;
-extern struct osi_root dup_blocks;
 extern struct osi_root dirtree;
 extern struct osi_root inodetree;
 extern int dups_found; /* How many duplicate references have we found? */

@@ -34,7 +34,6 @@ int skip_this_pass = 0, fsck_abort = 0;
 int errors_found = 0, errors_corrected = 0;
 uint64_t last_data_block;
 uint64_t first_data_block;
-struct osi_root dup_blocks;
 struct osi_root dirtree;
 struct osi_root inodetree;
 int dups_found = 0, dups_found_first = 0;
@@ -335,7 +334,7 @@ int main(int argc, char **argv)
 
 	if (!force_check && all_clean && preen) {
 		log_err( _("%s: clean.\n"), opts.device);
-		destroy(&sb);
+		destroy(&cx);
 		exit(FSCK_OK);
 	}
 
@@ -368,7 +367,7 @@ int main(int argc, char **argv)
 	fsync(sb.device_fd);
 	link1_destroy(&nlink1map);
 	link1_destroy(&clink1map);
-	destroy(&sb);
+	destroy(&cx);
 	if (sb_fixed)
 		log_warn(_("Superblock was reset. Use tunegfs2 to manually "
 		           "set lock table before mounting.\n"));

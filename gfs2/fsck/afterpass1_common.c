@@ -22,7 +22,7 @@
  *
  * Returns: 1 if there are any remaining references to this block, else 0.
  */
-static int find_remove_dup(struct lgfs2_inode *ip, uint64_t block,
+static int find_remove_dup(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
 			   const char *btype, int *removed_last_meta)
 {
 	struct duptree *dt;
@@ -30,7 +30,7 @@ static int find_remove_dup(struct lgfs2_inode *ip, uint64_t block,
 	int deleted_a_meta_ref = 0;
 	int meta_refs_left = 0;
 
-	dt = dupfind(block);
+	dt = dupfind(cx, block);
 	if (!dt)
 		return 0;
 
@@ -45,7 +45,7 @@ static int find_remove_dup(struct lgfs2_inode *ip, uint64_t block,
 	if (dt->refs == 0) {
 		log_info( _("This was the last reference: it's no longer a "
 			    "duplicate.\n"));
-		dup_delete(dt); /* not duplicate now */
+		dup_delete(cx, dt); /* not duplicate now */
 		if (deleted_a_meta_ref) {
 			log_debug("Removed the last reference as metadata.\n");
 			*removed_last_meta = 1;
@@ -73,7 +73,7 @@ more_refs:
  * If it has been identified as duplicate, remove the duplicate reference.
  * If all duplicate references have been removed, delete the block.
  */
-static int delete_block_if_notdup(struct lgfs2_inode *ip, uint64_t block,
+static int delete_block_if_notdup(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
 				  struct lgfs2_buffer_head **bh,
 				  const char *btype, int *was_duplicate,
 				  void *private)
@@ -91,7 +91,7 @@ static int delete_block_if_notdup(struct lgfs2_inode *ip, uint64_t block,
 		        btype, block, block, ip->i_num.in_addr, ip->i_num.in_addr);
 		return META_IS_GOOD;
 	}
-	if (find_remove_dup(ip, block, btype, &removed_lastmeta)) { /* a dup */
+	if (find_remove_dup(cx, ip, block, btype, &removed_lastmeta)) { /* a dup */
 		if (was_duplicate) {
 			if (removed_lastmeta)
 				log_debug("Removed last reference as meta.\n");
@@ -174,13 +174,13 @@ int delete_metadata(struct fsck_cx *cx, struct iptr iptr, struct lgfs2_buffer_he
 
 	*is_valid = 1;
 	*was_duplicate = 0;
-	return delete_block_if_notdup(ip, block, bh, _("metadata"),
+	return delete_block_if_notdup(cx, ip, block, bh, _("metadata"),
 				      was_duplicate, private);
 }
 
 int delete_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block, void *private)
 {
-	return delete_block_if_notdup(ip, block, NULL, _("leaf"), NULL,
+	return delete_block_if_notdup(cx, ip, block, NULL, _("leaf"), NULL,
 				      private);
 }
 
@@ -188,11 +188,11 @@ int delete_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t metablock,
 		uint64_t block, void *private, struct lgfs2_buffer_head *bh,
 		__be64 *ptr)
 {
-	return delete_block_if_notdup(ip, block, NULL, _("data"), NULL,
+	return delete_block_if_notdup(cx, ip, block, NULL, _("data"), NULL,
 				      private);
 }
 
-static int del_eattr_generic(struct lgfs2_inode *ip, uint64_t block,
+static int del_eattr_generic(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
 			     uint64_t parent, struct lgfs2_buffer_head **bh,
 			     void *private, const char *eatype)
 {
@@ -204,7 +204,7 @@ static int del_eattr_generic(struct lgfs2_inode *ip, uint64_t block,
 		q = bitmap_type(ip->i_sbd, block);
 		if (q == GFS2_BLKST_FREE)
 			was_free = 1;
-		ret = delete_block_if_notdup(ip, block, NULL, eatype,
+		ret = delete_block_if_notdup(cx, ip, block, NULL, eatype,
 					     NULL, private);
 		if (!ret) {
 			*bh = lgfs2_bread(ip->i_sbd, block);
@@ -226,14 +226,14 @@ static int del_eattr_generic(struct lgfs2_inode *ip, uint64_t block,
 int delete_eattr_indir(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block, uint64_t parent,
 		       struct lgfs2_buffer_head **bh, void *private)
 {
-	return del_eattr_generic(ip, block, parent, bh, private,
+	return del_eattr_generic(cx, ip, block, parent, bh, private,
 				 _("extended attribute"));
 }
 
 int delete_eattr_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block, uint64_t parent,
 		      struct lgfs2_buffer_head **bh, void *private)
 {
-	return del_eattr_generic(ip, block, parent, bh, private,
+	return del_eattr_generic(cx, ip, block, parent, bh, private,
 				 _("indirect extended attribute"));
 }
 
@@ -285,7 +285,7 @@ int delete_eattr_extentry(struct fsck_cx *cx, struct lgfs2_inode *ip, int i, __b
 	uint64_t block = be64_to_cpu(*ea_data_ptr);
 	int error;
 
-	error = delete_block_if_notdup(ip, block, NULL,
+	error = delete_block_if_notdup(cx, ip, block, NULL,
 				       _("extended attribute"), NULL, private);
 	if (error) {
 		log_err(_("Bad extended attribute found at block %"PRIu64 " (0x%"PRIx64")"),

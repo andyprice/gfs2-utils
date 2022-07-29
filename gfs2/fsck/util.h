@@ -12,7 +12,7 @@
 struct di_info *search_list(osi_list_t *list, uint64_t addr);
 void big_file_comfort(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t blks_checked);
 void display_progress(uint64_t block);
-int add_duplicate_ref(struct lgfs2_inode *ip, uint64_t block,
+int add_duplicate_ref(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
 		      enum dup_ref_type reftype, int first, int inode_valid);
 extern struct inode_with_dups *find_dup_ref_inode(struct duptree *dt,
 						  struct lgfs2_inode *ip);
@@ -126,7 +126,7 @@ extern char generic_interrupt(const char *caller, const char *where,
 extern char fsck_getch(void);
 extern uint64_t find_free_blk(struct lgfs2_sbd *sdp);
 extern __be64 *get_dir_hash(struct lgfs2_inode *ip);
-extern void delete_all_dups(struct lgfs2_inode *ip);
+extern void delete_all_dups(struct fsck_cx *cx, struct lgfs2_inode *ip);
 extern void print_pass_duration(const char *name, struct timeval *start);
 
 #define stack log_debug("<backtrace> - %s()\n", __func__)
