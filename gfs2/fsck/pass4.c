@@ -262,8 +262,10 @@ static int scan_nlink1_list(struct lgfs2_sbd *sdp)
  * handle unreferenced inodes of other types
  * handle bad blocks
  */
-int pass4(struct lgfs2_sbd *sdp)
+int pass4(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
+
 	if (lf_dip)
 		log_debug( _("At beginning of pass4, lost+found entries is %u\n"),
 				  lf_dip->i_entries);

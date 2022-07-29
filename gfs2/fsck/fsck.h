@@ -108,6 +108,10 @@ enum rgindex_trust_level { /* how far can we trust our RG index? */
 			   must have been converted from gfs2_convert. */
 };
 
+struct fsck_cx {
+	struct lgfs2_sbd *sdp;
+};
+
 extern struct lgfs2_inode *fsck_load_inode(struct lgfs2_sbd *sdp, uint64_t block);
 extern struct lgfs2_inode *fsck_inode_get(struct lgfs2_sbd *sdp,
 					 struct lgfs2_rgrp_tree *rgd,
@@ -117,13 +121,13 @@ extern void fsck_inode_put(struct lgfs2_inode **ip);
 extern int initialize(struct lgfs2_sbd *sdp, int force_check, int preen,
 		      int *all_clean);
 extern void destroy(struct lgfs2_sbd *sdp);
-extern int pass1(struct lgfs2_sbd *sdp);
-extern int pass1b(struct lgfs2_sbd *sdp);
-extern int pass1c(struct lgfs2_sbd *sdp);
-extern int pass2(struct lgfs2_sbd *sdp);
-extern int pass3(struct lgfs2_sbd *sdp);
-extern int pass4(struct lgfs2_sbd *sdp);
-extern int pass5(struct lgfs2_sbd *sdp, struct gfs2_bmap *bl);
+extern int pass1(struct fsck_cx *cx);
+extern int pass1b(struct fsck_cx *cx);
+extern int pass1c(struct fsck_cx *cx);
+extern int pass2(struct fsck_cx *cx);
+extern int pass3(struct fsck_cx *cx);
+extern int pass4(struct fsck_cx *cx);
+extern int pass5(struct fsck_cx *cx, struct gfs2_bmap *bl);
 extern int rindex_repair(struct lgfs2_sbd *sdp, int trust_lvl, int *ok);
 extern int fsck_query(const char *format, ...)
 	__attribute__((format(printf,1,2)));

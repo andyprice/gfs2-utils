@@ -194,8 +194,9 @@ static void update_rgrp(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgp,
  * fix free block maps
  * fix used inode maps
  */
-int pass5(struct lgfs2_sbd *sdp, struct gfs2_bmap *bl)
+int pass5(struct fsck_cx *cx, struct gfs2_bmap *bl)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct osi_node *n, *next = NULL;
 	struct lgfs2_rgrp_tree *rgp = NULL;
 	uint32_t count[5]; /* we need 5 because of GFS1 usedmeta */

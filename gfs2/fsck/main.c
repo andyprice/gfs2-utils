@@ -152,11 +152,12 @@ static void interrupt(int sig)
 	}
 }
 
-static int check_statfs(struct lgfs2_sbd *sdp)
+static int check_statfs(struct fsck_cx *cx)
 {
 	struct osi_node *n, *next = NULL;
 	struct lgfs2_rgrp_tree *rgd;
 	struct gfs2_statfs_change sc;
+	struct lgfs2_sbd *sdp = cx->sdp;
 	uint64_t sc_total;
 	uint64_t sc_free;
 	uint64_t sc_dinodes;
@@ -233,7 +234,7 @@ static const struct fsck_pass passes[] = {
 	{ .name = NULL, }
 };
 
-static int fsck_pass(const struct fsck_pass *p, struct lgfs2_sbd *sdp)
+static int fsck_pass(const struct fsck_pass *p, struct fsck_cx *cx)
 {
 	int ret;
 	struct timeval timer;
@@ -245,7 +246,7 @@ static int fsck_pass(const struct fsck_pass *p, struct lgfs2_sbd *sdp)
 	log_notice( _("Starting %s\n"), p->name);
 	gettimeofday(&timer, NULL);
 
-	ret = p->f(sdp);
+	ret = p->f(cx);
 	if (ret)
 		exit(ret);
 	if (skip_this_pass || fsck_abort) {
@@ -303,7 +304,9 @@ static void startlog(int argc, char **argv)
 int main(int argc, char **argv)
 {
 	struct lgfs2_sbd sb;
-	struct lgfs2_sbd *sdp = &sb;
+	struct fsck_cx cx = {
+		.sdp = &sb
+	};
 	int j;
 	int i;
 	int error = 0;
@@ -321,51 +324,51 @@ int main(int argc, char **argv)
 	atexit(exitlog);
 #endif
 
-	memset(sdp, 0, sizeof(*sdp));
+	memset(&sb, 0, sizeof(sb));
 
 	if ((error = read_cmdline(argc, argv, &opts)))
 		exit(error);
 	setbuf(stdout, NULL);
 	log_notice( _("Initializing fsck\n"));
-	if ((error = initialize(sdp, force_check, preen, &all_clean)))
+	if ((error = initialize(&sb, force_check, preen, &all_clean)))
 		exit(error);
 
 	if (!force_check && all_clean && preen) {
 		log_err( _("%s: clean.\n"), opts.device);
-		destroy(sdp);
+		destroy(&sb);
 		exit(FSCK_OK);
 	}
 
 	sigaction(SIGINT, &act, NULL);
 
 	for (i = 0; passes[i].name; i++)
-		error = fsck_pass(passes + i, sdp);
+		error = fsck_pass(passes + i, &cx);
 
 	/* Free up our system inodes */
-	if (!sdp->gfs1)
-		lgfs2_inode_put(&sdp->md.inum);
-	lgfs2_inode_put(&sdp->md.statfs);
-	for (j = 0; j < sdp->md.journals; j++)
-		lgfs2_inode_put(&sdp->md.journal[j]);
-	free(sdp->md.journal);
-	sdp->md.journal = NULL;
-	lgfs2_inode_put(&sdp->md.jiinode);
-	lgfs2_inode_put(&sdp->md.riinode);
-	lgfs2_inode_put(&sdp->md.qinode);
-	if (!sdp->gfs1)
-		lgfs2_inode_put(&sdp->md.pinode);
-	lgfs2_inode_put(&sdp->md.rooti);
-	if (!sdp->gfs1)
-		lgfs2_inode_put(&sdp->master_dir);
+	if (!sb.gfs1)
+		lgfs2_inode_put(&sb.md.inum);
+	lgfs2_inode_put(&sb.md.statfs);
+	for (j = 0; j < sb.md.journals; j++)
+		lgfs2_inode_put(&sb.md.journal[j]);
+	free(sb.md.journal);
+	sb.md.journal = NULL;
+	lgfs2_inode_put(&sb.md.jiinode);
+	lgfs2_inode_put(&sb.md.riinode);
+	lgfs2_inode_put(&sb.md.qinode);
+	if (!sb.gfs1)
+		lgfs2_inode_put(&sb.md.pinode);
+	lgfs2_inode_put(&sb.md.rooti);
+	if (!sb.gfs1)
+		lgfs2_inode_put(&sb.master_dir);
 	if (lf_dip)
 		lgfs2_inode_put(&lf_dip);
 
 	if (!opts.no && errors_corrected)
 		log_notice( _("Writing changes to disk\n"));
-	fsync(sdp->device_fd);
+	fsync(sb.device_fd);
 	link1_destroy(&nlink1map);
 	link1_destroy(&clink1map);
-	destroy(sdp);
+	destroy(&sb);
 	if (sb_fixed)
 		log_warn(_("Superblock was reset. Use tunegfs2 to manually "
 		           "set lock table before mounting.\n"));

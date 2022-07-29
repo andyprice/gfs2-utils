@@ -29,7 +29,7 @@ extern const char *reftypes[REF_TYPES + 1];
 
 struct fsck_pass {
 	const char *name;
-	int (*f)(struct lgfs2_sbd *sdp);
+	int (*f)(struct fsck_cx *cx);
 };
 
 static inline int block_type(struct gfs2_bmap *bl, uint64_t bblock)

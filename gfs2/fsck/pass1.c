@@ -1948,8 +1948,9 @@ static void enomem(uint64_t addl_mem_needed)
  * inodes size
  * dir info
  */
-int pass1(struct lgfs2_sbd *sdp)
+int pass1(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct osi_node *n, *next = NULL;
 	struct lgfs2_rgrp_tree *rgd;
 	uint64_t i;
@@ -2025,7 +2026,7 @@ int pass1(struct lgfs2_sbd *sdp)
 	}
 	log_notice(_("Reconciling bitmaps.\n"));
 	gettimeofday(&timer, NULL);
-	pass5(sdp, bl);
+	pass5(cx, bl);
 	print_pass_duration("reconcile_bitmaps", &timer);
 out:
 	gfs2_special_free(&gfs1_rindex_blks);

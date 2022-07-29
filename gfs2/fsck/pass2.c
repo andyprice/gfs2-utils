@@ -2106,8 +2106,9 @@ static int pass2_check_dir(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip)
  * directory name length
  * entries in range
  */
-int pass2(struct lgfs2_sbd *sdp)
+int pass2(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct osi_node *tmp, *next = NULL;
 	struct lgfs2_inode *ip;
 	struct dir_info *dt;

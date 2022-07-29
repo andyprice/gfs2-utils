@@ -156,8 +156,9 @@ out:
  * handle disconnected directories
  * handle lost+found directory errors (missing, not a directory, no space)
  */
-int pass3(struct lgfs2_sbd *sdp)
+int pass3(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct osi_node *tmp, *next = NULL;
 	struct dir_info *di, *tdi;
 	struct lgfs2_inode *ip;

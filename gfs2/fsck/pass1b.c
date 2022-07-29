@@ -857,8 +857,9 @@ out:
 /* Pass 1b handles finding the previous inode for a duplicate block
  * When found, store the inodes pointing to the duplicate block for
  * use in pass2 */
-int pass1b(struct lgfs2_sbd *sdp)
+int pass1b(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct duptree *dt;
 	uint64_t i;
 	int q;
