@@ -381,7 +381,7 @@ static void dirblk_truncate(struct lgfs2_inode *ip, struct gfs2_dirent *fixb,
  * returns: 0 - good block or it was repaired to be good
  *         -1 - error occurred
  */
-static int check_entries(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
+static int check_entries(struct fsck_cx *cx, struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 			 int type, uint32_t *count, int lindex,
 			 struct metawalk_fxns *pass)
 {
@@ -477,7 +477,7 @@ static int check_entries(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 				/* Mark dirent buffer as modified */
 				first = 0;
 			} else {
-				error = pass->check_dentry(ip, dent, prev, bh,
+				error = pass->check_dentry(cx, ip, dent, prev, bh,
 							   filename, count,
 							   &lindex,
 							   pass->private);
@@ -511,7 +511,7 @@ static int check_entries(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
  * Reads in the leaf block
  * Leaves the buffer around for further analysis (caller must lgfs2_brelse)
  */
-int check_leaf(struct lgfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
+int check_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	       uint64_t *leaf_no, struct lgfs2_leaf *leaf, int *ref_count)
 {
 	int error = 0, fix;
@@ -540,10 +540,10 @@ int check_leaf(struct lgfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 		goto bad_leaf;
 	}
 	if (pass->check_leaf_depth)
-		error = pass->check_leaf_depth(ip, *leaf_no, *ref_count, lbh);
+		error = pass->check_leaf_depth(cx, ip, *leaf_no, *ref_count, lbh);
 
 	if (error >= 0 && pass->check_leaf) {
-		error = pass->check_leaf(ip, *leaf_no, pass->private);
+		error = pass->check_leaf(cx, ip, *leaf_no, pass->private);
 		if (error == -EEXIST) {
 			log_info(_("Previous reference to leaf %"PRIu64" (0x%"PRIx64") "
 				   "has already checked it; skipping.\n"),
@@ -578,7 +578,7 @@ int check_leaf(struct lgfs2_inode *ip, int lindex, struct metawalk_fxns *pass,
 	}
 
 	if (pass->check_dentry && is_dir(ip, sdp->gfs1)) {
-		error = check_entries(ip, lbh, DIR_EXHASH, &count, lindex,
+		error = check_entries(cx, ip, lbh, DIR_EXHASH, &count, lindex,
 				      pass);
 
 		if (skip_this_pass || fsck_abort)
@@ -631,7 +631,7 @@ bad_leaf:
 		lgfs2_brelse(lbh);
 	if (pass->repair_leaf) {
 		/* The leaf we read in is bad so we need to repair it. */
-		fix = pass->repair_leaf(ip, leaf_no, lindex, *ref_count, msg);
+		fix = pass->repair_leaf(cx, ip, leaf_no, lindex, *ref_count, msg);
 		if (fix < 0)
 			return fix;
 
@@ -678,7 +678,7 @@ static void dir_leaf_reada(struct lgfs2_inode *ip, __be64 *tbl, unsigned hsize)
 }
 
 /* Checks exhash directory entries */
-int check_leaf_blks(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
+int check_leaf_blks(struct fsck_cx *cx, struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	int error = 0;
 	unsigned hsize = (1 << ip->i_depth);
@@ -708,7 +708,7 @@ int check_leaf_blks(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 	dir_leaf_reada(ip, tbl, hsize);
 
 	if (pass->check_hash_tbl) {
-		error = pass->check_hash_tbl(ip, tbl, hsize, pass->private);
+		error = pass->check_hash_tbl(cx, ip, tbl, hsize, pass->private);
 		if (error < 0) {
 			free(tbl);
 			(void)posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
@@ -793,7 +793,7 @@ int check_leaf_blks(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 				(void)posix_fadvise(sdp->device_fd, 0, 0, POSIX_FADV_NORMAL);
 				return 0;
 			}
-			error = check_leaf(ip, lindex, pass, &leaf_no, &leaf,
+			error = check_leaf(cx, ip, lindex, pass, &leaf_no, &leaf,
 					   &ref_count);
 			if (ref_count != orig_ref_count) {
 				log_debug(_("Ref count of leaf 0x%"PRIx64
@@ -836,7 +836,7 @@ int check_leaf_blks(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 	return 0;
 }
 
-static int check_eattr_entries(struct lgfs2_inode *ip,
+static int check_eattr_entries(struct fsck_cx *cx, struct lgfs2_inode *ip,
 			       struct lgfs2_buffer_head *bh,
 			       struct metawalk_fxns *pass)
 {
@@ -856,7 +856,7 @@ static int check_eattr_entries(struct lgfs2_inode *ip,
 		if (ea_hdr->ea_type == GFS2_EATYPE_UNUSED)
 			error = 0;
 		else
-			error = pass->check_eattr_entry(ip, bh, ea_hdr,
+			error = pass->check_eattr_entry(cx, ip, bh, ea_hdr,
 							ea_hdr_prev,
 							pass->private);
 		if (error < 0) {
@@ -880,7 +880,7 @@ static int check_eattr_entries(struct lgfs2_inode *ip,
 			** reuse...........  */
 
 			for(i = 0; i < ea_hdr->ea_num_ptrs; i++){
-				err = pass->check_eattr_extentry(ip, i,
+				err = pass->check_eattr_extentry(cx, ip, i,
 						ea_data_ptr, bh, tot_ealen,
 						ea_hdr, ea_hdr_prev,
 						pass->private);
@@ -912,7 +912,7 @@ static int check_eattr_entries(struct lgfs2_inode *ip,
  *
  * Returns: 0 on success, 1 if removal is needed, -1 on error
  */
-static int check_leaf_eattr(struct lgfs2_inode *ip, uint64_t block,
+static int check_leaf_eattr(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
 			    uint64_t parent, struct metawalk_fxns *pass)
 {
 	struct lgfs2_buffer_head *bh = NULL;
@@ -924,7 +924,7 @@ static int check_leaf_eattr(struct lgfs2_inode *ip, uint64_t block,
 			     "inode #%"PRIu64" (0x%"PRIx64").\n"),
 		          block, block, ip->i_num.in_addr, ip->i_num.in_addr);
 
-		error = pass->check_eattr_leaf(ip, block, parent, &bh,
+		error = pass->check_eattr_leaf(cx, ip, block, parent, &bh,
 					       pass->private);
 		if (error < 0) {
 			stack;
@@ -936,7 +936,7 @@ static int check_leaf_eattr(struct lgfs2_inode *ip, uint64_t block,
 			return 1;
 		}
 		if (bh) {
-			error = check_eattr_entries(ip, bh, pass);
+			error = check_eattr_entries(cx, ip, bh, pass);
 			lgfs2_brelse(bh);
 		}
 		return error;
@@ -952,7 +952,7 @@ static int check_leaf_eattr(struct lgfs2_inode *ip, uint64_t block,
  *
  * Returns: 0 on success -1 on error
  */
-static int check_indirect_eattr(struct lgfs2_inode *ip, uint64_t indirect,
+static int check_indirect_eattr(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t indirect,
 				struct lgfs2_buffer_head *indirect_buf,
 				struct metawalk_fxns *pass)
 {
@@ -971,7 +971,7 @@ static int check_indirect_eattr(struct lgfs2_inode *ip, uint64_t indirect,
 	while (*ea_leaf_ptr && (ea_leaf_ptr < end)){
 		block = be64_to_cpu(*ea_leaf_ptr);
 		leaf_pointers++;
-		err = check_leaf_eattr(ip, block, indirect, pass);
+		err = check_leaf_eattr(cx, ip, block, indirect, pass);
 		if (err) {
 			error = err;
 			log_err(_("Error detected in leaf block %"PRIu64" (0x%"PRIx64") "
@@ -996,7 +996,7 @@ static int check_indirect_eattr(struct lgfs2_inode *ip, uint64_t indirect,
 		if (leaf_pointers == 1 && leaf_pointer_errors == 1) {
 			first_ea_is_bad = 1;
 			if (pass->finish_eattr_indir)
-				pass->finish_eattr_indir(ip, leaf_pointers,
+				pass->finish_eattr_indir(cx, ip, leaf_pointers,
 							 leaf_pointer_errors,
 							 pass->private);
 		} else if (leaf_pointer_errors) {
@@ -1017,13 +1017,13 @@ static int check_indirect_eattr(struct lgfs2_inode *ip, uint64_t indirect,
 		ip->i_eattr = di_eattr_save;
 	if (pass->finish_eattr_indir) {
 		if (!first_ea_is_bad) {
-			pass->finish_eattr_indir(ip, leaf_pointers,
+			pass->finish_eattr_indir(cx, ip, leaf_pointers,
 						 leaf_pointer_errors,
 						 pass->private);
 		}
 		if (pass->delete_block && leaf_pointer_errors &&
 		    leaf_pointer_errors == leaf_pointers) {
-			pass->delete_block(ip, indirect, NULL, "leaf", NULL);
+			pass->delete_block(cx, ip, indirect, NULL, "leaf", NULL);
 			error = 1;
 		}
 	}
@@ -1037,7 +1037,7 @@ static int check_indirect_eattr(struct lgfs2_inode *ip, uint64_t indirect,
  *
  * Returns: 0 on success, -1 on error
  */
-int check_inode_eattr(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
+int check_inode_eattr(struct fsck_cx *cx, struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	int error = 0;
 	struct lgfs2_buffer_head *indirect_buf = NULL;
@@ -1052,10 +1052,10 @@ int check_inode_eattr(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 		log_debug(_("Checking EA indirect block #%"PRIu64" (0x%"PRIx64") for "
 			     "inode #%"PRIu64" (0x%"PRIx64")..\n"),
 		          ip->i_eattr, ip->i_eattr, ip->i_num.in_addr, ip->i_num.in_addr);
-		error = pass->check_eattr_indir(ip, ip->i_eattr, ip->i_num.in_addr,
+		error = pass->check_eattr_indir(cx, ip, ip->i_eattr, ip->i_num.in_addr,
 						&indirect_buf, pass->private);
 		if (!error) {
-			error = check_indirect_eattr(ip, ip->i_eattr,
+			error = check_indirect_eattr(cx, ip, ip->i_eattr,
 						     indirect_buf, pass);
 			if (error)
 				stack;
@@ -1064,7 +1064,7 @@ int check_inode_eattr(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 			lgfs2_brelse(indirect_buf);
 		return error;
 	}
-	error = check_leaf_eattr(ip, ip->i_eattr, ip->i_num.in_addr, pass);
+	error = check_leaf_eattr(cx, ip, ip->i_eattr, ip->i_num.in_addr, pass);
 	if (error)
 		stack;
 
@@ -1149,7 +1149,7 @@ static void file_ra(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 			      extlen * sdp->sd_bsize, POSIX_FADV_WILLNEED);
 }
 
-static int do_check_metalist(struct iptr iptr, int height, struct lgfs2_buffer_head **bhp,
+static int do_check_metalist(struct fsck_cx *cx, struct iptr iptr, int height, struct lgfs2_buffer_head **bhp,
                              struct metawalk_fxns *pass)
 {
 	struct lgfs2_inode *ip = iptr.ipt_ip;
@@ -1161,7 +1161,7 @@ static int do_check_metalist(struct iptr iptr, int height, struct lgfs2_buffer_h
 	if (pass->check_metalist == NULL)
 		return 0;
 
-	error = pass->check_metalist(iptr, bhp, height, &is_valid,
+	error = pass->check_metalist(cx, iptr, bhp, height, &is_valid,
 				     &was_duplicate, pass->private);
 	if (error == META_ERROR) {
 		stack;
@@ -1207,7 +1207,7 @@ static int do_check_metalist(struct iptr iptr, int height, struct lgfs2_buffer_h
  * @ip:
  * @mlp:
  */
-static int build_and_check_metalist(struct lgfs2_inode *ip, osi_list_t *mlp,
+static int build_and_check_metalist(struct fsck_cx *cx, struct lgfs2_inode *ip, osi_list_t *mlp,
 				    struct metawalk_fxns *pass)
 {
 	uint32_t height = ip->i_height;
@@ -1277,7 +1277,7 @@ static int build_and_check_metalist(struct lgfs2_inode *ip, osi_list_t *mlp,
 				if (!iptr_block(iptr))
 					continue;
 
-				error = do_check_metalist(iptr, h, &nbh, pass);
+				error = do_check_metalist(cx, iptr, h, &nbh, pass);
 				if (error == META_ERROR || error == META_SKIP_FURTHER)
 					goto error_undo;
 				if (error == META_SKIP_ONE)
@@ -1304,7 +1304,7 @@ error_undo: /* undo what we've done so far for this block */
 		if (block == 0)
 			continue;
 
-		pass->undo_check_meta(ip, block, h, pass->private);
+		pass->undo_check_meta(cx, ip, block, h, pass->private);
 	}
 	return error;
 }
@@ -1380,7 +1380,7 @@ static void report_data_error(uint64_t metablock, int offset, uint64_t block,
  *          1 if errors were found and corrected
  *          2 (ENOENT) is there were too many bad pointers
  */
-static int metawalk_check_data(struct lgfs2_inode *ip, struct metawalk_fxns *pass,
+static int metawalk_check_data(struct fsck_cx *cx, struct lgfs2_inode *ip, struct metawalk_fxns *pass,
 		      struct lgfs2_buffer_head *bh, unsigned int height,
 		      uint64_t *blks_checked, struct error_block *error_blk)
 {
@@ -1406,7 +1406,7 @@ static int metawalk_check_data(struct lgfs2_inode *ip, struct metawalk_fxns *pas
 		   would defeat the rangecheck_block related functions in
 		   pass1. Therefore the individual check_data functions
 		   should do a range check. */
-		rc = pass->check_data(ip, metablock, block, pass->private,
+		rc = pass->check_data(cx, ip, metablock, block, pass->private,
 				      bh, ptr);
 		if (rc && (!error || (rc < error))) {
 			report_data_error(metablock, (char *)ptr - bh->b_data, block, error_blk, rc, error);
@@ -1448,7 +1448,7 @@ static int report_undo_data_error(uint64_t metablock, int offset, uint64_t block
 	return 0;
 }
 
-static int undo_check_data(struct lgfs2_inode *ip, struct metawalk_fxns *pass,
+static int undo_check_data(struct fsck_cx *cx, struct lgfs2_inode *ip, struct metawalk_fxns *pass,
 			   struct lgfs2_buffer_head *bh, unsigned int height,
 			   struct error_block *error_blk, int error)
 {
@@ -1471,7 +1471,7 @@ static int undo_check_data(struct lgfs2_inode *ip, struct metawalk_fxns *pass,
 		if (report_undo_data_error(metablock, (char *)ptr - bh->b_data,
 					   block, error_blk, &found_error_blk, error))
 			return 1;
-		rc = pass->undo_check_data(ip, block, pass->private);
+		rc = pass->undo_check_data(cx, ip, block, pass->private);
 		if (rc < 0)
 			return rc;
 	}
@@ -1491,7 +1491,7 @@ static unsigned int should_check(struct lgfs2_buffer_head *bh, unsigned int heig
  * @pass: structure passed in from caller to determine the sub-functions
  *
  */
-int check_metatree(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
+int check_metatree(struct fsck_cx *cx, struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	unsigned int height = ip->i_height;
 	osi_list_t *metalist = alloca((height + 1) * sizeof(*metalist));
@@ -1512,7 +1512,7 @@ int check_metatree(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 		osi_list_init(&metalist[i]);
 
 	/* create and check the metadata list for each height */
-	error = build_and_check_metalist(ip, metalist, pass);
+	error = build_and_check_metalist(cx, ip, metalist, pass);
 	if (error) {
 		stack;
 		goto undo_metalist;
@@ -1526,7 +1526,7 @@ int check_metatree(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 		if (!(ip->i_flags & GFS2_DIF_EXHASH))
 			goto out;
 		/* check validity of leaf blocks and leaf chains */
-		error = check_leaf_blks(ip, pass);
+		error = check_leaf_blks(cx, ip, pass);
 		if (error)
 			goto undo_metalist;
 		goto out;
@@ -1547,10 +1547,10 @@ int check_metatree(struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 			continue;
 
 		if (pass->check_data)
-			error = metawalk_check_data(ip, pass, bh, height,
+			error = metawalk_check_data(cx, ip, pass, bh, height,
 					   &blks_checked, &error_blk);
 		if (pass->big_file_msg && ip->i_blocks > COMFORTABLE_BLKS)
-			pass->big_file_msg(ip, blks_checked);
+			pass->big_file_msg(cx, ip, blks_checked);
 	}
 	if (pass->big_file_msg && ip->i_blocks > COMFORTABLE_BLKS) {
 		log_notice( _("\rLarge file at %"PRIu64" (0x%"PRIx64") - 100 percent "
@@ -1581,14 +1581,14 @@ undo_metalist:
 			log_err(_("Undoing metadata work for block %"PRIu64" (0x%"PRIx64")\n"),
 			        bh->b_blocknr, bh->b_blocknr);
 			if (i)
-				rc = pass->undo_check_meta(ip, bh->b_blocknr,
+				rc = pass->undo_check_meta(cx, ip, bh->b_blocknr,
 							   i, pass->private);
 			else
 				rc = 0;
 			if (metadata_clean && rc == 0 && i == height - 1 &&
 			    !hit_error_blk) {
 				if (should_check(bh, height)) {
-					rc = undo_check_data(ip, pass,
+					rc = undo_check_data(cx, ip, pass,
 							     bh,
 							     height,
 							     &error_blk,
@@ -1624,13 +1624,13 @@ out:
 }
 
 /* Checks stuffed inode directories */
-int check_linear_dir(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
+int check_linear_dir(struct fsck_cx *cx, struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 		     struct metawalk_fxns *pass)
 {
 	int error = 0;
 	uint32_t count = 0;
 
-	error = check_entries(ip, bh, DIR_LINEAR, &count, 0, pass);
+	error = check_entries(cx, ip, bh, DIR_LINEAR, &count, 0, pass);
 	if (error < 0) {
 		stack;
 		return -1;
@@ -1639,14 +1639,14 @@ int check_linear_dir(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 	return error;
 }
 
-int check_dir(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip, struct metawalk_fxns *pass)
+int check_dir(struct fsck_cx *cx, struct lgfs2_inode *ip, struct metawalk_fxns *pass)
 {
 	int error = 0;
 
 	if (ip->i_flags & GFS2_DIF_EXHASH)
-		error = check_leaf_blks(ip, pass);
+		error = check_leaf_blks(cx, ip, pass);
 	else
-		error = check_linear_dir(ip, ip->i_bh, pass);
+		error = check_linear_dir(cx, ip, ip->i_bh, pass);
 
 	if (error < 0)
 		stack;

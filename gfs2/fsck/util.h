@@ -10,7 +10,7 @@
 #define INODE_INVALID 0
 
 struct di_info *search_list(osi_list_t *list, uint64_t addr);
-void big_file_comfort(struct lgfs2_inode *ip, uint64_t blks_checked);
+void big_file_comfort(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t blks_checked);
 void display_progress(uint64_t block);
 int add_duplicate_ref(struct lgfs2_inode *ip, uint64_t block,
 		      enum dup_ref_type reftype, int first, int inode_valid);

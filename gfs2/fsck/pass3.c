@@ -54,9 +54,9 @@ static int attach_dotdot_to(struct lgfs2_sbd *sdp, uint64_t newdotdot,
 	return 0;
 }
 
-static struct dir_info *mark_and_return_parent(struct lgfs2_sbd *sdp,
-					       struct dir_info *di)
+static struct dir_info *mark_and_return_parent(struct fsck_cx *cx, struct dir_info *di)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct dir_info *pdi;
 	int q_dotdot, q_treewalk;
 	int error = 0;
@@ -129,7 +129,7 @@ static struct dir_info *mark_and_return_parent(struct lgfs2_sbd *sdp,
 		log_err( _("Directory entry to invalid inode remains\n"));
 		return NULL;
 	}
-	error = remove_dentry_from_dir(sdp, di->treewalk_parent, di->dinode.in_addr);
+	error = remove_dentry_from_dir(cx, di->treewalk_parent, di->dinode.in_addr);
 	if (error < 0) {
 		stack;
 		return NULL;
@@ -217,7 +217,7 @@ int pass3(struct fsck_cx *cx)
 			 * param */
 			if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 				return FSCK_OK;
-			tdi = mark_and_return_parent(sdp, di);
+			tdi = mark_and_return_parent(cx, di);
 
 			if (tdi) {
 				log_debug(_("Directory at block %"PRIu64" (0x%"PRIx64") connected\n"),

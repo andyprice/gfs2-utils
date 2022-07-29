@@ -510,8 +510,9 @@ static uint64_t hunt_and_peck(struct lgfs2_sbd *sdp, uint64_t blk,
  * from gfs1 to gfs2 after a gfs_grow operation.  In that case, the rgrps
  * will not be on predictable boundaries.
  */
-static int rindex_rebuild(struct lgfs2_sbd *sdp, int *num_rgs, int gfs_grow)
+static int rindex_rebuild(struct fsck_cx *cx, int *num_rgs, int gfs_grow)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct osi_node *n, *next = NULL;
 	struct lgfs2_buffer_head *bh;
 	uint64_t rg_dist[MAX_RGSEGMENTS] = {0, };
@@ -532,7 +533,7 @@ static int rindex_rebuild(struct lgfs2_sbd *sdp, int *num_rgs, int gfs_grow)
 	 * To make matters worse, journals may span several (small) rgrps,
 	 * so we can't go by the rgrps.
 	 */
-	if (init_jindex(sdp, 0) != 0) {
+	if (init_jindex(cx, 0) != 0) {
 		log_crit(_("Error: Can't read jindex required for rindex "
 			   "repairs.\n"));
 		return -1;
@@ -943,8 +944,9 @@ static int expect_rindex_sanity(struct lgfs2_sbd *sdp, int *num_rgs)
  *             was converted from GFS via gfs2_convert, and its rgrps are
  *             not on nice boundaries thanks to previous gfs_grow ops. Lovely.
  */
-int rindex_repair(struct lgfs2_sbd *sdp, int trust_lvl, int *ok)
+int rindex_repair(struct fsck_cx *cx, int trust_lvl, int *ok)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct osi_node *n, *next = NULL, *e, *enext;
 	int error, discrepancies, percent;
 	int calc_rg_count = 0, rg;
@@ -980,7 +982,7 @@ int rindex_repair(struct lgfs2_sbd *sdp, int trust_lvl, int *ok)
 		/* Free previous incarnations in memory, if any. */
 		lgfs2_rgrp_free(sdp, &sdp->rgtree);
 
-		error = rindex_rebuild(sdp, &calc_rg_count, 0);
+		error = rindex_rebuild(cx, &calc_rg_count, 0);
 		if (error) {
 			log_crit( _("Error rebuilding rgrp list.\n"));
 			lgfs2_rgrp_free(sdp, &rgcalc);
@@ -990,7 +992,7 @@ int rindex_repair(struct lgfs2_sbd *sdp, int trust_lvl, int *ok)
 		/* Free previous incarnations in memory, if any. */
 		lgfs2_rgrp_free(sdp, &sdp->rgtree);
 
-		error = rindex_rebuild(sdp, &calc_rg_count, 1);
+		error = rindex_rebuild(cx, &calc_rg_count, 1);
 		if (error) {
 			log_crit( _("Error rebuilding rgrp list.\n"));
 			lgfs2_rgrp_free(sdp, &rgcalc);

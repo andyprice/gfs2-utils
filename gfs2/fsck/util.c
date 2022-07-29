@@ -21,7 +21,7 @@ const char *reftypes[REF_TYPES + 1] = {"data", "metadata",
 				       "an extended attribute", "an inode",
 				       "unimportant"};
 
-void big_file_comfort(struct lgfs2_inode *ip, uint64_t blks_checked)
+void big_file_comfort(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t blks_checked)
 {
 	static struct timeval tv;
 	static uint32_t seconds = 0;

@@ -620,7 +620,7 @@ static int rangecheck_jblock(struct lgfs2_inode *ip, uint64_t block)
 	return META_IS_GOOD;
 }
 
-static int rangecheck_jmeta(struct iptr iptr, struct lgfs2_buffer_head **bh, int h,
+static int rangecheck_jmeta(struct fsck_cx *cx, struct iptr iptr, struct lgfs2_buffer_head **bh, int h,
                             int *is_valid, int *was_duplicate, void *private)
 {
 	struct lgfs2_inode *ip = iptr.ipt_ip;
@@ -648,7 +648,7 @@ static int rangecheck_jmeta(struct iptr iptr, struct lgfs2_buffer_head **bh, int
 	return rc;
 }
 
-static int rangecheck_jdata(struct lgfs2_inode *ip, uint64_t metablock,
+static int rangecheck_jdata(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t metablock,
 			    uint64_t block, void *private,
 			    struct lgfs2_buffer_head *bh, __be64 *ptr)
 {
@@ -675,11 +675,15 @@ static struct metawalk_fxns rangecheck_journal = {
  *
  * Returns: 0 on success, -1 on failure
  */
-int replay_journals(struct lgfs2_sbd *sdp, int preen, int force_check,
+int replay_journals(struct fsck_cx *cx, int preen, int force_check,
 		    int *clean_journals)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
+	int dirty_journals = 0;
+	int gave_msg = 0;
+	int error = 0;
+	int clean = 0;
 	int i;
-	int clean = 0, dirty_journals = 0, error = 0, gave_msg = 0;
 
 	*clean_journals = 0;
 
@@ -687,7 +691,7 @@ int replay_journals(struct lgfs2_sbd *sdp, int preen, int force_check,
 
 	for(i = 0; i < sdp->md.journals; i++) {
 		if (sdp->md.journal[i]) {
-			error = check_metatree(sdp->md.journal[i],
+			error = check_metatree(cx, sdp->md.journal[i],
 					       &rangecheck_journal);
 			if (error)
 				/* Don't use fsck_inode_put here because it's a
@@ -808,7 +812,7 @@ static void bad_journalname(const char *filename, int len)
  * This function makes sure the directory entries of the jindex are valid.
  * If they're not '.' or '..' they better have the form journalXXX.
  */
-static int check_jindex_dent(struct lgfs2_inode *ip, struct gfs2_dirent *dent,
+static int check_jindex_dent(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs2_dirent *dent,
 			     struct gfs2_dirent *prev_de,
 			     struct lgfs2_buffer_head *bh, char *filename,
 			     uint32_t *count, int *lindex, void *priv)
@@ -869,14 +873,9 @@ int build_jindex(struct lgfs2_sbd *sdp)
 	return 0;
 }
 
-/**
- * init_jindex - read in the rindex file
- */
-int init_jindex(struct lgfs2_sbd *sdp, int allow_ji_rebuild)
+int init_jindex(struct fsck_cx *cx, int allow_ji_rebuild)
 {
-	/*******************************************************************
-	 ******************  Fill in journal information  ******************
-	 *******************************************************************/
+	struct lgfs2_sbd *sdp = cx->sdp;
 
 	log_debug(_("Validating the journal index.\n"));
 	/* rgrepair requires the journals be read in in order to distinguish
@@ -916,10 +915,10 @@ int init_jindex(struct lgfs2_sbd *sdp, int allow_ji_rebuild)
 
 		log_debug(_("Checking the integrity of the journal index.\n"));
 		if (sdp->md.jiinode->i_flags & GFS2_DIF_EXHASH)
-			error = check_leaf_blks(sdp->md.jiinode,
+			error = check_leaf_blks(cx, sdp->md.jiinode,
 						&jindex_check_fxns);
 		else
-			error = check_linear_dir(sdp->md.jiinode,
+			error = check_linear_dir(cx, sdp->md.jiinode,
 						 sdp->md.jiinode->i_bh,
 						 &jindex_check_fxns);
 		if (error) {

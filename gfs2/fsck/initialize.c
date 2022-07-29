@@ -697,7 +697,7 @@ static int read_rgrps(struct lgfs2_sbd *sdp, uint64_t expected)
 	return -1;
 }
 
-static int fetch_rgrps_level(struct lgfs2_sbd *sdp, enum rgindex_trust_level lvl, uint64_t *count, int *ok)
+static int fetch_rgrps_level(struct fsck_cx *cx, enum rgindex_trust_level lvl, uint64_t *count, int *ok)
 {
 	int ret = 1;
 
@@ -718,13 +718,13 @@ static int fetch_rgrps_level(struct lgfs2_sbd *sdp, enum rgindex_trust_level lvl
 
 	log_notice(_("Level %d resource group check: %s.\n"), lvl + 1, level_desc[lvl]);
 
-	if (rindex_repair(sdp, lvl, ok) != 0)
+	if (rindex_repair(cx, lvl, ok) != 0)
 		goto fail;
 
-	if (lgfs2_rindex_read(sdp, count, ok) != 0 || !*ok)
+	if (lgfs2_rindex_read(cx->sdp, count, ok) != 0 || !*ok)
 		goto fail;
 
-	ret = read_rgrps(sdp, *count);
+	ret = read_rgrps(cx->sdp, *count);
 	if (ret != 0)
 		goto fail;
 
@@ -742,7 +742,7 @@ fail:
 /**
  * fetch_rgrps - fetch the resource groups from disk, and check their integrity
  */
-static int fetch_rgrps(struct lgfs2_sbd *sdp)
+static int fetch_rgrps(struct fsck_cx *cx)
 {
 	enum rgindex_trust_level trust_lvl;
 	uint64_t rgcount;
@@ -752,7 +752,7 @@ static int fetch_rgrps(struct lgfs2_sbd *sdp)
 	for (trust_lvl = BLIND_FAITH; trust_lvl <= INDIGNATION; trust_lvl++) {
 		int ret = 0;
 
-		ret = fetch_rgrps_level(sdp, trust_lvl, &rgcount, &ok);
+		ret = fetch_rgrps_level(cx, trust_lvl, &rgcount, &ok);
 		if (ret == 0)
 			break;
 		if (fsck_abort)
@@ -765,7 +765,7 @@ static int fetch_rgrps(struct lgfs2_sbd *sdp)
 	}
 	log_info( _("%"PRIu64" resource groups found.\n"), rgcount);
 
-	check_rgrps_integrity(sdp);
+	check_rgrps_integrity(cx->sdp);
 	return 0;
 }
 
@@ -1544,9 +1544,10 @@ static int init_rindex(struct lgfs2_sbd *sdp)
  * initialize - initialize superblock pointer
  *
  */
-int initialize(struct lgfs2_sbd *sdp, int force_check, int preen,
+int initialize(struct fsck_cx *cx, int force_check, int preen,
 	       int *all_clean)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	int clean_journals = 0, open_flag;
 	int err;
 
@@ -1638,20 +1639,20 @@ int initialize(struct lgfs2_sbd *sdp, int force_check, int preen,
 	if (init_rindex(sdp))
 		return FSCK_ERROR;
 
-	if (fetch_rgrps(sdp))
+	if (fetch_rgrps(cx))
 		return FSCK_ERROR;
 
 	/* We need to read in jindex in order to replay the journals. If
 	   there's an error, we may proceed and let init_system_inodes
 	   try to rebuild it. */
-	if (init_jindex(sdp, 1) == 0) {
+	if (init_jindex(cx, 1) == 0) {
 		/* If GFS, rebuild the journals. If GFS2, replay them. We don't
 		   have the smarts to replay GFS1 journals (neither did
 		   gfs_fsck). */
 		if (sdp->gfs1) {
 			if (reconstruct_journals(sdp))
 				return FSCK_ERROR;
-		} else if (replay_journals(sdp, preen, force_check,
+		} else if (replay_journals(cx, preen, force_check,
 					   &clean_journals)) {
 			if (!opts.no && preen_is_safe(sdp, preen, force_check))
 				block_mounters(sdp, 0);

@@ -49,9 +49,10 @@ static int fix_link_count(uint32_t counted_links, struct lgfs2_inode *ip)
  *
  * Returns: 1 if caller should do "continue", 0 if not.
  */
-static int handle_unlinked(struct lgfs2_sbd *sdp, uint64_t no_addr,
+static int handle_unlinked(struct fsck_cx *cx, uint64_t no_addr,
 			   uint32_t *counted_links, int *lf_addition)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct lgfs2_inode *ip;
 	int q;
 
@@ -63,8 +64,8 @@ static int handle_unlinked(struct lgfs2_sbd *sdp, uint64_t no_addr,
 		        no_addr, no_addr);
 		if (query(_("Delete unlinked inode with bad blocks? (y/n) "))) {
 			ip = fsck_load_inode(sdp, no_addr);
-			check_inode_eattr(ip, &pass4_fxns_delete);
-			check_metatree(ip, &pass4_fxns_delete);
+			check_inode_eattr(cx, ip, &pass4_fxns_delete);
+			check_metatree(cx, ip, &pass4_fxns_delete);
 			fsck_bitmap_set(ip, no_addr, _("bad unlinked"),
 					GFS2_BLKST_FREE);
 			fsck_inode_put(&ip);
@@ -78,8 +79,8 @@ static int handle_unlinked(struct lgfs2_sbd *sdp, uint64_t no_addr,
 		        no_addr, no_addr, q);
 		ip = fsck_load_inode(sdp, no_addr);
 		if (query(_("Delete unlinked inode? (y/n) "))) {
-			check_inode_eattr(ip, &pass4_fxns_delete);
-			check_metatree(ip, &pass4_fxns_delete);
+			check_inode_eattr(cx, ip, &pass4_fxns_delete);
+			check_metatree(cx, ip, &pass4_fxns_delete);
 			fsck_bitmap_set(ip, no_addr, _("invalid unlinked"),
 					GFS2_BLKST_FREE);
 			fsck_inode_put(&ip);
@@ -160,8 +161,9 @@ static int adjust_lf_links(int lf_addition)
 	return 0;
 }
 
-static int scan_inode_list(struct lgfs2_sbd *sdp)
+static int scan_inode_list(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct osi_node *tmp, *next = NULL;
 	struct inode_info *ii;
 	int lf_addition = 0;
@@ -180,7 +182,7 @@ static int scan_inode_list(struct lgfs2_sbd *sdp)
 		     (ii->num.in_addr == sdp->md.statfs->i_num.in_addr)))
 			continue;
 		if (ii->counted_links == 0) {
-			if (handle_unlinked(sdp, ii->num.in_addr,
+			if (handle_unlinked(cx, ii->num.in_addr,
 					    &ii->counted_links, &lf_addition))
 				continue;
 		} /* if (ii->counted_links == 0) */
@@ -195,8 +197,9 @@ static int scan_inode_list(struct lgfs2_sbd *sdp)
 	return adjust_lf_links(lf_addition);
 }
 
-static int scan_dir_list(struct lgfs2_sbd *sdp)
+static int scan_dir_list(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct osi_node *tmp, *next = NULL;
 	struct dir_info *di;
 	int lf_addition = 0;
@@ -213,7 +216,7 @@ static int scan_dir_list(struct lgfs2_sbd *sdp)
 		    di->dinode.in_addr == sdp->md.jiinode->i_num.in_addr)
 			continue;
 		if (di->counted_links == 0) {
-			if (handle_unlinked(sdp, di->dinode.in_addr,
+			if (handle_unlinked(cx, di->dinode.in_addr,
 					    &di->counted_links, &lf_addition))
 				continue;
 		} else if (di->di_nlink != di->counted_links) {
@@ -227,7 +230,7 @@ static int scan_dir_list(struct lgfs2_sbd *sdp)
 	return adjust_lf_links(lf_addition);
 }
 
-static int scan_nlink1_list(struct lgfs2_sbd *sdp)
+static int scan_nlink1_list(struct fsck_cx *cx)
 {
 	uint64_t blk;
 	uint32_t counted_links;
@@ -245,8 +248,7 @@ static int scan_nlink1_list(struct lgfs2_sbd *sdp)
 			   to lost+found. In this case, however, there's not a
 			   real count, so we fake it out to be 1. */
 			counted_links = 1;
-			if (handle_unlinked(sdp, blk, &counted_links,
-					    &lf_addition))
+			if (handle_unlinked(cx, blk, &counted_links, &lf_addition))
 				continue;
 		}
 	}
@@ -264,23 +266,21 @@ static int scan_nlink1_list(struct lgfs2_sbd *sdp)
  */
 int pass4(struct fsck_cx *cx)
 {
-	struct lgfs2_sbd *sdp = cx->sdp;
-
 	if (lf_dip)
 		log_debug( _("At beginning of pass4, lost+found entries is %u\n"),
 				  lf_dip->i_entries);
 	log_info( _("Checking inode reference counts: multi-links.\n"));
-	if (scan_inode_list(sdp)) {
+	if (scan_inode_list(cx)) {
 		stack;
 		return FSCK_ERROR;
 	}
 	log_info( _("Checking inode reference counts: directories.\n"));
-	if (scan_dir_list(sdp)) {
+	if (scan_dir_list(cx)) {
 		stack;
 		return FSCK_ERROR;
 	}
 	log_info( _("Checking inode reference counts: normal links.\n"));
-	if (scan_nlink1_list(sdp)) {
+	if (scan_nlink1_list(cx)) {
 		stack;
 		return FSCK_ERROR;
 	}

@@ -8,15 +8,15 @@
 
 struct metawalk_fxns;
 
-extern int check_inode_eattr(struct lgfs2_inode *ip,
+extern int check_inode_eattr(struct fsck_cx *cx, struct lgfs2_inode *ip,
 			     struct metawalk_fxns *pass);
-extern int check_metatree(struct lgfs2_inode *ip, struct metawalk_fxns *pass);
-extern int check_leaf_blks(struct lgfs2_inode *ip, struct metawalk_fxns *pass);
-extern int check_dir(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip,
+extern int check_metatree(struct fsck_cx *cx, struct lgfs2_inode *ip, struct metawalk_fxns *pass);
+extern int check_leaf_blks(struct fsck_cx *cx, struct lgfs2_inode *ip, struct metawalk_fxns *pass);
+extern int check_dir(struct fsck_cx *cx, struct lgfs2_inode *ip,
 		     struct metawalk_fxns *pass);
-extern int check_linear_dir(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
+extern int check_linear_dir(struct fsck_cx *cx, struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 			    struct metawalk_fxns *pass);
-extern int check_leaf(struct lgfs2_inode *ip, int lindex,
+extern int check_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, int lindex,
 		      struct metawalk_fxns *pass, uint64_t *leaf_no,
 		      struct lgfs2_leaf *leaf, int *ref_count);
 extern int _fsck_bitmap_set(struct lgfs2_inode *ip, uint64_t bblock,
@@ -72,9 +72,9 @@ struct metawalk_fxns {
 	void *private;
 	int invalid_meta_is_fatal;
 	int readahead;
-	int (*check_leaf_depth) (struct lgfs2_inode *ip, uint64_t leaf_no,
+	int (*check_leaf_depth) (struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t leaf_no,
 				 int ref_count, struct lgfs2_buffer_head *lbh);
-	int (*check_leaf) (struct lgfs2_inode *ip, uint64_t block,
+	int (*check_leaf) (struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
 			   void *private);
 	/* parameters to the check_metalist sub-functions:
 	   iptr: reference to the inode and its indirect pointer that we're analyzing
@@ -90,48 +90,48 @@ struct metawalk_fxns {
 	   returns: 0 - everything is good, but there may be duplicates
 	            1 - skip further processing
 	*/
-	int (*check_metalist) (struct iptr iptr,
+	int (*check_metalist) (struct fsck_cx *cx, struct iptr iptr,
 			       struct lgfs2_buffer_head **bh, int h,
 			       int *is_valid, int *was_duplicate,
 			       void *private);
-	int (*check_data) (struct lgfs2_inode *ip, uint64_t metablock,
+	int (*check_data) (struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t metablock,
 			   uint64_t block, void *private,
 			   struct lgfs2_buffer_head *bh, __be64 *ptr);
-	int (*check_eattr_indir) (struct lgfs2_inode *ip, uint64_t block,
+	int (*check_eattr_indir) (struct fsck_cx *, struct lgfs2_inode *ip, uint64_t block,
 				  uint64_t parent,
 				  struct lgfs2_buffer_head **bh, void *private);
-	int (*check_eattr_leaf) (struct lgfs2_inode *ip, uint64_t block,
+	int (*check_eattr_leaf) (struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
 				 uint64_t parent, struct lgfs2_buffer_head **bh,
 				 void *private);
-	int (*check_dentry) (struct lgfs2_inode *ip, struct gfs2_dirent *de,
+	int (*check_dentry) (struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs2_dirent *de,
 			     struct gfs2_dirent *prev,
 			     struct lgfs2_buffer_head *bh,
 			     char *filename, uint32_t *count,
 			     int *lindex, void *private);
-	int (*check_eattr_entry) (struct lgfs2_inode *ip,
+	int (*check_eattr_entry) (struct fsck_cx *cx, struct lgfs2_inode *ip,
 				  struct lgfs2_buffer_head *leaf_bh,
 				  struct gfs2_ea_header *ea_hdr,
 				  struct gfs2_ea_header *ea_hdr_prev,
 				  void *private);
-	int (*check_eattr_extentry) (struct lgfs2_inode *ip, int i,
+	int (*check_eattr_extentry) (struct fsck_cx *cx, struct lgfs2_inode *ip, int i,
 				     __be64 *ea_data_ptr,
 				     struct lgfs2_buffer_head *leaf_bh,
 				     uint32_t tot_ealen,
 				     struct gfs2_ea_header *ea_hdr,
 				     struct gfs2_ea_header *ea_hdr_prev,
 				     void *private);
-	int (*finish_eattr_indir) (struct lgfs2_inode *ip, int leaf_pointers,
+	int (*finish_eattr_indir) (struct fsck_cx *cx, struct lgfs2_inode *ip, int leaf_pointers,
 				   int leaf_pointer_errors, void *private);
-	void (*big_file_msg) (struct lgfs2_inode *ip, uint64_t blks_checked);
-	int (*check_hash_tbl) (struct lgfs2_inode *ip, __be64 *tbl,
+	void (*big_file_msg) (struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t blks_checked);
+	int (*check_hash_tbl) (struct fsck_cx *cx, struct lgfs2_inode *ip, __be64 *tbl,
 			       unsigned hsize, void *private);
-	int (*repair_leaf) (struct lgfs2_inode *ip, uint64_t *leaf_no,
+	int (*repair_leaf) (struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t *leaf_no,
 			    int lindex, int ref_count, const char *msg);
-	int (*undo_check_meta) (struct lgfs2_inode *ip, uint64_t block,
+	int (*undo_check_meta) (struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
 				int h, void *private);
-	int (*undo_check_data) (struct lgfs2_inode *ip, uint64_t block,
+	int (*undo_check_data) (struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
 				void *private);
-	int (*delete_block) (struct lgfs2_inode *ip, uint64_t block,
+	int (*delete_block) (struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t block,
 			     struct lgfs2_buffer_head **bh, const char *btype,
 			     void *private);
 };

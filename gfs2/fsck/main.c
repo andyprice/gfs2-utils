@@ -330,7 +330,7 @@ int main(int argc, char **argv)
 		exit(error);
 	setbuf(stdout, NULL);
 	log_notice( _("Initializing fsck\n"));
-	if ((error = initialize(&sb, force_check, preen, &all_clean)))
+	if ((error = initialize(&cx, force_check, preen, &all_clean)))
 		exit(error);
 
 	if (!force_check && all_clean && preen) {
