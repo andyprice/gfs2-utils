@@ -430,18 +430,16 @@ static void check_rgrps_integrity(struct fsck_cx *cx)
 	}
 }
 
-/**
- * rebuild_master - rebuild a destroyed master directory
- */
-static int rebuild_master(struct lgfs2_sbd *sdp)
+static int rebuild_sysdir(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct lgfs2_inum inum;
 	struct lgfs2_buffer_head *bh = NULL;
 	int err = 0;
 
-	log_err(_("The system master directory seems to be destroyed.\n"));
+	log_err(_("The system directory seems to be destroyed.\n"));
 	if (!query(_("Okay to rebuild it? (y/n)"))) {
-		log_err(_("System master not rebuilt; aborting.\n"));
+		log_err(_("System directory not rebuilt; aborting.\n"));
 		return -1;
 	}
 	log_err(_("Trying to rebuild the master directory.\n"));
@@ -1618,7 +1616,7 @@ int initialize(struct fsck_cx *cx, int *all_clean)
 	     sdp->master_dir->i_mh_type != GFS2_METATYPE_DI ||
 	     !sdp->master_dir->i_size)) {
 		lgfs2_inode_put(&sdp->master_dir);
-		rebuild_master(sdp);
+		rebuild_sysdir(cx);
 		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.in_addr);
 		if (sdp->master_dir == NULL) {
 			log_crit(_("Error reading master directory: %s\n"), strerror(errno));
