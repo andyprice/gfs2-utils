@@ -1600,7 +1600,7 @@ int initialize(struct fsck_cx *cx, const struct fsck_options * const _opts, int 
 		return err;
 
 	/* Change lock protocol to be fsck_* instead of lock_* */
-	if (!opts.no && preen_is_safe(sdp, _opts->preen, _opts->force)) {
+	if (!opts.no && preen_is_safe(sdp, _opts)) {
 		if (block_mounters(sdp, 1)) {
 			log_err( _("Unable to block other mounters\n"));
 			return FSCK_USAGE;
@@ -1653,7 +1653,7 @@ int initialize(struct fsck_cx *cx, const struct fsck_options * const _opts, int 
 			if (reconstruct_journals(sdp))
 				return FSCK_ERROR;
 		} else if (replay_journals(cx, _opts, &clean_journals)) {
-			if (!opts.no && preen_is_safe(sdp, _opts->preen, _opts->force))
+			if (!opts.no && preen_is_safe(sdp, _opts))
 				block_mounters(sdp, 0);
 			stack;
 			return FSCK_ERROR;

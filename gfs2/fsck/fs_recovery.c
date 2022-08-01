@@ -450,11 +450,11 @@ static int check_journal_seq_no(struct lgfs2_inode *ip, int fix)
  * mounted by other nodes in the cluster, which is dangerous and therefore,
  * we should warn the user to run fsck.gfs2 manually when it's safe.
  */
-int preen_is_safe(struct lgfs2_sbd *sdp, int preen, int force_check)
+int preen_is_safe(struct lgfs2_sbd *sdp, const struct fsck_options * const _opts)
 {
-	if (!preen)       /* If preen was not specified */
+	if (!_opts->preen)
 		return 1; /* not called by rc.sysinit--we're okay to preen */
-	if (force_check)  /* If check was forced by the user? */
+	if (_opts->force)
 		return 1; /* user's responsibility--we're okay to preen */
 	if (!memcmp(sdp->sd_lockproto + 5, "nolock", 6))
 		return 1; /* local file system--preen is okay */
@@ -504,7 +504,7 @@ static int recover_journal(struct lgfs2_inode *ip, int j, const struct fsck_opti
 			log_err( _("Not fixing it due to the -n option.\n"));
 			goto out;
 		}
-		if (!preen_is_safe(sdp, _opts->preen, _opts->force)) {
+		if (!preen_is_safe(sdp, _opts)) {
 			log_err(_("Journal #%d (\"journal%d\") is corrupt.\n"),
 				j+1, j);
 			log_err(_("I'm not fixing it because it may be unsafe:\n"
@@ -548,7 +548,7 @@ static int recover_journal(struct lgfs2_inode *ip, int j, const struct fsck_opti
 		log_err(_("not replaying due to the -n option.\n"));
 		goto out;
 	}
-	if (!preen_is_safe(sdp, _opts->preen, _opts->force)) {
+	if (!preen_is_safe(sdp, _opts)) {
 		log_err( _("Journal #%d (\"journal%d\") is dirty\n"), j+1, j);
 		log_err( _("I'm not replaying it because it may be unsafe:\n"
 			   "Locking protocol is not lock_nolock and "
@@ -714,7 +714,7 @@ int replay_journals(struct fsck_cx *cx, const struct fsck_options * const _opts,
 			if (!clean)
 				dirty_journals++;
 			if (!gave_msg && dirty_journals == 1 && !_opts->no &&
-			    preen_is_safe(sdp, _opts->preen, _opts->force)) {
+			    preen_is_safe(sdp, _opts)) {
 				gave_msg = 1;
 				log_notice( _("Recovering journals (this may "
 					      "take a while)\n"));
