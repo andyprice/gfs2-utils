@@ -185,12 +185,13 @@ static int set_block_ranges(struct lgfs2_sbd *sdp)
 /**
  * check_rgrp_integrity - verify a rgrp free block count against the bitmap
  */
-static void check_rgrp_integrity(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
+static void check_rgrp_integrity(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 				 int *fixit, int *this_rg_fixed,
 				 int *this_rg_bad, int *this_rg_cleaned)
 {
 	uint32_t rg_free, rg_reclaimed, rg_unlinked, rg_usedmeta, rg_useddi;
 	int rgb, x, y, off, bytes_to_check, total_bytes_to_check, asked = 0;
+	struct lgfs2_sbd *sdp = cx->sdp;
 	unsigned int state;
 	uint64_t diblock;
 	struct lgfs2_buffer_head *bh;
@@ -392,7 +393,7 @@ static void check_rgrp_integrity(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *
  *
  * Returns: 0 on success, 1 if errors were detected
  */
-static void check_rgrps_integrity(struct lgfs2_sbd *sdp)
+static void check_rgrps_integrity(struct fsck_cx *cx)
 {
 	struct osi_node *n, *next = NULL;
 	int rgs_good = 0, rgs_bad = 0, rgs_fixed = 0, rgs_cleaned = 0;
@@ -401,12 +402,12 @@ static void check_rgrps_integrity(struct lgfs2_sbd *sdp)
 	int reclaim_unlinked = 0;
 
 	log_info( _("Checking the integrity of all resource groups.\n"));
-	for (n = osi_first(&sdp->rgtree); n; n = next) {
+	for (n = osi_first(&cx->sdp->rgtree); n; n = next) {
 		next = osi_next(n);
 		rgd = (struct lgfs2_rgrp_tree *)n;
 		if (fsck_abort)
 			return;
-		check_rgrp_integrity(sdp, rgd, &reclaim_unlinked,
+		check_rgrp_integrity(cx, rgd, &reclaim_unlinked,
 				     &was_fixed, &was_bad, &was_cleaned);
 		if (was_fixed)
 			rgs_fixed++;
@@ -765,7 +766,7 @@ static int fetch_rgrps(struct fsck_cx *cx)
 	}
 	log_info( _("%"PRIu64" resource groups found.\n"), rgcount);
 
-	check_rgrps_integrity(cx->sdp);
+	check_rgrps_integrity(cx);
 	return 0;
 }
 
