@@ -14,11 +14,12 @@
 
 #define GFS1_BLKST_USEDMETA 4
 
-static int check_block_status(struct lgfs2_sbd *sdp,  struct bmap *bl,
+static int check_block_status(struct fsck_cx *cx,  struct bmap *bl,
 			      char *buffer, unsigned int buflen,
 			      uint64_t *rg_block, uint64_t rg_data,
 			      uint32_t *count)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	unsigned char *byte, *end;
 	unsigned int bit;
 	unsigned char rg_status;
@@ -126,7 +127,7 @@ static void update_rgrp(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgp,
 		bits = &rgp->bits[i];
 
 		/* update the bitmaps */
-		if (check_block_status(sdp, bl, bits->bi_data + bits->bi_offset,
+		if (check_block_status(cx, bl, bits->bi_data + bits->bi_offset,
 		                       bits->bi_len, &rg_block, rgp->rt_data0, count))
 			return;
 		if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
