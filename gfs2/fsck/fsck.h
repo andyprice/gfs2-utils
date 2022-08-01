@@ -131,7 +131,7 @@ extern struct lgfs2_inode *fsck_inode_get(struct lgfs2_sbd *sdp,
 extern void fsck_inode_put(struct lgfs2_inode **ip);
 
 extern int initialize(struct fsck_cx *cx, const struct fsck_options * const opts, int *all_clean);
-extern void destroy(struct fsck_cx *cx);
+extern void destroy(struct fsck_cx *cx, const struct fsck_options * const _opts);
 extern int pass1(struct fsck_cx *cx);
 extern int pass1b(struct fsck_cx *cx);
 extern int pass1c(struct fsck_cx *cx);

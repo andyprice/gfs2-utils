@@ -330,7 +330,7 @@ int main(int argc, char **argv)
 
 	if (!opts.force && all_clean && opts.preen) {
 		log_err( _("%s: clean.\n"), opts.device);
-		destroy(&cx);
+		destroy(&cx, &opts);
 		exit(FSCK_OK);
 	}
 
@@ -363,7 +363,7 @@ int main(int argc, char **argv)
 	fsync(sb.device_fd);
 	link1_destroy(&nlink1map);
 	link1_destroy(&clink1map);
-	destroy(&cx);
+	destroy(&cx, &opts);
 	if (sb_fixed)
 		log_warn(_("Superblock was reset. Use tunegfs2 to manually "
 		           "set lock table before mounting.\n"));

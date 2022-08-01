@@ -1679,11 +1679,11 @@ mount_fail:
 	return FSCK_USAGE;
 }
 
-void destroy(struct fsck_cx *cx)
+void destroy(struct fsck_cx *cx, const struct fsck_options * const _opts)
 {
 	struct lgfs2_sbd *sdp = cx->sdp;
 
-	if (!opts.no) {
+	if (!_opts->no) {
 		if (block_mounters(sdp, 0)) {
 			log_warn( _("Unable to unblock other mounters - manual intervention required\n"));
 			log_warn( _("Use 'gfs2_tool sb <device> proto' to fix\n"));
