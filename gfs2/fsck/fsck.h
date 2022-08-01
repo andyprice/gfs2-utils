@@ -150,7 +150,6 @@ extern void dirtree_delete(struct fsck_cx *cx, struct dir_info *b);
  * of pass1 and put somewhere else... */
 struct dir_info *dirtree_insert(struct fsck_cx *cx, struct lgfs2_inum inum);
 
-extern struct fsck_options opts;
 extern struct lgfs2_inode *lf_dip; /* Lost and found directory inode */
 extern int lf_was_created;
 extern uint64_t last_fs_block, last_reported_block;

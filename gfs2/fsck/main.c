@@ -25,7 +25,6 @@
 #include "metawalk.h"
 #include "util.h"
 
-struct fsck_options opts = {0};
 struct lgfs2_inode *lf_dip = NULL; /* Lost and found directory inode */
 int lf_was_created = 0;
 uint64_t last_fs_block, last_reported_block = -1;
@@ -298,6 +297,7 @@ static void startlog(int argc, char **argv)
 #ifndef UNITTESTS
 int main(int argc, char **argv)
 {
+	struct fsck_options opts = {0};
 	struct lgfs2_sbd sb;
 	struct fsck_cx cx = {
 		.sdp = &sb,

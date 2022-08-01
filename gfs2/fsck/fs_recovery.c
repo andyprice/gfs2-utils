@@ -450,11 +450,11 @@ static int check_journal_seq_no(struct lgfs2_inode *ip, int fix)
  * mounted by other nodes in the cluster, which is dangerous and therefore,
  * we should warn the user to run fsck.gfs2 manually when it's safe.
  */
-int preen_is_safe(struct lgfs2_sbd *sdp, const struct fsck_options * const _opts)
+int preen_is_safe(struct lgfs2_sbd *sdp, const struct fsck_options * const opts)
 {
-	if (!_opts->preen)
+	if (!opts->preen)
 		return 1; /* not called by rc.sysinit--we're okay to preen */
-	if (_opts->force)
+	if (opts->force)
 		return 1; /* user's responsibility--we're okay to preen */
 	if (!memcmp(sdp->sd_lockproto + 5, "nolock", 6))
 		return 1; /* local file system--preen is okay */
