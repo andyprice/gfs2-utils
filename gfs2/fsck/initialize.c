@@ -1333,8 +1333,9 @@ static int sb_repair(struct lgfs2_sbd *sdp)
  *
  * Returns: 0 on success, -1 on failure
  */
-static int fill_super_block(struct lgfs2_sbd *sdp)
+static int fill_super_block(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	int ret;
 
 	sync();
@@ -1596,7 +1597,7 @@ int initialize(struct fsck_cx *cx, int *all_clean)
 	}
 
 	/* read in sb from disk */
-	err = fill_super_block(sdp);
+	err = fill_super_block(cx);
 	if (err != FSCK_OK)
 		return err;
 
