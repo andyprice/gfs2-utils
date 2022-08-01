@@ -1192,8 +1192,9 @@ static int find_rgs_for_bsize(struct lgfs2_sbd *sdp, uint64_t startblock,
  * peruse_metadata - check a range of blocks for metadata
  * Assumes: device is open.
  */
-static int peruse_metadata(struct lgfs2_sbd *sdp, uint64_t startblock)
+static int peruse_metadata(struct fsck_cx *cx, uint64_t startblock)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	uint64_t blk, max_rg_size;
 	struct lgfs2_buffer_head *bh;
 	struct lgfs2_inode *ip;
@@ -1255,7 +1256,7 @@ static int sb_repair(struct fsck_cx *cx)
 		return -1;
 	}
 	/* Step 2 - look for the sytem dinodes */
-	error = peruse_metadata(sdp, (GFS2_SB_ADDR * GFS2_BASIC_BLOCK) /
+	error = peruse_metadata(cx, (GFS2_SB_ADDR * GFS2_BASIC_BLOCK) /
 				LGFS2_DEFAULT_BSIZE);
 	if (error)
 		return error;
