@@ -290,7 +290,7 @@ int delete_eattr_extentry(struct fsck_cx *cx, struct lgfs2_inode *ip, int i, __b
 	if (error) {
 		log_err(_("Bad extended attribute found at block %"PRIu64 " (0x%"PRIx64")"),
 		        be64_to_cpu(*ea_data_ptr), be64_to_cpu(*ea_data_ptr));
-		if (query( _("Repair the bad Extended Attribute? (y/n) "))) {
+		if (query(cx, _("Repair the bad Extended Attribute? (y/n) "))) {
 			ea_hdr->ea_num_ptrs = i;
 			ea_hdr->ea_data_len = cpu_to_be32(tot_ealen);
 			*ea_data_ptr = 0;

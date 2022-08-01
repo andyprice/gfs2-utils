@@ -476,8 +476,7 @@ int preen_is_safe(struct lgfs2_sbd *sdp, const struct fsck_options * const _opts
  * Returns: errno
  */
 
-static int recover_journal(struct lgfs2_inode *ip, int j, const struct fsck_options * const _opts,
-                           int *was_clean)
+static int recover_journal(struct lgfs2_inode *ip, int j, struct fsck_cx *cx, int *was_clean)
 {
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_log_header head;
@@ -499,12 +498,12 @@ static int recover_journal(struct lgfs2_inode *ip, int j, const struct fsck_opti
 		}
 	}
 	if (error) {
-		if (_opts->no) {
+		if (cx->opts->no) {
 			log_err( _("Journal #%d (\"journal%d\") is corrupt\n"),j+1, j);
 			log_err( _("Not fixing it due to the -n option.\n"));
 			goto out;
 		}
-		if (!preen_is_safe(sdp, _opts)) {
+		if (!preen_is_safe(sdp, cx->opts)) {
 			log_err(_("Journal #%d (\"journal%d\") is corrupt.\n"),
 				j+1, j);
 			log_err(_("I'm not fixing it because it may be unsafe:\n"
@@ -515,7 +514,7 @@ static int recover_journal(struct lgfs2_inode *ip, int j, const struct fsck_opti
 				 "without -a or -p.\n"));
 			goto out;
 		}
-		if (!query( _("\nJournal #%d (\"journal%d\") is "
+		if (!query(cx, _("\nJournal #%d (\"journal%d\") is "
 			      "corrupt.  Okay to repair it? (y/n)"),
 			    j+1, j)) {
 			log_err( _("jid=%u: The journal was not repaired.\n"),
@@ -543,12 +542,12 @@ static int recover_journal(struct lgfs2_inode *ip, int j, const struct fsck_opti
 		*was_clean = 1;
 		return 0;
 	}
-	if (_opts->no) {
+	if (cx->opts->no) {
 		log_err(_("Journal #%d (\"journal%d\") is dirty\n"),j+1, j);
 		log_err(_("not replaying due to the -n option.\n"));
 		goto out;
 	}
-	if (!preen_is_safe(sdp, _opts)) {
+	if (!preen_is_safe(sdp, cx->opts)) {
 		log_err( _("Journal #%d (\"journal%d\") is dirty\n"), j+1, j);
 		log_err( _("I'm not replaying it because it may be unsafe:\n"
 			   "Locking protocol is not lock_nolock and "
@@ -559,7 +558,7 @@ static int recover_journal(struct lgfs2_inode *ip, int j, const struct fsck_opti
 		error = FSCK_ERROR;
 		goto out;
 	}
-	if (!query( _("\nJournal #%d (\"journal%d\") is dirty.  Okay to "
+	if (!query(cx, _("\nJournal #%d (\"journal%d\") is dirty.  Okay to "
 		      "replay it? (y/n)"), j+1, j))
 		goto reinit;
 
@@ -596,7 +595,7 @@ out:
 	}
 	log_err( _("jid=%u: Failed\n"), j);
 reinit:
-	if (query( _("Do you want to clear the journal instead? (y/n)"))) {
+	if (query(cx, _("Do you want to clear the journal instead? (y/n)"))) {
 		error = lgfs2_write_journal(sdp->md.journal[j], sdp->sd_bsize,
 				      sdp->md.journal[j]->i_size /
 				      sdp->sd_bsize);
@@ -710,7 +709,7 @@ int replay_journals(struct fsck_cx *cx, int *clean_journals)
 			if (sdp->jsize == LGFS2_DEFAULT_JSIZE && jsize &&
 			    jsize != sdp->jsize)
 				sdp->jsize = jsize;
-			error = recover_journal(sdp->md.journal[i], i, cx->opts, &clean);
+			error = recover_journal(sdp->md.journal[i], i, cx, &clean);
 			if (!clean)
 				dirty_journals++;
 			if (!gave_msg && dirty_journals == 1 && !cx->opts->no &&
@@ -890,7 +889,7 @@ int init_jindex(struct fsck_cx *cx, int allow_ji_rebuild)
 				   "corrupt.\n"));
 			return -1;
 		}
-		if (!query( _("The gfs2 system jindex inode is missing. "
+		if (!query(cx, _("The gfs2 system jindex inode is missing. "
 			      "Okay to rebuild it? (y/n) "))) {
 			log_crit(_("Error: cannot proceed without a valid "
 				   "jindex file.\n"));
@@ -920,7 +919,7 @@ int init_jindex(struct fsck_cx *cx, int allow_ji_rebuild)
 						 &jindex_check_fxns);
 		if (error) {
 			log_err(_("The system journal index is damaged.\n"));
-			if (!query( _("Okay to rebuild it? (y/n) "))) {
+			if (!query(cx, _("Okay to rebuild it? (y/n) "))) {
 				log_crit(_("Error: cannot proceed without a "
 					   "valid jindex file.\n"));
 				return -1;

@@ -69,7 +69,7 @@ int check_n_fix_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 	   huge and unmanageable. */
 	log_err(_("Block %"PRIu64" (0x%"PRIx64") was '%s', should be %s.\n"),
 	        blk, blk, allocdesc[sdp->gfs1][old_state], allocdesc[sdp->gfs1][new_state]);
-	if (!query( _("Fix the bitmap? (y/n)"))) {
+	if (!query(cx, _("Fix the bitmap? (y/n)"))) {
 		log_err( _("The bitmap inconsistency was ignored.\n"));
 		return 0;
 	}
@@ -421,7 +421,7 @@ static int check_entries(struct fsck_cx *cx, struct lgfs2_inode *ip, struct lgfs
 			          "is corrupt.\n"),
 				bh->b_blocknr, bh->b_blocknr, (*count) + 1,
 				ip->i_num.in_addr, ip->i_num.in_addr);
-			if (query( _("Attempt to repair it? (y/n) "))) {
+			if (query(cx, _("Attempt to repair it? (y/n) "))) {
 				if (dirent_repair(ip, bh, &d, dent, type,
 						  first)) {
 					if (first) /* make a new sentinel */
@@ -455,7 +455,7 @@ static int check_entries(struct fsck_cx *cx, struct lgfs2_inode *ip, struct lgfs
 					"directory %"PRIu64" (0x%"PRIx64")!\n"),
 					bh->b_blocknr, bh->b_blocknr,
 					ip->i_num.in_addr, ip->i_num.in_addr);
-				if (query(_("Attempt to remove it? (y/n) "))) {
+				if (query(cx, _("Attempt to remove it? (y/n) "))) {
 					dirblk_truncate(ip, prev, bh);
 					log_err(_("The corrupt directory "
 						  "entry was removed.\n"));
@@ -604,7 +604,7 @@ int check_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, int lindex, struct me
 				   "number of entries found - is %u, found %u\n"),
 			        *leaf_no, *leaf_no, ip->i_num.in_addr, ip->i_num.in_addr,
 			        leaf->lf_entries, count);
-			if (query( _("Update leaf entry count? (y/n) "))) {
+			if (query(cx, _("Update leaf entry count? (y/n) "))) {
 				leaf->lf_entries = count;
 				lgfs2_leaf_out(leaf, lbh->b_data);
 				lgfs2_bmodified(lbh);
@@ -1568,7 +1568,7 @@ undo_metalist:
 	          "%"PRIu64" (0x%"PRIx64").\n"),
 	        ip->i_num.in_addr, ip->i_num.in_addr, error_blk.metablk, error_blk.metablk,
 		error_blk.metaoff, error_blk.metaoff, error_blk.errblk, error_blk.errblk);
-	if (!query( _("Remove the invalid inode? (y/n) "))) {
+	if (!query(cx, _("Remove the invalid inode? (y/n) "))) {
 		free_metalist(ip, metalist);
 		log_err(_("Invalid inode not deleted.\n"));
 		return error;

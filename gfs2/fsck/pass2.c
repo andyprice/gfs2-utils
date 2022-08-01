@@ -197,7 +197,7 @@ static int bad_formal_ino(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs
 	        entry.in_formal_ino, entry.in_formal_ino,
 	        inum.in_formal_ino, inum.in_formal_ino);
 	if (q != GFS2_BLKST_DINODE || !strcmp("..", tmp_name)) {
-		if (query( _("Remove the corrupt directory entry? (y/n) ")))
+		if (query(cx, _("Remove the corrupt directory entry? (y/n) ")))
 			return 1;
 		log_err( _("Corrupt directory entry not removed.\n"));
 		return 0;
@@ -210,7 +210,7 @@ static int bad_formal_ino(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs
 	if (!error && childs_dotdot.in_addr == ip->i_num.in_addr) {
 		log_err( _("The entry points to another directory with intact "
 			   "linkage.\n"));
-		if (query( _("Fix the bad directory entry? (y/n) "))) {
+		if (query(cx, _("Fix the bad directory entry? (y/n) "))) {
 			log_err( _("Fixing the corrupt directory entry.\n"));
 			entry.in_formal_ino = inum.in_formal_ino;
 			d->dr_inum.in_formal_ino = entry.in_formal_ino;
@@ -222,7 +222,7 @@ static int bad_formal_ino(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs
 			log_err( _("Directory entry not fixed.\n"));
 		}
 	} else {
-		if (query( _("Remove the corrupt directory entry? (y/n) "))) {
+		if (query(cx, _("Remove the corrupt directory entry? (y/n) "))) {
 			lgfs2_inode_put(&child_ip);
 			return 1;
 		}
@@ -274,7 +274,7 @@ static int check_leaf_depth(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t
 	          "wrong depth: is %d (length %d), should be %d (length %d).\n"),
 	        leaf_no, leaf_no, ip->i_num.in_addr, ip->i_num.in_addr,
 	        cur_depth, ref_count, correct_depth, exp_count);
-	if (!query( _("Fix the leaf block? (y/n)"))) {
+	if (!query(cx, _("Fix the leaf block? (y/n)"))) {
 		log_err( _("The leaf block was not fixed.\n"));
 		return 0;
 	}
@@ -308,8 +308,7 @@ static int wrong_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, struct lgfs2_i
 	        tmp_name, entry->in_addr, entry->in_addr);
 	log_err(_("Leaf index is: 0x%x. The range for this leaf block is "
 		  "0x%x - 0x%x\n"), hash_index, *lindex, lindex_max);
-	if (!query( _("Move the misplaced directory entry to "
-		      "a valid leaf block? (y/n) "))) {
+	if (!query(cx, _("Move the misplaced directory entry to a valid leaf block? (y/n) "))) {
 		log_err( _("Misplaced directory entry not moved.\n"));
 		return 0;
 	}
@@ -439,7 +438,7 @@ static int basic_dentry_checks(struct fsck_cx *cx, struct lgfs2_inode *ip, struc
 		log_err(_("Block # referenced by directory entry %s in inode %"PRIu64
 		          " (0x%"PRIx64") is invalid\n"),
 		        tmp_name, ip->i_num.in_addr, ip->i_num.in_addr);
-		if (query( _("Clear directory entry to out of range block? (y/n) "))) {
+		if (query(cx, _("Clear directory entry to out of range block? (y/n) "))) {
 			return 1;
 		} else {
 			log_err( _("Directory entry to out of range block remains\n"));
@@ -456,7 +455,7 @@ static int basic_dentry_checks(struct fsck_cx *cx, struct lgfs2_inode *ip, struc
 		log_err( _("Dir entry with bad record or name length\n"
 			"\tRecord length = %u\n\tName length = %u\n"),
 			d->dr_rec_len, d->dr_name_len);
-		if (!query( _("Clear the directory entry? (y/n) "))) {
+		if (!query(cx, _("Clear the directory entry? (y/n) "))) {
 			log_err( _("Directory entry not fixed.\n"));
 			return 0;
 		}
@@ -479,7 +478,7 @@ static int basic_dentry_checks(struct fsck_cx *cx, struct lgfs2_inode *ip, struc
 		log_err( _("\tName length found  = %u\n"
 			   "\tHash expected      = %u (0x%x)\n"),
 			 d->dr_name_len, calculated_hash, calculated_hash);
-		if (!query( _("Fix directory hash for %s? (y/n) "),
+		if (!query(cx, _("Fix directory hash for %s? (y/n) "),
 			   tmp_name)) {
 			log_err( _("Directory entry hash for %s not "
 				   "fixed.\n"), tmp_name);
@@ -514,7 +513,7 @@ static int basic_dentry_checks(struct fsck_cx *cx, struct lgfs2_inode *ip, struc
 			 _("was previously marked invalid") :
 			 _("was deleted or is not an inode"));
 
-		if (!query(_("Clear directory entry to non-inode block? (y/n) "))) {
+		if (!query(cx, _("Clear directory entry to non-inode block? (y/n) "))) {
 			log_err( _("Directory entry to non-inode block remains\n"));
 			return 0;
 		}
@@ -554,7 +553,7 @@ static int basic_dentry_checks(struct fsck_cx *cx, struct lgfs2_inode *ip, struc
 			 de_type_string(d->dr_type), tmp_name,
 			 entry->in_addr, entry->in_addr,
 			 block_type_string(*q));
-		if (!query( _("Clear stale directory entry? (y/n) "))) {
+		if (!query(cx, _("Clear stale directory entry? (y/n) "))) {
 			log_err( _("Stale directory entry remains\n"));
 			return 0;
 		}
@@ -650,7 +649,7 @@ static int dirref_find(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs2_d
 		  " (0x%"PRIx64") but the correct value is: %"PRIu64" (0x%"PRIx64")\n"),
 	        fn, de->dr_inum.in_formal_ino, de->dr_inum.in_formal_ino,
 	        entry->in_formal_ino, entry->in_formal_ino);
-	if (!query(_("Delete the bad directory entry? (y/n) "))) {
+	if (!query(cx, _("Delete the bad directory entry? (y/n) "))) {
 		log_err(_("The corrupt directory entry was not fixed.\n"));
 		goto out;
 	}
@@ -758,7 +757,7 @@ static int check_dentry(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs2_
 		if (ds->dotdir) {
 			log_err(_("Already found '.' entry in directory %"PRIu64" (0x%"PRIx64")\n"),
 			        ip->i_num.in_addr, ip->i_num.in_addr);
-			if (!query( _("Clear duplicate '.' entry? (y/n) "))) {
+			if (!query(cx, _("Clear duplicate '.' entry? (y/n) "))) {
 				log_err( _("Duplicate '.' entry remains\n"));
 				/* FIXME: Should we continue on here
 				 * and check the rest of the '.' entry? */
@@ -784,7 +783,7 @@ static int check_dentry(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs2_
 			          " (0x%"PRIx64").\n"),
 			        entry.in_addr, entry.in_addr, entry.in_addr, entry.in_addr,
 			        ip->i_num.in_addr, ip->i_num.in_addr);
-			if (!query( _("Remove '.' reference? (y/n) "))) {
+			if (!query(cx, _("Remove '.' reference? (y/n) "))) {
 				log_err( _("Invalid '.' reference remains\n"));
 				/* Not setting ds->dotdir here since
 				 * this '.' entry is invalid */
@@ -809,7 +808,7 @@ static int check_dentry(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs2_
 		if (ds->dotdotdir) {
 			log_err(_("Already had a '..' entry in directory %"PRIu64" (0x%"PRIx64")\n"),
 			        ip->i_num.in_addr, ip->i_num.in_addr);
-			if (!query( _("Clear duplicate '..' entry? (y/n) "))) {
+			if (!query(cx, _("Clear duplicate '..' entry? (y/n) "))) {
 				log_err( _("Duplicate '..' entry remains\n"));
 				/* FIXME: Should we continue on here
 				 * and check the rest of the '..'
@@ -831,7 +830,7 @@ static int check_dentry(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs2_
 			log_err(_("Found '..' entry in directory %"PRIu64" (0x%"PRIx64") "
 				"pointing to something that's not a directory"),
 			        ip->i_num.in_addr, ip->i_num.in_addr);
-			if (!query( _("Clear bad '..' directory entry? (y/n) "))) {
+			if (!query(cx, _("Clear bad '..' directory entry? (y/n) "))) {
 				log_err( _("Bad '..' directory entry remains\n"));
 				goto dentry_is_valid;
 			}
@@ -887,7 +886,7 @@ static int check_dentry(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs2_
 		log_err(_("%s: Hard link to block %"PRIu64" (0x%"PRIx64") detected.\n"),
 		        tmp_name, entry.in_addr, entry.in_addr);
 
-		if (query( _("Clear hard link to directory? (y/n) ")))
+		if (query(cx, _("Clear hard link to directory? (y/n) ")))
 			goto nuke_dentry;
 		else {
 			log_err( _("Hard link to directory remains\n"));
@@ -1082,7 +1081,7 @@ static int lost_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, __be64 *tbl, ui
 	log_err(_("Leaf block %"PRIu64" (0x%"PRIx64") seems to be out of place and its "
 		  "contents need to be moved to lost+found.\n"),
 	        leafno, leafno);
-	if (!query( _("Attempt to fix it? (y/n) "))) {
+	if (!query(cx, _("Attempt to fix it? (y/n) "))) {
 		log_err( _("Directory leaf was not fixed.\n"));
 		return 0;
 	}
@@ -1216,7 +1215,7 @@ static int pass2_repair_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_
 
 	log_err(_("Directory Inode %"PRIu64" (0x%"PRIx64") points to leaf %"PRIu64" (0x%"PRIx64") %s.\n"),
 	        ip->i_num.in_addr, ip->i_num.in_addr, *leaf_no, *leaf_no, msg);
-	if (!query( _("Attempt to patch around it? (y/n) "))) {
+	if (!query(cx, _("Attempt to patch around it? (y/n) "))) {
 		log_err( _("Bad leaf left in place.\n"));
 		goto out;
 	}
@@ -1303,7 +1302,7 @@ static int fix_hashtable(struct fsck_cx *cx, struct lgfs2_inode *ip, __be64 *tbl
 	log_err(_("Dinode %"PRIu64" (0x%"PRIx64") has a hash table error at index "
 	          "0x%x, length 0x%x: leaf block %"PRIu64" (0x%"PRIx64")\n"),
 	        ip->i_num.in_addr, ip->i_num.in_addr, lindex, len, leafblk, leafblk);
-	if (!query( _("Fix the hash table? (y/n) "))) {
+	if (!query(cx, _("Fix the hash table? (y/n) "))) {
 		log_err(_("Hash table not fixed.\n"));
 		return 0;
 	}
@@ -1516,7 +1515,7 @@ static int check_hash_tbl_dups(struct fsck_cx *cx, struct lgfs2_inode *ip, __be6
 			log_err(_("This leaf block has hash index %d, which "
 				  "is out of bounds for lindex (%d - %d)\n"),
 				hash_index, l, l + len2);
-			if (!query( _("Fix the hash table? (y/n) "))) {
+			if (!query(cx, _("Fix the hash table? (y/n) "))) {
 				log_err(_("Hash table not fixed.\n"));
 				return 0;
 			}
@@ -1539,7 +1538,7 @@ static int check_hash_tbl_dups(struct fsck_cx *cx, struct lgfs2_inode *ip, __be6
 			log_err(_("This leaf block has hash index %d, which "
 				  "is out of bounds for lindex (%d - %d).\n"),
 				hash_index, lindex, lindex + len);
-			if (!query( _("Fix the hash table? (y/n) "))) {
+			if (!query(cx, _("Fix the hash table? (y/n) "))) {
 				log_err(_("Hash table not fixed.\n"));
 				return 0;
 			}
@@ -1633,7 +1632,7 @@ static int check_hash_tbl(struct fsck_cx *cx, struct lgfs2_inode *ip, __be64 *tb
 			log_err(_("Dinode %"PRIu64" (0x%"PRIx64") has bad leaf pointers "
 				  "at offset %d for %d\n"),
 			        ip->i_num.in_addr, ip->i_num.in_addr, lindex, len);
-			if (!query( _("Fix the hash table? (y/n) "))) {
+			if (!query(cx, _("Fix the hash table? (y/n) "))) {
 				log_err(_("Hash table not fixed.\n"));
 				lindex += len;
 				continue;
@@ -1715,7 +1714,7 @@ static int check_hash_tbl(struct fsck_cx *cx, struct lgfs2_inode *ip, __be64 *tb
 				  "inconsistency at index %d (0x%x) for %d\n"),
 			        ip->i_num.in_addr, ip->i_num.in_addr,
 				i, i, len);
-			if (!query( _("Fix the hash table? (y/n) "))) {
+			if (!query(cx, _("Fix the hash table? (y/n) "))) {
 				log_err(_("Hash table not fixed.\n"));
 				continue;
 			}
@@ -1825,7 +1824,7 @@ static int check_pernode_for(struct fsck_cx *cx, int x, struct lgfs2_inode *pern
 	error = lgfs2_lookupi(pernode, fn, strlen(fn), &ip);
 	if (error) {
 		log_err(_("System file %s is missing.\n"), fn);
-		if (!query( _("Rebuild the system file? (y/n) ")))
+		if (!query(cx, _("Rebuild the system file? (y/n) ")))
 			return 0;
 		goto build_it;
 	}
@@ -1838,7 +1837,7 @@ static int check_pernode_for(struct fsck_cx *cx, int x, struct lgfs2_inode *pern
 	if (!valid_size) {
 		log_err(_("System file %s has an invalid size. Is %"PRIu64", should be %zu.\n"),
 		        fn, ip->i_size, filelen);
-		if (!query( _("Rebuild the system file? (y/n) ")))
+		if (!query(cx, _("Rebuild the system file? (y/n) ")))
 			goto out_good;
 		fsck_inode_put(&ip);
 		goto build_it;
@@ -1848,7 +1847,7 @@ static int check_pernode_for(struct fsck_cx *cx, int x, struct lgfs2_inode *pern
 		if (!error)
 			goto out_good;
 		log_err(_("System file %s has bad contents.\n"), fn);
-		if (!query( _("Delete and rebuild the system file? (y/n) ")))
+		if (!query(cx, _("Delete and rebuild the system file? (y/n) ")))
 			goto out_good;
 		check_metatree(cx, ip, &pass2_fxns_delete);
 		fsck_inode_put(&ip);
@@ -1949,7 +1948,7 @@ static int check_system_dir(struct fsck_cx *cx, struct lgfs2_inode *sysinode, co
 	}
 	if (!ds.dotdir) {
 		log_err( _("No '.' entry found for %s directory.\n"), dirname);
-		if (query( _("Is it okay to add '.' entry? (y/n) "))) {
+		if (query(cx, _("Is it okay to add '.' entry? (y/n) "))) {
 			struct lgfs2_inum no = sysinode->i_num;
 			log_warn( _("Adding '.' entry\n"));
 			error = lgfs2_dir_add(sysinode, ".", 1, &no,
@@ -1969,7 +1968,7 @@ static int check_system_dir(struct fsck_cx *cx, struct lgfs2_inode *sysinode, co
 		log_err(_("%s inode %"PRIu64" (0x%"PRIx64"): Entries is %d - should be %d\n"),
 		        dirname, sysinode->i_num.in_addr, sysinode->i_num.in_addr, sysinode->i_entries,
 		        ds.entry_count);
-		if (query( _("Fix entries for %s inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
+		if (query(cx, _("Fix entries for %s inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
 			  dirname, sysinode->i_num.in_addr, sysinode->i_num.in_addr)) {
 			sysinode->i_entries = ds.entry_count;
 			lgfs2_bmodified(sysinode->i_bh);
@@ -2039,7 +2038,7 @@ static int pass2_check_dir(struct fsck_cx *cx, struct lgfs2_inode *ip)
 			stack;
 			return FSCK_ERROR;
 		}
-		if (query(_("Remove directory entry for bad inode %"PRIu64" (0x%"PRIx64") in %"PRIu64" (0x%"PRIx64")? (y/n)"),
+		if (query(cx, _("Remove directory entry for bad inode %"PRIu64" (0x%"PRIx64") in %"PRIu64" (0x%"PRIx64")? (y/n)"),
 		          dirblk, dirblk, di->treewalk_parent, di->treewalk_parent)) {
 			error = remove_dentry_from_dir(cx, di->treewalk_parent, dirblk);
 			if (error < 0) {
@@ -2063,7 +2062,7 @@ static int pass2_check_dir(struct fsck_cx *cx, struct lgfs2_inode *ip)
 		log_err(_("No '.' entry found for directory inode at block %"PRIu64" (0x%"PRIx64")\n"),
 		        dirblk, dirblk);
 
-		if (query( _("Is it okay to add '.' entry? (y/n) "))) {
+		if (query(cx, _("Is it okay to add '.' entry? (y/n) "))) {
 			struct lgfs2_inum no = ip->i_num;
 			error = lgfs2_dir_add(ip, ".", 1, &no,
 					(cx->sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
@@ -2084,7 +2083,7 @@ static int pass2_check_dir(struct fsck_cx *cx, struct lgfs2_inode *ip)
 	if (!fsck_abort && ip->i_entries != ds.entry_count) {
 		log_err(_("Entries is %d - should be %d for inode block %"PRIu64" (0x%"PRIx64")\n"),
 		        ip->i_entries, ds.entry_count, ip->i_num.in_addr, ip->i_num.in_addr);
-		if (query(_("Fix the entry count? (y/n) "))) {
+		if (query(cx, _("Fix the entry count? (y/n) "))) {
 			ip->i_entries = ds.entry_count;
 			lgfs2_bmodified(ip->i_bh);
 		} else {

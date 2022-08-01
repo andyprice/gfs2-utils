@@ -160,7 +160,7 @@ char generic_interrupt(const char *caller, const char *where,
 
 /* fsck_query: Same as gfs2_query except it adjusts errors_found and
    errors_corrected. */
-int fsck_query(const char *format, ...)
+int fsck_query(struct fsck_cx *cx, const char *format, ...)
 {
 	va_list args;
 	char response;
@@ -168,11 +168,11 @@ int fsck_query(const char *format, ...)
 
 	errors_found++;
 	fsck_abort = 0;
-	if (opts.yes) {
+	if (cx->opts->yes) {
 		errors_corrected++;
 		return 1;
 	}
-	if (opts.no)
+	if (cx->opts->no)
 		return 0;
 
 	while (1) {

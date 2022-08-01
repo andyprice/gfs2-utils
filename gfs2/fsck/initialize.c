@@ -265,7 +265,7 @@ static void check_rgrp_integrity(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd
 						  "metadata in resource group "
 						  "%"PRIu64" (0x%"PRIx64")? (y/n)"),
 					        rgd->rt_addr, rgd->rt_addr);
-					if (query("%s", msg))
+					if (query(cx, "%s", msg))
 						*fixit = 1;
 				}
 				if (!(*fixit)) {
@@ -324,7 +324,7 @@ static void check_rgrp_integrity(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd
 		log_err( _("Error: resource group %"PRIu64" (0x%"PRIx64"): "
 			   "free space (%d) does not match bitmap (%d)\n"),
 		        rgd->rt_addr, rgd->rt_addr, rgd->rt_free, rg_free);
-		if (query( _("Fix the rgrp free blocks count? (y/n)"))) {
+		if (query(cx, _("Fix the rgrp free blocks count? (y/n)"))) {
 			rgd->rt_free = rg_free;
 			if (sdp->gfs1)
 				lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
@@ -345,7 +345,7 @@ static void check_rgrp_integrity(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd
 		log_err(_("Error: resource group %"PRIu64" (0x%"PRIx64"): "
 			   "free meta (%d) does not match bitmap (%d)\n"),
 		        rgd->rt_addr, rgd->rt_addr, rgd->rt_freemeta, rg_unlinked);
-		if (query( _("Fix the rgrp free meta blocks count? (y/n)"))) {
+		if (query(cx, _("Fix the rgrp free meta blocks count? (y/n)"))) {
 			rgd->rt_freemeta = rg_unlinked;
 			lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
 			rgd->bits[0].bi_modified = 1;
@@ -360,7 +360,7 @@ static void check_rgrp_integrity(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd
 		log_err(_("Error: resource group %"PRIu64" (0x%"PRIx64"): used dinode "
 			   "count (%d) does not match bitmap (%d)\n"),
 		        rgd->rt_addr, rgd->rt_addr, rgd->rt_useddi, rg_useddi);
-		if (query( _("Fix the rgrp used dinode block count? (y/n)"))) {
+		if (query(cx, _("Fix the rgrp used dinode block count? (y/n)"))) {
 			rgd->rt_useddi = rg_useddi;
 			lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
 			rgd->bits[0].bi_modified = 1;
@@ -375,7 +375,7 @@ static void check_rgrp_integrity(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd
 		log_err(_("Error: resource group %"PRIu64" (0x%"PRIx64"): used "
 			   "metadata (%d) does not match bitmap (%d)\n"),
 		        rgd->rt_addr, rgd->rt_addr, rgd->rt_usedmeta, rg_usedmeta);
-		if (query( _("Fix the rgrp used meta blocks count? (y/n)"))) {
+		if (query(cx, _("Fix the rgrp used meta blocks count? (y/n)"))) {
 			rgd->rt_usedmeta = rg_usedmeta;
 			lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
 			rgd->bits[0].bi_modified = 1;
@@ -438,7 +438,7 @@ static int rebuild_sysdir(struct fsck_cx *cx)
 	int err = 0;
 
 	log_err(_("The system directory seems to be destroyed.\n"));
-	if (!query(_("Okay to rebuild it? (y/n)"))) {
+	if (!query(cx, _("Okay to rebuild it? (y/n)"))) {
 		log_err(_("System directory not rebuilt; aborting.\n"));
 		return -1;
 	}
@@ -606,7 +606,7 @@ static void lookup_per_node(struct fsck_cx *cx, int allow_rebuild)
 		return;
 	}
 
-	if (query( _("The gfs2 system per_node directory "
+	if (query(cx, _("The gfs2 system per_node directory "
 		     "inode is missing. Okay to rebuild it? (y/n) "))) {
 		int err;
 
@@ -800,7 +800,7 @@ static int init_system_inodes(struct fsck_cx *cx)
 		/* Look for "inum" entry in master dinode */
 		lgfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);
 		if (!sdp->md.inum) {
-			if (!query( _("The gfs2 system inum inode is missing. "
+			if (!query(cx, _("The gfs2 system inum inode is missing. "
 				      "Okay to rebuild it? (y/n) "))) {
 				log_err( _("fsck.gfs2 cannot continue without "
 					   "a valid inum file; aborting.\n"));
@@ -833,7 +833,7 @@ static int init_system_inodes(struct fsck_cx *cx)
 		/* In gfs1, the license_di is always 3 blocks after the jindex_di */
 		if ((sdp->sd_license_di.in_addr != sdp->sd_jindex_di.in_addr + 3) ||
 		    (sdp->sd_license_di.in_formal_ino != sdp->sd_jindex_di.in_addr + 3)) {
-			if (!query( _("The gfs system statfs inode pointer is incorrect. "
+			if (!query(cx, _("The gfs system statfs inode pointer is incorrect. "
 				      "Okay to correct? (y/n) "))) {
 				log_err( _("fsck.gfs2 cannot continue without a valid "
 					   "statfs file; aborting.\n"));
@@ -851,7 +851,7 @@ static int init_system_inodes(struct fsck_cx *cx)
 	} else
 		lgfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
 	if (!sdp->gfs1 && !sdp->md.statfs) {
-		if (!query( _("The gfs2 system statfs inode is missing. "
+		if (!query(cx, _("The gfs2 system statfs inode is missing. "
 			      "Okay to rebuild it? (y/n) "))) {
 			log_err( _("fsck.gfs2 cannot continue without a valid "
 				   "statfs file; aborting.\n"));
@@ -890,7 +890,7 @@ static int init_system_inodes(struct fsck_cx *cx)
 		/* In gfs1, the quota_di is always 2 blocks after the jindex_di */
 		if ((sdp->sd_quota_di.in_addr != sdp->sd_jindex_di.in_addr + 2) ||
 		    (sdp->sd_quota_di.in_formal_ino != sdp->sd_jindex_di.in_addr + 2)) {
-			if (!query( _("The gfs system quota inode pointer is incorrect. "
+			if (!query(cx, _("The gfs system quota inode pointer is incorrect. "
 				      " Okay to correct? (y/n) "))) {
 				log_err( _("fsck.gfs2 cannot continue without a valid "
 					   "quota file; aborting.\n"));
@@ -908,7 +908,7 @@ static int init_system_inodes(struct fsck_cx *cx)
 	} else
 		lgfs2_lookupi(sdp->master_dir, "quota", 5, &sdp->md.qinode);
 	if (!sdp->gfs1 && !sdp->md.qinode) {
-		if (!query( _("The gfs2 system quota inode is missing. "
+		if (!query(cx, _("The gfs2 system quota inode is missing. "
 			      "Okay to rebuild it? (y/n) "))) {
 			log_crit(_("System quota inode was not "
 				   "rebuilt.  Aborting.\n"));
@@ -1087,7 +1087,7 @@ static void peruse_user_dinode(struct fsck_cx *cx, struct lgfs2_inode *ip)
 		log_warn(_("Found a copy of the root directory in a journal "
 			   "at block: 0x%"PRIx64".\n"),
 			 ip->i_bh->b_blocknr);
-		if (!query(_("Do you want to replace the root dinode from the copy? (y/n)"))) {
+		if (!query(cx, _("Do you want to replace the root dinode from the copy? (y/n)"))) {
 			log_err(_("Damaged root dinode not fixed.\n"));
 			return;
 		}
@@ -1287,7 +1287,7 @@ static int sb_repair(struct fsck_cx *cx)
 				  "reinitializing it.\n"
 				  "Hopefully everything will later "
 				  "be put into lost+found.\n"));
-			if (!query(_("Okay to reinitialize the root "
+			if (!query(cx, _("Okay to reinitialize the root "
 				     "dinode? (y/n)"))) {
 				log_err(_("The root dinode was not "
 					  "reinitialized; aborting.\n"));
@@ -1302,7 +1302,7 @@ static int sb_repair(struct fsck_cx *cx)
 		}
 	}
 	/* Step 3 - Rebuild the lock protocol and file system table name */
-	if (query(_("Okay to fix the GFS2 superblock? (y/n)"))) {
+	if (query(cx, _("Okay to fix the GFS2 superblock? (y/n)"))) {
 		log_info(_("Found system master directory at: 0x%"PRIx64"\n"),
 			 sdp->sd_meta_dir.in_addr);
 		sdp->master_dir = lgfs2_inode_read(sdp, sdp->sd_meta_dir.in_addr);
@@ -1427,7 +1427,7 @@ static int reset_journal_seg_size(struct fsck_cx *cx, unsigned int jsize, unsign
 		seg_size = 16; /* The default with 128MB journal and 4K bsize */
 	if (seg_size != sdp->sd_seg_size) {
 		sdp->sd_seg_size = seg_size;
-		if (!query(_("Computed correct journal segment size to %u."
+		if (!query(cx, _("Computed correct journal segment size to %u."
 			     " Reset it? (y/n) "), seg_size)) {
 			log_crit(_("Error: Cannot proceed without a valid journal"
 				   " segment size value.\n"));
@@ -1456,7 +1456,7 @@ static int correct_journal_seg_size(struct fsck_cx *cx)
 
 	if (sdp->md.journals == 1) {
 		if (sdp->sd_seg_size == 0) {
-			if (!query(_("The gfs2 journal segment size is 0 and a"
+			if (!query(cx, _("The gfs2 journal segment size is 0 and a"
 				     " correct value cannot be determined in a"
 				     " single-journal filesystem.\n"
 				     "Continue with default? (y/n) "))) {
@@ -1538,7 +1538,7 @@ static int init_rindex(struct fsck_cx *cx)
 	if (sdp->md.riinode)
 		return 0;
 
-	if (!query( _("The gfs2 system rindex inode is missing. "
+	if (!query(cx, _("The gfs2 system rindex inode is missing. "
 		      "Okay to rebuild it? (y/n) "))) {
 		log_crit(_("Error: Cannot proceed without a valid rindex.\n"));
 		return -1;

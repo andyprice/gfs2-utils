@@ -10,7 +10,7 @@
 #define FSCK_HASH_SIZE          (1 << FSCK_HASH_SHIFT)
 #define FSCK_HASH_MASK          (FSCK_HASH_SIZE - 1)
 
-#define query(fmt, args...) fsck_query(fmt, ##args)
+#define query(cx, fmt, args...) fsck_query(cx, fmt, ##args)
 
 /*
  * Exit codes used by fsck-type programs
@@ -140,8 +140,8 @@ extern int pass3(struct fsck_cx *cx);
 extern int pass4(struct fsck_cx *cx);
 extern int pass5(struct fsck_cx *cx, struct bmap *bl);
 extern int rindex_repair(struct fsck_cx *cx, int trust_lvl, int *ok);
-extern int fsck_query(const char *format, ...)
-	__attribute__((format(printf,1,2)));
+extern int fsck_query(struct fsck_cx *cx, const char *format, ...)
+	__attribute__((format(printf,2,3)));
 extern struct dir_info *dirtree_find(struct fsck_cx *cx, uint64_t block);
 extern void dup_delete(struct fsck_cx *cx, struct duptree *dt);
 extern void dirtree_delete(struct fsck_cx *cx, struct dir_info *b);

@@ -208,7 +208,7 @@ static int check_statfs(struct fsck_cx *cx)
 	        sdp->dinodes_alloced, sdp->dinodes_alloced);
 
 	errors_found++;
-	if (!query( _("Okay to fix the master statfs file? (y/n)"))) {
+	if (!query(cx, _("Okay to fix the master statfs file? (y/n)"))) {
 		log_err( _("The statfs file was not fixed.\n"));
 		return 0;
 	}

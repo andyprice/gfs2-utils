@@ -102,7 +102,7 @@ static int p1_repair_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t *
 
 	log_err(_("Directory Inode %"PRIu64" (0x%"PRIx64") points to leaf %"PRIu64" (0x%"PRIx64") %s.\n"),
 	       ip->i_num.in_addr, ip->i_num.in_addr, *leaf_no, *leaf_no, msg);
-	if (!query( _("Attempt to patch around it? (y/n) "))) {
+	if (!query(cx, _("Attempt to patch around it? (y/n) "))) {
 		log_err( _("Bad leaf left in place.\n"));
 		goto out;
 	}
@@ -303,7 +303,7 @@ static int p1_check_metalist(struct fsck_cx *cx, struct iptr iptr, struct lgfs2_
 		          "pointer %"PRIu64" (0x%"PRIx64") (points to something "
 		          "that is not %s).\n"),
 			 ip->i_num.in_addr, ip->i_num.in_addr, block, block, blktypedesc);
-		if (query(_("Zero the indirect block pointer? (y/n) "))){
+		if (query(cx, _("Zero the indirect block pointer? (y/n) "))){
 			*iptr_ptr(iptr) = 0;
 			lgfs2_bmodified(iptr.ipt_bh);
 			*is_valid = 1;
@@ -554,7 +554,7 @@ static int ask_remove_inode_eattr(struct fsck_cx *cx, struct lgfs2_inode *ip,
 		return 0; /* eattr was removed prior to this call */
 	log_err(_("Inode %"PRIu64" (0x%"PRIx64") has unrecoverable Extended Attribute errors.\n"),
 	        ip->i_num.in_addr, ip->i_num.in_addr);
-	if (query( _("Clear all Extended Attributes from the inode? (y/n) "))){
+	if (query(cx, _("Clear all Extended Attributes from the inode? (y/n) "))){
 		undo_reference(cx, ip, ip->i_eattr, 0, bc);
 		ip->i_eattr = 0;
 		bc->ea_count = 0;
@@ -683,7 +683,7 @@ static int p1_finish_eattr_indir(struct fsck_cx *cx, struct lgfs2_inode *ip, int
 		return 0;
 	log_err(_("Inode %"PRIu64" (0x%"PRIx64") has recoverable indirect extended attribute errors.\n"),
 	        ip->i_num.in_addr, ip->i_num.in_addr);
-	if (query( _("Okay to fix the block count for the inode? (y/n) "))) {
+	if (query(cx, _("Okay to fix the block count for the inode? (y/n) "))) {
 		ip->i_blocks = 1 + bc->indir_count + bc->data_count + bc->ea_count;
 		lgfs2_bmodified(ip->i_bh);
 		log_err(_("Block count fixed: 1+%"PRIu64"+%"PRIu64"+%"PRIu64" = %"PRIu64".\n"),
@@ -791,7 +791,7 @@ static int p1_check_extended_leaf_eattr(struct fsck_cx *cx, struct lgfs2_inode *
 	if (error) {
 		log_err(_("Bad extended attribute found at block %"PRIu64" (0x%"PRIx64")"),
 		        be64_to_cpu(*data_ptr), be64_to_cpu(*data_ptr));
-		if (query( _("Repair the bad Extended Attribute? (y/n) "))) {
+		if (query(cx, _("Repair the bad Extended Attribute? (y/n) "))) {
 			ea_hdr->ea_num_ptrs = i;
 			ea_hdr->ea_data_len = cpu_to_be32(tot_ealen);
 			*data_ptr = 0;
@@ -834,7 +834,7 @@ static int ask_remove_eattr_entry(struct fsck_cx *cx,
 				  struct gfs2_ea_header *prev,
 				  int fix_curr, int fix_curr_len)
 {
-	if (!query( _("Remove the bad Extended Attribute entry? (y/n) "))) {
+	if (!query(cx, _("Remove the bad Extended Attribute entry? (y/n) "))) {
 		log_err( _("Bad Extended Attribute not removed.\n"));
 		return 0;
 	}
@@ -1281,10 +1281,8 @@ static int handle_ip(struct fsck_cx *cx, struct lgfs2_inode *ip)
 		error = check_inode_eattr(cx, ip, &pass1_fxns);
 
 		if (error) {
-			if (!query(_("Clear the bad Extended Attributes? "
-				    "(y/n) "))) {
-				log_err( _("The bad Extended Attributes were "
-					   "not fixed.\n"));
+			if (!query(cx, _("Clear the bad Extended Attributes? (y/n) "))) {
+				log_err(_("The bad Extended Attributes were not fixed.\n"));
 				return 0;
 			}
 			log_err(_("Clearing the bad Extended Attributes in "
@@ -1305,7 +1303,7 @@ static int handle_ip(struct fsck_cx *cx, struct lgfs2_inode *ip)
 		log_info(_("inode has: %"PRIu64", but fsck counts: Dinode:1 + "
 		           "indir:%"PRIu64" + data: %"PRIu64" + ea: %"PRIu64"\n"),
 		         ip->i_blocks, bc.indir_count, bc.data_count, bc.ea_count);
-		if (query( _("Fix ondisk block count? (y/n) "))) {
+		if (query(cx, _("Fix ondisk block count? (y/n) "))) {
 			ip->i_blocks = 1 + bc.indir_count + bc.data_count + bc.ea_count;
 			lgfs2_bmodified(ip->i_bh);
 			log_err(_("Block count for #%"PRIu64" (0x%"PRIx64") fixed\n"),
@@ -1331,7 +1329,7 @@ static void check_i_goal(struct fsck_cx *cx, struct lgfs2_inode *ip)
 		log_err(_("Inode #%"PRIu64" (0x%"PRIx64"): Bad allocation goal block "
 		          "found: %"PRIu64" (0x%"PRIx64")\n"),
 		        ip->i_num.in_addr, ip->i_num.in_addr, ip->i_goal_meta, ip->i_goal_meta);
-		if (query(_("Fix goal block in inode #%"PRIu64" (0x%"PRIx64")? (y/n) "),
+		if (query(cx, _("Fix goal block in inode #%"PRIu64" (0x%"PRIx64")? (y/n) "),
 		          ip->i_num.in_addr, ip->i_num.in_addr)) {
 			ip->i_goal_meta = ip->i_num.in_addr;
 			lgfs2_bmodified(ip->i_bh);
@@ -1359,7 +1357,7 @@ static int handle_di(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 		log_err(_("Inode #%"PRIu64" (0x%"PRIx64"): Bad inode address found: %"PRIu64
 		          " (0x%"PRIx64")\n"),
 		        block, block, ip->i_num.in_addr, ip->i_num.in_addr);
-		if (query(_("Fix address in inode at block #%"PRIu64" (0x%"PRIx64")? (y/n) "),
+		if (query(cx, _("Fix address in inode at block #%"PRIu64" (0x%"PRIx64")? (y/n) "),
 		          block, block)) {
 			ip->i_num.in_addr = ip->i_num.in_formal_ino = block;
 			lgfs2_bmodified(ip->i_bh);
@@ -1371,7 +1369,7 @@ static int handle_di(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 		log_err(_("Inode #%"PRIu64" (0x%"PRIx64"): GFS1 formal inode number "
 		          "mismatch: was %"PRIu64" (0x%"PRIx64")\n"),
 		        block, block, ip->i_num.in_formal_ino, ip->i_num.in_formal_ino);
-		if (query(_("Fix formal inode number in inode #%"PRIu64" (0x%"PRIx64")? (y/n) "),
+		if (query(cx, _("Fix formal inode number in inode #%"PRIu64" (0x%"PRIx64")? (y/n) "),
 		          block, block)) {
 			ip->i_num.in_formal_ino = block;
 			lgfs2_bmodified(ip->i_bh);
@@ -1437,7 +1435,7 @@ static int check_system_inode(struct fsck_cx *cx,
 		    !((*sysinode)->i_flags & GFS2_DIF_SYSTEM)) {
 			log_err( _("System inode %s is missing the 'system' "
 				   "flag. It should be rebuilt.\n"), filename);
-			if (sysdir && query(_("Delete the corrupt %s system "
+			if (sysdir && query(cx, _("Delete the corrupt %s system "
 					      "inode? (y/n) "), filename)) {
 				lgfs2_inode_put(sysinode);
 				lgfs2_dirent_del(sysdir, filename,
@@ -1462,7 +1460,7 @@ static int check_system_inode(struct fsck_cx *cx,
 			  "should be '%s').\n"), filename,
 			block_type_string(ds.q),
 			block_type_string(GFS2_BLKST_DINODE));
-		if (query(_("Create new %s system inode? (y/n) "), filename)) {
+		if (query(cx, _("Create new %s system inode? (y/n) "), filename)) {
 			log_err( _("Rebuilding system file \"%s\"\n"),
 				 filename);
 			error = builder(cx->sdp);

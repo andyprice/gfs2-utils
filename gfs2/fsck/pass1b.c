@@ -103,7 +103,7 @@ static void clone_data_block(struct fsck_cx *cx, struct duptree *dt,
 	struct lgfs2_buffer_head *bh;
 	__be64 *ptr;
 
-	if (!(query(_("Okay to clone data block %"PRIu64" (0x%"PRIx64") for inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
+	if (!(query(cx, _("Okay to clone data block %"PRIu64" (0x%"PRIx64") for inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
 	            dt->block, dt->block, id->block_no, id->block_no))) {
 		log_warn(_("The duplicate reference was not cloned.\n"));
 		return;
@@ -248,7 +248,7 @@ static void resolve_dup_references(struct fsck_cx *cx, struct duptree *dt,
 			  id->name, id->block_no, id->block_no, dt->block, dt->block,
 			  reftypes[this_ref], reftypes[acceptable_ref]);
 		if (this_ref == REF_AS_EA) {
-			if (!(query(_("Okay to remove extended attributes "
+			if (!(query(cx, _("Okay to remove extended attributes "
 				       "from %s inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
 				     (inval ? _("invalidated") : ""),
 			            id->block_no, id->block_no))) {
@@ -269,7 +269,7 @@ static void resolve_dup_references(struct fsck_cx *cx, struct duptree *dt,
 			dup_listent_delete(dt, id);
 			revise_dup_handler(cx, dt->block, dh);
 			continue;
-		} else if (!(query(_("Okay to delete %s inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
+		} else if (!(query(cx, _("Okay to delete %s inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
 				    (inval ? _("invalidated") : ""),
 				    id->block_no, id->block_no))) {
 			log_warn( _("The bad inode was not cleared."));
@@ -409,7 +409,7 @@ static int clone_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t metab
 	log_err(_("Error: Inode %"PRIu64" (0x%"PRIx64")'s reference to block %"PRIu64
 	          " (0x%"PRIx64") should be replaced with a clone.\n"),
 	        ip->i_num.in_addr, ip->i_num.in_addr, block, block);
-	if (query( _("Okay to clone the duplicated reference? (y/n) "))) {
+	if (query(cx, _("Okay to clone the duplicated reference? (y/n) "))) {
 		error = lgfs2_meta_alloc(ip, &cloneblock);
 		if (!error) {
 			clone_bh = lgfs2_bread(ip->i_sbd, clonet->dup_block);
@@ -430,7 +430,7 @@ static int clone_data(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t metab
 			}
 		}
 		log_err(_("Error: Unable to allocate a new data block.\n"));
-		if (!query("Should I zero the reference instead? (y/n)")) {
+		if (!query(cx, _("Zero the reference instead? (y/n)"))) {
 			log_err(_("Duplicate reference to block %"PRIu64
 			          " (0x%"PRIx64") was not fixed.\n"),
 			        block, block);
@@ -573,7 +573,7 @@ static void resolve_last_reference(struct fsck_cx *cx, struct duptree *dt,
 				  "in inode %"PRIu64" (0x%"PRIx64") but the block is "
 				  "not an extended attribute block.\n"),
 			        dt->block, dt->block, id->block_no, id->block_no);
-			if (query(_("Okay to remove the bad extended "
+			if (query(cx, _("Okay to remove the bad extended "
 				    "attribute from inode %"PRIu64" (0x%"PRIx64")? "
 				    "(y/n) "),
 			          id->block_no, id->block_no)) {

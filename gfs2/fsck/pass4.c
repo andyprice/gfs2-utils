@@ -62,7 +62,7 @@ static int handle_unlinked(struct fsck_cx *cx, uint64_t no_addr,
 	if (q == GFS2_BLKST_FREE) {
 		log_err(_("Unlinked inode %"PRIu64" (0x%"PRIx64") contains bad blocks\n"),
 		        no_addr, no_addr);
-		if (query(_("Delete unlinked inode with bad blocks? (y/n) "))) {
+		if (query(cx, _("Delete unlinked inode with bad blocks? (y/n) "))) {
 			ip = fsck_load_inode(sdp, no_addr);
 			check_inode_eattr(cx, ip, &pass4_fxns_delete);
 			check_metatree(cx, ip, &pass4_fxns_delete);
@@ -78,7 +78,7 @@ static int handle_unlinked(struct fsck_cx *cx, uint64_t no_addr,
 		log_err(_("Unlinked block %"PRIu64" (0x%"PRIx64") marked as inode is not an inode (%d)\n"),
 		        no_addr, no_addr, q);
 		ip = fsck_load_inode(sdp, no_addr);
-		if (query(_("Delete unlinked inode? (y/n) "))) {
+		if (query(cx, _("Delete unlinked inode? (y/n) "))) {
 			check_inode_eattr(cx, ip, &pass4_fxns_delete);
 			check_metatree(cx, ip, &pass4_fxns_delete);
 			fsck_bitmap_set(cx, ip, no_addr, _("invalid unlinked"),
@@ -97,14 +97,14 @@ static int handle_unlinked(struct fsck_cx *cx, uint64_t no_addr,
 	   relevent info in them. */
 	if (!ip->i_size && !ip->i_eattr){
 		log_err( _("Unlinked inode has zero size\n"));
-		if (query(_("Clear zero-size unlinked inode? (y/n) "))) {
+		if (query(cx, _("Clear zero-size unlinked inode? (y/n) "))) {
 			fsck_bitmap_set(cx, ip, no_addr, _("unlinked zero-length"),
 					GFS2_BLKST_FREE);
 			fsck_inode_put(&ip);
 			return 1;
 		}
 	}
-	if (query( _("Add unlinked inode to lost+found? (y/n)"))) {
+	if (query(cx, _("Add unlinked inode to lost+found? (y/n)"))) {
 		if (add_inode_to_lf(cx, ip)) {
 			stack;
 			fsck_inode_put(&ip);
@@ -125,7 +125,7 @@ static void handle_inconsist(struct fsck_cx *cx, uint64_t no_addr,
 	log_err(_("Link count inconsistent for inode %"PRIu64" (0x%"PRIx64") has %u but fsck found %u.\n"),
 	        no_addr, no_addr, *di_nlink, counted_links);
 	/* Read in the inode, adjust the link count, and write it back out */
-	if (query(_("Update link count for inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
+	if (query(cx, _("Update link count for inode %"PRIu64" (0x%"PRIx64")? (y/n) "),
 	          no_addr, no_addr)) {
 		struct lgfs2_inode *ip;
 

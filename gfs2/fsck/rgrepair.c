@@ -857,7 +857,7 @@ static int rewrite_rg_block(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rg,
 
 	log_err(_("Block #%"PRIu64" (0x%"PRIx64") (%d of %"PRIu32") is not %s.\n"),
 	        rg->rt_addr + x, rg->rt_addr + x, x+1, rg->rt_length, typedesc);
-	if (!query( _("Fix the resource group? (y/n)")))
+	if (!query(cx, _("Fix the resource group? (y/n)")))
 		return 1;
 
 	log_err(_("Attempting to repair the resource group.\n"));
@@ -1005,7 +1005,7 @@ int rindex_repair(struct fsck_cx *cx, int trust_lvl, int *ok)
 	lgfs2_rindex_read(sdp, &sdp->rgrps, ok);
 	if (sdp->md.riinode->i_size % sizeof(struct gfs2_rindex)) {
 		log_warn( _("WARNING: rindex file has an invalid size.\n"));
-		if (!query( _("Truncate the rindex size? (y/n)"))) {
+		if (!query(cx, _("Truncate the rindex size? (y/n)"))) {
 			log_err(_("The rindex was not repaired.\n"));
 			lgfs2_rgrp_free(sdp, &rgcalc);
 			lgfs2_rgrp_free(sdp, &sdp->rgtree);
@@ -1030,7 +1030,7 @@ int rindex_repair(struct fsck_cx *cx, int trust_lvl, int *ok)
 		   number, don't trust it. Complain about the discrepancy,
 		   then try again with a little more DISTRUST. */
 		if ((trust_lvl < DISTRUST) ||
-		    !query( _("Attempt to use what rgrps we can? (y/n)"))) {
+		    !query(cx, _("Attempt to use what rgrps we can? (y/n)"))) {
 			lgfs2_rgrp_free(sdp, &rgcalc);
 			lgfs2_rgrp_free(sdp, &sdp->rgtree);
 			log_err(_("The rindex was not repaired.\n"));
@@ -1144,7 +1144,7 @@ int rindex_repair(struct fsck_cx *cx, int trust_lvl, int *ok)
 		}
 		/* If we modified the index, write it back to disk. */
 		if (rindex_modified) {
-			if (query( _("Fix the index? (y/n)"))) {
+			if (query(cx, _("Fix the index? (y/n)"))) {
 				lgfs2_rindex_out(expected, (char *)&buf);
 				lgfs2_writei(sdp->md.riinode, (char *)&buf,
 					    rg * sizeof(struct gfs2_rindex),

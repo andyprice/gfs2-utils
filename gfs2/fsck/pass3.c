@@ -122,7 +122,7 @@ static struct dir_info *mark_and_return_parent(struct fsck_cx *cx, struct dir_in
 
 	/* FIXME: add a dinode for this entry instead? */
 
-	if (!query(_("Remove directory entry for bad inode %"PRIu64" (0x%"PRIx64") "
+	if (!query(cx, _("Remove directory entry for bad inode %"PRIu64" (0x%"PRIx64") "
 	             "in %"PRIu64" (0x%"PRIx64")? (y/n)"),
 	           di->dinode.in_addr, di->dinode.in_addr,
 	           di->treewalk_parent, di->treewalk_parent)) {
@@ -232,7 +232,7 @@ int pass3(struct fsck_cx *cx)
 					   "containing bad block at block %"PRIu64
 					   " (0x%"PRIx64")\n"),
 				        di->dinode.in_addr, di->dinode.in_addr);
-				if (query(_("Clear unlinked directory "
+				if (query(cx, _("Clear unlinked directory "
 					   "with bad blocks? (y/n) "))) {
 					log_warn(_("inode %"PRIu64" (0x%"PRIx64") is "
 					           "now marked as free\n"),
@@ -249,8 +249,7 @@ int pass3(struct fsck_cx *cx)
 			if (q != GFS2_BLKST_DINODE) {
 				log_err( _("Unlinked block marked as an inode "
 					   "is not an inode\n"));
-				if (!query(_("Clear the unlinked block?"
-					    " (y/n) "))) {
+				if (!query(cx, _("Clear the unlinked block? (y/n) "))) {
 					log_err( _("The block was not "
 						   "cleared\n"));
 					fsck_inode_put(&ip);
@@ -273,7 +272,7 @@ int pass3(struct fsck_cx *cx)
 			if (!ip->i_size && !ip->i_eattr){
 				log_err( _("Unlinked directory has zero "
 					   "size.\n"));
-				if (query( _("Remove zero-size unlinked "
+				if (query(cx, _("Remove zero-size unlinked "
 					    "directory? (y/n) "))) {
 					fsck_bitmap_set(cx, ip, di->dinode.in_addr,
 						_("zero-sized unlinked inode"),
@@ -285,7 +284,7 @@ int pass3(struct fsck_cx *cx)
 						   "directory remains\n"));
 				}
 			}
-			if (query( _("Add unlinked directory to "
+			if (query(cx, _("Add unlinked directory to "
 				    "lost+found? (y/n) "))) {
 				if (add_inode_to_lf(cx, ip)) {
 					fsck_inode_put(&ip);

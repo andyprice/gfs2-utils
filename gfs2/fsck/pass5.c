@@ -67,8 +67,7 @@ static int check_block_status(struct fsck_cx *cx,  struct bmap *bl,
 		if (q == GFS2_BLKST_UNLINKED) {
 			log_err(_("Unlinked inode found at block %"PRIu64" (0x%"PRIx64").\n"),
 			        block, block);
-			if (query(_("Do you want to reclaim the block? "
-				   "(y/n) "))) {
+			if (query(cx, _("Do you want to reclaim the block? (y/n) "))) {
 				lgfs2_rgrp_t rg = lgfs2_blk2rgrpd(sdp, block);
 				if (lgfs2_set_bitmap(rg, block, GFS2_BLKST_FREE))
 					log_err(_("Unlinked block %"PRIu64" (0x%"PRIx64") bitmap not fixed.\n"),
@@ -92,7 +91,7 @@ static int check_block_status(struct fsck_cx *cx,  struct bmap *bl,
 				log_err( _("Metadata type is %u (%s)\n"), q,
 					 block_type_string(q));
 
-			if (query(_("Fix bitmap for block %"PRIu64" (0x%"PRIx64")? (y/n) "),
+			if (query(cx, _("Fix bitmap for block %"PRIu64" (0x%"PRIx64")? (y/n) "),
 			          block, block)) {
 				lgfs2_rgrp_t rg = lgfs2_blk2rgrpd(sdp, block);
 				if (lgfs2_set_bitmap(rg, block, q))
@@ -177,7 +176,7 @@ static void update_rgrp(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgp,
 		exit(FSCK_ERROR);
 	}
 	if (update) {
-		if (query( _("Update resource group counts? (y/n) "))) {
+		if (query(cx, _("Update resource group counts? (y/n) "))) {
 			log_warn( _("Resource group counts updated\n"));
 			/* write out the rgrp */
 			if (sdp->gfs1)
