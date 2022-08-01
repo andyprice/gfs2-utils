@@ -828,7 +828,7 @@ static int p1_check_eattr_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, uint6
 	return check_ealeaf_block(cx, ip, block, GFS2_METATYPE_EA, bh, private);
 }
 
-static int ask_remove_eattr_entry(struct lgfs2_sbd *sdp,
+static int ask_remove_eattr_entry(struct fsck_cx *cx,
 				  struct lgfs2_buffer_head *leaf_bh,
 				  struct gfs2_ea_header *curr,
 				  struct gfs2_ea_header *prev,
@@ -841,7 +841,7 @@ static int ask_remove_eattr_entry(struct lgfs2_sbd *sdp,
 	if (fix_curr)
 		curr->ea_flags |= GFS2_EAFLAG_LAST;
 	if (fix_curr_len) {
-		uint32_t max_size = sdp->sd_bsize;
+		uint32_t max_size = cx->sdp->sd_bsize;
 		uint32_t offset = (uint32_t)(((unsigned long)curr) -
 					     ((unsigned long)leaf_bh->b_data));
 		curr->ea_rec_len = cpu_to_be32(max_size - offset);
@@ -885,23 +885,23 @@ static int p1_check_eattr_entries(struct fsck_cx *cx, struct lgfs2_inode *ip,
 
 	if (!ea_hdr->ea_name_len){
 		log_err( _("EA has name length of zero\n"));
-		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+		return ask_remove_eattr_entry(cx, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 1, 1);
 	}
 	if (offset + be32_to_cpu(ea_hdr->ea_rec_len) > max_size){
 		log_err( _("EA rec length too long\n"));
-		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+		return ask_remove_eattr_entry(cx, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 1, 1);
 	}
 	if (offset + be32_to_cpu(ea_hdr->ea_rec_len) == max_size &&
 	   (ea_hdr->ea_flags & GFS2_EAFLAG_LAST) == 0){
 		log_err( _("last EA has no last entry flag\n"));
-		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+		return ask_remove_eattr_entry(cx, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 0, 0);
 	}
 	if (!ea_hdr->ea_name_len){
 		log_err( _("EA has name length of zero\n"));
-		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+		return ask_remove_eattr_entry(cx, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 0, 0);
 	}
 
@@ -914,7 +914,7 @@ static int p1_check_eattr_entries(struct fsck_cx *cx, struct lgfs2_inode *ip,
 		/* Skip invalid entry */
 		log_err(_("EA (%s) type is invalid (%d > %d).\n"),
 			ea_name, ea_hdr->ea_type, eatype_max(sdp->sd_fs_format));
-		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+		return ask_remove_eattr_entry(cx, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 0, 0);
 	}
 
@@ -929,7 +929,7 @@ static int p1_check_eattr_entries(struct fsck_cx *cx, struct lgfs2_inode *ip,
 			ea_name);
 		log_err(_("  Required:  %d\n  Reported:  %d\n"),
 			max_ptrs, ea_hdr->ea_num_ptrs);
-		return ask_remove_eattr_entry(sdp, leaf_bh, ea_hdr,
+		return ask_remove_eattr_entry(cx, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 0, 0);
 	} else {
 		log_debug( _("  Pointers Required: %d\n  Pointers Reported: %d\n"),
