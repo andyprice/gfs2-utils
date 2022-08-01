@@ -119,7 +119,7 @@ static int handle_unlinked(struct fsck_cx *cx, uint64_t no_addr,
 	return 0;
 }
 
-static void handle_inconsist(struct lgfs2_sbd *sdp, uint64_t no_addr,
+static void handle_inconsist(struct fsck_cx *cx, uint64_t no_addr,
 			     uint32_t *di_nlink, uint32_t counted_links)
 {
 	log_err(_("Link count inconsistent for inode %"PRIu64" (0x%"PRIx64") has %u but fsck found %u.\n"),
@@ -129,7 +129,7 @@ static void handle_inconsist(struct lgfs2_sbd *sdp, uint64_t no_addr,
 	          no_addr, no_addr)) {
 		struct lgfs2_inode *ip;
 
-		ip = fsck_load_inode(sdp, no_addr); /* lgfs2_bread, inode_get */
+		ip = fsck_load_inode(cx->sdp, no_addr); /* lgfs2_bread, inode_get */
 		fix_link_count(counted_links, ip);
 		*di_nlink = counted_links;
 		fsck_inode_put(&ip); /* out, lgfs2_brelse, free */
@@ -187,7 +187,7 @@ static int scan_inode_list(struct fsck_cx *cx)
 				continue;
 		} /* if (ii->counted_links == 0) */
 		else if (ii->di_nlink != ii->counted_links) {
-			handle_inconsist(sdp, ii->num.in_addr,
+			handle_inconsist(cx, ii->num.in_addr,
 					 &ii->di_nlink, ii->counted_links);
 		}
 		log_debug(_("block %"PRIu64" (0x%"PRIx64") has link count %d\n"),
@@ -220,7 +220,7 @@ static int scan_dir_list(struct fsck_cx *cx)
 					    &di->counted_links, &lf_addition))
 				continue;
 		} else if (di->di_nlink != di->counted_links) {
-			handle_inconsist(sdp, di->dinode.in_addr,
+			handle_inconsist(cx, di->dinode.in_addr,
 					 &di->di_nlink, di->counted_links);
 		}
 		log_debug(_("block %"PRIu64" (0x%"PRIx64") has link count %d\n"),
