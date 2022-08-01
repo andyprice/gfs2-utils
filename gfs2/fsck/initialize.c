@@ -970,8 +970,9 @@ static int is_journal_copy(struct lgfs2_inode *ip)
  * the per_node directory will have a ".." entry that will lead us to
  * the master dinode if it's been destroyed.
  */
-static void peruse_system_dinode(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip)
+static void peruse_system_dinode(struct fsck_cx *cx, struct lgfs2_inode *ip)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct lgfs2_inode *child_ip;
 	struct lgfs2_inum inum;
 	int error;
@@ -1059,8 +1060,9 @@ out_discard_ip:
  * peruse_user_dinode - process a user dinode trying to find the root directory
  *
  */
-static void peruse_user_dinode(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip)
+static void peruse_user_dinode(struct fsck_cx *cx, struct lgfs2_inode *ip)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct lgfs2_inode *parent_ip;
 	struct lgfs2_inum inum;
 	int error;
@@ -1210,9 +1212,9 @@ static int peruse_metadata(struct fsck_cx *cx, uint64_t startblock)
 		ip = lgfs2_inode_get(sdp, bh);
 		ip->bh_owned = 1; /* lgfs2_inode_put() will free the bh */
 		if (ip->i_flags & GFS2_DIF_SYSTEM)
-			peruse_system_dinode(sdp, ip);
+			peruse_system_dinode(cx, ip);
 		else
-			peruse_user_dinode(sdp, ip);
+			peruse_user_dinode(cx, ip);
 	}
 	return 0;
 }
