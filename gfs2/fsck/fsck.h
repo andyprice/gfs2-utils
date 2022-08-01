@@ -121,6 +121,7 @@ struct fsck_cx {
 	struct osi_root dup_blocks;
 	struct osi_root dirtree;
 	struct osi_root inodetree;
+	const struct fsck_options * const opts;
 };
 
 extern struct lgfs2_inode *fsck_load_inode(struct lgfs2_sbd *sdp, uint64_t block);
@@ -129,8 +130,8 @@ extern struct lgfs2_inode *fsck_inode_get(struct lgfs2_sbd *sdp,
 					 struct lgfs2_buffer_head *bh);
 extern void fsck_inode_put(struct lgfs2_inode **ip);
 
-extern int initialize(struct fsck_cx *cx, const struct fsck_options * const opts, int *all_clean);
-extern void destroy(struct fsck_cx *cx, const struct fsck_options * const _opts);
+extern int initialize(struct fsck_cx *cx, int *all_clean);
+extern void destroy(struct fsck_cx *cx);
 extern int pass1(struct fsck_cx *cx);
 extern int pass1b(struct fsck_cx *cx);
 extern int pass1c(struct fsck_cx *cx);

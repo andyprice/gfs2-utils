@@ -1545,7 +1545,7 @@ static int init_rindex(struct lgfs2_sbd *sdp)
  * initialize - initialize superblock pointer
  *
  */
-int initialize(struct fsck_cx *cx, const struct fsck_options * const _opts, int *all_clean)
+int initialize(struct fsck_cx *cx, int *all_clean)
 {
 	struct lgfs2_sbd *sdp = cx->sdp;
 	int clean_journals = 0, open_flag;
@@ -1553,17 +1553,17 @@ int initialize(struct fsck_cx *cx, const struct fsck_options * const _opts, int 
 
 	*all_clean = 0;
 
-	if (opts.no)
+	if (cx->opts->no)
 		open_flag = O_RDONLY;
 	else
 		open_flag = O_RDWR | O_EXCL;
 
-	sdp->device_fd = open(opts.device, open_flag);
+	sdp->device_fd = open(cx->opts->device, open_flag);
 	if (sdp->device_fd < 0) {
 		struct mntent *mnt;
 		if (open_flag == O_RDONLY || errno != EBUSY) {
 			log_crit( _("Unable to open device: %s\n"),
-				  opts.device);
+			         cx->opts->device);
 			return FSCK_USAGE;
 		}
 		/* We can't open it EXCL.  It may be already open rw (in which
@@ -1574,7 +1574,7 @@ int initialize(struct fsck_cx *cx, const struct fsck_options * const _opts, int 
 		   This protects against cases where the file system is LVM
 		   and perhaps mounted on a different node.
 		   Try opening without O_EXCL. */
-		sdp->device_fd = lgfs2_open_mnt_dev(opts.device, O_RDWR, &mnt);
+		sdp->device_fd = lgfs2_open_mnt_dev(cx->opts->device, O_RDWR, &mnt);
 		if (sdp->device_fd < 0)
 			goto mount_fail;
 		/* If the device is mounted, but not mounted RO, fail.  This
@@ -1590,7 +1590,7 @@ int initialize(struct fsck_cx *cx, const struct fsck_options * const _opts, int 
 	}
 
 	if (lgfs2_get_dev_info(sdp->device_fd, &sdp->dinfo)) {
-		perror(opts.device);
+		perror(cx->opts->device);
 		return FSCK_ERROR;
 	}
 
@@ -1600,7 +1600,7 @@ int initialize(struct fsck_cx *cx, const struct fsck_options * const _opts, int 
 		return err;
 
 	/* Change lock protocol to be fsck_* instead of lock_* */
-	if (!opts.no && preen_is_safe(sdp, _opts)) {
+	if (!cx->opts->no && preen_is_safe(sdp, cx->opts)) {
 		if (block_mounters(sdp, 1)) {
 			log_err( _("Unable to block other mounters\n"));
 			return FSCK_USAGE;
@@ -1652,18 +1652,18 @@ int initialize(struct fsck_cx *cx, const struct fsck_options * const _opts, int 
 		if (sdp->gfs1) {
 			if (reconstruct_journals(sdp))
 				return FSCK_ERROR;
-		} else if (replay_journals(cx, _opts, &clean_journals)) {
-			if (!opts.no && preen_is_safe(sdp, _opts))
+		} else if (replay_journals(cx, &clean_journals)) {
+			if (!cx->opts->no && preen_is_safe(sdp, cx->opts))
 				block_mounters(sdp, 0);
 			stack;
 			return FSCK_ERROR;
 		}
 		if (sdp->md.journals == clean_journals)
 			*all_clean = 1;
-		else if (_opts->force || !_opts->preen)
+		else if (cx->opts->force || !cx->opts->preen)
 			log_notice( _("\nJournal recovery complete.\n"));
 
-		if (!_opts->force && *all_clean && _opts->preen)
+		if (!cx->opts->force && *all_clean && cx->opts->preen)
 			return FSCK_OK;
 	}
 
@@ -1675,15 +1675,15 @@ int initialize(struct fsck_cx *cx, const struct fsck_options * const _opts, int 
 close_fail:
 	close(sdp->device_fd);
 mount_fail:
-	log_crit( _("Device %s is busy.\n"), opts.device);
+	log_crit( _("Device %s is busy.\n"), cx->opts->device);
 	return FSCK_USAGE;
 }
 
-void destroy(struct fsck_cx *cx, const struct fsck_options * const _opts)
+void destroy(struct fsck_cx *cx)
 {
 	struct lgfs2_sbd *sdp = cx->sdp;
 
-	if (!_opts->no) {
+	if (!cx->opts->no) {
 		if (block_mounters(sdp, 0)) {
 			log_warn( _("Unable to unblock other mounters - manual intervention required\n"));
 			log_warn( _("Use 'gfs2_tool sb <device> proto' to fix\n"));

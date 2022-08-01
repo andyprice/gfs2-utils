@@ -3,7 +3,7 @@
 
 #include "libgfs2.h"
 
-extern int replay_journals(struct fsck_cx *cx, const struct fsck_options * const _opts, int *clean_journals);
+extern int replay_journals(struct fsck_cx *cx, int *clean_journals);
 extern int preen_is_safe(struct lgfs2_sbd *sdp, const struct fsck_options * const _opts);
 
 extern int ji_update(struct lgfs2_sbd *sdp);

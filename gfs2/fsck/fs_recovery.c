@@ -675,7 +675,7 @@ static struct metawalk_fxns rangecheck_journal = {
  *
  * Returns: 0 on success, -1 on failure
  */
-int replay_journals(struct fsck_cx *cx, const struct fsck_options * const _opts, int *clean_journals)
+int replay_journals(struct fsck_cx *cx, int *clean_journals)
 {
 	struct lgfs2_sbd *sdp = cx->sdp;
 	int dirty_journals = 0;
@@ -710,11 +710,11 @@ int replay_journals(struct fsck_cx *cx, const struct fsck_options * const _opts,
 			if (sdp->jsize == LGFS2_DEFAULT_JSIZE && jsize &&
 			    jsize != sdp->jsize)
 				sdp->jsize = jsize;
-			error = recover_journal(sdp->md.journal[i], i, _opts, &clean);
+			error = recover_journal(sdp->md.journal[i], i, cx->opts, &clean);
 			if (!clean)
 				dirty_journals++;
-			if (!gave_msg && dirty_journals == 1 && !_opts->no &&
-			    preen_is_safe(sdp, _opts)) {
+			if (!gave_msg && dirty_journals == 1 && !cx->opts->no &&
+			    preen_is_safe(sdp, cx->opts)) {
 				gave_msg = 1;
 				log_notice( _("Recovering journals (this may "
 					      "take a while)\n"));

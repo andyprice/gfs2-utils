@@ -300,7 +300,8 @@ int main(int argc, char **argv)
 {
 	struct lgfs2_sbd sb;
 	struct fsck_cx cx = {
-		.sdp = &sb
+		.sdp = &sb,
+		.opts = &opts,
 	};
 	int j;
 	int i;
@@ -325,12 +326,12 @@ int main(int argc, char **argv)
 		exit(error);
 	setbuf(stdout, NULL);
 	log_notice( _("Initializing fsck\n"));
-	if ((error = initialize(&cx, &opts, &all_clean)))
+	if ((error = initialize(&cx, &all_clean)))
 		exit(error);
 
 	if (!opts.force && all_clean && opts.preen) {
 		log_err( _("%s: clean.\n"), opts.device);
-		destroy(&cx, &opts);
+		destroy(&cx);
 		exit(FSCK_OK);
 	}
 
@@ -363,7 +364,7 @@ int main(int argc, char **argv)
 	fsync(sb.device_fd);
 	link1_destroy(&nlink1map);
 	link1_destroy(&clink1map);
-	destroy(&cx, &opts);
+	destroy(&cx);
 	if (sb_fixed)
 		log_warn(_("Superblock was reset. Use tunegfs2 to manually "
 		           "set lock table before mounting.\n"));
