@@ -1321,13 +1321,13 @@ bad_dinode:
 	return -1;
 }
 
-static void check_i_goal(struct lgfs2_sbd *sdp, struct lgfs2_inode *ip)
+static void check_i_goal(struct fsck_cx *cx, struct lgfs2_inode *ip)
 {
-	if (sdp->gfs1 || ip->i_flags & GFS2_DIF_SYSTEM)
+	if (cx->sdp->gfs1 || ip->i_flags & GFS2_DIF_SYSTEM)
 		return;
 
-	if (ip->i_goal_meta <= LGFS2_SB_ADDR(sdp) ||
-	    ip->i_goal_meta > sdp->fssize) {
+	if (ip->i_goal_meta <= LGFS2_SB_ADDR(cx->sdp) ||
+	    ip->i_goal_meta > cx->sdp->fssize) {
 		log_err(_("Inode #%"PRIu64" (0x%"PRIx64"): Bad allocation goal block "
 		          "found: %"PRIu64" (0x%"PRIx64")\n"),
 		        ip->i_num.in_addr, ip->i_num.in_addr, ip->i_goal_meta, ip->i_goal_meta);
@@ -1379,7 +1379,7 @@ static int handle_di(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 			log_err(_("Inode number in inode at block %"PRIu64" (0x%"PRIx64") not fixed\n"),
 			        block, block);
 	}
-	check_i_goal(cx->sdp, ip);
+	check_i_goal(cx, ip);
 	error = handle_ip(cx, ip);
 	fsck_inode_put(&ip);
 	return error;
@@ -1504,7 +1504,7 @@ static int check_system_inode(struct fsck_cx *cx,
 					  "directory entries.\n"), filename);
 		}
 	}
-	check_i_goal(cx->sdp, *sysinode);
+	check_i_goal(cx, *sysinode);
 	error = handle_ip(cx, *sysinode);
 	return error ? error : err;
 }
