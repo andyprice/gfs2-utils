@@ -1436,10 +1436,11 @@ static int reset_journal_seg_size(struct lgfs2_sbd *sdp, unsigned int jsize, uns
 	return 0;
 }
 
-static int correct_journal_seg_size(struct lgfs2_sbd *sdp)
+static int correct_journal_seg_size(struct fsck_cx *cx)
 {
 	int count;
 	struct gfs_jindex *ji_0, *ji_1;
+	struct lgfs2_sbd *sdp = cx->sdp;
 	char buf[sizeof(struct gfs_jindex)];
 	unsigned int jsize = LGFS2_DEFAULT_JSIZE * 1024 * 1024;
 
@@ -1497,7 +1498,7 @@ static int reconstruct_journals(struct fsck_cx *cx)
 	char buf[sizeof(struct gfs_jindex)];
 
 	/* Ensure that sb_seg_size is valid */
-	if (correct_journal_seg_size(sdp)) {
+	if (correct_journal_seg_size(cx)) {
 		log_crit(_("Failed to set correct journal segment size. Cannot continue\n"));
 		return -1;
 	}
