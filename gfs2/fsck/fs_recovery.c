@@ -476,8 +476,8 @@ int preen_is_safe(struct lgfs2_sbd *sdp, int preen, int force_check)
  * Returns: errno
  */
 
-static int recover_journal(struct lgfs2_inode *ip, int j, int preen,
-				int force_check, int *was_clean)
+static int recover_journal(struct lgfs2_inode *ip, int j, const struct fsck_options * const _opts,
+                           int *was_clean)
 {
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_log_header head;
@@ -499,12 +499,12 @@ static int recover_journal(struct lgfs2_inode *ip, int j, int preen,
 		}
 	}
 	if (error) {
-		if (opts.no) {
+		if (_opts->no) {
 			log_err( _("Journal #%d (\"journal%d\") is corrupt\n"),j+1, j);
 			log_err( _("Not fixing it due to the -n option.\n"));
 			goto out;
 		}
-		if (!preen_is_safe(sdp, preen, force_check)) {
+		if (!preen_is_safe(sdp, _opts->preen, _opts->force)) {
 			log_err(_("Journal #%d (\"journal%d\") is corrupt.\n"),
 				j+1, j);
 			log_err(_("I'm not fixing it because it may be unsafe:\n"
@@ -543,12 +543,12 @@ static int recover_journal(struct lgfs2_inode *ip, int j, int preen,
 		*was_clean = 1;
 		return 0;
 	}
-	if (opts.no) {
+	if (_opts->no) {
 		log_err(_("Journal #%d (\"journal%d\") is dirty\n"),j+1, j);
 		log_err(_("not replaying due to the -n option.\n"));
 		goto out;
 	}
-	if (!preen_is_safe(sdp, preen, force_check)) {
+	if (!preen_is_safe(sdp, _opts->preen, _opts->force)) {
 		log_err( _("Journal #%d (\"journal%d\") is dirty\n"), j+1, j);
 		log_err( _("I'm not replaying it because it may be unsafe:\n"
 			   "Locking protocol is not lock_nolock and "
@@ -710,8 +710,7 @@ int replay_journals(struct fsck_cx *cx, const struct fsck_options * const _opts,
 			if (sdp->jsize == LGFS2_DEFAULT_JSIZE && jsize &&
 			    jsize != sdp->jsize)
 				sdp->jsize = jsize;
-			error = recover_journal(sdp->md.journal[i], i, _opts->preen,
-			                        _opts->force, &clean);
+			error = recover_journal(sdp->md.journal[i], i, _opts, &clean);
 			if (!clean)
 				dirty_journals++;
 			if (!gave_msg && dirty_journals == 1 && !_opts->no &&
