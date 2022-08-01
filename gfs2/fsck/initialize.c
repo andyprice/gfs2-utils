@@ -1489,10 +1489,11 @@ out:
  *
  * Returns: 0 on success, -1 on failure
  */
-static int reconstruct_journals(struct lgfs2_sbd *sdp)
+static int reconstruct_journals(struct fsck_cx *cx)
 {
 	int i, count;
 	struct gfs_jindex *ji;
+	struct lgfs2_sbd *sdp = cx->sdp;
 	char buf[sizeof(struct gfs_jindex)];
 
 	/* Ensure that sb_seg_size is valid */
@@ -1656,7 +1657,7 @@ int initialize(struct fsck_cx *cx, int *all_clean)
 		   have the smarts to replay GFS1 journals (neither did
 		   gfs_fsck). */
 		if (sdp->gfs1) {
-			if (reconstruct_journals(sdp))
+			if (reconstruct_journals(cx))
 				return FSCK_ERROR;
 		} else if (replay_journals(cx, &clean_journals)) {
 			if (!cx->opts->no && preen_is_safe(sdp, cx->opts))
