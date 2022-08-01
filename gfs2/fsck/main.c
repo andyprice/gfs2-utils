@@ -38,7 +38,6 @@ int dups_found = 0, dups_found_first = 0;
 int sb_fixed = 0;
 int print_level = MSG_NOTICE;
 
-static int preen = 0;
 static int force_check = 0;
 static const char *pass_name = "";
 
@@ -67,7 +66,7 @@ static int read_cmdline(int argc, char **argv, struct fsck_options *gopts)
 				fprintf(stderr, _("Options -p/-a, -y and -n may not be used together\n"));
 				return FSCK_USAGE;
 			}
-			preen = 1;
+			gopts->preen = 1;
 			gopts->yes = 1;
 			break;
 		case 'f':
@@ -78,7 +77,7 @@ static int read_cmdline(int argc, char **argv, struct fsck_options *gopts)
 			exit(FSCK_OK);
 			break;
 		case 'n':
-			if (gopts->yes || preen) {
+			if (gopts->yes || gopts->preen) {
 				fprintf(stderr, _("Options -p/-a, -y and -n may not be used together\n"));
 				return FSCK_USAGE;
 			}
@@ -95,7 +94,7 @@ static int read_cmdline(int argc, char **argv, struct fsck_options *gopts)
 			exit(FSCK_OK);
 			break;
 		case 'y':
-			if (gopts->no || preen) {
+			if (gopts->no || gopts->preen) {
 				fprintf(stderr, _("Options -p/-a, -y and -n may not be used together\n"));
 				return FSCK_USAGE;
 			}
@@ -327,10 +326,10 @@ int main(int argc, char **argv)
 		exit(error);
 	setbuf(stdout, NULL);
 	log_notice( _("Initializing fsck\n"));
-	if ((error = initialize(&cx, force_check, preen, &all_clean)))
+	if ((error = initialize(&cx, force_check, opts.preen, &all_clean)))
 		exit(error);
 
-	if (!force_check && all_clean && preen) {
+	if (!force_check && all_clean && opts.preen) {
 		log_err( _("%s: clean.\n"), opts.device);
 		destroy(&cx);
 		exit(FSCK_OK);
