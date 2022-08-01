@@ -113,9 +113,10 @@ static int check_block_status(struct lgfs2_sbd *sdp,  struct bmap *bl,
 	return 0;
 }
 
-static void update_rgrp(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgp,
+static void update_rgrp(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgp,
 			struct bmap *bl, uint32_t *count)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	uint32_t i;
 	struct lgfs2_bitmap *bits;
 	uint64_t rg_block = 0;
@@ -213,7 +214,7 @@ int pass5(struct fsck_cx *cx, struct bmap *bl)
 
 		rg_count++;
 		/* Compare the bitmaps and report the differences */
-		update_rgrp(sdp, rgp, bl, count);
+		update_rgrp(cx, rgp, bl, count);
 	}
 	/* Fix up superblock info based on this - don't think there's
 	 * anything to do here... */
