@@ -147,6 +147,7 @@ struct fsck_options {
 	unsigned int no:1;
 	unsigned int query:1;
 	unsigned int preen:1;
+	unsigned int force:1;
 };
 
 extern struct fsck_options opts;
