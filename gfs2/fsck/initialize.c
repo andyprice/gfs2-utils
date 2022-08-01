@@ -1221,8 +1221,9 @@ static int peruse_metadata(struct lgfs2_sbd *sdp, uint64_t startblock)
  * Assumes: device is open.
  *          The biggest RG size is 2GB
  */
-static int sb_repair(struct lgfs2_sbd *sdp)
+static int sb_repair(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	uint64_t half;
 	uint32_t known_bsize = 0;
 	int error = 0;
@@ -1350,7 +1351,7 @@ static int fill_super_block(struct fsck_cx *cx)
 	}
 	ret = lgfs2_read_sb(sdp);
 	if (ret < 0) {
-		if (sb_repair(sdp) != 0)
+		if (sb_repair(cx) != 0)
 			return -1; /* unrepairable, so exit */
 		/* Now that we've tried to repair it, re-read it. */
 		ret = lgfs2_read_sb(sdp);
