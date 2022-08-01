@@ -589,8 +589,10 @@ static int rebuild_sysdir(struct fsck_cx *cx)
  * allow_rebuild: 0 if rebuilds are not allowed
  *                1 if rebuilds are allowed
  */
-static void lookup_per_node(struct lgfs2_sbd *sdp, int allow_rebuild)
+static void lookup_per_node(struct fsck_cx *cx, int allow_rebuild)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
+
 	if (sdp->md.pinode)
 		return;
 
@@ -928,7 +930,7 @@ static int init_system_inodes(struct fsck_cx *cx)
 	/* Try to lookup the per_node inode.  If it was missing, it is now
 	   safe to rebuild it. */
 	if (!sdp->gfs1)
-		lookup_per_node(sdp, 1);
+		lookup_per_node(cx, 1);
 
 	/*******************************************************************
 	 *******  Now, set boundary fields in the super block  *************
@@ -1628,7 +1630,7 @@ int initialize(struct fsck_cx *cx, int *all_clean)
 	   need to figure out what's missing from per_node. And we need all
 	   our journals to be there before we can replay them. */
 	if (!sdp->gfs1)
-		lookup_per_node(sdp, 0);
+		lookup_per_node(cx, 0);
 
 	/* We need rindex first in case jindex is missing and needs to read
 	   in the rgrps before rebuilding it. However, note that if the rindex
