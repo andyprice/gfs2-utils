@@ -1418,9 +1418,11 @@ static int reconstruct_single_journal(struct lgfs2_sbd *sdp, int jnum,
 	return 0;
 }
 
-static int reset_journal_seg_size(struct lgfs2_sbd *sdp, unsigned int jsize, unsigned int nsegs)
+static int reset_journal_seg_size(struct fsck_cx *cx, unsigned int jsize, unsigned int nsegs)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	unsigned int seg_size = jsize / (nsegs * sdp->sd_bsize);
+
 	if (!seg_size)
 		seg_size = 16; /* The default with 128MB journal and 4K bsize */
 	if (seg_size != sdp->sd_seg_size) {
@@ -1481,7 +1483,7 @@ static int correct_journal_seg_size(struct fsck_cx *cx)
 
 	jsize = (be64_to_cpu(ji_1->ji_addr) - be64_to_cpu(ji_0->ji_addr)) * sdp->sd_bsize;
 out:
-	return reset_journal_seg_size(sdp, jsize, be32_to_cpu(ji_0->ji_nsegment));
+	return reset_journal_seg_size(cx, jsize, be32_to_cpu(ji_0->ji_nsegment));
 }
 
 /*
