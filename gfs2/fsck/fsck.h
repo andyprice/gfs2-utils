@@ -112,7 +112,6 @@ struct fsck_options {
 	char *device;
 	unsigned int yes:1;
 	unsigned int no:1;
-	unsigned int query:1;
 	unsigned int preen:1;
 	unsigned int force:1;
 };

@@ -175,7 +175,6 @@ int fsck_query(const char *format, ...)
 	if (opts.no)
 		return 0;
 
-	opts.query = 1;
 	while (1) {
 		va_start(args, format);
 		vprintf(format, args);
@@ -211,8 +210,6 @@ int fsck_query(const char *format, ...)
 			       response);
 		}
 	}
-
-	opts.query = 0;
 	return ret;
 }
 
