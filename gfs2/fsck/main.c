@@ -325,7 +325,7 @@ int main(int argc, char **argv)
 		exit(error);
 	setbuf(stdout, NULL);
 	log_notice( _("Initializing fsck\n"));
-	if ((error = initialize(&cx, opts.force, opts.preen, &all_clean)))
+	if ((error = initialize(&cx, &opts, &all_clean)))
 		exit(error);
 
 	if (!opts.force && all_clean && opts.preen) {

@@ -1545,8 +1545,7 @@ static int init_rindex(struct lgfs2_sbd *sdp)
  * initialize - initialize superblock pointer
  *
  */
-int initialize(struct fsck_cx *cx, int force_check, int preen,
-	       int *all_clean)
+int initialize(struct fsck_cx *cx, const struct fsck_options * const _opts, int *all_clean)
 {
 	struct lgfs2_sbd *sdp = cx->sdp;
 	int clean_journals = 0, open_flag;
@@ -1601,7 +1600,7 @@ int initialize(struct fsck_cx *cx, int force_check, int preen,
 		return err;
 
 	/* Change lock protocol to be fsck_* instead of lock_* */
-	if (!opts.no && preen_is_safe(sdp, preen, force_check)) {
+	if (!opts.no && preen_is_safe(sdp, _opts->preen, _opts->force)) {
 		if (block_mounters(sdp, 1)) {
 			log_err( _("Unable to block other mounters\n"));
 			return FSCK_USAGE;
@@ -1653,19 +1652,18 @@ int initialize(struct fsck_cx *cx, int force_check, int preen,
 		if (sdp->gfs1) {
 			if (reconstruct_journals(sdp))
 				return FSCK_ERROR;
-		} else if (replay_journals(cx, preen, force_check,
-					   &clean_journals)) {
-			if (!opts.no && preen_is_safe(sdp, preen, force_check))
+		} else if (replay_journals(cx, _opts->preen, _opts->force, &clean_journals)) {
+			if (!opts.no && preen_is_safe(sdp, _opts->preen, _opts->force))
 				block_mounters(sdp, 0);
 			stack;
 			return FSCK_ERROR;
 		}
 		if (sdp->md.journals == clean_journals)
 			*all_clean = 1;
-		else if (force_check || !preen)
+		else if (_opts->force || !_opts->preen)
 			log_notice( _("\nJournal recovery complete.\n"));
 
-		if (!force_check && *all_clean && preen)
+		if (!_opts->force && *all_clean && _opts->preen)
 			return FSCK_OK;
 	}
 

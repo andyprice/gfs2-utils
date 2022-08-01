@@ -108,6 +108,15 @@ enum rgindex_trust_level { /* how far can we trust our RG index? */
 			   must have been converted from gfs2_convert. */
 };
 
+struct fsck_options {
+	char *device;
+	unsigned int yes:1;
+	unsigned int no:1;
+	unsigned int query:1;
+	unsigned int preen:1;
+	unsigned int force:1;
+};
+
 struct fsck_cx {
 	struct lgfs2_sbd *sdp;
 	struct osi_root dup_blocks;
@@ -121,7 +130,7 @@ extern struct lgfs2_inode *fsck_inode_get(struct lgfs2_sbd *sdp,
 					 struct lgfs2_buffer_head *bh);
 extern void fsck_inode_put(struct lgfs2_inode **ip);
 
-extern int initialize(struct fsck_cx *cx, int force_check, int preen, int *all_clean);
+extern int initialize(struct fsck_cx *cx, const struct fsck_options * const opts, int *all_clean);
 extern void destroy(struct fsck_cx *cx);
 extern int pass1(struct fsck_cx *cx);
 extern int pass1b(struct fsck_cx *cx);
@@ -140,15 +149,6 @@ extern void dirtree_delete(struct fsck_cx *cx, struct dir_info *b);
 /* FIXME: Hack to get this going for pass2 - this should be pulled out
  * of pass1 and put somewhere else... */
 struct dir_info *dirtree_insert(struct fsck_cx *cx, struct lgfs2_inum inum);
-
-struct fsck_options {
-	char *device;
-	unsigned int yes:1;
-	unsigned int no:1;
-	unsigned int query:1;
-	unsigned int preen:1;
-	unsigned int force:1;
-};
 
 extern struct fsck_options opts;
 extern struct lgfs2_inode *lf_dip; /* Lost and found directory inode */
