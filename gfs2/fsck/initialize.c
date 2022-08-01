@@ -1652,7 +1652,7 @@ int initialize(struct fsck_cx *cx, const struct fsck_options * const _opts, int 
 		if (sdp->gfs1) {
 			if (reconstruct_journals(sdp))
 				return FSCK_ERROR;
-		} else if (replay_journals(cx, _opts->preen, _opts->force, &clean_journals)) {
+		} else if (replay_journals(cx, _opts, &clean_journals)) {
 			if (!opts.no && preen_is_safe(sdp, _opts->preen, _opts->force))
 				block_mounters(sdp, 0);
 			stack;
