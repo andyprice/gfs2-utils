@@ -1525,8 +1525,9 @@ static int reconstruct_journals(struct fsck_cx *cx)
 /**
  * init_rindex - read in the rindex file
  */
-static int init_rindex(struct lgfs2_sbd *sdp)
+static int init_rindex(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct lgfs2_inode *ip;
 
 	if (sdp->gfs1)
@@ -1646,7 +1647,7 @@ int initialize(struct fsck_cx *cx, int *all_clean)
 	   is damaged, we need the journals to repair it. That's because the
 	   journals likely contain rgrps and bitmaps, which we need to ignore
 	   when we're trying to find the rgrps. */
-	if (init_rindex(sdp))
+	if (init_rindex(cx))
 		return FSCK_ERROR;
 
 	if (fetch_rgrps(cx))
