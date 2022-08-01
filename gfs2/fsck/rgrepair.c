@@ -846,9 +846,10 @@ static int rindex_calculate(struct lgfs2_sbd *sdp, int *num_rgs)
  * rewrite_rg_block - rewrite ("fix") a buffer with rg or bitmap data
  * returns: 0 if the rg was repaired, otherwise 1
  */
-static int rewrite_rg_block(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rg,
+static int rewrite_rg_block(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rg,
 			    uint64_t errblock)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	int x = errblock - rg->rt_addr;
 	const char *typedesc = x ? "GFS2_METATYPE_RB" : "GFS2_METATYPE_RG";
 	ssize_t ret;
@@ -1193,7 +1194,7 @@ int rindex_repair(struct fsck_cx *cx, int trust_lvl, int *ok)
 				if (errblock == prev_err)
 					break;
 				prev_err = errblock;
-				rewrite_rg_block(sdp, rgd, errblock);
+				rewrite_rg_block(cx, rgd, errblock);
 			} else {
 				lgfs2_rgrp_relse(sdp, rgd);
 				break;
