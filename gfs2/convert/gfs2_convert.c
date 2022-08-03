@@ -1597,7 +1597,6 @@ static int init(struct lgfs2_sbd *sbp, struct gfs2_options *opts)
 	jindex_addr = be64_to_cpu(gfs1_sb.sb_jindex_di.no_addr);
 	rindex_addr = be64_to_cpu(gfs1_sb.sb_rindex_di.no_addr);
 
-	sbp->sd_bsize = sbp->sd_bsize;
 	sbp->fssize = lseek(sbp->device_fd, 0, SEEK_END) / sbp->sd_bsize;
 	sbp->sd_inptrs = (sbp->sd_bsize - sizeof(struct gfs_indirect)) /
 		sizeof(uint64_t);

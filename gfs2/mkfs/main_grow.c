@@ -393,7 +393,6 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 		sdp->sd_bsize = LGFS2_DEFAULT_BSIZE;
-		sdp->sd_bsize = sdp->sd_bsize;
 		if (lgfs2_compute_constants(sdp)) {
 			log_crit("%s\n", _("Failed to compute file system constants"));
 			exit(EXIT_FAILURE);

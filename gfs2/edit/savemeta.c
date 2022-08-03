@@ -1129,8 +1129,6 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	mfd = savemetaopen(out_fn, gziplevel);
 
 	blks_saved = 0;
-	if (sbd.gfs1)
-		sbd.sd_bsize = sbd.sd_bsize;
 	printf("There are %"PRIu64" blocks of %u bytes in the filesystem.\n",
 	       sbd.fssize, sbd.sd_bsize);
 
@@ -1261,7 +1259,6 @@ static int restore_super(struct metafd *mfd, void *buf, int printonly)
 	}
 	if (ret == 1)
 		sbd.gfs1 = 1;
-	sbd.sd_bsize = sbd.sd_bsize;
 	if ((!printonly) && lgfs2_sb_write(&sbd, sbd.device_fd)) {
 		fprintf(stderr, "Failed to write superblock\n");
 		return -1;
