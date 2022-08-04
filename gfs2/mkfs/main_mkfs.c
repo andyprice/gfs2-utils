@@ -956,13 +956,15 @@ static int place_journals(struct lgfs2_sbd *sdp, lgfs2_rgrps_t rgs, struct mkfs_
 
 		result = lgfs2_write_filemeta(&in);
 		if (result != 0) {
-			fprintf(stderr, _("Failed to write journal %u\n"), j);
+			fprintf(stderr, _("Failed to write journal %u: %s\n"),
+			        j, strerror(errno));
 			return result;
 		}
 
 		result = lgfs2_write_journal_data(&in);
 		if (result != 0) {
-			fprintf(stderr, _("Failed to write data blocks for journal %u\n"), j);
+			fprintf(stderr, _("Failed to write data blocks for journal %u: %s\n"),
+			        j, strerror(errno));
 			return result;
 		}
 		mkfs_journals[j] = in.i_num;
