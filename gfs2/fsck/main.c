@@ -124,12 +124,13 @@ static int read_cmdline(int argc, char **argv, struct fsck_options *gopts)
 static void interrupt(int sig)
 {
 	char response;
-	char progress[PATH_MAX];
+	char progress[1024];
 
 	if (!last_reported_block || last_reported_block == last_fs_block)
-		sprintf(progress, _("progress unknown.\n"));
+		snprintf(progress, sizeof(progress), _("progress unknown.\n"));
 	else
-		sprintf(progress, _("processing block %"PRIu64" out of %"PRIu64"\n"),
+		snprintf(progress, sizeof(progress),
+		        _("processing block %"PRIu64" out of %"PRIu64"\n"),
 		        last_reported_block, last_fs_block);
 
 	response = generic_interrupt("fsck.gfs2", pass_name, progress,

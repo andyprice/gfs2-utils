@@ -8,7 +8,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/uio.h>
-#include <linux/limits.h>
 #include <endian.h>
 #include <byteswap.h>
 #include <mntent.h>

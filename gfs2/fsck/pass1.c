@@ -181,7 +181,7 @@ static int resuscitate_dentry(struct fsck_cx *cx, struct lgfs2_inode *ip, struct
 {
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_dirent d;
-	char tmp_name[PATH_MAX];
+	char tmp_name[GFS2_FNAMESIZE];
 	uint64_t block;
 
 	lgfs2_dirent_in(&d, dent);

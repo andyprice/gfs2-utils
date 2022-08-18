@@ -341,7 +341,7 @@ static int dirent_repair(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 		/* There can often be noise at the end, so only          */
 		/* Trust the shorter of the two in case we have too much */
 		/* Or rather, only trust ours if it's shorter.           */
-		if (!d->dr_name_len || d->dr_name_len > NAME_MAX ||
+		if (!d->dr_name_len || d->dr_name_len > GFS2_FNAMESIZE ||
 		    calc_de_name_len < d->dr_name_len) /* if dent is hosed */
 			d->dr_name_len = calc_de_name_len; /* use ours */
 		d->dr_rec_len = GFS2_DIRENT_SIZE(d->dr_name_len);

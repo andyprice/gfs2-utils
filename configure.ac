@@ -141,7 +141,6 @@ AC_SUBST([testvol], [$with_testvol])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h libintl.h limits.h locale.h mntent.h stddef.h sys/file.h sys/ioctl.h sys/mount.h sys/time.h sys/vfs.h syslog.h termios.h])
-AC_CHECK_HEADER([linux/limits.h], [], [AC_MSG_ERROR([Unable to find linux/limits.h])])
 
 # *FLAGS handling
 ENV_CFLAGS="$CFLAGS"
