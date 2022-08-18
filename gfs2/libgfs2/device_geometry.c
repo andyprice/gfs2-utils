@@ -11,26 +11,31 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/ioctl.h>
-#include <linux/fs.h>
+#include <sys/mount.h>
 
 #include "libgfs2.h"
 
+#ifndef BLKROGET
+#define BLKROGET _IO(0x12, 94) /* ro */
+#endif
+#ifndef BLKRAGET
+#define BLKRAGET _IO(0x12, 99) /* ra_pages */
+#endif
 #ifndef BLKSSZGET
 #define BLKSSZGET _IO(0x12,104)   /* logical_block_size */
 #endif
-
+#ifndef BLKBSZGET
+#define BLKBSZGET _IOR(0x12, 112, size_t) /* soft_block_size */
+#endif
 #ifndef BLKIOMIN
 #define BLKIOMIN _IO(0x12,120)    /* minimum_io_size */
 #endif
-
 #ifndef BLKIOOPT
 #define BLKIOOPT _IO(0x12,121)    /* optimal_io_size */
 #endif
-
 #ifndef BLKALIGNOFF
 #define BLKALIGNOFF _IO(0x12,122) /* alignment_offset */
 #endif
-
 #ifndef BLKPBSZGET
 #define BLKPBSZGET _IO(0x12,123)  /* physical_block_size */
 #endif

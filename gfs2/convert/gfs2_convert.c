@@ -1178,10 +1178,10 @@ static int process_dirent_info(struct lgfs2_inode *dip, struct lgfs2_sbd *sbp,
 		/* Fix the dirent's filename hash: They are the same as gfs1 */
 		/* dent->de_hash = cpu_to_be32(gfs2_disk_hash((char *)(dent + 1), */
 		/*                             be16_to_cpu(dent->de_name_len))); */
-		/* Fix the dirent's file type.  Gfs1 used home-grown values.  */
-		/* Gfs2 uses standard values from include/linux/fs.h          */
-		/* Only do this if the dent was a true gfs1 dent, and not a   */
-		/* gfs2 dent converted from a previously aborted run.         */
+		/* Fix the dirent's file type. gfs1 used home-grown values.
+		   gfs2 uses standard values from include/dirent.h.  Only do
+		   this if the dent was a true gfs1 dent, and not a gfs2 dent
+		   converted from a previously aborted run. */
 		if (dent_was_gfs1) {
 			switch (be16_to_cpu(dent->de_type)) {
 			case GFS_FILE_NON:
