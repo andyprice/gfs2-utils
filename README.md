@@ -24,9 +24,6 @@ The following development packages are required to build gfs2-utils:
 * libuuid
 * check (optional, enables unit tests)
 
-The kernel header `include/linux/gfs2-ondisk.h` and its dependencies are also
-required.
-
 ### How to build
 
 To build gfs2-utils, run the following commands:
