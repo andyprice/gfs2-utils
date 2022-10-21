@@ -7,6 +7,7 @@ autom4te.cache
 automake
 compile
 configure
+configure~
 config.guess
 config.log
 config.sub
