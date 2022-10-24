@@ -183,6 +183,39 @@ void lgfs2_rgrp_crc_set(char *buf)
 }
 
 /**
+ * Check an rindex entry's crc
+ * Returns 0 on success, non-zero if crc is bad
+ */
+int lgfs2_rindex_crc_check(char *buf)
+{
+	int ret = 0;
+	struct gfs2_rindex *ri = (struct gfs2_rindex *)buf;
+	__be32 crc = ri->ri_crc;
+
+	if (crc == 0)
+		return 0;
+
+	ri->ri_crc = 0;
+	if (be32_to_cpu(crc) != lgfs2_disk_hash(buf, sizeof(struct gfs2_rindex)))
+		ret = 1;
+	ri->ri_crc = crc;
+	return ret;
+}
+
+/**
+ * Set the crc of an rindex entry
+ */
+void lgfs2_rindex_crc_set(char *buf)
+{
+	struct gfs2_rindex *ri = (struct gfs2_rindex *)buf;
+	uint32_t crc;
+
+	ri->ri_crc = 0;
+	crc = lgfs2_disk_hash(buf, sizeof(struct gfs2_rindex));
+	ri->ri_crc = cpu_to_be32(crc);
+}
+
+/**
  * lgfs2_rgrp_read - read in the resource group information from disk.
  * @rgd - resource group structure
  * returns: 0 if no error, otherwise the block number that failed
@@ -583,10 +616,10 @@ uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *ri, uint6
 	ri->ri_addr = cpu_to_be64(addr);
 	ri->ri_length = cpu_to_be32(ri_length);
 	ri->ri_data = cpu_to_be32(ri_data);
-	ri->__pad = 0;
 	ri->ri_data0 = cpu_to_be64(addr + ri_length);
 	ri->ri_bitbytes = cpu_to_be32(ri_data / GFS2_NBBY);
 	memset(&ri->ri_reserved, 0, sizeof(ri->ri_reserved));
+	lgfs2_rindex_crc_set((char *)ri);
 
 	return addr + len;
 }

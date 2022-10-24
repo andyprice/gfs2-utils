@@ -90,6 +90,7 @@ void lgfs2_rindex_out(const lgfs2_rgrp_t rg, void *buf)
 	ri->ri_data0 = cpu_to_be64(rg->rt_data0);
 	ri->ri_data = cpu_to_be32(rg->rt_data);
 	ri->ri_bitbytes = cpu_to_be32(rg->rt_bitbytes);
+	lgfs2_rindex_crc_set(buf);
 }
 
 void lgfs2_rgrp_in(lgfs2_rgrp_t rg, void *buf)

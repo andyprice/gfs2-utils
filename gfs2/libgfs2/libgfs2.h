@@ -743,6 +743,8 @@ extern int lgfs2_compute_bitstructs(const uint32_t bsize, struct lgfs2_rgrp_tree
 extern struct lgfs2_rgrp_tree *lgfs2_blk2rgrpd(struct lgfs2_sbd *sdp, uint64_t blk);
 extern int lgfs2_rgrp_crc_check(char *buf);
 extern void lgfs2_rgrp_crc_set(char *buf);
+extern int lgfs2_rindex_crc_check(char *buf);
+extern void lgfs2_rindex_crc_set(char *buf);
 extern uint64_t lgfs2_rgrp_read(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd);
 extern void lgfs2_rgrp_relse(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd);
 extern struct lgfs2_rgrp_tree *lgfs2_rgrp_insert(struct osi_root *rgtree,

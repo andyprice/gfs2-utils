@@ -208,7 +208,7 @@ RF(sb_reserved)
 static const struct lgfs2_metafield gfs2_rindex_fields[] = {
 FP(ri_addr, .points_to = (1 << LGFS2_MT_GFS2_RGRP))
 F(ri_length, .flags = LGFS2_MFF_FSBLOCKS)
-RF(__pad)
+F(ri_crc, .flags = LGFS2_MFF_CHECK)
 FP(ri_data0, .points_to = ANY_GFS2_BLOCK|(1 << LGFS2_MT_FREE))
 F(ri_data, .flags = LGFS2_MFF_FSBLOCKS)
 F(ri_bitbytes, .flags = LGFS2_MFF_BYTES)

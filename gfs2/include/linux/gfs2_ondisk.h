@@ -141,7 +141,7 @@ struct gfs2_sb {
 struct gfs2_rindex {
 	__be64 ri_addr;	/* grp block disk address */
 	__be32 ri_length;	/* length of rgrp header in fs blocks */
-	__u32 __pad;
+	__be32 ri_crc; /* crc32c of the struct with this field zeroed */
 
 	__be64 ri_data0;	/* first data location */
 	__be32 ri_data;	/* num of data blocks in rgrp */

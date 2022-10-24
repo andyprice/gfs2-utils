@@ -185,6 +185,7 @@ void rindex_print(void *rip)
 
 	printbe64(ri, ri_addr);
 	printbe32(ri, ri_length);
+	printbe32(ri, ri_crc);
 	printbe64(ri, ri_data0);
 	printbe32(ri, ri_data);
 	printbe32(ri, ri_bitbytes);
