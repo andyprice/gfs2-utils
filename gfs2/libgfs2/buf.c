@@ -38,39 +38,6 @@ struct lgfs2_buffer_head *lgfs2_bget(struct lgfs2_sbd *sdp, uint64_t num)
 	return bh;
 }
 
-int __lgfs2_breadm(struct lgfs2_sbd *sdp, struct lgfs2_buffer_head **bhs, size_t n,
-                   uint64_t block, int line, const char *caller)
-{
-	size_t v = (n < IOV_MAX) ? n : IOV_MAX;
-	struct iovec *iov = alloca(v * sizeof(struct iovec));
-	struct iovec *iovbase = iov;
-	size_t i = 0;
-
-	while (i < n) {
-		int j;
-		ssize_t ret;
-		ssize_t size = 0;
-
-		for (j = 0; (i + j < n) && (j < IOV_MAX); j++) {
-			bhs[i + j] = lgfs2_bget(sdp, block + i + j);
-			if (bhs[i + j] == NULL)
-				return -1;
-			iov[j] = bhs[i + j]->iov;
-			size += bhs[i + j]->iov.iov_len;
-		}
-
-		ret = preadv(sdp->device_fd, iovbase, j, (block + i) * sdp->sd_bsize);
-		if (ret != size) {
-			fprintf(stderr, "bad read: %s from %s:%d: block %"PRIu64" "
-					"count: %d size: %zd ret: %zd\n", strerror(errno),
-					caller, line, block, j, size, ret);
-			exit(-1);
-		}
-		i += j;
-	}
-	return 0;
-}
-
 struct lgfs2_buffer_head *__lgfs2_bread(struct lgfs2_sbd *sdp, uint64_t num, int line,
 				 const char *caller)
 {
