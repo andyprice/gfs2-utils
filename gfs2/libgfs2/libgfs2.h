@@ -710,8 +710,8 @@ extern void lgfs2_gfs1_lookup_block(struct lgfs2_inode *ip,
 			      struct lgfs2_buffer_head *bh,
 			      unsigned int height, struct lgfs2_metapath *mp,
 			      int create, int *new, uint64_t *block);
-extern void lgfs2_gfs1_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
-			   uint64_t *dblock, uint32_t *extlen, int prealloc);
+extern int lgfs2_gfs1_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new, uint64_t *dblock,
+                                uint32_t *extlen, int prealloc) __attribute__((warn_unused_result));
 extern int lgfs2_gfs1_writei(struct lgfs2_inode *ip, void *buf, uint64_t offset,
 		       unsigned int size);
 extern struct lgfs2_inode *lgfs2_gfs_inode_get(struct lgfs2_sbd *sdp, char *buf);

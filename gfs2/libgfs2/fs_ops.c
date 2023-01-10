@@ -614,10 +614,10 @@ int lgfs2_readi(struct lgfs2_inode *ip, void *buf, uint64_t offset, unsigned int
 			amount = sdp->sd_bsize - o;
 
 		if (!extlen) {
-			if (sdp->gfs1)
-				lgfs2_gfs1_block_map(ip, lblock, &not_new, &dblock,
-					       &extlen, 0);
-			else if (lgfs2_block_map(ip, lblock, &not_new, &dblock, &extlen, 0))
+			if (sdp->gfs1) {
+				if (lgfs2_gfs1_block_map(ip, lblock, &not_new, &dblock, &extlen, 0))
+					exit(1);
+			} else if (lgfs2_block_map(ip, lblock, &not_new, &dblock, &extlen, 0))
 				exit(1);
 		}
 
