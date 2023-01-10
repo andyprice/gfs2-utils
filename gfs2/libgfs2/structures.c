@@ -188,7 +188,7 @@ int lgfs2_write_journal(struct lgfs2_inode *jnl, unsigned bsize, unsigned int bl
 	/* not broken up by indirect block pages.                           */
 	height = lgfs2_calc_tree_height(jnl, (blocks + 1) * bsize);
 	if (lgfs2_build_height(jnl, height))
-		exit(1);
+		return -1;
 
 	for (x = 0; x < blocks; x++) {
 		struct lgfs2_buffer_head *bh = lgfs2_get_file_buf(jnl, x, 1);
