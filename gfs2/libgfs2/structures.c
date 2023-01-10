@@ -337,7 +337,7 @@ struct lgfs2_inode *lgfs2_build_quota_change(struct lgfs2_inode *per_node, unsig
 
 	hgt = lgfs2_calc_tree_height(ip, (blocks + 1) * sdp->sd_bsize);
 	if (lgfs2_build_height(ip, hgt))
-		exit(1);
+		return NULL;
 
 	for (x = 0; x < blocks; x++) {
 		bh = lgfs2_get_file_buf(ip, x, 0);
