@@ -462,7 +462,7 @@ void lgfs2_lookup_block(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 	*new = 1;
 }
 
-void lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
+int lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
                      uint64_t *dblock, uint32_t *extlen, int prealloc)
 {
 	struct lgfs2_sbd *sdp = ip->i_sbd;
@@ -485,7 +485,7 @@ void lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 			if (extlen)
 				*extlen = 1;
 		}
-		return;
+		return 0;
 	}
 
 	bsize = (S_ISDIR(ip->i_mode)) ? sdp->sd_jbsize : sdp->sd_bsize;
@@ -493,10 +493,10 @@ void lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 	height = lgfs2_calc_tree_height(ip, (lblock + 1) * bsize);
 	if (ip->i_height < height) {
 		if (!create)
-			return;
+			return 0;
 
 		if (lgfs2_build_height(ip, height))
-			exit(1);
+			return -1;
 	}
 
 	lgfs2_find_metapath(ip, lblock, &mp);
@@ -509,7 +509,7 @@ void lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 		if (bh != ip->i_bh)
 			lgfs2_brelse(bh);
 		if (!*dblock)
-			return;
+			return 0;
 
 		if (*new) {
 			struct gfs2_meta_header mh = {
@@ -555,6 +555,7 @@ void lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 
 	if (bh != ip->i_bh)
 		lgfs2_brelse(bh);
+	return 0;
 }
 
 static void
@@ -616,9 +617,8 @@ int lgfs2_readi(struct lgfs2_inode *ip, void *buf, uint64_t offset, unsigned int
 			if (sdp->gfs1)
 				lgfs2_gfs1_block_map(ip, lblock, &not_new, &dblock,
 					       &extlen, 0);
-			else
-				lgfs2_block_map(ip, lblock, &not_new, &dblock,
-					  &extlen, 0);
+			else if (lgfs2_block_map(ip, lblock, &not_new, &dblock, &extlen, 0))
+				exit(1);
 		}
 
 		if (dblock) {
@@ -699,7 +699,8 @@ int __lgfs2_writei(struct lgfs2_inode *ip, void *buf,
 
 		if (!extlen) {
 			new = 1;
-			lgfs2_block_map(ip, lblock, &new, &dblock, &extlen, 0);
+			if (lgfs2_block_map(ip, lblock, &new, &dblock, &extlen, 0))
+				exit(1);
 		}
 
 		if (new) {

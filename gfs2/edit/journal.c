@@ -144,8 +144,8 @@ static int fsck_readi(struct lgfs2_inode *ip, void *rbuf, uint64_t roffset,
 		if (amount > sdp->sd_bsize - o)
 			amount = sdp->sd_bsize - o;
 		if (!extlen)
-			lgfs2_block_map(ip, lblock, &not_new, &dblock, &extlen,
-				  FALSE);
+			if (lgfs2_block_map(ip, lblock, &not_new, &dblock, &extlen, FALSE))
+				exit(1);
 		if (dblock) {
 			lbh = lgfs2_bread(sdp, dblock);
 			if (*abs_block == 0)

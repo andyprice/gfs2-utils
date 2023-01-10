@@ -64,7 +64,11 @@ static void find_journaled_rgs(struct lgfs2_sbd *sdp)
 		jblocks = ip->i_size / sdp->sd_bsize;
 		false_count = 0;
 		for (b = 0; b < jblocks; b++) {
-			lgfs2_block_map(ip, b, &new, &dblock, NULL, 0);
+			if (lgfs2_block_map(ip, b, &new, &dblock, NULL, 0)) {
+				log_crit(_("Failed to map block 0x%"PRIu64" in journal at 0x%"PRIu64": %s\n"),
+				         b, ip->i_num.in_addr, strerror(errno));
+				exit(1);
+			}
 			if (!dblock)
 				break;
 			bh = lgfs2_bread(sdp, dblock);

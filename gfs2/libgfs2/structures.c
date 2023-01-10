@@ -160,7 +160,8 @@ static struct lgfs2_buffer_head *lgfs2_get_file_buf(struct lgfs2_inode *ip, uint
 	if (ip->i_height == 0)
 		lgfs2_unstuff_dinode(ip);
 
-	lgfs2_block_map(ip, lbn, &new, &dbn, NULL, prealloc);
+	if (lgfs2_block_map(ip, lbn, &new, &dbn, NULL, prealloc))
+		exit(1);
 	if (!dbn)
 		return NULL;
 

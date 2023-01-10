@@ -427,7 +427,11 @@ static int check_journal_seq_no(struct lgfs2_inode *ip, int fix)
 		highest_seq++;
 		prev_seq = highest_seq;
 		log_warn(_("Renumbering it as 0x%"PRIx64"\n"), highest_seq);
-		lgfs2_block_map(ip, blk, &new, &dblock, NULL, 0);
+		if (lgfs2_block_map(ip, blk, &new, &dblock, NULL, 0)) {
+			log_crit(_("Failed to map block 0x%"PRIx32" in journal at 0x%"PRIx64": %s\n"),
+			         blk, ip->i_num.in_addr, strerror(errno));
+			exit(1);
+		}
 		bh = lgfs2_bread(ip->i_sbd, dblock);
 		((struct gfs2_log_header *)bh->b_data)->lh_sequence = cpu_to_be64(highest_seq);
 		lgfs2_bmodified(bh);
