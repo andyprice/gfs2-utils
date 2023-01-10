@@ -376,7 +376,7 @@ unsigned int lgfs2_calc_tree_height(struct lgfs2_inode *ip, uint64_t size)
 	return height;
 }
 
-void lgfs2_build_height(struct lgfs2_inode *ip, int height)
+int lgfs2_build_height(struct lgfs2_inode *ip, int height)
 {
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_buffer_head *bh;
@@ -401,7 +401,7 @@ void lgfs2_build_height(struct lgfs2_inode *ip, int height)
 			};
 
 			if (lgfs2_meta_alloc(ip, &block))
-				exit(1);
+				return -1;
 			bh = lgfs2_bget(sdp, block);
 			memcpy(bh->b_data, &mh, sizeof(mh));
 			buffer_copy_tail(sdp, bh,
@@ -421,6 +421,7 @@ void lgfs2_build_height(struct lgfs2_inode *ip, int height)
 
 		ip->i_height++;
 	}
+	return 0;
 }
 
 void lgfs2_find_metapath(struct lgfs2_inode *ip, uint64_t block, struct lgfs2_metapath *mp)
@@ -494,7 +495,8 @@ void lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 		if (!create)
 			return;
 
-		lgfs2_build_height(ip, height);
+		if (lgfs2_build_height(ip, height))
+			exit(1);
 	}
 
 	lgfs2_find_metapath(ip, lblock, &mp);

@@ -100,7 +100,8 @@ void lgfs2_gfs1_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new,
 		if (!create)
 			return;
 
-		lgfs2_build_height(ip, height);
+		if (lgfs2_build_height(ip, height))
+			exit(1);
 	}
 
 	lgfs2_find_metapath(ip, lblock, &mp);

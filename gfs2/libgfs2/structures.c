@@ -186,7 +186,8 @@ int lgfs2_write_journal(struct lgfs2_inode *jnl, unsigned bsize, unsigned int bl
 	/* Build the height up so our journal blocks will be contiguous and */
 	/* not broken up by indirect block pages.                           */
 	height = lgfs2_calc_tree_height(jnl, (blocks + 1) * bsize);
-	lgfs2_build_height(jnl, height);
+	if (lgfs2_build_height(jnl, height))
+		exit(1);
 
 	for (x = 0; x < blocks; x++) {
 		struct lgfs2_buffer_head *bh = lgfs2_get_file_buf(jnl, x, 1);
@@ -334,7 +335,8 @@ struct lgfs2_inode *lgfs2_build_quota_change(struct lgfs2_inode *per_node, unsig
 		return NULL;
 
 	hgt = lgfs2_calc_tree_height(ip, (blocks + 1) * sdp->sd_bsize);
-	lgfs2_build_height(ip, hgt);
+	if (lgfs2_build_height(ip, hgt))
+		exit(1);
 
 	for (x = 0; x < blocks; x++) {
 		bh = lgfs2_get_file_buf(ip, x, 0);
