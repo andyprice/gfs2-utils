@@ -1243,7 +1243,7 @@ restart:
 	}
 }
 
-static void dir_make_exhash(struct lgfs2_inode *dip)
+static int dir_make_exhash(struct lgfs2_inode *dip)
 {
 	struct lgfs2_sbd *sdp = dip->i_sbd;
 	struct gfs2_dirent *dent;
@@ -1256,7 +1256,7 @@ static void dir_make_exhash(struct lgfs2_inode *dip)
 	__be64 *lp;
 
 	if (lgfs2_meta_alloc(dip, &bn))
-		exit(1);
+		return -1;
 	bh = lgfs2_bget(sdp, bn);
 	{
 		struct gfs2_meta_header mh = {
@@ -1310,6 +1310,7 @@ static void dir_make_exhash(struct lgfs2_inode *dip)
 
 	lgfs2_dinode_out(dip, dip->i_bh->b_data);
 	lgfs2_bwrite(dip->i_bh);
+	return 0;
 }
 
 static int dir_l_add(struct lgfs2_inode *dip, const char *filename, int len,
@@ -1320,7 +1321,9 @@ static int dir_l_add(struct lgfs2_inode *dip, const char *filename, int len,
 	int err = 0;
 
 	if (dirent_alloc(dip, dip->i_bh, len, &dent)) {
-		dir_make_exhash(dip);
+		err = dir_make_exhash(dip);
+		if (err != 0)
+			return err;
 		err = dir_e_add(dip, filename, len, inum, type);
 		return err;
 	}
