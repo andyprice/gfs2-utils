@@ -894,8 +894,12 @@ int lgfs2_get_leaf_ptr(struct lgfs2_inode *dip, const uint32_t lindex, uint64_t 
 	return 0;
 }
 
-void lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf_no,
-		    struct lgfs2_buffer_head *obh)
+/**
+ * Split a directory leaf.
+ * Returns 0 on success and non-zero with errno set on failure.
+ */
+int lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf_no,
+                         struct lgfs2_buffer_head *obh)
 {
 	struct lgfs2_buffer_head *nbh;
 	struct gfs2_leaf *nleaf, *oleaf;
@@ -908,8 +912,10 @@ void lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf
 	int x, moved = 0;
 	int count;
 
-	if (lgfs2_meta_alloc(dip, &bn))
-		exit(1);
+	if (lgfs2_meta_alloc(dip, &bn)) {
+		errno = EIO;
+		return -1;
+	}
 	nbh = lgfs2_bget(dip->i_sbd, bn);
 	{
 		struct gfs2_meta_header mh = {
@@ -932,10 +938,9 @@ void lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf
 	half_len = len >> 1;
 
 	lp = calloc(1, half_len * sizeof(__be64));
-	if (lp == NULL) {
-		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
-		exit(-1);
-	}
+	if (lp == NULL)
+		return -1;
+
 	for (x = 0; x < half_len; x++)
 		lp[x] = cpu_to_be64(bn);
 
@@ -946,8 +951,8 @@ void lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf
 		count = lgfs2_writei(dip, (char *)lp, start * sizeof(uint64_t),
 				    half_len * sizeof(uint64_t));
 	if (count != half_len * sizeof(uint64_t)) {
-		fprintf(stderr, "lgfs2_dir_split_leaf (2)\n");
-		exit(1);
+		errno = EINVAL;
+		return -1;
 	}
 
 	free(lp);
@@ -968,8 +973,8 @@ void lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf
 			name_len = be16_to_cpu(dent->de_name_len);
 
 			if (dirent_alloc(dip, nbh, name_len, &new)) {
-				fprintf(stderr, "lgfs2_dir_split_leaf (3)\n");
-				exit(1);
+				errno = ENOSPC;
+				return -1;
 			}
 
 			new->de_inum = dent->de_inum;
@@ -994,8 +999,8 @@ void lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf
 
 	if (!moved) {
 		if (dirent_alloc(dip, nbh, 0, &new)) {
-			fprintf(stderr, "lgfs2_dir_split_leaf (4)\n");
-			exit(1);
+			errno = ENOSPC;
+			return -1;
 		}
 		new->de_inum.no_formal_ino = 0;
 		/* Don't count the sentinel dirent as an entry */
@@ -1013,6 +1018,7 @@ void lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf
 	lgfs2_bmodified(obh); /* Need to do this in case nothing was moved */
 	lgfs2_bmodified(nbh);
 	lgfs2_brelse(nbh);
+	return 0;
 }
 
 static void dir_double_exhash(struct lgfs2_inode *dip)
@@ -1155,7 +1161,7 @@ static int dir_e_add(struct lgfs2_inode *dip, const char *filename, int len,
 
 	hash = lgfs2_disk_hash(filename, len);
 restart:
-	/* Have to kludge because (hash >> 32) gives hash for some reason. */
+	/* (hash >> 32) is undefined behaviour */
 	if (dip->i_depth)
 		lindex = hash >> (32 - dip->i_depth);
 	else
@@ -1176,8 +1182,10 @@ restart:
 			if (be16_to_cpu(leaf->lf_depth) < dip->i_depth) {
 				llen = 1 << (dip->i_depth -
 					     be16_to_cpu(leaf->lf_depth));
-				lgfs2_dir_split_leaf(dip, lindex & ~(llen - 1),
-					       leaf_no, bh);
+				if (lgfs2_dir_split_leaf(dip, lindex & ~(llen - 1), leaf_no, bh)) {
+					lgfs2_brelse(bh);
+					return -1;
+				}
 				lgfs2_brelse(bh);
 				goto restart;
 

@@ -1399,7 +1399,11 @@ static int fix_hashtable(struct fsck_cx *cx, struct lgfs2_inode *ip, __be64 *tbl
 			  "0x%x.\n"), factor, len, proper_start);
 		changes++;
 		new_leaf_blk = find_free_blk(ip->i_sbd);
-		lgfs2_dir_split_leaf(ip, lindex, leafblk, lbh);
+		if (lgfs2_dir_split_leaf(ip, lindex, leafblk, lbh)) {
+			log_crit(_("Failed to split directory leaf block at 0x%"PRIx64": %s\n"),
+			         ip->i_num.in_addr, strerror(errno));
+			exit(1);
+		}
 		/* re-read the leaf to pick up lgfs2_dir_split_leaf's changes */
 		lgfs2_leaf_in(&leaf, lbh->b_data);
 		*proper_len = 1 << (ip->i_depth - leaf.lf_depth);
