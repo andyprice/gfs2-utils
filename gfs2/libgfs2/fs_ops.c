@@ -1021,7 +1021,7 @@ int lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf_
 	return 0;
 }
 
-static void dir_double_exhash(struct lgfs2_inode *dip)
+static int dir_double_exhash(struct lgfs2_inode *dip)
 {
 	struct lgfs2_sbd *sdp = dip->i_sbd;
 	uint64_t *buf;
@@ -1031,19 +1031,15 @@ static void dir_double_exhash(struct lgfs2_inode *dip)
 	int count;
 
 	buf = calloc(1, 3 * sdp->sd_hash_bsize);
-	if (buf == NULL) {
-		fprintf(stderr, "Out of memory in %s\n", __FUNCTION__);
-		exit(-1);
-	}
+	if (buf == NULL)
+		return -1;
 
 	for (block = dip->i_size >> sdp->sd_hash_bsize_shift; block--;) {
 		count = lgfs2_readi(dip, (char *)buf,
 			      block * sdp->sd_hash_bsize,
 			      sdp->sd_hash_bsize);
-		if (count != sdp->sd_hash_bsize) {
-			fprintf(stderr, "dir_double_exhash (1)\n");
-			exit(1);
-		}
+		if (count != sdp->sd_hash_bsize)
+			return -1;
 
 		from = buf;
 		to = (uint64_t *)((char *)buf + sdp->sd_hash_bsize);
@@ -1061,16 +1057,15 @@ static void dir_double_exhash(struct lgfs2_inode *dip)
 			count = lgfs2_writei(dip, (char *)buf +
 					    sdp->sd_hash_bsize,
 					    block * sdp->sd_bsize, sdp->sd_bsize);
-		if (count != sdp->sd_bsize) {
-			fprintf(stderr, "dir_double_exhash (2)\n");
-			exit(1);
-		}
+		if (count != sdp->sd_bsize)
+			return -1;
 	}
 
 	free(buf);
 
 	dip->i_depth++;
 	lgfs2_bmodified(dip->i_bh);
+	return 0;
 }
 
 /**
@@ -1191,7 +1186,8 @@ restart:
 
 			} else if (dip->i_depth < GFS2_DIR_MAX_DEPTH) {
 				lgfs2_brelse(bh);
-				dir_double_exhash(dip);
+				if (dir_double_exhash(dip))
+					return -1;
 				goto restart;
 
 			} else if (leaf->lf_next) {
