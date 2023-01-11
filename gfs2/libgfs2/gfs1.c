@@ -207,7 +207,7 @@ int lgfs2_gfs1_writei(struct lgfs2_inode *ip, void *buf, uint64_t offset,
 		if (!extlen){
 			new = 1;
 			if (lgfs2_gfs1_block_map(ip, lblock, &new, &dblock, &extlen, 0))
-				exit(1);
+				return -1;
 			if (!dblock)
 				return -1;
 		}

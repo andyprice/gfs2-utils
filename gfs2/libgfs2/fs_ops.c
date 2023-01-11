@@ -1202,7 +1202,7 @@ restart:
 					.mh_format = cpu_to_be32(GFS2_FORMAT_LF)
 				};
 				if (lgfs2_meta_alloc(dip, &bn))
-					exit(1);
+					return -1;
 				nbh = lgfs2_bget(dip->i_sbd, bn);
 				memcpy(nbh->b_data, &mh, sizeof(mh));
 				lgfs2_bmodified(nbh);
