@@ -617,9 +617,9 @@ int lgfs2_readi(struct lgfs2_inode *ip, void *buf, uint64_t offset, unsigned int
 		if (!extlen) {
 			if (sdp->gfs1) {
 				if (lgfs2_gfs1_block_map(ip, lblock, &not_new, &dblock, &extlen, 0))
-					exit(1);
+					return -1;
 			} else if (lgfs2_block_map(ip, lblock, &not_new, &dblock, &extlen, 0))
-				exit(1);
+				return -1;
 		}
 
 		if (dblock) {
@@ -702,7 +702,7 @@ int __lgfs2_writei(struct lgfs2_inode *ip, void *buf,
 		if (!extlen) {
 			new = 1;
 			if (lgfs2_block_map(ip, lblock, &new, &dblock, &extlen, 0))
-				exit(1);
+				return -1;
 		}
 
 		if (new) {

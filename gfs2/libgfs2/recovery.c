@@ -29,7 +29,7 @@ int lgfs2_replay_read_block(struct lgfs2_inode *ip, unsigned int blk,
 	uint64_t dblock;
 
 	if (lgfs2_block_map(ip, blk, &new, &dblock, NULL, 0))
-		exit(1);
+		return -EINVAL;
 	if (!dblock)
 		return -EIO;
 
@@ -243,7 +243,7 @@ int lgfs2_clean_journal(struct lgfs2_inode *ip, struct lgfs2_log_header *head)
 	lblock = head->lh_blkno;
 	lgfs2_replay_incr_blk(ip, &lblock);
 	if (lgfs2_block_map(ip, lblock, &new, &dblock, NULL, 0))
-		exit(1);
+		return -EINVAL;
 	if (!dblock)
 		return -EIO;
 
