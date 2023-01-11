@@ -543,7 +543,7 @@ extern int lgfs2_dirent_first(struct lgfs2_inode *dip,
 extern int lgfs2_dirent_next(struct lgfs2_inode *dip, struct lgfs2_buffer_head *bh,
 			    struct gfs2_dirent **dent);
 extern int lgfs2_build_height(struct lgfs2_inode *ip, int height) __attribute__((warn_unused_result));
-extern void lgfs2_unstuff_dinode(struct lgfs2_inode *ip);
+extern int lgfs2_unstuff_dinode(struct lgfs2_inode *ip) __attribute__((warn_unused_result));
 extern unsigned int lgfs2_calc_tree_height(struct lgfs2_inode *ip, uint64_t size);
 extern uint32_t lgfs2_log_header_hash(char *buf);
 extern uint32_t lgfs2_log_header_crc(char *buf, unsigned bsize);

@@ -230,7 +230,7 @@ buffer_copy_tail(struct lgfs2_sbd *sdp,
 	lgfs2_bmodified(to_bh);
 }
 
-void lgfs2_unstuff_dinode(struct lgfs2_inode *ip)
+int lgfs2_unstuff_dinode(struct lgfs2_inode *ip)
 {
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_buffer_head *bh;
@@ -239,7 +239,7 @@ void lgfs2_unstuff_dinode(struct lgfs2_inode *ip)
 
 	if (ip->i_size) {
 		if (lgfs2_meta_alloc(ip, &block))
-			exit(1);
+			return -1;
 		if (isdir) {
 			struct gfs2_meta_header mh = {
 				.mh_magic = cpu_to_be32(GFS2_MAGIC),
@@ -273,6 +273,7 @@ void lgfs2_unstuff_dinode(struct lgfs2_inode *ip)
 	}
 
 	ip->i_height = 1;
+	return 0;
 }
 
 /**
@@ -676,7 +677,8 @@ int __lgfs2_writei(struct lgfs2_inode *ip, void *buf,
 
 	if (inode_is_stuffed(ip) &&
 	    ((start + size) > (sdp->sd_bsize - sizeof(struct gfs2_dinode))))
-		lgfs2_unstuff_dinode(ip);
+		if (lgfs2_unstuff_dinode(ip))
+			return -1;
 
 	if (isdir) {
 		lblock = offset;

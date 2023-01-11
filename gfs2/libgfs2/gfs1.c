@@ -183,7 +183,8 @@ int lgfs2_gfs1_writei(struct lgfs2_inode *ip, void *buf, uint64_t offset,
 
 	if (!ip->i_height && /* stuffed */
 	    ((start + size) > (sdp->sd_bsize - sizeof(struct gfs_dinode))))
-		lgfs2_unstuff_dinode(ip);
+		if (lgfs2_unstuff_dinode(ip))
+			return -1;
 
 	if (journaled) {
 		lblock = offset / sdp->sd_jbsize;

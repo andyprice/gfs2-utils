@@ -272,8 +272,10 @@ static void fix_metatree(struct lgfs2_sbd *sbp, struct lgfs2_inode *ip,
 	mh.mh_magic = cpu_to_be32(GFS2_MAGIC);
 	mh.mh_type = cpu_to_be32(GFS2_METATYPE_IN);
 	mh.mh_format = cpu_to_be32(GFS2_FORMAT_IN);
-	if (!ip->i_height)
-		lgfs2_unstuff_dinode(ip);
+	if (ip->i_height == 0 && lgfs2_unstuff_dinode(ip)) {
+		log_crit(_("Failed to unstuff dinode at 0x%"PRIx64".\n"), ip->i_num.in_addr);
+		exit(1);
+	}
 
 	ptramt = blk->mp.mp_list[blk->height] * sizeof(uint64_t);
 	amount = size;
@@ -430,9 +432,10 @@ static uint64_t fix_jdatatree(struct lgfs2_sbd *sbp, struct lgfs2_inode *ip,
 	mh.mh_type = cpu_to_be32(GFS2_METATYPE_IN);
 	mh.mh_format = cpu_to_be32(GFS2_FORMAT_IN);
 
-	if (!ip->i_height)
-		lgfs2_unstuff_dinode(ip);
-
+	if (ip->i_height == 0 && lgfs2_unstuff_dinode(ip)) {
+		log_crit(_("Failed to unstuff dinode at 0x%"PRIx64".\n"), ip->i_num.in_addr);
+		exit(1);
+	}
 	ptramt = blk->mp.mp_list[blk->height];
 	amount = size;
 
