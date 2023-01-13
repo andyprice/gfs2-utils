@@ -57,8 +57,8 @@ static void mockup_rgrps(void)
 
 static void teardown_rgrps(void)
 {
-	close(tc_rgrps->sdp->device_fd);
-	free(tc_rgrps->sdp);
+	close(tc_rgrps->rgs_sdp->device_fd);
+	free(tc_rgrps->rgs_sdp);
 	lgfs2_rgrp_bitbuf_free(lgfs2_rgrp_first(tc_rgrps));
 	lgfs2_rgrps_free(&tc_rgrps);
 }
@@ -115,7 +115,7 @@ START_TEST(test_rbm_find_lastblock)
 
 	/* Flag all blocks as allocated... */
 	for (i = 0; i < rg->rt_length; i++)
-		memset(rg->bits[i].bi_data, 0xff, rgs->sdp->sd_bsize);
+		memset(rg->bits[i].bi_data, 0xff, rgs->rgs_sdp->sd_bsize);
 
 	/* ...except the final one */
 	err = lgfs2_set_bitmap(rg, rg->rt_data0 + rg->rt_data - 1, GFS2_BLKST_FREE);
@@ -132,7 +132,7 @@ END_TEST
 START_TEST(test_rgrps_write_final)
 {
 	lgfs2_rgrp_t rg = lgfs2_rgrp_last(tc_rgrps);
-	struct lgfs2_sbd *sdp = tc_rgrps->sdp;
+	struct lgfs2_sbd *sdp = tc_rgrps->rgs_sdp;
 	struct gfs2_rindex ri;
 	struct gfs2_rgrp rgrp;
 	uint64_t addr;

@@ -310,7 +310,7 @@ uint64_t lgfs2_space_for_data(const struct lgfs2_sbd *sdp, const unsigned bsize,
 int lgfs2_file_alloc(lgfs2_rgrp_t rg, uint64_t di_size, struct lgfs2_inode *ip, uint32_t flags, unsigned mode)
 {
 	unsigned extlen;
-	struct lgfs2_sbd *sdp = rg->rgrps->sdp;
+	struct lgfs2_sbd *sdp = rg->rgrps->rgs_sdp;
 	struct lgfs2_rbm rbm = { .rgd = rg, .offset = 0, .bii = 0 };
 	uint32_t blocks = lgfs2_space_for_data(sdp, sdp->sd_bsize, di_size);
 

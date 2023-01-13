@@ -108,15 +108,15 @@ struct lgfs2_rgrp_tree *lgfs2_blk2rgrpd(struct lgfs2_sbd *sdp, uint64_t blk)
  */
 int lgfs2_rgrp_bitbuf_alloc(lgfs2_rgrp_t rg)
 {
-	struct lgfs2_sbd *sdp = rg->rgrps->sdp;
+	struct lgfs2_sbd *sdp = rg->rgrps->rgs_sdp;
 	size_t len = rg->rt_length * sdp->sd_bsize;
 	unsigned long io_align = sdp->sd_bsize;
 	unsigned i;
 	char *bufs;
 
-	if (rg->rgrps->align > 0) {
-		len = ROUND_UP(len, rg->rgrps->align * sdp->sd_bsize);
-		io_align = rg->rgrps->align_off * sdp->sd_bsize;
+	if (rg->rgrps->rgs_align > 0) {
+		len = ROUND_UP(len, rg->rgrps->rgs_align * sdp->sd_bsize);
+		io_align = rg->rgrps->rgs_align_off * sdp->sd_bsize;
 	}
 	if (posix_memalign((void **)&bufs, io_align, len) != 0) {
 		errno = ENOMEM;
@@ -312,7 +312,7 @@ static uint64_t align_block(const uint64_t base, const uint64_t align)
  */
 uint64_t lgfs2_rgrp_align_addr(const lgfs2_rgrps_t rgs, uint64_t addr)
 {
-	return align_block(addr, rgs->align_off);
+	return align_block(addr, rgs->rgs_align_off);
 }
 
 /**
@@ -325,7 +325,7 @@ uint64_t lgfs2_rgrp_align_addr(const lgfs2_rgrps_t rgs, uint64_t addr)
  */
 uint32_t lgfs2_rgrp_align_len(const lgfs2_rgrps_t rgs, uint32_t len)
 {
-	return align_block(len, rgs->align) + rgs->align_off;
+	return align_block(len, rgs->rgs_align) + rgs->rgs_align_off;
 }
 
 /**
@@ -344,22 +344,22 @@ uint32_t lgfs2_rgrp_align_len(const lgfs2_rgrps_t rgs, uint32_t len)
  */
 uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgtsize)
 {
-	uint32_t maxlen = (LGFS2_MAX_RGSIZE << 20) / rgs->sdp->sd_bsize;
-	uint32_t minlen = (LGFS2_MIN_RGSIZE << 20) / rgs->sdp->sd_bsize;
-	struct rg_spec *spec = rgs->plan->rg_specs;
+	uint32_t maxlen = (LGFS2_MAX_RGSIZE << 20) / rgs->rgs_sdp->sd_bsize;
+	uint32_t minlen = (LGFS2_MIN_RGSIZE << 20) / rgs->rgs_sdp->sd_bsize;
+	struct rg_spec *spec = rgs->rgs_plan->rg_specs;
 
 	/* Apps should already have checked that the rg size is <=
 	   GFS2_MAX_RGSIZE but just in case alignment pushes it over we clamp
 	   it back down while calculating the initial rgrp length.  */
 	do {
 		spec[0].len = lgfs2_rgrp_align_len(rgs, tgtsize);
-		tgtsize -= (rgs->align + 1);
+		tgtsize -= (rgs->rgs_align + 1);
 	} while (spec[0].len > maxlen);
 
 	spec[0].num = space / spec[0].len;
 
-	if ((space - (spec[0].num * spec[0].len)) > rgs->align) {
-		unsigned adj = (rgs->align > 0) ? rgs->align : 1;
+	if ((space - (spec[0].num * spec[0].len)) > rgs->rgs_align) {
+		unsigned adj = (rgs->rgs_align > 0) ? rgs->rgs_align : 1;
 
 		/* Spread the adjustment required to fit a new rgrp at the end
 		   over all of the rgrps so that we don't end with a single
@@ -416,17 +416,17 @@ lgfs2_rgrps_t lgfs2_rgrps_init(struct lgfs2_sbd *sdp, uint64_t align, uint64_t o
 	if (rgs == NULL)
 		return NULL;
 
-	rgs->plan = calloc(1, sizeof(struct rgs_plan) + (5 * sizeof(struct rg_spec)));
-	if (rgs->plan == NULL) {
+	rgs->rgs_plan = calloc(1, sizeof(struct rgs_plan) + (5 * sizeof(struct rg_spec)));
+	if (rgs->rgs_plan == NULL) {
 		free(rgs);
 		return NULL;
 	}
-	rgs->plan->length = 0;
-	rgs->plan->capacity = 5;
-	rgs->sdp = sdp;
-	rgs->align = align;
-	rgs->align_off = offset;
-	memset(&rgs->root, 0, sizeof(rgs->root));
+	rgs->rgs_plan->length = 0;
+	rgs->rgs_plan->capacity = 5;
+	rgs->rgs_sdp = sdp;
+	rgs->rgs_align = align;
+	rgs->rgs_align_off = offset;
+	memset(&rgs->rgs_root, 0, sizeof(rgs->rgs_root));
 
 	return rgs;
 }
@@ -502,7 +502,7 @@ lgfs2_rgrp_t lgfs2_rindex_read_one(struct lgfs2_inode *rip, lgfs2_rgrps_t rgs, u
 void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs)
 {
 	lgfs2_rgrp_t rg;
-	struct osi_root *tree = &(*rgs)->root;
+	struct osi_root *tree = &(*rgs)->rgs_root;
 
 	while ((rg = (struct lgfs2_rgrp_tree *)osi_first(tree))) {
 		int i;
@@ -513,7 +513,7 @@ void lgfs2_rgrps_free(lgfs2_rgrps_t *rgs)
 		osi_erase(&rg->node, tree);
 		free(rg);
 	}
-	free((*rgs)->plan);
+	free((*rgs)->rgs_plan);
 	free(*rgs);
 	*rgs = NULL;
 }
@@ -556,7 +556,7 @@ uint32_t lgfs2_rgblocks2bitblocks(const unsigned int bsize, const uint32_t rgblo
  */
 uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *ri, uint64_t addr, uint32_t len)
 {
-	struct rg_spec *spec = rgs->plan->rg_specs;
+	struct rg_spec *spec = rgs->rgs_plan->rg_specs;
 	uint32_t ri_length, ri_data;
 	int plan = -1;
 	errno = EINVAL;
@@ -576,10 +576,10 @@ uint64_t lgfs2_rindex_entry_new(lgfs2_rgrps_t rgs, struct gfs2_rindex *ri, uint6
 		spec[plan].num--;
 	}
 
-	if (addr + len > rgs->sdp->device.length)
+	if (addr + len > rgs->rgs_sdp->device.length)
 		return 0;
 
-	ri_length = lgfs2_rgblocks2bitblocks(rgs->sdp->sd_bsize, len, &ri_data);
+	ri_length = lgfs2_rgblocks2bitblocks(rgs->rgs_sdp->sd_bsize, len, &ri_data);
 	ri->ri_addr = cpu_to_be64(addr);
 	ri->ri_length = cpu_to_be32(ri_length);
 	ri->ri_data = cpu_to_be32(ri_data);
@@ -608,7 +608,7 @@ unsigned lgfs2_rgsize_for_data(uint64_t blksreq, unsigned bsize)
 // Temporary function to aid in API migration
 void lgfs2_attach_rgrps(struct lgfs2_sbd *sdp, lgfs2_rgrps_t rgs)
 {
-	sdp->rgtree.osi_node = rgs->root.osi_node;
+	sdp->rgtree.osi_node = rgs->rgs_root.osi_node;
 }
 
 /**
@@ -621,8 +621,8 @@ void lgfs2_attach_rgrps(struct lgfs2_sbd *sdp, lgfs2_rgrps_t rgs)
 lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, uint32_t rg_skip)
 {
 	lgfs2_rgrp_t rg;
-	struct osi_node **link = &rgs->root.osi_node;
-	struct osi_node *parent = osi_last(&rgs->root);
+	struct osi_node **link = &rgs->rgs_root.osi_node;
+	struct osi_node *parent = osi_last(&rgs->rgs_root);
 	lgfs2_rgrp_t lastrg = (lgfs2_rgrp_t)parent;
 
 	errno = EINVAL;
@@ -642,7 +642,7 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, ui
 	rg->bits = (struct lgfs2_bitmap *)(rg + 1);
 
 	osi_link_node(&rg->node, parent, link);
-	osi_insert_color(&rg->node, &rgs->root);
+	osi_insert_color(&rg->node, &rgs->rgs_root);
 
 	rg->rt_addr = be64_to_cpu(entry->ri_addr);
 	rg->rt_length = be32_to_cpu(entry->ri_length);
@@ -654,7 +654,7 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, ui
 	rg->rt_dinodes = 0;
 	rg->rt_skip = rg_skip;
 	rg->rt_igeneration = 0;
-	compute_bitmaps(rg, rgs->sdp->sd_bsize);
+	compute_bitmaps(rg, rgs->rgs_sdp->sd_bsize);
 	rg->rgrps = rgs;
 	return rg;
 }
@@ -665,7 +665,7 @@ lgfs2_rgrp_t lgfs2_rgrps_append(lgfs2_rgrps_t rgs, struct gfs2_rindex *entry, ui
  */
 int lgfs2_rgrp_write(int fd, const lgfs2_rgrp_t rg)
 {
-	struct lgfs2_sbd *sdp = rg->rgrps->sdp;
+	struct lgfs2_sbd *sdp = rg->rgrps->rgs_sdp;
 	unsigned int i;
 	int freebufs = 0;
 	ssize_t ret;
@@ -686,8 +686,8 @@ int lgfs2_rgrp_write(int fd, const lgfs2_rgrp_t rg)
 	}
 
 	len = sdp->sd_bsize * rg->rt_length;
-	if (rg->rgrps->align > 0)
-		len = ROUND_UP(len, rg->rgrps->align * sdp->sd_bsize);
+	if (rg->rgrps->rgs_align > 0)
+		len = ROUND_UP(len, rg->rgrps->rgs_align * sdp->sd_bsize);
 
 	ret = pwrite(fd, rg->bits[0].bi_data, len, rg->rt_addr * sdp->sd_bsize);
 
@@ -716,7 +716,7 @@ int lgfs2_rgrps_write_final(int fd, lgfs2_rgrps_t rgs)
 
 lgfs2_rgrp_t lgfs2_rgrp_first(lgfs2_rgrps_t rgs)
 {
-	return (lgfs2_rgrp_t)osi_first(&rgs->root);
+	return (lgfs2_rgrp_t)osi_first(&rgs->rgs_root);
 }
 
 lgfs2_rgrp_t lgfs2_rgrp_next(lgfs2_rgrp_t rg)
@@ -731,7 +731,7 @@ lgfs2_rgrp_t lgfs2_rgrp_prev(lgfs2_rgrp_t rg)
 
 lgfs2_rgrp_t lgfs2_rgrp_last(lgfs2_rgrps_t rgs)
 {
-	return (lgfs2_rgrp_t)osi_last(&rgs->root);
+	return (lgfs2_rgrp_t)osi_last(&rgs->rgs_root);
 }
 
 /**
@@ -749,7 +749,7 @@ lgfs2_rgrp_t lgfs2_rgrp_last(lgfs2_rgrps_t rgs)
 int lgfs2_rbm_from_block(struct lgfs2_rbm *rbm, uint64_t block)
 {
 	uint64_t rblock = block - rbm->rgd->rt_data0;
-	struct lgfs2_sbd *sdp = rbm->rgd->rgrps->sdp;
+	struct lgfs2_sbd *sdp = rbm->rgd->rgrps->rgs_sdp;
 
 	if (rblock > UINT_MAX) {
 		errno = EINVAL;
@@ -880,7 +880,7 @@ static uint32_t lgfs2_free_extlen(const struct lgfs2_rbm *rrbm, uint32_t len)
 	uint8_t *ptr, *start, *end;
 	uint64_t block;
 	struct lgfs2_bitmap *bi;
-	struct lgfs2_sbd *sdp = rbm.rgd->rgrps->sdp;
+	struct lgfs2_sbd *sdp = rbm.rgd->rgrps->rgs_sdp;
 
 	if (n_unaligned &&
 	    lgfs2_unaligned_extlen(&rbm, 4 - n_unaligned, &len))
