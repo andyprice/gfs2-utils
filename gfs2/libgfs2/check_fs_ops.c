@@ -8,8 +8,9 @@
 Suite *suite_fs_ops(void);
 
 /* Doesn't need to be big, we just need some blocks to do i/o on */
-#define MOCK_DEV_SIZE (1 << 20)
+#define MOCK_DEV_SIZE ((LGFS2_MAX_RGSIZE * 2ull) << 20)
 #define MOCK_BSIZE (512)
+#define MOCK_RGSIZE ((LGFS2_MIN_RGSIZE + 2) << 20)
 
 struct lgfs2_sbd *mock_sdp;
 
@@ -38,6 +39,51 @@ static void teardown_mock_fs(void)
 {
 	close(mock_sdp->device_fd);
 	free(mock_sdp);
+}
+
+lgfs2_rgrps_t mock_rgs;
+
+/* This fixture must be added after mockup_fs */
+static void mockup_rgs(void)
+{
+	lgfs2_rgrps_t rgs;
+	uint32_t rgcount, rgcount_check = 0;
+	uint32_t tgtsize;
+	uint64_t addr = GFS2_SB_ADDR + 1;
+
+	ck_assert(mock_sdp != NULL);
+
+	rgs = lgfs2_rgrps_init(mock_sdp, 0, 0);
+	ck_assert(rgs != NULL);
+
+	tgtsize = MOCK_RGSIZE / mock_sdp->sd_bsize;
+	rgcount = lgfs2_rgrps_plan(rgs, mock_sdp->device.length - GFS2_SB_ADDR, tgtsize);
+	ck_assert(rgcount > 0);
+	while (1) {
+		uint64_t nextaddr = 0;
+		lgfs2_rgrp_t rg;
+		struct gfs2_rindex ri;
+		int err;
+
+		nextaddr = lgfs2_rindex_entry_new(rgs, &ri, addr, 0);
+		if (nextaddr == 0)
+			break;
+		rg = lgfs2_rgrps_append(rgs, &ri, addr - nextaddr);
+		ck_assert(rg != NULL);
+		err = lgfs2_rgrp_bitbuf_alloc(rg);
+		ck_assert(err == 0);
+		addr = nextaddr;
+		rgcount_check++;
+	}
+	ck_assert(rgcount_check == rgcount);
+	mock_rgs = rgs;
+	lgfs2_attach_rgrps(mock_sdp, mock_rgs);
+}
+
+static void teardown_mock_rgs(void)
+{
+	lgfs2_rgrps_free(&mock_rgs);
+	ck_assert(mock_rgs == NULL);
 }
 
 START_TEST(test_lookupi_bad_name_size)
@@ -113,6 +159,28 @@ START_TEST(test_lookupi_dotdot)
 }
 END_TEST
 
+START_TEST(test_dinode_alloc)
+{
+	struct lgfs2_sbd *sdp = mock_sdp;
+	uint64_t newblock = 0;
+	uint64_t expected_alloced = sdp->dinodes_alloced;
+	int err;
+
+	/* Fail an allocation by requesting too many blocks */
+	err = lgfs2_dinode_alloc(sdp, ~(uint64_t)0, &newblock);
+	ck_assert(err != 0);
+	ck_assert(sdp->dinodes_alloced == expected_alloced);
+
+	/* Allocate a dinode, request 1 block of space in the rg */
+	err = lgfs2_dinode_alloc(sdp, 1, &newblock);
+	expected_alloced += 1;
+	ck_assert(err == 0);
+	ck_assert(newblock > GFS2_SB_ADDR);
+	ck_assert(sdp->dinodes_alloced == expected_alloced);
+	ck_assert(lgfs2_get_bitmap(sdp, newblock, NULL) == GFS2_BLKST_DINODE);
+}
+END_TEST
+
 Suite *suite_fs_ops(void)
 {
 	Suite *s = suite_create("fs_ops.c");
@@ -126,6 +194,12 @@ Suite *suite_fs_ops(void)
 	tc = tcase_create("lgfs2_lookupi with fixture");
 	tcase_add_checked_fixture(tc, mockup_fs, teardown_mock_fs);
 	tcase_add_test(tc, test_lookupi_dotdot);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("lgfs2_dinode_alloc");
+	tcase_add_checked_fixture(tc, mockup_fs, teardown_mock_fs);
+	tcase_add_checked_fixture(tc, mockup_rgs, teardown_mock_rgs);
+	tcase_add_test(tc, test_dinode_alloc);
 	suite_add_tcase(s, tc);
 
 	return s;
