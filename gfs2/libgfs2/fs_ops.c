@@ -174,7 +174,7 @@ static int block_alloc(struct lgfs2_sbd *sdp, const uint64_t blksreq, int state,
 		if (rgt->rt_free >= blksreq)
 			break;
 	}
-	if (rgt == NULL)
+	if (n == NULL)
 		return -1;
 
 	if (rgt->bits[0].bi_data == NULL) {
