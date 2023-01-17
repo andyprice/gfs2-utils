@@ -25,6 +25,7 @@ make/clusterautoconfig.h*
 missing
 ylwrap
 cscope.out
+tags
 .gdb_history
 *.pc
 .deps
