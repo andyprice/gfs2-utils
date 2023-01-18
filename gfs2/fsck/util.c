@@ -552,7 +552,7 @@ uint64_t find_free_blk(struct lgfs2_sbd *sdp)
 		return 0;
 
 	for (block = 0; block < rl->rt_length; block++) {
-		char *buf = rl->bits[block].bi_data;
+		char *buf = rl->rt_bits[block].bi_data;
 		x = (block) ? sizeof(struct gfs2_meta_header) : sizeof(struct gfs2_rgrp);
 
 		for (; x < sdp->sd_bsize; x++)

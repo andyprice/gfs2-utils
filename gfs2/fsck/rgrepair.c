@@ -928,7 +928,7 @@ static int expect_rindex_sanity(struct lgfs2_sbd *sdp, int *num_rgs)
 		exp->rt_igeneration = rgd->rt_igeneration;
 		exp->rt_dinodes = rgd->rt_dinodes;
 		exp->rt_skip = rgd->rt_skip;
-		exp->bits = NULL;
+		exp->rt_bits = NULL;
 		lgfs2_compute_bitstructs(sdp->sd_bsize, exp);
 	}
 	nrgrp = *num_rgs;
@@ -1158,9 +1158,9 @@ int rindex_repair(struct fsck_cx *cx, int trust_lvl, int *ok)
 				/* Therefore, lgfs2_compute_bitstructs might  */
 				/* have malloced the wrong length for bitmap */
 				/* buffers.  So we have to redo it.          */
-				if (actual->bits) {
-					free(actual->bits);
-					actual->bits = NULL;
+				if (actual->rt_bits) {
+					free(actual->rt_bits);
+					actual->rt_bits = NULL;
 				}
 			}
 			else

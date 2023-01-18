@@ -140,7 +140,7 @@ int lgfs2_set_bitmap(lgfs2_rgrp_t rgd, uint64_t blkno, int state)
 
 	rgrp_block = (uint32_t)(blkno - rgd->rt_data0);
 	for(buf= 0; buf < rgd->rt_length; buf++){
-		bits = &(rgd->bits[buf]);
+		bits = &(rgd->rt_bits[buf]);
 		if(rgrp_block < ((bits->bi_start + bits->bi_len)*GFS2_NBBY))
 			break;
 	}
@@ -198,14 +198,14 @@ int lgfs2_get_bitmap(struct lgfs2_sbd *sdp, uint64_t blkno, struct lgfs2_rgrp_tr
 		return -1;
 	}
 
-	if (offset >= (rgd->bits->bi_start + rgd->bits->bi_len) * GFS2_NBBY) {
+	if (offset >= (rgd->rt_bits->bi_start + rgd->rt_bits->bi_len) * GFS2_NBBY) {
 		offset += (sizeof(struct gfs2_rgrp) - sizeof(struct gfs2_meta_header))
 		          * GFS2_NBBY;
 		i = offset / sdp->sd_blocks_per_bitmap;
 		offset -= i * sdp->sd_blocks_per_bitmap;
 	}
 
-	bi = &rgd->bits[i];
+	bi = &rgd->rt_bits[i];
 	if (bi->bi_data == NULL)
 		return GFS2_BLKST_FREE;
 

@@ -214,7 +214,7 @@ static void check_rgrp_integrity(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd
 		for (x = 0; x < bytes_to_check; x++) {
 			unsigned char *byte;
 
-			byte = (unsigned char *)&rgd->bits[rgb].bi_data[off + x];
+			byte = (unsigned char *)&rgd->rt_bits[rgb].bi_data[off + x];
 			if (*byte == 0x55) {
 				diblock += GFS2_NBBY;
 				continue;
@@ -275,7 +275,7 @@ static void check_rgrp_integrity(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd
 				}
 				*byte &= ~(GFS2_BIT_MASK <<
 					   (GFS2_BIT_SIZE * y));
-				rgd->bits[rgb].bi_modified = 1;
+				rgd->rt_bits[rgb].bi_modified = 1;
 				rg_reclaimed++;
 				rg_free++;
 				rgd->rt_free++;
@@ -309,10 +309,10 @@ static void check_rgrp_integrity(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd
 	   will be reported. */
 	if (rg_reclaimed && *fixit) {
 		if (sdp->gfs1)
-			lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
+			lgfs2_gfs_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
 		else
-			lgfs2_rgrp_out(rgd, rgd->bits[0].bi_data);
-		rgd->bits[0].bi_modified = 1;
+			lgfs2_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
+		rgd->rt_bits[0].bi_modified = 1;
 		*this_rg_cleaned = 1;
 		log_info(_("The rgrp at %"PRIu64" (0x%"PRIx64") was cleaned of %d "
 			    "free metadata blocks.\n"),
@@ -327,10 +327,11 @@ static void check_rgrp_integrity(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd
 		if (query(cx, _("Fix the rgrp free blocks count? (y/n)"))) {
 			rgd->rt_free = rg_free;
 			if (sdp->gfs1)
-				lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
+				lgfs2_gfs_rgrp_out(rgd,
+						   rgd->rt_bits[0].bi_data);
 			else
-				lgfs2_rgrp_out(rgd, rgd->bits[0].bi_data);
-			rgd->bits[0].bi_modified = 1;
+				lgfs2_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
+			rgd->rt_bits[0].bi_modified = 1;
 			*this_rg_fixed = 1;
 			log_err( _("The rgrp was fixed.\n"));
 		} else
@@ -347,8 +348,8 @@ static void check_rgrp_integrity(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd
 		        rgd->rt_addr, rgd->rt_addr, rgd->rt_freemeta, rg_unlinked);
 		if (query(cx, _("Fix the rgrp free meta blocks count? (y/n)"))) {
 			rgd->rt_freemeta = rg_unlinked;
-			lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
-			rgd->bits[0].bi_modified = 1;
+			lgfs2_gfs_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
+			rgd->rt_bits[0].bi_modified = 1;
 			*this_rg_fixed = 1;
 			log_err( _("The rgrp was fixed.\n"));
 		} else
@@ -362,8 +363,8 @@ static void check_rgrp_integrity(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd
 		        rgd->rt_addr, rgd->rt_addr, rgd->rt_useddi, rg_useddi);
 		if (query(cx, _("Fix the rgrp used dinode block count? (y/n)"))) {
 			rgd->rt_useddi = rg_useddi;
-			lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
-			rgd->bits[0].bi_modified = 1;
+			lgfs2_gfs_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
+			rgd->rt_bits[0].bi_modified = 1;
 			*this_rg_fixed = 1;
 			log_err( _("The rgrp was fixed.\n"));
 		} else
@@ -377,8 +378,8 @@ static void check_rgrp_integrity(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd
 		        rgd->rt_addr, rgd->rt_addr, rgd->rt_usedmeta, rg_usedmeta);
 		if (query(cx, _("Fix the rgrp used meta blocks count? (y/n)"))) {
 			rgd->rt_usedmeta = rg_usedmeta;
-			lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
-			rgd->bits[0].bi_modified = 1;
+			lgfs2_gfs_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
+			rgd->rt_bits[0].bi_modified = 1;
 			*this_rg_fixed = 1;
 			log_err( _("The rgrp was fixed.\n"));
 		} else

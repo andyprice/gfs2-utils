@@ -1065,7 +1065,7 @@ static void save_rgrp(struct lgfs2_sbd *sdp, struct metafd *mfd, struct lgfs2_rg
 		return;
 
 	for (unsigned i = 0; i < rgd->rt_length; i++)
-		rgd->bits[i].bi_data = buf + (i * sdp->sd_bsize);
+		rgd->rt_bits[i].bi_data = buf + (i * sdp->sd_bsize);
 
 	log_debug("RG at %"PRIu64" is %"PRIu32" long\n", addr, rgd->rt_length);
 	/* Save the rg and bitmaps */
@@ -1079,7 +1079,7 @@ static void save_rgrp(struct lgfs2_sbd *sdp, struct metafd *mfd, struct lgfs2_rg
 
 	free(buf);
 	for (unsigned i = 0; i < rgd->rt_length; i++)
-		rgd->bits[i].bi_data = NULL;
+		rgd->rt_bits[i].bi_data = NULL;
 }
 
 static int save_header(struct metafd *mfd, uint64_t fsbytes)

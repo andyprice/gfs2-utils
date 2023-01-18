@@ -36,7 +36,7 @@ struct lgfs2_rbm {
 
 static inline struct lgfs2_bitmap *rbm_bi(const struct lgfs2_rbm *rbm)
 {
-	return rbm->rgd->bits + rbm->bii;
+	return rbm->rgd->rt_bits + rbm->bii;
 }
 
 static inline uint64_t lgfs2_rbm_to_block(const struct lgfs2_rbm *rbm)

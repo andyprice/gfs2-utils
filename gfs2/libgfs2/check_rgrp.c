@@ -50,7 +50,7 @@ static void mockup_rgrps(void)
 
 	ret = lgfs2_rgrp_bitbuf_alloc(rg);
 	ck_assert(ret == 0);
-	ck_assert(rg->bits[0].bi_data != NULL);
+	ck_assert(rg->rt_bits[0].bi_data != NULL);
 
 	tc_rgrps = rgs;
 }
@@ -115,7 +115,7 @@ START_TEST(test_rbm_find_lastblock)
 
 	/* Flag all blocks as allocated... */
 	for (i = 0; i < rg->rt_length; i++)
-		memset(rg->bits[i].bi_data, 0xff, rgs->rgs_sdp->sd_bsize);
+		memset(rg->rt_bits[i].bi_data, 0xff, rgs->rgs_sdp->sd_bsize);
 
 	/* ...except the final one */
 	err = lgfs2_set_bitmap(rg, rg->rt_data0 + rg->rt_data - 1, GFS2_BLKST_FREE);

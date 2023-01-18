@@ -109,13 +109,14 @@ static void refresh_rgrp(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
 		if (rgd->rt_addr + i != blkno)
 			continue;
 
-		memcpy(rgd->bits[i].bi_data, bh->b_data, sdp->sd_bsize);
-		rgd->bits[i].bi_modified = 1;
+		memcpy(rgd->rt_bits[i].bi_data, bh->b_data, sdp->sd_bsize);
+		rgd->rt_bits[i].bi_modified = 1;
 		if (i == 0) { /* this is the rgrp itself */
 			if (sdp->gfs1)
-				lgfs2_gfs_rgrp_in(rgd, rgd->bits[0].bi_data);
+				lgfs2_gfs_rgrp_in(rgd,
+						  rgd->rt_bits[0].bi_data);
 			else
-				lgfs2_rgrp_in(rgd, rgd->bits[0].bi_data);
+				lgfs2_rgrp_in(rgd, rgd->rt_bits[0].bi_data);
 		}
 		break;
 	}

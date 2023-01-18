@@ -175,9 +175,9 @@ struct lgfs2_inode;
 typedef struct _lgfs2_rgrps *lgfs2_rgrps_t;
 
 struct lgfs2_rgrp_tree {
-	struct osi_node node;
-	struct lgfs2_bitmap *bits;
-	lgfs2_rgrps_t rgrps;
+	struct osi_node rt_node;
+	struct lgfs2_bitmap *rt_bits;
+	lgfs2_rgrps_t rt_rgrps;
 
 	/* Native-endian counterparts of the on-disk rindex struct */
 	uint64_t rt_addr;

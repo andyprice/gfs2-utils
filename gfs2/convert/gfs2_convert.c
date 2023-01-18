@@ -130,7 +130,7 @@ static void convert_bitmaps(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rg)
 		x = (blk) ? sizeof(struct gfs2_meta_header) :
 			sizeof(struct gfs2_rgrp);
 
-		bi = &rg->bits[blk];
+		bi = &rg->rt_bits[blk];
 		for (; x < sdp->sd_bsize; x++)
 			for (y = 0; y < GFS2_NBBY; y++) {
 				state = (bi->bi_data[x] >> (GFS2_BIT_SIZE * y)) & 0x03;
@@ -169,8 +169,8 @@ static int convert_rgs(struct lgfs2_sbd *sbp)
 		sbp->dinodes_alloced += rgd->rt_useddi;
 		convert_bitmaps(sbp, rgd);
 		/* Write the updated rgrp to the gfs2 buffer */
-		lgfs2_rgrp_out(rgd, rgd->bits[0].bi_data);
-		rgd->bits[0].bi_modified = 1;
+		lgfs2_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
+		rgd->rt_bits[0].bi_modified = 1;
 		rgs++;
 		if (rgs % 100 == 0) {
 			printf(".");
@@ -964,13 +964,13 @@ static int next_rg_meta(struct lgfs2_rgrp_tree *rgd, uint64_t *block, int first)
 		exit(1);
 	}
 	for (i = 0; i < length; i++){
-		bits = &rgd->bits[i];
+		bits = &rgd->rt_bits[i];
 		if (blk < bits->bi_len * GFS2_NBBY)
 			break;
 		blk -= bits->bi_len * GFS2_NBBY;
 	}
 	for (; i < length; i++){
-		bits = &rgd->bits[i];
+		bits = &rgd->rt_bits[i];
 		blk = lgfs2_bitfit((uint8_t *)bits->bi_data + bits->bi_offset,
 		                   bits->bi_len, blk, GFS2_BLKST_DINODE);
 		if(blk != LGFS2_BFITNOENT){
@@ -1073,7 +1073,7 @@ static int inode_renumber(struct lgfs2_sbd *sbp, uint64_t root_inode_addr, osi_l
 				byte_bit = (block - rgd->rt_data0) % GFS2_NBBY;
 				/* Now figure out which bitmap block the byte is on */
 				for (blk = 0; blk < rgd->rt_length; blk++) {
-					struct lgfs2_bitmap *bi = &rgd->bits[blk];
+					struct lgfs2_bitmap *bi = &rgd->rt_bits[blk];
 					/* figure out offset of first bitmap byte for this map: */
 					buf_offset = (blk) ? sizeof(struct gfs2_meta_header) :
 						sizeof(struct gfs2_rgrp);
@@ -1873,21 +1873,21 @@ static int journ_space_to_rg(struct lgfs2_sbd *sdp)
 			exit(-1);
 		}
 
-		rgd->bits[0].bi_data = calloc(rgd->rt_length, sdp->sd_bsize);
-		if (rgd->bits[0].bi_data == NULL) {
+		rgd->rt_bits[0].bi_data = calloc(rgd->rt_length, sdp->sd_bsize);
+		if (rgd->rt_bits[0].bi_data == NULL) {
 			perror("");
 			exit(-1);
 		}
 		for (unsigned i = 1; i < rgd->rt_length; i++)
-			rgd->bits[i].bi_data = rgd->bits[0].bi_data + (i * sdp->sd_bsize);
+			rgd->rt_bits[i].bi_data = rgd->rt_bits[0].bi_data + (i * sdp->sd_bsize);
 
 		convert_bitmaps(sdp, rgd);
-		lgfs2_rgrp_out(rgd, rgd->bits[0].bi_data);
-		rgd->bits[0].bi_modified = 1;
+		lgfs2_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
+		rgd->rt_bits[0].bi_modified = 1;
 
 		for (unsigned i = 1; i < rgd->rt_length; i++) {
-			memcpy(rgd->bits[i].bi_data, &mh, sizeof(mh));
-			rgd->bits[i].bi_modified = 1;
+			memcpy(rgd->rt_bits[i].bi_data, &mh, sizeof(mh));
+			rgd->rt_bits[i].bi_modified = 1;
 		}
 	} /* for each journal */
 	return error;

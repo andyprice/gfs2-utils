@@ -119,7 +119,7 @@ static uint64_t find_free_block(struct lgfs2_rgrp_tree *rgd)
 
 	for (bm = 0; bm < rgd->rt_length; bm++) {
 		unsigned long blk = 0;
-		struct lgfs2_bitmap *bits = &rgd->bits[bm];
+		struct lgfs2_bitmap *bits = &rgd->rt_bits[bm];
 
 		blk = lgfs2_bitfit((uint8_t *)bits->bi_data + bits->bi_offset,
 		                  bits->bi_len, blk, GFS2_BLKST_FREE);
@@ -148,10 +148,10 @@ static int blk_alloc_in_rg(struct lgfs2_sbd *sdp, unsigned state, struct lgfs2_r
 
 	rgd->rt_free--;
 	if (sdp->gfs1)
-		lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
+		lgfs2_gfs_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
 	else
-		lgfs2_rgrp_out(rgd, rgd->bits[0].bi_data);
-	rgd->bits[0].bi_modified = 1;
+		lgfs2_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
+	rgd->rt_bits[0].bi_modified = 1;
 	sdp->blks_alloced++;
 	return 0;
 }
@@ -177,7 +177,7 @@ static int block_alloc(struct lgfs2_sbd *sdp, const uint64_t blksreq, int state,
 	if (n == NULL)
 		return -1;
 
-	if (rgt->bits[0].bi_data == NULL) {
+	if (rgt->rt_bits[0].bi_data == NULL) {
 		if (lgfs2_rgrp_read(sdp, rgt))
 			return -1;
 		release = 1;
@@ -310,7 +310,7 @@ uint64_t lgfs2_space_for_data(const struct lgfs2_sbd *sdp, const unsigned bsize,
 int lgfs2_file_alloc(lgfs2_rgrp_t rg, uint64_t di_size, struct lgfs2_inode *ip, uint32_t flags, unsigned mode)
 {
 	unsigned extlen;
-	struct lgfs2_sbd *sdp = rg->rgrps->rgs_sdp;
+	struct lgfs2_sbd *sdp = rg->rt_rgrps->rgs_sdp;
 	struct lgfs2_rbm rbm = { .rgd = rg, .offset = 0, .bii = 0 };
 	uint32_t blocks = lgfs2_space_for_data(sdp, sdp->sd_bsize, di_size);
 
@@ -1917,10 +1917,10 @@ void lgfs2_free_block(struct lgfs2_sbd *sdp, uint64_t block)
 		lgfs2_set_bitmap(rgd, block, GFS2_BLKST_FREE);
 		rgd->rt_free++; /* adjust the free count */
 		if (sdp->gfs1)
-			lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
+			lgfs2_gfs_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
 		else
-			lgfs2_rgrp_out(rgd, rgd->bits[0].bi_data);
-		rgd->bits[0].bi_modified = 1;
+			lgfs2_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
+		rgd->rt_bits[0].bi_modified = 1;
 		sdp->blks_alloced--;
 	}
 }
@@ -1988,10 +1988,10 @@ int lgfs2_freedi(struct lgfs2_sbd *sdp, uint64_t diblock)
 	rgd->rt_free++;
 	rgd->rt_dinodes--;
 	if (sdp->gfs1)
-		lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
+		lgfs2_gfs_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
 	else
-		lgfs2_rgrp_out(rgd, rgd->bits[0].bi_data);
-	rgd->bits[0].bi_modified = 1;
+		lgfs2_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
+	rgd->rt_bits[0].bi_modified = 1;
 	sdp->dinodes_alloced--;
 	return 0;
 }

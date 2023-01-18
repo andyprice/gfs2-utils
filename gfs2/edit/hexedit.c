@@ -1613,7 +1613,7 @@ static void find_print_block_rg(int bitmap)
 				struct lgfs2_bitmap *bits = NULL;
 
 				for (i = 0; i < rgd->rt_length; i++) {
-					bits = &(rgd->bits[i]);
+					bits = &(rgd->rt_bits[i]);
 					if (rblock - rgd->rt_data0 <
 					    ((bits->bi_start + bits->bi_len) *
 					     GFS2_NBBY)) {
@@ -2130,9 +2130,9 @@ static int count_dinode_blks(struct lgfs2_rgrp_tree *rgd, int bitmap,
 	else
 		off = sizeof(struct gfs2_rgrp);
 
-	for (b = 0; b < rgd->bits[bitmap].bi_len << GFS2_BIT_SIZE; b++) {
+	for (b = 0; b < rgd->rt_bits[bitmap].bi_len << GFS2_BIT_SIZE; b++) {
 		tbh = lgfs2_bread(&sbd, rgd->rt_data0 +
-			    rgd->bits[bitmap].bi_start + b);
+			    rgd->rt_bits[bitmap].bi_start + b);
 		byte = rbh->b_data + off + (b / GFS2_NBBY);
 		bit = (b % GFS2_NBBY) * GFS2_BIT_SIZE;
 		if (lgfs2_check_meta(tbh->b_data, GFS2_METATYPE_DI) == 0) {

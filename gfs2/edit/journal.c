@@ -250,24 +250,24 @@ static int print_ld_blks(const __be64 *b, const char *end, int start_line,
 				print_gfs2("<-------------------------");
 				if (is_meta_ld) {
 					o = tblk - rgd->rt_data0;
-					if (o >= (rgd->bits->bi_start +
-						  rgd->bits->bi_len) *
+					if (o >= (rgd->rt_bits->bi_start +
+						  rgd->rt_bits->bi_len) *
 					    GFS2_NBBY)
 						o += (sizeof(struct gfs2_rgrp) -
 						      sizeof(struct gfs2_meta_header))
 							* GFS2_NBBY;
 					bmap = o / sbd.sd_blocks_per_bitmap;
-					save_ptr = rgd->bits[bmap].bi_data;
+					save_ptr = rgd->rt_bits[bmap].bi_data;
 					j_bmap_bh = lgfs2_bread(&sbd, abs_block +
 							  bcount);
-					rgd->bits[bmap].bi_data = j_bmap_bh->b_data;
+					rgd->rt_bits[bmap].bi_data = j_bmap_bh->b_data;
 					type = lgfs2_get_bitmap(&sbd, tblk, rgd);
 					lgfs2_brelse(j_bmap_bh);
 					if (type < 0) {
 						perror("Error printing log descriptor blocks");
 						exit(1);
 					}
-					rgd->bits[bmap].bi_data = save_ptr;
+					rgd->rt_bits[bmap].bi_data = save_ptr;
 					print_gfs2("bit for blk 0x%"PRIx64" is %d (%s)",
 						   tblk, type,
 						   allocdesc[sbd.gfs1][type]);
@@ -558,8 +558,8 @@ void dump_journal(const char *journal, uint64_t tblk)
 			print_gfs2("rgd: 0x%"PRIx64" for 0x%"PRIx32", ", rgd->rt_addr,
 				   rgd->rt_length);
 			o = tblk - rgd->rt_data0;
-			if (o >= (rgd->bits->bi_start +
-				  rgd->bits->bi_len) * (uint64_t)GFS2_NBBY)
+			if (o >= (rgd->rt_bits->bi_start +
+				  rgd->rt_bits->bi_len) * (uint64_t)GFS2_NBBY)
 				o += (sizeof(struct gfs2_rgrp) -
 				      sizeof(struct gfs2_meta_header))
 					* GFS2_NBBY;

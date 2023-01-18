@@ -148,10 +148,10 @@ int check_n_fix_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 	}
 	if (rewrite_rgrp) {
 		if (sdp->gfs1)
-			lgfs2_gfs_rgrp_out(rgd, rgd->bits[0].bi_data);
+			lgfs2_gfs_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
 		else
-			lgfs2_rgrp_out(rgd, rgd->bits[0].bi_data);
-		rgd->bits[0].bi_modified = 1;
+			lgfs2_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
+		rgd->rt_bits[0].bi_modified = 1;
 	}
 	log_err( _("The bitmap was fixed.\n"));
 	return 0;
