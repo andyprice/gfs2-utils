@@ -72,6 +72,7 @@ static void mockup_rgs(void)
 		ck_assert(rg != NULL);
 		err = lgfs2_rgrp_bitbuf_alloc(rg);
 		ck_assert(err == 0);
+		mock_sdp->fssize = be64_to_cpu(ri.ri_data0) + be32_to_cpu(ri.ri_data);
 		addr = nextaddr;
 		rgcount_check++;
 	}
@@ -163,23 +164,48 @@ START_TEST(test_dinode_alloc)
 {
 	struct lgfs2_sbd *sdp = mock_sdp;
 	uint64_t newblock = 0;
-	uint64_t expected_alloced = sdp->dinodes_alloced;
+	uint64_t expected_dinodes_alloced = sdp->dinodes_alloced;
+	uint64_t expected_blks_alloced = sdp->blks_alloced;
 	int err;
 
 	/* Fail an allocation by requesting too many blocks */
 	err = lgfs2_dinode_alloc(sdp, ~(uint64_t)0, &newblock);
 	ck_assert(err != 0);
-	ck_assert(sdp->dinodes_alloced == expected_alloced);
+	ck_assert(sdp->dinodes_alloced == expected_dinodes_alloced);
+	ck_assert(sdp->blks_alloced == expected_blks_alloced);
 
 	/* Allocate a dinode, request 1 block of space in the rg */
 	err = lgfs2_dinode_alloc(sdp, 1, &newblock);
-	expected_alloced += 1;
+	expected_dinodes_alloced += 1;
+	expected_blks_alloced += 1;
 	ck_assert(err == 0);
 	ck_assert(newblock > GFS2_SB_ADDR);
-	ck_assert(sdp->dinodes_alloced == expected_alloced);
+	ck_assert(newblock < sdp->fssize);
+	ck_assert(sdp->dinodes_alloced == expected_dinodes_alloced);
+	ck_assert(sdp->blks_alloced == expected_blks_alloced);
 	ck_assert(lgfs2_get_bitmap(sdp, newblock, NULL) == GFS2_BLKST_DINODE);
 }
 END_TEST
+
+START_TEST(test_meta_alloc)
+{
+	struct lgfs2_sbd *sdp = mock_sdp;
+	uint64_t newblock = 0;
+	struct lgfs2_buffer_head bh = {0};
+	struct lgfs2_inode ip = { .i_bh = &bh, .i_sbd = sdp };
+	uint64_t expected_blks_alloced = sdp->blks_alloced;
+	int err;
+
+	err = lgfs2_meta_alloc(&ip, &newblock);
+	expected_blks_alloced += 1;
+	ck_assert(err == 0);
+	ck_assert(newblock > GFS2_SB_ADDR);
+	ck_assert(newblock < sdp->fssize);
+	ck_assert(sdp->blks_alloced == expected_blks_alloced);
+	ck_assert(lgfs2_get_bitmap(sdp, newblock, NULL) == GFS2_BLKST_USED);
+}
+END_TEST
+
 
 Suite *suite_fs_ops(void)
 {
@@ -200,6 +226,12 @@ Suite *suite_fs_ops(void)
 	tcase_add_checked_fixture(tc, mockup_fs, teardown_mock_fs);
 	tcase_add_checked_fixture(tc, mockup_rgs, teardown_mock_rgs);
 	tcase_add_test(tc, test_dinode_alloc);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("lgfs2_meta_alloc");
+	tcase_add_checked_fixture(tc, mockup_fs, teardown_mock_fs);
+	tcase_add_checked_fixture(tc, mockup_rgs, teardown_mock_rgs);
+	tcase_add_test(tc, test_meta_alloc);
 	suite_add_tcase(s, tc);
 
 	return s;
