@@ -19,6 +19,8 @@
 static int rindex_modified = 0;
 static struct special_blocks false_rgrps;
 static struct osi_root rgcalc;
+/* Number of resource groups */
+uint64_t nrgrp = 0;
 
 #define BAD_RG_PERCENT_TOLERANCE 11
 #define AWAY_FROM_BITMAPS 0x1000
@@ -246,8 +248,8 @@ static int find_shortest_rgdist(struct lgfs2_sbd *sdp, uint64_t *dist_array,
 			log_warn("0x%"PRIx64"\n", *dist_array);
 		} else {
 			log_warn( _("rgrp index 2 is damaged: extrapolating dist: "));
-			*dist_array = sdp->device.length - (sdp->rgrps - 1) *
-				(sdp->device.length / sdp->rgrps);
+			*dist_array = sdp->device.length - (nrgrp - 1) *
+				(sdp->device.length / nrgrp);
 			log_warn("0x%"PRIx64"\n", *dist_array);
 		}
 		log_debug(_("Adjusted first rgrp distance: 0x%"PRIx64"\n"), *dist_array);
@@ -703,16 +705,16 @@ out:
  */
 static uint64_t how_many_rgrps(struct lgfs2_sbd *sdp, struct lgfs2_device *dev)
 {
-	uint64_t nrgrp;
+	uint64_t n;
 	uint32_t rgblocks1, rgblocksn, bitblocks1, bitblocksn;
 
 	while (1) {
-		nrgrp = DIV_RU(dev->length, (sdp->rgsize << 20) / sdp->sd_bsize);
+		n = DIV_RU(dev->length, (sdp->rgsize << 20) / sdp->sd_bsize);
 
 		/* check to see if the rg length overflows max # bitblks */
-		bitblocksn = lgfs2_rgblocks2bitblocks(sdp->sd_bsize, dev->length / nrgrp, &rgblocksn);
+		bitblocksn = lgfs2_rgblocks2bitblocks(sdp->sd_bsize, dev->length / n, &rgblocksn);
 		/* calculate size of the first rgrp */
-		bitblocks1 = lgfs2_rgblocks2bitblocks(sdp->sd_bsize, dev->length - (nrgrp - 1) * (dev->length / nrgrp),
+		bitblocks1 = lgfs2_rgblocks2bitblocks(sdp->sd_bsize, dev->length - (n - 1) * (dev->length / n),
 		                                &rgblocks1);
 		if (bitblocks1 <= 2149 && bitblocksn <= 2149)
 			break;
@@ -725,11 +727,8 @@ static uint64_t how_many_rgrps(struct lgfs2_sbd *sdp, struct lgfs2_device *dev)
 			return 0;
 		}
 	}
-
-	log_debug("  rg sz = %"PRIu32"\n  nrgrp = %"PRIu64"\n", sdp->rgsize,
-		  nrgrp);
-
-	return nrgrp;
+	log_debug("  rg sz = %"PRIu32"\n  nrgrp = %"PRIu64"\n", sdp->rgsize, n);
+	return n;
 }
 
 /**
@@ -739,7 +738,7 @@ static struct osi_root compute_rgrp_layout(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_device *dev;
 	struct lgfs2_rgrp_tree *rl, *rlast = NULL;
-	unsigned int rgrp = 0, nrgrp, rglength;
+	unsigned int rgrp = 0, rglength;
 	struct osi_root rgtree = {NULL};
 	uint64_t rgaddr;
 
@@ -764,8 +763,6 @@ static struct osi_root compute_rgrp_layout(struct lgfs2_sbd *sdp)
 		}
 		rlast = rl;
 	}
-
-	sdp->rgrps = nrgrp;
 	return rgtree;
 }
 
@@ -934,7 +931,7 @@ static int expect_rindex_sanity(struct lgfs2_sbd *sdp, int *num_rgs)
 		exp->bits = NULL;
 		lgfs2_compute_bitstructs(sdp->sd_bsize, exp);
 	}
-	sdp->rgrps = *num_rgs;
+	nrgrp = *num_rgs;
 	return 0;
 }
 
@@ -1006,7 +1003,7 @@ int rindex_repair(struct fsck_cx *cx, int trust_lvl, int *ok)
 	}
 	/* Read in the rindex */
 	sdp->rgtree.osi_node = NULL; /* Just to be safe */
-	lgfs2_rindex_read(sdp, &sdp->rgrps, ok);
+	lgfs2_rindex_read(sdp, &nrgrp, ok);
 	if (sdp->md.riinode->i_size % sizeof(struct gfs2_rindex)) {
 		log_warn( _("WARNING: rindex file has an invalid size.\n"));
 		if (!query(cx, _("Truncate the rindex size? (y/n)"))) {
@@ -1020,9 +1017,8 @@ int rindex_repair(struct fsck_cx *cx, int trust_lvl, int *ok)
 		lgfs2_bmodified(sdp->md.riinode->i_bh);
 		log_err(_("Changing rindex size to %"PRIu64".\n"), sdp->md.riinode->i_size);
 	}
-	log_warn(_("L%d: number of rgs expected     = %"PRIu64".\n"), trust_lvl + 1,
-	         sdp->rgrps);
-	if (calc_rg_count != sdp->rgrps) {
+	log_warn(_("L%d: number of rgs expected     = %"PRIu64".\n"), trust_lvl + 1, nrgrp);
+	if (calc_rg_count != nrgrp) {
 		int most_that_fit;
 
 		log_warn( _("L%d: They don't match; either (1) the fs was "

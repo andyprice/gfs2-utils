@@ -372,7 +372,6 @@ struct lgfs2_sbd {
 	uint64_t blks_alloced;
 	uint64_t dinodes_alloced;
 
-	uint64_t rgrps;
 	struct osi_root rgtree;
 
 	struct lgfs2_inode *master_dir;

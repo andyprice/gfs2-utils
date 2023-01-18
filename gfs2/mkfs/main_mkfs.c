@@ -110,6 +110,9 @@ struct mkfs_dev {
 	unsigned int got_topol:1;
 };
 
+/* Number of resource groups */
+uint64_t nrgrp = 0;
+
 struct mkfs_opts {
 	unsigned bsize;
 	unsigned qcsize;
@@ -657,7 +660,7 @@ static void print_results(struct lgfs2_sbd *sb, struct mkfs_opts *opts)
 	       (sb->fssize / ((float)(1 << 30)) * sb->sd_bsize), _("GB"), sb->fssize, _("blocks"));
 	printf("%-27s%u\n", _("Journals:"), opts->journals);
 	printf("%-27s%uMB\n", _("Journal size:"), opts->jsize);
-	printf("%-27s%"PRIu64"\n", _("Resource groups:"), sb->rgrps);
+	printf("%-27s%"PRIu64"\n", _("Resource groups:"), nrgrp);
 	printf("%-27s\"%s\"\n", _("Locking protocol:"), opts->lockproto);
 	printf("%-27s\"%s\"\n", _("Lock table:"), opts->locktable);
 	/* Translators: "UUID" = universally unique identifier. */
@@ -869,7 +872,7 @@ static int place_rgrp(struct lgfs2_sbd *sdp, lgfs2_rgrp_t rg, int debug)
 	}
 	sdp->blks_total += be32_to_cpu(ri.ri_data);
 	sdp->fssize = be64_to_cpu(ri.ri_data0) + be32_to_cpu(ri.ri_data);
-	sdp->rgrps++;
+	nrgrp++;
 	return 0;
 }
 
@@ -997,7 +1000,7 @@ static int place_rgrps(struct lgfs2_sbd *sdp, lgfs2_rgrps_t rgs, uint64_t *rgadd
 			fprintf(stderr, _("Failed to build resource groups\n"));
 			return result;
 		}
-		gfs2_progress_update(&progress, (sdp->rgrps));
+		gfs2_progress_update(&progress, nrgrp);
 	}
 	if (lgfs2_rgrps_write_final(sdp->device_fd, rgs) != 0) {
 		perror(_("Failed to write final resource group"));
