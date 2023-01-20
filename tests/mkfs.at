@@ -198,3 +198,19 @@ AT_CHECK([$GFS_MKFS -p lock_nolock -U 1b4e28ba-2fa1-11d2-883f-b9a761bde3fb4 $GFS
 AT_CHECK([$GFS_MKFS -p lock_nolock -U 1b4e28ba-2fa1-11d2-883f-b9a761bde3f $GFS_TGT], 255, [ignore], [ignore])
 GFS_FSCK_CHECK([$GFS_MKFS -p lock_nolock -U 1b4e28ba-2fa1-11d2-883f-b9a761bde3fb $GFS_TGT])
 AT_CLEANUP
+
+AT_SETUP([Root jdata inheritance])
+AT_KEYWORDS(mkfs.gfs2 mkfs)
+GFS_TGT_REGEN
+AT_CHECK([$GFS_MKFS -p lock_nolock -o root_inherit_jdata= $GFS_TGT], 255, [ignore], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_nolock -o root_inherit_jdata=42 $GFS_TGT], 255, [ignore], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_nolock -o root_inherit_jdata=X $GFS_TGT], 255, [ignore], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_nolock -o root_inherit_jdata $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([gfs2_edit -x -p root field di_flags $GFS_TGT | tr -d '\n'], 0, [80000001], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_nolock -o root_inherit_jdata=1 $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([gfs2_edit -x -p root field di_flags $GFS_TGT | tr -d '\n'], 0, [80000001], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_nolock -o root_inherit_jdata=0 $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([gfs2_edit -x -p root field di_flags $GFS_TGT | tr -d '\n'], 0, [1], [ignore])
+AT_CHECK([$GFS_MKFS -p lock_nolock $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([gfs2_edit -x -p root field di_flags $GFS_TGT | tr -d '\n'], 0, [1], [ignore])
+AT_CLEANUP

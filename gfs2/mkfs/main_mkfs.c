@@ -128,6 +128,7 @@ struct mkfs_opts {
 	const char *uuid;
 	struct mkfs_dev dev;
 	unsigned discard:1;
+	unsigned root_inherit_jd:1;
 
 	unsigned got_bsize:1;
 	unsigned got_qcsize:1;
@@ -312,6 +313,25 @@ static int parse_format(struct mkfs_opts *opts, char *str)
 	return 0;
 }
 
+static int parse_root_inherit_jd(struct mkfs_opts *opts, const char *str)
+{
+	unsigned long n = 0;
+
+	if (str == NULL) { /* -o root_inherit_jdata */
+		opts->root_inherit_jd = 1;
+		return 0;
+	}
+	/* -o root_inherit_jdata=N */
+	if (parse_ulong(opts, "root_inherit_jdata", str, &n) != 0)
+		return -1;
+	if (n > 1) {
+		fprintf(stderr, _("Invalid root_inherit_jdata argument '%s'. Must be 0 or 1\n"), str);
+		return -1;
+	}
+	opts->root_inherit_jd = (unsigned)n;
+	return 0;
+}
+
 static int opt_parse_extended(char *str, struct mkfs_opts *opts)
 {
 	char *opt;
@@ -340,6 +360,9 @@ static int opt_parse_extended(char *str, struct mkfs_opts *opts)
 	                                   opts->dev.physical_sector_size != 0);
 		} else if (strcmp("format", key) == 0) {
 			if (parse_format(opts, val) != 0)
+				return -1;
+		} else if (strcmp("root_inherit_jdata", key) == 0) {
+			if (parse_root_inherit_jd(opts, val) != 0)
 				return -1;
 		} else if (strcmp("help", key) == 0) {
 			print_ext_opts();
@@ -1364,6 +1387,10 @@ int main(int argc, char *argv[])
 		printf("%s", _("Done\n"));
 
 	lgfs2_build_root(&sbd);
+	if (opts.root_inherit_jd) {
+		sbd.md.rooti->i_flags |= GFS2_DIF_INHERIT_JDATA;
+		lgfs2_dinode_out(sbd.md.rooti, sbd.md.rooti->i_bh->b_data);
+	}
 	if (opts.debug) {
 		printf("\nRoot directory:\n");
 		dinode_print(sbd.md.rooti->i_bh->b_data);
