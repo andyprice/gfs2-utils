@@ -515,9 +515,6 @@ extern int lgfs2_init_dinode(struct lgfs2_sbd *sdp, struct lgfs2_buffer_head **b
                        unsigned int mode, uint32_t flags, struct lgfs2_inum *parent);
 extern struct lgfs2_inode *lgfs2_createi(struct lgfs2_inode *dip, const char *filename,
 				  unsigned int mode, uint32_t flags);
-extern struct lgfs2_inode *lgfs2_gfs_createi(struct lgfs2_inode *dip,
-				      const char *filename, unsigned int mode,
-				      uint32_t flags);
 extern void lgfs2_dirent2_del(struct lgfs2_inode *dip, struct lgfs2_buffer_head *bh,
 			struct gfs2_dirent *prev, struct gfs2_dirent *cur);
 extern int lgfs2_dir_search(struct lgfs2_inode *dip, const char *filename, int len,

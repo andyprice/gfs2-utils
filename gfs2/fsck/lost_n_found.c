@@ -109,11 +109,7 @@ void make_sure_lf_exists(struct fsck_cx *cx, struct lgfs2_inode *ip)
 	if (sdp->gfs1)
 		sdp->md.next_inum = find_free_blk(sdp);
 	mode = (sdp->gfs1 ? DT2IF(GFS_FILE_DIR) : S_IFDIR) | 0700;
-	if (sdp->gfs1)
-		lf_dip = lgfs2_gfs_createi(sdp->md.rooti, "lost+found", mode, 0);
-	else
-		lf_dip = lgfs2_createi(sdp->md.rooti, "lost+found",
-				 S_IFDIR | 0700, 0);
+	lf_dip = lgfs2_createi(sdp->md.rooti, "lost+found", mode, 0);
 	if (lf_dip == NULL) {
 		log_crit(_("Error creating lost+found: %s\n"),
 			 strerror(errno));

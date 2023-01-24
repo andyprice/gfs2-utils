@@ -1497,9 +1497,8 @@ int lgfs2_write_filemeta(struct lgfs2_inode *ip)
 	return 0;
 }
 
-static struct lgfs2_inode *__createi(struct lgfs2_inode *dip,
-				    const char *filename, unsigned int mode,
-				    uint32_t flags, int if_gfs1)
+static struct lgfs2_inode *__createi(struct lgfs2_inode *dip, const char *filename,
+                                     unsigned int mode, uint32_t flags)
 {
 	struct lgfs2_sbd *sdp = dip->i_sbd;
 	uint64_t bn;
@@ -1517,7 +1516,7 @@ static struct lgfs2_inode *__createi(struct lgfs2_inode *dip,
 		if (err != 0)
 			return NULL;
 
-		if (if_gfs1)
+		if (sdp->gfs1)
 			inum.in_formal_ino = bn;
 		else
 			inum.in_formal_ino = sdp->md.next_inum++;
@@ -1527,7 +1526,7 @@ static struct lgfs2_inode *__createi(struct lgfs2_inode *dip,
 		if (err)
 			return NULL;
 
-		if (if_gfs1)
+		if (sdp->gfs1)
 			is_dir = (IF2DT(mode) == GFS_FILE_DIR);
 		else
 			is_dir = S_ISDIR(mode);
@@ -1536,7 +1535,7 @@ static struct lgfs2_inode *__createi(struct lgfs2_inode *dip,
 			dip->i_nlink++;
 		}
 
-		err = __init_dinode(sdp, &bh, &inum, mode, flags, &parent, if_gfs1);
+		err = __init_dinode(sdp, &bh, &inum, mode, flags, &parent, sdp->gfs1);
 		if (err != 0)
 			return NULL;
 
@@ -1552,13 +1551,7 @@ static struct lgfs2_inode *__createi(struct lgfs2_inode *dip,
 struct lgfs2_inode *lgfs2_createi(struct lgfs2_inode *dip, const char *filename,
                                  unsigned int mode, uint32_t flags)
 {
-	return __createi(dip, filename, mode, flags, 0);
-}
-
-struct lgfs2_inode *lgfs2_gfs_createi(struct lgfs2_inode *dip, const char *filename,
-                                     unsigned int mode, uint32_t flags)
-{
-	return __createi(dip, filename, mode, flags, 1);
+	return __createi(dip, filename, mode, flags);
 }
 
 /**
