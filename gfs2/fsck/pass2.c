@@ -1825,8 +1825,8 @@ static int check_pernode_for(struct fsck_cx *cx, int x, struct lgfs2_inode *pern
 	int error, valid_size = 1;
 
 	log_debug(_("Checking system file %s\n"), fn);
-	error = lgfs2_lookupi(pernode, fn, strlen(fn), &ip);
-	if (error) {
+	ip = lgfs2_lookupi(pernode, fn, strlen(fn));
+	if (ip == NULL) {
 		log_err(_("System file %s is missing.\n"), fn);
 		if (!query(cx, _("Rebuild the system file? (y/n) ")))
 			return 0;
@@ -1867,8 +1867,8 @@ build_it:
 		log_err(_("Error building %s\n"), fn);
 		return -1;
 	}
-	error = lgfs2_lookupi(pernode, fn, strlen(fn), &ip);
-	if (error) {
+	ip = lgfs2_lookupi(pernode, fn, strlen(fn));
+	if (ip == NULL) {
 		log_err(_("Error rebuilding %s.\n"), fn);
 		return -1;
 	}

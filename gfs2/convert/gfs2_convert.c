@@ -2139,11 +2139,10 @@ static void copy_quotas(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inum inum;
 	struct lgfs2_inode *oq_ip, *nq_ip;
-	int err;
 
-	err = lgfs2_lookupi(sdp->master_dir, "quota", 5, &nq_ip);
-	if (err) {
-		fprintf(stderr, _("Couldn't lookup new quota file: %d\n"), err);
+	nq_ip = lgfs2_lookupi(sdp->master_dir, "quota", 5);
+	if (nq_ip == NULL) {
+		perror(_("Failed to look up new quota file"));
 		exit(1);
 	}
 

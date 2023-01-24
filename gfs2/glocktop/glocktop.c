@@ -623,15 +623,15 @@ static const char *show_inode(const char *id, int fd, uint64_t block)
 	if (S_ISDIR(ip->i_mode)) {
 		struct lgfs2_inode *parent;
 		uint64_t dirarray[256];
-		int subdepth = 0, error;
+		int subdepth = 0;
 
 		inode_type = "directory ";
 		dirarray[0] = block;
 		subdepth++;
 		/* Backtrack the directory to its source */
 		while (1) {
-			error = lgfs2_lookupi(ip, "..", 2, &parent);
-			if (error)
+			parent = lgfs2_lookupi(ip, "..", 2);
+			if (parent == NULL)
 				break;
 			/* Stop at the root inode */
 			if (ip->i_num.in_addr == parent->i_num.in_addr) {

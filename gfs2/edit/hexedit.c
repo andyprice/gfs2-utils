@@ -925,7 +925,7 @@ static void read_superblock(int fd)
 		if (sbd.master_dir == NULL) {
 			sbd.md.riinode = NULL;
 		} else {
-			lgfs2_lookupi(sbd.master_dir, "rindex", 6, &sbd.md.riinode);
+			sbd.md.riinode = lgfs2_lookupi(sbd.master_dir, "rindex", 6);
 		}
 	}
 	lgfs2_brelse(bh);

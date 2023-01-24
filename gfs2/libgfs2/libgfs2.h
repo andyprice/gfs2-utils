@@ -522,8 +522,7 @@ extern void lgfs2_dirent2_del(struct lgfs2_inode *dip, struct lgfs2_buffer_head 
 			struct gfs2_dirent *prev, struct gfs2_dirent *cur);
 extern int lgfs2_dir_search(struct lgfs2_inode *dip, const char *filename, int len,
 		      unsigned int *type, struct lgfs2_inum *inum);
-extern int lgfs2_lookupi(struct lgfs2_inode *dip, const char *filename, int len,
-			struct lgfs2_inode **ipp);
+extern struct lgfs2_inode *lgfs2_lookupi(struct lgfs2_inode *dip, const char *filename, int len);
 extern int lgfs2_dir_add(struct lgfs2_inode *dip, const char *filename, int len,
 		    struct lgfs2_inum *inum, unsigned int type);
 extern int lgfs2_dirent_del(struct lgfs2_inode *dip, const char *filename, int name_len);

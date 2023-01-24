@@ -250,7 +250,7 @@ static lgfs2_rgrps_t read_rindex(struct lgfs2_sbd *sdp)
 	unsigned rgcount;
 	unsigned i;
 
-	lgfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
+	sdp->md.riinode = lgfs2_lookupi(sdp->master_dir, "rindex", 6);
 	if (sdp->md.riinode == NULL) {
 		perror("Failed to look up rindex");
 		return NULL;

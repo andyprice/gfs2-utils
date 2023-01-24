@@ -91,14 +91,13 @@ START_TEST(test_lookupi_bad_name_size)
 {
 	struct lgfs2_inode idir;
 	struct lgfs2_inode *ret = NULL;
-	int e;
 
-	e = lgfs2_lookupi(&idir, ".", 0, &ret);
-	ck_assert(e == -ENAMETOOLONG);
+	ret = lgfs2_lookupi(&idir, ".", 0);
+	ck_assert(errno == ENAMETOOLONG);
 	ck_assert(ret == NULL);
 
-	e = lgfs2_lookupi(&idir, ".", GFS2_FNAMESIZE + 1, &ret);
-	ck_assert(e == -ENAMETOOLONG);
+	ret = lgfs2_lookupi(&idir, ".", GFS2_FNAMESIZE + 1);
+	ck_assert(errno == ENAMETOOLONG);
 	ck_assert(ret == NULL);
 }
 END_TEST
@@ -107,11 +106,9 @@ START_TEST(test_lookupi_dot)
 {
 	struct lgfs2_inode idir;
 	struct lgfs2_inode *ret;
-	int e;
 
 	/* The contents of idir shouldn't matter, a "." lookup should just return it */
-	e = lgfs2_lookupi(&idir, ".", 1, &ret);
-	ck_assert(e == 0);
+	ret = lgfs2_lookupi(&idir, ".", 1);
 	ck_assert(ret == &idir);
 }
 END_TEST
@@ -133,7 +130,6 @@ START_TEST(test_lookupi_dotdot)
 	};
 	struct gfs2_dirent *dent = (void *)(buf + sizeof(struct gfs2_dinode));
 	struct lgfs2_inode *ret;
-	int e;
 
 	/* "." */
 	dent->de_inum.no_addr = cpu_to_be64(42);
@@ -153,8 +149,8 @@ START_TEST(test_lookupi_dotdot)
 	*(char *)(dent + 1) = '.';
 	*((char *)(dent + 1) + 1) = '.';
 
-	e = lgfs2_lookupi(&idir, "..", 2, &ret);
-	ck_assert(e == 0);
+	ret = lgfs2_lookupi(&idir, "..", 2);
+	ck_assert(ret != NULL);
 	ck_assert(ret != &idir);
 	lgfs2_inode_put(&ret);
 }

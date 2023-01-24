@@ -789,10 +789,9 @@ int ji_update(struct lgfs2_sbd *sdp)
 				return -1;
 		} else {
 			/* FIXME check snprintf return code */
-			snprintf(journal_name, JOURNAL_NAME_SIZE,
-				 "journal%u", i);
-			lgfs2_lookupi(sdp->md.jiinode, journal_name,
-				     strlen(journal_name), &jip);
+			int len;
+			len = snprintf(journal_name, JOURNAL_NAME_SIZE, "journal%u", i);
+			jip = lgfs2_lookupi(sdp->md.jiinode, journal_name, len);
 			sdp->md.journal[i] = jip;
 		}
 	}
@@ -884,7 +883,7 @@ int init_jindex(struct fsck_cx *cx, int allow_ji_rebuild)
 	if (sdp->gfs1)
 		sdp->md.jiinode = lgfs2_inode_read(sdp, sdp->sd_jindex_di.in_addr);
 	else
-		lgfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
+		sdp->md.jiinode = lgfs2_lookupi(sdp->master_dir, "jindex", 6);
 
 	if (!sdp->md.jiinode) {
 		int err;
@@ -906,7 +905,7 @@ int init_jindex(struct fsck_cx *cx, int allow_ji_rebuild)
 			log_crit(_("Error %d rebuilding jindex\n"), err);
 			return err;
 		}
-		lgfs2_lookupi(sdp->master_dir, "jindex", 6, &sdp->md.jiinode);
+		sdp->md.jiinode = lgfs2_lookupi(sdp->master_dir, "jindex", 6);
 	}
 
 	/* check for irrelevant entries in jindex. Can't use check_dir because
@@ -938,8 +937,7 @@ int init_jindex(struct fsck_cx *cx, int allow_ji_rebuild)
 					  "index: Cannot continue.\n"));
 				return error;
 			}
-			lgfs2_lookupi(sdp->master_dir, "jindex", 6,
-				     &sdp->md.jiinode);
+			sdp->md.jiinode = lgfs2_lookupi(sdp->master_dir, "jindex", 6);
 		}
 	}
 

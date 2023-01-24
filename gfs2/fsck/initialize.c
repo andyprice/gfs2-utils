@@ -597,7 +597,7 @@ static void lookup_per_node(struct fsck_cx *cx, int allow_rebuild)
 	if (sdp->md.pinode)
 		return;
 
-	lgfs2_lookupi(sdp->master_dir, "per_node", 8, &sdp->md.pinode);
+	sdp->md.pinode = lgfs2_lookupi(sdp->master_dir, "per_node", 8);
 	if (sdp->md.pinode)
 		return;
 	if (!allow_rebuild) {
@@ -618,7 +618,7 @@ static void lookup_per_node(struct fsck_cx *cx, int allow_rebuild)
 			exit(FSCK_ERROR);
 		}
 	}
-	lgfs2_lookupi(sdp->master_dir, "per_node", 8, &sdp->md.pinode);
+	sdp->md.pinode = lgfs2_lookupi(sdp->master_dir, "per_node", 8);
 	if (!sdp->md.pinode) {
 		log_err( _("Unable to rebuild per_node; aborting.\n"));
 		exit(FSCK_ERROR);
@@ -799,7 +799,7 @@ static int init_system_inodes(struct fsck_cx *cx)
 	 *******************************************************************/
 	if (!sdp->gfs1) {
 		/* Look for "inum" entry in master dinode */
-		lgfs2_lookupi(sdp->master_dir, "inum", 4, &sdp->md.inum);
+		sdp->md.inum = lgfs2_lookupi(sdp->master_dir, "inum", 4);
 		if (!sdp->md.inum) {
 			if (!query(cx, _("The gfs2 system inum inode is missing. "
 				      "Okay to rebuild it? (y/n) "))) {
@@ -850,7 +850,7 @@ static int init_system_inodes(struct fsck_cx *cx)
 			goto fail;
 		}
 	} else
-		lgfs2_lookupi(sdp->master_dir, "statfs", 6, &sdp->md.statfs);
+		sdp->md.statfs = lgfs2_lookupi(sdp->master_dir, "statfs", 6);
 	if (!sdp->gfs1 && !sdp->md.statfs) {
 		if (!query(cx, _("The gfs2 system statfs inode is missing. "
 			      "Okay to rebuild it? (y/n) "))) {
@@ -907,7 +907,7 @@ static int init_system_inodes(struct fsck_cx *cx)
 			goto fail;
 		}
 	} else
-		lgfs2_lookupi(sdp->master_dir, "quota", 5, &sdp->md.qinode);
+		sdp->md.qinode = lgfs2_lookupi(sdp->master_dir, "quota", 5);
 	if (!sdp->gfs1 && !sdp->md.qinode) {
 		if (!query(cx, _("The gfs2 system quota inode is missing. "
 			      "Okay to rebuild it? (y/n) "))) {
@@ -996,7 +996,7 @@ static void peruse_system_dinode(struct fsck_cx *cx, struct lgfs2_inode *ip)
 	} else if (!sdp->gfs1 && is_dir(ip, sdp->gfs1)) {
 		/* Check for a jindex dir entry. Only one system dir has a
 		   jindex: master */
-		lgfs2_lookupi(ip, "jindex", 6, &child_ip);
+		child_ip = lgfs2_lookupi(ip, "jindex", 6);
 		if (child_ip) {
 			if (fix_md.jiinode || is_journal_copy(ip)) {
 				lgfs2_inode_put(&child_ip);
@@ -1011,7 +1011,7 @@ static void peruse_system_dinode(struct fsck_cx *cx, struct lgfs2_inode *ip)
 
 		/* Check for a statfs_change0 dir entry. Only one system dir
 		   has a statfs_change: per_node, and its .. will be master. */
-		lgfs2_lookupi(ip, "statfs_change0", 14, &child_ip);
+		child_ip = lgfs2_lookupi(ip, "statfs_change0", 14);
 		if (child_ip) {
 			lgfs2_inode_put(&child_ip);
 			if (fix_md.pinode || is_journal_copy(ip))
@@ -1100,7 +1100,7 @@ static void peruse_user_dinode(struct fsck_cx *cx, struct lgfs2_inode *ip)
 		return;
 	}
 	while (ip) {
-		lgfs2_lookupi(ip, "..", 2, &parent_ip);
+		parent_ip = lgfs2_lookupi(ip, "..", 2);
 		if (parent_ip && parent_ip->i_num.in_addr == ip->i_num.in_addr) {
 			log_warn(_("Found the root directory at: 0x%"PRIx64"\n"),
 				 ip->i_num.in_addr);
@@ -1534,7 +1534,7 @@ static int init_rindex(struct fsck_cx *cx)
 	if (sdp->gfs1)
 		sdp->md.riinode = lgfs2_inode_read(sdp, sdp->sd_rindex_di.in_addr);
 	else
-		lgfs2_lookupi(sdp->master_dir, "rindex", 6, &sdp->md.riinode);
+		sdp->md.riinode = lgfs2_lookupi(sdp->master_dir, "rindex", 6);
 
 	if (sdp->md.riinode)
 		return 0;

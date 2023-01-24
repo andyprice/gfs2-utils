@@ -150,7 +150,6 @@ static void ast_string_unescape(char *str)
 
 static uint64_t ast_lookup_path(char *path, struct lgfs2_sbd *sbd)
 {
-	int err = 0;
 	char *c = NULL;
 	struct lgfs2_inode *ip, *iptmp;
 	char *segment;
@@ -160,16 +159,19 @@ static uint64_t ast_lookup_path(char *path, struct lgfs2_sbd *sbd)
 	ip = lgfs2_inode_read(sbd, sbd->sd_root_dir.in_addr);
 
 	while (ip != NULL) {
+		int err = 0;
+
 		if (segment == NULL) { // No more segments
 			bn = ip->i_num.in_addr;
 			lgfs2_inode_put(&ip);
 			return bn;
 		}
 		ast_string_unescape(segment);
-		err = lgfs2_lookupi(ip, segment, strlen(segment), &iptmp);
+		iptmp = lgfs2_lookupi(ip, segment, strlen(segment));
+		err = errno;
 		lgfs2_inode_put(&ip);
-		if (err != 0) {
-			errno = -err;
+		if (iptmp == NULL) {
+			errno = err;
 			break;
 		}
 		ip = iptmp;

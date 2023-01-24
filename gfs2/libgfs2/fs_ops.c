@@ -1509,7 +1509,7 @@ static struct lgfs2_inode *__createi(struct lgfs2_inode *dip,
 	int err = 0;
 	int is_dir;
 
-	lgfs2_lookupi(dip, filename, strlen(filename), &ip);
+	ip = lgfs2_lookupi(dip, filename, strlen(filename));
 	if (!ip) {
 		struct lgfs2_inum parent = dip->i_num;
 
@@ -1775,7 +1775,7 @@ int lgfs2_dir_search(struct lgfs2_inode *dip, const char *filename, int len,
 {
 	int error;
 
-	if(!S_ISDIR(dip->i_mode) && !lgfs2_is_gfs_dir(dip))
+	if (!S_ISDIR(dip->i_mode) && !lgfs2_is_gfs_dir(dip))
 		return -1;
 
 	if (dip->i_flags & GFS2_DIF_EXHASH)
@@ -1875,33 +1875,35 @@ int lgfs2_dirent_del(struct lgfs2_inode *dip, const char *filename, int len)
 }
 
 /**
- * lgfs2_lookupi - Look up a filename in a directory and return its inode
+ * Look up a filename in a directory and return its inode, which can be the
+ * the directory inode when "." is looked up.
  * @dip: The directory to search
  * @name: The name of the inode to look for
- * @ipp: Used to return the found inode if any
+ * @len: The length of name
  *
- * Returns: 0 on success, -EXXXX on failure
+ * Returns: The inode on success or NULL on failure with errno set.
  */
-int lgfs2_lookupi(struct lgfs2_inode *dip, const char *filename, int len,
-                  struct lgfs2_inode **ipp)
+struct lgfs2_inode *lgfs2_lookupi(struct lgfs2_inode *dip, const char *filename, int len)
 {
 	struct lgfs2_sbd *sdp = dip->i_sbd;
-	int error = 0;
 	struct lgfs2_inum inum;
+	int error = 0;
 
-	*ipp = NULL;
+	errno = EINVAL;
+	if (dip == NULL)
+		return NULL;
 
+	errno = ENAMETOOLONG;
 	if (!len || len > GFS2_FNAMESIZE)
-		return -ENAMETOOLONG;
-	if (gfs2_filecmp(filename, ".", 1)) {
-		*ipp = dip;
-		return 0;
-	}
-	error = lgfs2_dir_search(dip, filename, len, NULL, &inum);
-	if (!error)
-		*ipp = lgfs2_inode_read(sdp, inum.in_addr);
+		return NULL;
 
-	return error;
+	if (gfs2_filecmp(filename, ".", 1))
+		return dip;
+
+	error = lgfs2_dir_search(dip, filename, len, NULL, &inum);
+	if (error)
+		return NULL;
+	return lgfs2_inode_read(sdp, inum.in_addr);
 }
 
 /**
