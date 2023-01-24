@@ -1497,9 +1497,10 @@ int lgfs2_write_filemeta(struct lgfs2_inode *ip)
 	return 0;
 }
 
-static struct lgfs2_inode *__createi(struct lgfs2_inode *dip, const char *filename,
-                                     unsigned int mode, uint32_t flags)
+static struct lgfs2_inode *do_createi(struct lgfs2_inode *dip, const char *filename,
+                                      unsigned int mode, uint32_t flags)
 {
+	struct lgfs2_inum parent = dip->i_num;
 	struct lgfs2_sbd *sdp = dip->i_sbd;
 	uint64_t bn;
 	struct lgfs2_inum inum;
@@ -1508,50 +1509,59 @@ static struct lgfs2_inode *__createi(struct lgfs2_inode *dip, const char *filena
 	int err = 0;
 	int is_dir;
 
-	ip = lgfs2_lookupi(dip, filename, strlen(filename));
-	if (!ip) {
-		struct lgfs2_inum parent = dip->i_num;
+	err = lgfs2_dinode_alloc(sdp, 1, &bn);
+	if (err != 0)
+		return NULL;
 
-		err = lgfs2_dinode_alloc(sdp, 1, &bn);
-		if (err != 0)
-			return NULL;
+	if (sdp->gfs1)
+		inum.in_formal_ino = bn;
+	else
+		inum.in_formal_ino = sdp->md.next_inum++;
+	inum.in_addr = bn;
 
-		if (sdp->gfs1)
-			inum.in_formal_ino = bn;
-		else
-			inum.in_formal_ino = sdp->md.next_inum++;
-		inum.in_addr = bn;
+	err = lgfs2_dir_add(dip, filename, strlen(filename), &inum, IF2DT(mode));
+	if (err)
+		return NULL;
 
-		err = lgfs2_dir_add(dip, filename, strlen(filename), &inum, IF2DT(mode));
-		if (err)
-			return NULL;
-
-		if (sdp->gfs1)
-			is_dir = (IF2DT(mode) == GFS_FILE_DIR);
-		else
-			is_dir = S_ISDIR(mode);
-		if (is_dir) {
-			lgfs2_bmodified(dip->i_bh);
-			dip->i_nlink++;
-		}
-
-		err = __init_dinode(sdp, &bh, &inum, mode, flags, &parent, sdp->gfs1);
-		if (err != 0)
-			return NULL;
-
-		ip = lgfs2_inode_get(sdp, bh);
-		if (ip == NULL)
-			return NULL;
-		lgfs2_bmodified(bh);
+	if (sdp->gfs1)
+		is_dir = (IF2DT(mode) == GFS_FILE_DIR);
+	else
+		is_dir = S_ISDIR(mode);
+	if (is_dir) {
+		lgfs2_bmodified(dip->i_bh);
+		dip->i_nlink++;
 	}
+	err = __init_dinode(sdp, &bh, &inum, mode, flags, &parent, sdp->gfs1);
+	if (err != 0)
+		return NULL;
+
+	ip = lgfs2_inode_get(sdp, bh);
+	if (ip == NULL)
+		return NULL;
+	lgfs2_bmodified(bh);
 	ip->bh_owned = 1;
 	return ip;
 }
 
+/**
+ * Create an inode and link it into a directory. If it already exists, return
+ * the existing inode. To create gfs1 inodes, dip->i_sbd->gfs1 must be set.
+ * @dip: The inode of the parent directory.
+ * @filename: The new inode's filename.
+ * @mode: The mode of the new inode.
+ * @flags: The flags of the new inode.
+ * Returns the new or existing inode on success or NULL on failure with errno set.
+ */
 struct lgfs2_inode *lgfs2_createi(struct lgfs2_inode *dip, const char *filename,
                                  unsigned int mode, uint32_t flags)
 {
-	return __createi(dip, filename, mode, flags);
+	struct lgfs2_inode *ip = lgfs2_lookupi(dip, filename, strlen(filename));
+
+	if (ip != NULL) {
+		ip->bh_owned = 1;
+		return ip;
+	}
+	return do_createi(dip, filename, mode, flags);
 }
 
 /**
