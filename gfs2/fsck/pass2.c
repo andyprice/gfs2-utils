@@ -621,18 +621,17 @@ static int dirref_find(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs2_d
 	/* the metawalk_fxn's private field must be set to the dentry
 	 * block we want to clear */
 	struct lgfs2_inum *entry = private;
-	struct lgfs2_dirent dentry, *de;
+	struct lgfs2_dirent dentry;
 	char fn[MAX_FILENAME];
 
 	memset(&dentry, 0, sizeof(dentry));
 	lgfs2_dirent_in(&dentry, dent);
-	de = &dentry;
 
-	if (de->dr_inum.in_addr != entry->in_addr) {
+	if (dentry.dr_inum.in_addr != entry->in_addr) {
 		(*count)++;
 		return 0;
 	}
-	if (de->dr_inum.in_formal_ino == be64_to_cpu(dent->de_inum.no_formal_ino)) {
+	if (dentry.dr_inum.in_formal_ino == be64_to_cpu(dent->de_inum.no_formal_ino)) {
 		log_debug("Formal inode number matches; must be a hard "
 			  "link.\n");
 		goto out;
@@ -641,13 +640,13 @@ static int dirref_find(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs2_d
 		  "directory %"PRIu64" (0x%"PRIx64") has the wrong 'formal' inode "
 		  "number.\n"), entry->in_addr, entry->in_addr, ip->i_num.in_addr, ip->i_num.in_addr);
 	memset(fn, 0, sizeof(fn));
-	if (de->dr_name_len < MAX_FILENAME)
-		strncpy(fn, filename, de->dr_name_len);
+	if (dentry.dr_name_len < MAX_FILENAME)
+		strncpy(fn, filename, dentry.dr_name_len);
 	else
 		strncpy(fn, filename, MAX_FILENAME - 1);
 	log_err(_("The bad reference '%s' had formal inode number: %"PRIu64
 		  " (0x%"PRIx64") but the correct value is: %"PRIu64" (0x%"PRIx64")\n"),
-	        fn, de->dr_inum.in_formal_ino, de->dr_inum.in_formal_ino,
+	        fn, dentry.dr_inum.in_formal_ino, dentry.dr_inum.in_formal_ino,
 	        entry->in_formal_ino, entry->in_formal_ino);
 	if (!query(cx, _("Delete the bad directory entry? (y/n) "))) {
 		log_err(_("The corrupt directory entry was not fixed.\n"));
