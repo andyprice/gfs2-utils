@@ -631,7 +631,7 @@ static int dirref_find(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs2_d
 		(*count)++;
 		return 0;
 	}
-	if (dentry.dr_inum.in_formal_ino == be64_to_cpu(dent->de_inum.no_formal_ino)) {
+	if (dentry.dr_inum.in_formal_ino == entry->in_formal_ino) {
 		log_debug("Formal inode number matches; must be a hard "
 			  "link.\n");
 		goto out;
