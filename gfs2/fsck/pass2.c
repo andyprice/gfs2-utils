@@ -1334,6 +1334,7 @@ static int fix_hashtable(struct fsck_cx *cx, struct lgfs2_inode *ip, __be64 *tbl
 	    (dentry.dr_inum.in_formal_ino == 0)) {
 		lgfs2_brelse(lbh);
 		lgfs2_free_block(ip->i_sbd, leafblk);
+		ip->i_blocks--;
 		log_err(_("Out of place leaf block %"PRIu64" (0x%"PRIx64") had no "
 			"entries, so it was deleted.\n"),
 		        leafblk, leafblk);
