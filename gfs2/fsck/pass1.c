@@ -1542,6 +1542,7 @@ int build_per_node(struct lgfs2_sbd *sdp)
 		if (ip == NULL) {
 			log_err(_("Error building '%s': %s\n"), "inum_range",
 			        strerror(errno));
+			lgfs2_inode_put(&per_node);
 			return 1;
 		}
 		lgfs2_inode_put(&ip);
@@ -1550,6 +1551,7 @@ int build_per_node(struct lgfs2_sbd *sdp)
 		if (ip == NULL) {
 			log_err(_("Error building '%s': %s\n"), "statfs_change",
 			        strerror(errno));
+			lgfs2_inode_put(&per_node);
 			return 1;
 		}
 		lgfs2_inode_put(&ip);
@@ -1558,6 +1560,7 @@ int build_per_node(struct lgfs2_sbd *sdp)
 		if (ip == NULL) {
 			log_err(_("Error building '%s': %s\n"), "quota_change",
 			        strerror(errno));
+			lgfs2_inode_put(&per_node);
 			return 1;
 		}
 		lgfs2_inode_put(&ip);
