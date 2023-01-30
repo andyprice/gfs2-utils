@@ -611,6 +611,7 @@ static void lookup_per_node(struct fsck_cx *cx, int allow_rebuild)
 		     "inode is missing. Okay to rebuild it? (y/n) "))) {
 		int err;
 
+		/* coverity[freed_arg:SUPPRESS] False positive */
 		err = build_per_node(sdp);
 		if (err) {
 			log_crit(_("Error %d rebuilding per_node directory\n"),
@@ -618,6 +619,7 @@ static void lookup_per_node(struct fsck_cx *cx, int allow_rebuild)
 			exit(FSCK_ERROR);
 		}
 	}
+	/* coverity[identity_transfer:SUPPRESS] False positive */
 	sdp->md.pinode = lgfs2_lookupi(sdp->master_dir, "per_node", 8);
 	if (!sdp->md.pinode) {
 		log_err( _("Unable to rebuild per_node; aborting.\n"));

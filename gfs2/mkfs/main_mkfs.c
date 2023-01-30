@@ -719,6 +719,7 @@ static int build_per_node(struct lgfs2_sbd *sdp, struct mkfs_opts *opts)
 	struct lgfs2_inode *per_node;
 	unsigned int j;
 
+	/* coverity[identity_transfer:SUPPRESS] False positive */
 	per_node = lgfs2_createi(sdp->master_dir, "per_node", S_IFDIR | 0700,
 			   GFS2_DIF_SYSTEM);
 	if (per_node == NULL) {
@@ -728,6 +729,7 @@ static int build_per_node(struct lgfs2_sbd *sdp, struct mkfs_opts *opts)
 	for (j = 0; j < sdp->md.journals; j++) {
 		struct lgfs2_inode *ip;
 
+		/* coverity[identity_transfer:SUPPRESS] False positive */
 		ip = lgfs2_build_inum_range(per_node, j);
 		if (ip == NULL) {
 			fprintf(stderr, _("Error building '%s': %s\n"), "inum_range",
@@ -741,6 +743,7 @@ static int build_per_node(struct lgfs2_sbd *sdp, struct mkfs_opts *opts)
 		}
 		lgfs2_inode_put(&ip);
 
+		/* coverity[identity_transfer:SUPPRESS] False positive */
 		ip = lgfs2_build_statfs_change(per_node, j);
 		if (ip == NULL) {
 			fprintf(stderr, _("Error building '%s': %s\n"), "statfs_change",
@@ -754,6 +757,7 @@ static int build_per_node(struct lgfs2_sbd *sdp, struct mkfs_opts *opts)
 		}
 		lgfs2_inode_put(&ip);
 
+		/* coverity[identity_transfer:SUPPRESS] False positive */
 		ip = lgfs2_build_quota_change(per_node, j);
 		if (ip == NULL) {
 			fprintf(stderr, _("Error building '%s': %s\n"), "quota_change",
