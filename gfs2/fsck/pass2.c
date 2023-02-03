@@ -1309,10 +1309,8 @@ static int fix_hashtable(struct fsck_cx *cx, struct lgfs2_inode *ip, __be64 *tbl
 	memset(&leaf, 0, sizeof(leaf));
 	leaf_no = leafblk;
 	error = check_leaf(cx, ip, lindex, &leafck_fxns, &leaf_no, &leaf, &len);
-	if (error) {
+	if (error)
 		log_debug("Leaf repaired while fixing the hash table.\n");
-		error = 0;
-	}
 	lbh = lgfs2_bread(ip->i_sbd, leafblk);
 	/* If the leaf's depth is out of range for this dinode, it's obviously
 	   attached to the wrong dinode. Move the dirents to lost+found. */

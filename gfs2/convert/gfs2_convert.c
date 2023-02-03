@@ -1254,7 +1254,7 @@ static int fix_one_directory_exhash(struct lgfs2_sbd *sbp, struct lgfs2_inode *d
 	int error;
 	uint64_t leaf_block, prev_leaf_block;
 	uint32_t leaf_num;
-	
+
 	prev_leaf_block = 0;
 	/* for all the leafs, get the leaf block and process the dirents inside */
 	for (leaf_num = 0; ; leaf_num++) {
@@ -1293,7 +1293,6 @@ static int fix_one_directory_exhash(struct lgfs2_sbd *sbp, struct lgfs2_inode *d
 			break;
 		if (leaf->lf_next) { /* leaf has a leaf chain, process leaves in chain */
 			leaf_block = be64_to_cpu(leaf->lf_next);
-			error = 0;
 			goto leaf_chain;
 		}
 	} /* for leaf_num */
