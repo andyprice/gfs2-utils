@@ -128,7 +128,6 @@ static int buf_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 {
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	unsigned int blks = be32_to_cpu(ld->ld_data1);
-	struct lgfs2_buffer_head *bh_log, *bh_ip;
 	uint64_t blkno;
 	int error = 0;
 	struct lgfs2_rgrp_tree *rgd;
@@ -139,6 +138,7 @@ static int buf_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 	lgfs2_replay_incr_blk(ip, &start);
 
 	for (; blks; lgfs2_replay_incr_blk(ip, &start), blks--) {
+		struct lgfs2_buffer_head *bh_log, *bh_ip;
 		struct gfs2_meta_header *mhp;
 
 		sd_found_metablocks++;
@@ -157,6 +157,7 @@ static int buf_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 		bh_ip = lgfs2_bget(sdp, blkno);
 		if (!bh_ip) {
 			log_err(_("Out of memory when replaying journals.\n"));
+			lgfs2_bfree(&bh_log);
 			return FSCK_ERROR;
 		}
 		memcpy(bh_ip->b_data, bh_log->b_data, sdp->sd_bsize);
@@ -190,7 +191,6 @@ static int revoke_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	unsigned int blks = be32_to_cpu(ld->ld_length);
 	unsigned int revokes = be32_to_cpu(ld->ld_data1);
-	struct lgfs2_buffer_head *bh;
 	unsigned int offset;
 	uint64_t blkno;
 	int first = 1;
@@ -202,6 +202,8 @@ static int revoke_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 	offset = sizeof(struct gfs2_log_descriptor);
 
 	for (; blks; lgfs2_replay_incr_blk(ip, &start), blks--) {
+		struct lgfs2_buffer_head *bh;
+
 		error = lgfs2_replay_read_block(ip, start, &bh);
 		if (error)
 			return error;
@@ -215,8 +217,10 @@ static int revoke_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 			log_info(_("Journal replay processing revoke for block #%"PRIu64" (0x%"PRIx64") for journal+0x%x\n"),
 			         blkno, blkno, start);
 			error = revoke_add(sdp, blkno, start);
-			if (error < 0)
+			if (error < 0) {
+				lgfs2_bfree(&bh);
 				return error;
+			}
 			else if (error)
 				sd_found_revokes++;
 
@@ -239,7 +243,6 @@ static int databuf_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 {
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	unsigned int blks = be32_to_cpu(ld->ld_data1);
-	struct lgfs2_buffer_head *bh_log, *bh_ip;
 	uint64_t blkno;
 	uint64_t esc;
 	int error = 0;
@@ -249,6 +252,8 @@ static int databuf_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 
 	lgfs2_replay_incr_blk(ip, &start);
 	for (; blks; lgfs2_replay_incr_blk(ip, &start), blks--) {
+		struct lgfs2_buffer_head *bh_log, *bh_ip;
+
 		blkno = be64_to_cpu(*ptr);
 		ptr++;
 		esc = be64_to_cpu(*ptr);
@@ -268,6 +273,7 @@ static int databuf_lo_scan_elements(struct lgfs2_inode *ip, unsigned int start,
 		bh_ip = lgfs2_bget(sdp, blkno);
 		if (!bh_ip) {
 			log_err(_("Out of memory when replaying journals.\n"));
+			lgfs2_bfree(&bh_log);
 			return FSCK_ERROR;
 		}
 		memcpy(bh_ip->b_data, bh_log->b_data, sdp->sd_bsize);

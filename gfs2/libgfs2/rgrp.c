@@ -128,6 +128,7 @@ int lgfs2_rgrp_bitbuf_alloc(lgfs2_rgrp_t rg)
 		rg->rt_bits[i].bi_data = bufs + (i * sdp->sd_bsize);
 		rg->rt_bits[i].bi_modified = 0;
 	}
+	/* coverity[leaked_storage:SUPPRESS] */
 	return 0;
 }
 
@@ -224,6 +225,7 @@ uint64_t lgfs2_rgrp_read(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd)
 		}
 		lgfs2_rgrp_in(rgd, buf);
 	}
+	/* coverity[leaked_storage:SUPPRESS] */
 	return 0;
 }
 

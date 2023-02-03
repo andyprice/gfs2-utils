@@ -1133,7 +1133,6 @@ static int find_rgs_for_bsize(struct lgfs2_sbd *sdp, uint64_t startblock,
 			      uint32_t *known_bsize)
 {
 	uint64_t blk, max_rg_size, rb_addr;
-	struct lgfs2_buffer_head *bh, *rb_bh;
 	uint32_t bsize, bsize2;
 	int found_rg;
 
@@ -1142,29 +1141,31 @@ static int find_rgs_for_bsize(struct lgfs2_sbd *sdp, uint64_t startblock,
 	/* Max RG size is 2GB. Max block size is 4K. 2G / 4K blks = 524288,
 	   So this is traversing 2GB in 4K block increments. */
 	for (blk = startblock; blk < startblock + max_rg_size; blk++) {
-		bh = lgfs2_bread(sdp, blk);
+		struct lgfs2_buffer_head *bh = lgfs2_bread(sdp, blk);
+
 		found_rg = 0;
 		for (bsize = 0; bsize < LGFS2_DEFAULT_BSIZE; bsize += GFS2_BASIC_BLOCK) {
-			struct gfs2_meta_header *mhp;
+			struct gfs2_meta_header mhp;
 
-			mhp = (struct gfs2_meta_header *)(bh->b_data + bsize);
-			if (be32_to_cpu(mhp->mh_magic) != GFS2_MAGIC)
+			memcpy(&mhp, bh->b_data + bsize, sizeof(mhp));
+			if (be32_to_cpu(mhp.mh_magic) != GFS2_MAGIC)
 				continue;
-			if (be32_to_cpu(mhp->mh_type) == GFS2_METATYPE_RG) {
+			if (be32_to_cpu(mhp.mh_type) == GFS2_METATYPE_RG) {
 				found_rg = 1;
 				break;
 			}
 		}
+		lgfs2_bfree(&bh);
 		if (!found_rg)
 			continue;
 		/* Try all the block sizes in 512 byte multiples */
 		for (bsize2 = GFS2_BASIC_BLOCK; bsize2 <= LGFS2_DEFAULT_BSIZE;
 		     bsize2 += GFS2_BASIC_BLOCK) {
+			struct lgfs2_buffer_head *rb_bh;
 			struct gfs2_meta_header *mh;
 			int is_rb;
 
-			rb_addr = (bh->b_blocknr *
-				   (LGFS2_DEFAULT_BSIZE / bsize2)) +
+			rb_addr = (blk * (LGFS2_DEFAULT_BSIZE / bsize2)) +
 				(bsize / bsize2) + 1;
 			sdp->sd_bsize = bsize2; /* temporarily */
 			rb_bh = lgfs2_bread(sdp, rb_addr);
@@ -1180,7 +1181,6 @@ static int find_rgs_for_bsize(struct lgfs2_sbd *sdp, uint64_t startblock,
 				break;
 			}
 		}
-		lgfs2_brelse(bh);
 		if (!(*known_bsize)) {
 			sdp->sd_bsize = LGFS2_DEFAULT_BSIZE;
 			continue;

@@ -307,6 +307,7 @@ static int p1_check_metalist(struct fsck_cx *cx, struct iptr iptr, struct lgfs2_
 			*iptr_ptr(iptr) = 0;
 			lgfs2_bmodified(iptr.ipt_bh);
 			*is_valid = 1;
+			lgfs2_brelse(nbh);
 			return META_SKIP_ONE;
 		} else {
 			lgfs2_brelse(nbh);
@@ -717,6 +718,7 @@ static int check_ealeaf_block(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64
 					  INODE_VALID);
 			complain_eas(ip, block, _("Extended attribute leaf "
 						  "duplicate found"));
+			lgfs2_bfree(&leaf_bh);
 			/* Return 0 here because if all that's wrong is a
 			   duplicate block reference, we want pass1b to figure
 			   it out. We don't want to delete all the extended

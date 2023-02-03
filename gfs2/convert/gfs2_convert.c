@@ -826,6 +826,7 @@ static int fix_xattr(struct lgfs2_sbd *sbp, struct lgfs2_buffer_head *bh, struct
 		if (!buf) {
 			/*FIXME: Same message as fix_cdpn_symlink */
 			log_crit(_("Error: out of memory.\n"));
+			lgfs2_bfree(&eabh);
 			return -1;
 		}
 		old_hdr_sz = sizeof(struct gfs_indirect);

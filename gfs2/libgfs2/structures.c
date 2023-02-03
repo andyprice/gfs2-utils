@@ -336,13 +336,17 @@ struct lgfs2_inode *lgfs2_build_quota_change(struct lgfs2_inode *per_node, unsig
 		return NULL;
 
 	hgt = lgfs2_calc_tree_height(ip, (blocks + 1) * sdp->sd_bsize);
-	if (lgfs2_build_height(ip, hgt))
+	if (lgfs2_build_height(ip, hgt)) {
+		lgfs2_inode_free(&ip);
 		return NULL;
+	}
 
 	for (x = 0; x < blocks; x++) {
 		bh = lgfs2_get_file_buf(ip, x, 0);
-		if (!bh)
+		if (!bh) {
+			lgfs2_inode_free(&ip);
 			return NULL;
+		}
 
 		memset(bh->b_data, 0, sdp->sd_bsize);
 		memcpy(bh->b_data, &mh, sizeof(mh));
@@ -393,14 +397,17 @@ struct lgfs2_inode *lgfs2_build_rindex(struct lgfs2_sbd *sdp)
 		lgfs2_rindex_out(rl, buf);
 
 		count = lgfs2_writei(ip, buf, ip->i_size, sizeof(struct gfs2_rindex));
-		if (count != sizeof(struct gfs2_rindex))
+		if (count != sizeof(struct gfs2_rindex)) {
+			lgfs2_inode_free(&ip);
 			return NULL;
+		}
 	}
 	memset(buf, 0, sizeof(struct gfs2_rindex));
 	count = __lgfs2_writei(ip, buf, ip->i_size, sizeof(struct gfs2_rindex), 0);
-	if (count != sizeof(struct gfs2_rindex))
+	if (count != sizeof(struct gfs2_rindex)) {
+		lgfs2_inode_free(&ip);
 		return NULL;
-
+	}
 	return ip;
 }
 
@@ -422,11 +429,15 @@ struct lgfs2_inode *lgfs2_build_quota(struct lgfs2_sbd *sdp)
 	qu.qu_value = cpu_to_be64(1);
 
 	count = lgfs2_writei(ip, &qu, ip->i_size, sizeof(struct gfs2_quota));
-	if (count != sizeof(struct gfs2_quota))
+	if (count != sizeof(struct gfs2_quota)) {
+		lgfs2_inode_free(&ip);
 		return NULL;
+	}
 	count = lgfs2_writei(ip, &qu, ip->i_size, sizeof(struct gfs2_quota));
-	if (count != sizeof(struct gfs2_quota))
+	if (count != sizeof(struct gfs2_quota)) {
+		lgfs2_inode_free(&ip);
 		return NULL;
+	}
 
 	return ip;
 }

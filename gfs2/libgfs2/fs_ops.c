@@ -951,9 +951,10 @@ int lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf_
 	half_len = len >> 1;
 
 	lp = calloc(1, half_len * sizeof(__be64));
-	if (lp == NULL)
+	if (lp == NULL) {
+		lgfs2_bfree(&nbh);
 		return -1;
-
+	}
 	for (x = 0; x < half_len; x++)
 		lp[x] = cpu_to_be64(bn);
 
@@ -963,13 +964,12 @@ int lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf_
 	else
 		count = lgfs2_writei(dip, (char *)lp, start * sizeof(uint64_t),
 				    half_len * sizeof(uint64_t));
+	free(lp);
 	if (count != half_len * sizeof(uint64_t)) {
+		lgfs2_bfree(&nbh);
 		errno = EINVAL;
 		return -1;
 	}
-
-	free(lp);
-
 	divider = (start + half_len) << (32 - dip->i_depth);
 
 	lgfs2_dirent_first(dip, obh, &dent);
@@ -986,6 +986,7 @@ int lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf_
 			name_len = be16_to_cpu(dent->de_name_len);
 
 			if (dirent_alloc(dip, nbh, name_len, &new)) {
+				lgfs2_bfree(&nbh);
 				errno = ENOSPC;
 				return -1;
 			}
@@ -1012,6 +1013,7 @@ int lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf_
 
 	if (!moved) {
 		if (dirent_alloc(dip, nbh, 0, &new)) {
+			lgfs2_bfree(&nbh);
 			errno = ENOSPC;
 			return -1;
 		}
@@ -1051,9 +1053,10 @@ static int dir_double_exhash(struct lgfs2_inode *dip)
 		count = lgfs2_readi(dip, (char *)buf,
 			      block * sdp->sd_hash_bsize,
 			      sdp->sd_hash_bsize);
-		if (count != sdp->sd_hash_bsize)
+		if (count != sdp->sd_hash_bsize) {
+			free(buf);
 			return -1;
-
+		}
 		from = buf;
 		to = (uint64_t *)((char *)buf + sdp->sd_hash_bsize);
 
@@ -1070,8 +1073,10 @@ static int dir_double_exhash(struct lgfs2_inode *dip)
 			count = lgfs2_writei(dip, (char *)buf +
 					    sdp->sd_hash_bsize,
 					    block * sdp->sd_bsize, sdp->sd_bsize);
-		if (count != sdp->sd_bsize)
+		if (count != sdp->sd_bsize) {
+			free(buf);
 			return -1;
+		}
 	}
 
 	free(buf);
@@ -1159,7 +1164,7 @@ static int get_next_leaf(struct lgfs2_inode *dip,struct lgfs2_buffer_head *bh_in
 static int dir_e_add(struct lgfs2_inode *dip, const char *filename, int len,
 		      struct lgfs2_inum *inum, unsigned int type)
 {
-	struct lgfs2_buffer_head *bh, *nbh;
+	struct lgfs2_buffer_head *bh;
 	struct gfs2_leaf *leaf, *nleaf;
 	struct gfs2_dirent *dent;
 	uint32_t lindex, llen;
@@ -1209,13 +1214,16 @@ restart:
 				continue;
 
 			} else {
+				struct lgfs2_buffer_head *nbh;
 				struct gfs2_meta_header mh = {
 					.mh_magic = cpu_to_be32(GFS2_MAGIC),
 					.mh_type = cpu_to_be32(GFS2_METATYPE_LF),
 					.mh_format = cpu_to_be32(GFS2_FORMAT_LF)
 				};
-				if (lgfs2_meta_alloc(dip, &bn))
+				if (lgfs2_meta_alloc(dip, &bn)) {
+					lgfs2_bfree(&bh);
 					return -1;
+				}
 				nbh = lgfs2_bget(dip->i_sbd, bn);
 				memcpy(nbh->b_data, &mh, sizeof(mh));
 				lgfs2_bmodified(nbh);
@@ -1227,8 +1235,11 @@ restart:
 				nleaf->lf_dirent_format = cpu_to_be32(GFS2_FORMAT_DE);
 				nleaf->lf_inode = cpu_to_be64(dip->i_num.in_addr);
 				err = dirent_alloc(dip, nbh, len, &dent);
-				if (err)
+				if (err) {
+					lgfs2_bfree(&nbh);
+					lgfs2_bfree(&bh);
 					return err;
+				}
 				dip->i_blocks++;
 				lgfs2_bmodified(dip->i_bh);
 				lgfs2_bmodified(bh);
