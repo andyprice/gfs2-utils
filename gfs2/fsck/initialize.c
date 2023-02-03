@@ -834,6 +834,7 @@ static int init_system_inodes(struct fsck_cx *cx)
 
 	if (sdp->gfs1) {
 		/* In gfs1, the license_di is always 3 blocks after the jindex_di */
+		/* coverity[copy_paste_error:SUPPRESS] */
 		if ((sdp->sd_license_di.in_addr != sdp->sd_jindex_di.in_addr + 3) ||
 		    (sdp->sd_license_di.in_formal_ino != sdp->sd_jindex_di.in_addr + 3)) {
 			if (!query(cx, _("The gfs system statfs inode pointer is incorrect. "
@@ -891,6 +892,7 @@ static int init_system_inodes(struct fsck_cx *cx)
 
 	if (sdp->gfs1) {
 		/* In gfs1, the quota_di is always 2 blocks after the jindex_di */
+		/* coverity[copy_paste_error:SUPPRESS] */
 		if ((sdp->sd_quota_di.in_addr != sdp->sd_jindex_di.in_addr + 2) ||
 		    (sdp->sd_quota_di.in_formal_ino != sdp->sd_jindex_di.in_addr + 2)) {
 			if (!query(cx, _("The gfs system quota inode pointer is incorrect. "
