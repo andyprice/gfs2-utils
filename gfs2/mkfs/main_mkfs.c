@@ -237,7 +237,8 @@ static long long cvtnum(unsigned int blocksize, unsigned int sectorsize, const c
         return -1LL;
 }
 
-static int parse_ulong(struct mkfs_opts *opts, const char *key, const char *val, unsigned long *pn)
+static int parse_ulong(struct mkfs_opts *opts, const char *key, const char *val, unsigned long *pn,
+                       unsigned long max)
 {
 	long long l;
 	if (val == NULL || *val == '\0') {
@@ -245,7 +246,7 @@ static int parse_ulong(struct mkfs_opts *opts, const char *key, const char *val,
 		return -1;
 	}
 	l = cvtnum(opts->bsize, 0, val);
-	if (l > ULONG_MAX || l < 0) {
+	if ((max > 0 && l > max) || l < 0) {
 		fprintf(stderr, _("Value of '%s' is invalid\n"), key);
 		return -1;
 	}
@@ -286,7 +287,7 @@ static int parse_topology(struct mkfs_opts *opts, char *str)
 			fprintf(stderr, "Too many topology values.\n");
 			return 1;
 		}
-		if (parse_ulong(opts, "test_topology", opt, topol[i]))
+		if (parse_ulong(opts, "test_topology", opt, topol[i], 0))
 			return 1;
 		i++;
 	}
@@ -301,10 +302,10 @@ static int parse_format(struct mkfs_opts *opts, char *str)
 {
 	unsigned long ln;
 
-	if (parse_ulong(opts, "format", str, &ln) != 0)
+	if (parse_ulong(opts, "format", str, &ln, LGFS2_FS_FORMAT_MAX) != 0)
 		return -1;
 
-	if (ln < LGFS2_FS_FORMAT_MIN || ln > LGFS2_FS_FORMAT_MAX) {
+	if (ln < LGFS2_FS_FORMAT_MIN) {
 		fprintf(stderr, _("Invalid filesystem format: %s\n"), str);
 		return -1;
 	}
@@ -322,12 +323,8 @@ static int parse_root_inherit_jd(struct mkfs_opts *opts, const char *str)
 		return 0;
 	}
 	/* -o root_inherit_jdata=N */
-	if (parse_ulong(opts, "root_inherit_jdata", str, &n) != 0)
+	if (parse_ulong(opts, "root_inherit_jdata", str, &n, 1) != 0)
 		return -1;
-	if (n > 1) {
-		fprintf(stderr, _("Invalid root_inherit_jdata argument '%s'. Must be 0 or 1\n"), str);
-		return -1;
-	}
 	opts->root_inherit_jd = (unsigned)n;
 	return 0;
 }
@@ -343,11 +340,11 @@ static int opt_parse_extended(char *str, struct mkfs_opts *opts)
 			return -1;
 		}
 		if (strcmp("sunit", key) == 0) {
-			if (parse_ulong(opts, "sunit", val, &opts->sunit) != 0)
+			if (parse_ulong(opts, "sunit", val, &opts->sunit, 0) != 0)
 				return -1;
 			opts->got_sunit = 1;
 		} else if (strcmp("swidth", key) == 0) {
-			if (parse_ulong(opts, "swidth", val, &opts->swidth) != 0)
+			if (parse_ulong(opts, "swidth", val, &opts->swidth, 0) != 0)
 				return -1;
 			opts->got_swidth = 1;
 		} else if (strcmp("align", key) == 0) {
