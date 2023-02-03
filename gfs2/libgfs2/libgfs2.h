@@ -499,6 +499,7 @@ extern struct lgfs2_inode *lgfs2_inode_read(struct lgfs2_sbd *sdp, uint64_t di_a
 extern struct lgfs2_inode *lgfs2_is_system_inode(struct lgfs2_sbd *sdp,
 					  uint64_t block);
 extern void lgfs2_inode_put(struct lgfs2_inode **ip);
+extern void lgfs2_inode_free(struct lgfs2_inode **ipp);
 extern uint64_t lgfs2_data_alloc(struct lgfs2_inode *ip);
 extern int lgfs2_meta_alloc(struct lgfs2_inode *ip, uint64_t *blkno);
 extern int lgfs2_dinode_alloc(struct lgfs2_sbd *sdp, const uint64_t blksreq, uint64_t *blkno);

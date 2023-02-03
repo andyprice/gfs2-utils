@@ -107,6 +107,19 @@ void lgfs2_inode_put(struct lgfs2_inode **ip_in)
 	*ip_in = NULL; /* make sure the memory isn't accessed again */
 }
 
+/**
+ * Free an inode, discarding modifications.
+ * @ipp: A pointer to the inode.
+ */
+void lgfs2_inode_free(struct lgfs2_inode **ipp)
+{
+	struct lgfs2_inode *ip = *ipp;
+
+	free(ip->i_bh);
+	free(ip);
+	*ipp = NULL;
+}
+
 static uint64_t find_free_block(struct lgfs2_rgrp_tree *rgd)
 {
 	unsigned bm;
