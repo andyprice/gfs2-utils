@@ -83,6 +83,16 @@ int lgfs2_brelse(struct lgfs2_buffer_head *bh)
 	return error;
 }
 
+/**
+ * Free a buffer head, discarding modifications.
+ * @bhp: Pointer to the buffer
+ */
+void lgfs2_bfree(struct lgfs2_buffer_head **bhp)
+{
+	free(*bhp);
+	*bhp = NULL;
+}
+
 uint32_t lgfs2_get_block_type(const char *buf)
 {
 	const struct gfs2_meta_header *mh = (void *)buf;

@@ -460,6 +460,7 @@ extern struct lgfs2_buffer_head *__lgfs2_bread(struct lgfs2_sbd *sdp, uint64_t n
 					int line, const char *caller);
 extern int lgfs2_bwrite(struct lgfs2_buffer_head *bh);
 extern int lgfs2_brelse(struct lgfs2_buffer_head *bh);
+extern void lgfs2_bfree(struct lgfs2_buffer_head **bhp);
 extern uint32_t lgfs2_get_block_type(const char *buf);
 
 #define lgfs2_bmodified(bh) do { bh->b_modified = 1; } while(0)
