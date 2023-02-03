@@ -639,6 +639,7 @@ static const char *show_inode(const char *id, int fd, uint64_t block)
 				break;
 			}
 			lgfs2_inode_put(&ip);
+			/* coverity[use_after_free:SUPPRESS] */
 			ip = parent;
 			dirarray[subdepth++] = parent->i_num.in_addr;
 		}

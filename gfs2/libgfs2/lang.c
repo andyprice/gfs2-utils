@@ -169,7 +169,8 @@ static uint64_t ast_lookup_path(char *path, struct lgfs2_sbd *sbd)
 		ast_string_unescape(segment);
 		iptmp = lgfs2_lookupi(ip, segment, strlen(segment));
 		err = errno;
-		lgfs2_inode_put(&ip);
+		if (ip != iptmp)
+			lgfs2_inode_put(&ip);
 		if (iptmp == NULL) {
 			errno = err;
 			break;

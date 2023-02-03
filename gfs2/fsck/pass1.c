@@ -1566,6 +1566,7 @@ int build_per_node(struct lgfs2_sbd *sdp)
 		if (ip == NULL) {
 			log_err(_("Error building '%s': %s\n"), "quota_change",
 			        strerror(errno));
+			/* coverity[deref_arg:SUPPRESS] */
 			lgfs2_inode_put(&per_node);
 			return 1;
 		}

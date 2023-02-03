@@ -1000,6 +1000,7 @@ static void peruse_system_dinode(struct fsck_cx *cx, struct lgfs2_inode *ip)
 	} else if (!sdp->gfs1 && is_dir(ip, sdp->gfs1)) {
 		/* Check for a jindex dir entry. Only one system dir has a
 		   jindex: master */
+		/* coverity[identity_transfer:SUPPRESS] */
 		child_ip = lgfs2_lookupi(ip, "jindex", 6);
 		if (child_ip) {
 			if (fix_md.jiinode || is_journal_copy(ip)) {
@@ -1015,6 +1016,7 @@ static void peruse_system_dinode(struct fsck_cx *cx, struct lgfs2_inode *ip)
 
 		/* Check for a statfs_change0 dir entry. Only one system dir
 		   has a statfs_change: per_node, and its .. will be master. */
+		/* coverity[identity_transfer:SUPPRESS] */
 		child_ip = lgfs2_lookupi(ip, "statfs_change0", 14);
 		if (child_ip) {
 			lgfs2_inode_put(&child_ip);
@@ -1104,6 +1106,7 @@ static void peruse_user_dinode(struct fsck_cx *cx, struct lgfs2_inode *ip)
 		return;
 	}
 	while (ip) {
+		/* coverity[identity_transfer:SUPPRESS] */
 		parent_ip = lgfs2_lookupi(ip, "..", 2);
 		if (parent_ip && parent_ip->i_num.in_addr == ip->i_num.in_addr) {
 			log_warn(_("Found the root directory at: 0x%"PRIx64"\n"),
