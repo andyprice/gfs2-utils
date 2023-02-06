@@ -894,6 +894,8 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 		if (!is_exhash && i == height - 1)
 			nextq = NULL;
 
+		/* Coverity can't figure out that the tail becomes NULL eventually. */
+		/* coverity[loop_top:SUPPRESS] */
 		while (indq[i - 1].tail != NULL) {
 			struct block_range *q = block_range_queue_pop(&indq[i - 1]);
 
