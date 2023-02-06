@@ -1466,7 +1466,7 @@ static int check_system_inode(struct fsck_cx *cx,
 			log_err( _("Rebuilding system file \"%s\"\n"),
 				 filename);
 			error = builder(cx->sdp);
-			if (error) {
+			if (error || *sysinode == NULL) {
 				log_err( _("Error rebuilding system "
 					   "inode %s: Cannot continue\n"),
 					 filename);
