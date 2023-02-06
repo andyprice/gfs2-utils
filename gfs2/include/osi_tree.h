@@ -295,6 +295,7 @@ static inline void osi_erase(struct osi_node *node, struct osi_root *root)
 
  color:
 	if (color == OSI_BLACK)
+		/* coverity[var_deref_model:SUPPRESS] */
 		__osi_erase_color(child, parent, root);
 }
 
