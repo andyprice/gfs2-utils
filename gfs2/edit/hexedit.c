@@ -1593,9 +1593,9 @@ static void find_print_block_type(void)
 	exit(0);
 }
 
-/* ------------------------------------------------------------------------ */
-/* Find and print the resource group associated with a given block          */
-/* ------------------------------------------------------------------------ */
+/**
+ * Find and print the resource group associated with a given block
+ */
 static void find_print_block_rg(int bitmap)
 {
 	uint64_t rblock, rgblock;
@@ -1603,35 +1603,34 @@ static void find_print_block_rg(int bitmap)
 	struct lgfs2_rgrp_tree *rgd;
 
 	rblock = blockstack[blockhist % BLOCK_STACK_SIZE].block;
-	if (rblock == LGFS2_SB_ADDR(&sbd))
+	if (rblock == LGFS2_SB_ADDR(&sbd)) {
 		printf("0 (the superblock is not in the bitmap)\n");
-	else {
-		rgd = lgfs2_blk2rgrpd(&sbd, rblock);
-		if (rgd) {
-			rgblock = rgd->rt_addr;
-			if (bitmap) {
-				struct lgfs2_bitmap *bits = NULL;
-
-				for (i = 0; i < rgd->rt_length; i++) {
-					bits = &(rgd->rt_bits[i]);
-					if (rblock - rgd->rt_data0 <
-					    ((bits->bi_start + bits->bi_len) *
-					     GFS2_NBBY)) {
-						break;
-					}
-				}
-				if (i < rgd->rt_length)
-					rgblock += i;
-
-			}
-			if (dmode == HEX_MODE)
-				printf("0x%"PRIx64"\n", rgblock);
-			else
-				printf("%"PRIu64"\n", rgblock);
-		} else {
-			printf("-1 (block invalid or part of an rgrp).\n");
-		}
+		goto out;
 	}
+	rgd = lgfs2_blk2rgrpd(&sbd, rblock);
+	if (rgd == NULL) {
+		printf("-1 (block invalid or part of an rgrp).\n");
+		goto out;
+	}
+	rgblock = rgd->rt_addr;
+	if (!bitmap)
+		goto print;
+
+	for (i = 0; i < rgd->rt_length; i++) {
+		struct lgfs2_bitmap *bits = &(rgd->rt_bits[i]);
+		uint64_t end = ((uint64_t)bits->bi_start + bits->bi_len) * GFS2_NBBY;
+
+		if (rblock - rgd->rt_data0 < end)
+			break;
+	}
+	if (i < rgd->rt_length)
+		rgblock += i;
+print:
+	if (dmode == HEX_MODE)
+		printf("0x%"PRIx64"\n", rgblock);
+	else
+		printf("%"PRIu64"\n", rgblock);
+out:
 	lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 	exit(0);
 }
