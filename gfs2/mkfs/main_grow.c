@@ -467,7 +467,8 @@ int main(int argc, char *argv[])
 		fsync(sdp->device_fd);
 		fix_rindex(rindex_fd, rgs, old_rg_count, rgcount);
 	out:
-		lgfs2_rgrps_free(&rgs);
+		if (rgs != NULL)
+			lgfs2_rgrps_free(&rgs);
 		close(rindex_fd);
 		cleanup_metafs(&mfs);
 		close(sdp->device_fd);
