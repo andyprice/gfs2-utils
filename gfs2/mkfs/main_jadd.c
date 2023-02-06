@@ -25,8 +25,6 @@
 #include "gfs2_mkfs.h"
 #include "metafs.h"
 
-#define RANDOM(values) ((values) * (random() / (RAND_MAX + 1.0)))
-
 struct jadd_opts {
 	char *path;
 	char *new_inode;
@@ -518,7 +516,10 @@ static int add_j(struct lgfs2_sbd *sdp, struct jadd_opts *opts)
 	char new_name[256], *buf;
 	uint32_t x, blocks = sdp->jsize << (20 - sdp->sd_bsize_shift);
 	struct gfs2_log_header *lh;
-	uint64_t seq = RANDOM(blocks), addr = 0;
+	/* Not a security sensitive use of random() */
+	/* coverity[dont_call:SUPPRESS] */
+	uint64_t seq = blocks * (random() / (RAND_MAX + 1.0));
+	uint64_t addr = 0;
 	off_t off = 0;
 
 	buf = calloc(1, sdp->sd_bsize);

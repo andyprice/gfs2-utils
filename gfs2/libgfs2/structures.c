@@ -106,7 +106,9 @@ int lgfs2_write_journal_data(struct lgfs2_inode *ip)
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	unsigned blocks = (ip->i_size + sdp->sd_bsize - 1) / sdp->sd_bsize;
 	uint64_t jext0 = ip->i_num.in_addr + ip->i_blocks - blocks;
-	uint64_t seq = ((blocks) * (random() / (RAND_MAX + 1.0)));
+	/* Not a security sensitive use of random() */
+	/* coverity[dont_call:SUPPRESS] */
+	uint64_t seq = blocks * (random() / (RAND_MAX + 1.0));
 	struct gfs2_log_header *lh;
 	uint64_t jblk = jext0;
 	char *buf;
@@ -180,7 +182,9 @@ int lgfs2_write_journal(struct lgfs2_inode *jnl, unsigned bsize, unsigned int bl
 {
 	struct gfs2_log_header *lh;
 	uint32_t x;
-	uint64_t seq = ((blocks) * (random() / (RAND_MAX + 1.0)));
+	/* Not a security sensitive use of random() */
+	/* coverity[dont_call:SUPPRESS] */
+	uint64_t seq = blocks * (random() / (RAND_MAX + 1.0));
 	uint32_t hash;
 	unsigned int height;
 

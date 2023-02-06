@@ -1396,6 +1396,8 @@ static int reconstruct_single_journal(struct lgfs2_sbd *sdp, int jnum,
 	uint64_t sequence;
 
 	srandom(time(NULL));
+	/* Not a security sensitive use of random() */
+	/* coverity[dont_call:SUPPRESS] */
 	sequence = ji_nsegment / (RAND_MAX + 1.0) * random();
 
 	log_info(_("Clearing journal %d\n"), jnum);
