@@ -912,7 +912,7 @@ int init_jindex(struct fsck_cx *cx, int allow_ji_rebuild)
 			log_crit(_("Error %d rebuilding jindex\n"), err);
 			return err;
 		}
-		/* coverity[deref_arg:SUPPRESS] */
+		/* coverity[pass_freed_arg:SUPPRESS] */
 		sdp->md.jiinode = lgfs2_lookupi(sdp->master_dir, "jindex", 6);
 	}
 
@@ -945,7 +945,7 @@ int init_jindex(struct fsck_cx *cx, int allow_ji_rebuild)
 					  "index: Cannot continue.\n"));
 				return error;
 			}
-			/* coverity[deref_arg:SUPPRESS] */
+			/* coverity[pass_freed_arg:SUPPRESS] */
 			sdp->md.jiinode = lgfs2_lookupi(sdp->master_dir, "jindex", 6);
 		}
 	}

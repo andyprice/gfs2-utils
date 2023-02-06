@@ -1912,14 +1912,14 @@ int lgfs2_dirent_del(struct lgfs2_inode *dip, const char *filename, int len)
  */
 struct lgfs2_inode *lgfs2_lookupi(struct lgfs2_inode *dip, const char *filename, int len)
 {
-	struct lgfs2_sbd *sdp = dip->i_sbd;
+	struct lgfs2_sbd *sdp;
 	struct lgfs2_inum inum;
 	int error = 0;
 
 	errno = EINVAL;
 	if (dip == NULL)
 		return NULL;
-
+	sdp = dip->i_sbd;
 	errno = ENAMETOOLONG;
 	if (!len || len > GFS2_FNAMESIZE)
 		return NULL;
