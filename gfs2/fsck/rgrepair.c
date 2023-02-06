@@ -331,6 +331,7 @@ static uint64_t find_next_rgrp_dist(struct lgfs2_sbd *sdp, uint64_t blk,
 			break;
 	}
 	if (rgd && n && osi_next(n) && rgd->rt_addr == blk) {
+		/* coverity[returned_null:SUPPRESS] False positive */
 		n = osi_next(n);
 		next_rgd = (struct lgfs2_rgrp_tree *)n;
 		rgrp_dist = next_rgd->rt_addr - rgd->rt_addr;
