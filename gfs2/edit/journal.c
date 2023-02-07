@@ -250,7 +250,7 @@ static int print_ld_blks(const __be64 *b, const char *end, int start_line,
 				print_gfs2("<-------------------------");
 				if (is_meta_ld) {
 					o = tblk - rgd->rt_data0;
-					if (o >= (rgd->rt_bits->bi_start +
+					if (o >= ((uint64_t)rgd->rt_bits->bi_start +
 						  rgd->rt_bits->bi_len) *
 					    GFS2_NBBY)
 						o += (sizeof(struct gfs2_rgrp) -

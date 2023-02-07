@@ -457,7 +457,7 @@ static uint64_t hunt_and_peck(struct lgfs2_sbd *sdp, uint64_t blk,
 	   be at most 2GB in size, so that's where we call it. We do somewhat
 	   obscure math here to avoid integer overflows. */
 	mega_in_blocks = (1024 * 1024)  / sdp->sd_bsize;
-	twogigs = 2048 * mega_in_blocks;
+	twogigs = (uint64_t)2048 * mega_in_blocks;
 	if (block + twogigs <= sdp->fssize) {
 		last_block = twogigs;
 		last_meg = 0;

@@ -381,8 +381,8 @@ uint32_t lgfs2_rgrps_plan(const lgfs2_rgrps_t rgs, uint64_t space, uint32_t tgts
 		spec[1].len = spec[0].len - adj;
 		spec[1].num = 0;
 
-		while (((spec[0].len * spec[0].num) +
-		        (spec[1].len * spec[1].num)) >= space) {
+		while ((((uint64_t)spec[0].len * spec[0].num) +
+		        ((uint64_t)spec[1].len * spec[1].num)) >= space) {
 			/* Total number of rgrps stays constant now. We just
 			   need to shift some weight around */
 			spec[0].num--;

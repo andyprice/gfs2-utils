@@ -938,6 +938,8 @@ static int write_new_leaf(struct fsck_cx *cx, struct lgfs2_inode *dip, int start
 	int end_lindex = start_lindex + num_copies;
 
 	padbuf = calloc(num_copies, sizeof(__be64));
+	if (padbuf == NULL)
+		return -1;
 	/* calculate the depth needed for the new leaf */
 	while (divisor > 1) {
 		factor++;

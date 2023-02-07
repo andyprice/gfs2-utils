@@ -198,11 +198,11 @@ int lgfs2_get_bitmap(struct lgfs2_sbd *sdp, uint64_t blkno, struct lgfs2_rgrp_tr
 		return -1;
 	}
 
-	if (offset >= (rgd->rt_bits->bi_start + rgd->rt_bits->bi_len) * GFS2_NBBY) {
+	if (offset >= ((uint64_t)rgd->rt_bits->bi_start + rgd->rt_bits->bi_len) * GFS2_NBBY) {
 		offset += (sizeof(struct gfs2_rgrp) - sizeof(struct gfs2_meta_header))
 		          * GFS2_NBBY;
 		i = offset / sdp->sd_blocks_per_bitmap;
-		offset -= i * sdp->sd_blocks_per_bitmap;
+		offset -= (uint64_t)i * sdp->sd_blocks_per_bitmap;
 	}
 
 	bi = &rgd->rt_bits[i];

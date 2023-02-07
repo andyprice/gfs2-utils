@@ -2046,7 +2046,7 @@ static int check_fit(struct lgfs2_sbd *sdp)
 		blks_need++; /* creation of 'jindex' disk inode */
 		/* creation of journals */
 		blks_need += sdp->md.journals *
-			total_file_blocks(sdp, sdp->jsize << 20, 1);
+			total_file_blocks(sdp, (uint64_t)sdp->jsize << 20, 1);
 	}
 	/* build_per_node() */
 	{
@@ -2055,7 +2055,7 @@ static int check_fit(struct lgfs2_sbd *sdp)
 		blks_need += sdp->md.journals * 3;
 		/* quota change inodes are prealloced */
 		blks_need += sdp->md.journals *
-			total_file_blocks(sdp, sdp->qcsize << 20, 1);
+			total_file_blocks(sdp, (uint64_t)sdp->qcsize << 20, 1);
 	}
 	/* build_inum() */
 	blks_need++; /* creation of 'inum' disk inode */
