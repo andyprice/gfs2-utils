@@ -479,6 +479,7 @@ static int ast_field_set(char *buf, const struct lgfs2_metafield *field,
 	} else if (field->flags & LGFS2_MFF_STRING) {
 		err = lgfs2_field_assign(buf, field, val->ast_str);
 	} else {
+		/* coverity[overrun-buffer-val:SUPPRESS] False positive */
 		err = lgfs2_field_assign(buf, field, &val->ast_num);
 	}
 

@@ -186,6 +186,7 @@ int lgfs2_lang_parses(struct lgfs2_lang_state *state, const char *cstr)
 		perror("Failed to duplicate source string");
 		return 1;
 	}
+	/* coverity[alloc_strlen:SUPPRESS] False positive */
 	src = fmemopen(str, strlen(str), "r");
 	if (src == NULL) {
 		perror("Failed to open string as source file");
