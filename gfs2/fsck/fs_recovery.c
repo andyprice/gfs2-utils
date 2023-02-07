@@ -867,7 +867,11 @@ int build_jindex(struct lgfs2_sbd *sdp)
 	if (jindex == NULL) {
 		return errno;
 	}
-	sdp->md.journal = malloc(sdp->md.journals * sizeof(struct lgfs2_inode *));
+	sdp->md.journal = calloc(sdp->md.journals, sizeof(struct lgfs2_inode *));
+	if (sdp->md.journal == NULL) {
+		lgfs2_inode_put(&jindex);
+		return ENOSPC;
+	}
 	for (unsigned j = 0; j < sdp->md.journals; j++) {
 		int ret = lgfs2_build_journal(sdp, j, jindex);
 		if (ret)

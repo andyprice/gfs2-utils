@@ -457,7 +457,7 @@ static uint64_t find_block_address(int fd, off_t offset, unsigned bsize)
 	struct {
 		struct fiemap fm;
 		struct fiemap_extent fe;
-	} fme;
+	} fme = {0};
 	int ret;
 
 	fme.fm.fm_start = offset;

@@ -1110,7 +1110,7 @@ static int lost_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, __be64 *tbl, ui
 		} else if (!de.dr_inum.in_formal_ino) { /* sentinel */
 			log_debug(_("Skipping sentinel '%s'\n"), tmp_name);
 		} else {
-			uint32_t count;
+			uint32_t count = 0;
 			struct dir_status ds = {0};
 			int q = 0;
 
