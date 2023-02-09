@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([gfs2-utils], [3.5.0], [cluster-devel@redhat.com])
+AC_INIT([gfs2-utils], [3.5.0.1.dev], [cluster-devel@redhat.com])
 AM_INIT_AUTOMAKE([-Wno-portability])
 AM_SILENT_RULES([yes])
 LT_PREREQ([2.2.6])
