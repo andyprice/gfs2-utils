@@ -617,9 +617,9 @@ static int check_fit(struct lgfs2_sbd *sdp, struct jadd_opts *opts)
 		printf( _("\nInsufficient space on the device to add %u %uMB "
 			  "journals (%uMB QC size)\n\n"),
 			opts->journals, sdp->jsize, sdp->qcsize);
-		printf( _("Required space  : %*lu blks (%lu blks per "
+		printf( _("Required space  : %*"PRIu64" blocks (%"PRIu64" blocks per "
 			  "journal)\n"), 10, total_blks, blks_per_j);
-		printf( _("Available space : %*lu blks\n\n"), 10,
+		printf( _("Available space : %*"PRIu64" blocks\n\n"), 10,
 			sdp->blks_total - sdp->blks_alloced);
 		errno = ENOSPC;
 		return -1;
