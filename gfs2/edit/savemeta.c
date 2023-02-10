@@ -43,7 +43,7 @@ struct savemeta_header {
 struct savemeta {
 	time_t sm_time;
 	unsigned sm_format;
-	size_t sm_fs_bytes;
+	uint64_t sm_fs_bytes;
 };
 
 struct saved_metablock {
