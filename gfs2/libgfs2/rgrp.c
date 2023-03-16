@@ -112,20 +112,20 @@ int lgfs2_rgrp_bitbuf_alloc(lgfs2_rgrp_t rg)
 	size_t len = rg->rt_length * sdp->sd_bsize;
 	unsigned long io_align = sdp->sd_bsize;
 	unsigned i;
-	char *bufs;
+	void *bufs;
 
 	if (rg->rt_rgrps->rgs_align > 0) {
 		len = ROUND_UP(len, rg->rt_rgrps->rgs_align * sdp->sd_bsize);
 		io_align = rg->rt_rgrps->rgs_align_off * sdp->sd_bsize;
 	}
-	if (posix_memalign((void **)&bufs, io_align, len) != 0) {
+	if (posix_memalign(&bufs, io_align, len) != 0) {
 		errno = ENOMEM;
 		return 1;
 	}
 	memset(bufs, 0, len);
 
 	for (i = 0; i < rg->rt_length; i++) {
-		rg->rt_bits[i].bi_data = bufs + (i * sdp->sd_bsize);
+		rg->rt_bits[i].bi_data = (char *)bufs + (i * sdp->sd_bsize);
 		rg->rt_bits[i].bi_modified = 0;
 	}
 	/* coverity[leaked_storage:SUPPRESS] */
