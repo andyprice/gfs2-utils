@@ -205,7 +205,7 @@ WARNLIST="
 	format-security
 	format-nonliteral
 	no-long-long
-	no-strict-aliasing
+	strict-aliasing
 	"
 
 for j in $WARNLIST; do
