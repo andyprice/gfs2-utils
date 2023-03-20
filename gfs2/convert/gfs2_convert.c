@@ -795,8 +795,7 @@ static int fix_cdpn_symlink(struct lgfs2_sbd *sbp, struct lgfs2_buffer_head *bh,
 		}
 		memset(fix, 0, sizeof(struct inode_dir_block));
 		fix->di_addr = ip->i_num.in_addr;
-		osi_list_add_prev((osi_list_t *)&fix->list,
-				  (osi_list_t *)&cdpns_to_fix);
+		osi_list_add_prev(&fix->list, &cdpns_to_fix.list);
 	}
 
 	return 0;
@@ -878,8 +877,7 @@ static int adjust_inode(struct lgfs2_sbd *sbp, struct lgfs2_buffer_head *bh)
 		}
 		memset(fixdir, 0, sizeof(struct inode_block));
 		fixdir->di_addr = inode->i_num.in_addr;
-		osi_list_add_prev((osi_list_t *)&fixdir->list,
-						  (osi_list_t *)&dirs_to_fix);
+		osi_list_add_prev(&fixdir->list, &dirs_to_fix.list);
 		break;
 	case GFS_FILE_REG:           /* regular file     */
 		inode->i_mode |= S_IFREG;
@@ -1574,8 +1572,8 @@ static int init(struct lgfs2_sbd *sbp, struct gfs2_options *opts)
 		perror(opts->device);
 		exit(-1);
 	}
-	osi_list_init((osi_list_t *)&dirs_to_fix);
-	osi_list_init((osi_list_t *)&cdpns_to_fix);
+	osi_list_init(&dirs_to_fix.list);
+	osi_list_init(&cdpns_to_fix.list);
 	/* ---------------------------------------------- */
 	/* Initialize lists and read in the superblock.   */
 	/* ---------------------------------------------- */
@@ -2263,7 +2261,7 @@ int main(int argc, char **argv)
 	if (!error) {
 		/* Add a string notifying inode converstion start? */
 		error = inode_renumber(&sb2, sb2.sd_root_dir.in_addr,
-				       (osi_list_t *)&cdpns_to_fix);
+		                       &cdpns_to_fix.list);
 		if (error)
 			log_crit(_("\n%s: Error renumbering inodes.\n"), opts.device);
 		fsync(sb2.device_fd); /* write the buffers to disk */
@@ -2272,7 +2270,7 @@ int main(int argc, char **argv)
 	/* Fix the directories to match the new numbers.  */
 	/* ---------------------------------------------- */
 	if (!error) {
-		error = fix_directory_info(&sb2, (osi_list_t *)&dirs_to_fix);
+		error = fix_directory_info(&sb2, &dirs_to_fix.list);
 		log_notice(_("\r%"PRIu64" directories, %"PRIu64" dirents fixed."),
 		           dirs_fixed, dirents_fixed);
 		fflush(stdout);
@@ -2283,7 +2281,7 @@ int main(int argc, char **argv)
 	/* Convert cdpn symlinks to empty dirs            */
 	/* ---------------------------------------------- */
 	if (!error) {
-		error = fix_cdpn_symlinks(&sb2, (osi_list_t *)&cdpns_to_fix);
+		error = fix_cdpn_symlinks(&sb2, &cdpns_to_fix.list);
 		log_notice(_("\r%"PRIu64" cdpn symlinks moved to empty directories."),
 		           cdpns_fixed);
 		fflush(stdout);
