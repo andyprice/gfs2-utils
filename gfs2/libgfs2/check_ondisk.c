@@ -54,6 +54,7 @@ START_TEST(check_sb1_out)
 	memset(buf, 0, sizeof(buf));
 	memset(&sbd, 0, sizeof(sbd));
 
+	sbd.gfs1 = 1;
 	sbd.sd_fs_format = 0x5a5a5a51;
 	sbd.sd_multihost_format = 0x5a5a5a52;
 	sbd.sd_flags = 0x5a5a5a53;
