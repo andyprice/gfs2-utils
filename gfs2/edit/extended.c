@@ -424,8 +424,6 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 static int print_gfs_jindex(struct lgfs2_inode *dij)
 {
 	int error, start_line;
-	struct gfs_jindex *ji;
-	char jbuf[sizeof(struct gfs_jindex)];
 
 	start_line = line;
 	print_gfs2("Journal index entries found: %"PRIu64".",
@@ -433,10 +431,11 @@ static int print_gfs_jindex(struct lgfs2_inode *dij)
 	eol(0);
 	lines_per_row[dmode] = 4;
 	for (print_entry_ndx=0; ; print_entry_ndx++) {
-		error = lgfs2_readi(dij, (void *)&jbuf,
+		struct gfs_jindex ji;
+
+		error = lgfs2_readi(dij, &ji,
 				   print_entry_ndx*sizeof(struct gfs_jindex),
 				   sizeof(struct gfs_jindex));
-		ji = (struct gfs_jindex *)jbuf;
 		if (!error) /* end of file */
 			break;
 		if (!termlines ||
@@ -446,13 +445,13 @@ static int print_gfs_jindex(struct lgfs2_inode *dij)
 			if (edit_row[dmode] == print_entry_ndx) {
 				COLORS_HIGHLIGHT;
 				strcpy(efield, "ji_addr");
-				sprintf(estring, "%"PRIx64, be64_to_cpu(ji->ji_addr));
+				sprintf(estring, "%"PRIx64, be64_to_cpu(ji.ji_addr));
 			}
 			print_gfs2("Journal #%d", print_entry_ndx);
 			eol(0);
 			if (edit_row[dmode] == print_entry_ndx)
 				COLORS_NORMAL;
-			gfs_jindex_print(ji);
+			gfs_jindex_print(&ji);
 			last_entry_onscreen[dmode] = print_entry_ndx;
 		}
 	}

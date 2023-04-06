@@ -5,12 +5,13 @@ Suite *suite_ondisk(void);
 
 START_TEST(check_sb_in)
 {
-	char buf[sizeof(struct gfs2_sb)];
 	char namechk[GFS2_LOCKNAME_LEN];
 	struct lgfs2_sbd sbd;
 	char uuidchk[sizeof(sbd.sd_uuid)];
+	struct gfs2_sb buf_sb;
+	void *buf = &buf_sb;
 
-	memset(buf, 0x5a, sizeof(buf));
+	memset(&buf_sb, 0x5a, sizeof(buf_sb));
 	memset(namechk, 0x5a, GFS2_LOCKNAME_LEN);
 	memset(uuidchk, 0x5a, sizeof(sbd.sd_uuid));
 	memset(&sbd, 0, sizeof(sbd));
@@ -44,14 +45,15 @@ END_TEST
 START_TEST(check_sb1_out)
 {
 	char namechk[GFS2_LOCKNAME_LEN];
-	char buf[sizeof(struct gfs_sb)];
+	struct gfs_sb buf_sb;
+	void *buf = &buf_sb;
 	struct lgfs2_sbd sbd;
 	struct gfs_sb *sb;
 
 	memset(namechk, 0x5a, GFS2_LOCKNAME_LEN);
 
 	/* 1. If only the gfs1 fields are set, the sb must be filled */
-	memset(buf, 0, sizeof(buf));
+	memset(&buf_sb, 0, sizeof(buf_sb));
 	memset(&sbd, 0, sizeof(sbd));
 
 	sbd.gfs1 = 1;
@@ -100,17 +102,18 @@ END_TEST
 
 START_TEST(check_sb2_out)
 {
-	char buf[sizeof(struct gfs2_sb)];
 	char namechk[GFS2_LOCKNAME_LEN];
 	struct lgfs2_sbd sbd;
 	struct gfs2_sb *sb;
 	char uuidchk[sizeof(sbd.sd_uuid)];
+	struct gfs2_sb buf_sb;
+	void *buf = &buf_sb;
 
 	memset(namechk, 0x5a, GFS2_LOCKNAME_LEN);
 	memset(uuidchk, 0x5a, sizeof(sbd.sd_uuid));
 
 	/* 2. If only the gfs2 fields are set, the sb must be filled */
-	memset(buf, 0, sizeof(buf));
+	memset(&buf_sb, 0, sizeof(buf_sb));
 	memset(&sbd, 0, sizeof(sbd));
 
 	sbd.sd_fs_format = 0x5a5a5a50;

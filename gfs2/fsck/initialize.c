@@ -1451,19 +1451,16 @@ static int reset_journal_seg_size(struct fsck_cx *cx, unsigned int jsize, unsign
 static int correct_journal_seg_size(struct fsck_cx *cx)
 {
 	int count;
-	struct gfs_jindex *ji_0, *ji_1;
+	struct gfs_jindex ji_0, ji_1;
 	struct lgfs2_sbd *sdp = cx->sdp;
-	char buf[sizeof(struct gfs_jindex)];
 	unsigned int jsize = LGFS2_DEFAULT_JSIZE * 1024 * 1024;
 
-	count = lgfs2_readi(sdp->md.jiinode, buf, 0, sizeof(struct gfs_jindex));
+	count = lgfs2_readi(sdp->md.jiinode, &ji_0, 0, sizeof(struct gfs_jindex));
 	if (count != sizeof(struct gfs_jindex)) {
 		log_crit(_("Error %d reading system journal index inode. "
 			   "Aborting\n"), count);
 		return -1;
 	}
-	ji_0 = (struct gfs_jindex *)buf;
-
 	if (sdp->md.journals == 1) {
 		if (sdp->sd_seg_size == 0) {
 			if (!query(cx, _("The gfs2 journal segment size is 0 and a"
@@ -1481,19 +1478,16 @@ static int correct_journal_seg_size(struct fsck_cx *cx)
 		 */
 		return 0;
 	}
-
-	count = lgfs2_readi(sdp->md.jiinode, buf, sizeof(struct gfs_jindex),
+	count = lgfs2_readi(sdp->md.jiinode, &ji_1, sizeof(struct gfs_jindex),
 			   sizeof(struct gfs_jindex));
 	if (count != sizeof(struct gfs_jindex)) {
 		log_crit(_("Error %d reading system journal index inode. "
 			   "Aborting\n"), count);
 		return -1;
 	}
-	ji_1 = (struct gfs_jindex *)buf;
-
-	jsize = (be64_to_cpu(ji_1->ji_addr) - be64_to_cpu(ji_0->ji_addr)) * sdp->sd_bsize;
+	jsize = (be64_to_cpu(ji_1.ji_addr) - be64_to_cpu(ji_0.ji_addr)) * sdp->sd_bsize;
 out:
-	return reset_journal_seg_size(cx, jsize, be32_to_cpu(ji_0->ji_nsegment));
+	return reset_journal_seg_size(cx, jsize, be32_to_cpu(ji_0.ji_nsegment));
 }
 
 /*
@@ -1504,10 +1498,8 @@ out:
  */
 static int reconstruct_journals(struct fsck_cx *cx)
 {
-	int i, count;
-	struct gfs_jindex *ji;
 	struct lgfs2_sbd *sdp = cx->sdp;
-	char buf[sizeof(struct gfs_jindex)];
+	int i, count;
 
 	/* Ensure that sb_seg_size is valid */
 	if (correct_journal_seg_size(cx)) {
@@ -1517,15 +1509,16 @@ static int reconstruct_journals(struct fsck_cx *cx)
 
 	log_err(_("Clearing GFS journals (this may take a while)\n"));
 	for (i = 0; i < sdp->md.journals; i++) {
-		count = lgfs2_readi(sdp->md.jiinode, buf,
+		struct gfs_jindex ji;
+
+		count = lgfs2_readi(sdp->md.jiinode, &ji,
 				   i * sizeof(struct gfs_jindex),
 				   sizeof(struct gfs_jindex));
 		if (count != sizeof(struct gfs_jindex))
 			return 0;
-		ji = (struct gfs_jindex *)buf;
 		if ((i % 2) == 0)
 			log_err(".");
-		if (reconstruct_single_journal(sdp, i, be32_to_cpu(ji->ji_nsegment)))
+		if (reconstruct_single_journal(sdp, i, be32_to_cpu(ji.ji_nsegment)))
 			return -1;
 	}
 	log_err(_("\nJournals cleared.\n"));

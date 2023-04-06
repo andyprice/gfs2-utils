@@ -950,23 +950,21 @@ static void get_journal_inode_blocks(void)
 		struct lgfs2_inode *j_inode = NULL;
 
 		if (sbd.gfs1) {
-			struct gfs_jindex *ji;
-			char jbuf[sizeof(struct gfs_jindex)];
+			struct gfs_jindex ji;
 
 			j_inode = lgfs2_gfs_inode_read(&sbd, sbd.sd_jindex_di.in_addr);
 			if (j_inode == NULL) {
 				fprintf(stderr, "Error reading journal inode: %s\n", strerror(errno));
 				return;
 			}
-			amt = lgfs2_readi(j_inode, (void *)&jbuf,
+			amt = lgfs2_readi(j_inode, &ji,
 					 journal * sizeof(struct gfs_jindex),
 					 sizeof(struct gfs_jindex));
 			lgfs2_inode_put(&j_inode);
 			if (!amt)
 				break;
-			ji = (struct gfs_jindex *)jbuf;
-			jblock = be64_to_cpu(ji->ji_addr);
-			gfs1_journal_size = (uint64_t)be32_to_cpu(ji->ji_nsegment) * 16;
+			jblock = be64_to_cpu(ji.ji_addr);
+			gfs1_journal_size = (uint64_t)be32_to_cpu(ji.ji_nsegment) * 16;
 		} else {
 			if (journal + 3 > indirect->ii[0].dirents)
 				break;

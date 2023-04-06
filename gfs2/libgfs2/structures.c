@@ -383,7 +383,7 @@ struct lgfs2_inode *lgfs2_build_rindex(struct lgfs2_sbd *sdp)
 	struct lgfs2_inode *ip;
 	struct osi_node *n, *next = NULL;
 	struct lgfs2_rgrp_tree *rl;
-	char buf[sizeof(struct gfs2_rindex)];
+	struct gfs2_rindex ri;
 	int count;
 
 	ip = lgfs2_createi(sdp->master_dir, "rindex", S_IFREG | 0600,
@@ -394,20 +394,21 @@ struct lgfs2_inode *lgfs2_build_rindex(struct lgfs2_sbd *sdp)
 	ip->i_payload_format = GFS2_FORMAT_RI;
 	lgfs2_bmodified(ip->i_bh);
 
+	memset(&ri, 0, sizeof(struct gfs2_rindex));
 	for (n = osi_first(&sdp->rgtree); n; n = next) {
 		next = osi_next(n);
 		rl = (struct lgfs2_rgrp_tree *)n;
 
-		lgfs2_rindex_out(rl, buf);
+		lgfs2_rindex_out(rl, &ri);
 
-		count = lgfs2_writei(ip, buf, ip->i_size, sizeof(struct gfs2_rindex));
+		count = lgfs2_writei(ip, &ri, ip->i_size, sizeof(struct gfs2_rindex));
 		if (count != sizeof(struct gfs2_rindex)) {
 			lgfs2_inode_free(&ip);
 			return NULL;
 		}
 	}
-	memset(buf, 0, sizeof(struct gfs2_rindex));
-	count = __lgfs2_writei(ip, buf, ip->i_size, sizeof(struct gfs2_rindex), 0);
+	memset(&ri, 0, sizeof(struct gfs2_rindex));
+	count = __lgfs2_writei(ip, &ri, ip->i_size, sizeof(struct gfs2_rindex), 0);
 	if (count != sizeof(struct gfs2_rindex)) {
 		lgfs2_inode_free(&ip);
 		return NULL;

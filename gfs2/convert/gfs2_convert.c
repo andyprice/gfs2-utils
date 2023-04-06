@@ -1436,7 +1436,6 @@ static int fix_cdpn_symlinks(struct lgfs2_sbd *sbp, osi_list_t *cdpn_to_fix)
 static int read_gfs1_jiindex(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *ip = sdp->md.jiinode;
-	char buf[sizeof(struct gfs_jindex)];
 	unsigned int j;
 	int error=0;
 	unsigned int tmp_mode = 0;
@@ -1464,9 +1463,10 @@ static int read_gfs1_jiindex(struct lgfs2_sbd *sdp)
 	ip->i_mode &= ~S_IFMT;
 	ip->i_mode |= S_IFDIR;
 	for (j = 0; ; j++) {
+		struct gfs_jindex ji;
 		uint32_t nseg;
 
-		error = lgfs2_readi(ip, buf, j * sizeof(struct gfs_jindex),
+		error = lgfs2_readi(ip, &ji, j * sizeof(struct gfs_jindex),
 						   sizeof(struct gfs_jindex));
 		if(!error)
 			break;
@@ -1475,7 +1475,7 @@ static int read_gfs1_jiindex(struct lgfs2_sbd *sdp)
 					" journal index file.\n"));
 			goto fail;
 		}
-		memcpy(sd_jindex + j, buf, sizeof(struct gfs_jindex));
+		memcpy(sd_jindex + j, &ji, sizeof(struct gfs_jindex));
 		nseg = be32_to_cpu(sd_jindex[j].ji_nsegment);
 		sdp->jsize = (nseg * 16 * sdp->sd_bsize) >> 20;
 	}
