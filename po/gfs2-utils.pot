@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: gfs2-utils 3.5.0\n"
+"Project-Id-Version: gfs2-utils 3.5.1\n"
 "Report-Msgid-Bugs-To: cluster-devel@redhat.com\n"
-"POT-Creation-Date: 2023-02-09 09:51+0000\n"
+"POT-Creation-Date: 2023-04-11 17:25+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -415,8 +415,8 @@ msgstr ""
 #: gfs2/mkfs/main_mkfs.c:1049 gfs2/mkfs/main_mkfs.c:1332
 #: gfs2/mkfs/main_mkfs.c:1352 gfs2/mkfs/main_mkfs.c:1361
 #: gfs2/mkfs/main_mkfs.c:1370 gfs2/mkfs/main_mkfs.c:1384
-#: gfs2/convert/gfs2_convert.c:2100 gfs2/convert/gfs2_convert.c:2109
-#: gfs2/convert/gfs2_convert.c:2119 gfs2/convert/gfs2_convert.c:2129
+#: gfs2/convert/gfs2_convert.c:2098 gfs2/convert/gfs2_convert.c:2107
+#: gfs2/convert/gfs2_convert.c:2117 gfs2/convert/gfs2_convert.c:2127
 #: gfs2/fsck/pass1.c:1538 gfs2/fsck/pass1.c:1547 gfs2/fsck/pass1.c:1557
 #: gfs2/fsck/pass1.c:1567
 #, c-format
@@ -512,10 +512,10 @@ msgid "Failed to parse UUID option."
 msgstr ""
 
 #: gfs2/mkfs/main_mkfs.c:1117 gfs2/mkfs/main_grow.c:397
-#: gfs2/mkfs/main_jadd.c:684 gfs2/convert/gfs2_convert.c:1592
-#: gfs2/convert/gfs2_convert.c:1612 gfs2/convert/gfs2_convert.c:1618
-#: gfs2/convert/gfs2_convert.c:1629 gfs2/convert/gfs2_convert.c:1635
-#: gfs2/convert/gfs2_convert.c:2312 gfs2/fsck/initialize.c:1360
+#: gfs2/mkfs/main_jadd.c:684 gfs2/convert/gfs2_convert.c:1590
+#: gfs2/convert/gfs2_convert.c:1610 gfs2/convert/gfs2_convert.c:1616
+#: gfs2/convert/gfs2_convert.c:1627 gfs2/convert/gfs2_convert.c:1633
+#: gfs2/convert/gfs2_convert.c:2310 gfs2/fsck/initialize.c:1360
 msgid "Failed to compute file system constants"
 msgstr ""
 
@@ -826,13 +826,13 @@ msgstr ""
 
 #: gfs2/mkfs/main_jadd.c:620
 #, c-format
-msgid "Required space  : %*lu blks (%lu blks per journal)\n"
+msgid "Required space  : %*<PRIu64> blocks (%<PRIu64> blocks per journal)\n"
 msgstr ""
 
 #: gfs2/mkfs/main_jadd.c:622
 #, c-format
 msgid ""
-"Available space : %*lu blks\n"
+"Available space : %*<PRIu64> blocks\n"
 "\n"
 msgstr ""
 
@@ -978,384 +978,384 @@ msgstr ""
 msgid "Error: Can't allocate memory for indirect block fix.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:793 gfs2/convert/gfs2_convert.c:828
-#: gfs2/convert/gfs2_convert.c:876
+#: gfs2/convert/gfs2_convert.c:793 gfs2/convert/gfs2_convert.c:827
+#: gfs2/convert/gfs2_convert.c:875
 msgid "Error: out of memory.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:858
+#: gfs2/convert/gfs2_convert.c:857
 #, c-format
 msgid "Error reading inode: %s\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1023
+#: gfs2/convert/gfs2_convert.c:1021
 msgid "Converting inodes.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1042 gfs2/convert/gfs2_convert.c:1097
+#: gfs2/convert/gfs2_convert.c:1040 gfs2/convert/gfs2_convert.c:1095
 #, c-format
 msgid "\r%<PRIu64> inodes from %d rgs converted."
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1140
+#: gfs2/convert/gfs2_convert.c:1138
 msgid "Error retrieving directory.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1165 gfs2/convert/gfs2_convert.c:2276
+#: gfs2/convert/gfs2_convert.c:1163 gfs2/convert/gfs2_convert.c:2274
 #, c-format
 msgid "\r%<PRIu64> directories, %<PRIu64> dirents fixed."
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1175
+#: gfs2/convert/gfs2_convert.c:1173
 #, c-format
 msgid "Error retrieving inode 0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1269
+#: gfs2/convert/gfs2_convert.c:1267
 msgid "fix_one_directory_exhash: error reading directory.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1285
+#: gfs2/convert/gfs2_convert.c:1283
 #, c-format
 msgid "Error reading leaf %<PRIu64>\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1313
+#: gfs2/convert/gfs2_convert.c:1311
 msgid "Error fixing exhash directory.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1320
+#: gfs2/convert/gfs2_convert.c:1318
 msgid "Error fixing linear directory.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1347
+#: gfs2/convert/gfs2_convert.c:1345
 msgid ""
 "\n"
 "Fixing file and directory information.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1362
+#: gfs2/convert/gfs2_convert.c:1360
 msgid "Error processing directory\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1398 gfs2/convert/gfs2_convert.c:1404
+#: gfs2/convert/gfs2_convert.c:1396 gfs2/convert/gfs2_convert.c:1402
 #, c-format
 msgid "Error retrieving inode at block %<PRIu64>\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1425
+#: gfs2/convert/gfs2_convert.c:1423
 msgid "Error trying to fix cdpn dentry\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1447
+#: gfs2/convert/gfs2_convert.c:1444
 msgid ""
 "The size reported in the journal index inode is not a\n"
 "\tmultiple of the size of a journal index.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1453 gfs2/fsck/fs_recovery.c:774
+#: gfs2/convert/gfs2_convert.c:1450 gfs2/fsck/fs_recovery.c:773
 msgid "Unable to allocate journal index\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1457
+#: gfs2/convert/gfs2_convert.c:1454
 msgid "Unable to zero journal index\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1476 gfs2/fsck/fs_recovery.c:788
+#: gfs2/convert/gfs2_convert.c:1474 gfs2/fsck/fs_recovery.c:786
 msgid "An error occurred while reading the journal index file.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1486
+#: gfs2/convert/gfs2_convert.c:1484
 msgid "journal inode size invalid\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1501
+#: gfs2/convert/gfs2_convert.c:1499
 msgid "Error: Superblock Quota inode address is NULL\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1505
+#: gfs2/convert/gfs2_convert.c:1503
 msgid "Error: Superblock Statfs inode address is NULL\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1509
+#: gfs2/convert/gfs2_convert.c:1507
 msgid "Error: Superblock segment size is zero\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1643
+#: gfs2/convert/gfs2_convert.c:1641
 #, c-format
 msgid "Error: %s does not look like a gfs1 filesystem.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1651
+#: gfs2/convert/gfs2_convert.c:1649
 #, c-format
 msgid "Could not read resource group index: %s\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1658
+#: gfs2/convert/gfs2_convert.c:1656
 #, c-format
 msgid "Could not read journal index: %s\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1672
+#: gfs2/convert/gfs2_convert.c:1670
 #, c-format
 msgid "Examining file system"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1674
+#: gfs2/convert/gfs2_convert.c:1672
 msgid "Unable to fill in resource group information.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1681
+#: gfs2/convert/gfs2_convert.c:1679
 #, c-format
 msgid "%d rgs found.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1690
+#: gfs2/convert/gfs2_convert.c:1688
 #, c-format
 msgid "This program will convert a gfs1 filesystem to a gfs2 filesystem.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1692
+#: gfs2/convert/gfs2_convert.c:1690
 #, c-format
 msgid ""
 "WARNING: This can't be undone.  It is strongly advised that you:\n"
 "\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1694
+#: gfs2/convert/gfs2_convert.c:1692
 #, c-format
 msgid "   1. Back up your entire filesystem first.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1695
+#: gfs2/convert/gfs2_convert.c:1693
 #, c-format
 msgid "   2. Run fsck.gfs2 first to ensure filesystem integrity.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1696
+#: gfs2/convert/gfs2_convert.c:1694
 #, c-format
 msgid "   3. Make sure the filesystem is NOT mounted from any node.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1697
+#: gfs2/convert/gfs2_convert.c:1695
 #, c-format
 msgid "   4. Make sure you have the latest software versions.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1705
+#: gfs2/convert/gfs2_convert.c:1703
 #, c-format
 msgid "gfs2_convert version %s (built %s %s)\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1716
+#: gfs2/convert/gfs2_convert.c:1714
 #, c-format
 msgid ""
 "\n"
 "Usage:\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1717
+#: gfs2/convert/gfs2_convert.c:1715
 #, c-format
 msgid ""
 "%s [-hnqvVy] <device>\n"
 "\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1719
+#: gfs2/convert/gfs2_convert.c:1717
 #, c-format
 msgid "\th - print this help message\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1720
+#: gfs2/convert/gfs2_convert.c:1718
 #, c-format
 msgid "\tn - assume 'no' to all questions\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1721
+#: gfs2/convert/gfs2_convert.c:1719
 #, c-format
 msgid "\tq - quieter output\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1722
+#: gfs2/convert/gfs2_convert.c:1720
 #, c-format
 msgid "\tv - more verbose output\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1723
+#: gfs2/convert/gfs2_convert.c:1721
 #, c-format
 msgid "\tV - print version information\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1724
+#: gfs2/convert/gfs2_convert.c:1722
 #, c-format
 msgid "\ty - assume 'yes' to all questions\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1763
+#: gfs2/convert/gfs2_convert.c:1761
 #, c-format
 msgid "Parameter not understood: %c\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1771
+#: gfs2/convert/gfs2_convert.c:1769
 #, c-format
 msgid "No device specified. Please use '-h' for help\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1821
+#: gfs2/convert/gfs2_convert.c:1819
 msgid "Converting journal space to rg space.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1846
+#: gfs2/convert/gfs2_convert.c:1844
 msgid "Error: No suitable rg found for journal.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1849
+#: gfs2/convert/gfs2_convert.c:1847
 #, c-format
 msgid "Addr 0x%<PRIx64> comes after rg at addr 0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1872
+#: gfs2/convert/gfs2_convert.c:1870
 msgid "gfs2_convert: Error converting bitmaps.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1912
+#: gfs2/convert/gfs2_convert.c:1910
 #, c-format
 msgid ""
 "\n"
 "Next Inum: %<PRIu64>\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1942
+#: gfs2/convert/gfs2_convert.c:1940
 msgid "Removing obsolete GFS1 file system structures.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1982
+#: gfs2/convert/gfs2_convert.c:1980
 #, c-format
 msgid "Writing journal #%d..."
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:1990
+#: gfs2/convert/gfs2_convert.c:1988
 #, c-format
 msgid "done.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2153
+#: gfs2/convert/gfs2_convert.c:2151
 msgid "Failed to look up new quota file"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2160
+#: gfs2/convert/gfs2_convert.c:2158
 #, c-format
 msgid "Couldn't lookup old quota file: %s\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2196
+#: gfs2/convert/gfs2_convert.c:2194
 #, c-format
 msgid "Convert %s from GFS1 to GFS2? (y/n)"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2231
+#: gfs2/convert/gfs2_convert.c:2229
 #, c-format
 msgid ""
 "%s is not a clean gfs filesystem. Please use the fsck.gfs2 utility to "
 "correct these errors and try again.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2243
+#: gfs2/convert/gfs2_convert.c:2241
 #, c-format
 msgid "%s not converted.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2252
+#: gfs2/convert/gfs2_convert.c:2250
 msgid "Converting resource groups."
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2257
+#: gfs2/convert/gfs2_convert.c:2255
 #, c-format
 msgid "%s: Unable to convert resource groups.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2268
+#: gfs2/convert/gfs2_convert.c:2266
 #, c-format
 msgid ""
 "\n"
 "%s: Error renumbering inodes.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2280
+#: gfs2/convert/gfs2_convert.c:2278
 #, c-format
 msgid ""
 "\n"
 "%s: Error fixing directories.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2287
+#: gfs2/convert/gfs2_convert.c:2285
 #, c-format
 msgid "\r%<PRIu64> cdpn symlinks moved to empty directories."
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2291
+#: gfs2/convert/gfs2_convert.c:2289
 #, c-format
 msgid ""
 "\n"
 "%s: Error fixing cdpn symlinks.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2297
+#: gfs2/convert/gfs2_convert.c:2295
 msgid ""
 "\n"
 "Converting journals.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2300
+#: gfs2/convert/gfs2_convert.c:2298
 #, c-format
 msgid "%s: Error converting journal space.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2323
+#: gfs2/convert/gfs2_convert.c:2321
 #, c-format
 msgid ""
 "Reduced journal size to %u MB to accommodate GFS2 file system structures.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2331
+#: gfs2/convert/gfs2_convert.c:2329
 #, c-format
 msgid "Error: could not build jindex: %s\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2334
+#: gfs2/convert/gfs2_convert.c:2332
 msgid "Building GFS2 file system structures.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2338
+#: gfs2/convert/gfs2_convert.c:2336
 #, c-format
 msgid "Error building per-node directories: %s\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2345 gfs2/fsck/initialize.c:509
+#: gfs2/convert/gfs2_convert.c:2343 gfs2/fsck/initialize.c:509
 #, c-format
 msgid "Error building inum inode: %s\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2352
+#: gfs2/convert/gfs2_convert.c:2350
 #, c-format
 msgid "Error building statfs inode: %s\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2361 gfs2/fsck/initialize.c:549
+#: gfs2/convert/gfs2_convert.c:2359 gfs2/fsck/initialize.c:549
 #, c-format
 msgid "Error building rindex inode: %s\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2369 gfs2/fsck/initialize.c:567
+#: gfs2/convert/gfs2_convert.c:2367 gfs2/fsck/initialize.c:567
 #, c-format
 msgid "Error building quota inode: %s\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2395
+#: gfs2/convert/gfs2_convert.c:2393
 msgid "Committing changes to disk.\n"
 msgstr ""
 
-#: gfs2/convert/gfs2_convert.c:2412
+#: gfs2/convert/gfs2_convert.c:2410
 #, c-format
 msgid "%s: filesystem converted successfully to gfs2.\n"
 msgstr ""
@@ -2043,87 +2043,87 @@ msgstr ""
 msgid "Resetting journal segment size to %u\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1461 gfs2/fsck/initialize.c:1488
+#: gfs2/fsck/initialize.c:1460 gfs2/fsck/initialize.c:1484
 #, c-format
 msgid "Error %d reading system journal index inode. Aborting\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1469
+#: gfs2/fsck/initialize.c:1466
 msgid ""
 "The gfs2 journal segment size is 0 and a correct value cannot be determined "
 "in a single-journal filesystem.\n"
 "Continue with default? (y/n) "
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1473
+#: gfs2/fsck/initialize.c:1470
 msgid "Error: Cannot proceed without a valid sb_seg_size value.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1514
+#: gfs2/fsck/initialize.c:1506
 msgid "Failed to set correct journal segment size. Cannot continue\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1518
+#: gfs2/fsck/initialize.c:1510
 msgid "Clearing GFS journals (this may take a while)\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1531
+#: gfs2/fsck/initialize.c:1524
 msgid ""
 "\n"
 "Journals cleared.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1551
+#: gfs2/fsck/initialize.c:1544
 msgid "The gfs2 system rindex inode is missing. Okay to rebuild it? (y/n) "
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1553
+#: gfs2/fsck/initialize.c:1546
 msgid "Error: Cannot proceed without a valid rindex.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1558
+#: gfs2/fsck/initialize.c:1551
 #, c-format
 msgid "Error rebuilding rindex: %s\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1586
+#: gfs2/fsck/initialize.c:1579
 #, c-format
 msgid "Unable to open device: %s\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1626
+#: gfs2/fsck/initialize.c:1619
 msgid "Unable to block other mounters\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1644
+#: gfs2/fsck/initialize.c:1637
 #, c-format
 msgid "Error reading master directory: %s\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1685
+#: gfs2/fsck/initialize.c:1678
 msgid ""
 "\n"
 "Journal recovery complete.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1699
+#: gfs2/fsck/initialize.c:1692
 #, c-format
 msgid "Device %s is busy.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1709
+#: gfs2/fsck/initialize.c:1702
 msgid "Unable to unblock other mounters - manual intervention required\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1710
+#: gfs2/fsck/initialize.c:1703
 msgid "Use 'gfs2_tool sb <device> proto' to fix\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1712
+#: gfs2/fsck/initialize.c:1705
 msgid "Syncing the device.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1726
+#: gfs2/fsck/initialize.c:1719
 msgid "fsck.gfs2: Could not flush caches (non-fatal).\n"
 msgstr ""
 
@@ -4368,57 +4368,57 @@ msgstr ""
 msgid "Recovering journals (this may take a while)\n"
 msgstr ""
 
-#: gfs2/fsck/fs_recovery.c:757
+#: gfs2/fsck/fs_recovery.c:756
 msgid "Journal index inode not found.\n"
 msgstr ""
 
-#: gfs2/fsck/fs_recovery.c:811
+#: gfs2/fsck/fs_recovery.c:808
 #, c-format
 msgid "Journal index entry '%.*s' has an invalid filename.\n"
 msgstr ""
 
-#: gfs2/fsck/fs_recovery.c:890
+#: gfs2/fsck/fs_recovery.c:887
 msgid "Validating the journal index.\n"
 msgstr ""
 
-#: gfs2/fsck/fs_recovery.c:903
+#: gfs2/fsck/fs_recovery.c:900
 msgid "Error: jindex and rindex files are both corrupt.\n"
 msgstr ""
 
-#: gfs2/fsck/fs_recovery.c:907
+#: gfs2/fsck/fs_recovery.c:904
 msgid "The gfs2 system jindex inode is missing. Okay to rebuild it? (y/n) "
 msgstr ""
 
-#: gfs2/fsck/fs_recovery.c:909 gfs2/fsck/fs_recovery.c:939
+#: gfs2/fsck/fs_recovery.c:906 gfs2/fsck/fs_recovery.c:936
 msgid "Error: cannot proceed without a valid jindex file.\n"
 msgstr ""
 
-#: gfs2/fsck/fs_recovery.c:916
+#: gfs2/fsck/fs_recovery.c:913
 #, c-format
 msgid "Error %d rebuilding jindex\n"
 msgstr ""
 
-#: gfs2/fsck/fs_recovery.c:928
+#: gfs2/fsck/fs_recovery.c:925
 msgid "Checking the integrity of the journal index.\n"
 msgstr ""
 
-#: gfs2/fsck/fs_recovery.c:937
+#: gfs2/fsck/fs_recovery.c:934
 msgid "The system journal index is damaged.\n"
 msgstr ""
 
-#: gfs2/fsck/fs_recovery.c:938
+#: gfs2/fsck/fs_recovery.c:935
 msgid "Okay to rebuild it? (y/n) "
 msgstr ""
 
-#: gfs2/fsck/fs_recovery.c:945
+#: gfs2/fsck/fs_recovery.c:942
 msgid "Corrupt journal index was removed.\n"
 msgstr ""
 
-#: gfs2/fsck/fs_recovery.c:948
+#: gfs2/fsck/fs_recovery.c:945
 msgid "Error rebuilding journal index: Cannot continue.\n"
 msgstr ""
 
-#: gfs2/fsck/fs_recovery.c:959
+#: gfs2/fsck/fs_recovery.c:956
 msgid "Unable to read jindex inode.\n"
 msgstr ""
 
