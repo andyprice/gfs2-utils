@@ -23,6 +23,8 @@ make/stamp-h1
 m4
 make/clusterautoconfig.h*
 missing
+rpmbuild
+tests/gfs2-utils.spec
 ylwrap
 cscope.out
 tags
@@ -37,6 +39,7 @@ tags
 *.log
 *.gcno
 *.gcda
+*.backup
 gfs2/convert/gfs2_convert
 gfs2/convert/check_convert
 gfs2/edit/gfs2_edit

@@ -7,13 +7,16 @@ EXTRA_DIST = \
 	$(TESTSUITE_AT) \
 	$(TESTSCRIPTS) \
 	package.m4 \
+	gfs2-utils.spec.in \
 	atlocal.in
 
 DISTCLEANFILES = \
 	atlocal \
 	atconfig
 
-CLEANFILES = testvol
+CLEANFILES = \
+	testvol \
+	gfs2-utils.spec
 
 noinst_PROGRAMS = nukerg
 

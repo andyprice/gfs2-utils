@@ -1,0 +1,54 @@
+# Spec file only used for testing. Don't use for distro packaging.
+
+# Don't require a changelog
+%global source_date_epoch_from_changelog 0
+
+Name: gfs2-utils
+Version: @PACKAGE_VERSION@
+Release: %{rpmrelease}
+License: GPLv2+ and LGPLv2+
+Group: System Environment/Kernel
+Summary: Utilities for managing the global file system (GFS2)
+BuildRequires: ncurses-devel
+BuildRequires: kernel-headers
+BuildRequires: automake
+BuildRequires: libtool
+BuildRequires: zlib-devel
+BuildRequires: gettext-devel
+BuildRequires: bison
+BuildRequires: flex
+BuildRequires: libblkid-devel
+BuildRequires: libuuid-devel
+BuildRequires: check-devel
+Source: https://releases.pagure.org/gfs2-utils/gfs2-utils-%{version}.tar.gz
+URL: https://pagure.io/gfs2-utils
+
+%build
+./configure
+make clean
+make %{_smp_mflags} V=1
+
+%install
+make -C gfs2 install DESTDIR=%{buildroot}
+rm -f %{buildroot}/usr/sbin/gfs2_trace
+rm -f %{buildroot}/usr/sbin/gfs2_lockcapture
+
+%description
+gfs2-utils test rpm
+
+%files
+%doc doc/COPYING.* doc/COPYRIGHT doc/*.txt
+%doc doc/README.contributing doc/README.licence
+%{_sbindir}/fsck.gfs2
+%{_sbindir}/gfs2_grow
+%{_sbindir}/gfs2_jadd
+%{_sbindir}/mkfs.gfs2
+%{_sbindir}/gfs2_convert
+%{_sbindir}/gfs2_edit
+%{_sbindir}/tunegfs2
+%{_sbindir}/glocktop
+%{_libexecdir}/gfs2_withdraw_helper
+%{_mandir}/man8/*gfs2*
+%{_mandir}/man8/glocktop*
+%{_mandir}/man5/*
+%{_prefix}/lib/udev/rules.d/82-gfs2-withdraw.rules

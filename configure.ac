@@ -234,6 +234,7 @@ AC_CONFIG_FILES([Makefile
 		 doc/Makefile
 		 tests/Makefile
 		 tests/atlocal
+		 tests/gfs2-utils.spec
 		 po/Makefile.in
 		 ])
 
