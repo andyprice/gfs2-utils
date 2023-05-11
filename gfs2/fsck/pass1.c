@@ -881,7 +881,7 @@ static int p1_check_eattr_entries(struct fsck_cx *cx, struct lgfs2_inode *ip,
 	char ea_name[256];
 	uint32_t offset = (uint32_t)(((unsigned long)ea_hdr) -
 				     ((unsigned long)leaf_bh->b_data));
-	uint32_t max_size = sdp->sd_bsize;
+	uint32_t max_size = sdp->sd_bsize - sizeof(struct gfs2_meta_header);
 	uint32_t avail_size;
 	int max_ptrs;
 
