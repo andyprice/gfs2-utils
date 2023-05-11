@@ -846,6 +846,7 @@ static int check_eattr_entries(struct fsck_cx *cx, struct lgfs2_inode *ip,
 	int i;
 	int error = 0, err;
 	uint32_t offset = (uint32_t)sizeof(struct gfs2_meta_header);
+	uint32_t offset_limit = ip->i_sbd->sd_bsize - sizeof(struct gfs2_ea_header);
 
 	if (!pass->check_eattr_entry)
 		return 0;
@@ -894,7 +895,7 @@ static int check_eattr_entries(struct fsck_cx *cx, struct lgfs2_inode *ip,
 		}
 		offset += be32_to_cpu(ea_hdr->ea_rec_len);
 		if (ea_hdr->ea_flags & GFS2_EAFLAG_LAST ||
-		   offset >= ip->i_sbd->sd_bsize || ea_hdr->ea_rec_len == 0){
+		    offset > offset_limit || ea_hdr->ea_rec_len == 0) {
 			break;
 		}
 		ea_hdr_prev = ea_hdr;
