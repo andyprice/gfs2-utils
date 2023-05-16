@@ -18,11 +18,13 @@ gfs2_edit_SOURCES = \
 	journal.c
 
 gfs2_edit_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
 	-D_FILE_OFFSET_BITS=64 \
 	-I$(top_srcdir)/gfs2/include \
 	-I$(top_srcdir)/gfs2/libgfs2
 
 gfs2_edit_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ncurses_CFLAGS) \
 	$(zlib_CFLAGS) \
 	$(bzip2_CFLAGS) \

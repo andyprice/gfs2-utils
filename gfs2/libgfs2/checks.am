@@ -19,6 +19,7 @@ check_libgfs2_SOURCES = \
 	super.c
 
 check_libgfs2_CFLAGS = \
+	$(AM_CFLAGS) \
 	-I$(top_srcdir)/gfs2/libgfs2 \
 	-I$(top_srcdir)/gfs2/include \
 	$(check_CFLAGS) \

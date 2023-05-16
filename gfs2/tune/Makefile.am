@@ -8,10 +8,12 @@ tunegfs2_SOURCES = \
 	main.c \
 	super.c
 tunegfs2_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
 	-D_FILE_OFFSET_BITS=64 \
 	-I$(top_srcdir)/gfs2/include \
 	-I$(top_srcdir)/gfs2/libgfs2
 tunegfs2_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(uuid_CFLAGS)
 tunegfs2_LDADD = \
 	$(top_builddir)/gfs2/libgfs2/libgfs2.la \

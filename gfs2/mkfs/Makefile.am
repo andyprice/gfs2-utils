@@ -1,6 +1,7 @@
 MAINTAINERCLEANFILES = Makefile.in
 
 COMMON_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
 	-D_FILE_OFFSET_BITS=64 \
 	-D_LARGEFILE64_SOURCE \
 	-D_GNU_SOURCE \
@@ -25,6 +26,7 @@ mkfs_gfs2_SOURCES = \
 
 mkfs_gfs2_CPPFLAGS = $(COMMON_CPPFLAGS)
 mkfs_gfs2_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(blkid_CFLAGS) \
 	$(uuid_CFLAGS)
 mkfs_gfs2_LDADD	= \
@@ -38,7 +40,9 @@ gfs2_grow_SOURCES = \
 	metafs.c
 
 gfs2_grow_CPPFLAGS = $(COMMON_CPPFLAGS)
-gfs2_grow_CFLAGS = $(blkid_CFLAGS)
+gfs2_grow_CFLAGS = \
+	$(AM_CFLAGS) \
+	$(blkid_CFLAGS)
 gfs2_grow_LDADD = \
 	$(top_builddir)/gfs2/libgfs2/libgfs2.la \
 	$(LTLIBINTL) \
@@ -48,7 +52,7 @@ gfs2_grow_LDADD = \
 gfs2_jadd_SOURCES = \
 	main_jadd.c \
 	metafs.c
-
+gfs2_jadd_CFLAGS = $(AM_CFLAGS)
 gfs2_jadd_CPPFLAGS = $(COMMON_CPPFLAGS)
 gfs2_jadd_LDADD = \
 	$(top_builddir)/gfs2/libgfs2/libgfs2.la \

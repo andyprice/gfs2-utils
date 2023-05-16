@@ -5,6 +5,11 @@ AC_PREREQ([2.69])
 AC_INIT([gfs2-utils], [3.5.1.1.dev], [cluster-devel@redhat.com])
 AM_INIT_AUTOMAKE([-Wno-portability])
 AM_SILENT_RULES([yes])
+
+# The recommended way to opt out of Autoconf's default CFLAGS.
+# Has to be done before LT_INIT.
+: ${CFLAGS=""}
+
 LT_PREREQ([2.2.6])
 LT_INIT
 
@@ -143,11 +148,6 @@ AC_SUBST([testvol], [$with_testvol])
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h libintl.h limits.h locale.h mntent.h stddef.h sys/file.h sys/ioctl.h sys/mount.h sys/time.h sys/vfs.h syslog.h termios.h])
 
-# *FLAGS handling
-ENV_CFLAGS="$CFLAGS"
-ENV_CPPFLAGS="$CPPFLAGS"
-ENV_LDFLAGS="$LDFLAGS"
-
 # debug build stuff
 if test "x${enable_debug}" = xyes; then
 	AC_DEFINE_UNQUOTED([DEBUG], [1], [Compiling Debugging code])
@@ -214,9 +214,10 @@ for j in $WARNLIST; do
 	fi
 done
 
-CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS $EXTRA_WARNINGS $WERROR_CFLAGS"
-CPPFLAGS="-I\$(top_builddir)/make -I\$(top_srcdir)/make -I. $ENV_CPPFLAGS $OPT_CPPFLAGS"
-LDFLAGS="$ENV_LDFLAGS"
+AM_CFLAGS="$OPT_CFLAGS $GDB_FLAGS $EXTRA_WARNINGS $WERROR_CFLAGS"
+AC_SUBST([AM_CFLAGS])
+AM_CPPFLAGS="-I\$(top_builddir)/make -I\$(top_srcdir)/make -I. $OPT_CPPFLAGS"
+AC_SUBST([AM_CPPFLAGS])
 
 AC_CONFIG_TESTDIR([tests], [gfs2/libgfs2:gfs2/mkfs:gfs2/fsck:gfs2/edit:gfs2/convert:gfs2/tune:tests])
 AC_CONFIG_FILES([Makefile
@@ -254,5 +255,10 @@ echo " debug build       : $enable_debug"
 echo " C unit tests      : $have_check"
 echo " gprof build       : $enable_gprof"
 echo " gcov build        : $enable_gcov"
+echo " ------------------"
+echo " Global CFLAGS     : $AM_CFLAGS"
+echo " User CFLAGS       : $CFLAGS"
+echo " Global CPPFLAGS   : $AM_CPPFLAGS"
+echo " User CPPFLAGS     : $CPPFLAGS"
 echo
 echo "Now run 'make' to build and 'make check' to run tests"
