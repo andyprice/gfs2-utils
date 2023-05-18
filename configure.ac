@@ -214,9 +214,13 @@ for j in $WARNLIST; do
 	fi
 done
 
+INCLUDE_PATHS="-I\$(top_builddir)/make -I\$(top_srcdir)/make -I. -I\$(top_srcdir)/gfs2/libgfs2 -I\$(top_srcdir)/gfs2/include"
+DEFINES="-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE"
+
 AM_CFLAGS="$OPT_CFLAGS $GDB_FLAGS $EXTRA_WARNINGS $WERROR_CFLAGS"
 AC_SUBST([AM_CFLAGS])
-AM_CPPFLAGS="-I\$(top_builddir)/make -I\$(top_srcdir)/make -I. $OPT_CPPFLAGS"
+AM_CPPFLAGS="$INCLUDE_PATHS $DEFINES $OPT_CPPFLAGS"
+
 AC_SUBST([AM_CPPFLAGS])
 
 AC_CONFIG_TESTDIR([tests], [gfs2/libgfs2:gfs2/mkfs:gfs2/fsck:gfs2/edit:gfs2/convert:gfs2/tune:tests])

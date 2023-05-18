@@ -23,13 +23,7 @@ noinst_PROGRAMS = nukerg
 nukerg_SOURCES = nukerg.c
 nukerg_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
-	-D_FILE_OFFSET_BITS=64 \
-	-D_LARGEFILE64_SOURCE \
 	-D_GNU_SOURCE
-nukerg_CFLAGS = \
-	$(AM_CFLAGS) \
-	-I$(top_srcdir)/gfs2/libgfs2 \
-	-I$(top_srcdir)/gfs2/include
 nukerg_LDADD = \
 	$(top_builddir)/gfs2/libgfs2/libgfs2.la \
 	$(uuid_LIBS)

@@ -13,10 +13,7 @@ BUILT_SOURCES = \
 AM_LFLAGS = --header-file=lexer.h
 AM_YFLAGS = -d
 AM_CPPFLAGS += \
-	-D_FILE_OFFSET_BITS=64 \
-	-D_LARGEFILE64_SOURCE \
 	-D_GNU_SOURCE \
-	-I$(top_srcdir)/gfs2/include \
 	$(uuid_CFLAGS)
 
 noinst_HEADERS = \
