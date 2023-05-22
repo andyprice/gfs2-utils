@@ -879,9 +879,10 @@ static int p1_check_eattr_entries(struct fsck_cx *cx, struct lgfs2_inode *ip,
 {
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	char ea_name[256];
+	uint32_t offset_limit = sdp->sd_bsize - sizeof(struct gfs2_ea_header);
 	uint32_t offset = (uint32_t)(((unsigned long)ea_hdr) -
 				     ((unsigned long)leaf_bh->b_data));
-	uint32_t max_size = sdp->sd_bsize - sizeof(struct gfs2_meta_header);
+	uint32_t rec_len = be32_to_cpu(ea_hdr->ea_rec_len);
 	uint32_t avail_size;
 	int max_ptrs;
 
@@ -890,12 +891,14 @@ static int p1_check_eattr_entries(struct fsck_cx *cx, struct lgfs2_inode *ip,
 		return ask_remove_eattr_entry(cx, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 1, 1);
 	}
-	if (offset + be32_to_cpu(ea_hdr->ea_rec_len) > max_size){
-		log_err( _("EA rec length too long\n"));
+	if (offset + rec_len > offset_limit &&
+	    offset + rec_len != sdp->sd_bsize) {
+		log_err( _("EA record length too long (%"PRIu32"+%"PRIu32")\n"),
+		        offset, rec_len);
 		return ask_remove_eattr_entry(cx, leaf_bh, ea_hdr,
 					      ea_hdr_prev, 1, 1);
 	}
-	if (offset + be32_to_cpu(ea_hdr->ea_rec_len) == max_size &&
+	if (offset + rec_len == sdp->sd_bsize &&
 	   (ea_hdr->ea_flags & GFS2_EAFLAG_LAST) == 0){
 		log_err( _("last EA has no last entry flag\n"));
 		return ask_remove_eattr_entry(cx, leaf_bh, ea_hdr,
