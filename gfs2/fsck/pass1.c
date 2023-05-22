@@ -871,7 +871,7 @@ static int eatype_max(unsigned fs_format)
 	return max;
 }
 
-static int p1_check_eattr_entries(struct fsck_cx *cx, struct lgfs2_inode *ip,
+static int p1_check_eattr_entry(struct fsck_cx *cx, struct lgfs2_inode *ip,
 			       struct lgfs2_buffer_head *leaf_bh,
 			       struct gfs2_ea_header *ea_hdr,
 			       struct gfs2_ea_header *ea_hdr_prev,
@@ -2053,7 +2053,7 @@ static struct metawalk_fxns pass1_fxns = {
 	.check_eattr_indir = p1_check_eattr_indir,
 	.check_eattr_leaf = p1_check_eattr_leaf,
 	.check_dentry = NULL,
-	.check_eattr_entry = p1_check_eattr_entries,
+	.check_eattr_entry = p1_check_eattr_entry,
 	.check_eattr_extentry = p1_check_extended_leaf_eattr,
 	.big_file_msg = big_file_comfort,
 	.repair_leaf = p1_repair_leaf,
