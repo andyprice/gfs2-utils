@@ -31,7 +31,7 @@ static void parse_mount_options(char *arg)
 	} map[]= {
 		{ "lockproto=", &tfs->opt_proto, &tfs->proto },
 		{ "locktable=", &tfs->opt_table, &tfs->table },
-		{ NULL, 0, NULL }
+		{ NULL, NULL, NULL }
 	};
 
 	s = arg;

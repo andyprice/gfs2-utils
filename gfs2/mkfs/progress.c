@@ -69,7 +69,7 @@ void gfs2_progress_update(struct gfs2_progress_bar *progress, uint64_t value)
 	if (progress->skip_progress || (!isatty(STDOUT_FILENO)))
 		return;
 
-	current_time = time(0);
+	current_time = time(NULL);
 	if (current_time == last_update)
 		return;
 	last_update = current_time;

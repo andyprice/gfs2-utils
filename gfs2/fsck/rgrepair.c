@@ -20,7 +20,7 @@ static int rindex_modified = 0;
 static struct special_blocks false_rgrps;
 static struct osi_root rgcalc;
 /* Number of resource groups */
-uint64_t nrgrp = 0;
+static uint64_t nrgrp = 0;
 
 #define BAD_RG_PERCENT_TOLERANCE 11
 #define AWAY_FROM_BITMAPS 0x1000

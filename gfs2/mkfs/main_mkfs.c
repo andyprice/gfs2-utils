@@ -111,7 +111,7 @@ struct mkfs_dev {
 };
 
 /* Number of resource groups */
-uint64_t nrgrp = 0;
+static uint64_t nrgrp = 0;
 
 struct mkfs_opts {
 	unsigned bsize;

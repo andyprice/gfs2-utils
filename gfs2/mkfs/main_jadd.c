@@ -346,15 +346,20 @@ close_fd:
 static int add_qc(struct lgfs2_sbd *sdp, struct jadd_opts *opts)
 {
 	int fd, error = 0;
-	char new_name[256], buf[sdp->sd_bsize];
+	char new_name[256], *buf;
 	unsigned int blocks =
 		sdp->qcsize << (20 - sdp->sd_bsize_shift);
 	unsigned int x;
 	struct gfs2_meta_header mh;
 
-	if ((fd = create_new_inode(opts, NULL)) < 0)
-		return fd;
+	buf = calloc(1, sdp->sd_bsize);
+	if (buf == NULL)
+		return -1;
 
+	if ((fd = create_new_inode(opts, NULL)) < 0) {
+		free(buf);
+		return fd;
+	}
 	if ((error = set_flags(fd, JA_FL_CLEAR, FS_JOURNAL_DATA_FL)))
 		goto close_fd;
 
@@ -397,6 +402,7 @@ static int add_qc(struct lgfs2_sbd *sdp, struct jadd_opts *opts)
 		goto close_fd;
 	}
 close_fd:
+	free(buf);
 	return close(fd) || error;
 }
 
