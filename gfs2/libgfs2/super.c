@@ -20,7 +20,7 @@
  * read and that the sizes of the various on-disk structures have not
  * changed.
  *
- * Returns: -1 on failure, 1 if this is gfs (gfs1), 2 if this is gfs2
+ * Returns: -1 on failure, 2 if this is gfs2
  */
 int lgfs2_check_sb(void *sbp)
 {
@@ -30,12 +30,6 @@ int lgfs2_check_sb(void *sbp)
 	    be32_to_cpu(sb->sb_header.mh_type) != GFS2_METATYPE_SB) {
 		errno = EIO;
 		return -1;
-	}
-	/* Check for gfs1 */
-	if (be32_to_cpu(sb->sb_fs_format) == GFS_FORMAT_FS &&
-	    be32_to_cpu(sb->sb_header.mh_format) == GFS_FORMAT_SB &&
-	    be32_to_cpu(sb->sb_multihost_format) == GFS_FORMAT_MULTI) {
-		return 1;
 	}
 	/* It's gfs2. Check format number is in a sensible range. */
 	if (be32_to_cpu(sb->sb_fs_format) < LGFS2_FS_FORMAT_MIN ||
@@ -56,7 +50,6 @@ int lgfs2_check_sb(void *sbp)
  * block
  *
  * Returns: 0 on success, -1 on failure
- * sdp->gfs1 will be set if this is gfs (gfs1)
  */
 int lgfs2_read_sb(struct lgfs2_sbd *sdp)
 {
@@ -72,30 +65,14 @@ int lgfs2_read_sb(struct lgfs2_sbd *sdp)
 		lgfs2_brelse(bh);
 		return ret;
 	}
-	if (ret == 1)
-		sdp->gfs1 = 1;
-
 	lgfs2_sb_in(sdp, bh->b_data);
 	lgfs2_brelse(bh);
 	sdp->sd_fsb2bb_shift = sdp->sd_bsize_shift - GFS2_BASIC_BLOCK_SHIFT;
 	if (sdp->sd_bsize < 512 || sdp->sd_bsize != (sdp->sd_bsize & -sdp->sd_bsize)) {
 		return -1;
 	}
-	if (sdp->gfs1) {
-		sdp->sd_diptrs = (sdp->sd_bsize -
-				  sizeof(struct gfs_dinode)) /
-			sizeof(uint64_t);
-		sdp->sd_inptrs = (sdp->sd_bsize -
-				  sizeof(struct gfs_indirect)) /
-			sizeof(uint64_t);
-	} else {
-		sdp->sd_diptrs = (sdp->sd_bsize -
-				  sizeof(struct gfs2_dinode)) /
-			sizeof(uint64_t);
-		sdp->sd_inptrs = (sdp->sd_bsize -
-				  sizeof(struct gfs2_meta_header)) /
-			sizeof(uint64_t);
-	}
+	sdp->sd_diptrs = (sdp->sd_bsize - sizeof(struct gfs2_dinode)) / sizeof(uint64_t);
+	sdp->sd_inptrs = (sdp->sd_bsize - sizeof(struct gfs2_meta_header)) / sizeof(uint64_t);
 	sdp->sd_jbsize = sdp->sd_bsize - sizeof(struct gfs2_meta_header);
 	sdp->sd_hash_bsize = sdp->sd_bsize / 2;
 	sdp->sd_hash_bsize_shift = sdp->sd_bsize_shift - 1;
@@ -234,17 +211,13 @@ int lgfs2_rindex_read(struct lgfs2_sbd *sdp, uint64_t *rgcount, int *ok)
 		rgd->rt_data = be32_to_cpu(ri.ri_data);
 		rgd->rt_bitbytes = be32_to_cpu(ri.ri_bitbytes);
 		if (prev_rgd) {
-			/* If rg addresses go backwards, it's not sane
-			   (or it's converted from gfs1). */
-			if (!sdp->gfs1) {
-				if (prev_rgd->rt_addr >= rgd->rt_addr)
-					*ok = 0;
-				else if (!rgd_seems_ok(sdp, rgd))
-					*ok = 0;
-				else if (*ok && rg > 2 && prev_length &&
-				    prev_length != rgd->rt_addr - prev_rgd->rt_addr)
-					*ok = good_on_disk(sdp, rgd);
-			}
+			if (prev_rgd->rt_addr >= rgd->rt_addr)
+				*ok = 0;
+			else if (!rgd_seems_ok(sdp, rgd))
+				*ok = 0;
+			else if (*ok && rg > 2 && prev_length &&
+			    prev_length != rgd->rt_addr - prev_rgd->rt_addr)
+				*ok = good_on_disk(sdp, rgd);
 			prev_length = rgd->rt_addr - prev_rgd->rt_addr;
 		}
 

@@ -187,7 +187,6 @@ static int restore_try_bzip(struct metafd *mfd)
 
 static uint64_t blks_saved;
 static uint64_t journal_blocks[MAX_JOURNALS_SAVED];
-static uint64_t gfs1_journal_size = 0; /* in blocks */
 static int journals_found = 0;
 int print_level = MSG_NOTICE;
 
@@ -268,9 +267,6 @@ static int init_per_node_lookup(void)
 	int i;
 	struct lgfs2_inode *per_node_di;
 
-	if (sbd.gfs1)
-		return FALSE;
-
 	per_node_di = lgfs2_inode_read(&sbd, masterblock("per_node"));
 	if (per_node_di == NULL) {
 		fprintf(stderr, "Failed to read per_node: %s\n", strerror(errno));
@@ -293,37 +289,35 @@ static int init_per_node_lookup(void)
 
 static int block_is_systemfile(uint64_t blk)
 {
-	return block_is_jindex(blk) || block_is_inum_file(blk) ||
-		block_is_statfs_file(blk) || block_is_quota_file(blk) ||
-		block_is_rindex(blk) || block_is_a_journal(blk) ||
-		block_is_per_node(blk) || block_is_in_per_node(blk);
+	return block_is_inum_file(blk) ||
+	       block_is_statfs_file(blk) ||
+	       block_is_quota_file(blk) ||
+	       block_is_rindex(blk) ||
+	       block_is_a_journal(blk) ||
+	       block_is_per_node(blk) ||
+	       block_is_in_per_node(blk);
 }
 
 static size_t di_save_len(const char *buf, uint64_t owner)
 {
 	const struct gfs2_dinode *dn;
-	const struct gfs_dinode *d1;
 	uint16_t di_height;
 	uint32_t di_mode;
-	int gfs1dir;
 
 	dn = (void *)buf;
-	d1 = (void *)buf;
 	di_mode = be32_to_cpu(dn->di_mode);
 	di_height = be16_to_cpu(dn->di_height);
-	/* __pad1 is di_type in gfs1 */
-	gfs1dir = sbd.gfs1 && (be16_to_cpu(d1->di_type) == GFS_FILE_DIR);
 
 	/* Do not save (user) data from the inode block unless they are
 	   indirect pointers, dirents, symlinks or fs internal data */
-	if (di_height > 0 || S_ISDIR(di_mode) || S_ISLNK(di_mode) || gfs1dir
-	    || block_is_systemfile(owner))
+	if (di_height > 0 || S_ISDIR(di_mode) || S_ISLNK(di_mode) ||
+	    block_is_systemfile(owner))
 		return sbd.sd_bsize;
 	return sizeof(struct gfs2_dinode);
 }
 
 /*
- * get_gfs_struct_info - get block type and structure length
+ * get_struct_info - get block type and structure length
  *
  * @buf - The block buffer to examine
  * @owner - The block address of the parent structure
@@ -331,9 +325,9 @@ static size_t di_save_len(const char *buf, uint64_t owner)
  * @gstruct_len - pointer to integer to hold the structure length
  *
  * returns: 0 if successful
- *          -1 if this isn't gfs metadata.
+ *          -1 if this isn't gfs2 metadata.
  */
-static int get_gfs_struct_info(const char *buf, uint64_t owner, unsigned *block_type,
+static int get_struct_info(const char *buf, uint64_t owner, unsigned *block_type,
                                unsigned *gstruct_len)
 {
 	struct gfs2_meta_header *mh = (struct gfs2_meta_header *)buf;
@@ -355,10 +349,7 @@ static int get_gfs_struct_info(const char *buf, uint64_t owner, unsigned *block_
 
 	switch (be32_to_cpu(mh->mh_type)) {
 	case GFS2_METATYPE_SB:   /* 1 (superblock) */
-		if (sbd.gfs1)
-			*gstruct_len = sizeof(struct gfs_sb);
-		else
-			*gstruct_len = sizeof(struct gfs2_sb);
+		*gstruct_len = sizeof(struct gfs2_sb);
 		break;
 	case GFS2_METATYPE_RG:   /* 2 (rsrc grp hdr) */
 		*gstruct_len = sbd.sd_bsize; /*sizeof(struct gfs_rgrp);*/
@@ -379,13 +370,7 @@ static int get_gfs_struct_info(const char *buf, uint64_t owner, unsigned *block_
 		*gstruct_len = sbd.sd_bsize;
 		break;
 	case GFS2_METATYPE_LH:   /* 8 (log header) */
-		if (sbd.gfs1)
-			*gstruct_len = 512; /* gfs copies the log header
-					       twice and compares the copy,
-					       so we need to save all 512
-					       bytes of it. */
-		else
-			*gstruct_len = sizeof(struct gfs2_log_header);
+		*gstruct_len = sizeof(struct gfs2_log_header);
 		break;
 	case GFS2_METATYPE_LD:   /* 9 (log descriptor) */
 		*gstruct_len = sbd.sd_bsize;
@@ -606,7 +591,7 @@ static void block_range_setinfo(struct block_range *br, uint64_t owner)
 		uint64_t addr = br->start + i;
 		uint64_t _owner = (owner == 0) ? addr : owner;
 
-		if (get_gfs_struct_info(buf, _owner, br->blktype + i, br->blklen + i) &&
+		if (get_struct_info(buf, _owner, br->blktype + i, br->blklen + i) &&
 		    !block_is_systemfile(_owner)) {
 			br->blklen[i] = 0;
 		}
@@ -859,7 +844,6 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 {
 	struct block_range_queue indq[GFS2_MAX_META_HEIGHT] = {{NULL}};
 	struct gfs2_dinode *dip = (struct gfs2_dinode *)ibuf;
-	struct gfs_dinode *dip1 = (struct gfs_dinode *)ibuf;
 	uint16_t height;
 	int is_exhash;
 
@@ -874,9 +858,8 @@ static void save_inode_data(struct metafd *mfd, char *ibuf, uint64_t iblk)
 	   is directories, where the height represents the level at which
 	   the hash table exists, and we have to save the directory data. */
 
-	is_exhash = (S_ISDIR(be32_to_cpu(dip->di_mode)) ||
-	             (sbd.gfs1 && be16_to_cpu(dip1->di_type) == GFS_FILE_DIR)) &&
-	             be32_to_cpu(dip->di_flags) & GFS2_DIF_EXHASH;
+	is_exhash = S_ISDIR(be32_to_cpu(dip->di_mode)) &&
+	            be32_to_cpu(dip->di_flags) & GFS2_DIF_EXHASH;
 	if (is_exhash)
 		height++;
 	else if (height > 0 && !(be32_to_cpu(dip->di_flags) & GFS2_DIF_SYSTEM) &&
@@ -946,30 +929,10 @@ static void get_journal_inode_blocks(void)
 	 * journaled user data that may exist there as well. */
 	for (journal = 0; ; journal++) { /* while journals exist */
 		uint64_t jblock;
-		int amt;
-		struct lgfs2_inode *j_inode = NULL;
 
-		if (sbd.gfs1) {
-			struct gfs_jindex ji;
-
-			j_inode = lgfs2_gfs_inode_read(&sbd, sbd.sd_jindex_di.in_addr);
-			if (j_inode == NULL) {
-				fprintf(stderr, "Error reading journal inode: %s\n", strerror(errno));
-				return;
-			}
-			amt = lgfs2_readi(j_inode, &ji,
-					 journal * sizeof(struct gfs_jindex),
-					 sizeof(struct gfs_jindex));
-			lgfs2_inode_put(&j_inode);
-			if (!amt)
-				break;
-			jblock = be64_to_cpu(ji.ji_addr);
-			gfs1_journal_size = (uint64_t)be32_to_cpu(ji.ji_nsegment) * 16;
-		} else {
-			if (journal + 3 > indirect->ii[0].dirents)
-				break;
-			jblock = indirect->ii[0].dirent[journal + 2].inum.in_addr;
-		}
+		if (journal + 3 > indirect->ii[0].dirents)
+			break;
+		jblock = indirect->ii[0].dirent[journal + 2].inum.in_addr;
 		journal_blocks[journals_found++] = jblock;
 	}
 }
@@ -1016,21 +979,6 @@ static void save_allocated(struct lgfs2_rgrp_tree *rgd, struct metafd *mfd)
 		}
 		if (br.start != 0)
 			save_allocated_range(mfd, &br);
-
-		if (!sbd.gfs1)
-			continue;
-
-		/* For gfs1, Save off the free/unlinked meta blocks too.
-		 * If we don't, we may run into metadata allocation issues. */
-		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_UNLINKED);
-		for (j = 0; j < m; j++) {
-			size_t blen;
-			char *buf = check_read_block(sbd.device_fd, blk, blk, NULL, &blen);
-			if (buf != NULL) {
-				save_buf(mfd, buf, blk, blen);
-				free(buf);
-			}
-		}
 	}
 	free(ibuf);
 }
@@ -1149,40 +1097,8 @@ void savemeta(char *out_fn, int saveoption, int gziplevel)
 	sb_addr = GFS2_SB_ADDR * GFS2_BASIC_BLOCK / sbd.sd_bsize;
 	buf = check_read_block(sbd.device_fd, sb_addr, 0, NULL, NULL);
 	if (buf != NULL) {
-		if (sbd.gfs1)
-			save_buf(&mfd, buf, sb_addr, sizeof(struct gfs_sb));
-		else
-			save_buf(&mfd, buf, sb_addr, sizeof(struct gfs2_sb));
+		save_buf(&mfd, buf, sb_addr, sizeof(struct gfs2_sb));
 		free(buf);
-	}
-	/* If this is gfs1, save off the rindex because it's not
-	   part of the file system as it is in gfs2. */
-	if (sbd.gfs1) {
-		uint64_t blk;
-		int j;
-
-		blk = sbd.sd_rindex_di.in_addr;
-		buf = check_read_block(sbd.device_fd, blk, blk, NULL, NULL);
-		if (buf != NULL) {
-			save_buf(&mfd, buf, blk, sbd.sd_bsize);
-			save_inode_data(&mfd, buf, blk);
-			free(buf);
-		}
-		/* In GFS1, journals aren't part of the RG space */
-		for (j = 0; j < journals_found; j++) {
-			uint64_t jb = journal_blocks[j];
-
-			log_debug("Saving journal #%d\n", j + 1);
-			for (blk = jb; blk < (jb + gfs1_journal_size); blk++) {
-				size_t blen;
-
-				buf = check_read_block(sbd.device_fd, blk, blk, NULL, &blen);
-				if (buf != NULL) {
-					save_buf(&mfd, buf, blk, blen);
-					free(buf);
-				}
-			}
-		}
 	}
 	/* Walk through the resource groups saving everything within */
 	for (n = osi_first(&sbd.rgtree); n; n = osi_next(n)) {
@@ -1257,8 +1173,6 @@ static int restore_super(struct metafd *mfd, void *buf, int printonly)
 		fprintf(stderr, "Error: Invalid superblock in metadata file.\n");
 		return -1;
 	}
-	if (ret == 1)
-		sbd.gfs1 = 1;
 	if ((!printonly) && lgfs2_sb_write(&sbd, sbd.device_fd)) {
 		fprintf(stderr, "Failed to write superblock\n");
 		return -1;
@@ -1389,7 +1303,7 @@ static int restore_init(const char *path, struct metafd *mfd, int printonly)
 		       sbd.fssize, sm.sm_fs_bytes / ((float)(1 << 30)));
 	}
 	printf("Block size is %uB\n", sbd.sd_bsize);
-	printf("This is gfs%c metadata.\n", sbd.gfs1 ? '1': '2');
+	printf("This is gfs2 metadata.\n");
 	if (printonly > 1 && printonly == LGFS2_SB_ADDR(&sbd)) {
 		display_block_type(bp, LGFS2_SB_ADDR(&sbd), TRUE);
 		display_gfs2(bp);

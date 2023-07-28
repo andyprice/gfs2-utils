@@ -122,7 +122,7 @@ static const char *de_type_string(uint8_t de_type)
 }
 
 static int check_file_type(struct fsck_cx *cx, uint64_t block, uint8_t de_type, int q,
-			   int gfs1, int *isdir)
+			   int *isdir)
 {
 	struct dir_info *dt;
 
@@ -131,7 +131,7 @@ static int check_file_type(struct fsck_cx *cx, uint64_t block, uint8_t de_type, 
 		log_err( _("Invalid block type\n"));
 		return -1;
 	}
-	if (de_type == (gfs1 ? GFS_FILE_DIR : DT_DIR))
+	if (de_type == DT_DIR)
 		*isdir = 1;
 	/* Check if the dinode is in the dir tree */
 	dt = dirtree_find(cx, block);
@@ -362,9 +362,7 @@ static int wrong_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, struct lgfs2_i
 			log_err(_("The planned leaf was split. The new leaf "
 			          "is: %"PRIu64" (0x%"PRIx64"). di_blocks=%"PRIu64"\n"),
 			        real_leaf, real_leaf, ip->i_blocks);
-			fsck_bitmap_set(cx, ip, real_leaf, _("split leaf"),
-					sdp->gfs1 ? GFS2_BLKST_DINODE :
-					GFS2_BLKST_USED);
+			fsck_bitmap_set(cx, ip, real_leaf, _("split leaf"), GFS2_BLKST_USED);
 		}
 		/* If the misplaced dirent was supposed to be earlier in the
 		   hash table, we need to adjust our counts for the blocks
@@ -380,7 +378,7 @@ static int wrong_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, struct lgfs2_i
 		   leaf, but that leaf has already been processed. So we have
 		   to nuke the dent from this leaf when we return, but we
 		   still need to do the "good dent" accounting. */
-		if (d->dr_type == (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR)) {
+		if (d->dr_type == DT_DIR) {
 			error = set_parent_dir(cx, d->dr_inum, ip->i_num);
 			if (error > 0)
 				/* This is a bit of a kludge, but returning 0
@@ -537,7 +535,7 @@ static int basic_dentry_checks(struct fsck_cx *cx, struct lgfs2_inode *ip, struc
 		return 1;
 	}
 
-	error = check_file_type(cx, entry->in_addr, d->dr_type, *q, sdp->gfs1, isdir);
+	error = check_file_type(cx, entry->in_addr, d->dr_type, *q, isdir);
 	if (error < 0) {
 		log_err(_("Error: directory entry type is incompatible with block type at block %"PRIu64
 		          " (0x%"PRIx64") in directory inode %"PRIu64" (0x%"PRIx64").\n"),
@@ -592,24 +590,6 @@ static int basic_dentry_checks(struct fsck_cx *cx, struct lgfs2_inode *ip, struc
 		        inum.in_formal_ino, inum.in_formal_ino);
 		return 1;
 	}
-	/* Check for a special case where a (bad) GFS1 dirent points to what
-	 * is not a known inode. It could be other GFS1 metadata, such as an
-	 * eattr or indirect block, but marked "dinode" in the bitmap because
-	 * gfs1 marked all gfs1 metadata that way. */
-	if (ii == NULL && di == NULL && sdp->gfs1) {
-		struct lgfs2_buffer_head *tbh;
-
-		tbh = lgfs2_bread(sdp, entry->in_addr);
-		if (lgfs2_check_meta(tbh->b_data, GFS2_METATYPE_DI)) { /* not dinode */
-			log_err(_("Directory entry '%s' pointing to block %"PRIu64
-			          " (0x%"PRIx64") in directory %"PRIu64" (0x%"PRIx64") "
-				   "is not really a GFS1 dinode.\n"), tmp_name,
-			        entry->in_addr, entry->in_addr, ip->i_num.in_addr, ip->i_num.in_addr);
-			lgfs2_brelse(tbh);
-			return 1;
-		}
-		lgfs2_brelse(tbh);
-	}
 	return 0;
 }
 
@@ -652,8 +632,7 @@ static int dirref_find(struct fsck_cx *cx, struct lgfs2_inode *ip, struct gfs2_d
 		log_err(_("The corrupt directory entry was not fixed.\n"));
 		goto out;
 	}
-	decr_link_count(cx, entry->in_addr, ip->i_num.in_addr, ip->i_sbd->gfs1,
-	                _("bad original reference"));
+	decr_link_count(cx, entry->in_addr, ip->i_num.in_addr, _("bad original reference"));
 	lgfs2_dirent2_del(ip, bh, prev, dent);
 	log_err(_("The corrupt directory entry '%s' was deleted.\n"), fn);
 out:
@@ -963,8 +942,7 @@ static int write_new_leaf(struct fsck_cx *cx, struct lgfs2_inode *dip, int start
 		free(padbuf);
 		return -1;
 	}
-	fsck_bitmap_set(cx, dip, *bn, _("directory leaf"), dip->i_sbd->gfs1 ?
-			GFS2_BLKST_DINODE : GFS2_BLKST_USED);
+	fsck_bitmap_set(cx, dip, *bn, _("directory leaf"), GFS2_BLKST_USED);
 	log_err(_("A new directory leaf was allocated at block %"PRIu64" "
 		  "(0x%"PRIx64") to fill the %d (0x%x) pointer gap %s the existing "
 		  "pointer at index %d (0x%x).\n"), *bn, *bn,
@@ -998,12 +976,7 @@ static int write_new_leaf(struct fsck_cx *cx, struct lgfs2_inode *dip, int start
 		  " (0x%"PRIx64") at index: 0x%x for 0x%lx pointers.\n"),
 	        dip->i_num.in_addr, dip->i_num.in_addr,
 		start_lindex, (unsigned long)pad_size / sizeof(uint64_t));
-	if (dip->i_sbd->gfs1)
-		count = lgfs2_gfs1_writei(dip, padbuf, start_lindex *
-				    sizeof(uint64_t), pad_size);
-	else
-		count = lgfs2_writei(dip, padbuf, start_lindex *
-				    sizeof(uint64_t), pad_size);
+	count = lgfs2_writei(dip, padbuf, start_lindex * sizeof(uint64_t), pad_size);
 	free(padbuf);
 	if (count != pad_size) {
 		log_err( _("Error: bad write while fixing directory leaf "
@@ -1049,9 +1022,7 @@ static void pad_with_leafblks(struct fsck_cx *cx, struct lgfs2_inode *ip, __be64
 		log_err(_("New leaf block was allocated at %"PRIu64" (0x%"PRIx64") for "
 			  "index %d (0x%x), length %d\n"),
 		        new_leaf_blk, new_leaf_blk, lindex, lindex, new_len);
-		fsck_bitmap_set(cx, ip, new_leaf_blk, _("pad leaf"),
-				ip->i_sbd->gfs1 ?
-				GFS2_BLKST_DINODE : GFS2_BLKST_USED);
+		fsck_bitmap_set(cx, ip, new_leaf_blk, _("pad leaf"), GFS2_BLKST_USED);
 		/* Fix the hash table in memory to have the new leaf */
 		for (i = 0; i < new_len; i++)
 			tbl[lindex + i] = cpu_to_be64(new_leaf_blk);
@@ -1418,9 +1389,7 @@ static int fix_hashtable(struct fsck_cx *cx, struct lgfs2_inode *ip, __be64 *tbl
 		log_err(_("New split-off leaf block was allocated at %"PRIu64" "
 			  "(0x%"PRIx64") for index %d (0x%x)\n"),
 		        new_leaf_blk, new_leaf_blk, lindex, lindex);
-		fsck_bitmap_set(cx, ip, new_leaf_blk, _("split leaf"),
-				ip->i_sbd->gfs1 ?
-				GFS2_BLKST_DINODE : GFS2_BLKST_USED);
+		fsck_bitmap_set(cx, ip, new_leaf_blk, _("split leaf"), GFS2_BLKST_USED);
 		log_err(_("Hash table repaired.\n"));
 		/* Fix up the hash table in memory to include the new leaf */
 		for (i = 0; i < *proper_len; i++)
@@ -1956,8 +1925,7 @@ static int check_system_dir(struct fsck_cx *cx, struct lgfs2_inode *sysinode, co
 		if (query(cx, _("Is it okay to add '.' entry? (y/n) "))) {
 			struct lgfs2_inum no = sysinode->i_num;
 			log_warn( _("Adding '.' entry\n"));
-			error = lgfs2_dir_add(sysinode, ".", 1, &no,
-			                (sysinode->i_sbd->gfs1 ? GFS_FILE_DIR : DT_DIR));
+			error = lgfs2_dir_add(sysinode, ".", 1, &no, DT_DIR);
 			if (error) {
 				log_err(_("Error adding directory %s: %s\n"), "'.'",
 				         strerror(errno));
@@ -2010,11 +1978,8 @@ static int check_system_dir(struct fsck_cx *cx, struct lgfs2_inode *sysinode, co
  */
 static inline int is_system_dir(struct lgfs2_sbd *sdp, uint64_t block)
 {
-	if (block == sdp->md.rooti->i_num.in_addr)
-		return 1;
-	if (sdp->gfs1)
-		return 0;
-	if (block == sdp->md.jiinode->i_num.in_addr ||
+	if (block == sdp->md.rooti->i_num.in_addr ||
+	    block == sdp->md.jiinode->i_num.in_addr ||
 	    block == sdp->md.pinode->i_num.in_addr ||
 	    block == sdp->master_dir->i_num.in_addr)
 		return 1;
@@ -2069,8 +2034,7 @@ static int pass2_check_dir(struct fsck_cx *cx, struct lgfs2_inode *ip)
 
 		if (query(cx, _("Is it okay to add '.' entry? (y/n) "))) {
 			struct lgfs2_inum no = ip->i_num;
-			error = lgfs2_dir_add(ip, ".", 1, &no,
-					(cx->sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
+			error = lgfs2_dir_add(ip, ".", 1, &no, DT_DIR);
 			if (error) {
 				log_err(_("Error adding directory %s: %s\n"), "'.'",
 					strerror(errno));
@@ -2119,22 +2083,19 @@ int pass2(struct fsck_cx *cx)
 	int error;
 
 	/* Check all the system directory inodes. */
-	if (!sdp->gfs1 &&
-	    check_system_dir(cx, sdp->md.jiinode, "jindex", build_jindex)) {
+	if (check_system_dir(cx, sdp->md.jiinode, "jindex", build_jindex)) {
 		stack;
 		return FSCK_ERROR;
 	}
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 		return FSCK_OK;
-	if (!sdp->gfs1 &&
-	    check_system_dir(cx, sdp->md.pinode, "per_node", build_per_node)) {
+	if (check_system_dir(cx, sdp->md.pinode, "per_node", build_per_node)) {
 		stack;
 		return FSCK_ERROR;
 	}
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 		return FSCK_OK;
-	if (!sdp->gfs1 &&
-	    check_system_dir(cx, sdp->master_dir, "master", lgfs2_build_master)) {
+	if (check_system_dir(cx, sdp->master_dir, "master", lgfs2_build_master)) {
 		stack;
 		return FSCK_ERROR;
 	}

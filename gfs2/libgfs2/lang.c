@@ -389,7 +389,7 @@ static int ast_get_bitstate(uint64_t bn, struct lgfs2_sbd *sbd)
 	return state;
 }
 
-static void result_lookup_mtype(struct lgfs2_lang_result *result, int gfs1)
+static void result_lookup_mtype(struct lgfs2_lang_result *result)
 {
 	const uint32_t mh_type = lgfs2_get_block_type(result->lr_buf);
 	uint64_t addr = result->lr_blocknr;
@@ -399,7 +399,7 @@ static void result_lookup_mtype(struct lgfs2_lang_result *result, int gfs1)
 		fprintf(stderr, "Could not determine type for block %"PRIu64"\n", addr);
 		return;
 	}
-	result->lr_mtype = lgfs2_find_mtype(mh_type, gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2);
+	result->lr_mtype = lgfs2_find_mtype(mh_type);
 	if (result->lr_mtype == NULL)
 		fprintf(stderr, "Could not determine meta type for block %"PRIu64"\n", addr);
 }
@@ -445,7 +445,7 @@ static struct lgfs2_lang_result *ast_interp_get(struct lgfs2_lang_state *state,
 			free(result);
 			return NULL;
 		}
-		result_lookup_mtype(result, sbd->gfs1);
+		result_lookup_mtype(result);
 
 	} else if (ast->ast_right->ast_right->ast_type == AST_KW_STATE) {
 		result->lr_blocknr = ast_lookup_block_num(ast->ast_right, sbd);
@@ -491,16 +491,16 @@ static int ast_field_set(char *buf, const struct lgfs2_metafield *field,
 	return AST_INTERP_SUCCESS;
 }
 
-static const struct lgfs2_metadata *lang_find_mtype(struct ast_node *node, const char *buf, unsigned ver)
+static const struct lgfs2_metadata *lang_find_mtype(struct ast_node *node, const char *buf)
 {
 	const struct lgfs2_metadata *mtype = NULL;
 
 	if (node->ast_type == AST_EX_TYPESPEC) {
-		mtype = lgfs2_find_mtype_name(node->ast_str, ver);
+		mtype = lgfs2_find_mtype_name(node->ast_str);
 		if (mtype == NULL)
 			fprintf(stderr, "Invalid block type: %s\n", node->ast_text);
 	} else {
-		mtype = lgfs2_find_mtype(lgfs2_get_block_type(buf), ver);
+		mtype = lgfs2_find_mtype(lgfs2_get_block_type(buf));
 		if (mtype == NULL)
 			fprintf(stderr, "Unrecognised block at: %s\n", node->ast_text);
 	}
@@ -531,7 +531,6 @@ static struct lgfs2_lang_result *ast_interp_set(struct lgfs2_lang_state *state,
 	struct ast_node *fieldname;
 	struct ast_node *fieldval;
 	int ret = 0;
-	unsigned ver = sbd->gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2;
 
 	struct lgfs2_lang_result *result = calloc(1, sizeof(struct lgfs2_lang_result));
 	if (result == NULL) {
@@ -546,7 +545,7 @@ static struct lgfs2_lang_result *ast_interp_set(struct lgfs2_lang_state *state,
 	if (result->lr_buf == NULL)
 		goto out_err;
 
-	result->lr_mtype = lang_find_mtype(lookup->ast_right, result->lr_buf, ver);
+	result->lr_mtype = lang_find_mtype(lookup->ast_right, result->lr_buf);
 	if (result->lr_mtype == NULL) {
 		fprintf(stderr, "Unrecognised block at: %s\n", lookup->ast_str);
 		goto out_err;

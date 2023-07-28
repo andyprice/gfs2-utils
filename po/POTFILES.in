@@ -6,7 +6,6 @@ gfs2/mkfs/metafs.c
 gfs2/tune/main.c
 gfs2/tune/super.c
 gfs2/tune/tunegfs2.h
-gfs2/convert/gfs2_convert.c
 gfs2/fsck/afterpass1_common.c
 gfs2/fsck/inode_hash.c
 gfs2/fsck/initialize.c

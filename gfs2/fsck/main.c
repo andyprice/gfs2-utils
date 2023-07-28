@@ -158,10 +158,6 @@ static int check_statfs(struct fsck_cx *cx)
 	uint64_t sc_dinodes;
 	int count;
 
-	if (sdp->gfs1 && !sdp->md.statfs->i_size) {
-		log_info("This GFS1 file system is not using fast_statfs.\n");
-		return 0;
-	}
 	/* Read the current statfs values */
 	count = lgfs2_readi(sdp->md.statfs, &sc, 0, sdp->md.statfs->i_size);
 	if (count != sizeof(struct gfs2_statfs_change)) {
@@ -342,8 +338,7 @@ int main(int argc, char **argv)
 		error = fsck_pass(passes + i, &cx);
 
 	/* Free up our system inodes */
-	if (!sb.gfs1)
-		lgfs2_inode_put(&sb.md.inum);
+	lgfs2_inode_put(&sb.md.inum);
 	lgfs2_inode_put(&sb.md.statfs);
 	for (j = 0; j < sb.md.journals; j++)
 		lgfs2_inode_put(&sb.md.journal[j]);
@@ -352,11 +347,9 @@ int main(int argc, char **argv)
 	lgfs2_inode_put(&sb.md.jiinode);
 	lgfs2_inode_put(&sb.md.riinode);
 	lgfs2_inode_put(&sb.md.qinode);
-	if (!sb.gfs1)
-		lgfs2_inode_put(&sb.md.pinode);
+	lgfs2_inode_put(&sb.md.pinode);
 	lgfs2_inode_put(&sb.md.rooti);
-	if (!sb.gfs1)
-		lgfs2_inode_put(&sb.master_dir);
+	lgfs2_inode_put(&sb.master_dir);
 	if (lf_dip)
 		lgfs2_inode_put(&lf_dip);
 

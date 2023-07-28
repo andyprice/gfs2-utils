@@ -159,26 +159,6 @@ void sb_print(void *sbp)
 	print_it("  uuid", "%36s", NULL, readable_uuid);
 }
 
-void gfs_sb_print(void *sbp)
-{
-	struct gfs_sb *sb = sbp;
-
-	meta_header_print(&sb->sb_header);
-	printbe32(sb, sb_fs_format);
-	printbe32(sb, sb_multihost_format);
-	printbe32(sb, sb_flags);
-	printbe32(sb, sb_bsize);
-	printbe32(sb, sb_bsize_shift);
-	printbe32(sb, sb_seg_size);
-	inum_print(&sb->sb_jindex_di);
-	inum_print(&sb->sb_rindex_di);
-	inum_print(&sb->sb_root_di);
-	print_it("  sb_lockproto", "%.64s", NULL, sb->sb_lockproto);
-	print_it("  sb_locktable", "%.64s", NULL, sb->sb_locktable);
-	inum_print(&sb->sb_quota_di);
-	inum_print(&sb->sb_license_di);
-}
-
 void rindex_print(void *rip)
 {
 	struct gfs2_rindex *ri = rip;
@@ -204,20 +184,6 @@ void rgrp_print(void *rgp)
 	printbe32(rg, rg_data);
 	printbe32(rg, rg_bitbytes);
 	printbe32(rg, rg_crc);
-}
-
-void gfs_rgrp_print(void *rgp)
-{
-	struct gfs_rgrp *rg = rgp;
-
-	meta_header_print(&rg->rg_header);
-	printbe32(rg, rg_flags);
-	printbe32(rg, rg_free);
-	printbe32(rg, rg_useddi);
-	printbe32(rg, rg_freedi);
-	inum_print(&rg->rg_freedi_list);
-	printbe32(rg, rg_usedmeta);
-	printbe32(rg, rg_freemeta);
 }
 
 void quota_print(void *qp)
@@ -314,19 +280,6 @@ void log_header_print(void *lhp)
 	print_it("  lh_local_dinodes", "%"PRId64, "0x%"PRIx64, be64_to_cpu(lh->lh_local_dinodes));
 }
 
-void gfs_log_header_print(void *lhp)
-{
-	struct gfs_log_header *lh = lhp;
-
-	meta_header_print(&lh->lh_header);
-	print_it("  lh_flags", "%"PRIu32, "0x%.8"PRIx32, be32_to_cpu(lh->lh_flags));
-	print_it("  lh_pad", "%"PRIu32, "0x%"PRIx32, be32_to_cpu(lh->lh_pad));
-	print_it("  lh_first", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(lh->lh_first));
-	print_it("  lh_sequence", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(lh->lh_sequence));
-	print_it("  lh_tail", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(lh->lh_tail));
-	print_it("  lh_last_dump", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(lh->lh_last_dump));
-}
-
 void log_descriptor_print(void *ldp)
 {
 	struct gfs2_log_descriptor *ld = ldp;
@@ -354,11 +307,4 @@ void quota_change_print(void *qcp)
 	print_it("  qc_change", "%"PRId64, "0x%"PRIx64, be64_to_cpu(qc->qc_change));
 	print_it("  qc_flags", "0x%.8"PRIX32, NULL, be32_to_cpu(qc->qc_flags));
 	printbe32(qc, qc_id);
-}
-
-void gfs_jindex_print(struct gfs_jindex *ji)
-{
-	print_it("  ji_addr", "%"PRIu64, "0x%"PRIx64, be64_to_cpu(ji->ji_addr));
-	print_it("  ji_nsegment", "%"PRIu32, "0x%"PRIx32, be32_to_cpu(ji->ji_nsegment));
-	print_it("  ji_pad", "%"PRIu32, "0x%"PRIx32, be32_to_cpu(ji->ji_pad));
 }

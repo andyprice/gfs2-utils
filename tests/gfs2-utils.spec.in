@@ -43,7 +43,6 @@ gfs2-utils test rpm
 %{_sbindir}/gfs2_grow
 %{_sbindir}/gfs2_jadd
 %{_sbindir}/mkfs.gfs2
-%{_sbindir}/gfs2_convert
 %{_sbindir}/gfs2_edit
 %{_sbindir}/tunegfs2
 %{_sbindir}/glocktop

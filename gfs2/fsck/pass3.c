@@ -39,10 +39,9 @@ static int attach_dotdot_to(struct fsck_cx *cx, uint64_t newdotdot,
 	if (lgfs2_dirent_del(ip, filename, filename_len))
 		log_warn( _("Unable to remove \"..\" directory entry.\n"));
 	else
-		decr_link_count(cx, olddotdot, block, cx->sdp->gfs1, _("old \"..\""));
+		decr_link_count(cx, olddotdot, block, _("old \"..\""));
 	no = pip->i_num;
-	err = lgfs2_dir_add(ip, filename, filename_len, &no,
-		      (cx->sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
+	err = lgfs2_dir_add(ip, filename, filename_len, &no, DT_DIR);
 	if (err) {
 		log_err(_("Error adding directory %s: %s\n"),
 		        filename, strerror(errno));
@@ -169,40 +168,11 @@ int pass3(struct fsck_cx *cx)
 		log_info( _("Marking root inode connected\n"));
 		di->checked = 1;
 	}
-	if (sdp->gfs1) {
-		di = dirtree_find(cx, sdp->md.statfs->i_num.in_addr);
-		if (di) {
-			log_info( _("Marking GFS1 statfs file inode "
-				    "connected\n"));
-			di->checked = 1;
-		}
-		di = dirtree_find(cx, sdp->md.jiinode->i_num.in_addr);
-		if (di) {
-			log_info( _("Marking GFS1 jindex file inode "
-				    "connected\n"));
-			di->checked = 1;
-		}
-		di = dirtree_find(cx, sdp->md.riinode->i_num.in_addr);
-		if (di) {
-			log_info( _("Marking GFS1 rindex file inode "
-				    "connected\n"));
-			di->checked = 1;
-		}
-		di = dirtree_find(cx, sdp->md.qinode->i_num.in_addr);
-		if (di) {
-			log_info( _("Marking GFS1 quota file inode "
-				    "connected\n"));
-			di->checked = 1;
-		}
-	} else {
-		di = dirtree_find(cx, sdp->master_dir->i_num.in_addr);
-		if (di) {
-			log_info( _("Marking master directory inode "
-				    "connected\n"));
-			di->checked = 1;
-		}
+	di = dirtree_find(cx, sdp->master_dir->i_num.in_addr);
+	if (di) {
+		log_info(_("Marking master directory inode connected\n"));
+		di->checked = 1;
 	}
-
 	/* Go through the directory list, working up through the parents
 	 * until we find one that's been checked already.  If we don't
 	 * find a parent, put in lost+found.

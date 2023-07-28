@@ -13,7 +13,6 @@ check_libgfs2_SOURCES = \
 	fs_ops.c check_fs_ops.c \
 	structures.c \
 	fs_bits.c \
-	gfs1.c \
 	misc.c \
 	recovery.c \
 	super.c

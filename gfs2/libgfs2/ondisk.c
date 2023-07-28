@@ -28,61 +28,34 @@ void lgfs2_inum_out(const struct lgfs2_inum *i, void *inp)
 void lgfs2_sb_in(struct lgfs2_sbd *sdp, void *buf)
 {
 	struct gfs2_sb *sb = buf;
-	struct gfs_sb *sb1 = buf;
 
 	sdp->sd_fs_format = be32_to_cpu(sb->sb_fs_format);
 	sdp->sd_multihost_format = be32_to_cpu(sb->sb_multihost_format);
-	sdp->sd_flags = be32_to_cpu(sb1->sb_flags);
 	sdp->sd_bsize = be32_to_cpu(sb->sb_bsize);
 	sdp->sd_bsize_shift = be32_to_cpu(sb->sb_bsize_shift);
-	sdp->sd_seg_size = be32_to_cpu(sb1->sb_seg_size);
 	lgfs2_inum_in(&sdp->sd_meta_dir, &sb->sb_master_dir);
 	lgfs2_inum_in(&sdp->sd_root_dir, &sb->sb_root_dir);
 	memcpy(sdp->sd_lockproto, sb->sb_lockproto, GFS2_LOCKNAME_LEN);
 	memcpy(sdp->sd_locktable, sb->sb_locktable, GFS2_LOCKNAME_LEN);
-	lgfs2_inum_in(&sdp->sd_rindex_di, &sb1->sb_rindex_di);
-	lgfs2_inum_in(&sdp->sd_quota_di, &sb1->sb_quota_di);
-	lgfs2_inum_in(&sdp->sd_license_di, &sb1->sb_license_di);
 	memcpy(sdp->sd_uuid, sb->sb_uuid, sizeof(sdp->sd_uuid));
 }
 
 void lgfs2_sb_out(const struct lgfs2_sbd *sdp, void *buf)
 {
-	if (sdp->gfs1) {
-		struct gfs_sb *sb = buf;
+	struct gfs2_sb *sb = buf;
 
-		sb->sb_header.mh_magic = cpu_to_be32(GFS2_MAGIC);
-		sb->sb_header.mh_type = cpu_to_be32(GFS2_METATYPE_SB);
-		sb->sb_header.mh_format = cpu_to_be32(GFS2_FORMAT_SB);
-		sb->sb_fs_format = cpu_to_be32(sdp->sd_fs_format);
-		sb->sb_multihost_format = cpu_to_be32(sdp->sd_multihost_format);
-		sb->sb_flags = cpu_to_be32(sdp->sd_flags);
-		sb->sb_bsize = cpu_to_be32(sdp->sd_bsize);
-		sb->sb_bsize_shift = cpu_to_be32(sdp->sd_bsize_shift);
-		sb->sb_seg_size = cpu_to_be32(sdp->sd_seg_size);
-		lgfs2_inum_out(&sdp->sd_jindex_di, &sb->sb_jindex_di);
-		lgfs2_inum_out(&sdp->sd_rindex_di, &sb->sb_rindex_di);
-		lgfs2_inum_out(&sdp->sd_root_dir, &sb->sb_root_di);
-		memcpy(sb->sb_lockproto, sdp->sd_lockproto, GFS2_LOCKNAME_LEN);
-		memcpy(sb->sb_locktable, sdp->sd_locktable, GFS2_LOCKNAME_LEN);
-		lgfs2_inum_out(&sdp->sd_quota_di, &sb->sb_quota_di);
-		lgfs2_inum_out(&sdp->sd_license_di, &sb->sb_license_di);
-	} else {
-		struct gfs2_sb *sb = buf;
-
-		sb->sb_header.mh_magic = cpu_to_be32(GFS2_MAGIC);
-		sb->sb_header.mh_type = cpu_to_be32(GFS2_METATYPE_SB);
-		sb->sb_header.mh_format = cpu_to_be32(GFS2_FORMAT_SB);
-		sb->sb_fs_format = cpu_to_be32(sdp->sd_fs_format);
-		sb->sb_multihost_format = cpu_to_be32(sdp->sd_multihost_format);
-		sb->sb_bsize = cpu_to_be32(sdp->sd_bsize);
-		sb->sb_bsize_shift = cpu_to_be32(sdp->sd_bsize_shift);
-		lgfs2_inum_out(&sdp->sd_meta_dir, &sb->sb_master_dir);
-		lgfs2_inum_out(&sdp->sd_root_dir, &sb->sb_root_dir);
-		memcpy(sb->sb_lockproto, sdp->sd_lockproto, GFS2_LOCKNAME_LEN);
-		memcpy(sb->sb_locktable, sdp->sd_locktable, GFS2_LOCKNAME_LEN);
-		memcpy(sb->sb_uuid, sdp->sd_uuid, 16);
-	}
+	sb->sb_header.mh_magic = cpu_to_be32(GFS2_MAGIC);
+	sb->sb_header.mh_type = cpu_to_be32(GFS2_METATYPE_SB);
+	sb->sb_header.mh_format = cpu_to_be32(GFS2_FORMAT_SB);
+	sb->sb_fs_format = cpu_to_be32(sdp->sd_fs_format);
+	sb->sb_multihost_format = cpu_to_be32(sdp->sd_multihost_format);
+	sb->sb_bsize = cpu_to_be32(sdp->sd_bsize);
+	sb->sb_bsize_shift = cpu_to_be32(sdp->sd_bsize_shift);
+	lgfs2_inum_out(&sdp->sd_meta_dir, &sb->sb_master_dir);
+	lgfs2_inum_out(&sdp->sd_root_dir, &sb->sb_root_dir);
+	memcpy(sb->sb_lockproto, sdp->sd_lockproto, GFS2_LOCKNAME_LEN);
+	memcpy(sb->sb_locktable, sdp->sd_locktable, GFS2_LOCKNAME_LEN);
+	memcpy(sb->sb_uuid, sdp->sd_uuid, 16);
 }
 
 void lgfs2_rindex_in(lgfs2_rgrp_t rg, void *buf)

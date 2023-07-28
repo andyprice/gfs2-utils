@@ -478,10 +478,7 @@ static int set_ip_bitmap(struct fsck_cx *cx, struct lgfs2_inode *ip)
 	uint32_t mode;
 	const char *ty;
 
-	if (ip->i_sbd->gfs1)
-		mode = gfs_to_gfs2_mode(ip);
-	else
-		mode = ip->i_mode & S_IFMT;
+	mode = ip->i_mode & S_IFMT;
 
 	switch (mode) {
 	case S_IFDIR:
@@ -550,22 +547,19 @@ static void resolve_last_reference(struct fsck_cx *cx, struct duptree *dt,
 		fsck_bitmap_set(cx, ip, dt->block,  _("reference-repaired data"),
 				GFS2_BLKST_USED);
 	} else if (id->reftypecount[REF_AS_META]) {
-		if (is_dir(ip, sdp->gfs1))
+		if (is_dir(ip))
 			fsck_bitmap_set(cx, ip, dt->block,
 					_("reference-repaired leaf"),
-					sdp->gfs1 ? GFS2_BLKST_DINODE :
 					GFS2_BLKST_USED);
 		else
 			fsck_bitmap_set(cx, ip, dt->block,
 					_("reference-repaired indirect"),
-					sdp->gfs1 ? GFS2_BLKST_DINODE :
 					GFS2_BLKST_USED);
 	} else {
 		if (acceptable_ref == REF_AS_EA)
 			fsck_bitmap_set(cx, ip, dt->block,
 					_("reference-repaired extended "
 					  "attribute"),
-					sdp->gfs1 ? GFS2_BLKST_DINODE :
 					GFS2_BLKST_USED);
 		else {
 			log_err(_("Error: The remaining reference to block "
@@ -832,9 +826,8 @@ static int find_block_ref(struct fsck_cx *cx, uint64_t inode)
 	/* double-check the meta header just to be sure it's metadata */
 	if (ip->i_magic != GFS2_MAGIC ||
 	    ip->i_mh_type != GFS2_METATYPE_DI) {
-		if (!cx->sdp->gfs1)
-			log_debug(_("Block %"PRIu64" (0x%"PRIx64") is not a dinode.\n"),
-			          inode, inode);
+		log_debug(_("Block %"PRIu64" (0x%"PRIx64") is not a dinode.\n"),
+			  inode, inode);
 		error = 1;
 		goto out;
 	}

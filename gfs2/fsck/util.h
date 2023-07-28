@@ -80,43 +80,9 @@ static const inline char *block_type_string(int q)
 	return blktyp[4];
 }
 
-static inline int is_dir(struct lgfs2_inode *ip, int gfs1)
+static inline int is_dir(struct lgfs2_inode *ip)
 {
-	if (gfs1 && lgfs2_is_gfs_dir(ip))
-		return 1;
-	if (S_ISDIR(ip->i_mode))
-		return 1;
-
-	return 0;
-}
-
-static inline uint32_t gfs_to_gfs2_mode(struct lgfs2_inode *ip)
-{
-	uint16_t gfs1mode = ip->i_di_type;
-
-	switch (gfs1mode) {
-	case GFS_FILE_DIR:
-		return S_IFDIR;
-	case GFS_FILE_REG:
-		return S_IFREG;
-	case GFS_FILE_LNK:
-		return S_IFLNK;
-	case GFS_FILE_BLK:
-		return S_IFBLK;
-	case GFS_FILE_CHR:
-		return S_IFCHR;
-	case GFS_FILE_FIFO:
-		return S_IFIFO;
-	case GFS_FILE_SOCK:
-		return S_IFSOCK;
-	default:
-		/* This could be an aborted gfs2_convert so look for both. */
-		if (ip->i_entries ||
-		    (ip->i_mode & S_IFMT) == S_IFDIR)
-			return S_IFDIR;
-		else
-			return S_IFREG;
-	}
+	return S_ISDIR(ip->i_mode);
 }
 
 extern enum dup_ref_type get_ref_type(struct inode_with_dups *id);

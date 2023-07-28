@@ -216,15 +216,11 @@ uint64_t lgfs2_rgrp_read(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd)
 			return rgd->rt_addr + i;
 		}
 	}
-	if (sdp->gfs1)
-		lgfs2_gfs_rgrp_in(rgd, buf);
-	else {
-		if (lgfs2_rgrp_crc_check(buf)) {
-			free(buf);
-			return rgd->rt_addr;
-		}
-		lgfs2_rgrp_in(rgd, buf);
+	if (lgfs2_rgrp_crc_check(buf)) {
+		free(buf);
+		return rgd->rt_addr;
 	}
+	lgfs2_rgrp_in(rgd, buf);
 	/* coverity[leaked_storage:SUPPRESS] */
 	return 0;
 }

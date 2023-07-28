@@ -17,7 +17,5 @@ extern void ea_header_print(void *eap);
 extern void leaf_print(void *lfp);
 extern void rindex_print(void *rip);
 extern void rgrp_print(void *rgp);
-extern void gfs_rgrp_print(void *rgp);
-extern void gfs_jindex_print(struct gfs_jindex *ji);
 
 #endif /* STRUCT_PRINT_H */

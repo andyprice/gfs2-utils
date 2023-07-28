@@ -132,14 +132,9 @@ static int indirect_dirent(struct indirect_info *indir, void *ptr, int d)
 void do_dinode_extended(char *buf)
 {
 	struct gfs2_dinode *dip = (void *)buf;
-	struct gfs_dinode *dip1 = (void *)buf;
 	unsigned int x, y, ptroff = 0;
 	uint64_t p, last;
-	int isdir = 0;
-
-	if (S_ISDIR(be32_to_cpu(dip->di_mode)) ||
-	    (sbd.gfs1 && be16_to_cpu(dip1->di_type) == GFS_FILE_DIR))
-		isdir = 1;
+	int isdir = S_ISDIR(be32_to_cpu(dip->di_mode));
 
 	indirect_blocks = 0;
 	memset(indirect, 0, sizeof(struct iinfo));
@@ -281,16 +276,10 @@ void display_gfs2(void *buf)
 	switch (type)
 	{
 	case GFS2_METATYPE_SB:
-		if (sbd.gfs1)
-			gfs_sb_print(buf);
-		else
-			sb_print(buf);
+		sb_print(buf);
 		break;
 	case GFS2_METATYPE_RG:
-		if (sbd.gfs1)
-			gfs_rgrp_print(buf);
-		else
-			rgrp_print(buf);
+		rgrp_print(buf);
 		break;
 	case GFS2_METATYPE_DI:
 		dinode_print(di);
@@ -299,10 +288,7 @@ void display_gfs2(void *buf)
 		leaf_print(buf);
 		break;
 	case GFS2_METATYPE_LH:
-		if (sbd.gfs1)
-			gfs_log_header_print(buf);
-		else
-			log_header_print(buf);
+		log_header_print(buf);
 		break;
 	case GFS2_METATYPE_LD:
 		log_descriptor_print(buf);

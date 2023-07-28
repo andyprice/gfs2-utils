@@ -38,7 +38,7 @@ static void add_dotdot(struct fsck_cx *cx, struct lgfs2_inode *ip)
 		          ip->i_num.in_addr, di->dotdot_parent.in_addr);
 		dip = fsck_load_inode(sdp, di->dotdot_parent.in_addr);
 		if (dip->i_num.in_formal_ino == di->dotdot_parent.in_formal_ino) {
-			decr_link_count(cx, di->dotdot_parent.in_addr, ip->i_num.in_addr, sdp->gfs1,
+			decr_link_count(cx, di->dotdot_parent.in_addr, ip->i_num.in_addr,
 					_(".. unlinked, moving to lost+found"));
 			if (dip->i_nlink > 0) {
 			  dip->i_nlink--;
@@ -82,7 +82,7 @@ static void add_dotdot(struct fsck_cx *cx, struct lgfs2_inode *ip)
 			    "\"..\" directory entry.\n"));
 
 	no = lf_dip->i_num;
-	err = lgfs2_dir_add(ip, "..", 2, &no, (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR));
+	err = lgfs2_dir_add(ip, "..", 2, &no, DT_DIR);
 	if (err) {
 		log_crit(_("Error adding .. directory: %s\n"),
 			 strerror(errno));
@@ -94,7 +94,6 @@ void make_sure_lf_exists(struct fsck_cx *cx, struct lgfs2_inode *ip)
 {
 	struct dir_info *di;
 	struct lgfs2_sbd *sdp = ip->i_sbd;
-	uint32_t mode;
 	int root_entries;
 
 	if (lf_dip)
@@ -102,14 +101,7 @@ void make_sure_lf_exists(struct fsck_cx *cx, struct lgfs2_inode *ip)
 
 	root_entries = sdp->md.rooti->i_entries;
 	log_info( _("Locating/Creating lost+found directory\n"));
-
-	/* if this is gfs1, we have to trick lgfs2_createi into using
-	   no_formal_ino = no_addr, so we set next_inum to the
-	   free block we're about to allocate. */
-	if (sdp->gfs1)
-		sdp->md.next_inum = find_free_blk(sdp);
-	mode = (sdp->gfs1 ? DT2IF(GFS_FILE_DIR) : S_IFDIR) | 0700;
-	lf_dip = lgfs2_createi(sdp->md.rooti, "lost+found", mode, 0);
+	lf_dip = lgfs2_createi(sdp->md.rooti, "lost+found", S_IFDIR|0700, 0);
 	if (lf_dip == NULL) {
 		log_crit(_("Error creating lost+found: %s\n"),
 			 strerror(errno));
@@ -144,8 +136,6 @@ void make_sure_lf_exists(struct fsck_cx *cx, struct lgfs2_inode *ip)
 		incr_link_count(cx, no, lf_dip, "\".\"");
 		/* lost+found link for '..' back to root */
 		incr_link_count(cx, no, sdp->md.rooti, "\"..\"");
-		if (sdp->gfs1)
-			lf_dip->i_di_type = GFS_FILE_DIR;
 	}
 	log_info(_("lost+found directory is dinode %"PRIu64" (0x%"PRIx64")\n"),
 	         lf_dip->i_num.in_addr, lf_dip->i_num.in_addr);
@@ -170,7 +160,6 @@ int add_inode_to_lf(struct fsck_cx *cx, struct lgfs2_inode *ip)
 {
 	char tmp_name[256];
 	unsigned inode_type;
-	struct lgfs2_sbd *sdp = ip->i_sbd;
 	struct lgfs2_inum no;
 	int err = 0;
 	uint32_t mode;
@@ -181,44 +170,41 @@ int add_inode_to_lf(struct fsck_cx *cx, struct lgfs2_inode *ip)
 		return 0;
 	}
 
-	if (sdp->gfs1)
-		mode = gfs_to_gfs2_mode(ip);
-	else
-		mode = ip->i_mode & S_IFMT;
+	mode = ip->i_mode & S_IFMT;
 
 	switch (mode) {
 	case S_IFDIR:
 		add_dotdot(cx, ip);
 		sprintf(tmp_name, "lost_dir_%"PRIu64, ip->i_num.in_addr);
-		inode_type = (sdp->gfs1 ? GFS_FILE_DIR : DT_DIR);
+		inode_type = DT_DIR;
 		break;
 	case S_IFREG:
 		sprintf(tmp_name, "lost_file_%"PRIu64, ip->i_num.in_addr);
-		inode_type = (sdp->gfs1 ? GFS_FILE_REG : DT_REG);
+		inode_type = DT_REG;
 		break;
 	case S_IFLNK:
 		sprintf(tmp_name, "lost_link_%"PRIu64, ip->i_num.in_addr);
-		inode_type = (sdp->gfs1 ? GFS_FILE_LNK : DT_LNK);
+		inode_type = DT_LNK;
 		break;
 	case S_IFBLK:
 		sprintf(tmp_name, "lost_blkdev_%"PRIu64, ip->i_num.in_addr);
-		inode_type = (sdp->gfs1 ? GFS_FILE_BLK : DT_BLK);
+		inode_type = DT_BLK;
 		break;
 	case S_IFCHR:
 		sprintf(tmp_name, "lost_chrdev_%"PRIu64, ip->i_num.in_addr);
-		inode_type = (sdp->gfs1 ? GFS_FILE_CHR : DT_CHR);
+		inode_type = DT_CHR;
 		break;
 	case S_IFIFO:
 		sprintf(tmp_name, "lost_fifo_%"PRIu64, ip->i_num.in_addr);
-		inode_type = (sdp->gfs1 ? GFS_FILE_FIFO : DT_FIFO);
+		inode_type = DT_FIFO;
 		break;
 	case S_IFSOCK:
 		sprintf(tmp_name, "lost_socket_%"PRIu64, ip->i_num.in_addr);
-		inode_type = (sdp->gfs1 ? GFS_FILE_SOCK : DT_SOCK);
+		inode_type = DT_SOCK;
 		break;
 	default:
 		sprintf(tmp_name, "lost_%"PRIu64, ip->i_num.in_addr);
-		inode_type = (sdp->gfs1 ? GFS_FILE_REG : DT_REG);
+		inode_type = DT_REG;
 		break;
 	}
 

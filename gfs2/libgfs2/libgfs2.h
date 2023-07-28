@@ -131,9 +131,6 @@ struct lgfs2_metafield {
 };
 
 struct lgfs2_metadata {
-	const unsigned versions:2;
-#define LGFS2_MD_GFS1 0x01
-#define LGFS2_MD_GFS2 0x02
 	const unsigned header:1;
 	const uint32_t mh_type;
 	const uint32_t mh_format;
@@ -193,23 +190,9 @@ struct lgfs2_rgrp_tree {
 	/* Native-endian counterparts of the on-disk rgrp structs */
 	uint32_t rt_flags;
 	uint32_t rt_free;
-	union {
-		struct { /* gfs2 */
-			uint64_t rt_igeneration;
-			uint32_t rt_dinodes;
-			uint32_t rt_skip;
-		};
-		struct { /* gfs1 */
-			uint32_t rt_useddi;
-			uint32_t rt_freedi;
-			struct {
-				uint64_t no_formal_ino;
-				uint64_t no_addr;
-			} rt_freedi_list;
-			uint32_t rt_usedmeta;
-			uint32_t rt_freemeta;
-		};
-	};
+	uint64_t rt_igeneration;
+	uint32_t rt_dinodes;
+	uint32_t rt_skip;
 };
 
 typedef struct lgfs2_rgrp_tree *lgfs2_rgrp_t;
@@ -280,25 +263,12 @@ struct lgfs2_inode {
 	uint16_t i_depth;
 	uint32_t i_entries;
 	uint64_t i_eattr;
-	union {
-		struct { /* gfs2 */
-			uint64_t i_goal_meta;
-			uint64_t i_goal_data;
-			uint64_t i_generation;
-			uint32_t i_atime_nsec;
-			uint32_t i_mtime_nsec;
-			uint32_t i_ctime_nsec;
-		};
-		struct { /* gfs */
-			uint64_t i_rgrp;
-			uint32_t i_goal_rgrp;
-			uint32_t i_goal_dblk;
-			uint32_t i_goal_mblk;
-			uint16_t i_di_type;
-			uint32_t i_incarn;
-			struct lgfs2_inum i_next_unused;
-		};
-	};
+	uint64_t i_goal_meta;
+	uint64_t i_goal_data;
+	uint64_t i_generation;
+	uint32_t i_atime_nsec;
+	uint32_t i_mtime_nsec;
+	uint32_t i_ctime_nsec;
 };
 
 struct lgfs2_meta_dir
@@ -323,18 +293,9 @@ struct lgfs2_sbd {
 	uint32_t sd_bsize;
 	uint32_t sd_fs_format;
 	uint32_t sd_multihost_format;
-	uint32_t sd_flags; /* gfs1 */
-	/* gfs1's sb_jindex_di is gfs2's sb_master_dir */
-	union {
-		struct lgfs2_inum sd_meta_dir;
-		struct lgfs2_inum sd_jindex_di;  /* gfs1 */
-	};
+	struct lgfs2_inum sd_meta_dir;
 	struct lgfs2_inum sd_root_dir;
-	struct lgfs2_inum sd_rindex_di;  /* gfs1 */
-	struct lgfs2_inum sd_quota_di;   /* gfs1 */
-	struct lgfs2_inum sd_license_di; /* gfs1 */
 	uint32_t sd_bsize_shift;
-	uint32_t sd_seg_size;
 	char sd_lockproto[GFS2_LOCKNAME_LEN];
 	char sd_locktable[GFS2_LOCKNAME_LEN];
 	uint8_t sd_uuid[16];
@@ -376,8 +337,6 @@ struct lgfs2_sbd {
 
 	struct lgfs2_inode *master_dir;
 	struct lgfs2_meta_dir md;
-
-	unsigned int gfs1:1;
 };
 
 struct lgfs2_log_header {
@@ -448,8 +407,8 @@ extern const unsigned lgfs2_ld_type_size;
 extern const struct lgfs2_symbolic lgfs2_ld1_types[];
 extern const unsigned lgfs2_ld1_type_size;
 extern int lgfs2_selfcheck(void);
-extern const struct lgfs2_metadata *lgfs2_find_mtype(uint32_t mh_type, const unsigned versions);
-extern const struct lgfs2_metadata *lgfs2_find_mtype_name(const char *name, const unsigned versions);
+extern const struct lgfs2_metadata *lgfs2_find_mtype(uint32_t mh_type);
+extern const struct lgfs2_metadata *lgfs2_find_mtype_name(const char *name);
 extern const struct lgfs2_metafield *lgfs2_find_mfield_name(const char *name, const struct lgfs2_metadata *mtype);
 extern int lgfs2_field_str(char *str, const size_t size, const char *blk, const struct lgfs2_metafield *field, int hex);
 extern int lgfs2_field_assign(char *blk, const struct lgfs2_metafield *field, const void *val);
@@ -544,175 +503,6 @@ extern int lgfs2_unstuff_dinode(struct lgfs2_inode *ip) __attribute__((warn_unus
 extern unsigned int lgfs2_calc_tree_height(struct lgfs2_inode *ip, uint64_t size);
 extern uint32_t lgfs2_log_header_hash(char *buf);
 extern uint32_t lgfs2_log_header_crc(char *buf, unsigned bsize);
-
-/* gfs1.c - GFS1 backward compatibility structures and functions */
-
-#define GFS_FORMAT_SB           (100)  /* Super-Block */
-#define GFS_METATYPE_SB         (1)    /* Super-Block */
-#define GFS_FORMAT_FS           (1309) /* Filesystem (all-encompassing) */
-#define GFS_FORMAT_MULTI        (1401) /* Multi-Host */
-/* GFS1 Dinode types  */
-#define GFS_FILE_NON            (0)
-#define GFS_FILE_REG            (1)    /* regular file */
-#define GFS_FILE_DIR            (2)    /* directory */
-#define GFS_FILE_LNK            (5)    /* link */
-#define GFS_FILE_BLK            (7)    /* block device node */
-#define GFS_FILE_CHR            (8)    /* character device node */
-#define GFS_FILE_FIFO           (101)  /* fifo/pipe */
-#define GFS_FILE_SOCK           (102)  /* socket */
-
-/* GFS 1 journal block types: */
-#define GFS_LOG_DESC_METADATA   (300)    /* metadata */
-#define GFS_LOG_DESC_IUL        (400)    /* unlinked inode */
-#define GFS_LOG_DESC_IDA        (401)    /* de-allocated inode */
-#define GFS_LOG_DESC_Q          (402)    /* quota */
-#define GFS_LOG_DESC_LAST       (500)    /* final in a logged transaction */
-
-struct gfs_indirect {
-	struct gfs2_meta_header in_header;
-
-	char in_reserved[64];
-};
-
-struct gfs_dinode {
-	struct gfs2_meta_header di_header;
-
-	struct gfs2_inum di_num; /* formal inode # and block address */
-
-	__be32 di_mode;	/* mode of file */
-	__be32 di_uid;	/* owner's user id */
-	__be32 di_gid;	/* owner's group id */
-	__be32 di_nlink;	/* number (qty) of links to this file */
-	__be64 di_size;	/* number (qty) of bytes in file */
-	__be64 di_blocks;	/* number (qty) of blocks in file */
-	__be64 di_atime;	/* time last accessed */
-	__be64 di_mtime;	/* time last modified */
-	__be64 di_ctime;	/* time last changed */
-
-	/*  Non-zero only for character or block device nodes  */
-	__be32 di_major;	/* device major number */
-	__be32 di_minor;	/* device minor number */
-
-	/*  Block allocation strategy  */
-	__be64 di_rgrp;	/* dinode rgrp block number */
-	__be64 di_goal_rgrp;	/* rgrp to alloc from next */
-	__be32 di_goal_dblk;	/* data block goal */
-	__be32 di_goal_mblk;	/* metadata block goal */
-
-	__be32 di_flags;	/* GFS_DIF_... */
-
-	/*  struct gfs_rindex, struct gfs_jindex, or struct gfs_dirent */
-	__be32 di_payload_format;  /* GFS_FORMAT_... */
-	__be16 di_type;	/* GFS_FILE_... type of file */
-	__be16 di_height;	/* height of metadata (0 == stuffed) */
-	__be32 di_incarn;	/* incarnation (unused, see gfs_meta_header) */
-	__be16 di_pad;
-
-	/*  These only apply to directories  */
-	__be16 di_depth;	/* Number of bits in the table */
-	__be32 di_entries;	/* The # (qty) of entries in the directory */
-
-	/*  This formed an on-disk chain of unused dinodes  */
-	struct gfs2_inum di_next_unused;  /* used in old versions only */
-
-	__be64 di_eattr;	/* extended attribute block number */
-
-	char di_reserved[56];
-};
-
-struct gfs_sb {
-	/*  Order is important; need to be able to read old superblocks
-	    in order to support on-disk version upgrades */
-	struct gfs2_meta_header sb_header;
-
-	__be32 sb_fs_format;         /* GFS_FORMAT_FS (on-disk version) */
-	__be32 sb_multihost_format;  /* GFS_FORMAT_MULTI */
-	__be32 sb_flags;             /* ?? */
-
-	__be32 sb_bsize;             /* fundamental FS block size in bytes */
-	__be32 sb_bsize_shift;       /* log2(sb_bsize) */
-	__be32 sb_seg_size;          /* Journal segment size in FS blocks */
-
-	/* These special inodes do not appear in any on-disk directory. */
-	struct gfs2_inum sb_jindex_di;  /* journal index inode */
-	struct gfs2_inum sb_rindex_di;  /* resource group index inode */
-	struct gfs2_inum sb_root_di;    /* root directory inode */
-
-	/* Default inter-node locking protocol (lock module) and namespace */
-	uint8_t sb_lockproto[GFS2_LOCKNAME_LEN]; /* lock protocol name */
-	uint8_t sb_locktable[GFS2_LOCKNAME_LEN]; /* unique name for this FS */
-
-	/* More special inodes */
-	struct gfs2_inum sb_quota_di;   /* quota inode */
-	struct gfs2_inum sb_license_di; /* license inode */
-
-	char sb_reserved[96];
-};
-
-struct gfs_rgrp {
-	struct gfs2_meta_header rg_header;
-
-	__be32 rg_flags;
-	__be32 rg_free;       /* Number (qty) of free data blocks */
-
-	/* Dinodes are USEDMETA, but are handled separately from other METAs */
-	__be32 rg_useddi;     /* Number (qty) of dinodes (used or free) */
-	__be32 rg_freedi;     /* Number (qty) of unused (free) dinodes */
-	struct gfs2_inum rg_freedi_list; /* 1st block in chain of free dinodes */
-
-	/* These META statistics do not include dinodes (used or free) */
-	__be32 rg_usedmeta;   /* Number (qty) of used metadata blocks */
-	__be32 rg_freemeta;   /* Number (qty) of unused metadata blocks */
-
-	char rg_reserved[64];
-};
-
-struct gfs_log_header {
-	struct gfs2_meta_header lh_header;
-
-	__be32 lh_flags;      /* GFS_LOG_HEAD_... */
-	__be32 lh_pad;
-
-	__be64 lh_first;     /* Block number of first header in this trans */
-	__be64 lh_sequence;   /* Sequence number of this transaction */
-
-	__be64 lh_tail;       /* Block number of log tail */
-	__be64 lh_last_dump;  /* Block number of last dump */
-
-	uint8_t lh_reserved[64];
-};
-
-struct gfs_jindex {
-        __be64 ji_addr;       /* starting block of the journal */
-        __be32 ji_nsegment;   /* number (quantity) of segments in journal */
-        __be32 ji_pad;
-
-        uint8_t ji_reserved[64];
-};
-
-struct gfs_log_descriptor {
-	struct gfs2_meta_header ld_header;
-
-	__be32 ld_type;       /* GFS_LOG_DESC_... Type of this log chunk */
-	__be32 ld_length;     /* Number of buffers in this chunk */
-	__be32 ld_data1;      /* descriptor-specific field */
-	__be32 ld_data2;      /* descriptor-specific field */
-	uint8_t ld_reserved[64];
-};
-
-extern int lgfs2_is_gfs_dir(struct lgfs2_inode *ip);
-extern void lgfs2_gfs1_lookup_block(struct lgfs2_inode *ip,
-			      struct lgfs2_buffer_head *bh,
-			      unsigned int height, struct lgfs2_metapath *mp,
-			      int create, int *new, uint64_t *block);
-extern int lgfs2_gfs1_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new, uint64_t *dblock,
-                                uint32_t *extlen, int prealloc) __attribute__((warn_unused_result));
-extern int lgfs2_gfs1_writei(struct lgfs2_inode *ip, void *buf, uint64_t offset,
-		       unsigned int size);
-extern struct lgfs2_inode *lgfs2_gfs_inode_get(struct lgfs2_sbd *sdp, char *buf);
-extern struct lgfs2_inode *lgfs2_gfs_inode_read(struct lgfs2_sbd *sdp, uint64_t di_addr);
-extern void lgfs2_gfs_rgrp_in(const lgfs2_rgrp_t rg, void *buf);
-extern void lgfs2_gfs_rgrp_out(const lgfs2_rgrp_t rg, void *buf);
 
 /* misc.c */
 extern int lgfs2_compute_heightsize(unsigned bsize, uint64_t *heightsize,

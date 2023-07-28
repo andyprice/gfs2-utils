@@ -36,10 +36,7 @@ int check_n_fix_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 	int old_state;
 	int treat_as_inode = 0;
 	int rewrite_rgrp = 0;
-	const char *allocdesc[2][5] = { /* gfs2 descriptions */
-		{"free", "data", "unlinked", "inode", "reserved"},
-		/* gfs1 descriptions: */
-		{"free", "data", "free meta", "metadata", "reserved"}};
+	const char *allocdesc[5] = {"free", "data", "unlinked", "inode", "reserved"};
 	static struct lgfs2_rgrp_tree *prevrgd = NULL;
 
 	if (prevrgd && rgrp_contains_block(prevrgd, blk)) {
@@ -62,13 +59,13 @@ int check_n_fix_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 	    new_state != GFS2_BLKST_FREE) {
 		log_debug(_("Reference as '%s' to block %"PRIu64" (0x%"PRIx64") which "
 			    "was marked as dinode. Needs further investigation.\n"),
-		          allocdesc[sdp->gfs1][new_state], blk, blk);
+		          allocdesc[new_state], blk, blk);
 		return 1;
 	}
 	/* Keep these messages as short as possible, or the output gets to be
 	   huge and unmanageable. */
 	log_err(_("Block %"PRIu64" (0x%"PRIx64") was '%s', should be %s.\n"),
-	        blk, blk, allocdesc[sdp->gfs1][old_state], allocdesc[sdp->gfs1][new_state]);
+	        blk, blk, allocdesc[old_state], allocdesc[new_state]);
 	if (!query(cx, _("Fix the bitmap? (y/n)"))) {
 		log_err( _("The bitmap inconsistency was ignored.\n"));
 		return 0;
@@ -101,56 +98,21 @@ int check_n_fix_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 		if (ii) {
 			inodetree_delete(cx, ii);
 			treat_as_inode = 1;
-		} else if (!sdp->gfs1) {
-			treat_as_inode = 1;
-		} else if (link1_type(&nlink1map, blk) == 1) {
-			/* This is a GFS1 fs (so all metadata is marked inode).
-			   We need to verify it is an inode before we can decr
-			   the rgrp inode count. */
+		} else {
 			treat_as_inode = 1;
 		}
 		if (old_state == GFS2_BLKST_DINODE) {
 			if (treat_as_inode && rgd->rt_dinodes > 0)
 				rgd->rt_dinodes--;
-			else if (sdp->gfs1 && rgd->rt_usedmeta > 0)
-				rgd->rt_usedmeta--;
 			rewrite_rgrp = 1;
 		}
 		link1_set(&nlink1map, blk, 0);
 	} else if (new_state == GFS2_BLKST_DINODE) {
-		if (!sdp->gfs1) {
-			treat_as_inode = 1;
-		} else {
-			/* This is GFS1 (so all metadata is marked inode). We
-			   need to verify it is an inode before we can decr
-			   the rgrp inode count. */
-			if (link1_type(&nlink1map, blk) == 1)
-				treat_as_inode = 1;
-			else {
-				struct dir_info *dt;
-				struct inode_info *ii;
-
-				dt = dirtree_find(cx, blk);
-				if (dt)
-					treat_as_inode = 1;
-				else {
-					ii = inodetree_find(cx, blk);
-					if (ii)
-						treat_as_inode = 1;
-				}
-			}
-		}
-		if (treat_as_inode)
-			rgd->rt_dinodes++;
-		else if (sdp->gfs1)
-			rgd->rt_usedmeta++;
+		rgd->rt_dinodes++;
 		rewrite_rgrp = 1;
 	}
 	if (rewrite_rgrp) {
-		if (sdp->gfs1)
-			lgfs2_gfs_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
-		else
-			lgfs2_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
+		lgfs2_rgrp_out(rgd, rgd->rt_bits[0].bi_data);
 		rgd->rt_bits[0].bi_modified = 1;
 	}
 	log_err( _("The bitmap was fixed.\n"));
@@ -227,28 +189,9 @@ struct duptree *dupfind(struct fsck_cx *cx, uint64_t block)
 
 struct lgfs2_inode *fsck_system_inode(struct lgfs2_sbd *sdp, uint64_t block)
 {
-	int j;
-
 	if (lf_dip && lf_dip->i_num.in_addr == block)
 		return lf_dip;
-	if (!sdp->gfs1)
-		return lgfs2_is_system_inode(sdp, block);
-
-	if (sdp->md.statfs && block == sdp->md.statfs->i_num.in_addr)
-		return sdp->md.statfs;
-	if (sdp->md.jiinode && block == sdp->md.jiinode->i_num.in_addr)
-		return sdp->md.jiinode;
-	if (sdp->md.riinode && block == sdp->md.riinode->i_num.in_addr)
-		return sdp->md.riinode;
-	if (sdp->md.qinode && block == sdp->md.qinode->i_num.in_addr)
-		return sdp->md.qinode;
-	if (sdp->md.rooti && block == sdp->md.rooti->i_num.in_addr)
-		return sdp->md.rooti;
-	for (j = 0; j < sdp->md.journals; j++)
-		if (sdp->md.journal && sdp->md.journal[j] &&
-		    block == sdp->md.journal[j]->i_num.in_addr)
-			return sdp->md.journal[j];
-	return NULL;
+	return lgfs2_is_system_inode(sdp, block);
 }
 
 /* fsck_load_inode - same as gfs2_load_inode() in libgfs2 but system inodes
@@ -260,8 +203,6 @@ struct lgfs2_inode *fsck_load_inode(struct lgfs2_sbd *sdp, uint64_t block)
 	ip = fsck_system_inode(sdp, block);
 	if (ip)
 		return ip;
-	if (sdp->gfs1)
-		return lgfs2_gfs_inode_read(sdp, block);
 	return lgfs2_inode_read(sdp, block);
 }
 
@@ -277,10 +218,7 @@ struct lgfs2_inode *fsck_inode_get(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree
 	if (sysip)
 		return sysip;
 
-	if (sdp->gfs1)
-		ip = lgfs2_gfs_inode_get(sdp, bh->b_data);
-	else
-		ip = lgfs2_inode_get(sdp, bh);
+	ip = lgfs2_inode_get(sdp, bh);
 	if (ip) {
 		ip->i_rgd = rgd;
 		ip->i_bh = bh;
@@ -578,7 +516,7 @@ int check_leaf(struct fsck_cx *cx, struct lgfs2_inode *ip, int lindex, struct me
 		goto bad_leaf;
 	}
 
-	if (pass->check_dentry && is_dir(ip, sdp->gfs1)) {
+	if (pass->check_dentry && is_dir(ip)) {
 		error = check_entries(cx, ip, lbh, DIR_EXHASH, &count, lindex,
 				      pass);
 
@@ -964,7 +902,7 @@ static int check_indirect_eattr(struct fsck_cx *cx, struct lgfs2_inode *ip, uint
 	struct lgfs2_sbd *sdp = ip->i_sbd;
 	int first_ea_is_bad = 0;
 	uint64_t di_eattr_save = ip->i_eattr;
-	uint64_t offset = ip->i_sbd->gfs1 ? sizeof(struct gfs_indirect) : sizeof(struct gfs2_meta_header);
+	uint64_t offset = sizeof(struct gfs2_meta_header);
 	int leaf_pointers = 0, leaf_pointer_errors = 0;
 
 	ea_leaf_ptr = (__be64 *)(indirect_buf->b_data + offset);
@@ -1228,7 +1166,7 @@ static int build_and_check_metalist(struct fsck_cx *cx, struct lgfs2_inode *ip, 
 	   because it checks everything through the hash table using
 	   "depth" field calculations. However, we still have to check the
 	   indirect blocks, even if the height == 1.  */
-	if (is_dir(ip, ip->i_sbd->gfs1))
+	if (is_dir(ip))
 		height++;
 
 	/* if (<there are no indirect blocks to check>) */
@@ -1236,19 +1174,13 @@ static int build_and_check_metalist(struct fsck_cx *cx, struct lgfs2_inode *ip, 
 		return META_IS_GOOD;
 	for (h = 1; h < height; h++) {
 		if (h > 1) {
-			if (is_dir(ip, ip->i_sbd->gfs1) &&
+			if (is_dir(ip) &&
 			    h == ip->i_height + 1)
 				iblk_type = GFS2_METATYPE_JD;
 			else
 				iblk_type = GFS2_METATYPE_IN;
-			if (ip->i_sbd->gfs1) {
-				head_size = sizeof(struct gfs_indirect);
-				maxptrs = (ip->i_sbd->sd_bsize - head_size) /
-					sizeof(uint64_t);
-			} else {
-				head_size = sizeof(struct gfs2_meta_header);
-				maxptrs = ip->i_sbd->sd_inptrs;
-			}
+			head_size = sizeof(struct gfs2_meta_header);
+			maxptrs = ip->i_sbd->sd_inptrs;
 		} else {
 			iblk_type = GFS2_METATYPE_DI;
 			head_size = sizeof(struct gfs2_dinode);
@@ -1313,12 +1245,8 @@ error_undo: /* undo what we've done so far for this block */
 
 static unsigned int hdr_size(struct lgfs2_buffer_head *bh, unsigned int height)
 {
-	if (height > 1) {
-		if (bh->sdp->gfs1)
-			return sizeof(struct gfs_indirect);
-		else
-			return sizeof(struct gfs2_meta_header);
-	}
+	if (height > 1)
+		return sizeof(struct gfs2_meta_header);
 	return sizeof(struct gfs2_dinode);
 }
 
@@ -1506,7 +1434,7 @@ int check_metatree(struct fsck_cx *cx, struct lgfs2_inode *ip, struct metawalk_f
 	struct error_block error_blk = {0, 0, 0};
 	int hit_error_blk = 0;
 
-	if (!height && !is_dir(ip, ip->i_sbd->gfs1))
+	if (!height && !is_dir(ip))
 		return 0;
 
 	/* metalist has one extra element for directories (see build_and_check_metalist). */
@@ -1524,7 +1452,7 @@ int check_metatree(struct fsck_cx *cx, struct lgfs2_inode *ip, struct metawalk_f
 	/* For directories, we've already checked the "data" blocks which
 	 * comprise the directory hash table, so we perform the directory
 	 * checks and exit. */
-        if (is_dir(ip, ip->i_sbd->gfs1)) {
+        if (is_dir(ip)) {
 		if (!(ip->i_flags & GFS2_DIF_EXHASH))
 			goto out;
 		/* check validity of leaf blocks and leaf chains */

@@ -401,10 +401,6 @@ int main(int argc, char *argv[])
 			fprintf(stderr, _("Error reading superblock.\n"));
 			exit(EXIT_FAILURE);
 		}
-		if (sdp->gfs1) {
-			fprintf(stderr, _("cannot grow gfs1 filesystem\n"));
-			exit(EXIT_FAILURE);
-		}
 		lgfs2_fix_device_geometry(sdp);
 		mfs.context = copy_context_opt(mnt);
 		if (mount_gfs2_meta(&mfs, mnt->mnt_dir, (print_level > MSG_NOTICE))) {

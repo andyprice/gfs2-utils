@@ -3,7 +3,6 @@ MAINTAINERCLEANFILES = Makefile.in
 SUBDIRS = \
 	include \
 	libgfs2 \
-	convert \
 	edit \
 	fsck \
 	mkfs \

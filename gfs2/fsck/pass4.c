@@ -163,7 +163,6 @@ static int adjust_lf_links(struct fsck_cx *cx, int lf_addition)
 
 static int scan_inode_list(struct fsck_cx *cx)
 {
-	struct lgfs2_sbd *sdp = cx->sdp;
 	struct osi_node *tmp, *next = NULL;
 	struct inode_info *ii;
 	int lf_addition = 0;
@@ -175,12 +174,6 @@ static int scan_inode_list(struct fsck_cx *cx)
 			return 0;
 		next = osi_next(tmp);
 		ii = (struct inode_info *)tmp;
-		/* Don't check reference counts on the special gfs files */
-		if (sdp->gfs1 &&
-		    ((ii->num.in_addr == sdp->md.riinode->i_num.in_addr) ||
-		     (ii->num.in_addr == sdp->md.qinode->i_num.in_addr) ||
-		     (ii->num.in_addr == sdp->md.statfs->i_num.in_addr)))
-			continue;
 		if (ii->counted_links == 0) {
 			if (handle_unlinked(cx, ii->num.in_addr,
 					    &ii->counted_links, &lf_addition))
@@ -199,7 +192,6 @@ static int scan_inode_list(struct fsck_cx *cx)
 
 static int scan_dir_list(struct fsck_cx *cx)
 {
-	struct lgfs2_sbd *sdp = cx->sdp;
 	struct osi_node *tmp, *next = NULL;
 	struct dir_info *di;
 	int lf_addition = 0;
@@ -211,10 +203,6 @@ static int scan_dir_list(struct fsck_cx *cx)
 			return 0;
 		next = osi_next(tmp);
 		di = (struct dir_info *)tmp;
-		/* Don't check reference counts on the special gfs files */
-		if (sdp->gfs1 &&
-		    di->dinode.in_addr == sdp->md.jiinode->i_num.in_addr)
-			continue;
 		if (di->counted_links == 0) {
 			if (handle_unlinked(cx, di->dinode.in_addr,
 					    &di->counted_links, &lf_addition))

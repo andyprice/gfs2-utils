@@ -51,7 +51,7 @@ static int print_structs(void)
 
 static void print_fields(const char *name)
 {
-	const struct lgfs2_metadata *m = lgfs2_find_mtype_name(name, LGFS2_MD_GFS1|LGFS2_MD_GFS2);
+	const struct lgfs2_metadata *m = lgfs2_find_mtype_name(name);
 	if (m != NULL) {
 		const struct lgfs2_metafield *fields = m->fields;
 		const unsigned nfields = m->nfields;

@@ -270,12 +270,9 @@ static uint64_t count_usedspace(struct lgfs2_sbd *sdp, int first,
 	unsigned int state;
 
 	/* Count up the free blocks in the bitmap */
-	if (first) {
-		if (sdp->gfs1)
-			off = sizeof(struct gfs_rgrp);
-		else
-			off = sizeof(struct gfs2_rgrp);
-	} else
+	if (first)
+		off = sizeof(struct gfs2_rgrp);
+	else
 		off = sizeof(struct gfs2_meta_header);
 	bytes_to_check = sdp->sd_bsize - off;
 	for (x = 0; x < bytes_to_check; x++) {
@@ -885,10 +882,7 @@ static int rewrite_rg_block(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rg,
 		memcpy(buf, &mh, sizeof(mh));
 	} else {
 		rg->rt_free = rg->rt_data;
-		if (sdp->gfs1)
-			lgfs2_gfs_rgrp_out(rg, buf);
-		else
-			lgfs2_rgrp_out(rg, buf);
+		lgfs2_rgrp_out(rg, buf);
 	}
 	ret = pwrite(sdp->device_fd, buf, sdp->sd_bsize, errblock * sdp->sd_bsize);
 	if (ret != sdp->sd_bsize) {

@@ -39,25 +39,7 @@ static int check_block_status(struct fsck_cx *cx,  struct bmap *bl,
 			return 0;
 
 		q = block_type(bl, block);
-		/* GFS1 file systems will have to suffer from slower fsck run
-		 * times because in GFS, there's no 1:1 relationship between
-		 * bits and counts. If a bit is marked "dinode" in GFS1, it
-		 * may be dinode -OR- any kind of metadata. I consider GFS1 to
-		 * be a rare exception, so acceptable loss at this point. So
-		 * we must determine whether it's really a dinode or other
-		 * metadata by reading it in. */
-		if (sdp->gfs1 && q == GFS2_BLKST_DINODE) {
-			struct lgfs2_buffer_head *bh;
-
-			bh = lgfs2_bread(sdp, block);
-			if (lgfs2_check_meta(bh->b_data, GFS2_METATYPE_DI) == 0)
-				count[GFS2_BLKST_DINODE]++;
-			else
-				count[GFS1_BLKST_USEDMETA]++;
-			lgfs2_brelse(bh);
-		} else {
-			count[q]++;
-		}
+		count[q]++;
 
 		/* If one node opens a file and another node deletes it, we
 		   may be left with a block that appears to be "unlinked" in
@@ -116,7 +98,6 @@ static int check_block_status(struct fsck_cx *cx,  struct bmap *bl,
 static void update_rgrp(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgp,
 			struct bmap *bl, uint32_t *count)
 {
-	struct lgfs2_sbd *sdp = cx->sdp;
 	uint32_t i;
 	struct lgfs2_bitmap *bits;
 	uint64_t rg_block = 0;
@@ -148,24 +129,10 @@ static void update_rgrp(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgp,
 		rgp->rt_dinodes = count[GFS2_BLKST_DINODE];
 		update = 1;
 	}
-	if (sdp->gfs1 && rgp->rt_usedmeta != count[GFS1_BLKST_USEDMETA]) {
-		log_err(_("RG #%"PRIu64" (0x%"PRIx64") Used metadata count "
-		          "inconsistent: is %u should be %u\n"),
-		        rgp->rt_addr, rgp->rt_addr, rgp->rt_usedmeta, count[GFS1_BLKST_USEDMETA]);
-		rgp->rt_usedmeta = count[GFS1_BLKST_USEDMETA];
-		update = 1;
-	}
-	if (sdp->gfs1 && rgp->rt_freemeta != count[GFS2_BLKST_UNLINKED]) {
-		log_err(_("RG #%"PRIu64" (0x%"PRIx64") Free metadata count "
-		          "inconsistent: is %u should be %u\n"),
-		        rgp->rt_addr, rgp->rt_addr, rgp->rt_freemeta, count[GFS2_BLKST_UNLINKED]);
-		rgp->rt_freemeta = count[GFS2_BLKST_UNLINKED];
-		update = 1;
-	}
-	if (!sdp->gfs1 && (rgp->rt_data != count[GFS2_BLKST_FREE] +
-			   count[GFS2_BLKST_USED] +
-			   count[GFS2_BLKST_UNLINKED] +
-			   count[GFS2_BLKST_DINODE])) {
+	if (rgp->rt_data != count[GFS2_BLKST_FREE] +
+	                    count[GFS2_BLKST_USED] +
+	                    count[GFS2_BLKST_UNLINKED] +
+	                    count[GFS2_BLKST_DINODE]) {
 		/* FIXME not sure how to handle this case ATM - it
 		 * means that the total number of blocks we've counted
 		 * exceeds the blocks in the rg */
@@ -178,12 +145,7 @@ static void update_rgrp(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgp,
 	if (update) {
 		if (query(cx, _("Update resource group counts? (y/n) "))) {
 			log_warn( _("Resource group counts updated\n"));
-			/* write out the rgrp */
-			if (sdp->gfs1)
-				lgfs2_gfs_rgrp_out(rgp,
-						   rgp->rt_bits[0].bi_data);
-			else
-				lgfs2_rgrp_out(rgp, rgp->rt_bits[0].bi_data);
+			lgfs2_rgrp_out(rgp, rgp->rt_bits[0].bi_data);
 			rgp->rt_bits[0].bi_modified = 1;
 		} else
 			log_err( _("Resource group counts left inconsistent\n"));

@@ -34,51 +34,26 @@ uint64_t find_journal_block(const char *journal, uint64_t *j_size)
 {
 	int journal_num;
 	uint64_t jindex_block, jblock = 0;
-	int amtread;
 	struct lgfs2_buffer_head *jindex_bh, *j_bh;
+	struct gfs2_dinode *jdi;
 
 	journal_num = atoi(journal + 7);
 	if (journal_num < 0)
 		return 0;
 
-	/* Figure out the block of the jindex file */
-	if (sbd.gfs1)
-		jindex_block = sbd.sd_jindex_di.in_addr;
-	else
-		jindex_block = masterblock("jindex");
-	/* read in the block */
+	jindex_block = masterblock("jindex");
 	jindex_bh = lgfs2_bread(&sbd, jindex_block);
 	di = (struct gfs2_dinode *)jindex_bh->b_data;
-
-	if (!sbd.gfs1)
-		do_dinode_extended(jindex_bh->b_data); /* parse dir. */
-
-	if (sbd.gfs1) {
-		struct lgfs2_inode *jiinode;
-		struct gfs_jindex jidx;
-
-		jiinode = lgfs2_inode_get(&sbd, jindex_bh);
-		if (jiinode == NULL)
-			return 0;
-		amtread = lgfs2_readi(jiinode, &jidx,
-				   journal_num * sizeof(struct gfs_jindex),
-				   sizeof(struct gfs_jindex));
-		if (amtread) {
-			jblock = be64_to_cpu(jidx.ji_addr);
-			*j_size = (uint64_t)be32_to_cpu(jidx.ji_nsegment) * 0x10;
-		}
-		lgfs2_inode_put(&jiinode);
-	} else {
-		struct gfs2_dinode *jdi;
-
-		if (journal_num > indirect->ii[0].dirents - 2)
-			return 0;
-		jblock = indirect->ii[0].dirent[journal_num + 2].inum.in_addr;
-		j_bh = lgfs2_bread(&sbd, jblock);
-		jdi = (struct gfs2_dinode *)j_bh->b_data;
-		*j_size = be64_to_cpu(jdi->di_size);
-		lgfs2_brelse(j_bh);
+	do_dinode_extended(jindex_bh->b_data);
+	if (journal_num > indirect->ii[0].dirents - 2) {
+		lgfs2_brelse(jindex_bh);
+		return 0;
 	}
+	jblock = indirect->ii[0].dirent[journal_num + 2].inum.in_addr;
+	j_bh = lgfs2_bread(&sbd, jblock);
+	jdi = (struct gfs2_dinode *)j_bh->b_data;
+	*j_size = be64_to_cpu(jdi->di_size);
+	lgfs2_brelse(j_bh);
 	lgfs2_brelse(jindex_bh);
 	return jblock;
 }
@@ -185,8 +160,6 @@ static int ld_is_pertinent(const __be64 *b, const char *end, uint64_t tblk,
 		if (be64_to_cpu(*blk) == tblk || be64_to_cpu(*blk) == bitblk)
 			return 1;
 		blk++;
-		if (sbd.gfs1)
-			blk++;
 	}
 	return 0;
 }
@@ -270,7 +243,7 @@ static int print_ld_blks(const __be64 *b, const char *end, int start_line,
 					rgd->rt_bits[bmap].bi_data = save_ptr;
 					print_gfs2("bit for blk 0x%"PRIx64" is %d (%s)",
 						   tblk, type,
-						   allocdesc[sbd.gfs1][type]);
+						   allocdesc[type]);
 				} else {
 					print_gfs2("bitmap for blk 0x%"PRIx64" was revoked",
 					           tblk);
@@ -280,8 +253,6 @@ static int print_ld_blks(const __be64 *b, const char *end, int start_line,
 			}
 		}
 		b++;
-		if (sbd.gfs1)
-			b++;
 	}
 	if (prnt)
 		eol(0);
@@ -297,15 +268,10 @@ static int is_wrap_pt(void *buf, uint64_t *highest_seq)
 	const struct lgfs2_metadata *mtype = get_block_type(buf);
 
 	if (mtype != NULL && mtype->mh_type == GFS2_METATYPE_LH) {
+		struct gfs2_log_header *lh = buf;
 		uint64_t seq;
 
-		if (sbd.gfs1) {
-			struct gfs_log_header *lh = buf;
-			seq = be64_to_cpu(lh->lh_sequence);
-		} else {
-			struct gfs2_log_header *lh = buf;
-			seq = be64_to_cpu(lh->lh_sequence);
-		}
+		seq = be64_to_cpu(lh->lh_sequence);
 		if (seq < *highest_seq)
 			return 1;
 		*highest_seq = seq;
@@ -322,24 +288,15 @@ static uint64_t find_wrap_pt(struct lgfs2_inode *ji, char *jbuf, uint64_t jblock
 	uint64_t jb = 0;
 	uint64_t highest_seq = 0;
 
-	for (jb = 0; jb < j_size; jb += (sbd.gfs1 ? 1 : sbd.sd_bsize)) {
+	for (jb = 0; jb < j_size; jb += sbd.sd_bsize) {
 		int found = 0;
+		int copied;
+		uint64_t abs_block;
 
-		if (sbd.gfs1) {
-			struct lgfs2_buffer_head *j_bh;
-
-			j_bh = lgfs2_bread(&sbd, jblock + jb);
-			found = is_wrap_pt(j_bh->b_data, &highest_seq);
-			lgfs2_brelse(j_bh);
-		} else {
-			int copied;
-			uint64_t abs_block;
-
-			copied = fsck_readi(ji, jbuf, jb, sbd.sd_bsize, &abs_block);
-			if (!copied) /* end of file */
-				break;
-			found = is_wrap_pt(jbuf, &highest_seq);
-		}
+		copied = fsck_readi(ji, jbuf, jb, sbd.sd_bsize, &abs_block);
+		if (!copied) /* end of file */
+			break;
+		found = is_wrap_pt(jbuf, &highest_seq);
 		if (found)
 			return jb;
 	}
@@ -361,21 +318,21 @@ static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 	uint32_t ld_type = be32_to_cpu(ld->ld_type);
 	uint32_t ld_length = be32_to_cpu(ld->ld_length);
 	uint32_t ld_data1 = be32_to_cpu(ld->ld_data1);
-	uint32_t logtypes[2][6] = {
-		{GFS2_LOG_DESC_METADATA, GFS2_LOG_DESC_REVOKE,
-		 GFS2_LOG_DESC_JDATA, 0, 0, 0},
-		{GFS_LOG_DESC_METADATA, GFS_LOG_DESC_IUL, GFS_LOG_DESC_IDA,
-		 GFS_LOG_DESC_Q, GFS_LOG_DESC_LAST, 0}};
-	const char *logtypestr[2][6] = {
-		{"Metadata", "Revoke", "Jdata",
-		 "Unknown", "Unknown", "Unknown"},
-		{"Metadata", "Unlinked inode", "Dealloc inode",
-		 "Quota", "Final Entry", "Unknown"}};
-
-	if (sbd.gfs1)
-		b = (__be64 *)(buf + sizeof(struct gfs_log_descriptor));
-	else
-		b = (__be64 *)(buf + sizeof(struct gfs2_log_descriptor));
+	uint32_t logtypes[6] = {
+		GFS2_LOG_DESC_METADATA,
+		GFS2_LOG_DESC_REVOKE,
+		GFS2_LOG_DESC_JDATA,
+		0, 0, 0
+	};
+	const char *logtypestr[6] = {
+		"Metadata",
+		"Revoke",
+		"Jdata",
+		"Unknown",
+		"Unknown",
+		"Unknown"
+	};
+	b = (__be64 *)(buf + sizeof(struct gfs2_log_descriptor));
 	*prnt = ld_is_pertinent(b, (buf + sbd.sd_bsize), tblk, rgd, bitblk);
 
 	if (*prnt) {
@@ -384,18 +341,17 @@ static int process_ld(uint64_t abs_block, uint64_t wrappt, uint64_t j_size,
 		print_gfs2("type %"PRIu32" ", ld_type);
 
 		for (ltndx = 0;; ltndx++) {
-			if (ld_type == logtypes[sbd.gfs1][ltndx] ||
-			    logtypes[sbd.gfs1][ltndx] == 0)
+			if (ld_type == logtypes[ltndx] ||
+			    logtypes[ltndx] == 0)
 				break;
 		}
-		print_gfs2("(%s) ", logtypestr[sbd.gfs1][ltndx]);
+		print_gfs2("(%s) ", logtypestr[ltndx]);
 		print_gfs2("len:%"PRIu32", data1: %"PRIu32, ld_length, ld_data1);
 		eol(0);
 		print_gfs2("                    ");
 	}
 	ld_blocks = ld_data1;
-	if (ld_type == GFS2_LOG_DESC_METADATA ||
-	    ld_type == GFS_LOG_DESC_METADATA)
+	if (ld_type == GFS2_LOG_DESC_METADATA)
 		is_meta_ld = 1;
 	ld_blocks -= print_ld_blks(b, (buf + sbd.sd_bsize), line, tblk, tblk_off,
 	                           bitblk, rgd, abs_block, *prnt, bblk_off,
@@ -462,31 +418,16 @@ static void display_log_header(void *buf, uint64_t *highest_seq, uint64_t abs_bl
 	const struct lgfs2_metafield *lh_flags_field;
 	const struct lgfs2_metadata *mtype;
 	struct gfs2_log_header *lh = buf;
-	struct gfs_log_header *lh1 = buf;
 	char flags_str[256];
 
-	if (sbd.gfs1) {
-		mtype = &lgfs2_metadata[LGFS2_MT_GFS_LOG_HEADER];
-		lh_flags_field = &mtype->fields[7]; /* lh_flags is the 8th field in the struct */
-		check_journal_wrap(be64_to_cpu(lh1->lh_sequence), highest_seq);
-	} else {
-		mtype = &lgfs2_metadata[LGFS2_MT_GFS2_LOG_HEADER];
-		lh_flags_field = &mtype->fields[6]; /* lh_flags is the 7th field in the struct */
-		check_journal_wrap(be64_to_cpu(lh->lh_sequence), highest_seq);
-	}
+	mtype = &lgfs2_metadata[LGFS2_MT_GFS2_LOG_HEADER];
+	lh_flags_field = &mtype->fields[6]; /* lh_flags is the 7th field in the struct */
+	check_journal_wrap(be64_to_cpu(lh->lh_sequence), highest_seq);
 	lgfs2_field_str(flags_str, sizeof(flags_str), buf, lh_flags_field, (dmode == HEX_MODE));
-	if (sbd.gfs1) {
-		print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: Seq: 0x%"PRIx64", "
-		           "1st: 0x%"PRIx64", tail: 0x%"PRIx64", last: 0x%"PRIx64" [%s]",
-		           abs_block, jb, be64_to_cpu(lh1->lh_sequence),
-			   be64_to_cpu(lh1->lh_first), be64_to_cpu(lh1->lh_tail),
-			   be64_to_cpu(lh1->lh_last_dump), flags_str);
-	} else {
-		print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: Seq: 0x%"PRIx64", "
-		           "tail: 0x%"PRIx32", blk: 0x%"PRIx32" [%s]",
-		            abs_block, (jb % j_size) / sbd.sd_bsize, be64_to_cpu(lh->lh_sequence),
-		            be32_to_cpu(lh->lh_tail), be32_to_cpu(lh->lh_blkno), flags_str);
-	}
+	print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: Seq: 0x%"PRIx64", "
+		   "tail: 0x%"PRIx32", blk: 0x%"PRIx32" [%s]",
+		    abs_block, (jb % j_size) / sbd.sd_bsize, be64_to_cpu(lh->lh_sequence),
+		    be32_to_cpu(lh->lh_tail), be32_to_cpu(lh->lh_blkno), flags_str);
 }
 
 /**
@@ -514,7 +455,7 @@ void dump_journal(const char *journal, uint64_t tblk)
 	struct lgfs2_rgrp_tree *rgd = NULL;
 	uint64_t abs_ld = 0;
 
-	mtype = lgfs2_find_mtype(GFS2_METATYPE_LH, sbd.gfs1 ? LGFS2_MD_GFS1 : LGFS2_MD_GFS2);
+	mtype = lgfs2_find_mtype(GFS2_METATYPE_LH);
 
 	start_line = line;
 	lines_per_row[dmode] = 1;
@@ -529,18 +470,16 @@ void dump_journal(const char *journal, uint64_t tblk)
 	if (!jblock)
 		return;
 
-	if (!sbd.gfs1) {
-		j_bh = lgfs2_bread(&sbd, jblock);
-		j_inode = lgfs2_inode_get(&sbd, j_bh);
-		if (j_inode == NULL) {
-			fprintf(stderr, "Out of memory\n");
-			exit(-1);
-		}
-		jbuf = malloc(sbd.sd_bsize);
-		if (jbuf == NULL) {
-			fprintf(stderr, "Out of memory\n");
-			exit(-1);
-		}
+	j_bh = lgfs2_bread(&sbd, jblock);
+	j_inode = lgfs2_inode_get(&sbd, j_bh);
+	if (j_inode == NULL) {
+		fprintf(stderr, "Out of memory\n");
+		exit(-1);
+	}
+	jbuf = malloc(sbd.sd_bsize);
+	if (jbuf == NULL) {
+		fprintf(stderr, "Out of memory\n");
+		exit(-1);
 	}
 
 	if (tblk) {
@@ -570,30 +509,21 @@ void dump_journal(const char *journal, uint64_t tblk)
 		}
 
 		wrappt = find_wrap_pt(j_inode, jbuf, jblock, j_size);
-		wp = wrappt / (sbd.gfs1 ? 1 : sbd.sd_bsize);
+		wp = wrappt / sbd.sd_bsize;
 		print_gfs2("Starting at journal wrap block: 0x%"PRIx64" (j + 0x%"PRIx64")",
 		           jblock + wp, wp);
 		eol(0);
 	}
 
-	for (jb = 0; jb < j_size; jb += (sbd.gfs1 ? 1 : sbd.sd_bsize)) {
+	for (jb = 0; jb < j_size; jb += sbd.sd_bsize) {
 		int is_pertinent = 1;
 		uint32_t block_type = 0;
-
-		if (sbd.gfs1) {
-			if (j_bh)
-				lgfs2_brelse(j_bh);
-			abs_block = jblock + ((jb + wrappt) % j_size);
-			j_bh = lgfs2_bread(&sbd, abs_block);
-			buf = j_bh->b_data;
-		} else {
-			int error = fsck_readi(j_inode, (void *)jbuf,
-					   ((jb + wrappt) % j_size),
-					   sbd.sd_bsize, &abs_block);
-			if (!error) /* end of file */
-				break;
-			buf = jbuf;
-		}
+		int error = fsck_readi(j_inode, (void *)jbuf,
+				   ((jb + wrappt) % j_size),
+				   sbd.sd_bsize, &abs_block);
+		if (!error) /* end of file */
+			break;
+		buf = jbuf;
 		offset_from_ld++;
 		mtype = get_block_type(buf);
 		if (mtype != NULL)
@@ -609,9 +539,8 @@ void dump_journal(const char *journal, uint64_t tblk)
 		} else if (!tblk && block_type == GFS2_METATYPE_LH) {
 			display_log_header(buf, &highest_seq, abs_block, jb + wrappt, j_size);
 			eol(0);
-		} else if ((ld_blocks > 0) &&
-			   (sbd.gfs1 || block_type == GFS2_METATYPE_LB)) {
-			__be64 *b = (__be64 *)(buf + (sbd.gfs1 ? 0 : sizeof(struct gfs2_meta_header)));
+		} else if ((ld_blocks > 0) && (block_type == GFS2_METATYPE_LB)) {
+			__be64 *b = (__be64 *)(buf + sizeof(struct gfs2_meta_header));
 
 			print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log descriptor"
 				   " continuation block", abs_block,

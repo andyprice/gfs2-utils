@@ -40,7 +40,7 @@ int set_di_nlink(struct fsck_cx *cx, struct lgfs2_inode *ip)
 	struct inode_info *ii;
 	struct dir_info *di;
 
-	if (is_dir(ip, ip->i_sbd->gfs1)) {
+	if (is_dir(ip)) {
 		di = dirtree_find(cx, ip->i_num.in_addr);
 		if (di == NULL) {
 			log_err(_("Error: directory %"PRIu64" (0x%"PRIx64") is not "
@@ -148,8 +148,7 @@ int incr_link_count(struct fsck_cx *cx, struct lgfs2_inum no, struct lgfs2_inode
 	            "for (0x%"PRIx64") via %s\n"),                        \
 		  referenced_from, counted_links, no_addr, why);
 
-int decr_link_count(struct fsck_cx *cx, uint64_t inode_no, uint64_t referenced_from, int gfs1,
-		    const char *why)
+int decr_link_count(struct fsck_cx *cx, uint64_t inode_no, uint64_t referenced_from, const char *why)
 {
 	struct inode_info *ii = NULL;
 	struct dir_info *di;

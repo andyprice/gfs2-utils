@@ -111,13 +111,8 @@ static void refresh_rgrp(struct lgfs2_sbd *sdp, struct lgfs2_rgrp_tree *rgd,
 
 		memcpy(rgd->rt_bits[i].bi_data, bh->b_data, sdp->sd_bsize);
 		rgd->rt_bits[i].bi_modified = 1;
-		if (i == 0) { /* this is the rgrp itself */
-			if (sdp->gfs1)
-				lgfs2_gfs_rgrp_in(rgd,
-						  rgd->rt_bits[0].bi_data);
-			else
-				lgfs2_rgrp_in(rgd, rgd->rt_bits[0].bi_data);
-		}
+		if (i == 0) /* this is the rgrp itself */
+			lgfs2_rgrp_in(rgd, rgd->rt_bits[0].bi_data);
 		break;
 	}
 }
@@ -750,7 +745,7 @@ int ji_update(struct lgfs2_sbd *sdp)
 {
 	struct lgfs2_inode *jip, *ip = sdp->md.jiinode;
 	char journal_name[JOURNAL_NAME_SIZE];
-	int i, error;
+	int i;
 
 	if (!ip) {
 		log_crit(_("Journal index inode not found.\n"));
@@ -761,9 +756,7 @@ int ji_update(struct lgfs2_sbd *sdp)
 	   plus two for "." and "..".  So we subtract the 2 and divide by 3.
 	   If per_node is missing or damaged, we have to trust jindex has
 	   the correct number of entries. */
-	if (sdp->gfs1)
-		sdp->md.journals = ip->i_size / sizeof(struct gfs_jindex);
-	else if (sdp->md.pinode) /* if per_node was read in properly */
+	if (sdp->md.pinode) /* if per_node was read in properly */
 		sdp->md.journals = (sdp->md.pinode->i_entries - 2) / 3;
 	else
 		sdp->md.journals = ip->i_entries - 2;
@@ -775,28 +768,11 @@ int ji_update(struct lgfs2_sbd *sdp)
 	}
 	memset(journal_name, 0, sizeof(*journal_name));
 	for (i = 0; i < sdp->md.journals; i++) {
-		if (sdp->gfs1) {
-			struct gfs_jindex ji;
-
-			error = lgfs2_readi(ip, &ji, i * sizeof(struct gfs_jindex),
-			                    sizeof(struct gfs_jindex));
-			if (!error)
-				break;
-			if (error != sizeof(struct gfs_jindex)){
-				log_err(_("An error occurred while reading the"
-					" journal index file.\n"));
-				return -1;
-			}
-			sdp->md.journal[i] = lgfs2_inode_read(sdp, be64_to_cpu(ji.ji_addr));
-			if (sdp->md.journal[i] == NULL)
-				return -1;
-		} else {
-			/* FIXME check snprintf return code */
-			int len;
-			len = snprintf(journal_name, JOURNAL_NAME_SIZE, "journal%u", i);
-			jip = lgfs2_lookupi(sdp->md.jiinode, journal_name, len);
-			sdp->md.journal[i] = jip;
-		}
+		/* FIXME check snprintf return code */
+		int len;
+		len = snprintf(journal_name, JOURNAL_NAME_SIZE, "journal%u", i);
+		jip = lgfs2_lookupi(sdp->md.jiinode, journal_name, len);
+		sdp->md.journal[i] = jip;
 	}
 	return 0;
 }
@@ -883,15 +859,13 @@ int build_jindex(struct lgfs2_sbd *sdp)
 int init_jindex(struct fsck_cx *cx, int allow_ji_rebuild)
 {
 	struct lgfs2_sbd *sdp = cx->sdp;
+	int error;
 
 	log_debug(_("Validating the journal index.\n"));
 	/* rgrepair requires the journals be read in in order to distinguish
 	   "real" rgrps from rgrps that are just copies left in journals. */
-	if (sdp->gfs1)
-		sdp->md.jiinode = lgfs2_inode_read(sdp, sdp->sd_jindex_di.in_addr);
-	else
-		/* coverity[identity_transfer:SUPPRESS] */
-		sdp->md.jiinode = lgfs2_lookupi(sdp->master_dir, "jindex", 6);
+	/* coverity[identity_transfer:SUPPRESS] */
+	sdp->md.jiinode = lgfs2_lookupi(sdp->master_dir, "jindex", 6);
 
 	if (!sdp->md.jiinode) {
 		int err;
@@ -919,36 +893,33 @@ int init_jindex(struct fsck_cx *cx, int allow_ji_rebuild)
 
 	/* check for irrelevant entries in jindex. Can't use check_dir because
 	   that creates and destroys the inode, which we don't want. */
-	if (!sdp->gfs1) {
-		int error;
 
-		log_debug(_("Checking the integrity of the journal index.\n"));
-		if (sdp->md.jiinode->i_flags & GFS2_DIF_EXHASH)
-			error = check_leaf_blks(cx, sdp->md.jiinode,
-						&jindex_check_fxns);
-		else
-			error = check_linear_dir(cx, sdp->md.jiinode,
-						 sdp->md.jiinode->i_bh,
-						 &jindex_check_fxns);
-		if (error) {
-			log_err(_("The system journal index is damaged.\n"));
-			if (!query(cx, _("Okay to rebuild it? (y/n) "))) {
-				log_crit(_("Error: cannot proceed without a "
-					   "valid jindex file.\n"));
-				return -1;
-			}
-			lgfs2_inode_put(&sdp->md.jiinode);
-			lgfs2_dirent_del(sdp->master_dir, "jindex", 6);
-			log_err(_("Corrupt journal index was removed.\n"));
-			error = build_jindex(sdp);
-			if (error) {
-				log_err(_("Error rebuilding journal "
-					  "index: Cannot continue.\n"));
-				return error;
-			}
-			/* coverity[pass_freed_arg:SUPPRESS] */
-			sdp->md.jiinode = lgfs2_lookupi(sdp->master_dir, "jindex", 6);
+	log_debug(_("Checking the integrity of the journal index.\n"));
+	if (sdp->md.jiinode->i_flags & GFS2_DIF_EXHASH)
+		error = check_leaf_blks(cx, sdp->md.jiinode,
+					&jindex_check_fxns);
+	else
+		error = check_linear_dir(cx, sdp->md.jiinode,
+					 sdp->md.jiinode->i_bh,
+					 &jindex_check_fxns);
+	if (error) {
+		log_err(_("The system journal index is damaged.\n"));
+		if (!query(cx, _("Okay to rebuild it? (y/n) "))) {
+			log_crit(_("Error: cannot proceed without a "
+				   "valid jindex file.\n"));
+			return -1;
 		}
+		lgfs2_inode_put(&sdp->md.jiinode);
+		lgfs2_dirent_del(sdp->master_dir, "jindex", 6);
+		log_err(_("Corrupt journal index was removed.\n"));
+		error = build_jindex(sdp);
+		if (error) {
+			log_err(_("Error rebuilding journal "
+				  "index: Cannot continue.\n"));
+			return error;
+		}
+		/* coverity[pass_freed_arg:SUPPRESS] */
+		sdp->md.jiinode = lgfs2_lookupi(sdp->master_dir, "jindex", 6);
 	}
 
 	/* read in the ji data */

@@ -57,7 +57,7 @@ extern int dsplines;
 extern int dsp_lines[DMODES];
 extern int combined_display;
 extern int details;
-extern const char *allocdesc[2][5];
+extern const char *allocdesc[5];
 extern char *device;
 
 struct idirent {
@@ -189,7 +189,6 @@ static inline int block_is_journals(uint64_t blk)
 		} \
 	} while (0)
 
-extern int block_is_jindex(uint64_t blk);
 extern int block_is_rindex(uint64_t blk);
 extern int block_is_inum_file(uint64_t blk);
 extern int block_is_statfs_file(uint64_t blk);

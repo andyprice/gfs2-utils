@@ -223,12 +223,11 @@ AM_CPPFLAGS="$INCLUDE_PATHS $DEFINES $OPT_CPPFLAGS"
 
 AC_SUBST([AM_CPPFLAGS])
 
-AC_CONFIG_TESTDIR([tests], [gfs2/libgfs2:gfs2/mkfs:gfs2/fsck:gfs2/edit:gfs2/convert:gfs2/tune:tests])
+AC_CONFIG_TESTDIR([tests], [gfs2/libgfs2:gfs2/mkfs:gfs2/fsck:gfs2/edit:gfs2/tune:tests])
 AC_CONFIG_FILES([Makefile
 		 gfs2/Makefile
 		 gfs2/include/Makefile
 		 gfs2/libgfs2/Makefile
-		 gfs2/convert/Makefile
 		 gfs2/edit/Makefile
 		 gfs2/fsck/Makefile
 		 gfs2/mkfs/Makefile

@@ -299,7 +299,6 @@ int delete_eattr_extentry(struct fsck_cx *cx, struct lgfs2_inode *ip, int i, __b
 			   a single byte. */
 			fsck_bitmap_set(cx, ip, ip->i_eattr,
 					_("extended attribute"),
-					ip->i_sbd->gfs1 ? GFS2_BLKST_DINODE :
 					GFS2_BLKST_USED);
 			log_err( _("The EA was fixed.\n"));
 		} else {

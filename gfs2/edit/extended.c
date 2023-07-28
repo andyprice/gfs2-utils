@@ -60,7 +60,7 @@ static int _do_indirect_extended(char *diebuf, struct iinfo *iinf, int hgt)
 		iinf->ii[x].dirents = 0;
 		memset(&iinf->ii[x].dirent, 0, sizeof(struct idirent));
 	}
-	headoff = sbd.gfs1 ? sizeof(struct gfs_indirect) : sizeof(struct gfs2_meta_header);
+	headoff = sizeof(struct gfs2_meta_header);
 	for (x = headoff, y = 0; x < sbd.sd_bsize; x += sizeof(uint64_t), y++) {
 		p = be64_to_cpu(*(__be64 *)(diebuf + x));
 		if (p) {
@@ -231,38 +231,6 @@ static int display_indirect(struct iinfo *ind, int indblocks, int level,
 
 static void print_inode_type(uint16_t de_type)
 {
-	if (sbd.gfs1) {
-		switch(de_type) {
-		case GFS_FILE_NON:
-			print_gfs2("Unknown");
-			break;
-		case GFS_FILE_REG:
-			print_gfs2("File   ");
-			break;
-		case GFS_FILE_DIR:
-			print_gfs2("Dir    ");
-			break;
-		case GFS_FILE_LNK:
-			print_gfs2("Symlink");
-			break;
-		case GFS_FILE_BLK:
-			print_gfs2("BlkDev ");
-			break;
-		case GFS_FILE_CHR:
-			print_gfs2("ChrDev ");
-			break;
-		case GFS_FILE_FIFO:
-			print_gfs2("Fifo   ");
-			break;
-		case GFS_FILE_SOCK:
-			print_gfs2("Socket ");
-			break;
-		default:
-			print_gfs2("%04x   ", de_type);
-			break;
-		}
-		return;
-	}
 	switch(de_type) {
 	case DT_UNKNOWN:
 		print_gfs2("Unknown");
@@ -421,44 +389,6 @@ static void print_block_details(struct iinfo *ind, int level, int cur_height,
 	free(more_indir);
 }
 
-static int print_gfs_jindex(struct lgfs2_inode *dij)
-{
-	int error, start_line;
-
-	start_line = line;
-	print_gfs2("Journal index entries found: %"PRIu64".",
-		   dij->i_size / sizeof(struct gfs_jindex));
-	eol(0);
-	lines_per_row[dmode] = 4;
-	for (print_entry_ndx=0; ; print_entry_ndx++) {
-		struct gfs_jindex ji;
-
-		error = lgfs2_readi(dij, &ji,
-				   print_entry_ndx*sizeof(struct gfs_jindex),
-				   sizeof(struct gfs_jindex));
-		if (!error) /* end of file */
-			break;
-		if (!termlines ||
-		    (print_entry_ndx >= start_row[dmode] &&
-		     ((print_entry_ndx - start_row[dmode])+1) *
-		     lines_per_row[dmode] <= termlines - start_line - 2)) {
-			if (edit_row[dmode] == print_entry_ndx) {
-				COLORS_HIGHLIGHT;
-				strcpy(efield, "ji_addr");
-				sprintf(estring, "%"PRIx64, be64_to_cpu(ji.ji_addr));
-			}
-			print_gfs2("Journal #%d", print_entry_ndx);
-			eol(0);
-			if (edit_row[dmode] == print_entry_ndx)
-				COLORS_NORMAL;
-			gfs_jindex_print(&ji);
-			last_entry_onscreen[dmode] = print_entry_ndx;
-		}
-	}
-	end_row[dmode] = print_entry_ndx;
-	return error;
-}
-
 static int print_gfs2_jindex(void)
 {
 	int d, error;
@@ -535,8 +465,6 @@ static int parse_rindex(struct lgfs2_inode *dip, int print_rindex)
 				ret = pread(sbd.device_fd, &r, sizeof(r), rg.rt_addr * sbd.sd_bsize);
 				if (ret != sizeof(r)) {
 					perror("Failed to read resource group");
-				} else if (sbd.gfs1) {
-					gfs_rgrp_print(&r);
 				} else {
 					rgrp_print(&r);
 				}
@@ -635,10 +563,7 @@ int display_extended(void)
 		lgfs2_inode_put(&tmp_inode);
 		lgfs2_brelse(tmp_bh);
 	} else if (block_is_journals(block)) {
-		if (sbd.gfs1)
-			block = sbd.sd_jindex_di.in_addr;
-		else
-			block = masterblock("jindex");
+		block = masterblock("jindex");
 		print_gfs2_jindex();
 	} else if (has_indirect_blocks() && !indirect_blocks &&
 		 !display_leaf(indirect))
@@ -646,22 +571,11 @@ int display_extended(void)
 	else if (display_indirect(indirect, indirect_blocks, 0, 0) == 0)
 		return -1;
 	else if (block_is_rgtree(block)) {
-		if (sbd.gfs1)
-			tmp_bh = lgfs2_bread(&sbd, sbd.sd_rindex_di.in_addr);
-		else
-			tmp_bh = lgfs2_bread(&sbd, masterblock("rindex"));
+		tmp_bh = lgfs2_bread(&sbd, masterblock("rindex"));
 		tmp_inode = lgfs2_inode_get(&sbd, tmp_bh);
 		if (tmp_inode == NULL)
 			return -1;
 		parse_rindex(tmp_inode, FALSE);
-		lgfs2_inode_put(&tmp_inode);
-		lgfs2_brelse(tmp_bh);
-	} else if (block_is_jindex(block)) {
-		tmp_bh = lgfs2_bread(&sbd, block);
-		tmp_inode = lgfs2_inode_get(&sbd, tmp_bh);
-		if (tmp_inode == NULL)
-			return -1;
-		print_gfs_jindex(tmp_inode);
 		lgfs2_inode_put(&tmp_inode);
 		lgfs2_brelse(tmp_bh);
 	}
