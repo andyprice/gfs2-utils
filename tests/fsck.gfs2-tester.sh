@@ -57,9 +57,16 @@ function log_failure()
 	log_result Fail
 }
 
+function rmdev()
+{
+	[ "$truncate_size" != "0" ] && rm -vf "$device"
+	return 0
+}
+
 function _truncate()
 {
 	[ "$truncate_size" != "0" ] && truncate -s "$truncate_size" "$device"
+	return 0
 }
 
 function test_restore()
@@ -67,7 +74,7 @@ function test_restore()
 	local mdata=$1
 
 	(
-	rm -vf "$device" &&
+	rmdev &&
 	_truncate &&
 	$GFS2EDIT restoremeta $mdata $device
 	) &>> "$logfile"
@@ -78,7 +85,13 @@ function test_clean()
 	local mdata="$1"
 
 	log_start clean "$mdata"
-	test_restore "$mdata" || return $?
+	test_restore "$mdata"
+	rc=$?
+	if [ $rc -ne 0 ]; then
+		log "restoremeta finished with result $rc"
+		log_failure clean "$mdata"
+		return $rc
+	fi
 	echo "Running: $FSCK -n $device" >> "$logfile"
 	$FSCK -n "$device" &>> "$logfile"
 	rc=$?
@@ -95,7 +108,13 @@ function test_dirty()
 	local mdata=$1
 
 	log_start dirty "$mdata"
-	test_restore "$mdata" || return $?
+	test_restore "$mdata"
+	rc=$?
+	if [ $rc -ne 0 ]; then
+		log "restoremeta finished with result $rc"
+		log_failure dirty "$mdata"
+		return $rc
+	fi
 	echo "Running: $FSCK -y $device" >> "$logfile"
 	$FSCK -y "$device" &>> "$logfile"
 	rc=$?
