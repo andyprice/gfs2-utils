@@ -113,11 +113,13 @@ Strips all execution bits on a new file, if parent directory owner is different
 from owner of process creating the file.  Set this option only if you know
 why you are setting it.
 .TP
-\fBquota=\fP\fI[off/account/on]\fR
+\fBquota=\fP\fI[off/account/quiet/on]\fR
 Turns quotas on or off for a filesystem.  Setting the quotas to be in
 the "account" state causes the per UID/GID usage statistics to be
 correctly maintained by the filesystem, limit and warn values are
-ignored.  The default value is "off".
+ignored.  The "quiet" state is equivalent to "on", without writing
+warnings about soft and hard quota limits to the system log.
+The default value is "off".
 .TP
 \fBdiscard\fP
 Causes GFS2 to generate "discard" I/O requests for blocks which have
