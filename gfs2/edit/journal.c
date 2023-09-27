@@ -418,16 +418,24 @@ static void display_log_header(void *buf, uint64_t *highest_seq, uint64_t abs_bl
 	const struct lgfs2_metafield *lh_flags_field;
 	const struct lgfs2_metadata *mtype;
 	struct gfs2_log_header *lh = buf;
+	uint64_t jlb = (jb % j_size) / sbd.sd_bsize;
+	uint64_t seq = be64_to_cpu(lh->lh_sequence);
+	uint32_t tail = be32_to_cpu(lh->lh_tail);
+	uint32_t blkn = be32_to_cpu(lh->lh_blkno);
+	uint64_t tot = be64_to_cpu(lh->lh_local_total);
+	uint64_t fr = be64_to_cpu(lh->lh_local_free);
+	uint64_t ndi = be64_to_cpu(lh->lh_local_dinodes);
 	char flags_str[256];
 
 	mtype = &lgfs2_metadata[LGFS2_MT_GFS2_LOG_HEADER];
 	lh_flags_field = &mtype->fields[6]; /* lh_flags is the 7th field in the struct */
 	check_journal_wrap(be64_to_cpu(lh->lh_sequence), highest_seq);
 	lgfs2_field_str(flags_str, sizeof(flags_str), buf, lh_flags_field, (dmode == HEX_MODE));
-	print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: Seq: 0x%"PRIx64", "
-		   "tail: 0x%"PRIx32", blk: 0x%"PRIx32" [%s]",
-		    abs_block, (jb % j_size) / sbd.sd_bsize, be64_to_cpu(lh->lh_sequence),
-		    be32_to_cpu(lh->lh_tail), be32_to_cpu(lh->lh_blkno), flags_str);
+
+	print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: seq: 0x%"PRIx64", "
+	           "tail: 0x%"PRIx32", blk: 0x%"PRIx32", tot: 0x%"PRIx64", "
+	           "fr: 0x%"PRIx64", di: 0x%"PRIx64" [%s]",
+		    abs_block, jlb, seq, tail, blkn, tot, fr, ndi, flags_str);
 }
 
 /**
