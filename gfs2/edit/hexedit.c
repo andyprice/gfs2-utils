@@ -812,7 +812,6 @@ static void read_superblock(int fd)
 	sbd.sd_bsize = LGFS2_DEFAULT_BSIZE;
 	sbd.device_fd = fd;
 	bh = lgfs2_bread(&sbd, 0x10);
-	sbd.jsize = LGFS2_DEFAULT_JSIZE;
 	sbd.rgsize = LGFS2_DEFAULT_RGSIZE;
 	sbd.qcsize = LGFS2_DEFAULT_QCSIZE;
 	sbd.sd_time = time(NULL);

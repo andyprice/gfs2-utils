@@ -316,7 +316,6 @@ struct lgfs2_sbd {
 	uint64_t sd_heightsize[GFS2_MAX_META_HEIGHT];
 	uint64_t sd_jheightsize[GFS2_MAX_META_HEIGHT];
 
-	unsigned int jsize;   /* Size of journals (in MB) */
 	unsigned int rgsize;  /* Size of resource groups (in MB) */
 	unsigned int qcsize;  /* Size of quota change files (in MB) */
 
@@ -537,7 +536,7 @@ extern void lgfs2_rgrp_free(struct lgfs2_sbd *sdp, struct osi_root *rgrp_tree);
 /* structures.c */
 extern int lgfs2_build_master(struct lgfs2_sbd *sdp);
 extern int lgfs2_sb_write(const struct lgfs2_sbd *sdp, int fd);
-extern int lgfs2_build_journal(struct lgfs2_sbd *sdp, int j, struct lgfs2_inode *jindex);
+extern int lgfs2_build_journal(struct lgfs2_sbd *sdp, int j, struct lgfs2_inode *jindex, unsigned size_mb);
 extern int lgfs2_write_journal(struct lgfs2_inode *jnl, unsigned bsize, unsigned blocks);
 extern int lgfs2_write_journal_data(struct lgfs2_inode *ip);
 extern int lgfs2_write_filemeta(struct lgfs2_inode *ip);

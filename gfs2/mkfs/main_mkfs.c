@@ -1095,7 +1095,6 @@ static int sbd_init(struct lgfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsiz
 	sdp->rgtree.osi_node = NULL;
 	sdp->rgsize = opts->rgsize;
 	sdp->qcsize = opts->qcsize;
-	sdp->jsize = opts->jsize;
 	sdp->md.journals = opts->journals;
 	sdp->device_fd = opts->dev.fd;
 	sdp->sd_bsize = bsize;
@@ -1153,7 +1152,6 @@ static int sbd_init(struct lgfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsiz
 			        opts->journals, max_jsize);
 		return -1;
 	}
-	sdp->jsize = opts->jsize;
 	return 0;
 }
 
@@ -1284,7 +1282,7 @@ int main(int argc, char *argv[])
 		printf(_("File system options:\n"));
 		printf("  bsize = %u\n", sbd.sd_bsize);
 		printf("  qcsize = %u\n", sbd.qcsize);
-		printf("  jsize = %u\n", sbd.jsize);
+		printf("  jsize = %u\n", opts.jsize);
 		printf("  journals = %u\n", sbd.md.journals);
 		printf("  proto = %s\n", opts.lockproto);
 		printf("  table = %s\n", opts.locktable);

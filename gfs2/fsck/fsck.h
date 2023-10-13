@@ -122,6 +122,7 @@ struct fsck_cx {
 	struct osi_root dirtree;
 	struct osi_root inodetree;
 	const struct fsck_options * const opts;
+	unsigned int jnl_size;
 };
 
 extern struct lgfs2_inode *fsck_load_inode(struct lgfs2_sbd *sdp, uint64_t block);

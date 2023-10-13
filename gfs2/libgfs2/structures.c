@@ -233,7 +233,7 @@ int lgfs2_write_journal(struct lgfs2_inode *jnl, unsigned bsize, unsigned int bl
 	return 0;
 }
 
-int lgfs2_build_journal(struct lgfs2_sbd *sdp, int j, struct lgfs2_inode *jindex)
+int lgfs2_build_journal(struct lgfs2_sbd *sdp, int j, struct lgfs2_inode *jindex, unsigned size_mb)
 {
 	char name[256];
 	int ret;
@@ -245,7 +245,7 @@ int lgfs2_build_journal(struct lgfs2_sbd *sdp, int j, struct lgfs2_inode *jindex
 		return errno;
 	}
 	ret = lgfs2_write_journal(sdp->md.journal[j], sdp->sd_bsize,
-	                          sdp->jsize << 20 >> sdp->sd_bsize_shift);
+	                          size_mb << 20 >> sdp->sd_bsize_shift);
 	return ret;
 }
 

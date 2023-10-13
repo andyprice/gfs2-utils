@@ -1475,7 +1475,7 @@ static int build_a_journal(struct fsck_cx *cx)
 	sprintf(name, "journal%u", sdp->md.journals);
 	lgfs2_dirent_del(sdp->md.jiinode, name, strlen(name));
 	/* Now rebuild it */
-	err = lgfs2_build_journal(sdp, sdp->md.journals, sdp->md.jiinode);
+	err = lgfs2_build_journal(sdp, sdp->md.journals, sdp->md.jiinode, cx->jnl_size);
 	if (err) {
 		log_crit(_("Error %d building journal\n"), err);
 		exit(FSCK_ERROR);

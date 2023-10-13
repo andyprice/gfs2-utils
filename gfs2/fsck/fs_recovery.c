@@ -691,7 +691,7 @@ int replay_journals(struct fsck_cx *cx, int *clean_journals)
 
 	*clean_journals = 0;
 
-	sdp->jsize = LGFS2_DEFAULT_JSIZE;
+	cx->jnl_size = LGFS2_DEFAULT_JSIZE;
 
 	for(i = 0; i < sdp->md.journals; i++) {
 		if (sdp->md.journal[i]) {
@@ -712,9 +712,9 @@ int replay_journals(struct fsck_cx *cx, int *clean_journals)
 		if (!error) {
 			uint64_t jsize = sdp->md.journal[i]->i_size / (1024 * 1024);
 
-			if (sdp->jsize == LGFS2_DEFAULT_JSIZE && jsize &&
-			    jsize != sdp->jsize)
-				sdp->jsize = jsize;
+			if (cx->jnl_size == LGFS2_DEFAULT_JSIZE && jsize &&
+			    jsize != cx->jnl_size)
+				cx->jnl_size = jsize;
 			error = recover_journal(sdp->md.journal[i], i, cx, &clean);
 			if (!clean)
 				dirty_journals++;
@@ -847,7 +847,7 @@ int build_jindex(struct fsck_cx *cx)
 		return ENOSPC;
 	}
 	for (unsigned j = 0; j < sdp->md.journals; j++) {
-		int ret = lgfs2_build_journal(sdp, j, jindex);
+		int ret = lgfs2_build_journal(sdp, j, jindex, cx->jnl_size);
 		if (ret)
 			return ret;
 		lgfs2_inode_put(&sdp->md.journal[j]);
