@@ -317,7 +317,6 @@ struct lgfs2_sbd {
 	uint64_t sd_jheightsize[GFS2_MAX_META_HEIGHT];
 
 	unsigned int rgsize;  /* Size of resource groups (in MB) */
-	unsigned int qcsize;  /* Size of quota change files (in MB) */
 
 	int64_t sd_time;
 
@@ -553,7 +552,7 @@ extern unsigned lgfs2_bm_scan(struct lgfs2_rgrp_tree *rgd, unsigned idx,
 			      uint64_t *buf, uint8_t state);
 extern struct lgfs2_inode *lgfs2_build_inum_range(struct lgfs2_inode *per_node, unsigned int n);
 extern struct lgfs2_inode *lgfs2_build_statfs_change(struct lgfs2_inode *per_node, unsigned int j);
-extern struct lgfs2_inode *lgfs2_build_quota_change(struct lgfs2_inode *per_node, unsigned int j);
+extern struct lgfs2_inode *lgfs2_build_quota_change(struct lgfs2_inode *per_node, unsigned int j, unsigned size_mb);
 
 /* super.c */
 extern int lgfs2_check_sb(void *sbp);

@@ -109,7 +109,6 @@ int lgfs2_read_sb(struct lgfs2_sbd *sdp)
 	sdp->fssize = lseek(sdp->device_fd, 0, SEEK_END) / sdp->sd_bsize;
 	sdp->sd_blocks_per_bitmap = (sdp->sd_bsize - sizeof(struct gfs2_meta_header))
 	                             * GFS2_NBBY;
-	sdp->qcsize = LGFS2_DEFAULT_QCSIZE;
 
 	return 0;
 }

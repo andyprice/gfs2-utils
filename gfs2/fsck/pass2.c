@@ -1869,7 +1869,7 @@ static int build_statfs_change(struct lgfs2_inode *per_node, unsigned int n)
 
 static int build_quota_change(struct lgfs2_inode *per_node, unsigned int n)
 {
-	struct lgfs2_inode *ip = lgfs2_build_quota_change(per_node, n);
+	struct lgfs2_inode *ip = lgfs2_build_quota_change(per_node, n, LGFS2_DEFAULT_QCSIZE);
 
 	if (ip == NULL)
 		return 1;

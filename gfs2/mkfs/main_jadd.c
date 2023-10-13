@@ -33,6 +33,7 @@ struct jadd_opts {
 	unsigned orig_journals;
 	unsigned journals;
 	unsigned jsize;
+	unsigned qcsize;
 	unsigned quiet:1;
 	unsigned debug:1;
 };
@@ -153,7 +154,7 @@ static int decode_arguments(int argc, char *argv[], struct lgfs2_sbd *sdp, struc
 
 		switch (optchar) {
 		case 'c':
-			sdp->qcsize = atoi(optarg);
+			opts->qcsize = atoi(optarg);
 			break;
 		case 'D':
 			opts->debug = 1;
@@ -201,7 +202,7 @@ static int decode_arguments(int argc, char *argv[], struct lgfs2_sbd *sdp, struc
 	}
 	if (opts->debug) {
 		printf( _("Command line arguments:\n"));
-		printf("  qcsize = %u\n", sdp->qcsize);
+		printf("  qcsize = %u\n", opts->qcsize);
 		printf("  jsize = %u\n", opts->jsize);
 		printf("  journals = %u\n", sdp->md.journals);
 		printf("  quiet = %u\n", opts->quiet);
@@ -220,7 +221,7 @@ static int verify_arguments(struct lgfs2_sbd *sdp, struct jadd_opts *opts)
 		fprintf(stderr, _("bad journal size\n"));
 		return -1;
 	}
-	if (!sdp->qcsize || sdp->qcsize > 64) {
+	if (!opts->qcsize || opts->qcsize > 64) {
 		fprintf(stderr, _("bad quota change size\n"));
 		return -1;
 	}
@@ -349,7 +350,7 @@ static int add_qc(struct lgfs2_sbd *sdp, struct jadd_opts *opts)
 	int fd, error = 0;
 	char new_name[256], *buf;
 	unsigned int blocks =
-		sdp->qcsize << (20 - sdp->sd_bsize_shift);
+		opts->qcsize << (20 - sdp->sd_bsize_shift);
 	unsigned int x;
 	struct gfs2_meta_header mh;
 
@@ -616,14 +617,14 @@ static int check_fit(struct lgfs2_sbd *sdp, struct jadd_opts *opts)
 	uint64_t blks_per_j, total_blks;
 
 	blks_per_j = 1 + 1 +
-		lgfs2_space_for_data(sdp, sdp->sd_bsize, sdp->qcsize << 20) +
+		lgfs2_space_for_data(sdp, sdp->sd_bsize, opts->qcsize << 20) +
 		lgfs2_space_for_data(sdp, sdp->sd_bsize, opts->jsize << 20);
 	total_blks = opts->journals * blks_per_j;
 
 	if (total_blks > (sdp->blks_total - sdp->blks_alloced)) {
 		printf( _("\nInsufficient space on the device to add %u %uMB "
 			  "journals (%uMB QC size)\n\n"),
-			opts->journals, opts->jsize, sdp->qcsize);
+			opts->journals, opts->jsize, opts->qcsize);
 		printf( _("Required space  : %*"PRIu64" blocks (%"PRIu64" blocks per "
 			  "journal)\n"), 10, total_blks, blks_per_j);
 		printf( _("Available space : %*"PRIu64" blocks\n\n"), 10,
@@ -649,7 +650,7 @@ int main(int argc, char *argv[])
 
 	memset(sdp, 0, sizeof(struct lgfs2_sbd));
 	opts.jsize = LGFS2_DEFAULT_JSIZE;
-	sdp->qcsize = LGFS2_DEFAULT_QCSIZE;
+	opts.qcsize = LGFS2_DEFAULT_QCSIZE;
 	opts.journals = 1;
 
 	ret = decode_arguments(argc, argv, sdp, &opts);

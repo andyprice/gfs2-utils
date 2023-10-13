@@ -756,7 +756,7 @@ static int build_per_node(struct lgfs2_sbd *sdp, struct mkfs_opts *opts)
 		lgfs2_inode_put(&ip);
 
 		/* coverity[identity_transfer:SUPPRESS] False positive */
-		ip = lgfs2_build_quota_change(per_node, j);
+		ip = lgfs2_build_quota_change(per_node, j, LGFS2_DEFAULT_QCSIZE);
 		if (ip == NULL) {
 			fprintf(stderr, _("Error building '%s': %s\n"), "quota_change",
 			        strerror(errno));
@@ -1094,7 +1094,6 @@ static int sbd_init(struct lgfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsiz
 	sdp->sd_time = time(NULL);
 	sdp->rgtree.osi_node = NULL;
 	sdp->rgsize = opts->rgsize;
-	sdp->qcsize = opts->qcsize;
 	sdp->md.journals = opts->journals;
 	sdp->device_fd = opts->dev.fd;
 	sdp->sd_bsize = bsize;
@@ -1281,7 +1280,7 @@ int main(int argc, char *argv[])
 	if (opts.debug) {
 		printf(_("File system options:\n"));
 		printf("  bsize = %u\n", sbd.sd_bsize);
-		printf("  qcsize = %u\n", sbd.qcsize);
+		printf("  qcsize = %u\n", opts.qcsize);
 		printf("  jsize = %u\n", opts.jsize);
 		printf("  journals = %u\n", sbd.md.journals);
 		printf("  proto = %s\n", opts.lockproto);

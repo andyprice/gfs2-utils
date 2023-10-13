@@ -318,13 +318,13 @@ struct lgfs2_inode *lgfs2_build_statfs_change(struct lgfs2_inode *per_node, unsi
 	return ip;
 }
 
-struct lgfs2_inode *lgfs2_build_quota_change(struct lgfs2_inode *per_node, unsigned int j)
+struct lgfs2_inode *lgfs2_build_quota_change(struct lgfs2_inode *per_node, unsigned int j, unsigned int size_mb)
 {
 	struct lgfs2_sbd *sdp = per_node->i_sbd;
 	struct gfs2_meta_header mh;
 	char name[256];
 	struct lgfs2_inode *ip;
-	unsigned int blocks = sdp->qcsize << (20 - sdp->sd_bsize_shift);
+	unsigned int blocks = size_mb << (20 - sdp->sd_bsize_shift);
 	unsigned int x;
 	unsigned int hgt;
 	struct lgfs2_buffer_head *bh;

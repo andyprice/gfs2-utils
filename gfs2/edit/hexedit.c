@@ -813,7 +813,6 @@ static void read_superblock(int fd)
 	sbd.device_fd = fd;
 	bh = lgfs2_bread(&sbd, 0x10);
 	sbd.rgsize = LGFS2_DEFAULT_RGSIZE;
-	sbd.qcsize = LGFS2_DEFAULT_QCSIZE;
 	sbd.sd_time = time(NULL);
 	sbd.rgtree.osi_node = NULL;
 	lgfs2_sb_in(&sbd, bh->b_data);

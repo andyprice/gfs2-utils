@@ -1520,7 +1520,7 @@ int build_per_node(struct fsck_cx *cx)
 		lgfs2_inode_put(&ip);
 
 		/* coverity[identity_transfer:SUPPRESS] False positive */
-		ip = lgfs2_build_quota_change(per_node, j);
+		ip = lgfs2_build_quota_change(per_node, j, LGFS2_DEFAULT_QCSIZE);
 		if (ip == NULL) {
 			log_err(_("Error building '%s': %s\n"), "quota_change",
 			        strerror(errno));
