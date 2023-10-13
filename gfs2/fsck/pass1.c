@@ -1348,7 +1348,7 @@ static int handle_di(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 static int check_system_inode(struct fsck_cx *cx,
 			      struct lgfs2_inode **sysinode,
 			      const char *filename,
-			      int builder(struct lgfs2_sbd *sdp), int isdir,
+			      int builder(struct fsck_cx *cx), int isdir,
 			      struct lgfs2_inode *sysdir, int needs_sysbit)
 {
 	uint64_t iblock = 0;
@@ -1421,7 +1421,7 @@ static int check_system_inode(struct fsck_cx *cx,
 		if (query(cx, _("Create new %s system inode? (y/n) "), filename)) {
 			log_err( _("Rebuilding system file \"%s\"\n"),
 				 filename);
-			error = builder(cx->sdp);
+			error = builder(cx);
 			if (error || *sysinode == NULL) {
 				log_err( _("Error rebuilding system "
 					   "inode %s: Cannot continue\n"),
@@ -1465,8 +1465,9 @@ static int check_system_inode(struct fsck_cx *cx,
 	return error ? error : err;
 }
 
-static int build_a_journal(struct lgfs2_sbd *sdp)
+static int build_a_journal(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	char name[256];
 	int err = 0;
 
@@ -1482,8 +1483,9 @@ static int build_a_journal(struct lgfs2_sbd *sdp)
 	return 0;
 }
 
-int build_per_node(struct lgfs2_sbd *sdp)
+int build_per_node(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct lgfs2_inode *per_node;
 	unsigned int j;
 
@@ -1532,40 +1534,50 @@ int build_per_node(struct lgfs2_sbd *sdp)
 	return 0;
 }
 
-static int build_inum(struct lgfs2_sbd *sdp)
+static int build_inum(struct fsck_cx *cx)
 {
-	struct lgfs2_inode *ip = lgfs2_build_inum(sdp);
+	struct lgfs2_inode *ip = lgfs2_build_inum(cx->sdp);
 	if (ip == NULL)
 		return -1;
 	lgfs2_inode_put(&ip);
 	return 0;
 }
 
-static int build_statfs(struct lgfs2_sbd *sdp)
+static int build_statfs(struct fsck_cx *cx)
 {
-	struct lgfs2_inode *ip = lgfs2_build_statfs(sdp);
+	struct lgfs2_inode *ip = lgfs2_build_statfs(cx->sdp);
 	if (ip == NULL)
 		return -1;
 	lgfs2_inode_put(&ip);
 	return 0;
 }
 
-static int build_rindex(struct lgfs2_sbd *sdp)
+static int build_rindex(struct fsck_cx *cx)
 {
-	struct lgfs2_inode *ip = lgfs2_build_rindex(sdp);
+	struct lgfs2_inode *ip = lgfs2_build_rindex(cx->sdp);
 	if (ip == NULL)
 		return -1;
 	lgfs2_inode_put(&ip);
 	return 0;
 }
 
-static int build_quota(struct lgfs2_sbd *sdp)
+static int build_quota(struct fsck_cx *cx)
 {
-	struct lgfs2_inode *ip = lgfs2_build_quota(sdp);
+	struct lgfs2_inode *ip = lgfs2_build_quota(cx->sdp);
 	if (ip == NULL)
 		return -1;
 	lgfs2_inode_put(&ip);
 	return 0;
+}
+
+int build_root(struct fsck_cx *cx)
+{
+	return lgfs2_build_root(cx->sdp);
+}
+
+int build_metadir(struct fsck_cx *cx)
+{
+	return lgfs2_build_master(cx->sdp);
 }
 
 static int check_system_inodes(struct fsck_cx *cx)
@@ -1579,7 +1591,7 @@ static int check_system_inodes(struct fsck_cx *cx)
 	fsck_blockmap_set(cx, sdp->master_dir, sdp->master_dir->i_num.in_addr,
 			  "master", GFS2_BLKST_DINODE);
 	if (check_system_inode(cx, &sdp->master_dir, "master",
-			       lgfs2_build_master, 1, NULL, 1)) {
+			       build_metadir, 1, NULL, 1)) {
 		stack;
 		return -1;
 	}
@@ -1587,7 +1599,7 @@ static int check_system_inodes(struct fsck_cx *cx)
 	   for master, since it has no parent. */
 	fsck_blockmap_set(cx, sdp->md.rooti, sdp->md.rooti->i_num.in_addr,
 			  "root", GFS2_BLKST_DINODE);
-	if (check_system_inode(cx, &sdp->md.rooti, "root", lgfs2_build_root, 1,
+	if (check_system_inode(cx, &sdp->md.rooti, "root", build_root, 1,
 			       NULL, 0)) {
 		stack;
 		return -1;

@@ -831,8 +831,9 @@ static struct metawalk_fxns jindex_check_fxns = {
 	.check_dentry = check_jindex_dent,
 };
 
-int build_jindex(struct lgfs2_sbd *sdp)
+int build_jindex(struct fsck_cx *cx)
 {
+	struct lgfs2_sbd *sdp = cx->sdp;
 	struct lgfs2_inode *jindex;
 
 	jindex = lgfs2_createi(sdp->master_dir, "jindex", S_IFDIR | 0700,
@@ -882,7 +883,7 @@ int init_jindex(struct fsck_cx *cx, int allow_ji_rebuild)
 			return -1;
 		}
 
-		err = build_jindex(sdp);
+		err = build_jindex(cx);
 		if (err) {
 			log_crit(_("Error %d rebuilding jindex\n"), err);
 			return err;
@@ -912,7 +913,7 @@ int init_jindex(struct fsck_cx *cx, int allow_ji_rebuild)
 		lgfs2_inode_put(&sdp->md.jiinode);
 		lgfs2_dirent_del(sdp->master_dir, "jindex", 6);
 		log_err(_("Corrupt journal index was removed.\n"));
-		error = build_jindex(sdp);
+		error = build_jindex(cx);
 		if (error) {
 			log_err(_("Error rebuilding journal "
 				  "index: Cannot continue.\n"));

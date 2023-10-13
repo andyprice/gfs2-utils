@@ -204,6 +204,8 @@ extern struct special_blocks *blockfind(struct special_blocks *blist, uint64_t n
 extern void special_set(struct special_blocks *blocklist, uint64_t block);
 extern void special_free(struct special_blocks *blist);
 extern int sb_fixed;
-extern int build_per_node(struct lgfs2_sbd *sdp);
+extern int build_per_node(struct fsck_cx *cx);
+extern int build_metadir(struct fsck_cx *cx);
+extern int build_root(struct fsck_cx *cx);
 
 #endif /* _FSCK_H */

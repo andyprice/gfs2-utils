@@ -1880,7 +1880,7 @@ static int build_quota_change(struct lgfs2_inode *per_node, unsigned int n)
 /* Check system directory inode                                           */
 /* Should work for all system directories: root, master, jindex, per_node */
 static int check_system_dir(struct fsck_cx *cx, struct lgfs2_inode *sysinode, const char *dirname,
-		     int builder(struct lgfs2_sbd *sdp))
+		     int builder(struct fsck_cx *cx))
 {
 	uint64_t iblock = 0;
 	struct dir_status ds = {0};
@@ -2095,13 +2095,13 @@ int pass2(struct fsck_cx *cx)
 	}
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 		return FSCK_OK;
-	if (check_system_dir(cx, sdp->master_dir, "master", lgfs2_build_master)) {
+	if (check_system_dir(cx, sdp->master_dir, "master", build_metadir)) {
 		stack;
 		return FSCK_ERROR;
 	}
 	if (skip_this_pass || fsck_abort) /* if asked to skip the rest */
 		return FSCK_OK;
-	if (check_system_dir(cx, sdp->md.rooti, "root", lgfs2_build_root)) {
+	if (check_system_dir(cx, sdp->md.rooti, "root", build_root)) {
 		stack;
 		return FSCK_ERROR;
 	}

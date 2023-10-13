@@ -396,7 +396,7 @@ static int rebuild_sysdir(struct fsck_cx *cx)
 		}
 		sdp->master_dir->i_nlink++;
 	} else {
-		err = build_jindex(sdp);
+		err = build_jindex(cx);
 		if (err) {
 			log_crit(_("Error %d building jindex\n"), err);
 			exit(FSCK_ERROR);
@@ -417,7 +417,7 @@ static int rebuild_sysdir(struct fsck_cx *cx)
 		sdp->master_dir->i_nlink++;
 	} else {
 		/* coverity[double_free:SUPPRESS] */
-		err = build_per_node(sdp);
+		err = build_per_node(cx);
 		if (err) {
 			log_crit(_("Error %d building per_node directory\n"),
 			         err);
@@ -549,7 +549,7 @@ static void lookup_per_node(struct fsck_cx *cx, int allow_rebuild)
 		int err;
 
 		/* coverity[freed_arg:SUPPRESS] False positive */
-		err = build_per_node(sdp);
+		err = build_per_node(cx);
 		if (err) {
 			log_crit(_("Error %d rebuilding per_node directory\n"),
 				 err);
