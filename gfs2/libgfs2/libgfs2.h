@@ -315,9 +315,6 @@ struct lgfs2_sbd {
 	uint32_t sd_max_jheight;
 	uint64_t sd_heightsize[GFS2_MAX_META_HEIGHT];
 	uint64_t sd_jheightsize[GFS2_MAX_META_HEIGHT];
-
-	unsigned int rgsize;  /* Size of resource groups (in MB) */
-
 	int64_t sd_time;
 
 	struct lgfs2_dev_info dinfo;

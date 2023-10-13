@@ -1093,7 +1093,6 @@ static int sbd_init(struct lgfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsiz
 	memset(sdp, 0, sizeof(struct lgfs2_sbd));
 	sdp->sd_time = time(NULL);
 	sdp->rgtree.osi_node = NULL;
-	sdp->rgsize = opts->rgsize;
 	sdp->md.journals = opts->journals;
 	sdp->device_fd = opts->dev.fd;
 	sdp->sd_bsize = bsize;
@@ -1285,7 +1284,7 @@ int main(int argc, char *argv[])
 		printf("  journals = %u\n", sbd.md.journals);
 		printf("  proto = %s\n", opts.lockproto);
 		printf("  table = %s\n", opts.locktable);
-		printf("  rgsize = %u\n", sbd.rgsize);
+		printf("  rgsize = %u\n", opts.rgsize);
 		printf("  fssize = %"PRIu64"\n", opts.fssize);
 		printf("  sunit = %lu\n", opts.sunit);
 		printf("  swidth = %lu\n", opts.swidth);

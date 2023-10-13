@@ -364,7 +364,6 @@ int main(int argc, char *argv[])
 
 	memset(sdp, 0, sizeof(struct lgfs2_sbd));
 	sdp->sd_bsize = LGFS2_DEFAULT_BSIZE;
-	sdp->rgsize = -1;
 	sdp->md.journals = 1;
 	decode_arguments(argc, argv, sdp);
 

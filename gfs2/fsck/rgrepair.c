@@ -701,13 +701,13 @@ out:
  *
  * Returns: the number of RGs
  */
-static uint64_t how_many_rgrps(struct lgfs2_sbd *sdp, struct lgfs2_device *dev)
+static uint64_t how_many_rgrps(struct lgfs2_sbd *sdp, struct lgfs2_device *dev, unsigned rgsize)
 {
 	uint64_t n;
 	uint32_t rgblocks1, rgblocksn, bitblocks1, bitblocksn;
 
 	while (1) {
-		n = DIV_RU(dev->length, (sdp->rgsize << 20) / sdp->sd_bsize);
+		n = DIV_RU(dev->length, (rgsize << 20) / sdp->sd_bsize);
 
 		/* check to see if the rg length overflows max # bitblks */
 		bitblocksn = lgfs2_rgblocks2bitblocks(sdp->sd_bsize, dev->length / n, &rgblocksn);
@@ -717,22 +717,22 @@ static uint64_t how_many_rgrps(struct lgfs2_sbd *sdp, struct lgfs2_device *dev)
 		if (bitblocks1 <= 2149 && bitblocksn <= 2149)
 			break;
 
-		sdp->rgsize -= LGFS2_DEFAULT_RGSIZE; /* smaller rgs */
+		rgsize -= LGFS2_DEFAULT_RGSIZE; /* smaller rgs */
 
-		if (sdp->rgsize < LGFS2_DEFAULT_RGSIZE) {
+		if (rgsize < LGFS2_DEFAULT_RGSIZE) {
 			log_err(_("Cannot use the entire device with block size %u bytes.\n"),
 			        sdp->sd_bsize);
 			return 0;
 		}
 	}
-	log_debug("  rg sz = %"PRIu32"\n  nrgrp = %"PRIu64"\n", sdp->rgsize, n);
+	log_debug("  rg sz = %"PRIu32"\n  nrgrp = %"PRIu64"\n", rgsize, n);
 	return n;
 }
 
 /**
  * compute_rgrp_layout - figure out where the RG in a FS are
  */
-static struct osi_root compute_rgrp_layout(struct lgfs2_sbd *sdp)
+static struct osi_root compute_rgrp_layout(struct lgfs2_sbd *sdp, unsigned rgsize)
 {
 	struct lgfs2_device *dev;
 	struct lgfs2_rgrp_tree *rl, *rlast = NULL;
@@ -743,7 +743,7 @@ static struct osi_root compute_rgrp_layout(struct lgfs2_sbd *sdp)
 	dev = &sdp->device;
 
 	dev->length -= LGFS2_SB_ADDR(sdp) + 1;
-	nrgrp = how_many_rgrps(sdp, dev);
+	nrgrp = how_many_rgrps(sdp, dev, rgsize);
 	if (nrgrp == 0)
 		return (struct osi_root){NULL};
 	rglength = dev->length / nrgrp;
@@ -807,6 +807,7 @@ static int calc_rgrps(struct lgfs2_sbd *sdp)
 static int rindex_calculate(struct lgfs2_sbd *sdp, int *num_rgs)
 {
 	uint64_t num_rgrps = 0;
+	unsigned rgsize;
 
 	/* ----------------------------------------------------------------- */
 	/* Calculate how many RGs there are supposed to be based on the      */
@@ -821,17 +822,15 @@ static int rindex_calculate(struct lgfs2_sbd *sdp, int *num_rgs)
 	lgfs2_fix_device_geometry(sdp);
 
 	/* Try all possible rgrp sizes: 2048, 1024, 512, 256, 128, 64, 32 */
-	for (sdp->rgsize = LGFS2_DEFAULT_RGSIZE; sdp->rgsize >= 32;
-	     sdp->rgsize /= 2) {
-		num_rgrps = how_many_rgrps(sdp, &sdp->device);
+	for (rgsize = LGFS2_DEFAULT_RGSIZE; rgsize >= 32; rgsize /= 2) {
+		num_rgrps = how_many_rgrps(sdp, &sdp->device, rgsize);
 		if (num_rgrps == *num_rgs) {
-			log_info(_("rgsize must be: %u (0x%x)\n"),
-			        sdp->rgsize, sdp->rgsize);
+			log_info(_("rgsize must be: %u (0x%x)\n"), rgsize, rgsize);
 			break;
 		}
 	}
 	/* Compute the default resource group layout as mkfs would have done */
-	rgcalc = compute_rgrp_layout(sdp);
+	rgcalc = compute_rgrp_layout(sdp, rgsize);
 	if (calc_rgrps(sdp)) { /* Calculate but don't write to disk. */
 		fprintf(stderr, _("Failed to build resource groups\n"));
 		exit(-1);
