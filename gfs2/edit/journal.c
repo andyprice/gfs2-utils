@@ -12,7 +12,6 @@
 #include <errno.h>
 #include <curses.h>
 #include <term.h>
-#include <time.h>
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>

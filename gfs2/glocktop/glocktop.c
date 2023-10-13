@@ -16,7 +16,6 @@
 #include <dirent.h>
 #include <curses.h>
 #include <term.h>
-#include <sys/time.h>
 #include <string.h>
 #include <stdint.h>
 #include <inttypes.h>

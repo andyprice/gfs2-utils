@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "libgfs2.h"
 
@@ -39,6 +40,7 @@ int lgfs2_compute_heightsize(unsigned bsize, uint64_t *heightsize,
 int lgfs2_compute_constants(struct lgfs2_sbd *sdp)
 {
 	sdp->md.next_inum = 1;
+	sdp->sd_time = time(NULL);
 
 	sdp->sd_bsize_shift = ffs(sdp->sd_bsize) - 1;
 	sdp->sd_fsb2bb_shift = sdp->sd_bsize_shift -

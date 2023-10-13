@@ -12,7 +12,6 @@
 #include <libintl.h>
 #include <locale.h>
 #include <sys/time.h>
-#include <time.h>
 #define _(String) gettext(String)
 #include <syslog.h>
 

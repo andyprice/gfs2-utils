@@ -9,14 +9,12 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <time.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <mntent.h>
 #include <ctype.h>
 #include <poll.h>
 #include <signal.h>
-#include <sys/time.h>
 #include <libintl.h>
 #include <sys/ioctl.h>
 #include <limits.h>
@@ -1091,7 +1089,6 @@ static int default_journal_size(unsigned bsize, uint64_t num_blocks)
 static int sbd_init(struct lgfs2_sbd *sdp, struct mkfs_opts *opts, unsigned bsize)
 {
 	memset(sdp, 0, sizeof(struct lgfs2_sbd));
-	sdp->sd_time = time(NULL);
 	sdp->rgtree.osi_node = NULL;
 	sdp->md.journals = opts->journals;
 	sdp->device_fd = opts->dev.fd;

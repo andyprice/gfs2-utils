@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include <libintl.h>
 #include <errno.h>
-#include <time.h>
 
 #define _(String) gettext(String)
 

@@ -12,7 +12,6 @@
 #include <errno.h>
 #include <curses.h>
 #include <term.h>
-#include <time.h>
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
@@ -812,7 +811,6 @@ static void read_superblock(int fd)
 	sbd.sd_bsize = LGFS2_DEFAULT_BSIZE;
 	sbd.device_fd = fd;
 	bh = lgfs2_bread(&sbd, 0x10);
-	sbd.sd_time = time(NULL);
 	sbd.rgtree.osi_node = NULL;
 	lgfs2_sb_in(&sbd, bh->b_data);
 	mh = (struct gfs2_meta_header *)bh->b_data;

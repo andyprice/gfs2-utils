@@ -4,7 +4,6 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 #include <libintl.h>
 #define _(String) gettext(String)
