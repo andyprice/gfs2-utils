@@ -31,9 +31,7 @@ struct lgfs2_buffer_head *lgfs2_bget(struct lgfs2_sbd *sdp, uint64_t num)
 
 	bh->b_blocknr = num;
 	bh->sdp = sdp;
-	bh->iov.iov_base = (char *)bh + sizeof(struct lgfs2_buffer_head);
-	bh->iov.iov_len = sdp->sd_bsize;
-
+	bh->b_data = (char *)bh + sizeof(struct lgfs2_buffer_head);
 	return bh;
 }
 
@@ -60,8 +58,9 @@ struct lgfs2_buffer_head *__lgfs2_bread(struct lgfs2_sbd *sdp, uint64_t num, int
 int lgfs2_bwrite(struct lgfs2_buffer_head *bh)
 {
 	struct lgfs2_sbd *sdp = bh->sdp;
+	off_t offset = sdp->sd_bsize * bh->b_blocknr;
 
-	if (pwritev(sdp->device_fd, &bh->iov, 1, bh->b_blocknr * sdp->sd_bsize) != bh->iov.iov_len)
+	if (pwrite(sdp->device_fd, bh->b_data, sdp->sd_bsize, offset) != sdp->sd_bsize)
 		return -1;
 	bh->b_modified = 0;
 	return 0;

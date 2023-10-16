@@ -221,10 +221,7 @@ extern void lgfs2_attach_rgrps(struct lgfs2_sbd *sdp, lgfs2_rgrps_t rgs);
 struct lgfs2_buffer_head {
 	osi_list_t b_altlist; /* alternate list */
 	uint64_t b_blocknr;
-	union {
-		char *b_data;
-		struct iovec iov;
-	};
+	char *b_data;
 	struct lgfs2_sbd *sdp;
 	int b_modified;
 };
