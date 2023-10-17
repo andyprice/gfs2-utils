@@ -987,6 +987,7 @@ static void peruse_user_dinode(struct fsck_cx *cx, struct lgfs2_inode *ip)
 		log_warn(_("Root directory copied from the journal.\n"));
 		return;
 	}
+	/* coverity[check_after_deref:SUPPRESS] */
 	while (ip) {
 		/* coverity[identity_transfer:SUPPRESS] */
 		parent_ip = lgfs2_lookupi(ip, "..", 2);
@@ -1100,6 +1101,8 @@ static int peruse_metadata(struct fsck_cx *cx, uint64_t startblock)
 			continue;
 		}
 		ip = lgfs2_inode_get(sdp, bh);
+		if (ip == NULL)
+			return -1;
 		ip->bh_owned = 1; /* lgfs2_inode_put() will free the bh */
 		if (ip->i_flags & GFS2_DIF_SYSTEM)
 			peruse_system_dinode(cx, ip);
