@@ -1177,9 +1177,11 @@ static int probe_contents(struct mkfs_dev *dev)
 		return 0;
 
 	if (!blkid_probe_lookup_value(pr, "TYPE", &contents, NULL)) {
-		printf(_("It appears to contain an existing filesystem (%s)\n"), contents);
+		printf(_("%s appears to contain an existing filesystem (%s)\n"),
+		       dev->path, contents);
 	} else if (!blkid_probe_lookup_value(pr, "PTTYPE", &contents, NULL)) {
-		printf(_("It appears to contain a partition table (%s).\n"), contents);
+		printf(_("%s appears to contain a partition table (%s).\n"),
+		       dev->path, contents);
 	}
 
 	if (!S_ISREG(dev->stat.st_mode)) {
