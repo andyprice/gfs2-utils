@@ -74,5 +74,6 @@ Script                 | Default install path
 gfs2_withdraw_helper   | /usr/libexec/
 
 See also [doc/README.contributing](doc/README.contributing) for details on
-submitting patches.
+submitting patches and [doc/DeveloperIntro.md](doc/DeveloperIntro.md) for a
+more in-depth look at how gfs2-utils is maintained.
 
