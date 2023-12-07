@@ -59,7 +59,9 @@ Be sure to reference any relevant bug reports in your long description, e.g.
     Ref: rhbz#012345
     Fixes: rhbz#98765
 
-Please send patches to <gfs2@lists.linux.dev>. We recommend using
-`git format-patch' to generate patch emails from your commits and `git
-send-email' for sending them to the list. See the git documentation for
-details.
+Patches can be submitted via email or pull requests against
+https://pagure.io/gfs2-utils
+
+Please send patch emails to <gfs2@lists.linux.dev>.  We recommend using `git
+format-patch' to generate patch emails from your commits and `git send-email'
+for sending them to the list. See the git documentation for details.
