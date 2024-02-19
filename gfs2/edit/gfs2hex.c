@@ -236,21 +236,22 @@ uint64_t do_leaf_extended(char *dlebuf, struct iinfo *indir)
 
 static void do_eattr_extended(char *buf)
 {
-	struct gfs2_ea_header *ea;
-	uint32_t rec_len = 0;
-	unsigned int x;
+	uint64_t x = sizeof(struct gfs2_meta_header);
 
 	eol(0);
 	print_gfs2("Eattr Entries:");
 	eol(0);
 
-	for (x = sizeof(struct gfs2_meta_header); x < sbd.sd_bsize; x += rec_len)
-	{
+	while (x < sbd.sd_bsize - sizeof(struct gfs2_ea_header)) {
+		struct gfs2_ea_header *ea;
+
+		ea = (struct gfs2_ea_header *)(buf + x);
+		print_gfs2("0x%"PRIx64":", x);
 		eol(0);
-		buf += x;
-		ea = (struct gfs2_ea_header *)buf;
 		ea_header_print(ea);
-		rec_len = be32_to_cpu(ea->ea_rec_len);
+		if (ea->ea_flags & GFS2_EAFLAG_LAST)
+			break;
+		x += be32_to_cpu(ea->ea_rec_len);
 	}
 }
 
