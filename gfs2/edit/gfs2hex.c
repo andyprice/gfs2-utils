@@ -248,7 +248,7 @@ static void do_eattr_extended(char *buf)
 		ea = (struct gfs2_ea_header *)(buf + x);
 		print_gfs2("0x%"PRIx64":", x);
 		eol(0);
-		ea_header_print(ea);
+		ea_header_print(ea, sbd.sd_bsize - x);
 		if (ea->ea_flags & GFS2_EAFLAG_LAST)
 			break;
 		x += be32_to_cpu(ea->ea_rec_len);

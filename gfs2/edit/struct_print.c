@@ -238,7 +238,12 @@ void leaf_print(void *lfp)
 	printbe64(lf, lf_sec);
 }
 
-void ea_header_print(void *eap)
+/**
+ * Print an extended attribute.
+ * eap: Pointer to the start of the extended attribute.
+ * lim: Record length limit. Used to check ea_name_len.
+ */
+void ea_header_print(void *eap, unsigned lim)
 {
 	char buf[GFS2_EA_MAX_NAME_LEN + 1];
 	struct gfs2_ea_header *ea = eap;
@@ -250,6 +255,9 @@ void ea_header_print(void *eap)
 	print8(ea, ea_type);
 	print8(ea, ea_flags);
 	print8(ea, ea_num_ptrs);
+
+	if (sizeof(*ea) + len >= lim)
+		return;
 
 	if (len > GFS2_EA_MAX_NAME_LEN)
 		len = GFS2_EA_MAX_NAME_LEN;
