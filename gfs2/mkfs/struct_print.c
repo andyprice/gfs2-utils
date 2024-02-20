@@ -145,26 +145,6 @@ void leaf_print(void *lfp)
 	printbe64(lf, lf_sec);
 }
 
-void ea_header_print(void *eap)
-{
-	char buf[GFS2_EA_MAX_NAME_LEN + 1];
-	struct gfs2_ea_header *ea = eap;
-	unsigned len = ea->ea_name_len;
-
-	printbe32(ea, ea_rec_len);
-	printbe32(ea, ea_data_len);
-	print8(ea, ea_name_len);
-	print8(ea, ea_type);
-	print8(ea, ea_flags);
-	print8(ea, ea_num_ptrs);
-
-	if (len > GFS2_EA_MAX_NAME_LEN)
-		len = GFS2_EA_MAX_NAME_LEN;
-	memcpy(buf, ea + 1, len);
-	buf[len] = '\0';
-	print_it("  name", "%s", NULL, buf);
-}
-
 void log_header_print(void *lhp)
 {
 	struct gfs2_log_header *lh = lhp;

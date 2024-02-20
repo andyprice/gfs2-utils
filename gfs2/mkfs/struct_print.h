@@ -11,7 +11,6 @@ extern void log_descriptor_print(void *ldp);
 extern void quota_print(void *qp);
 extern void quota_change_print(void *qcp);
 extern void statfs_change_print(void *scp);
-extern void ea_header_print(void *eap);
 extern void leaf_print(void *lfp);
 extern void rindex_print(void *rip);
 extern void rgrp_print(void *rgp);
