@@ -1241,9 +1241,8 @@ static void restoremeta_usage(void)
 	fprintf(stderr, "gfs2_edit restoremeta <metadata_file> <block_device>\n");
 }
 
-static int restore_init(const char *path, struct metafd *mfd, int printonly)
+static int restore_init(const char *path, struct metafd *mfd, struct savemeta *sm, int printonly)
 {
-	struct savemeta sm = {0};
 	struct gfs2_sb rsb;
 	uint16_t sb_siglen;
 	char *end;
@@ -1271,7 +1270,7 @@ static int restore_init(const char *path, struct metafd *mfd, int printonly)
 		return -1;
 	}
 	bp = restore_buf;
-	ret = parse_header(bp, &sm);
+	ret = parse_header(bp, sm);
 	if (ret == 0) {
 		bp = restore_buf + sizeof(struct savemeta_header);
 		restore_off = sizeof(struct savemeta_header);
@@ -1297,10 +1296,10 @@ static int restore_init(const char *path, struct metafd *mfd, int printonly)
 	if (ret != 0)
 		return ret;
 
-	if (sm.sm_fs_bytes > 0) {
-		sbd.fssize = sm.sm_fs_bytes / sbd.sd_bsize;
+	if (sm->sm_fs_bytes > 0) {
+		sbd.fssize = sm->sm_fs_bytes / sbd.sd_bsize;
 		printf("Saved file system size is %"PRIu64" blocks, %.2fGB\n",
-		       sbd.fssize, sm.sm_fs_bytes / ((float)(1 << 30)));
+		       sbd.fssize, sm->sm_fs_bytes / ((float)(1 << 30)));
 	}
 	printf("Block size is %uB\n", sbd.sd_bsize);
 	printf("This is gfs2 metadata.\n");
@@ -1320,6 +1319,8 @@ static int restore_init(const char *path, struct metafd *mfd, int printonly)
 void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 {
 	struct metafd mfd = {0};
+	struct savemeta sm = {0};
+	struct stat st;
 	int error;
 
 	termlines = 0;
@@ -1344,7 +1345,7 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 				  optional block no */
 		printonly = check_keywords(out_device);
 
-	error = restore_init(in_fn, &mfd, printonly);
+	error = restore_init(in_fn, &mfd, &sm, printonly);
 	if (error != 0)
 		exit(error);
 
@@ -1354,6 +1355,23 @@ void restoremeta(const char *in_fn, const char *out_device, uint64_t printonly)
 	}
 
 	error = restore_data(sbd.device_fd, &mfd, printonly);
+
+	/* When there is a metadata header available, truncate to filesystem 
+	   size if our device_fd is a regular file */   
+	if (!printonly) {
+		if (fstat(sbd.device_fd, &st) == -1) {
+			fprintf(stderr, "Failed to stat %s: %s\n", out_device, strerror(errno));
+			error = errno;
+		}
+	
+		if (sm.sm_fs_bytes > 0 && S_ISREG(st.st_mode)) {
+			if (ftruncate(sbd.device_fd, sm.sm_fs_bytes) != 0) {
+				fprintf(stderr, "Failed to truncate: %s, %s\n", out_device, strerror(errno));
+				error = errno;
+			}
+		}
+	}
+
 	printf("File %s %s %s.\n", in_fn,
 	       (printonly ? "print" : "restore"),
 	       (error ? "error" : "successful"));

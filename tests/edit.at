@@ -61,3 +61,13 @@ AT_CHECK([$GFS_MKFS -p lock_nolock $GFS_TGT], 0, [ignore], [ignore])
 AT_CHECK([gfs2_edit savemeta -z0 $GFS_TGT /dev/null], 0, [ignore], [ignore])
 AT_CHECK([gfs2_edit savemeta $GFS_TGT /dev/null], 0, [ignore], [ignore])
 AT_CLEANUP
+
+AT_SETUP([Truncate on restoremeta])
+AT_KEYWORDS(gfs2_edit edit)
+GFS_TGT_REGEN
+AT_CHECK([$GFS_MKFS -p lock_nolock $GFS_TGT], 0, [ignore], [ignore])
+AT_CHECK([gfs2_edit savemeta $GFS_TGT test.meta], 0, [ignore], [ignore])
+AT_CHECK([truncate -s 10K test.file], 0, [ignore], [ignore])
+AT_CHECK([gfs2_edit restoremeta test.meta test.file], 0, [ignore], [ignore])
+AT_CHECK([fsck.gfs2 -n test.file], 0, [ignore], [ignore])
+AT_CLEANUP
