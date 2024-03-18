@@ -466,6 +466,21 @@ static int opts_get(int argc, char *argv[], struct mkfs_opts *opts)
 	return 0;
 }
 
+__attribute__((format(printf,3,4)))
+static void debug_print_ip(struct mkfs_opts *opts, struct lgfs2_inode *ip, const char *fmt, ...)
+{
+	va_list ap;
+
+	if (!opts->debug)
+		return;
+
+	va_start(ap, fmt);
+	vprintf(fmt, ap);
+	va_end(ap);
+	dinode_print(ip->i_bh->b_data);
+	printf("\n");
+}
+
 /**
  * Make sure the GFS2 is set up to use the right lock protocol
  * @lockproto: the lock protocol to mount
@@ -733,10 +748,7 @@ static int build_per_node(struct lgfs2_sbd *sdp, struct mkfs_opts *opts)
 			lgfs2_inode_put(&per_node);
 			return 1;
 		}
-		if (opts->debug) {
-			printf("\nInum Range %u:\n", j);
-			dinode_print(ip->i_bh->b_data);
-		}
+		debug_print_ip(opts, ip, "inum_range%u:", j);
 		lgfs2_inode_put(&ip);
 
 		/* coverity[identity_transfer:SUPPRESS] False positive */
@@ -747,10 +759,7 @@ static int build_per_node(struct lgfs2_sbd *sdp, struct mkfs_opts *opts)
 			lgfs2_inode_put(&per_node);
 			return 1;
 		}
-		if (opts->debug) {
-			printf("\nStatFS Change %u:\n", j);
-			dinode_print(ip->i_bh->b_data);
-		}
+		debug_print_ip(opts, ip, "statfs_change%u:", j);
 		lgfs2_inode_put(&ip);
 
 		/* coverity[identity_transfer:SUPPRESS] False positive */
@@ -762,16 +771,10 @@ static int build_per_node(struct lgfs2_sbd *sdp, struct mkfs_opts *opts)
 			lgfs2_inode_put(&per_node);
 			return 1;
 		}
-		if (opts->debug) {
-			printf("\nQuota Change %u:\n", j);
-			dinode_print(ip->i_bh->b_data);
-		}
+		debug_print_ip(opts, ip, "quota_change%u:", j);
 		lgfs2_inode_put(&ip);
 	}
-	if (opts->debug) {
-		printf("\nper_node:\n");
-		dinode_print(per_node->i_bh->b_data);
-	}
+	debug_print_ip(opts, per_node, "per_node:");
 	lgfs2_inode_put(&per_node);
 	return 0;
 }
@@ -1047,10 +1050,7 @@ static int create_jindex(struct lgfs2_sbd *sdp, struct mkfs_opts *opts, struct l
 		fprintf(stderr, _("Error building '%s': %s\n"), "jindex", strerror(errno));
 		return 1;
 	}
-	if (opts->debug) {
-		printf("Jindex:\n");
-		dinode_print(jindex->i_bh->b_data);
-	}
+	debug_print_ip(opts, jindex, "jindex:");
 	lgfs2_inode_put(&jindex);
 	return 0;
 }
@@ -1327,10 +1327,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, _("Error building '%s': %s\n"), "master", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	if (opts.debug) {
-		printf("Metafs inode:\n");
-		dinode_print(sbd.master_dir->i_bh->b_data);
-	}
+	debug_print_ip(&opts, sbd.master_dir, "master:");
 	sbd.sd_meta_dir = sbd.master_dir->i_num;
 
 	error = create_jindex(&sbd, &opts, mkfs_journals);
@@ -1347,28 +1344,19 @@ int main(int argc, char *argv[])
 		fprintf(stderr, _("Error building '%s': %s\n"), "inum", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	if (opts.debug) {
-		printf("\nInum Inode:\n");
-		dinode_print(sbd.md.inum->i_bh->b_data);
-	}
+	debug_print_ip(&opts, sbd.md.inum, "inum:");
 	sbd.md.statfs = lgfs2_build_statfs(&sbd);
 	if (sbd.md.statfs == NULL) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "statfs", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	if (opts.debug) {
-		printf("\nStatFS Inode:\n");
-		dinode_print(sbd.md.statfs->i_bh->b_data);
-	}
+	debug_print_ip(&opts, sbd.md.statfs, "statfs:");
 	ip = lgfs2_build_rindex(&sbd);
 	if (ip == NULL) {
 		fprintf(stderr, _("Error building '%s': %s\n"), "rindex", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	if (opts.debug) {
-		printf("\nResource Index:\n");
-		dinode_print(ip->i_bh->b_data);
-	}
+	debug_print_ip(&opts, ip, "rindex:");
 	lgfs2_inode_put(&ip);
 	if (!opts.quiet) {
 		printf("%s", _("Creating quota file: "));
@@ -1379,10 +1367,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, _("Error building '%s': %s\n"), "quota", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	if (opts.debug) {
-		printf("\nQuota:\n");
-		dinode_print(ip->i_bh->b_data);
-	}
+	debug_print_ip(&opts, ip, "quota:");
 	lgfs2_inode_put(&ip);
 	if (!opts.quiet)
 		printf("%s", _("Done\n"));
@@ -1392,10 +1377,7 @@ int main(int argc, char *argv[])
 		sbd.md.rooti->i_flags |= GFS2_DIF_INHERIT_JDATA;
 		lgfs2_dinode_out(sbd.md.rooti, sbd.md.rooti->i_bh->b_data);
 	}
-	if (opts.debug) {
-		printf("\nRoot directory:\n");
-		dinode_print(sbd.md.rooti->i_bh->b_data);
-	}
+	debug_print_ip(&opts, sbd.md.rooti, "root:");
 	sbd.sd_root_dir = sbd.md.rooti->i_num;
 
 	strncpy(sbd.sd_lockproto, opts.lockproto, GFS2_LOCKNAME_LEN - 1);
@@ -1405,12 +1387,13 @@ int main(int argc, char *argv[])
 
 	lgfs2_init_inum(&sbd);
 	if (opts.debug)
-		printf("\nNext Inum: %"PRIu64"\n", sbd.md.next_inum);
+		printf("Next inum: %"PRIu64"\n", sbd.md.next_inum);
 
 	lgfs2_init_statfs(&sbd, &sc);
 	if (opts.debug) {
-		printf("\nStatfs:\n");
+		printf("Statfs:\n");
 		statfs_change_print(&sc);
+		printf("\n");
 	}
 	lgfs2_inode_put(&sbd.md.rooti);
 	lgfs2_inode_put(&sbd.master_dir);
