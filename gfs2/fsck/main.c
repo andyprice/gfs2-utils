@@ -45,8 +45,7 @@ static void usage(char *name)
 
 static void version(void)
 {
-	printf( _("GFS2 fsck %s (built %s %s)\n"),
-	       VERSION, __DATE__, __TIME__);
+	printf("fsck.gfs2 " VERSION "\n");
 	printf(REDHAT_COPYRIGHT "\n");
 }
 

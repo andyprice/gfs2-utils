@@ -172,8 +172,7 @@ static int decode_arguments(int argc, char *argv[], struct lgfs2_sbd *sdp, struc
 			opts->quiet = 1;
 			break;
 		case 'V':
-			printf("gfs2_jadd %s (built %s %s)\n", VERSION,
-			       __DATE__, __TIME__);
+			printf("gfs2_jadd " VERSION "\n");
 			printf(REDHAT_COPYRIGHT "\n");
 			return 1;
 		case ':':

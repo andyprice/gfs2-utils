@@ -434,8 +434,7 @@ static int opts_get(int argc, char *argv[], struct mkfs_opts *opts)
 			opts->got_uuid = 1;
 			break;
 		case 'V':
-			printf("mkfs.gfs2 %s (built %s %s)\n", VERSION,
-			       __DATE__, __TIME__);
+			printf("mkfs.gfs2 " VERSION "\n");
 			printf(REDHAT_COPYRIGHT "\n");
 			return 1;
 			break;

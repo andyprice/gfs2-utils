@@ -1,3 +1,5 @@
+#include "clusterautoconfig.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <libgen.h>
@@ -58,7 +60,7 @@ static void usage(char *name)
 
 static void version(void)
 {
-	printf("tunegfs2 (%s %s)\n", __DATE__, __TIME__);
+	printf("tunegfs2" VERSION "\n");
 }
 
 #ifndef UNITTESTS

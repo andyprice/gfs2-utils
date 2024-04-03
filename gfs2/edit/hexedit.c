@@ -2140,8 +2140,7 @@ static void rg_repair(void)
 static void parameterpass1(int argc, char *argv[], int i)
 {
 	if (!strcasecmp(argv[i], "-V")) {
-		printf("%s version %s (built %s %s)\n",
-		       argv[0], VERSION, __DATE__, __TIME__);
+		printf("gfs2_edit " VERSION "\n");
 		printf("%s\n", REDHAT_COPYRIGHT);
 		exit(0);
 	}

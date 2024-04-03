@@ -99,8 +99,7 @@ static void decode_arguments(int argc, char *argv[], struct lgfs2_sbd *sdp)
 			override_device_size <<= 20;
 			break;
 		case 'V':
-			printf(_("%s %s (built %s %s)\n"), argv[0],
-			       VERSION, __DATE__, __TIME__);
+			printf("gfs2_grow " VERSION "\n");
 			printf(REDHAT_COPYRIGHT "\n");
 			exit(0);
 		case 'h':
