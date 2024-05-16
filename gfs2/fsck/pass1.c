@@ -55,7 +55,7 @@ static int blockmap_set(struct bmap *bmap, uint64_t bblock, int mark)
 }
 
 /*
- * _fsck_blockmap_set - Mark a block in the 4-bit blockmap and the 2-bit
+ * _fsck_blockmap_set - Mark a block in the 2-bit blockmap and the 2-bit
  *                      bitmap, and adjust free space accordingly.
  */
 static int _fsck_blockmap_set(struct fsck_cx *cx, struct lgfs2_inode *ip, uint64_t bblock,
