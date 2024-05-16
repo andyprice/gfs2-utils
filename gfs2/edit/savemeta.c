@@ -952,18 +952,29 @@ static void save_allocated_range(struct metafd *mfd, struct block_range *br)
 	free(br->buf);
 }
 
+static int uint64_cmp(const void *_a, const void *_b)
+{
+	const uint64_t a = *(uint64_t *)_a, b = *(uint64_t *)_b;
+
+	return (a < b) ? -1 : ((a > b) ? 1 : 0);
+}
+
 static void save_allocated(struct lgfs2_rgrp_tree *rgd, struct metafd *mfd)
 {
 	uint64_t blk = 0;
-	unsigned i, j, m;
+	unsigned i, j, m, n;
 	uint64_t *ibuf = malloc(sbd.sd_bsize * GFS2_NBBY * sizeof(uint64_t));
 
 	for (i = 0; i < rgd->rt_length; i++) {
 		struct block_range br = {0};
 
+		/* Dump linked as well as unlinked inodes. */
 		m = lgfs2_bm_scan(rgd, i, ibuf, GFS2_BLKST_DINODE);
+		n = lgfs2_bm_scan(rgd, i, ibuf + m, GFS2_BLKST_UNLINKED);
+		if (m && n)
+			qsort(ibuf, m + n, sizeof(*ibuf), uint64_cmp);
 
-		for (j = 0; j < m; j++) {
+		for (j = 0; j < m + n; j++) {
 			blk = ibuf[j];
 			if (br.start == 0) {
 				br.start = blk;
