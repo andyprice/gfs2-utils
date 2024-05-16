@@ -242,15 +242,11 @@ static void check_rgrp_integrity(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd
 				/* GFS2_BLKST_UNLINKED */
 				log_info(_("Unlinked dinode 0x%"PRIx64" found.\n"), diblock);
 				if (!asked) {
-					char msg[256];
-
 					asked = 1;
-					sprintf(msg,
-						_("Okay to reclaim free "
-						  "metadata in resource group "
-						  "%"PRIu64" (0x%"PRIx64")? (y/n)"),
-					        rgd->rt_addr, rgd->rt_addr);
-					if (query(cx, "%s", msg))
+					if (query(cx, _("Okay to reclaim free "
+							"metadata in resource group "
+							"%"PRIu64" (0x%"PRIx64")? (y/n)"),
+						  rgd->rt_addr, rgd->rt_addr))
 						*fixit = 1;
 				}
 				if (!(*fixit)) {
