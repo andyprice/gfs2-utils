@@ -444,7 +444,7 @@ extern int lgfs2_set_bitmap(lgfs2_rgrp_t rg, uint64_t blkno, int state);
 extern void lgfs2_find_metapath(struct lgfs2_inode *ip, uint64_t block, struct lgfs2_metapath *mp);
 extern void lgfs2_lookup_block(struct lgfs2_inode *ip, struct lgfs2_buffer_head *bh,
 			 unsigned int height, struct lgfs2_metapath *mp,
-			 int create, int *new, uint64_t *block);
+			 int create, int *is_new, uint64_t *block);
 extern struct lgfs2_inode *lgfs2_inode_get(struct lgfs2_sbd *sdp,
 				    struct lgfs2_buffer_head *bh);
 extern struct lgfs2_inode *lgfs2_inode_read(struct lgfs2_sbd *sdp, uint64_t di_addr);
@@ -476,7 +476,7 @@ extern struct lgfs2_inode *lgfs2_lookupi(struct lgfs2_inode *dip, const char *fi
 extern int lgfs2_dir_add(struct lgfs2_inode *dip, const char *filename, int len,
 		    struct lgfs2_inum *inum, unsigned int type);
 extern int lgfs2_dirent_del(struct lgfs2_inode *dip, const char *filename, int name_len);
-extern int lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *new, uint64_t *dblock,
+extern int lgfs2_block_map(struct lgfs2_inode *ip, uint64_t lblock, int *is_new, uint64_t *dblock,
                            uint32_t *extlen, int prealloc) __attribute__((warn_unused_result));
 extern int lgfs2_get_leaf_ptr(struct lgfs2_inode *dip, uint32_t index, uint64_t *ptr) __attribute__((warn_unused_result));
 extern int lgfs2_dir_split_leaf(struct lgfs2_inode *dip, uint32_t start, uint64_t leaf_no,

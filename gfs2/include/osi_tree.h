@@ -104,7 +104,7 @@ static inline void osi_insert_color(struct osi_node *node,
 
 		if (parent == gparent->osi_left) {
 			{
-				register struct osi_node *uncle = gparent->osi_right;
+				struct osi_node *uncle = gparent->osi_right;
 				if (uncle && osi_is_red(uncle)) {
 					osi_set_black(uncle);
 					osi_set_black(parent);
@@ -115,7 +115,7 @@ static inline void osi_insert_color(struct osi_node *node,
 			}
 
 			if (parent->osi_right == node) {
-				register struct osi_node *tmp;
+				struct osi_node *tmp;
 
 				__osi_rotate_left(parent, root);
 				tmp = parent;
@@ -128,7 +128,7 @@ static inline void osi_insert_color(struct osi_node *node,
 			__osi_rotate_right(gparent, root);
 		} else {
 			{
-				register struct osi_node *uncle = gparent->osi_left;
+				struct osi_node *uncle = gparent->osi_left;
 				if (uncle && osi_is_red(uncle)) {
 					osi_set_black(uncle);
 					osi_set_black(parent);
@@ -139,7 +139,7 @@ static inline void osi_insert_color(struct osi_node *node,
 			}
 
 			if (parent->osi_left == node) {
-				register struct osi_node *tmp;
+				struct osi_node *tmp;
 				__osi_rotate_right(parent, root);
 				tmp = parent;
 				parent = node;
@@ -211,7 +211,7 @@ static inline void __osi_erase_color(struct osi_node *node,
 			} else {
 				if (!other->osi_left || osi_is_black(other->osi_left))
 				{
-					register struct osi_node *o_right;
+					struct osi_node *o_right;
 					if ((o_right = other->osi_right))
 						osi_set_black(o_right);
 					osi_set_red(other);
@@ -379,7 +379,7 @@ static inline struct osi_node *osi_prev(struct osi_node *node)
 }
 
 static inline void osi_replace_node(struct osi_node *victim,
-				    struct osi_node *new,
+				    struct osi_node *newn,
 				    struct osi_root *root)
 {
 	struct osi_node *parent = osi_parent(victim);
@@ -387,19 +387,19 @@ static inline void osi_replace_node(struct osi_node *victim,
 	/* Set the surrounding nodes to point to the replacement */
 	if (parent) {
 		if (victim == parent->osi_left)
-			parent->osi_left = new;
+			parent->osi_left = newn;
 		else
-			parent->osi_right = new;
+			parent->osi_right = newn;
 	} else {
-		root->osi_node = new;
+		root->osi_node = newn;
 	}
 	if (victim->osi_left)
-		osi_set_parent(victim->osi_left, new);
+		osi_set_parent(victim->osi_left, newn);
 	if (victim->osi_right)
-		osi_set_parent(victim->osi_right, new);
+		osi_set_parent(victim->osi_right, newn);
 
 	/* Copy the pointers/colour from the victim to the replacement */
-	*new = *victim;
+	*newn = *victim;
 }
 
 #endif
