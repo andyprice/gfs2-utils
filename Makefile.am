@@ -44,7 +44,6 @@ $(RPMSPEC): $(RPMSPEC).in $(top_builddir)/config.status
 
 RPMBUILDDIR = "$(abs_builddir)/rpmbuild"
 RPMBUILDOPTS = \
-	--buildroot $(RPMBUILDDIR)/buildroot \
 	--define "_sourcedir $(abs_builddir)" \
 	--define "_specdir $(abs_builddir)" \
 	--define "_builddir $(abs_builddir)" \
@@ -54,4 +53,4 @@ RPMBUILDOPTS = \
 
 rpm: $(RPMSPEC)
 	mkdir -p $(RPMBUILDDIR)
-	rpmbuild $(RPMBUILDOPTS) -bb $(RPMSPEC)
+	rpmbuild $(RPMBUILDOPTS) --build-in-place -bb $(RPMSPEC)
