@@ -28,7 +28,6 @@
 
 const char *mtypes[] = {"none", "sb", "rg", "rb", "di", "in", "lf", "jd",
 			"lh", "ld", "ea", "ed", "lb", "13", "qc"};
-const char *allocdesc[5] = {"Free ", "Data ", "Unlnk", "Meta ", "Resrv"};
 
 static struct lgfs2_buffer_head *bh;
 static int pgnum;
@@ -363,7 +362,7 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 			print_gfs2("(p.%d of %d--%s)", pgnum + 1,
 				   (sbd.sd_bsize % screen_chunk_size) > 0 ?
 				   sbd.sd_bsize / screen_chunk_size + 1 : sbd.sd_bsize /
-				   screen_chunk_size, allocdesc[type]);
+				   screen_chunk_size, lgfs2_blkst_str(type));
 		}
 		/*eol(9);*/
 		if ((be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RG)) {
@@ -380,10 +379,7 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 				print_gfs2(" blk ");
 				for (b = blknum; b < blknum + 4; b++) {
 					btype = lgfs2_get_bitmap(&sbd, b, rgd);
-					if (btype >= 0) {
-						print_gfs2("0x%x-%s  ", b,
-							   allocdesc[btype]);
-					}
+					print_gfs2("0x%x-%s  ", b, lgfs2_blkst_str(btype));
 				}
 			}
 		} else if ((be32_to_cpu(mh->mh_type) == GFS2_METATYPE_RB)) {
@@ -414,10 +410,7 @@ int display_block_type(char *buf, uint64_t addr, int from_restore)
 				print_gfs2(" blk ");
 				for (b = blknum; b < blknum + 4; b++) {
 					btype = lgfs2_get_bitmap(&sbd, b, rgd);
-					if (btype >= 0) {
-						print_gfs2("0x%x-%s  ", b,
-							   allocdesc[btype]);
-					}
+					print_gfs2("0x%x-%s  ", b, lgfs2_blkst_str(btype));
 				}
 			}
 		}
@@ -1541,7 +1534,7 @@ static void find_change_block_alloc(int *newval)
 		printf("Error: value %d is not valid.\nValid values are:\n",
 		       *newval);
 		for (i = GFS2_BLKST_FREE; i <= GFS2_BLKST_DINODE; i++)
-			printf("%d - %s\n", i, allocdesc[i]);
+			printf("%d - %s\n", i, lgfs2_blkst_str(i));
 		lgfs2_rgrp_free(&sbd, &sbd.rgtree);
 		exit(-1);
 	}
@@ -1564,7 +1557,7 @@ static void find_change_block_alloc(int *newval)
 					       "an rgrp).\n");
 					exit(-1);
 				}
-				printf("%d (%s)\n", type, allocdesc[type]);
+				printf("%d (%s)\n", type, lgfs2_blkst_str(type));
 			}
 			lgfs2_rgrp_relse(&sbd, rgd);
 		} else {

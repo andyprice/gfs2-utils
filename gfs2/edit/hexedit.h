@@ -57,7 +57,6 @@ extern int dsplines;
 extern int dsp_lines[DMODES];
 extern int combined_display;
 extern int details;
-extern const char *allocdesc[5];
 extern char *device;
 
 struct idirent {

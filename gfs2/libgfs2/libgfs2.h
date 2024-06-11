@@ -158,6 +158,9 @@ struct lgfs2_device {
 	uint64_t length;
 };
 
+/* Name mappings for GFS2_BLKST_* bitmap values */
+extern const char * const lgfs2_blkst_str(int blkst);
+
 struct lgfs2_bitmap
 {
 	char *bi_data;

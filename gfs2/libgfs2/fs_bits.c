@@ -20,6 +20,22 @@
 
 #define ALIGN(x,a) (((x)+(a)-1)&~((a)-1))
 
+const char * const lgfs2_blkst_str(int blkst)
+{
+	switch (blkst) {
+	case GFS2_BLKST_FREE:
+		return "FREE";
+	case GFS2_BLKST_USED:
+		return "USED";
+	case GFS2_BLKST_UNLINKED:
+		return "UNLINKED";
+	case GFS2_BLKST_DINODE:
+		return "DINODE";
+	default:
+		return "UNKNOWN";
+	}
+}
+
 /**
  * bit_search
  * @ptr: Pointer to bitmap data
@@ -169,7 +185,7 @@ int lgfs2_set_bitmap(lgfs2_rgrp_t rgd, uint64_t blkno, int state)
  * Possible state values for a block in the bitmap are:
  *  GFS_BLKST_FREE     (0)
  *  GFS_BLKST_USED     (1)
- *  GFS_BLKST_INVALID  (2)
+ *  GFS_BLKST_UNLINKED (2)
  *  GFS_BLKST_DINODE   (3)
  *
  * Returns: state on success, -1 on error

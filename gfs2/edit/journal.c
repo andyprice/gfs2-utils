@@ -241,8 +241,7 @@ static int print_ld_blks(const __be64 *b, const char *end, int start_line,
 					}
 					rgd->rt_bits[bmap].bi_data = save_ptr;
 					print_gfs2("bit for blk 0x%"PRIx64" is %d (%s)",
-						   tblk, type,
-						   allocdesc[type]);
+						   tblk, type, lgfs2_blkst_str(type));
 				} else {
 					print_gfs2("bitmap for blk 0x%"PRIx64" was revoked",
 					           tblk);

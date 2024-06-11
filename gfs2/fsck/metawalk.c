@@ -36,7 +36,6 @@ int check_n_fix_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 	int old_state;
 	int treat_as_inode = 0;
 	int rewrite_rgrp = 0;
-	const char *allocdesc[5] = {"free", "data", "unlinked", "inode", "reserved"};
 	static struct lgfs2_rgrp_tree *prevrgd = NULL;
 
 	if (prevrgd && rgrp_contains_block(prevrgd, blk)) {
@@ -59,13 +58,13 @@ int check_n_fix_bitmap(struct fsck_cx *cx, struct lgfs2_rgrp_tree *rgd,
 	    new_state != GFS2_BLKST_FREE) {
 		log_debug(_("Reference as '%s' to block %"PRIu64" (0x%"PRIx64") which "
 			    "was marked as dinode. Needs further investigation.\n"),
-		          allocdesc[new_state], blk, blk);
+		          lgfs2_blkst_str(new_state), blk, blk);
 		return 1;
 	}
 	/* Keep these messages as short as possible, or the output gets to be
 	   huge and unmanageable. */
 	log_err(_("Block %"PRIu64" (0x%"PRIx64") was '%s', should be %s.\n"),
-	        blk, blk, allocdesc[old_state], allocdesc[new_state]);
+	        blk, blk, lgfs2_blkst_str(old_state), lgfs2_blkst_str(new_state));
 	if (!query(cx, _("Fix the bitmap? (y/n)"))) {
 		log_err( _("The bitmap inconsistency was ignored.\n"));
 		return 0;
