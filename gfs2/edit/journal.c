@@ -420,9 +420,12 @@ static void display_log_header(void *buf, uint64_t *highest_seq, uint64_t abs_bl
 	uint64_t seq = be64_to_cpu(lh->lh_sequence);
 	uint32_t tail = be32_to_cpu(lh->lh_tail);
 	uint32_t blkn = be32_to_cpu(lh->lh_blkno);
+	uint32_t nsec = be32_to_cpu(lh->lh_nsec);
+	uint64_t sec = be64_to_cpu(lh->lh_sec);
 	uint64_t tot = be64_to_cpu(lh->lh_local_total);
 	uint64_t fr = be64_to_cpu(lh->lh_local_free);
 	uint64_t ndi = be64_to_cpu(lh->lh_local_dinodes);
+	double ts = (double)nsec / 1000000000 + sec;
 	char flags_str[256];
 
 	mtype = &lgfs2_metadata[LGFS2_MT_GFS2_LOG_HEADER];
@@ -432,8 +435,8 @@ static void display_log_header(void *buf, uint64_t *highest_seq, uint64_t abs_bl
 
 	print_gfs2("0x%"PRIx64" (j+%4"PRIx64"): Log header: seq: 0x%"PRIx64", "
 	           "tail: 0x%"PRIx32", blk: 0x%"PRIx32", tot: 0x%"PRIx64", "
-	           "fr: 0x%"PRIx64", di: 0x%"PRIx64" [%s]",
-		    abs_block, jlb, seq, tail, blkn, tot, fr, ndi, flags_str);
+	           "fr: 0x%"PRIx64", di: 0x%"PRIx64" [%s] @%.6f",
+		    abs_block, jlb, seq, tail, blkn, tot, fr, ndi, flags_str, ts);
 }
 
 /**
