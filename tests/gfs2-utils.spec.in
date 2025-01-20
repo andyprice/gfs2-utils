@@ -27,14 +27,14 @@ URL: https://pagure.io/gfs2-utils
 %setup
 
 %build
-./configure
+%configure
 make clean
 make %{_smp_mflags} V=1
 
 %install
 make -C gfs2 install DESTDIR=%{buildroot}
-rm -f %{buildroot}/usr/sbin/gfs2_trace
-rm -f %{buildroot}/usr/sbin/gfs2_lockcapture
+rm -f '%{buildroot}%{_sbindir}/gfs2_trace'
+rm -f '%{buildroot}%{_sbindir}/gfs2_lockcapture'
 
 %description
 gfs2-utils test rpm
