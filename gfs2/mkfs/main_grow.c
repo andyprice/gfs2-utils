@@ -31,6 +31,7 @@
 static uint64_t override_device_size = 0;
 static int test = 0;
 static uint64_t fssize = 0, fsgrowth;
+static int skip_discard = 0;
 int print_level = MSG_NOTICE;
 
 extern int create_new_inode(struct lgfs2_sbd *sdp);
@@ -72,6 +73,7 @@ static void usage(void)
 		"-T", NULL, _("Do everything except update file system"),
 		"-V", NULL, _("Display version information"),
 		"-v", NULL, _("Increase verbosity"),
+		"-K", NULL, _("Don't try to discard unused blocks"),
 		NULL, NULL, NULL /* Must be kept at the end */
 	};
 
@@ -92,7 +94,7 @@ static void decode_arguments(int argc, char *argv[], struct lgfs2_sbd *sdp)
 {
 	int opt;
 
-	while ((opt = getopt(argc, argv, "VD:hqTv?")) != EOF) {
+	while ((opt = getopt(argc, argv, "VD:hqTv?K")) != EOF) {
 		switch (opt) {
 		case 'D':	/* This option is for testing only */
 			override_device_size = atoi(optarg);
@@ -115,6 +117,9 @@ static void decode_arguments(int argc, char *argv[], struct lgfs2_sbd *sdp)
 			break;
 		case 'v':
 			increase_verbosity();
+			break;
+		case 'K':
+			skip_discard = 1;
 			break;
 		case ':':
 		case '?':
@@ -207,7 +212,9 @@ static unsigned initialize_new_portion(struct lgfs2_sbd *sdp, lgfs2_rgrps_t rgs)
 	unsigned rgcount = 0;
 	uint64_t rgaddr = fssize;
 
-	discard_blocks(sdp->device_fd, rgaddr * sdp->sd_bsize, fsgrowth * sdp->sd_bsize);
+	if (skip_discard == 0)
+		discard_blocks(sdp->device_fd, rgaddr * sdp->sd_bsize, fsgrowth * sdp->sd_bsize);
+
 	/* Build the remaining resource groups */
 	while (1) {
 		int err = 0;

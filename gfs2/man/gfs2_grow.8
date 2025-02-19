@@ -38,6 +38,12 @@ Prints out a short usage message and exits.
 \fB-q\fP
 Be quiet.  Don't print anything.
 .TP
+\fB-K\fP
+Do not attempt to discard the block device contents. Issuing discards to the
+device allows some solid state devices and sparse or thin-provisioned storage
+devices to optimise free space. Other devices may emulate this behaviour by
+zeroing the device contents, which can be a slow process.
+.TP
 \fB-T\fP
 Test. Do all calculations, but do not write any data to the disk and do not
 expand the filesystem. This is used to discover what the tool would have done
