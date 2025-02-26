@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gfs2-utils 3.5.1.1.dev\n"
 "Report-Msgid-Bugs-To: gfs2@lists.linux.dev\n"
-"POT-Creation-Date: 2024-01-05 14:37+0000\n"
+"POT-Creation-Date: 2025-02-26 14:23+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -56,7 +56,7 @@ msgstr ""
 msgid "Number of journals"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:46
+#: gfs2/mkfs/main_mkfs.c:46 gfs2/mkfs/main_grow.c:76
 msgid "Don't try to discard unused blocks"
 msgstr ""
 
@@ -104,17 +104,17 @@ msgstr ""
 msgid "Display program version information, then exit"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:58 gfs2/mkfs/main_grow.c:78 gfs2/mkfs/main_jadd.c:128
-#: gfs2/tune/main.c:55
+#: gfs2/mkfs/main_mkfs.c:58 gfs2/mkfs/main_grow.c:80 gfs2/mkfs/main_jadd.c:128
+#: gfs2/tune/main.c:57
 msgid "Usage:"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:59 gfs2/mkfs/main_grow.c:79 gfs2/mkfs/main_jadd.c:129
+#: gfs2/mkfs/main_mkfs.c:59 gfs2/mkfs/main_grow.c:81 gfs2/mkfs/main_jadd.c:129
 msgid "options"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:59 gfs2/mkfs/main_grow.c:79 gfs2/mkfs/main_jadd.c:129
-#: gfs2/tune/main.c:56
+#: gfs2/mkfs/main_mkfs.c:59 gfs2/mkfs/main_grow.c:81 gfs2/mkfs/main_jadd.c:129
+#: gfs2/tune/main.c:58
 msgid "device"
 msgstr ""
 
@@ -129,7 +129,7 @@ msgid ""
 "specified, the whole device will be used."
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:62 gfs2/mkfs/main_grow.c:81 gfs2/mkfs/main_jadd.c:131
+#: gfs2/mkfs/main_mkfs.c:62 gfs2/mkfs/main_grow.c:83 gfs2/mkfs/main_jadd.c:131
 msgid "Options:"
 msgstr ""
 
@@ -205,68 +205,68 @@ msgstr ""
 msgid "Invalid extended option (specified with -o): '%s'\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:444 gfs2/mkfs/main_grow.c:123
-#: gfs2/mkfs/main_jadd.c:181 gfs2/fsck/main.c:102 gfs2/fsck/main.c:113
+#: gfs2/mkfs/main_mkfs.c:443 gfs2/mkfs/main_grow.c:127
+#: gfs2/mkfs/main_jadd.c:180 gfs2/fsck/main.c:101 gfs2/fsck/main.c:112
 #, c-format
 msgid "Please use '-h' for help.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:457
+#: gfs2/mkfs/main_mkfs.c:456
 #, c-format
 msgid "More than one device specified (try -h for help)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:462 gfs2/mkfs/main_jadd.c:187 gfs2/tune/main.c:99
+#: gfs2/mkfs/main_mkfs.c:461 gfs2/mkfs/main_jadd.c:186 gfs2/tune/main.c:101
 #, c-format
 msgid "Invalid option: %c\n"
 msgstr ""
 
 #. Translators: A lock table is a string identifying a gfs2 file system
 #. * in a cluster, e.g. cluster_name:fs_name
-#: gfs2/mkfs/main_mkfs.c:481 gfs2/tune/super.c:114
+#: gfs2/mkfs/main_mkfs.c:495 gfs2/tune/super.c:114
 msgid "Invalid lock table:"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:486 gfs2/tune/super.c:98 gfs2/tune/super.c:104
+#: gfs2/mkfs/main_mkfs.c:500 gfs2/tune/super.c:98 gfs2/tune/super.c:104
 #, c-format
 msgid "Invalid lock protocol: %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:492
+#: gfs2/mkfs/main_mkfs.c:506
 #, c-format
 msgid "No lock table specified.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:499
+#: gfs2/mkfs/main_mkfs.c:513
 #, c-format
 msgid "Lock table is empty.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:504
+#: gfs2/mkfs/main_mkfs.c:518
 msgid "invalid character"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:510 gfs2/tune/super.c:124
+#: gfs2/mkfs/main_mkfs.c:524 gfs2/tune/super.c:124
 msgid "missing colon"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:515
+#: gfs2/mkfs/main_mkfs.c:529
 msgid "cluster name is missing"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:519
+#: gfs2/mkfs/main_mkfs.c:533
 msgid "cluster name is too long"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:525 gfs2/tune/super.c:132
+#: gfs2/mkfs/main_mkfs.c:539 gfs2/tune/super.c:132
 msgid "contains more than one colon"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:529
+#: gfs2/mkfs/main_mkfs.c:543
 msgid "file system name is missing"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:533 gfs2/tune/super.c:128
+#: gfs2/mkfs/main_mkfs.c:547 gfs2/tune/super.c:128
 msgid "file system name is too long"
 msgstr ""
 
@@ -275,475 +275,470 @@ msgstr ""
 #. translated to match one of the letters in the pattern printed by
 #. `locale -k yesexpr` and one of the letters in the pattern printed by
 #. `locale -k noexpr`
-#: gfs2/mkfs/main_mkfs.c:552
+#: gfs2/mkfs/main_mkfs.c:566
 #, c-format
 msgid "Are you sure you want to proceed? [y/n] "
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:587
+#: gfs2/mkfs/main_mkfs.c:601
 #, c-format
 msgid "Warning: device is not properly aligned. This may harm performance.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:604
+#: gfs2/mkfs/main_mkfs.c:618
 #, c-format
 msgid "Block size must be a power of two between 512 and %d\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:609
+#: gfs2/mkfs/main_mkfs.c:623
 #, c-format
 msgid "Error: Block size %d is less than minimum logical block size (%lu).\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:614
+#: gfs2/mkfs/main_mkfs.c:628
 #, c-format
 msgid ""
 "Warning: Block size %d is inefficient because it is less than the physical "
 "block size (%lu).\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:626
+#: gfs2/mkfs/main_mkfs.c:640
 #, c-format
 msgid "No device specified. Use -h for help\n"
 msgstr ""
 
 #. Translators: gfs2 file systems are split into equal sized chunks called
 #. resource groups. We're checking that the user gave a valid size for them.
-#: gfs2/mkfs/main_mkfs.c:636
+#: gfs2/mkfs/main_mkfs.c:650
 #, c-format
 msgid "Bad resource group size\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:641
+#: gfs2/mkfs/main_mkfs.c:655
 #, c-format
 msgid "No journals specified\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:645
+#: gfs2/mkfs/main_mkfs.c:659
 #, c-format
 msgid "Number of journals cannot be negative: %d\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:649
+#: gfs2/mkfs/main_mkfs.c:663
 #, c-format
 msgid "Bad journal size\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:654
+#: gfs2/mkfs/main_mkfs.c:668
 #, c-format
 msgid "Bad quota change size\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:659
+#: gfs2/mkfs/main_mkfs.c:673
 #, c-format
 msgid "Stripe unit and stripe width must be specified together\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:671
+#: gfs2/mkfs/main_mkfs.c:685
 msgid "Device:"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:672
+#: gfs2/mkfs/main_mkfs.c:686
 msgid "Block size:"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:673 gfs2/mkfs/main_mkfs.c:1118
+#: gfs2/mkfs/main_mkfs.c:687 gfs2/mkfs/main_mkfs.c:1117
 msgid "Device size:"
 msgstr ""
 
 #. Translators: "GB" here means "gigabytes"
-#: gfs2/mkfs/main_mkfs.c:675 gfs2/mkfs/main_mkfs.c:678
-#: gfs2/mkfs/main_mkfs.c:1119
+#: gfs2/mkfs/main_mkfs.c:689 gfs2/mkfs/main_mkfs.c:692
+#: gfs2/mkfs/main_mkfs.c:1118
 msgid "GB"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:676 gfs2/mkfs/main_mkfs.c:678
-#: gfs2/mkfs/main_mkfs.c:1120
+#: gfs2/mkfs/main_mkfs.c:690 gfs2/mkfs/main_mkfs.c:692
+#: gfs2/mkfs/main_mkfs.c:1119
 msgid "blocks"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:677
+#: gfs2/mkfs/main_mkfs.c:691
 msgid "Filesystem size:"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:679
+#: gfs2/mkfs/main_mkfs.c:693
 msgid "Journals:"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:680
+#: gfs2/mkfs/main_mkfs.c:694
 msgid "Journal size:"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:681
+#: gfs2/mkfs/main_mkfs.c:695
 msgid "Resource groups:"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:682
+#: gfs2/mkfs/main_mkfs.c:696
 msgid "Locking protocol:"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:683
+#: gfs2/mkfs/main_mkfs.c:697
 msgid "Lock table:"
 msgstr ""
 
 #. Translators: "UUID" = universally unique identifier.
-#: gfs2/mkfs/main_mkfs.c:685
+#: gfs2/mkfs/main_mkfs.c:699
 msgid "UUID:"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:694
+#: gfs2/mkfs/main_mkfs.c:708
 msgid "Failed to lstat the device"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:701
+#: gfs2/mkfs/main_mkfs.c:715
 msgid "Could not find the absolute path of the device"
 msgstr ""
 
 #. Translators: Example: "/dev/vg/lv is a symbolic link to /dev/dm-2"
-#: gfs2/mkfs/main_mkfs.c:705
+#: gfs2/mkfs/main_mkfs.c:719
 #, c-format
 msgid "%s is a symbolic link to %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:708
+#: gfs2/mkfs/main_mkfs.c:722
 #, c-format
 msgid "This will destroy any data on %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:722 gfs2/mkfs/main_mkfs.c:731
-#: gfs2/mkfs/main_mkfs.c:745 gfs2/mkfs/main_mkfs.c:759
-#: gfs2/mkfs/main_mkfs.c:1047 gfs2/mkfs/main_mkfs.c:1327
-#: gfs2/mkfs/main_mkfs.c:1347 gfs2/mkfs/main_mkfs.c:1356
-#: gfs2/mkfs/main_mkfs.c:1365 gfs2/mkfs/main_mkfs.c:1379 gfs2/fsck/pass1.c:1495
+#: gfs2/mkfs/main_mkfs.c:736 gfs2/mkfs/main_mkfs.c:745
+#: gfs2/mkfs/main_mkfs.c:756 gfs2/mkfs/main_mkfs.c:767
+#: gfs2/mkfs/main_mkfs.c:1049 gfs2/mkfs/main_mkfs.c:1326
+#: gfs2/mkfs/main_mkfs.c:1343 gfs2/mkfs/main_mkfs.c:1349
+#: gfs2/mkfs/main_mkfs.c:1355 gfs2/mkfs/main_mkfs.c:1366 gfs2/fsck/pass1.c:1495
 #: gfs2/fsck/pass1.c:1504 gfs2/fsck/pass1.c:1514 gfs2/fsck/pass1.c:1524
 #, c-format
 msgid "Error building '%s': %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:790 gfs2/mkfs/main_mkfs.c:795
+#: gfs2/mkfs/main_mkfs.c:792 gfs2/mkfs/main_mkfs.c:797
 msgid "Failed to zero blocks\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:805
+#: gfs2/mkfs/main_mkfs.c:807
 #, c-format
 msgid "Zeroing write failed at block %<PRIu64>\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:823
+#: gfs2/mkfs/main_mkfs.c:825
 #, c-format
 msgid "Stripe unit (%lu) must be a multiple of block size (%u)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:827
+#: gfs2/mkfs/main_mkfs.c:829
 #, c-format
 msgid "Stripe width (%lu) must be a multiple of stripe unit (%lu)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:850 gfs2/mkfs/main_grow.c:420
+#: gfs2/mkfs/main_mkfs.c:852 gfs2/mkfs/main_grow.c:426
 msgid "Could not initialise resource groups"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:893 gfs2/mkfs/main_grow.c:233
+#: gfs2/mkfs/main_mkfs.c:895 gfs2/mkfs/main_grow.c:239
 msgid "Failed to write resource group"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:916
+#: gfs2/mkfs/main_mkfs.c:918
 msgid "Failed to create resource group index entry"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:924 gfs2/mkfs/main_grow.c:224
+#: gfs2/mkfs/main_mkfs.c:926 gfs2/mkfs/main_grow.c:230
 msgid "Failed to create resource group"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:938
+#: gfs2/mkfs/main_mkfs.c:940
 msgid "Adding journals: "
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:956
+#: gfs2/mkfs/main_mkfs.c:958
 #, c-format
 msgid "Placing resource group for journal%u\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:966
+#: gfs2/mkfs/main_mkfs.c:968
 msgid "Failed to allocate space for bitmap buffer"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:977
+#: gfs2/mkfs/main_mkfs.c:979
 #, c-format
 msgid "Failed to allocate space for journal %u\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:989
+#: gfs2/mkfs/main_mkfs.c:991
 #, c-format
 msgid "Failed to write journal %u: %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:996
+#: gfs2/mkfs/main_mkfs.c:998
 #, c-format
 msgid "Failed to write data blocks for journal %u: %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1002 gfs2/mkfs/main_mkfs.c:1036
-#: gfs2/mkfs/main_mkfs.c:1310 gfs2/mkfs/main_mkfs.c:1388
-#: gfs2/mkfs/main_mkfs.c:1445
+#: gfs2/mkfs/main_mkfs.c:1004 gfs2/mkfs/main_mkfs.c:1038
+#: gfs2/mkfs/main_mkfs.c:1309 gfs2/mkfs/main_mkfs.c:1372
+#: gfs2/mkfs/main_mkfs.c:1427
 msgid "Done\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1015
+#: gfs2/mkfs/main_mkfs.c:1017
 msgid "Building resource groups: "
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1027 gfs2/mkfs/main_mkfs.c:1320
+#: gfs2/mkfs/main_mkfs.c:1029 gfs2/mkfs/main_mkfs.c:1319
 #: gfs2/fsck/rgrepair.c:835
 #, c-format
 msgid "Failed to build resource groups\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1033 gfs2/mkfs/main_grow.c:239
+#: gfs2/mkfs/main_mkfs.c:1035 gfs2/mkfs/main_grow.c:245
 msgid "Failed to write final resource group"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1104
+#: gfs2/mkfs/main_mkfs.c:1103
 #, c-format
 msgid "Failed to parse UUID option."
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1111 gfs2/mkfs/main_grow.c:394
-#: gfs2/mkfs/main_jadd.c:692 gfs2/fsck/initialize.c:1245
+#: gfs2/mkfs/main_mkfs.c:1110 gfs2/mkfs/main_grow.c:400
+#: gfs2/mkfs/main_jadd.c:691 gfs2/fsck/initialize.c:1241
 msgid "Failed to compute file system constants"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1117
+#: gfs2/mkfs/main_mkfs.c:1116
 #, c-format
 msgid "Specified size is bigger than the device."
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1133 gfs2/mkfs/main_mkfs.c:1144
+#: gfs2/mkfs/main_mkfs.c:1132 gfs2/mkfs/main_mkfs.c:1143
 #, c-format
 msgid "gfs2 will not fit on this device.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1146
+#: gfs2/mkfs/main_mkfs.c:1145
 #, c-format
 msgid "Maximum size for %u journals on this device is %uMB.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1161 gfs2/mkfs/main_mkfs.c:1166
-#: gfs2/mkfs/main_grow.c:149 gfs2/mkfs/main_grow.c:160
+#: gfs2/mkfs/main_mkfs.c:1160 gfs2/mkfs/main_mkfs.c:1165
+#: gfs2/mkfs/main_grow.c:153 gfs2/mkfs/main_grow.c:164
 #, c-format
 msgid "Failed to create probe\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1172
+#: gfs2/mkfs/main_mkfs.c:1171
 #, c-format
 msgid "Failed to probe device\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1180
+#: gfs2/mkfs/main_mkfs.c:1179
 #, c-format
 msgid "%s appears to contain an existing filesystem (%s)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1183
+#: gfs2/mkfs/main_mkfs.c:1182
 #, c-format
 msgid "%s appears to contain a partition table (%s).\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1228
+#: gfs2/mkfs/main_mkfs.c:1227
 #, c-format
 msgid "Device '%s' is too small\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1232
+#: gfs2/mkfs/main_mkfs.c:1231
 #, c-format
 msgid "'%s' is not a block device or regular file\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1279
+#: gfs2/mkfs/main_mkfs.c:1278
 #, c-format
 msgid "File system options:\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1304
+#: gfs2/mkfs/main_mkfs.c:1303
 msgid "Discarding device contents (may take a while on large devices): "
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1315
+#: gfs2/mkfs/main_mkfs.c:1314
 #, c-format
 msgid "Failed to create journals\n"
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1374
+#: gfs2/mkfs/main_mkfs.c:1361
 msgid "Creating quota file: "
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1423
+#: gfs2/mkfs/main_mkfs.c:1405
 msgid "Writing superblock and syncing: "
 msgstr ""
 
-#: gfs2/mkfs/main_mkfs.c:1429
+#: gfs2/mkfs/main_mkfs.c:1411
 msgid "Failed to write superblock\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:70
+#: gfs2/mkfs/main_grow.c:71
 msgid "Display this usage information"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:71
+#: gfs2/mkfs/main_grow.c:72
 msgid "Quiet, reduce verbosity"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:72
+#: gfs2/mkfs/main_grow.c:73
 msgid "Do everything except update file system"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:73
+#: gfs2/mkfs/main_grow.c:74
 msgid "Display version information"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:74
+#: gfs2/mkfs/main_grow.c:75
 msgid "Increase verbosity"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:80
+#: gfs2/mkfs/main_grow.c:82
 #, c-format
 msgid ""
 "Expands a GFS2 file system after the device containing the file system has "
 "been expanded"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:102
-#, c-format
-msgid "%s %s (built %s %s)\n"
-msgstr ""
-
-#: gfs2/mkfs/main_grow.c:113
+#: gfs2/mkfs/main_grow.c:114
 #, c-format
 msgid "(Test mode - file system will not be changed)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:126
+#: gfs2/mkfs/main_grow.c:130
 #, c-format
 msgid "Invalid option '%c'\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:155
+#: gfs2/mkfs/main_grow.c:159
 #, c-format
 msgid "fstat failed\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:275
+#: gfs2/mkfs/main_grow.c:281
 #, c-format
 msgid "%d new rindex entries.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:284
+#: gfs2/mkfs/main_grow.c:290
 #, c-format
 msgid "Incorrect rindex size. Want %ld (%d resource groups), have %ld\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:293
+#: gfs2/mkfs/main_grow.c:299
 msgid "Error writing first new rindex entry; aborted.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:301
+#: gfs2/mkfs/main_grow.c:307
 msgid "Error writing new rindex entries; aborted.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:315
+#: gfs2/mkfs/main_grow.c:321
 #, c-format
 msgid "truncating rindex to %ld entries\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:318
+#: gfs2/mkfs/main_grow.c:324
 #, c-format
 msgid "Could not truncate rindex: %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:327
+#: gfs2/mkfs/main_grow.c:333
 #, c-format
 msgid "Mount point: %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:328
+#: gfs2/mkfs/main_grow.c:334
 #, c-format
 msgid "Device: %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:329
+#: gfs2/mkfs/main_grow.c:335
 #, c-format
 msgid "Size: %<PRIu64> blocks\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:330
+#: gfs2/mkfs/main_grow.c:336
 #, c-format
 msgid "Length: %<PRIu64> blocks\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:331
+#: gfs2/mkfs/main_grow.c:337
 #, c-format
 msgid "The file system will grow by %<PRIu64>MB.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:341
+#: gfs2/mkfs/main_grow.c:347
 msgid "Failed to open rindex"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:347
+#: gfs2/mkfs/main_grow.c:353
 #, c-format
 msgid "Please run fsck.gfs2\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:380
+#: gfs2/mkfs/main_grow.c:386
 #, c-format
 msgid "Error looking up mount '%s': %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:384
+#: gfs2/mkfs/main_grow.c:390
 #, c-format
 msgid "%s: not a mounted gfs2 file system\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:398
+#: gfs2/mkfs/main_grow.c:404
 #, c-format
 msgid "Error reading superblock.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:404
+#: gfs2/mkfs/main_grow.c:410
 msgid "Failed to mount GFS2 meta file system"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:415
+#: gfs2/mkfs/main_grow.c:421
 msgid "Could not read master directory"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:429
+#: gfs2/mkfs/main_grow.c:435
 #, c-format
 msgid "Gathering resource group information for %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:432
+#: gfs2/mkfs/main_grow.c:438
 msgid "Failed to scan existing resource groups"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:444
+#: gfs2/mkfs/main_grow.c:450
 msgid "Could not initialise new resource groups"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:451
+#: gfs2/mkfs/main_grow.c:457
 msgid "The calculated resource group size is too small.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:452
+#: gfs2/mkfs/main_grow.c:458
 #, c-format
 msgid "%s has not grown.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:475
+#: gfs2/mkfs/main_grow.c:481
 msgid "gfs2_grow interrupted.\n"
 msgstr ""
 
-#: gfs2/mkfs/main_grow.c:478
+#: gfs2/mkfs/main_grow.c:484
 msgid "gfs2_grow complete.\n"
 msgstr ""
 
@@ -760,52 +755,52 @@ msgstr ""
 msgid "Adds journals to a GFS2 file system."
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:196
+#: gfs2/mkfs/main_jadd.c:195
 #, c-format
 msgid "no path specified (try -h for help)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:200
+#: gfs2/mkfs/main_jadd.c:199
 #, c-format
 msgid "Unrecognized argument: %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:204
+#: gfs2/mkfs/main_jadd.c:203
 #, c-format
 msgid "Command line arguments:\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:217
+#: gfs2/mkfs/main_jadd.c:216
 #, c-format
 msgid "no journals specified\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:221
+#: gfs2/mkfs/main_jadd.c:220
 #, c-format
 msgid "bad journal size\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:225
+#: gfs2/mkfs/main_jadd.c:224
 #, c-format
 msgid "bad quota change size\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:238
+#: gfs2/mkfs/main_jadd.c:237
 #, c-format
 msgid "Filesystem: %s\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:239
+#: gfs2/mkfs/main_jadd.c:238
 #, c-format
 msgid "Old journals: %u\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:240
+#: gfs2/mkfs/main_jadd.c:239
 #, c-format
 msgid "New journals: %u\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:625
+#: gfs2/mkfs/main_jadd.c:624
 #, c-format
 msgid ""
 "\n"
@@ -813,23 +808,23 @@ msgid ""
 "\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:628
+#: gfs2/mkfs/main_jadd.c:627
 #, c-format
 msgid "Required space  : %*<PRIu64> blocks (%<PRIu64> blocks per journal)\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:630
+#: gfs2/mkfs/main_jadd.c:629
 #, c-format
 msgid ""
 "Available space : %*<PRIu64> blocks\n"
 "\n"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:687
+#: gfs2/mkfs/main_jadd.c:686
 msgid "Failed to build paths"
 msgstr ""
 
-#: gfs2/mkfs/main_jadd.c:700
+#: gfs2/mkfs/main_jadd.c:699
 msgid "Failed to add journals"
 msgstr ""
 
@@ -849,33 +844,33 @@ msgstr ""
 msgid "Could not unmount %s: %s\n"
 msgstr ""
 
-#: gfs2/tune/main.c:55
+#: gfs2/tune/main.c:57
 msgid "label"
 msgstr ""
 
-#: gfs2/tune/main.c:55
+#: gfs2/tune/main.c:57
 msgid "UUID"
 msgstr ""
 
-#: gfs2/tune/main.c:56
+#: gfs2/tune/main.c:58
 msgid "mount options"
 msgstr ""
 
-#: gfs2/tune/main.c:56
+#: gfs2/tune/main.c:58
 msgid "version"
 msgstr ""
 
-#: gfs2/tune/main.c:106
+#: gfs2/tune/main.c:108
 #, c-format
 msgid "Incorrect number of arguments\n"
 msgstr ""
 
-#: gfs2/tune/main.c:112
+#: gfs2/tune/main.c:114
 #, c-format
 msgid "The -L argument cannot be used with the 'locktable' option\n"
 msgstr ""
 
-#: gfs2/tune/main.c:121
+#: gfs2/tune/main.c:123
 #, c-format
 msgid "Unable to open device %s: %s\n"
 msgstr ""
@@ -1077,543 +1072,543 @@ msgstr ""
 msgid "Unlinked dinode 0x%<PRIx64> found.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:249
+#: gfs2/fsck/initialize.c:246
 #, c-format
 msgid ""
 "Okay to reclaim free metadata in resource group %<PRIu64> (0x%<PRIx64>)? (y/"
 "n)"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:267
+#: gfs2/fsck/initialize.c:263
 #, c-format
 msgid "Free metadata block %<PRIu64> (0x%<PRIx64>) reclaimed.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:275
+#: gfs2/fsck/initialize.c:271
 #, c-format
 msgid "%<PRIu64> blocks (total) may need to be freed in pass 5.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:297
+#: gfs2/fsck/initialize.c:293
 #, c-format
 msgid ""
 "The rgrp at %<PRIu64> (0x%<PRIx64>) was cleaned of %d free metadata blocks.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:304
+#: gfs2/fsck/initialize.c:300
 #, c-format
 msgid ""
 "Error: resource group %<PRIu64> (0x%<PRIx64>): free space (%d) does not "
 "match bitmap (%d)\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:307
+#: gfs2/fsck/initialize.c:303
 msgid "Fix the rgrp free blocks count? (y/n)"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:312
+#: gfs2/fsck/initialize.c:308
 msgid "The rgrp was fixed.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:314
+#: gfs2/fsck/initialize.c:310
 msgid "The rgrp was not fixed.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:333
+#: gfs2/fsck/initialize.c:329
 msgid "Checking the integrity of all resource groups.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:351
+#: gfs2/fsck/initialize.c:347
 #, c-format
 msgid ""
 "RGs: Consistent: %d   Cleaned: %d   Inconsistent: %d   Fixed: %d   Total: "
 "%d\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:356
+#: gfs2/fsck/initialize.c:352
 #, c-format
 msgid ""
 "%<PRIu64> blocks may need to be freed in pass 5 due to the cleaned resource "
 "groups.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:369
+#: gfs2/fsck/initialize.c:365
 msgid "The system directory seems to be destroyed.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:370
+#: gfs2/fsck/initialize.c:366
 msgid "Okay to rebuild it? (y/n)"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:371
+#: gfs2/fsck/initialize.c:367
 msgid "System directory not rebuilt; aborting.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:374
+#: gfs2/fsck/initialize.c:370
 msgid "Trying to rebuild the master directory.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:382
+#: gfs2/fsck/initialize.c:378
 #, c-format
 msgid "Error reading master: %s\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:393
+#: gfs2/fsck/initialize.c:389
 #, c-format
 msgid "Error %d adding jindex directory\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:400
+#: gfs2/fsck/initialize.c:396
 #, c-format
 msgid "Error %d building jindex\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:412
+#: gfs2/fsck/initialize.c:408
 #, c-format
 msgid "Error %d adding per_node directory\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:421
+#: gfs2/fsck/initialize.c:417
 #, c-format
 msgid "Error %d building per_node directory\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:434
+#: gfs2/fsck/initialize.c:430
 #, c-format
 msgid "Error %d adding inum inode\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:440
+#: gfs2/fsck/initialize.c:436
 #, c-format
 msgid "Error building inum inode: %s\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:456
+#: gfs2/fsck/initialize.c:452
 #, c-format
 msgid "Error %d adding statfs inode\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:462
+#: gfs2/fsck/initialize.c:458
 #, c-format
 msgid "Error %d building statfs inode\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:478
+#: gfs2/fsck/initialize.c:474
 #, c-format
 msgid "Error %d adding rindex inode\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:485
+#: gfs2/fsck/initialize.c:481
 #, c-format
 msgid "Error building rindex inode: %s\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:497
+#: gfs2/fsck/initialize.c:493
 #, c-format
 msgid "Error %d adding quota inode\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:503
+#: gfs2/fsck/initialize.c:499
 #, c-format
 msgid "Error building quota inode: %s\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:509
+#: gfs2/fsck/initialize.c:505
 msgid "Master directory rebuilt.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:540
+#: gfs2/fsck/initialize.c:536
 msgid ""
 "The gfs2 system per_node directory inode is missing, so we might not be \n"
 "able to rebuild missing journals this run.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:546
+#: gfs2/fsck/initialize.c:542
 msgid ""
 "The gfs2 system per_node directory inode is missing. Okay to rebuild it? (y/"
 "n) "
 msgstr ""
 
-#: gfs2/fsck/initialize.c:553
+#: gfs2/fsck/initialize.c:549
 #, c-format
 msgid "Error %d rebuilding per_node directory\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:561
+#: gfs2/fsck/initialize.c:557
 msgid "Unable to rebuild per_node; aborting.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:645
+#: gfs2/fsck/initialize.c:641
 msgid "Checking if all rgrp and rindex values are good"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:646
+#: gfs2/fsck/initialize.c:642
 msgid "Checking if rindex values may be easily repaired"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:647
+#: gfs2/fsck/initialize.c:643
 msgid "Calculating where the rgrps should be if evenly spaced"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:648
+#: gfs2/fsck/initialize.c:644
 msgid "Trying to rebuild rindex assuming evenly spaced rgrps"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:649
+#: gfs2/fsck/initialize.c:645
 msgid "Trying to rebuild rindex assuming unevenly spaced rgrps"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:652
+#: gfs2/fsck/initialize.c:648
 msgid "Some damage was found; we need to take remedial measures"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:653
+#: gfs2/fsck/initialize.c:649
 msgid "rindex is unevenly spaced: either gfs1-style or corrupt"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:654
+#: gfs2/fsck/initialize.c:650
 msgid "rindex calculations don't match: uneven rgrp boundaries"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:655
+#: gfs2/fsck/initialize.c:651
 msgid "Too many rgrp misses: rgrps must be unevenly spaced"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:656
+#: gfs2/fsck/initialize.c:652
 msgid "Too much damage found: we cannot rebuild this rindex"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:659
+#: gfs2/fsck/initialize.c:655
 #, c-format
 msgid "Level %d resource group check: %s.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:671
+#: gfs2/fsck/initialize.c:667
 #, c-format
 msgid "(level %d passed)\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:675
+#: gfs2/fsck/initialize.c:671
 #, c-format
 msgid "(level %d failed: %s)\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:677
+#: gfs2/fsck/initialize.c:673
 #, c-format
 msgid "(level %d failed at block %d (0x%x): %s)\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:691
+#: gfs2/fsck/initialize.c:687
 msgid "Validating resource group index.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:702
+#: gfs2/fsck/initialize.c:698
 msgid "Resource group recovery impossible; I can't fix this file system.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:706
+#: gfs2/fsck/initialize.c:702
 #, c-format
 msgid "%<PRIu64> resource groups found.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:724
+#: gfs2/fsck/initialize.c:720
 msgid "Initializing special inodes...\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:734
+#: gfs2/fsck/initialize.c:730
 msgid "The gfs2 system inum inode is missing. Okay to rebuild it? (y/n) "
 msgstr ""
 
-#: gfs2/fsck/initialize.c:736
+#: gfs2/fsck/initialize.c:732
 msgid "fsck.gfs2 cannot continue without a valid inum file; aborting.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:742
+#: gfs2/fsck/initialize.c:738
 #, c-format
 msgid "Error rebuilding inum inode: %s\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:747
+#: gfs2/fsck/initialize.c:743
 msgid "System inum inode was not rebuilt. Aborting.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:755
+#: gfs2/fsck/initialize.c:751
 #, c-format
 msgid "Error %d reading system inum inode. Aborting.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:764
+#: gfs2/fsck/initialize.c:760
 msgid "The gfs2 system statfs inode is missing. Okay to rebuild it? (y/n) "
 msgstr ""
 
-#: gfs2/fsck/initialize.c:766 gfs2/fsck/initialize.c:778
+#: gfs2/fsck/initialize.c:762 gfs2/fsck/initialize.c:774
 msgid "fsck.gfs2 cannot continue without a valid statfs file; aborting.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:772
+#: gfs2/fsck/initialize.c:768
 #, c-format
 msgid "Error %d rebuilding statfs inode\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:777
+#: gfs2/fsck/initialize.c:773
 msgid "Rebuild of statfs system file failed."
 msgstr ""
 
-#: gfs2/fsck/initialize.c:790
+#: gfs2/fsck/initialize.c:786
 #, c-format
 msgid "Error %d reading statfs file. Aborting.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:801
+#: gfs2/fsck/initialize.c:797
 msgid "The gfs2 system quota inode is missing. Okay to rebuild it? (y/n) "
 msgstr ""
 
-#: gfs2/fsck/initialize.c:803
+#: gfs2/fsck/initialize.c:799
 msgid "System quota inode was not rebuilt.  Aborting.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:809
+#: gfs2/fsck/initialize.c:805
 #, c-format
 msgid "Error rebuilding quota inode: %s\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:814
+#: gfs2/fsck/initialize.c:810
 msgid "Unable to rebuild system quota file inode.  Aborting.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:828
+#: gfs2/fsck/initialize.c:824
 msgid "Unable to determine the boundaries of the file system.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:872
+#: gfs2/fsck/initialize.c:868
 #, c-format
 msgid "Found system master directory at: 0x%<PRIx64>.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:880
+#: gfs2/fsck/initialize.c:876
 #, c-format
 msgid "Found system jindex file at: 0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:894 gfs2/fsck/initialize.c:1199
+#: gfs2/fsck/initialize.c:890 gfs2/fsck/initialize.c:1195
 #, c-format
 msgid "Found system master directory at: 0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:907
+#: gfs2/fsck/initialize.c:903
 #, c-format
 msgid "Found system per_node directory at: 0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:913
+#: gfs2/fsck/initialize.c:909
 #, c-format
 msgid "From per_node's '..' master directory backtracked to: 0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:918
+#: gfs2/fsck/initialize.c:914
 #, c-format
 msgid "Unknown system directory at block 0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:924
+#: gfs2/fsck/initialize.c:920
 #, c-format
 msgid "Found system inum file at: 0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:929
+#: gfs2/fsck/initialize.c:925
 #, c-format
 msgid "Found system statfs file at: 0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:934
+#: gfs2/fsck/initialize.c:930
 #, c-format
 msgid "Found system rindex file at: 0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:941
+#: gfs2/fsck/initialize.c:937
 #, c-format
 msgid "Found system quota file at: 0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:968
+#: gfs2/fsck/initialize.c:964
 #, c-format
 msgid "Found the root directory at: 0x%<PRIx64>.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:973
+#: gfs2/fsck/initialize.c:969
 #, c-format
 msgid ""
 "The root dinode should be at block 0x%<PRIx64> but it seems to be "
 "destroyed.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:976
+#: gfs2/fsck/initialize.c:972
 #, c-format
 msgid ""
 "Found a copy of the root directory in a journal at block: 0x%<PRIx64>.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:979
+#: gfs2/fsck/initialize.c:975
 msgid "Do you want to replace the root dinode from the copy? (y/n)"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:980
+#: gfs2/fsck/initialize.c:976
 msgid "Damaged root dinode not fixed.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:987
+#: gfs2/fsck/initialize.c:983
 msgid "Root directory copied from the journal.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:995 gfs2/fsck/initialize.c:1207
+#: gfs2/fsck/initialize.c:991 gfs2/fsck/initialize.c:1203
 #, c-format
 msgid "Found the root directory at: 0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1010 gfs2/fsck/initialize.c:1171
+#: gfs2/fsck/initialize.c:1006 gfs2/fsck/initialize.c:1167
 #, c-format
 msgid "Found a possible root at: 0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1065
+#: gfs2/fsck/initialize.c:1061
 #, c-format
 msgid "boff:%d bsize2:%d rg:0x%<PRIx64>, rb:0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1078
+#: gfs2/fsck/initialize.c:1074
 #, c-format
 msgid "Block size determined to be: %d\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1130
+#: gfs2/fsck/initialize.c:1126
 msgid ""
 "Gathering information to repair the gfs2 superblock.  This may take some "
 "time.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1137
+#: gfs2/fsck/initialize.c:1133
 msgid "Block size not apparent; checking elsewhere.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1149
+#: gfs2/fsck/initialize.c:1145
 msgid ""
 "Unable to determine the block size; this does not look like a gfs2 file "
 "system.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1159
+#: gfs2/fsck/initialize.c:1155
 msgid "Unable to locate the system master  directory.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1163
+#: gfs2/fsck/initialize.c:1159
 msgid "Unable to locate the root directory.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1167
+#: gfs2/fsck/initialize.c:1163
 msgid "Can't find any dinodes that might be the root; using master - 1.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1178
+#: gfs2/fsck/initialize.c:1174
 msgid "The root dinode block is destroyed.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1179
+#: gfs2/fsck/initialize.c:1175
 msgid ""
 "At this point I recommend reinitializing it.\n"
 "Hopefully everything will later be put into lost+found.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1183
+#: gfs2/fsck/initialize.c:1179
 msgid "Okay to reinitialize the root dinode? (y/n)"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1185
+#: gfs2/fsck/initialize.c:1181
 msgid "The root dinode was not reinitialized; aborting.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1198
+#: gfs2/fsck/initialize.c:1194
 msgid "Okay to fix the GFS2 superblock? (y/n)"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1203
+#: gfs2/fsck/initialize.c:1199
 #, c-format
 msgid "Error reading master inode: %s\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1211
+#: gfs2/fsck/initialize.c:1207
 #, c-format
 msgid "Error reading root inode: %s\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1220
+#: gfs2/fsck/initialize.c:1216
 msgid ""
 "GFS2 superblock not fixed; fsck cannot proceed without a valid superblock.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1240
+#: gfs2/fsck/initialize.c:1236
 msgid "Initializing lists...\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1258
+#: gfs2/fsck/initialize.c:1254
 #, c-format
 msgid "Unsupported gfs2 format found: %<PRIu32>\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1259
+#: gfs2/fsck/initialize.c:1255
 msgid "A newer fsck.gfs2 is required to check this file system.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1277
+#: gfs2/fsck/initialize.c:1273
 msgid "The gfs2 system rindex inode is missing. Okay to rebuild it? (y/n) "
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1279
+#: gfs2/fsck/initialize.c:1275
 msgid "Error: Cannot proceed without a valid rindex.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1284
+#: gfs2/fsck/initialize.c:1280
 #, c-format
 msgid "Error rebuilding rindex: %s\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1312
+#: gfs2/fsck/initialize.c:1308
 #, c-format
 msgid "Unable to open device: %s\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1352
+#: gfs2/fsck/initialize.c:1348
 msgid "Unable to block other mounters\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1365
+#: gfs2/fsck/initialize.c:1361
 #, c-format
 msgid "Error reading master directory: %s\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1399
+#: gfs2/fsck/initialize.c:1395
 msgid ""
 "\n"
 "Journal recovery complete.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1413
+#: gfs2/fsck/initialize.c:1409
 #, c-format
 msgid "Device %s is busy.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1423
+#: gfs2/fsck/initialize.c:1419
 msgid "Unable to unblock other mounters - manual intervention required\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1424
+#: gfs2/fsck/initialize.c:1420
 msgid "Use 'gfs2_tool sb <device> proto' to fix\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1426
+#: gfs2/fsck/initialize.c:1422
 msgid "Syncing the device.\n"
 msgstr ""
 
-#: gfs2/fsck/initialize.c:1440
+#: gfs2/fsck/initialize.c:1436
 msgid "fsck.gfs2: Could not flush caches (non-fatal).\n"
 msgstr ""
 
@@ -2664,300 +2659,300 @@ msgstr ""
 msgid "Checking directory inode at block %<PRIu64> (0x%<PRIx64>)\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:50
+#: gfs2/fsck/metawalk.c:49
 #, c-format
 msgid ""
 "Block %<PRIu64> (0x%<PRIx64>) is not represented in the system bitmap; part "
 "of an rgrp or superblock.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:60
+#: gfs2/fsck/metawalk.c:59
 #, c-format
 msgid ""
 "Reference as '%s' to block %<PRIu64> (0x%<PRIx64>) which was marked as "
 "dinode. Needs further investigation.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:67
+#: gfs2/fsck/metawalk.c:66
 #, c-format
 msgid "Block %<PRIu64> (0x%<PRIx64>) was '%s', should be %s.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:69
+#: gfs2/fsck/metawalk.c:68
 msgid "Fix the bitmap? (y/n)"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:70
+#: gfs2/fsck/metawalk.c:69
 msgid "The bitmap inconsistency was ignored.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:118
+#: gfs2/fsck/metawalk.c:117
 msgid "The bitmap was fixed.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:151
+#: gfs2/fsck/metawalk.c:150
 #, c-format
 msgid "(%s:%d) %s inode found at block (0x%<PRIx64>): marking as '%s'\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:158
+#: gfs2/fsck/metawalk.c:157
 #, c-format
 msgid ""
 "(%s:%d) inode (0x%<PRIx64>) references %s block (0x%<PRIx64>): marking as "
 "'%s'\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:169
+#: gfs2/fsck/metawalk.c:168
 msgid "This block is not represented in the bitmap.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:340
+#: gfs2/fsck/metawalk.c:339
 #, c-format
 msgid "Checking leaf %<PRIu64> (0x%<PRIx64>)\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:357
+#: gfs2/fsck/metawalk.c:356
 #, c-format
 msgid ""
 "Directory block %<PRIu64> (0x%<PRIx64>), entry %d of directory %<PRIu64> "
 "(0x%<PRIx64>) is corrupt.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:362
+#: gfs2/fsck/metawalk.c:361
 msgid "Attempt to repair it? (y/n) "
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:369
+#: gfs2/fsck/metawalk.c:368
 msgid ""
 "Unable to repair corrupt directory entry; the entry was removed instead.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:375
+#: gfs2/fsck/metawalk.c:374
 msgid "Corrupt directory entry repaired.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:380 gfs2/fsck/metawalk.c:401
+#: gfs2/fsck/metawalk.c:379 gfs2/fsck/metawalk.c:400
 #, c-format
 msgid "Corrupt directory entry ignored, stopped after checking %d entries.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:388
+#: gfs2/fsck/metawalk.c:387
 msgid "First dirent is a sentinel (place holder).\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:391
+#: gfs2/fsck/metawalk.c:390
 #, c-format
 msgid ""
 "Directory entry with inode number of zero in leaf %<PRIu64> (0x%<PRIx64>) of "
 "directory %<PRIu64> (0x%<PRIx64>)!\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:396
+#: gfs2/fsck/metawalk.c:395
 msgid "Attempt to remove it? (y/n) "
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:398
+#: gfs2/fsck/metawalk.c:397
 msgid "The corrupt directory entry was removed.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:410
+#: gfs2/fsck/metawalk.c:409
 msgid "First dirent is a Sentinel (place holder).\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:431
+#: gfs2/fsck/metawalk.c:430
 #, c-format
 msgid ""
 "Last entry processed for %<PRIu64>->%<PRIu64>(0x%<PRIx64>->0x%<PRIx64>), "
 "di_blocks=%<PRIu64>.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:466
+#: gfs2/fsck/metawalk.c:465
 #, c-format
 msgid ""
 "Leaf block #%<PRIu64> (0x%<PRIx64>) is out of range for directory #%<PRIu64> "
 "(0x%<PRIx64>) at index %d (0x%x).\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:470
+#: gfs2/fsck/metawalk.c:469
 msgid "that is out of range"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:478
+#: gfs2/fsck/metawalk.c:477
 msgid "that is not really a leaf"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:487
+#: gfs2/fsck/metawalk.c:486
 #, c-format
 msgid ""
 "Previous reference to leaf %<PRIu64> (0x%<PRIx64>) has already checked it; "
 "skipping.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:501
+#: gfs2/fsck/metawalk.c:500
 #, c-format
 msgid "incorrect lf_dirent_format at leaf #%<PRIu64>\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:506
+#: gfs2/fsck/metawalk.c:505
 msgid "Fixing lf_dirent_format.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:512
+#: gfs2/fsck/metawalk.c:511
 #, c-format
 msgid ""
 "Inode %<PRIu64> (0x%<PRIx64>) points to bad leaf %<PRIu64> (0x%<PRIx64>).\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:515
+#: gfs2/fsck/metawalk.c:514
 msgid "that is not a leaf"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:540
+#: gfs2/fsck/metawalk.c:539
 #, c-format
 msgid ""
 "Leaf %<PRIu64> (0x%<PRIx64>) entry count in directory %<PRIu64> "
 "(0x%<PRIx64>) does not match number of entries found - is %u, found %u\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:545
+#: gfs2/fsck/metawalk.c:544
 msgid "Update leaf entry count? (y/n) "
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:549
+#: gfs2/fsck/metawalk.c:548
 msgid "Leaf entry count updated\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:551
+#: gfs2/fsck/metawalk.c:550
 msgid "Leaf entry count left in inconsistent state\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:557
+#: gfs2/fsck/metawalk.c:556
 #, c-format
 msgid ""
 "Depth of directory %<PRIu64> (0x%<PRIx64>) changed from %d to %d; adjusting "
 "ref_count from %d to %d\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:579
+#: gfs2/fsck/metawalk.c:578
 #, c-format
 msgid ""
 "Depth of directory %<PRIu64> (0x%<PRIx64>) changed from %d to %d. Adjusting "
 "ref_count from %d to %d\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:685
+#: gfs2/fsck/metawalk.c:684
 #, c-format
 msgid "Directory #%<PRIu64> (0x%<PRIx64>) has no valid leaf blocks\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:701
+#: gfs2/fsck/metawalk.c:700
 #, c-format
 msgid "Re-reading 0x%<PRIx64> hash table.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:738
+#: gfs2/fsck/metawalk.c:737
 #, c-format
 msgid "Ref count of leaf 0x%<PRIx64> changed from %d to %d.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:751
+#: gfs2/fsck/metawalk.c:750
 #, c-format
 msgid "Leaf chain #%d (0x%<PRIx64>) detected.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:755
+#: gfs2/fsck/metawalk.c:754
 #, c-format
 msgid "Depth of 0x%<PRIx64> changed from %d to %d\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:762
+#: gfs2/fsck/metawalk.c:761
 #, c-format
 msgid "Height of 0x%<PRIx64> changed from %d to %d\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:767
+#: gfs2/fsck/metawalk.c:766
 #, c-format
 msgid "Block count of 0x%<PRIx64> changed from %<PRIu64> to %<PRIu64>\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:863
+#: gfs2/fsck/metawalk.c:862
 #, c-format
 msgid ""
 "Checking EA leaf block #%<PRIu64> (0x%<PRIx64>) for inode #%<PRIu64> "
 "(0x%<PRIx64>).\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:917
+#: gfs2/fsck/metawalk.c:916
 #, c-format
 msgid ""
 "Error detected in leaf block %<PRIu64> (0x%<PRIx64>) referenced by indirect "
 "block %<PRIu64> (0x%<PRIx64>).\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:920
+#: gfs2/fsck/metawalk.c:919
 msgid "Subsequent leaf block pointers should be cleared.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:926
+#: gfs2/fsck/metawalk.c:925
 #, c-format
 msgid ""
 "Pointer to EA leaf block %<PRIu64> (0x%<PRIx64>) in indirect block %<PRIu64> "
 "(0x%<PRIx64>) should be cleared.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:992
+#: gfs2/fsck/metawalk.c:991
 #, c-format
 msgid ""
 "Checking EA indirect block #%<PRIu64> (0x%<PRIx64>) for inode #%<PRIu64> "
 "(0x%<PRIx64>)..\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1109
+#: gfs2/fsck/metawalk.c:1108
 #, c-format
 msgid "Serious metadata error on block %<PRIu64> (0x%<PRIx64>).\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1115
+#: gfs2/fsck/metawalk.c:1114
 #, c-format
 msgid "Unrecoverable metadata error on block %<PRIu64> (0x%<PRIx64>)\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1117
+#: gfs2/fsck/metawalk.c:1116
 msgid "Further metadata will be skipped.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1231
+#: gfs2/fsck/metawalk.c:1230
 #, c-format
 msgid ""
 "Undoing the work we did before the error on block %<PRIu64> (0x%<PRIx64>).\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1268
+#: gfs2/fsck/metawalk.c:1267
 #, c-format
 msgid ""
 "Fatal error on metadata block 0x%<PRIx64>, offset 0x%x, referencing data "
 "block 0x%<PRIx64> preempts non-fatal error on block 0x%<PRIx64>\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1282
+#: gfs2/fsck/metawalk.c:1281
 msgid "Unrecoverable "
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1290
+#: gfs2/fsck/metawalk.c:1289
 #, c-format
 msgid ""
 "data block error %d on metadata block %<PRId64> (0x%<PRIx64>), offset %d "
 "(0x%x), referencing data block %<PRId64> (0x%<PRIx64>).\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1360
+#: gfs2/fsck/metawalk.c:1359
 #, c-format
 msgid ""
 "Stopping the undo process: fatal error block 0x%<PRIx64> was found at "
 "metadata block 0x%<PRIx64>,offset 0x%x.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1370
+#: gfs2/fsck/metawalk.c:1369
 #, c-format
 msgid ""
 "The non-fatal error block 0x%<PRIx64> was found at metadata block "
@@ -2965,14 +2960,14 @@ msgid ""
 "this metadata block.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1486
+#: gfs2/fsck/metawalk.c:1485
 #, c-format
 msgid ""
 "\rLarge file at %<PRIu64> (0x%<PRIx64>) - 100 percent "
 "complete.                                   \n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1495
+#: gfs2/fsck/metawalk.c:1494
 #, c-format
 msgid ""
 "Error: inode %<PRIu64> (0x%<PRIx64>) had unrecoverable errors at metadata "
@@ -2980,20 +2975,20 @@ msgid ""
 "(0x%<PRIx64>).\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1500
+#: gfs2/fsck/metawalk.c:1499
 msgid "Remove the invalid inode? (y/n) "
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1502
+#: gfs2/fsck/metawalk.c:1501
 msgid "Invalid inode not deleted.\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1511
+#: gfs2/fsck/metawalk.c:1510
 #, c-format
 msgid "Undoing metadata work for block %<PRIu64> (0x%<PRIx64>)\n"
 msgstr ""
 
-#: gfs2/fsck/metawalk.c:1550
+#: gfs2/fsck/metawalk.c:1549
 msgid "The corrupt inode was invalidated.\n"
 msgstr ""
 
@@ -3466,139 +3461,134 @@ msgstr ""
 msgid "rindex not fixed.\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:48
-#, c-format
-msgid "GFS2 fsck %s (built %s %s)\n"
-msgstr ""
-
-#: gfs2/fsck/main.c:63 gfs2/fsck/main.c:78 gfs2/fsck/main.c:95
+#: gfs2/fsck/main.c:62 gfs2/fsck/main.c:77 gfs2/fsck/main.c:94
 #, c-format
 msgid "Options -p/-a, -y and -n may not be used together\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:105
+#: gfs2/fsck/main.c:104
 #, c-format
 msgid "Invalid option %c\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:117
+#: gfs2/fsck/main.c:116
 #, c-format
 msgid "No device specified (Please use '-h' for help)\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:129
+#: gfs2/fsck/main.c:128
 #, c-format
 msgid "progress unknown.\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:132
+#: gfs2/fsck/main.c:131
 #, c-format
 msgid "processing block %<PRIu64> out of %<PRIu64>\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:136
+#: gfs2/fsck/main.c:135
 msgid ""
 "Do you want to abort fsck.gfs2, skip the rest of this pass or continue (a/s/"
 "c)?"
 msgstr ""
 
-#: gfs2/fsck/main.c:163
+#: gfs2/fsck/main.c:162
 #, c-format
 msgid "Failed to read statfs values (%d of %<PRIu64> read)\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:188
+#: gfs2/fsck/main.c:187
 msgid "The statfs file is accurate.\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:191
+#: gfs2/fsck/main.c:190
 msgid ""
 "The statfs file is wrong:\n"
 "\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:192
+#: gfs2/fsck/main.c:191
 msgid "Current statfs values:\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:193
+#: gfs2/fsck/main.c:192
 #, c-format
 msgid "blocks:  %<PRId64> (0x%<PRIx64>)\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:194
+#: gfs2/fsck/main.c:193
 #, c-format
 msgid "free:    %<PRId64> (0x%<PRIx64>)\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:195
+#: gfs2/fsck/main.c:194
 #, c-format
 msgid ""
 "dinodes: %<PRId64> (0x%<PRIx64>)\n"
 "\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:196
+#: gfs2/fsck/main.c:195
 msgid "Calculated statfs values:\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:197
+#: gfs2/fsck/main.c:196
 #, c-format
 msgid "blocks:  %<PRIu64> (0x%<PRIx64>)\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:199
+#: gfs2/fsck/main.c:198
 #, c-format
 msgid "free:    %<PRIu64> (0x%<PRIx64>)\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:202
+#: gfs2/fsck/main.c:201
 #, c-format
 msgid "dinodes: %<PRIu64> (0x%<PRIx64>)\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:206
+#: gfs2/fsck/main.c:205
 msgid "Okay to fix the master statfs file? (y/n)"
 msgstr ""
 
-#: gfs2/fsck/main.c:207
+#: gfs2/fsck/main.c:206
 msgid "The statfs file was not fixed.\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:212
+#: gfs2/fsck/main.c:211
 msgid "The statfs file was fixed.\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:236
+#: gfs2/fsck/main.c:235
 #, c-format
 msgid "Starting %s\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:244
+#: gfs2/fsck/main.c:243
 #, c-format
 msgid "%s interrupted   \n"
 msgstr ""
 
-#: gfs2/fsck/main.c:324
+#: gfs2/fsck/main.c:323
 msgid "Initializing fsck\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:329
+#: gfs2/fsck/main.c:328
 #, c-format
 msgid "%s: clean.\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:356
+#: gfs2/fsck/main.c:355
 msgid "Writing changes to disk\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:362
+#: gfs2/fsck/main.c:361
 msgid ""
 "Superblock was reset. Use tunegfs2 to manually set lock table before "
 "mounting.\n"
 msgstr ""
 
-#: gfs2/fsck/main.c:364
+#: gfs2/fsck/main.c:363
 msgid "fsck.gfs2 complete\n"
 msgstr ""
 
