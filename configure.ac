@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([gfs2-utils], [3.5.1.1.dev], [gfs2@lists.linux.dev])
+AC_INIT([gfs2-utils], [3.6.0], [gfs2@lists.linux.dev])
 AM_INIT_AUTOMAKE([-Wno-portability])
 AM_SILENT_RULES([yes])
 
