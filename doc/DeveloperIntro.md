@@ -217,10 +217,13 @@ V=`git describe`
 NV=gfs2-utils-${V}
 TB=${NV}.tar
 
+# Requires the following git config options:
+# $ git config --global tar.tar.bz2.command 'bzip2 -c'
+# $ git config --global tar.tar.xz.command 'xz -c'
 for ext in gz bz2 xz; do
     ARCHIVE=${TB}.${ext}
 
-    git archive --prefix=${NV}/ -o ${ARCHIVE} ${V}
+    git archive --format="tar.${ext}" --prefix=${NV}/ -o ${ARCHIVE} ${V}
 
     # Check
     D=`mktemp -d`
