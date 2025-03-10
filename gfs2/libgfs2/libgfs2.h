@@ -159,7 +159,7 @@ struct lgfs2_device {
 };
 
 /* Name mappings for GFS2_BLKST_* bitmap values */
-extern const char * const lgfs2_blkst_str(int blkst);
+extern const char *lgfs2_blkst_str(int blkst);
 
 struct lgfs2_bitmap
 {

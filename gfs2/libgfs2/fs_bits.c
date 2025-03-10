@@ -20,7 +20,7 @@
 
 #define ALIGN(x,a) (((x)+(a)-1)&~((a)-1))
 
-const char * const lgfs2_blkst_str(int blkst)
+const char *lgfs2_blkst_str(int blkst)
 {
 	switch (blkst) {
 	case GFS2_BLKST_FREE:

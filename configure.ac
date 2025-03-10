@@ -206,6 +206,7 @@ WARNLIST="
 	format-nonliteral
 	no-long-long
 	strict-aliasing
+	ignored-qualifiers
 	"
 
 for j in $WARNLIST; do
