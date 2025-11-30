@@ -699,7 +699,7 @@ static void print_results(struct lgfs2_sbd *sb, struct mkfs_opts *opts)
 	printf("%-27s%s\n", _("UUID:"), readable_uuid);
 }
 
-static int warn_of_destruction(const char *path)
+static int warn_of_destruction(const char *path, struct mkfs_opts *opts)
 {
 	struct stat lnkstat;
 	char *abspath = NULL;
@@ -719,7 +719,10 @@ static int warn_of_destruction(const char *path)
 		printf( _("%s is a symbolic link to %s\n"), path, abspath);
 		path = abspath;
 	}
-	printf(_("This will destroy any data on %s\n"), path);
+	if (!opts->quiet) {
+		printf(_("This will destroy any data on %s\n"), path);
+		fflush(stdout);
+	}
 	free(abspath);
 	return 0;
 }
@@ -1291,7 +1294,7 @@ int main(int argc, char *argv[])
 	rgs = rgs_init(&opts, &sbd);
 	if (rgs == NULL)
 		exit(-1);
-	if (warn_of_destruction(opts.dev.path) != 0)
+	if (warn_of_destruction(opts.dev.path, &opts) != 0)
 		exit(-1);
 
 	if (opts.confirm && !opts.override)
