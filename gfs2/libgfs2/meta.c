@@ -649,7 +649,7 @@ int lgfs2_field_str(char *str, const size_t size, const char *blk, const struct 
 		}
 
 		if (hex) {
-			snprintf(str, size, "%"PRIx64, value);
+			snprintf(str, size, "0x%"PRIx64, value);
 			goto out;
 		}
 		if (field->flags & LGFS2_MFF_MASK) {
