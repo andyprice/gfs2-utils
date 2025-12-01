@@ -406,6 +406,7 @@ extern const struct lgfs2_metadata *lgfs2_find_mtype(uint32_t mh_type);
 extern const struct lgfs2_metadata *lgfs2_find_mtype_name(const char *name);
 extern const struct lgfs2_metafield *lgfs2_find_mfield_name(const char *name, const struct lgfs2_metadata *mtype);
 extern int lgfs2_field_str(char *str, const size_t size, const char *blk, const struct lgfs2_metafield *field, int hex);
+extern uint32_t lgfs2_flag_sym_value(const char *sym, const struct lgfs2_metafield *field);
 extern int lgfs2_field_assign(char *blk, const struct lgfs2_metafield *field, const void *val);
 
 /* buf.c */

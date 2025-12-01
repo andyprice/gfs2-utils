@@ -684,6 +684,26 @@ out:
 	return 0;
 }
 
+/**
+ * Look up a flag value from a symbolic name. Matching is case-sensitive.
+ * Does not parse combined symbols like "X|Y".
+ * sym: the symbolic name
+ * field: the flags field the name relates to.
+ * Returns the flag value or 0 if not found.
+ */
+uint32_t lgfs2_flag_sym_value(const char *sym, const struct lgfs2_metafield *field)
+{
+	if (sym == NULL)
+		return 0;
+
+	for (unsigned i = 0; i < field->nsyms; i++)
+	{
+		if (strcmp(sym, field->symtab[i].value) == 0)
+			return field->symtab[i].key;
+	}
+	return 0;
+}
+
 int lgfs2_field_assign(char *blk, const struct lgfs2_metafield *field, const void *val)
 {
 	char *fieldp = blk + field->offset;
