@@ -1573,6 +1573,38 @@ static void find_change_block_alloc(int *newval)
 }
 
 /**
+ * Parse a string like "GFS2_DIF_SYSTEM|GFS2_DIF_JDATA" into the corresponding
+ * value for a bitmask field.
+ * syms: The string.
+ * field: The field type.
+ * Returns the values for the specified flags ORed together or 0 on failure.
+ */
+static uint32_t flag_syms_value(const char *syms, const struct lgfs2_metafield *field)
+{
+	char *str, *iter, *tok;
+	uint32_t val = 0;
+
+	if (syms == NULL || *syms == '\0')
+		return 0;
+
+	str = iter = strdup(syms);
+	if (str == NULL)
+		return 0;
+
+	while ((tok = strsep(&iter, "|"))) {
+		uint32_t flag = lgfs2_flag_sym_value(tok, field);
+
+		if (flag == 0) {
+			free(str);
+			return 0;
+		}
+		val |= flag;
+	}
+	free(str);
+	return val;
+}
+
+/**
  * process request to print a certain field from a previously pushed block
  */
 static void process_field(const char *field, const char *nstr)
@@ -1603,7 +1635,13 @@ static void process_field(const char *field, const char *nstr)
 			err = lgfs2_field_assign(rbh->b_data, mfield, nstr);
 		} else {
 			uint64_t val = 0;
-			err = sscanf(nstr, "%"SCNi64, &val);
+
+			if (mfield->flags & LGFS2_MFF_MASK) {
+				val = flag_syms_value(nstr, mfield);
+				err = 1;
+			}
+			if (val == 0)
+				err = sscanf(nstr, "%"SCNi64, &val);
 			if (err == 1)
 				/* coverity[overrun-buffer-val:SUPPRESS] False positive */
 				err = lgfs2_field_assign(rbh->b_data, mfield, &val);
