@@ -36,6 +36,7 @@ static int termcols;
 
 int details = 0;
 char *device = NULL;
+struct stat devstat;
 
 /* ------------------------------------------------------------------------- */
 /* erase - clear the screen */
@@ -799,7 +800,8 @@ static void read_superblock(int fd)
 {
 	struct gfs2_meta_header *mh;
 
-	ioctl(fd, BLKFLSBUF, 0);
+	if (S_ISBLK(devstat.st_mode))
+		ioctl(fd, BLKFLSBUF, 0);
 	memset(&sbd, 0, sizeof(struct lgfs2_sbd));
 	sbd.sd_bsize = LGFS2_DEFAULT_BSIZE;
 	sbd.device_fd = fd;
@@ -855,7 +857,8 @@ static int read_rindex(void)
 
 static int read_master_dir(void)
 {
-	ioctl(sbd.device_fd, BLKFLSBUF, 0);
+	if (S_ISBLK(devstat.st_mode))
+		ioctl(sbd.device_fd, BLKFLSBUF, 0);
 
 	bh = lgfs2_bread(&sbd, sbd.sd_meta_dir.in_addr);
 	if (bh == NULL)
@@ -885,7 +888,8 @@ int display(int identify_only, int trunc_zeros, uint64_t flagref,
 		if (bh != NULL)
 			lgfs2_brelse(bh);
 		dev_offset = blk * sbd.sd_bsize;
-		ioctl(sbd.device_fd, BLKFLSBUF, 0);
+		if (S_ISBLK(devstat.st_mode))
+			ioctl(sbd.device_fd, BLKFLSBUF, 0);
 		if (!(bh = lgfs2_bread(&sbd, blk))) {
 			fprintf(stderr, "read error: %s from %s:%d: "
 				"offset %"PRIu64" (0x%"PRIx64")\n",
@@ -2455,6 +2459,11 @@ int main(int argc, char *argv[])
 	fd = open(device, O_RDWR);
 	if (fd < 0) {
 		fprintf(stderr, "Failed to open '%s': %s\n", device, strerror(errno));
+		exit(1);
+	}
+	if (fstat(fd, &devstat) != 0) {
+		fprintf(stderr, "Failed to fstat '%s': %s\n", device, strerror(errno));
+		close(fd);
 		exit(1);
 	}
 	max_block = lseek(fd, 0, SEEK_END) / sbd.sd_bsize;
