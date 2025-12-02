@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #include <uuid.h>
 #include "libgfs2.h"
@@ -654,6 +655,7 @@ int lgfs2_field_str(char *str, const size_t size, const char *blk, const struct 
 		}
 		if (field->flags & LGFS2_MFF_MASK) {
 			char *s = str, *end = str + size;
+			bool found = false;
 			unsigned n;
 
 			for (n = 0; n < field->nsyms; n++) {
@@ -661,6 +663,7 @@ int lgfs2_field_str(char *str, const size_t size, const char *blk, const struct 
 
 				if (!(value & sym->key))
 					continue;
+				found = true;
 				if (s != str && s < end)
 					*s++ = '/';
 				if (s < end) {
@@ -675,7 +678,8 @@ int lgfs2_field_str(char *str, const size_t size, const char *blk, const struct 
 			}
 			if (s < end)
 				*s = '\0';
-			goto out;
+			if (found)
+				goto out;
 		}
 		snprintf(str, size, "%"PRIu64, value);
 	}

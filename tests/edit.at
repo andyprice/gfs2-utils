@@ -82,4 +82,6 @@ AT_CHECK([gfs2_edit -p journal0 field di_flags 'GFS2_DIF_SYSTEM|GFS2_DIF_JDATA' 
 AT_CHECK([gfs2_edit -x -p journal0 field di_flags 'GFS2_DIF_SYSTEM|GFS2_DIF_JDATA' $GFS_TGT | tr -d '\n'], 0, [0x201], [ignore])
 AT_CHECK([gfs2_edit -p journal0 field di_flags $GFS_TGT | tr -d '\n'], 0, [GFS2_DIF_JDATA/GFS2_DIF_SYSTEM], [ignore])
 AT_CHECK([gfs2_edit -x -p journal0 field di_flags $GFS_TGT | tr -d '\n'], 0, [0x201], [ignore])
+AT_CHECK([gfs2_edit -p journal0 field di_flags 0 $GFS_TGT | tr -d '\n'], 0, [0], [ignore])
+AT_CHECK([gfs2_edit -x -p journal0 field di_flags 0 $GFS_TGT | tr -d '\n'], 0, [0x0], [ignore])
 AT_CLEANUP
