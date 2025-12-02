@@ -1646,6 +1646,7 @@ static void process_field(const char *field, const char *nstr)
 			}
 			if (val == 0)
 				err = sscanf(nstr, "%"SCNi64, &val);
+			errno = EINVAL;
 			if (err == 1)
 				/* coverity[overrun-buffer-val:SUPPRESS] False positive */
 				err = lgfs2_field_assign(rbh->b_data, mfield, &val);
