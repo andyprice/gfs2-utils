@@ -665,7 +665,7 @@ int lgfs2_field_str(char *str, const size_t size, const char *blk, const struct 
 					continue;
 				found = true;
 				if (s != str && s < end)
-					*s++ = '/';
+					*s++ = '|';
 				if (s < end) {
 					const char *v = sym->value + sym->prefix;
 					size_t len = strlen(v);
