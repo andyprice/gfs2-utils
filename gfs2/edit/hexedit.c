@@ -2457,6 +2457,10 @@ int main(int argc, char *argv[])
 	if (dmode == INIT_MODE)
 		dmode = HEX_MODE;
 
+	if (device == NULL || *device == '\0') {
+		fprintf(stderr, "No device path specified\n");
+		exit(1);
+	}
 	fd = open(device, O_RDWR);
 	if (fd < 0) {
 		fprintf(stderr, "Failed to open '%s': %s\n", device, strerror(errno));
