@@ -115,7 +115,8 @@ void lgfs2_inode_free(struct lgfs2_inode **ipp)
 {
 	struct lgfs2_inode *ip = *ipp;
 
-	free(ip->i_bh);
+	if (ip)
+		free(ip->i_bh);
 	free(ip);
 	*ipp = NULL;
 }

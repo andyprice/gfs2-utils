@@ -1420,6 +1420,8 @@ static int check_system_inode(struct fsck_cx *cx,
 		if (query(cx, _("Create new %s system inode? (y/n) "), filename)) {
 			log_err( _("Rebuilding system file \"%s\"\n"),
 				 filename);
+			lgfs2_inode_free(sysinode);
+			lgfs2_dirent_del(sysdir, filename, strlen(filename));
 			error = builder(cx);
 			if (error || *sysinode == NULL) {
 				log_err( _("Error rebuilding system "
@@ -1538,8 +1540,8 @@ static int build_inum(struct fsck_cx *cx)
 	struct lgfs2_inode *ip = lgfs2_build_inum(cx->sdp);
 	if (ip == NULL)
 		return -1;
-	lgfs2_inode_put(&ip);
-	return 0;
+	cx->sdp->md.inum = ip;
+	return lgfs2_init_inum(cx->sdp);
 }
 
 static int build_statfs(struct fsck_cx *cx)
@@ -1547,8 +1549,8 @@ static int build_statfs(struct fsck_cx *cx)
 	struct lgfs2_inode *ip = lgfs2_build_statfs(cx->sdp);
 	if (ip == NULL)
 		return -1;
-	lgfs2_inode_put(&ip);
-	return 0;
+	cx->sdp->md.statfs = ip;
+	return lgfs2_init_statfs(cx->sdp, NULL);
 }
 
 static int build_rindex(struct fsck_cx *cx)
@@ -1556,8 +1558,9 @@ static int build_rindex(struct fsck_cx *cx)
 	struct lgfs2_inode *ip = lgfs2_build_rindex(cx->sdp);
 	if (ip == NULL)
 		return -1;
-	lgfs2_inode_put(&ip);
-	return 0;
+	cx->sdp->md.riinode = ip;
+	lgfs2_dinode_out(ip, ip->i_bh->b_data);
+	return lgfs2_bwrite(ip->i_bh);
 }
 
 static int build_quota(struct fsck_cx *cx)
@@ -1565,8 +1568,9 @@ static int build_quota(struct fsck_cx *cx)
 	struct lgfs2_inode *ip = lgfs2_build_quota(cx->sdp);
 	if (ip == NULL)
 		return -1;
-	lgfs2_inode_put(&ip);
-	return 0;
+	cx->sdp->md.qinode = ip;
+	lgfs2_dinode_out(ip, ip->i_bh->b_data);
+	return lgfs2_bwrite(ip->i_bh);
 }
 
 int build_root(struct fsck_cx *cx)
