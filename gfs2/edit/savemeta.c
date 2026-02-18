@@ -396,8 +396,8 @@ static int get_struct_info(const char *buf, uint64_t owner, unsigned *block_type
  */
 static void report_progress(uint64_t pblock, int force)
 {
-        static struct timeval tv;
-        static uint32_t seconds = 0;
+	static struct timeval tv;
+	static uint32_t seconds = 0;
 
 	gettimeofday(&tv, NULL);
 	if (!seconds)
@@ -409,7 +409,7 @@ static void report_progress(uint64_t pblock, int force)
 		if (sbd.fssize) {
 			printf("\r");
 			percent = (pblock * 100) / sbd.fssize;
-			printf("%"PRIu64" blocks saved (%"PRIu64"%% complete)",
+			printf("%"PRIu64" blocks processed (%"PRIu64"%% complete)",
 			       blks_saved, percent);
 			if (force)
 				printf("\n");
