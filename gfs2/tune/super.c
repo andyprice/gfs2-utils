@@ -119,7 +119,7 @@ int change_locktable(struct tunegfs2 *tfs, const char *locktable)
 	}
 
 	if (strcmp(tfs->sb->sb_lockproto, "lock_dlm") == 0) {
-		char *fsname = strchr(locktable, ':');
+		const char *fsname = strchr(locktable, ':');
 		if (fsname == NULL) {
 			fprintf(stderr, "%s %s\n", errpre, _("missing colon"));
 			return EX_DATAERR;

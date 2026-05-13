@@ -46,7 +46,7 @@ static int get_height(void)
 
 static int _do_indirect_extended(char *diebuf, struct iinfo *iinf, int hgt)
 {
-	unsigned int x, y;
+	unsigned int x;
 	off_t headoff;
 	uint64_t p;
 	int i_blocks;
@@ -60,7 +60,7 @@ static int _do_indirect_extended(char *diebuf, struct iinfo *iinf, int hgt)
 		memset(&iinf->ii[x].dirent, 0, sizeof(struct idirent));
 	}
 	headoff = sizeof(struct gfs2_meta_header);
-	for (x = headoff, y = 0; x < sbd.sd_bsize; x += sizeof(uint64_t), y++) {
+	for (x = headoff; x < sbd.sd_bsize; x += sizeof(uint64_t)) {
 		p = be64_to_cpu(*(__be64 *)(diebuf + x));
 		if (p) {
 			iinf->ii[i_blocks].block = p;

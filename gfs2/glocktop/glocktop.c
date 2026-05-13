@@ -512,7 +512,7 @@ static int this_glock_requested(const char *str)
 
 static int is_iopen(const char *str)
 {
-	char *p;
+	const char *p;
 
 	p = strchr(str, '/');
 	if (p == NULL)
@@ -913,10 +913,10 @@ static const char *getprocname(int ownpid)
 	if (fgets(str, 80, fp) != NULL) {
 		char *p;
 
-		procname = str + 6;
-		p = strchr(procname, '\n');
+		p = strchr(str + 6, '\n');
 		if (p)
 			*p = '\0';
+		procname = str + 6;
 	} else
 		procname = "unknown";
 
@@ -932,7 +932,8 @@ static void show_dlm_grants(int locktype, const char *g_line, int dlmgrants,
 	unsigned int lkb_id, lkbnodeid, remid, ownpid, exflags, flags, status;
 	unsigned int grmode, rqmode, nodeid, length;
 	uint64_t xid, us;
-	char trgt_res_name[64], res_name[64], *p1, *p2;
+	char trgt_res_name[64], res_name[64];
+	const char *p1, *p2;
 	const char *procname;
 
 	p1 = strchr(g_line, '/');
@@ -998,7 +999,7 @@ lkb_id  n   remid  pid x e f s g rq u n ln res_name 1234567890123456
 	}
 }
 
-static void print_call_trace(const char *hline)
+static void print_call_trace(char *hline)
 {
 	char *p, *pid, tmp[32], stackfn[64], str[96];
 	FILE *fp;
@@ -1085,7 +1086,7 @@ static int get_lock_type(const char *str)
 	return (p ? (*(p - 1)) - '0' : 0);
 }
 
-static long long get_demote_time(const char *str)
+static long long get_demote_time(char *str)
 {
 	char *p;
 	char tmp[80];
@@ -1107,7 +1108,7 @@ static long long get_demote_time(const char *str)
 	return atoll(tmp);
 }
 
-static const char *pid_string(const char *str)
+static const char *pid_string(char *str)
 {
 	char *p;
 	static char pidstr[80];
