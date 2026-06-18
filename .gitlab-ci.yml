@@ -1,0 +1,120 @@
+# GitLab CI pipeline that monitors Jenkins external build status
+# This satisfies GitLab's "Pipelines must succeed" merge requirement
+# by waiting for the jenkins-ci external commit status to complete
+#
+# Two jobs:
+# 1. monitor-jenkins: For internal MRs/branches - uses jenkins-waiter runner, monitors Jenkins
+# 2. monitor-jenkins-fork: For fork MRs - uses any runner, exits immediately (no API token access)
+
+stages:
+  - monitor
+
+# Internal MRs and branch builds - monitor Jenkins with long timeout
+monitor-jenkins:
+  stage: monitor
+  image: alpine:latest
+  tags:
+    - jenkins-waiter
+  variables:
+    RUNNER_SCRIPT_TIMEOUT: 22h
+  before_script:
+    - apk add --no-cache curl jq
+  script:
+    - |
+      echo "Waiting for Jenkins build status on commit ${CI_COMMIT_SHA}..."
+      PROJECT_PATH="${CI_PROJECT_PATH/\//%2F}"
+      API_URL="https://gitlab.com/api/v4/projects/${PROJECT_PATH}/repository/commits/${CI_COMMIT_SHA}/statuses"
+
+      MAX_WAIT=75600  # 21 hours max wait for Jenkins to pick up the job
+      INTERVAL=30     # Check every 30 seconds
+      ELAPSED=0
+
+      while [ $ELAPSED -lt $MAX_WAIT ]; do
+        echo "Checking Jenkins status... (${ELAPSED}s elapsed)"
+
+        # Get all commit statuses for this SHA - retry on failure
+        RETRIES=5
+        RETRY_DELAY=5
+        RESPONSE=""
+        for i in $(seq 1 $RETRIES); do
+          RESPONSE=$(curl -s --header "PRIVATE-TOKEN: ${GITLAB_API_TOKEN}" "${API_URL}")
+          # Verify response is valid JSON
+          if echo "$RESPONSE" | jq empty 2>/dev/null; then
+            break
+          else
+            echo "  API response invalid (attempt $i/$RETRIES), retrying in ${RETRY_DELAY}s..."
+            if [ $i -lt $RETRIES ]; then
+              sleep $RETRY_DELAY
+            fi
+            RESPONSE=""
+          fi
+        done
+
+        # If after retries we still don't have valid JSON, skip this iteration
+        if [ -z "$RESPONSE" ]; then
+          echo "  Failed to get valid API response after $RETRIES attempts, will retry in ${INTERVAL}s..."
+          sleep $INTERVAL
+          ELAPSED=$((ELAPSED + INTERVAL))
+          continue
+        fi
+
+        # Find the jenkins-ci status
+        JENKINS_STATUS=$(echo "$RESPONSE" | jq -r '.[] | select(.name == "jenkins-ci") | .status' | head -1)
+
+        if [ -n "$JENKINS_STATUS" ]; then
+          echo "Jenkins status: ${JENKINS_STATUS}"
+
+          case "$JENKINS_STATUS" in
+            success)
+              echo "Jenkins build succeeded"
+              exit 0
+              ;;
+            failed)
+              echo "Jenkins build failed"
+              exit 1
+              ;;
+            canceled)
+              echo "Jenkins build was canceled"
+              exit 1
+              ;;
+            running|pending)
+              echo "  Jenkins build is ${JENKINS_STATUS}, waiting..."
+              ;;
+            *)
+              echo "  Unknown status: ${JENKINS_STATUS}"
+              ;;
+          esac
+        else
+          echo "  No jenkins-ci status found yet, waiting for Jenkins to start..."
+        fi
+
+        sleep $INTERVAL
+        ELAPSED=$((ELAPSED + INTERVAL))
+      done
+
+      echo "Timeout waiting for Jenkins build (${MAX_WAIT}s)"
+      exit 1
+  timeout: 23h
+  rules:
+    # Run for branch pushes (not MR events)
+    - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
+    # Run for internal MRs (source project ID == project ID)
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_PROJECT_ID == $CI_MERGE_REQUEST_PROJECT_ID'
+  allow_failure: false
+
+# Fork MRs - pass immediately (no API token access, no jenkins-waiter runner)
+monitor-jenkins-fork:
+  stage: monitor
+  image: alpine:latest
+  # No tags - uses any available shared runner
+  script:
+    - |
+      echo "Fork MR detected (source project ${CI_MERGE_REQUEST_SOURCE_PROJECT_ID} != project ${CI_MERGE_REQUEST_PROJECT_ID})"
+      echo "GitLab pipeline passes immediately (no access to GITLAB_API_TOKEN)"
+      echo "Jenkins may still build this MR if the author has Developer+ access"
+      exit 0
+  timeout: 5m
+  rules:
+    # Run only for fork MRs (source project ID != project ID)
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_PROJECT_ID != $CI_MERGE_REQUEST_PROJECT_ID'
+  allow_failure: false
