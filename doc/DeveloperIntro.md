@@ -150,7 +150,7 @@ tell the scanner to ignore them.
 ## Pull Requests
 
 Contributions are accepted via email or pull requests to
-https://pagure.io/gfs2-utils but even if the patches are sent by email it's a
+https://gitlab.com/linux-gfs2/gfs2-utils but even if the patches are sent by email it's a
 good idea to create a pull request to get them checked by CI before merging.
 The slow-moving nature of gfs2-utils development means that most changes are
 fast-forward merges without merge commits, but merge commits are fine if they
@@ -200,7 +200,7 @@ is:
 4. Generate gz-, bz2- and xz-compressed tarballs using 'git archive'.
 5. Unpack each tarball and test it.
 6. Generate a gpg-signed checksum file for each tarball.
-7. Upload the tarballs, checksums and signatures to the pagure 'releases' space.
+7. Upload the tarballs, checksums and signatures to the GitLab 'releases' space.
 8. Announce the new version to the gfs2 mailing list and the users@clusterlabs list.
 9. Update the gfs2-utils RPM in Fedora Rawhide and, if needed, the stable Fedora releases.
 10. If needed, open issues for each RHEL version that should be rebased to the new gfs2-utils.

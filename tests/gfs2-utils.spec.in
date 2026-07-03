@@ -20,8 +20,8 @@ BuildRequires: flex
 BuildRequires: libblkid-devel
 BuildRequires: libuuid-devel
 BuildRequires: check-devel
-Source: https://releases.pagure.org/gfs2-utils/gfs2-utils-%{version}.tar.gz
-URL: https://pagure.io/gfs2-utils
+Source: https://gitlab.com/linux-gfs2/gfs2-utils/-/releases/%{version}/downloads/gfs2-utils-%{version}.tar.gz
+URL: https://gitlab.com/linux-gfs2/gfs2-utils
 
 %prep
 %setup
