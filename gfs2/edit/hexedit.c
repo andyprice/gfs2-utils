@@ -1645,7 +1645,7 @@ static void process_field(const char *field, const char *nstr)
 				err = 1;
 			}
 			if (val == 0)
-				err = sscanf(nstr, "%"SCNi64, &val);
+				err = sscanf(nstr, "%"SCNu64, &val);
 			errno = EINVAL;
 			if (err == 1)
 				/* coverity[overrun-buffer-val:SUPPRESS] False positive */
